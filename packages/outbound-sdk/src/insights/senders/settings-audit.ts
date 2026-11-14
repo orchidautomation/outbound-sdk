@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 
+import { mapConcurrent } from "../../internal/concurrency.ts";
 import type {
   CampaignSettings,
   SendingWindow,
@@ -340,33 +341,29 @@ export const settingsAudit = defineInsight({
       );
     }
 
-    const audited: AuditedCampaign[] = [];
+    const audited: AuditedCampaign[] = await mapConcurrent(
+      campaigns,
+      async (campaign) => {
+        const [settings, senders] = await Promise.all([
+          outbound.campaign(campaign.ref).settings(),
+          countSenders
+            ? readCampaignSenders(
+                context,
+                campaign,
+                options.max_senders_per_campaign
+              )
+            : null,
+        ]);
 
-    for (const campaign of campaigns) {
-      const settings = context.one(
-        // oxlint-disable-next-line no-await-in-loop -- one campaign at a time keeps the rate budget predictable.
-        await outbound.campaign(campaign.ref).settings()
-      );
-
-      const senders = countSenders
-        ? // oxlint-disable-next-line no-await-in-loop -- one campaign at a time keeps the rate budget predictable.
-          await readCampaignSenders(
-            context,
-            campaign,
-            options.max_senders_per_campaign
-          )
-        : null;
-
-      audited.push(
-        audit({
+        return audit({
           bars,
           campaign,
           senders: senders?.length ?? null,
-          settings,
+          settings: context.one(settings),
           today: dayFrom(context.now, 0),
-        })
-      );
-    }
+        });
+      }
+    );
 
     const flagged = audited
       .filter((campaign) => campaign.findings.length > 0)

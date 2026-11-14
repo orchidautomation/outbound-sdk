@@ -50,7 +50,7 @@ A record's campaign is the campaign itself, the `campaignRef` a lead, message or
 | `outbound.clients.names()` | The clients named by rules, in rule order, without repeats. Empty when there are no rules. `unassigned` is not listed. |
 | `outbound.clients.stats(options?)` | One row per client: `client`, `campaigns` and `counts`, sorted by client name. Takes `from` and `to` (`YYYY-MM-DD`) and the per-call options (`signal`, `timeout`, `retries`, `deadline`, `maxRequests`). |
 
-`clients.stats()` lists every campaign, reads each campaign's stats one at a time, and adds the rows up per client. It costs one stats request per campaign on top of the listing. `campaigns` is the number of stats rows added together. The exported constant `UNASSIGNED` is the string `"unassigned"`.
+`clients.stats()` lists every campaign, reads each campaign's stats, a few campaigns at a time, and adds the rows up per client. It costs one stats request per campaign on top of the listing. `campaigns` is the number of stats rows added together. The exported constant `UNASSIGNED` is the string `"unassigned"`.
 
 ## Without rules
 

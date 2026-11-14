@@ -64,6 +64,8 @@ A listing reads the first member to its end, then the second, and so on, in the 
 
 A listing filtered to one campaign or one saved list goes straight to the member that owns it.
 
+A person lookup, a lead listing filtered by `email` or `linkedinUrl`, is the exception: it asks every member at the same time, because each answers with a record or two. Records still come back in member order, and the cursor holds only the members with more to give. Each request still counts against its own vendor's rate budget.
+
 ### Lookups need a ref
 
 Three members above each have a campaign with the id `cmp_1`. A lookup on a combined instance therefore takes the record's `ref` (`provider:workspace:id`), which every record carries. A bare vendor id is refused with `Invalid`. This applies to `campaigns.get`, to `campaign(id)`, `sender(id)`, `lead(id)` and `list(id)`, and to a `campaignId` filter.

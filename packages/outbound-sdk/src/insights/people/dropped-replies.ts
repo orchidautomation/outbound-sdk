@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 
+import { mapConcurrent } from "../../internal/concurrency.ts";
 import { replyCategorySchema } from "../../internal/entities.ts";
 import type { Message, Reply } from "../../internal/entities.ts";
 import { defineInsight } from "../define.ts";
@@ -260,36 +261,41 @@ export const droppedReplies = defineInsight({
     const conversations = conversationsOf(kept, readers);
     const dropped: DroppedReply[] = [];
     let answered = 0;
-    let unchecked = 0;
     let tooRecent = 0;
 
-    for (const conversation of conversations) {
-      const timed = conversation.replies.some((each) => each.sentAt !== null);
+    // A conversation with no reader or no timed reply cannot be checked.
+    const checkable = conversations.flatMap((conversation) =>
+      conversation.by !== null &&
+      conversation.replies.some((each) => each.sentAt !== null)
+        ? [{ ...conversation, by: conversation.by }]
+        : []
+    );
 
-      if (conversation.by === null || !timed) {
-        unchecked += 1;
-      } else {
-        const messages = context.page(
-          // oxlint-disable-next-line no-await-in-loop -- one conversation at a time keeps the rate budget predictable.
-          await (conversation.by === "thread"
-            ? context.outbound.thread(conversation.id).messages()
-            : context.outbound.lead(conversation.id).timeline())
-        );
+    const unchecked = conversations.length - checkable.length;
 
-        const found = toDropped(
-          unanswered(conversation.replies, messages),
-          conversation.by,
-          context.now
-        );
+    const threads = await mapConcurrent(checkable, async (conversation) => ({
+      conversation,
+      messages: context.page(
+        await (conversation.by === "thread"
+          ? context.outbound.thread(conversation.id).messages()
+          : context.outbound.lead(conversation.id).timeline())
+      ),
+    }));
 
-        const old = found.filter(
-          (each) => each.hoursWaiting >= values.older_than_hours
-        );
+    for (const { conversation, messages } of threads) {
+      const found = toDropped(
+        unanswered(conversation.replies, messages),
+        conversation.by,
+        context.now
+      );
 
-        dropped.push(...old);
-        answered += found.length === 0 ? 1 : 0;
-        tooRecent += found.length - old.length;
-      }
+      const old = found.filter(
+        (each) => each.hoursWaiting >= values.older_than_hours
+      );
+
+      dropped.push(...old);
+      answered += found.length === 0 ? 1 : 0;
+      tooRecent += found.length - old.length;
     }
 
     const answer: DroppedReplies = {

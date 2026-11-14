@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 
+import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Campaign, CampaignStatus } from "../../internal/entities.ts";
 import { sumCounts } from "../../internal/metrics.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
@@ -227,7 +228,6 @@ export const readPeriods = async (
 ): Promise<Periods> => {
   const current = lastDays(context.now, options.days);
   const previous = lastDays(context.now, options.days, 1);
-  const campaigns: CampaignPeriods[] = [];
 
   const found = await readCampaigns(
     context,
@@ -235,15 +235,17 @@ export const readPeriods = async (
     options.max_campaigns
   );
 
-  for (const campaign of found) {
-    campaigns.push({
-      campaign,
-      // oxlint-disable-next-line no-await-in-loop -- one campaign at a time keeps the rate budget predictable.
-      current: await readTotals(context, campaign.ref, current),
-      // oxlint-disable-next-line no-await-in-loop -- one campaign at a time keeps the rate budget predictable.
-      previous: await readTotals(context, campaign.ref, previous),
-    });
-  }
+  const campaigns = await mapConcurrent(
+    found,
+    async (campaign): Promise<CampaignPeriods> => {
+      const [now, before] = await Promise.all([
+        readTotals(context, campaign.ref, current),
+        readTotals(context, campaign.ref, previous),
+      ]);
+
+      return { campaign, current: now, previous: before };
+    }
+  );
 
   return { campaigns, current, previous };
 };

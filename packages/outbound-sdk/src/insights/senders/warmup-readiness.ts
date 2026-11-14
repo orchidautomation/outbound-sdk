@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 
+import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { SenderHealth } from "../../internal/entities-account.ts";
 import type { Sender } from "../../internal/entities.ts";
 import { defineInsight } from "../define.ts";
@@ -211,17 +212,17 @@ export const warmupReadiness = defineInsight({
       );
     }
 
-    const judged: UnreadySender[] = [];
+    const judged: UnreadySender[] = await mapConcurrent(
+      senders,
+      async (sender) => {
+        const health =
+          healthChecked && sender.kind === "mailbox"
+            ? context.one(await outbound.sender(sender.ref).health())
+            : null;
 
-    for (const sender of senders) {
-      const health =
-        healthChecked && sender.kind === "mailbox"
-          ? // oxlint-disable-next-line no-await-in-loop -- one sender at a time keeps the rate budget predictable.
-            context.one(await outbound.sender(sender.ref).health())
-          : null;
-
-      judged.push(judge(sender, health, bars));
-    }
+        return judge(sender, health, bars);
+      }
+    );
 
     const notReady = judged
       .filter((sender) => sender.reasons.length > 0)

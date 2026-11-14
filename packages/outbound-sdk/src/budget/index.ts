@@ -42,6 +42,15 @@ export const budget = (
   const perRun = options.per === "run";
   let used = 0;
   const remaining = (): number => Math.max(0, options.maxRequests - used);
+  // Requests counted live for each call, as the engine sends them.
+  const live = new WeakMap<object, number>();
+
+  const spent = (provider: string): OutboundError =>
+    new OutboundError(
+      "RateLimited",
+      `The run used its budget of ${options.maxRequests} request(s) to ${provider}`,
+      { provider }
+    );
 
   return {
     extend: () => ({
@@ -56,24 +65,48 @@ export const budget = (
     name: "budget",
     wrap: async (operation, next, info) => {
       const { state } = info;
-      const before = state.requests;
 
       if (perRun && remaining() === 0) {
-        throw new OutboundError(
-          "RateLimited",
-          `The run used its budget of ${options.maxRequests} request(s) to ${info.provider}`,
-          { provider: info.provider }
+        throw spent(info.provider);
+      }
+
+      if (!perRun) {
+        // The engine stops the call once it has made this many requests.
+        state.maxRequests = Math.min(
+          state.maxRequests ?? options.maxRequests,
+          options.maxRequests
         );
       }
 
-      // The engine stops the call once it has made this many requests.
-      const allowed = perRun ? before + remaining() : options.maxRequests;
-      state.maxRequests = Math.min(state.maxRequests ?? allowed, allowed);
+      if (!live.has(state)) {
+        live.set(state, 0);
+        const prior = state.beforeRequest;
+
+        // Counted as each request is sent, so calls running side by side
+        // share one allowance and a run never goes past it.
+        state.beforeRequest = () => {
+          prior?.();
+
+          if (perRun && remaining() === 0) {
+            throw spent(info.provider);
+          }
+
+          used += 1;
+          live.set(state, (live.get(state) ?? 0) + 1);
+        };
+      }
+
+      const before = state.requests;
+      const liveBefore = live.get(state) ?? 0;
 
       try {
         return await next(operation);
       } finally {
-        used += state.requests - before;
+        // A plugin inside this one may record a request on the state itself,
+        // without the engine sending one; that request is counted here.
+        const recorded = state.requests - before;
+        const sent = (live.get(state) ?? 0) - liveBefore;
+        used += Math.max(0, recorded - sent);
       }
     },
   };

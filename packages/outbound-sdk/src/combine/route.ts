@@ -91,3 +91,64 @@ export const pageAcross = async <Item>(
     ? { items: page.items, next: { member: at.index + 1 } }
     : { items: page.items };
 };
+
+const waiting = (next: Json | undefined, size: number): readonly Position[] => {
+  const listed = field(next, "together");
+
+  if (!Array.isArray(listed)) {
+    return Array.from({ length: size }, (_, index) => ({
+      index,
+      next: undefined,
+    }));
+  }
+
+  return listed.flatMap((entry) => {
+    const index = count(field(entry, "member"));
+
+    return index === null || index >= size
+      ? []
+      : [{ index, next: field(entry, "next") ?? undefined }];
+  });
+};
+
+/**
+ * One page of a listing read from every member at the same time, for reads
+ * that return few records, such as a lookup by exact address. Items keep the
+ * members' order. The cursor holds each member still to finish, so the next
+ * page asks only those, again side by side.
+ */
+export const pageTogether = async <Item>(
+  members: readonly Adapter[],
+  ctx: AdapterContext,
+  query: PageQuery,
+  read: (
+    member: Adapter,
+    memberCtx: AdapterContext,
+    next: Json | undefined
+  ) => Promise<Page<Item>>
+): Promise<Page<Item>> => {
+  const pages = await Promise.all(
+    waiting(query.next, members.length).flatMap((at) => {
+      const member = members[at.index];
+
+      return member === undefined
+        ? []
+        : [
+            read(member, ctx.forAdapter(member), at.next).then((page) => ({
+              index: at.index,
+              page,
+            })),
+          ];
+    })
+  );
+
+  const unfinished = pages.flatMap(({ index, page }) =>
+    page.next === undefined ? [] : [{ member: index, next: page.next }]
+  );
+
+  const items = pages.flatMap(({ page }) => page.items);
+
+  return unfinished.length === 0
+    ? { items }
+    : { items, next: { together: unfinished } };
+};

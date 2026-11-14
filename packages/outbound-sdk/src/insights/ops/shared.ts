@@ -4,6 +4,7 @@
 
 import { z } from "zod";
 
+import { mapConcurrent } from "../../internal/concurrency.ts";
 import { campaignStatusSchema } from "../../internal/entities.ts";
 import type { Campaign, CampaignStatus } from "../../internal/entities.ts";
 import { sumCounts } from "../../internal/metrics.ts";
@@ -301,7 +302,7 @@ export const readCampaigns = async (
   const found: Campaign[] = [];
 
   for (const status of wanted) {
-    // oxlint-disable-next-line no-await-in-loop -- one listing per status keeps the rate budget predictable.
+    // oxlint-disable-next-line no-await-in-loop -- each status reads only the room the earlier ones left under the cap.
     const listed = await readUpTo(
       context,
       (cap) => campaigns.listAll({ max: cap, status }),
@@ -349,17 +350,13 @@ export const readCampaignTotals = async (
     input.max_campaigns
   );
 
-  const entries: CampaignTotals[] = [];
-
-  for (const campaign of campaigns) {
-    entries.push({
+  return await mapConcurrent(
+    campaigns,
+    async (campaign): Promise<CampaignTotals> => ({
       campaign,
-      // oxlint-disable-next-line no-await-in-loop -- one campaign at a time keeps the rate budget predictable.
       counts: await readTotals(context, campaign.ref, input),
-    });
-  }
-
-  return entries;
+    })
+  );
 };
 
 export interface DayCounts {

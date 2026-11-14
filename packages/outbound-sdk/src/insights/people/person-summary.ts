@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 
+import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Lead, Message } from "../../internal/entities.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
@@ -123,24 +124,32 @@ const activityOf = (lead: Lead, messages: readonly Message[]) => {
   };
 };
 
-type Timelines = Map<string, readonly Message[]>;
+/** Each lead's whole timeline, read once even when it is in several campaigns. */
+type Timelines = Map<string, Promise<readonly Message[]>>;
 
-/** A lead's messages, read once per lead even when it is in several campaigns. */
+/** A lead's messages in this record's campaign. */
 const timelineOf = async (
   context: InsightContext,
   timelines: Timelines,
   lead: Lead
 ): Promise<readonly Message[]> => {
-  const known = timelines.get(lead.ref);
+  let all = timelines.get(lead.ref);
 
-  const all =
-    known ?? context.page(await context.outbound.lead(lead.ref).timeline());
+  if (all === undefined) {
+    // The read is shared while it is in flight, so records read side by side
+    // still ask for one lead's timeline once.
+    all = context.outbound
+      .lead(lead.ref)
+      .timeline()
+      .then((page) => context.page(page));
+    timelines.set(lead.ref, all);
+  }
 
-  timelines.set(lead.ref, all);
+  const messages = await all;
 
   // A vendor that uses one lead id in every campaign returns every campaign's
   // messages; keep this record's own.
-  return all.filter(
+  return messages.filter(
     (message) =>
       message.campaignRef === null ||
       lead.campaignRef === null ||
@@ -154,12 +163,13 @@ const summarize = async (
   lead: Lead
 ): Promise<PersonCampaign> => {
   const { outbound } = context;
-  const messages = await timelineOf(context, timelines, lead);
 
-  const campaign =
+  const [messages, campaign] = await Promise.all([
+    timelineOf(context, timelines, lead),
     lead.campaignRef === null
       ? null
-      : context.one(await outbound.campaigns.get(lead.campaignRef));
+      : outbound.campaigns.get(lead.campaignRef).then(context.one),
+  ]);
 
   const { threadIsShort, ...activity } = activityOf(lead, messages);
 
@@ -213,13 +223,11 @@ export const personSummary = defineInsight({
   next: "Use account_summary with their email domain to see everyone at the same company.",
   run: async (context, { max_campaigns: maxCampaigns, person }) => {
     const found = await findPerson(context, person, maxCampaigns);
-    const campaigns: PersonCampaign[] = [];
     const timelines: Timelines = new Map();
 
-    for (const lead of found.records) {
-      // oxlint-disable-next-line no-await-in-loop -- one record at a time keeps the rate budget predictable.
-      campaigns.push(await summarize(context, timelines, lead));
-    }
+    const campaigns = await mapConcurrent(found.records, (lead) =>
+      summarize(context, timelines, lead)
+    );
 
     const contacted = campaigns.filter((entry) => entry.messagesSent > 0);
     const replied = campaigns.filter((entry) => entry.replied);

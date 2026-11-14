@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 
+import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { SenderHealth } from "../../internal/entities-account.ts";
 import type { Sender } from "../../internal/entities.ts";
 import { defineInsight } from "../define.ts";
@@ -264,9 +265,12 @@ export const domainHealth = defineInsight({
     const linkedinSeats: LinkedinSeat[] = [];
     const mailboxesWithoutDomain: string[] = [];
 
-    for (const sender of senders) {
-      // oxlint-disable-next-line no-await-in-loop -- one sender at a time keeps the rate budget predictable.
-      const health = context.one(await outbound.sender(sender.ref).health());
+    const checks = await mapConcurrent(senders, async (sender) => ({
+      health: context.one(await outbound.sender(sender.ref).health()),
+      sender,
+    }));
+
+    for (const { health, sender } of checks) {
       const domain = health.domain ?? domainOf(sender.address);
 
       if (sender.kind === "linkedin") {

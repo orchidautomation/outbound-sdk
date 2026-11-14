@@ -59,7 +59,7 @@ export const campaignsIn = async (
       break;
     }
 
-    // oxlint-disable-next-line no-await-in-loop -- one status at a time keeps the rate budget predictable.
+    // oxlint-disable-next-line no-await-in-loop -- each status reads only the room the earlier ones left under the cap.
     const found = await readCapped(
       context,
       (cap) => outbound.campaigns.listAll({ max: cap, status }),
