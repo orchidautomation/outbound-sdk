@@ -80,6 +80,8 @@ export interface ListAll<Item> extends AsyncIterable<Item> {
   readonly cursor: string | undefined;
   /** The meta of the last page fetched. */
   readonly meta: ResultMeta | undefined;
+  /** `true` once `max` stopped the walk while more records existed. */
+  readonly truncated: boolean;
   /** Collects every record into an array. */
   readonly toArray: () => Promise<Item[]>;
 }

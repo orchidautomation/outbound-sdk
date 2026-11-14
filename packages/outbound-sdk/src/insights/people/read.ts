@@ -12,24 +12,13 @@ import type {
 import type { ListAll } from "../../internal/outbound/api.ts";
 import type { InsightContext } from "../define.ts";
 
-/**
- * Reads at most `max` records. One more than `max` is asked for, so a cap
- * that falls in the middle of a page is still seen and reported.
- */
-export const readCapped = async <Item>(
+/** Reads at most `max` records, and says so in a note when more exist. */
+export const readCapped = <Item>(
   context: InsightContext,
   open: (max: number) => ListAll<Item>,
   max: number,
   what: string
-): Promise<Item[]> => {
-  const items = await context.all(open(max + 1));
-
-  if (items.length > max) {
-    context.partial(`Stopped at ${max} ${what}; more exist.`);
-  }
-
-  return items.slice(0, max);
-};
+): Promise<Item[]> => context.all(open(max), `${max} ${what}`);
 
 export const statusesField = z
   .array(campaignStatusSchema)

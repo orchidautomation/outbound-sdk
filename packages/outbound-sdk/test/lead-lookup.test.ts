@@ -200,3 +200,33 @@ test("person() still scans when a tool cannot look a person up, or when campaign
     ["l2"]
   );
 });
+
+test("a capped listing says when more records existed past the cap", async () => {
+  const outbound = createOutbound({
+    adapter: memory({
+      data: { campaigns: [{ id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }] },
+      pageSize: 2,
+    }),
+  });
+
+  const midPage = outbound.campaigns.listAll({ max: 1 });
+  assert.equal(midPage.truncated, false, "nothing is known before the walk");
+  assert.equal((await midPage.toArray()).length, 1);
+  assert.equal(midPage.truncated, true, "the cap fell inside a page");
+
+  const pageEnd = outbound.campaigns.listAll({ max: 2 });
+  assert.equal((await pageEnd.toArray()).length, 2);
+  assert.equal(
+    pageEnd.truncated,
+    true,
+    "the cap fell on a page end, with more pages"
+  );
+
+  const exact = outbound.campaigns.listAll({ max: 4 });
+  assert.equal((await exact.toArray()).length, 4);
+  assert.equal(exact.truncated, false, "the cap was the whole listing");
+
+  const uncapped = outbound.campaigns.listAll();
+  assert.equal((await uncapped.toArray()).length, 4);
+  assert.equal(uncapped.truncated, false);
+});

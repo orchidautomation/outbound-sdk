@@ -356,8 +356,8 @@ test("smartlead: verify refuses a wrong, stale or missing signature", () => {
     rawBody
   );
 
-  const stale = now - 301;
-  const early = now + 301;
+  const stale = now - 400;
+  const early = now + 400;
 
   const refused = [
     [

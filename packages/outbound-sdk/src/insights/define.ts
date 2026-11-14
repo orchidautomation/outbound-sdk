@@ -46,8 +46,12 @@ export interface InsightContext {
   readonly now: number;
   /** Records a page's cost and returns its items. An unfinished page marks the answer incomplete. */
   readonly page: <Item>(page: PageResult<Item>) => readonly Item[];
-  /** Walks a listing to its end or its `max`, records the cost and returns the records. */
-  readonly all: <Item>(walk: ListAll<Item>) => Promise<Item[]>;
+  /**
+   * Walks a listing to its end or its `max`, records the cost and returns the
+   * records. When `max` cut it short the answer is marked incomplete; `cap`
+   * names what was capped for the note, for example `50 campaigns`.
+   */
+  readonly all: <Item>(walk: ListAll<Item>, cap?: string) => Promise<Item[]>;
   /** Records one lookup's cost and returns the record. */
   readonly one: <Item>(item: WithMeta<Item>) => Item;
   /** Records a stats read's cost and returns its rows. */
@@ -144,12 +148,16 @@ const track = (outbound: OutboundApi, now: number): Tracker => {
 
   return {
     context: {
-      all: async (walk) => {
+      all: async (walk, cap) => {
         const items = await walk.toArray();
         seen(walk.meta);
 
-        if (walk.cursor !== undefined) {
-          partial("A listing was cut off at its cap; more records exist.");
+        if (walk.truncated) {
+          partial(
+            cap === undefined
+              ? "A listing was cut off at its cap; more records exist."
+              : `Stopped at ${cap}; more exist.`
+          );
         }
 
         return items;
