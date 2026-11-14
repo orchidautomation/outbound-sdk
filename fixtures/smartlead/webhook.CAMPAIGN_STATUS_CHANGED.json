@@ -1,0 +1,18 @@
+{
+  "previous_status": "PAUSED",
+  "current_status": "ACTIVE",
+  "campaign_status": "ACTIVE",
+  "client_id": null,
+  "campaign_name": "377 testing manual step",
+  "campaign_id": 377,
+  "secret_key": "redacted",
+  "app_url": "https://app.smartlead.ai/app/app/email-campaign/377/analytics",
+  "description": "Email Campaign status changed PAUSED to ACTIVE for campaign - 377 testing manual step",
+  "metadata": {
+    "webhook_created_at": "2024-04-12T13:51:26.269Z"
+  },
+  "webhook_url": "https://hooks.example.com/smartlead",
+  "webhook_id": 94,
+  "webhook_name": "test",
+  "event_type": "CAMPAIGN_STATUS_CHANGED"
+}

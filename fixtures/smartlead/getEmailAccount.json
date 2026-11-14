@@ -1,0 +1,39 @@
+{
+  "id": 123,
+  "created_at": "2025-01-15T10:30:00.000Z",
+  "updated_at": "2025-11-26T08:00:00.000Z",
+  "user_id": 456,
+  "from_name": "Alex Example",
+  "from_email": "person1@example.com",
+  "username": "person1@example.com",
+  "password": "REDACTED",
+  "smtp_host": "smtp.example.com",
+  "smtp_port": 587,
+  "smtp_port_type": "TLS",
+  "message_per_day": 50,
+  "is_smtp_success": true,
+  "is_imap_success": true,
+  "type": "GMAIL",
+  "daily_sent_count": 25,
+  "client_id": null,
+  "warmup_details": {
+    "id": 789,
+    "status": "ACTIVE",
+    "created_at": "2025-01-15T10:30:00.000Z",
+    "reply_rate": 15,
+    "warmup_key_id": 1001,
+    "blocked_reason": null,
+    "total_sent_count": 450,
+    "total_spam_count": 2,
+    "warmup_max_count": 30,
+    "warmup_min_count": 10,
+    "is_warmup_blocked": false,
+    "max_email_per_day": 50,
+    "warmup_reputation": 95
+  },
+  "campaign_ids": [
+    101,
+    102,
+    103
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "evt_test_001",
+  "type": "email.account.disconnected",
+  "created_at": "2025-09-07T10:15:00Z",
+  "data": {
+    "account_id": 139919,
+    "email": "person1@example.com",
+    "reason": "SMTP Failure - Host unavailable"
+  },
+  "links": {
+    "app": "https://app.smartlead.ai"
+  },
+  "meta": {
+    "attempt": 1,
+    "level": "user"
+  }
+}

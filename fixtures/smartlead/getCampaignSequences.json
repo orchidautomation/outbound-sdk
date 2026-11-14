@@ -1,0 +1,43 @@
+[
+  {
+    "id": 8494,
+    "created_at": "2022-11-08T07:06:35.990Z",
+    "updated_at": "2022-11-08T07:34:03.667Z",
+    "email_campaign_id": 3070,
+    "seq_number": 1,
+    "subject": "",
+    "email_body": "",
+    "sequence_variants": [
+      {
+        "id": 2535,
+        "created_at": "2022-11-08T07:06:36.002558+00:00",
+        "updated_at": "2022-11-08T07:34:04.026626+00:00",
+        "is_deleted": false,
+        "subject": "Subject",
+        "email_body": "<p>Hi<br><br>How are you?<br><br>Hope you're doing good</p>",
+        "email_campaign_seq_id": 8494,
+        "variant_label": "A"
+      },
+      {
+        "id": 2536,
+        "created_at": "2022-11-08T07:06:36.002558+00:00",
+        "updated_at": "2022-11-08T07:34:04.373866+00:00",
+        "is_deleted": false,
+        "subject": "Ema a",
+        "email_body": "<p>This is a new game a</p>",
+        "email_campaign_seq_id": 8494,
+        "variant_label": "B"
+      }
+    ]
+  },
+  {
+    "id": 8495,
+    "created_at": "2022-11-08T07:06:35.990Z",
+    "updated_at": "2022-11-08T07:34:03.667Z",
+    "email_campaign_id": 3070,
+    "seq_number": 2,
+    "subject": "",
+    "email_body": "<p>Bump up right!</p>",
+    "sequence_variants": []
+  }
+]

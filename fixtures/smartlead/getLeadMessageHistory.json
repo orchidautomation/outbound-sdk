@@ -1,0 +1,29 @@
+{
+  "history": [
+    {
+      "type": "SENT",
+      "message_id": "<sw-id-1@example.com>",
+      "stats_id": "00000000-0000-4000-8000-000000000001",
+      "time": "2023-03-13T07:44:12.978Z",
+      "email_body": "<div>Hi Alex, quick question</div>",
+      "subject": "Quick question for you, Alex"
+    },
+    {
+      "type": "SENT",
+      "message_id": "<sw-id-2@example.com>",
+      "stats_id": "00000000-0000-4000-8000-000000000002",
+      "time": "2023-03-15T07:50:56.673Z",
+      "email_body": "<div>Hi Alex, following up</div>",
+      "subject": "RE: Quick question for you, Alex"
+    },
+    {
+      "type": "REPLY",
+      "message_id": "<reply-id-1@example.com>",
+      "stats_id": "00000000-0000-4000-8000-000000000002",
+      "time": "2023-03-15T09:13:29.000Z",
+      "email_body": "<p>Yes, happy to chat</p>"
+    }
+  ],
+  "from": "person9@example.com",
+  "to": "person1@example.com"
+}

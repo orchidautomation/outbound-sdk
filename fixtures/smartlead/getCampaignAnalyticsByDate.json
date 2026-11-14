@@ -1,0 +1,23 @@
+{
+  "id": 123,
+  "user_id": 456,
+  "created_at": "2025-01-04T08:32:34.138Z",
+  "status": "ACTIVE",
+  "name": "Q1 Outbound",
+  "start_date": "2025-01-01",
+  "end_date": "2025-01-31",
+  "sent_count": "23918",
+  "unique_sent_count": "18262",
+  "open_count": "7420",
+  "unique_open_count": "5133",
+  "click_count": "612",
+  "unique_click_count": "489",
+  "reply_count": "3929",
+  "total_reply_count": "3929",
+  "non_ooo_reply_count": "1502",
+  "block_count": "0",
+  "bounce_count": "1234",
+  "unsubscribed_count": "18",
+  "total_count": "122108",
+  "drafted_count": "96904"
+}

@@ -1,0 +1,18 @@
+{
+  "id": "evt_test_002",
+  "type": "campaign.bounce_threshold.breached",
+  "created_at": "2025-09-07T10:16:00Z",
+  "data": {
+    "campaign_id": 139919,
+    "threshold": 3.0,
+    "current_bounce_rate": 4.8,
+    "action": "paused"
+  },
+  "links": {
+    "app": "https://app.smartlead.ai/app/email-campaign/139919"
+  },
+  "meta": {
+    "attempt": 1,
+    "level": "campaign"
+  }
+}
