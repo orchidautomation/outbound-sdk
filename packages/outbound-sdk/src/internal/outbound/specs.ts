@@ -123,7 +123,13 @@ export const senderGet = (core: Core): GetSpec<Sender> => ({
 
 export const leadList = (core: Core): ListSpec<Lead, LeadFilters> => ({
   action: "leads.list",
-  keyOf: refOf,
+  // A lookup returns one record per campaign the person is in. On a vendor
+  // whose lead id is the same in every campaign those records share a ref,
+  // so the campaign is part of what tells them apart.
+  keyOf: (lead, filters) =>
+    filters.email === undefined && filters.linkedinUrl === undefined
+      ? lead.ref
+      : `${lead.ref} ${lead.campaignRef ?? ""}`,
   prepare: (filters) => {
     if (filters.campaignId !== undefined && filters.listId !== undefined) {
       throw new OutboundError(

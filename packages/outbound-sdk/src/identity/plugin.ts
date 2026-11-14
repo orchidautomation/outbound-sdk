@@ -150,7 +150,8 @@ const find = async (
 
       // The vendor's own matching is not trusted: only an exact key links.
       if (leadKeys.includes(next)) {
-        found.set(lead.ref, lead);
+        // One record per campaign: a vendor can use one lead id in all of them.
+        found.set(`${lead.ref} ${lead.campaignRef ?? ""}`, lead);
 
         for (const key of leadKeys) {
           keys.add(key);

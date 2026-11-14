@@ -34,7 +34,8 @@ export interface ListSpec<Item, Filters> {
   /** Checks the filters and the capabilities they need. Returns clean filters. */
   readonly prepare: (filters: Filters) => Filters;
   readonly toOperation: (filters: Filters, page: PageRequest) => Operation;
-  readonly keyOf: (item: Item) => string | undefined;
+  /** What makes a record the same record on a later page. The filters are given because they can change that. */
+  readonly keyOf: (item: Item, filters: Filters) => string | undefined;
 }
 
 export interface GetSpec<Item> {
@@ -132,7 +133,7 @@ export const makeReadCollection = <Item, Filters>(
       cursor: walkOptions?.cursor,
       fetchPage: (cursor, state) =>
         fetchPage(core, spec, { cursor, filters, limit }, options, state),
-      keyOf: spec.keyOf,
+      keyOf: (item) => spec.keyOf(item, filters),
       max: walkOptions?.max,
     });
   },

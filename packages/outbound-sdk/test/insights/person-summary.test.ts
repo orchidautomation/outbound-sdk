@@ -195,3 +195,77 @@ test("person_summary is refused before any read when the adapter cannot look a p
       /leads\.lookup/u.test(error.message)
   );
 });
+
+test("person_summary keeps one record per campaign when a vendor uses one lead id in every campaign", async () => {
+  // Smartlead's lead id is global: the same lead, and the same ref, in two campaigns.
+  const outbound = single({
+    campaigns: [
+      { id: "c1", name: "First" },
+      { id: "c2", name: "Second" },
+    ],
+    leads: [
+      { campaignId: "c1", email: "person5@example.com", id: "shared" },
+      { campaignId: "c2", email: "person5@example.com", id: "shared" },
+    ],
+    messages: [
+      {
+        campaignId: "c1",
+        direction: "out",
+        id: "a1",
+        leadId: "shared",
+        sentAt: "2026-11-01T00:00:00.000Z",
+        stepIndex: 0,
+      },
+      {
+        campaignId: "c2",
+        direction: "out",
+        id: "b1",
+        leadId: "shared",
+        sentAt: "2026-11-02T00:00:00.000Z",
+        stepIndex: 0,
+      },
+      {
+        campaignId: "c2",
+        direction: "out",
+        id: "b2",
+        leadId: "shared",
+        sentAt: "2026-11-03T00:00:00.000Z",
+        stepIndex: 1,
+      },
+      {
+        campaignId: "c2",
+        direction: "in",
+        id: "b3",
+        leadId: "shared",
+        sentAt: "2026-11-04T00:00:00.000Z",
+      },
+    ],
+  });
+
+  assert.equal(
+    (await outbound.leads.listAll({ email: "person5@example.com" }).toArray())
+      .length,
+    2,
+    "a lookup keeps both campaign records although they share a ref"
+  );
+
+  const result = await outbound.insights.personSummary({
+    person: "person5@example.com",
+  });
+
+  assert.deepEqual(
+    result.data.campaigns.map((campaign) => [
+      campaign.campaignName,
+      campaign.messagesSent,
+      campaign.replies,
+      campaign.repliedSteps,
+    ]),
+    [
+      ["First", 1, 0, []],
+      ["Second", 2, 1, [1]],
+    ],
+    "each campaign counts its own messages"
+  );
+  assert.equal(result.data.totals.messagesSent, 3);
+  assert.equal(result.data.totals.campaignReplyRate, 0.5);
+});

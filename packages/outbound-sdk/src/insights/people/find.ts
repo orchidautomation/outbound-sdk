@@ -85,7 +85,8 @@ export const findPerson = async (
 
       // Only an exact identifier links two records; the vendor's own matching is not trusted.
       if (leadKeys.includes(next)) {
-        records.set(lead.ref, lead);
+        // One record per campaign: a vendor can use one lead id in all of them.
+        records.set(`${lead.ref} ${lead.campaignRef ?? ""}`, lead);
 
         for (const key of leadKeys) {
           keys.add(key);

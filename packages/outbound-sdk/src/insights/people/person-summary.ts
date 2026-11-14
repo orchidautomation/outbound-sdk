@@ -123,12 +123,38 @@ const activityOf = (lead: Lead, messages: readonly Message[]) => {
   };
 };
 
+type Timelines = Map<string, readonly Message[]>;
+
+/** A lead's messages, read once per lead even when it is in several campaigns. */
+const timelineOf = async (
+  context: InsightContext,
+  timelines: Timelines,
+  lead: Lead
+): Promise<readonly Message[]> => {
+  const known = timelines.get(lead.ref);
+
+  const all =
+    known ?? context.page(await context.outbound.lead(lead.ref).timeline());
+
+  timelines.set(lead.ref, all);
+
+  // A vendor that uses one lead id in every campaign returns every campaign's
+  // messages; keep this record's own.
+  return all.filter(
+    (message) =>
+      message.campaignRef === null ||
+      lead.campaignRef === null ||
+      message.campaignRef === lead.campaignRef
+  );
+};
+
 const summarize = async (
   context: InsightContext,
+  timelines: Timelines,
   lead: Lead
 ): Promise<PersonCampaign> => {
   const { outbound } = context;
-  const messages = context.page(await outbound.lead(lead.ref).timeline());
+  const messages = await timelineOf(context, timelines, lead);
 
   const campaign =
     lead.campaignRef === null
@@ -188,10 +214,11 @@ export const personSummary = defineInsight({
   run: async (context, { max_campaigns: maxCampaigns, person }) => {
     const found = await findPerson(context, person, maxCampaigns);
     const campaigns: PersonCampaign[] = [];
+    const timelines: Timelines = new Map();
 
     for (const lead of found.records) {
       // oxlint-disable-next-line no-await-in-loop -- one record at a time keeps the rate budget predictable.
-      campaigns.push(await summarize(context, lead));
+      campaigns.push(await summarize(context, timelines, lead));
     }
 
     const contacted = campaigns.filter((entry) => entry.messagesSent > 0);
