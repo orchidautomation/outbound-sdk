@@ -44,7 +44,7 @@ for (const failure of failures) {
 }
 
 console.log(
-  `Loaded ${Object.keys(manifest.exports).length - failures.length} of ${Object.keys(manifest.exports).length} subpath(s) on Node ${process.versions.node}`
+  `Loaded ${Object.keys(manifest.exports).length - failures.length} of ${Object.keys(manifest.exports).length} subpath(s) on ${process.versions.bun ? `Bun ${process.versions.bun}` : `Node ${process.versions.node}`}`
 );
 
 process.exitCode = failures.length > 0 ? 1 : 0;

@@ -1,0 +1,35 @@
+{
+  "totalCount": 3,
+  "items": [
+    {
+      "id": 62660,
+      "linkedInUserProfileId": "ACoAAExampleProfileId3",
+      "linkedInUserProfile": {
+        "linkedin_id": "58344981",
+        "profileUrl": "https://www.linkedin.com/in/example-person-3",
+        "firstName": "Sam",
+        "lastName": "Example",
+        "headline": "Communications and Marketing Professional",
+        "imageUrl": "https://example.com/image.jpg",
+        "location": "Princetown",
+        "companyName": "Example Co",
+        "companyUrl": null,
+        "position": "",
+        "about": null,
+        "connections": 0,
+        "followers": 0,
+        "emailAddress": null
+      },
+      "lastActionTime": "2024-10-01T03:28:22.414791Z",
+      "failedTime": null,
+      "creationTime": "2024-09-30T21:28:06.933349Z",
+      "leadCampaignStatus": "Pending",
+      "leadConnectionStatus": "None",
+      "leadMessageStatus": "None",
+      "errorCode": null,
+      "leadCampaignStatusMessage": null,
+      "linkedInSenderId": 1108,
+      "linkedInSenderFullName": "Sam Example"
+    }
+  ]
+}

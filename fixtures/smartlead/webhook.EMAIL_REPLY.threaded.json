@@ -1,0 +1,42 @@
+{
+  "webhook_id": 100,
+  "webhook_name": "Test",
+  "campaign_status": "COMPLETED",
+  "stats_id": "id",
+  "stats_thread_id": "thread_id",
+  "from_email": "person9@example.com",
+  "subject": "Proposal for Collaboration - example.com",
+  "sent_message_body": "<div>Test</div>",
+  "sent_message": {
+    "message_id": "<sw-id@example.com>",
+    "html": "<div>Test</div>",
+    "text": "Test",
+    "time": "2023-04-04T08:31:13.638+00:00"
+  },
+  "to_email": "person1@example.com",
+  "to_name": "Alex Example",
+  "time_replied": "2023-04-04T08:31:22+00:00",
+  "event_timestamp": "2023-04-04T08:31:22+00:00",
+  "reply_message": {
+    "message_id": "<id@example.com>",
+    "html": "<p>##- Please type your reply above this line -##</p>",
+    "text": "##- Please type your reply above this line -##",
+    "time": "2023-04-04T08:31:22+00:00"
+  },
+  "reply_body": "<p>##- Please type your reply above this line -##</p>",
+  "message_id": "<id@example.com>",
+  "preview_text": "##- Please type your reply above this line -##",
+  "campaign_name": "Link insertion",
+  "campaign_id": 100,
+  "client_id": null,
+  "sequence_number": 1,
+  "secret_key": "redacted",
+  "app_url": "https://app.smartlead.ai/app",
+  "ui_master_inbox_link": "https://app.smartlead.ai/app",
+  "description": "person1@example.com replied to Email 1 for campaign - Link insertion ",
+  "metadata": {
+    "webhook_created_at": "2023-09-26T10:48:56.598Z"
+  },
+  "webhook_url": "https://hooks.example.com/smartlead",
+  "event_type": "EMAIL_REPLY"
+}

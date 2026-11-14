@@ -1,0 +1,149 @@
+// Smartlead analytics -> MetricRow. Pure functions, no I/O.
+//
+// Smartlead returns most counts as strings and reports no delivered count
+// and no automatic-reply count. Rates are never read; only counts are.
+
+import { SCHEMA_VERSION } from "../internal/entities.ts";
+import type { MetricRow, MetricScope } from "../internal/entities.ts";
+import { count, field, objects, text } from "../internal/json.ts";
+import type { Json, JsonObject } from "../internal/json.ts";
+import { emptyCounts } from "../internal/metrics.ts";
+import type { MetricCounts } from "../internal/metrics.ts";
+import type { Identity } from "../internal/record.ts";
+import { makeRef } from "../internal/ref.ts";
+
+export interface RowScope extends Identity {
+  readonly scope: MetricScope;
+  readonly scopeId: string;
+}
+
+/** The timezone every dated request asks for. */
+export const TIMEZONE = "UTC";
+
+const row = (
+  scope: RowScope,
+  counts: MetricCounts,
+  extra: Partial<
+    Pick<MetricRow, "date" | "stepIndex" | "timezone" | "variantKey">
+  > = {}
+): MetricRow => ({
+  ...counts,
+  contentHash: null,
+  date: extra.date ?? null,
+  evidence: "exact",
+  provider: scope.provider,
+  schemaVersion: SCHEMA_VERSION,
+  scope: scope.scope,
+  scopeRef: makeRef(scope.provider, scope.workspaceId, scope.scopeId),
+  stepIndex: extra.stepIndex ?? null,
+  timezone: extra.timezone ?? null,
+  variantKey: extra.variantKey ?? null,
+  workspaceId: scope.workspaceId,
+});
+
+const campaignCounts = (raw: JsonObject): MetricCounts => ({
+  ...emptyCounts(),
+  bounced: count(raw.bounce_count),
+  clicked: count(raw.unique_click_count),
+  contacted: count(raw.unique_sent_count),
+  opened: count(raw.unique_open_count),
+  openedTotal: count(raw.open_count),
+  replied: count(raw.reply_count),
+  sent: count(raw.sent_count),
+  unsubscribed: count(raw.unsubscribed_count),
+});
+
+/**
+ * `GET /campaigns/{id}/analytics`: lifetime totals. `interested` is the
+ * number of leads in a category with a positive sentiment.
+ */
+export const lifetimeRow = (scope: RowScope, raw: JsonObject): MetricRow =>
+  row(scope, {
+    ...campaignCounts(raw),
+    positive: count(field(raw.campaign_lead_stats, "interested")),
+  });
+
+/**
+ * `GET /campaigns/{id}/analytics-by-date`: totals for a window. The window
+ * separates out-of-office replies, so `replied` leaves them out when it can.
+ */
+export const windowRow = (scope: RowScope, raw: JsonObject): MetricRow =>
+  row(
+    scope,
+    {
+      ...campaignCounts(raw),
+      replied: count(raw.non_ooo_reply_count) ?? count(raw.reply_count),
+    },
+    { timezone: TIMEZONE }
+  );
+
+/** `GET /analytics/overall-stats-v2`: `data.overall_stats`. */
+export const overallRow = (scope: RowScope, raw: JsonObject): MetricRow =>
+  row(
+    scope,
+    {
+      ...emptyCounts(),
+      bounced: count(raw.bounced),
+      contacted: count(raw.unique_lead_count),
+      opened: count(raw.unique_open_count),
+      openedTotal: count(raw.opened),
+      positive: count(raw.positive_replied),
+      replied: count(raw.replied),
+      sent: count(raw.sent),
+    },
+    { timezone: TIMEZONE }
+  );
+
+/**
+ * `GET /analytics/day-wise-overall-stats`: one row per day. Its `bounced` is
+ * documented as always 0, so it is not read.
+ */
+export const dayRow = (scope: RowScope, raw: JsonObject): MetricRow =>
+  row(
+    scope,
+    {
+      ...emptyCounts(),
+      openedTotal: count(raw.opened),
+      replied: count(raw.replied),
+      sent: count(raw.sent),
+    },
+    { date: text(raw.date), timezone: TIMEZONE }
+  );
+
+const stepCounts = (stats: Json | undefined): MetricCounts => ({
+  ...emptyCounts(),
+  bounced: count(field(stats, "bounce_count")),
+  clicked: count(field(stats, "click_count")),
+  openedTotal: count(field(stats, "open_count")),
+  positive: count(field(stats, "positive_reply_count")),
+  replied: count(field(stats, "reply_count")),
+  sent: count(field(stats, "sent_count")),
+  unsubscribed: count(field(stats, "unsubscribed_count")),
+});
+
+/**
+ * One step of `GET /campaigns/{id}/sequence-analytics`: a row per variant,
+ * or the step total when the step has no variants.
+ */
+export const stepRows = (scope: RowScope, step: JsonObject): MetricRow[] => {
+  const number = count(step.seq_number);
+  const stepIndex = number === null || number < 1 ? null : number - 1;
+  const variants = objects(step.variants);
+
+  if (variants.length === 0) {
+    return [
+      row(scope, stepCounts(step.total_stats), {
+        stepIndex,
+        timezone: TIMEZONE,
+      }),
+    ];
+  }
+
+  return variants.map((variant) =>
+    row(scope, stepCounts(variant.stats), {
+      stepIndex,
+      timezone: TIMEZONE,
+      variantKey: text(variant.variant_label),
+    })
+  );
+};

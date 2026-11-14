@@ -1,0 +1,120 @@
+{
+  "nodeType": "CHECK_IS_CONNECTION",
+  "actionDelay": 0,
+  "actionDelayUnit": "HOUR",
+  "payload": null,
+  "conditionalNode": {
+    "nodeType": "MESSAGE",
+    "actionDelay": 1,
+    "actionDelayUnit": "DAY",
+    "payload": {
+      "messages": [
+        "Hi {FIRST_NAME}, thanks for connecting."
+      ],
+      "fallbackMessage": "Hi {FIRST_NAME}, thanks for connecting.",
+      "hasVoiceNotes": false
+    },
+    "conditionalNode": {
+      "nodeType": "END",
+      "actionDelay": 0,
+      "actionDelayUnit": "HOUR",
+      "conditionalNode": null,
+      "unconditionalNode": null,
+      "payload": null
+    },
+    "unconditionalNode": {
+      "nodeType": "MESSAGE",
+      "actionDelay": 3,
+      "actionDelayUnit": "DAY",
+      "payload": {
+        "messages": [
+          "Following up on my note."
+        ],
+        "fallbackMessage": "Following up on my note.",
+        "hasVoiceNotes": false
+      },
+      "conditionalNode": {
+        "nodeType": "END",
+        "actionDelay": 0,
+        "actionDelayUnit": "HOUR",
+        "conditionalNode": null,
+        "unconditionalNode": null,
+        "payload": null
+      },
+      "unconditionalNode": {
+        "nodeType": "END",
+        "actionDelay": 0,
+        "actionDelayUnit": "HOUR",
+        "conditionalNode": null,
+        "unconditionalNode": null,
+        "payload": null
+      }
+    }
+  },
+  "unconditionalNode": {
+    "nodeType": "CONNECTION_REQUEST",
+    "actionDelay": 0,
+    "actionDelayUnit": "HOUR",
+    "payload": {
+      "messages": [],
+      "fallbackMessage": null,
+      "toBeWithdrawnAfterDays": null
+    },
+    "conditionalNode": {
+      "nodeType": "MESSAGE",
+      "actionDelay": 1,
+      "actionDelayUnit": "DAY",
+      "payload": {
+        "messages": [
+          "Hi {FIRST_NAME}, thanks for connecting."
+        ],
+        "fallbackMessage": "Hi {FIRST_NAME}, thanks for connecting.",
+        "hasVoiceNotes": false
+      },
+      "conditionalNode": {
+        "nodeType": "END",
+        "actionDelay": 0,
+        "actionDelayUnit": "HOUR",
+        "conditionalNode": null,
+        "unconditionalNode": null,
+        "payload": null
+      },
+      "unconditionalNode": {
+        "nodeType": "MESSAGE",
+        "actionDelay": 3,
+        "actionDelayUnit": "DAY",
+        "payload": {
+          "messages": [
+            "Following up on my note."
+          ],
+          "fallbackMessage": "Following up on my note.",
+          "hasVoiceNotes": false
+        },
+        "conditionalNode": {
+          "nodeType": "END",
+          "actionDelay": 0,
+          "actionDelayUnit": "HOUR",
+          "conditionalNode": null,
+          "unconditionalNode": null,
+          "payload": null
+        },
+        "unconditionalNode": {
+          "nodeType": "END",
+          "actionDelay": 0,
+          "actionDelayUnit": "HOUR",
+          "conditionalNode": null,
+          "unconditionalNode": null,
+          "payload": null
+        }
+      }
+    },
+    "unconditionalNode": {
+      "nodeType": "END",
+      "actionDelay": 0,
+      "actionDelayUnit": "HOUR",
+      "conditionalNode": null,
+      "unconditionalNode": null,
+      "payload": null
+    }
+  }
+}

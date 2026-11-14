@@ -1,0 +1,25 @@
+{
+  "event_timestamp": "2024-04-17T05:24:33.353Z",
+  "reply_message": {
+    "message_id": "<untracked-id@example.com>",
+    "html": "",
+    "text": "Hi\n",
+    "time": "2024-04-17T05:24:33.353Z"
+  },
+  "secret_key": "redacted",
+  "description": "",
+  "sender_detail": "Alex Example <person1@example.com>",
+  "recipient_detail": "person9@example.com",
+  "cc": "",
+  "bcc": "",
+  "subject": "Untracked replies",
+  "visible_text": "Hi\n",
+  "has_attachment": false,
+  "metadata": {
+    "webhook_created_at": "2024-04-12T13:51:26.269Z"
+  },
+  "webhook_url": "https://hooks.example.com/smartlead",
+  "webhook_id": 94,
+  "webhook_name": "test",
+  "event_type": "UNTRACKED_REPLIES"
+}

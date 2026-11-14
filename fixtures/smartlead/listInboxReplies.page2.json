@@ -1,0 +1,59 @@
+{
+  "messages": [
+    {
+      "id": "msg_3",
+      "campaign_lead_map_id": "2433664093",
+      "lead": {
+        "email": "person3@example.com",
+        "first_name": "Alex",
+        "last_name": "Example",
+        "company": "Example Co",
+        "phone": "+1-555-0100"
+      },
+      "campaign": {
+        "id": 12345,
+        "name": "Q1 2025 SaaS Outreach"
+      },
+      "email_account": {
+        "id": 789,
+        "email": "person9@example.com",
+        "name": "Sales Team"
+      },
+      "last_message": {
+        "id": "email_abc125",
+        "subject": "Re: Partnership Opportunity",
+        "body": "Thanks for reaching out! I'm interested in learning more about your solution...",
+        "received_at": "2025-01-20T14:30:00Z",
+        "sent_from": "person3@example.com",
+        "sent_to": "person9@example.com"
+      },
+      "email_status": "Replied",
+      "category": {
+        "id": 1,
+        "name": "Interested"
+      },
+      "assigned_to": {
+        "id": 456,
+        "name": "Sam Example",
+        "email": "person8@example.com"
+      },
+      "stats": {
+        "total_sent": 3,
+        "total_opened": 2,
+        "total_clicked": 1,
+        "total_replied": 1,
+        "last_activity": "2025-01-20T14:30:00Z"
+      },
+      "is_read": false,
+      "is_important": false,
+      "is_archived": false,
+      "tags": [
+        "hot-lead",
+        "enterprise"
+      ]
+    }
+  ],
+  "total_count": 3,
+  "offset": 2,
+  "limit": 2
+}

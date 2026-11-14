@@ -2,7 +2,7 @@
 // over resolved imports. Every folder under src/ must be declared here with the
 // folders it may import. docs/engineering-guardrails.md explains each rule.
 
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 
 export const sourceRoot = "packages/outbound-sdk/src";
@@ -43,7 +43,7 @@ export const nodeFolders = ["cli", "exporter", "fixtures"];
 
 // External packages a folder may import. zod is the only runtime dependency.
 export const externalPackages = {
-  tools: ["zod", "@anthropic-ai/claude-agent-sdk"],
+  tools: ["zod", "ai", "@anthropic-ai/claude-agent-sdk"],
 };
 
 const escapePattern = (value) => RegExp.escape(value);
@@ -117,7 +117,31 @@ const undeclaredFolderRules = () => {
   ];
 };
 
-export const architectureRules = () => ({
+const packageRoot = "packages/outbound-sdk";
+
+// The source file behind each public subpath and each executable. These,
+// and every folder's index.ts, are the only files a test may import.
+export const publicEntries = (root) => {
+  const manifestPath = path.join(root, packageRoot, "package.json");
+
+  if (!existsSync(manifestPath)) {
+    return [];
+  }
+
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
+
+  const targets = [
+    ...Object.values(manifest.exports ?? {}).map((entry) => entry.import),
+    ...Object.values(manifest.bin ?? {}),
+  ];
+
+  return targets.map(
+    (target) =>
+      `${packageRoot}/${target.replace(/^\.\/dist\//u, "src/").replace(/\.js$/u, ".ts")}`
+  );
+};
+
+export const architectureRules = (root = process.cwd()) => ({
   forbidden: [
     { from: {}, name: "no-cycles", severity: "error", to: { circular: true } },
     {
@@ -150,7 +174,8 @@ export const architectureRules = () => ({
       to: { path: `^${testRoot}/|\\.test\\.[^.]+$` },
     },
     {
-      // Tests use the same surface callers do: a folder's index.ts.
+      // Tests use the same surface callers do: a folder's index.ts, or a
+      // file package.json publishes as a subpath or an executable.
       from: { path: `^${testRoot}/` },
       name: "tests-use-entry-points",
       severity: "error",
@@ -159,6 +184,7 @@ export const architectureRules = () => ({
         pathNot: [
           `^${sourceRoot}/index\\.ts$`,
           `^${sourceRoot}/[^/]+/index\\.ts$`,
+          ...publicEntries(root).map((file) => `^${escapePattern(file)}$`),
         ],
       },
     },

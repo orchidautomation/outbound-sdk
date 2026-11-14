@@ -1,0 +1,60 @@
+name: Publish to npm
+
+# Publishing is manual. A person supplies the exact commit that was approved
+# and the SHA-256 of the package tarball they expect; the workflow rebuilds
+# from that commit, refuses to continue if the bytes differ, and publishes
+# those exact bytes with provenance. There is no long-lived npm token: the
+# package uses npm trusted publishing from this workflow.
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: The full SHA of the approved commit on main
+        required: true
+      digest:
+        description: The expected SHA-256 of the tarball (from `npm pack` on that commit)
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: npm-publish
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.inputs.commit }}
+      - name: Refuse a commit that is not on main
+        run: |
+          git fetch origin main
+          git merge-base --is-ancestor "$COMMIT" origin/main
+        env:
+          COMMIT: ${{ github.event.inputs.commit }}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          registry-url: https://registry.npmjs.org
+          cache: npm
+      - run: npm ci
+      - name: Every check, inside the publish workflow
+        run: npm run check
+      - name: Pack and compare with the approved digest
+        id: pack
+        env:
+          EXPECTED: ${{ github.event.inputs.digest }}
+        run: |
+          tarball=$(npm pack --workspace outbound-sdk --silent | tail -n 1)
+          actual=$(sha256sum "$tarball" | cut -d ' ' -f 1)
+          echo "Tarball $tarball has SHA-256 $actual"
+          test "$actual" = "$EXPECTED"
+          echo "tarball=$tarball" >> "$GITHUB_OUTPUT"
+      - name: Publish those exact bytes
+        run: npm publish "$TARBALL" --provenance --access public
+        env:
+          TARBALL: ${{ steps.pack.outputs.tarball }}

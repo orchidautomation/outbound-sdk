@@ -1,0 +1,30 @@
+{
+  "id": 1101,
+  "emailAddress": "person1@example.com",
+  "firstName": "Alex",
+  "lastName": "Example",
+  "isActive": true,
+  "activeCampaigns": 2,
+  "authIsValid": true,
+  "isValidNavigator": true,
+  "isValidRecruiter": false,
+  "profileUrl": "https://www.linkedin.com/in/example-person-1",
+  "searchCooldown": false,
+  "connectionRequestCooldown": false,
+  "connectionNoteCooldown": false,
+  "inMailCooldown": false,
+  "accountLimits": {
+    "followLimit": 10,
+    "followLimitMax": 20,
+    "messageLimit": 50,
+    "messageLimitMax": 100,
+    "inMailLimit": 10,
+    "inMailLimitMax": 25,
+    "profileViewLimit": 30,
+    "profileViewLimitMax": 60,
+    "postLikeLimit": 10,
+    "postLikeLimitMax": 20,
+    "connectioRequestLimit": 20,
+    "connectioRequestMax": 30
+  }
+}

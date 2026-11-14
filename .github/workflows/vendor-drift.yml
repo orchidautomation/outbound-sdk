@@ -1,0 +1,84 @@
+name: Vendor drift
+
+# Reads each vendor's current API documentation every night and opens one
+# pull request per vendor when an adapter no longer matches it. The agent may
+# only edit that vendor's mapping, capabilities, webhooks, fixtures, tests and
+# research note; CI checks the same scope on every drift/* pull request.
+#
+# It is OFF until the repository variable VENDOR_DRIFT_ENABLED is "true",
+# because it spends Anthropic API credit. It needs the ANTHROPIC_API_KEY
+# secret. A manual run (workflow_dispatch) works without the variable.
+on:
+  schedule:
+    - cron: "30 6 * * *"
+  workflow_dispatch:
+    inputs:
+      vendor:
+        description: One vendor to check, or "all"
+        default: all
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vendor-drift-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  drift:
+    if: github.event_name == 'workflow_dispatch' || vars.VENDOR_DRIFT_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    strategy:
+      fail-fast: false
+      matrix:
+        vendor: [instantly, smartlead, heyreach]
+    steps:
+      - name: Skip vendors that were not asked for
+        id: scope
+        env:
+          WANTED: ${{ github.event.inputs.vendor || 'all' }}
+          VENDOR: ${{ matrix.vendor }}
+        run: |
+          if [ "$WANTED" = all ] || [ "$WANTED" = "$VENDOR" ]; then echo "run=true" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.scope.outputs.run == 'true'
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.scope.outputs.run == 'true'
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+        if: steps.scope.outputs.run == 'true'
+      - uses: anthropics/claude-code-action@f3b070c88125d33dbae5653df5f143101d4ea9dc # v1
+        if: steps.scope.outputs.run == 'true'
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            You maintain the ${{ matrix.vendor }} adapter of outbound-sdk. Read AGENTS.md and
+            docs/new-adapter.md first.
+
+            1. Read docs/research/${{ matrix.vendor }}.md. Fetch every URL in its Sources section
+               again, plus the vendor's changelog, preferring machine-readable copies.
+            2. Compare what the vendor documents today with what the adapter in
+               packages/outbound-sdk/src/${{ matrix.vendor }}/ assumes: endpoints, parameters,
+               response fields, enum values, rate limits, webhook events and signatures. Also read
+               open issues labelled "unknown-webhook" for this vendor.
+            3. If nothing relevant changed, stop without changing anything.
+            4. Otherwise update ONLY these paths:
+               packages/outbound-sdk/src/${{ matrix.vendor }}/map*.ts, capabilities.ts and webhooks.ts;
+               packages/outbound-sdk/test/${{ matrix.vendor }}/; fixtures/${{ matrix.vendor }}/;
+               docs/research/${{ matrix.vendor }}.md; and one new file in .changeset/.
+               Never touch src/internal, another vendor's folder, client.ts, adapter.ts, scripts,
+               workflows or package.json. If the fix needs any of those, open an issue instead.
+            5. Run `npm run check`. It must exit 0. You have three attempts; after the third failure
+               open an issue titled "drift(${{ matrix.vendor }}): could not update" with what
+               changed and what failed, and stop.
+            6. Open ONE pull request from a branch named drift/${{ matrix.vendor }}-<date>, titled
+               "drift(${{ matrix.vendor }}): <summary>", with the documentation differences you
+               found quoted in the description. Never merge it.

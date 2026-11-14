@@ -22,7 +22,8 @@
     "changeset": "changeset",
     "version-packages": "changeset version",
     "fixtures": "node scripts/check-fixtures.mjs",
-    "coverage": "node scripts/check-coverage.mjs"
+    "coverage": "node scripts/check-coverage.mjs",
+    "test:live": "node --test \"packages/*/test/live/*.live.ts\""
   },
   "devDependencies": {
     "@changesets/cli": "3.0.3",

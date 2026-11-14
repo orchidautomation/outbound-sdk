@@ -17,6 +17,9 @@
     "url": "git+https://github.com/orchidautomation/outbound-sdk.git",
     "directory": "packages/outbound-sdk"
   },
+  "bin": {
+    "outbound": "./dist/cli/bin.js"
+  },
   "files": [
     "dist"
   ],
@@ -35,6 +38,14 @@
       "types": "./dist/instantly/index.d.ts",
       "import": "./dist/instantly/index.js"
     },
+    "./smartlead": {
+      "types": "./dist/smartlead/index.d.ts",
+      "import": "./dist/smartlead/index.js"
+    },
+    "./heyreach": {
+      "types": "./dist/heyreach/index.d.ts",
+      "import": "./dist/heyreach/index.js"
+    },
     "./providers": {
       "types": "./dist/providers/index.d.ts",
       "import": "./dist/providers/index.js"
@@ -42,6 +53,86 @@
     "./loader": {
       "types": "./dist/loader/index.d.ts",
       "import": "./dist/loader/index.js"
+    },
+    "./combine": {
+      "types": "./dist/combine/index.d.ts",
+      "import": "./dist/combine/index.js"
+    },
+    "./clients": {
+      "types": "./dist/clients/index.d.ts",
+      "import": "./dist/clients/index.js"
+    },
+    "./identity": {
+      "types": "./dist/identity/index.d.ts",
+      "import": "./dist/identity/index.js"
+    },
+    "./redact": {
+      "types": "./dist/redact/index.d.ts",
+      "import": "./dist/redact/index.js"
+    },
+    "./cache": {
+      "types": "./dist/cache/index.d.ts",
+      "import": "./dist/cache/index.js"
+    },
+    "./budget": {
+      "types": "./dist/budget/index.d.ts",
+      "import": "./dist/budget/index.js"
+    },
+    "./audit": {
+      "types": "./dist/audit/index.d.ts",
+      "import": "./dist/audit/index.js"
+    },
+    "./tracing": {
+      "types": "./dist/tracing/index.d.ts",
+      "import": "./dist/tracing/index.js"
+    },
+    "./webhooks": {
+      "types": "./dist/webhooks/index.d.ts",
+      "import": "./dist/webhooks/index.js"
+    },
+    "./tools": {
+      "types": "./dist/tools/index.d.ts",
+      "import": "./dist/tools/index.js"
+    },
+    "./tools/ai-sdk": {
+      "types": "./dist/tools/ai-sdk.d.ts",
+      "import": "./dist/tools/ai-sdk.js"
+    },
+    "./tools/claude-agent": {
+      "types": "./dist/tools/claude-agent.d.ts",
+      "import": "./dist/tools/claude-agent.js"
+    },
+    "./cli": {
+      "types": "./dist/cli/index.d.ts",
+      "import": "./dist/cli/index.js"
+    },
+    "./sync": {
+      "types": "./dist/sync/index.d.ts",
+      "import": "./dist/sync/index.js"
+    },
+    "./reconcile": {
+      "types": "./dist/reconcile/index.d.ts",
+      "import": "./dist/reconcile/index.js"
+    },
+    "./alerts": {
+      "types": "./dist/alerts/index.d.ts",
+      "import": "./dist/alerts/index.js"
+    },
+    "./benchmarks": {
+      "types": "./dist/benchmarks/index.d.ts",
+      "import": "./dist/benchmarks/index.js"
+    },
+    "./fixtures": {
+      "types": "./dist/fixtures/index.d.ts",
+      "import": "./dist/fixtures/index.js"
+    },
+    "./exporter": {
+      "types": "./dist/exporter/index.d.ts",
+      "import": "./dist/exporter/index.js"
+    },
+    "./failover": {
+      "types": "./dist/failover/index.d.ts",
+      "import": "./dist/failover/index.js"
     }
   },
   "publishConfig": {
@@ -53,6 +144,22 @@
   },
   "dependencies": {
     "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@anthropic-ai/claude-agent-sdk": "0.3.325",
+    "ai": "7.0.173"
+  },
+  "peerDependencies": {
+    "@anthropic-ai/claude-agent-sdk": ">=0.3.0 <1.0.0",
+    "ai": "^6.0.0 || ^7.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@anthropic-ai/claude-agent-sdk": {
+      "optional": true
+    },
+    "ai": {
+      "optional": true
+    }
   },
   "engines": {
     "node": ">=22"

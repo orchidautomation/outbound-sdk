@@ -172,6 +172,7 @@ export type {
   ActionEvent,
   ErrorEvent,
   OutboundHooks,
+  RequestEvent,
   RetryEvent,
   ThrottleEvent,
 } from "./internal/hooks.ts";

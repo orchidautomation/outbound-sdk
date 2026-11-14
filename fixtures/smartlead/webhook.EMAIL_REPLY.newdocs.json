@@ -1,0 +1,14 @@
+{
+  "event_type": "EMAIL_REPLY",
+  "from_email": "person9@example.com",
+  "subject": "Re: Quick question about Example Co",
+  "to_email": "person1@example.com",
+  "to_name": "Alex Example",
+  "time_replied": "2025-01-15T11:00:00Z",
+  "reply_body": "<html>Thanks for reaching out. I'm interested...</html>",
+  "preview_text": "Thanks for reaching out. I'm interested...",
+  "campaign_name": "Q1 Outreach",
+  "campaign_id": 123,
+  "client_id": 456,
+  "sequence_number": 1
+}

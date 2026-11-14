@@ -1,0 +1,19 @@
+{
+  "success": true,
+  "message": "Overall Stats fetched successfully!",
+  "data": {
+    "overall_stats": {
+      "sent": "345805",
+      "opened": "0",
+      "replied": "1732",
+      "bounced": "2015",
+      "unique_lead_count": "299503",
+      "unique_open_count": "0",
+      "positive_replied": 280,
+      "open_rate": "0.00%",
+      "reply_rate": "0.58%",
+      "positive_reply_rate": "16.17%",
+      "bounce_rate": "0.67%"
+    }
+  }
+}

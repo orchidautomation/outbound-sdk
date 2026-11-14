@@ -45,6 +45,8 @@ export interface OperationOutput {
   readonly evidence: Evidence;
   /** `true` when a plugin served an older answer because the vendor was down. */
   readonly stale?: boolean | undefined;
+  /** When the answer was fetched, if a plugin served it from a store. ISO 8601 UTC. */
+  readonly fetchedAt?: string | undefined;
 }
 
 const unsupported = (adapter: Adapter, kind: OperationKind): OutboundError =>

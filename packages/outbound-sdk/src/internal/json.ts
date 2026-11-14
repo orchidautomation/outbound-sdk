@@ -122,3 +122,10 @@ export const compactObject = (
 
   return result;
 };
+
+/**
+ * A typed value as plain JSON, the way `JSON.stringify` would write it:
+ * `undefined` keys are dropped and anything that is not JSON becomes `null`.
+ */
+export const toJson = <Value>(value: Value): Json =>
+  parseJson(JSON.stringify(value) ?? "null") ?? null;

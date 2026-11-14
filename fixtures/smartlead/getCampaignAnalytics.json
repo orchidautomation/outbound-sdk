@@ -1,0 +1,39 @@
+{
+  "id": 979,
+  "user_id": 288,
+  "created_at": "2022-08-29T06:15:31.458Z",
+  "status": "COMPLETED",
+  "name": "",
+  "sent_count": "14",
+  "open_count": "14",
+  "click_count": "0",
+  "reply_count": "4",
+  "block_count": "0",
+  "total_count": "14",
+  "drafted_count": "0",
+  "bounce_count": "0",
+  "unsubscribed_count": "0",
+  "sequence_count": "2",
+  "tags": [
+    {
+      "id": 44,
+      "name": "example-tag",
+      "color": "#FCB1D0"
+    }
+  ],
+  "unique_open_count": "7",
+  "unique_click_count": "8",
+  "unique_sent_count": "10",
+  "client_id": 6,
+  "client_name": "Alex Example",
+  "client_email": "person9@example.com",
+  "parent_campaign_id": null,
+  "campaign_lead_stats": {
+    "total": 8,
+    "blocked": 0,
+    "stopped": 0,
+    "completed": 8,
+    "inprogress": 0,
+    "notStarted": 0
+  }
+}

@@ -17,6 +17,7 @@ import type {
   Workspace,
 } from "../entities.ts";
 import { OutboundError } from "../errors.ts";
+import { mergeHooks } from "../hooks.ts";
 import type { OutboundHooks } from "../hooks.ts";
 import type {
   CampaignFilters,
@@ -90,7 +91,10 @@ const engineFor = (options: OutboundOptions): RequestEngine =>
       signal: options.signal,
       timeout: options.timeout,
     },
-    hooks: options.hooks,
+    hooks: mergeHooks([
+      options.hooks,
+      ...(options.plugins ?? []).map((plugin) => plugin.hooks),
+    ]),
     runtime:
       options.fetch === undefined
         ? options.runtime

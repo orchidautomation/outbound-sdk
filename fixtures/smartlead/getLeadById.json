@@ -1,0 +1,18 @@
+{
+  "id": 789,
+  "email": "person1@example.com",
+  "first_name": "Alex",
+  "last_name": "Example",
+  "company_name": "Example Co",
+  "status": "INPROGRESS",
+  "category_id": 1,
+  "category_name": "Interested",
+  "email_stats": {
+    "is_opened": true,
+    "is_clicked": true,
+    "is_replied": true
+  },
+  "custom_fields": {
+    "job_title": "CEO"
+  }
+}

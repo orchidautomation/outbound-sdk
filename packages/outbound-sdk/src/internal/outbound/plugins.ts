@@ -9,6 +9,7 @@ import type { Capabilities, CapabilityKey } from "../capabilities.ts";
 import type { CallState } from "../engine/request.ts";
 import type { OutboundEvent } from "../entities.ts";
 import { OutboundError } from "../errors.ts";
+import type { OutboundHooks } from "../hooks.ts";
 import type { OutboundApi } from "./api.ts";
 import type { Operation, OperationOutput } from "./operations.ts";
 
@@ -35,6 +36,8 @@ export interface OutboundPlugin<Extension = unknown> {
   readonly capabilities?: (capabilities: Capabilities) => Capabilities;
   /** Adds methods to the instance. A name that already exists is an error. */
   readonly extend?: (outbound: OutboundApi) => Extension;
+  /** Observes calls and HTTP requests, alongside the instance's own hooks. */
+  readonly hooks?: OutboundHooks | undefined;
   /** Rewrites a webhook event, or returns `null` to drop it. */
   readonly event?: (event: OutboundEvent) => OutboundEvent | null;
 }

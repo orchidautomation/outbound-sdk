@@ -1,0 +1,180 @@
+// HeyReach messages. The API has no message endpoint: messages live inside
+// conversations (POST /inbox/GetConversationsV2), so one page of
+// conversations is flattened into its messages.
+//
+// Checked against a live workspace on 2026-11-14: `sender` is "ME" for the
+// account's side and "CORRESPONDENT" for the lead's, messages come oldest
+// first, and each conversation carried its whole thread (`messages.length`
+// matched `totalMessages` in every conversation read; the longest had 11).
+
+import type {
+  Adapter,
+  AdapterContext,
+  MessageQuery,
+  ReplyQuery,
+} from "../internal/adapter.ts";
+import type { Message, Reply } from "../internal/entities.ts";
+import {
+  count,
+  field,
+  isNumber,
+  objects,
+  text,
+  timestamp,
+} from "../internal/json.ts";
+import type { Json, JsonObject } from "../internal/json.ts";
+import { recordBase, refTo } from "../internal/record.ts";
+import type { Identity } from "../internal/record.ts";
+import { stableId } from "../internal/sha256.ts";
+import { normalizeBody } from "../internal/text.ts";
+import { PAGE_SIZE } from "./capabilities.ts";
+import type { HeyReachClient } from "./client.ts";
+import { listEnvelope } from "./map.ts";
+
+export const CONVERSATIONS_PATH = "/inbox/GetConversationsV2";
+
+/** The lead's side of a thread. The account's own side is "ME". */
+const FROM_LEAD = "CORRESPONDENT";
+
+interface Scope {
+  readonly identity: Identity;
+  /** Known only when the listing was filtered to one campaign. */
+  readonly campaignId: string | undefined;
+  readonly includeBody: boolean;
+}
+
+const messageFields = (
+  scope: Scope,
+  conversation: JsonObject,
+  raw: JsonObject
+) => {
+  const conversationId = text(conversation.id) ?? "";
+  const sentAt = timestamp(raw.createdAt);
+  // Messages have no id. The conversation, the time, the side and the text
+  // identify one, and stay the same every time the thread is read.
+  const id = stableId(conversationId, sentAt, text(raw.sender), text(raw.body));
+
+  return {
+    ...recordBase(scope.identity, id, raw),
+    ...normalizeBody(text(raw.body), scope.includeBody),
+    campaignRef: refTo(scope.identity, scope.campaignId),
+    channel: "linkedin" as const,
+    // A lead's id is its LinkedIn profile URL, as in leads.get.
+    leadRef: refTo(
+      scope.identity,
+      text(field(conversation.correspondentProfile, "profileUrl"))
+    ),
+    senderRef: refTo(scope.identity, count(conversation.linkedInAccountId)),
+    sentAt,
+    stepIndex: null,
+    // Only InMails have a subject.
+    subject: text(raw.subject),
+    threadId: conversationId === "" ? null : conversationId,
+    variantKey: null,
+  };
+};
+
+const isFromLead = (raw: JsonObject): boolean => text(raw.sender) === FROM_LEAD;
+
+const toMessage = (
+  scope: Scope,
+  conversation: JsonObject,
+  raw: JsonObject
+): Message => ({
+  ...messageFields(scope, conversation, raw),
+  direction: isFromLead(raw) ? "in" : "out",
+});
+
+const toReply = (
+  scope: Scope,
+  conversation: JsonObject,
+  raw: JsonObject
+): Reply => ({
+  ...messageFields(scope, conversation, raw),
+  // HeyReach's auto-tags describe the lead, not a message, so no category is read.
+  category: "unknown",
+  categorySource: null,
+  direction: "in",
+  isAuto: null,
+});
+
+interface ConversationPage {
+  readonly conversations: JsonObject[];
+  readonly next: Json | undefined;
+}
+
+const numeric = (id: string): number | null =>
+  /^\d+$/u.test(id) ? Number(id) : null;
+
+const readConversations = async (
+  client: HeyReachClient,
+  ctx: AdapterContext,
+  query: MessageQuery | ReplyQuery
+): Promise<ConversationPage> => {
+  const offset = isNumber(query.next) ? query.next : 0;
+  const filters: JsonObject = {};
+
+  const campaign =
+    query.campaignId === undefined ? null : numeric(query.campaignId);
+
+  if (campaign !== null) {
+    filters.campaignIds = [campaign];
+  }
+
+  if ("leadId" in query && query.leadId !== undefined) {
+    filters.leadProfileUrl = query.leadId;
+  }
+
+  const envelope = listEnvelope(
+    await client.post(ctx, CONVERSATIONS_PATH, {
+      filters,
+      limit: Math.min(query.limit ?? PAGE_SIZE, PAGE_SIZE),
+      offset,
+    }),
+    offset
+  );
+
+  return { conversations: envelope.items, next: envelope.next };
+};
+
+type InboxReaders = Pick<Adapter, "listMessages" | "listReplies">;
+
+/** Messages and replies, read from one page of conversations at a time. */
+export const inboxReaders = (client: HeyReachClient): InboxReaders => ({
+  listMessages: async (query, ctx) => {
+    const page = await readConversations(client, ctx, query);
+
+    const scope = {
+      campaignId: query.campaignId,
+      identity: client.identity,
+      includeBody: query.includeBody,
+    };
+
+    return {
+      items: page.conversations.flatMap((conversation) =>
+        objects(conversation.messages).map((raw) =>
+          toMessage(scope, conversation, raw)
+        )
+      ),
+      next: page.next,
+    };
+  },
+  listReplies: async (query, ctx) => {
+    const page = await readConversations(client, ctx, query);
+
+    const scope = {
+      campaignId: query.campaignId,
+      identity: client.identity,
+      includeBody: query.includeBody,
+    };
+
+    return {
+      items: page.conversations.flatMap((conversation) =>
+        objects(conversation.messages).flatMap((raw) =>
+          isFromLead(raw) ? [toReply(scope, conversation, raw)] : []
+        )
+      ),
+      next: page.next,
+    };
+  },
+});
