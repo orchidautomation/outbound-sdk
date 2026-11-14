@@ -100,6 +100,8 @@ export type ToolName = (typeof TOOL_NAMES)[number];
 export interface ToolsOptions {
   /** Offer only these tools. Defaults to every tool the instance can serve. */
   readonly only?: readonly ToolName[] | undefined;
+  /** More tools to offer after the built-in ones, for example `insightTools(outbound)`. */
+  readonly extra?: readonly OutboundTool[] | undefined;
 }
 
 /**
@@ -140,9 +142,11 @@ export const createTools = (
     ],
   ]);
 
-  return all.filter(
+  const offered = all.filter(
     (tool) =>
       (wanted === undefined || wanted.has(tool.name)) &&
       tool.needs.every((need) => available.get(need) ?? false)
   );
+
+  return [...offered, ...(options.extra ?? [])];
 };

@@ -132,17 +132,29 @@ export const leadList = (core: Core): ListSpec<Lead, LeadFilters> => ({
       );
     }
 
+    const lookup =
+      filters.email !== undefined || filters.linkedinUrl !== undefined;
+
+    if (lookup) {
+      requireCapability(
+        core.gate,
+        "leads.lookup",
+        "Finding a lead by email or LinkedIn profile"
+      );
+    }
+
     // Some vendors have no global lead list: leads exist only per campaign.
     if (filters.listId !== undefined) {
       requireCapability(core.gate, "lists.leads", "Listing a list's leads");
-    } else if (filters.campaignId === undefined) {
-      requireCapability(core.gate, "leads.list", "Listing leads");
-    } else {
+    } else if (filters.campaignId !== undefined) {
       requireCapability(
         core.gate,
         "leads.byCampaign",
         "Listing a campaign's leads"
       );
+    } else if (!lookup) {
+      // A lookup by identifier does not need the list of every lead.
+      requireCapability(core.gate, "leads.list", "Listing leads");
     }
 
     if (hasRange(filters)) {
@@ -151,6 +163,8 @@ export const leadList = (core: Core): ListSpec<Lead, LeadFilters> => ({
 
     return {
       campaignId: filters.campaignId,
+      email: filters.email?.trim().toLowerCase(),
+      linkedinUrl: filters.linkedinUrl?.trim(),
       listId: filters.listId,
       ...normalizeRange(filters),
     };

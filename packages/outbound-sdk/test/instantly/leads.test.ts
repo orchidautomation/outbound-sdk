@@ -23,6 +23,7 @@ test("instantly: a lead carries its engagement counts and times", async () => {
     lastRepliedAt: "2026-11-12T11:45:00.000Z",
     opens: 4,
     replies: 1,
+    repliedStepIndex: 3,
     stepIndex: 4,
   });
   assert.equal(lead.interest, "Meeting Booked", "lt_interest_status 2");
@@ -81,6 +82,7 @@ test("instantly: a custom interest status is named from the workspace's lead lab
     lastRepliedAt: "2026-11-12T11:45:00.000Z",
     opens: 5,
     replies: 2,
+    repliedStepIndex: 1,
     stepIndex: null,
   });
 });

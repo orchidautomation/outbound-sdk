@@ -140,6 +140,26 @@ const COMMAND_TABLE = {
     run: async (outbound, input) =>
       asJson(await outbound.sender(required(input, 0, "a sender id")).health()),
   },
+  insight: {
+    help: "insight [name] [--input JSON]  computed answers; no name lists them",
+    run: async (outbound, input) => {
+      // Loaded on demand, so the other commands do not pay for the insights.
+      const { listInsights, runInsightByName } =
+        await import("../insights/index.ts");
+
+      const [name] = input.positionals;
+
+      return name === undefined
+        ? asJson(listInsights())
+        : asJson(
+            await runInsightByName(
+              outbound,
+              name,
+              parseInput(text(input, "input"))
+            )
+          );
+    },
+  },
   leads: {
     help: "leads [--campaign ID | --list ID] [--limit N]",
     run: (outbound, input) =>

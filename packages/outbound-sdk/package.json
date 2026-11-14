@@ -133,6 +133,10 @@
     "./failover": {
       "types": "./dist/failover/index.d.ts",
       "import": "./dist/failover/index.js"
+    },
+    "./insights": {
+      "types": "./dist/insights/index.d.ts",
+      "import": "./dist/insights/index.js"
     }
   },
   "publishConfig": {

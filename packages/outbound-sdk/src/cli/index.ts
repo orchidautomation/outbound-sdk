@@ -46,7 +46,9 @@ const OPTIONS = {
 } as const;
 
 const serve = async (outbound: OutboundApi, io: CliIo): Promise<void> => {
-  const server = createMcpServer(outbound);
+  // Loaded on demand, so the other commands do not pay for the insights.
+  const { insightTools } = await import("../insights/index.ts");
+  const server = createMcpServer(outbound, { extra: insightTools(outbound) });
 
   for await (const line of io.stdin?.() ?? []) {
     const response = await server.handleLine(line);

@@ -32,6 +32,7 @@ Generated from the adapters' own declarations. A filter is `server` (the vendor 
 | `leads.engagement`      | yes       | no        | no       |
 | `leads.get`             | yes       | yes       | yes      |
 | `leads.list`            | yes       | yes       | no       |
+| `leads.lookup`          | no        | no        | no       |
 | `leads.since`           | client    | client    | server   |
 | `leads.timeline`        | yes       | yes       | yes      |
 | `lists.leads`           | yes       | no        | yes      |

@@ -49,7 +49,13 @@ const DATA: MemoryData = {
   ],
   leads: [
     {
-      engagement: { clicks: 1, opens: 3, replies: 2, stepIndex: 1 },
+      engagement: {
+        clicks: 1,
+        opens: 3,
+        repliedStepIndex: 0,
+        replies: 2,
+        stepIndex: 1,
+      },
       id: "lead_1",
       interest: "Meeting Booked",
       listIds: ["list_1"],
@@ -264,6 +270,7 @@ test("a lead carries its engagement counts, interest and tags", async () => {
     lastRepliedAt: null,
     opens: 3,
     replies: 2,
+    repliedStepIndex: 0,
     stepIndex: 1,
   });
   assert.equal(lead.interest, "Meeting Booked");

@@ -142,6 +142,8 @@ export const leadEngagementSchema = z.object({
   lastRepliedAt: isoDateTime,
   opens: count,
   replies: count,
+  /** The step the lead replied to, counted from 0. `null` when the vendor does not say. */
+  repliedStepIndex: z.number().int().nonnegative().nullable(),
   /** The last step sent to the lead, counted from 0. */
   stepIndex: z.number().int().nonnegative().nullable(),
 });

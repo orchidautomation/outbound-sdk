@@ -230,6 +230,8 @@ export type {
 
 export { makeRef, parseRef } from "./internal/ref.ts";
 
+export { profileSlug } from "./internal/url.ts";
+
 export type { RefParts } from "./internal/ref.ts";
 
 export { REDACTED_EMAIL, REDACTED_KEY, redactText } from "./internal/redact.ts";

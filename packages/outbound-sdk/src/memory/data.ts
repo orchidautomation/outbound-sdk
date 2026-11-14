@@ -211,6 +211,17 @@ export const toSender = (identity: Identity, seed: MemorySender): Sender => ({
       : { enabled: seed.warmup.enabled, score: seed.warmup.score ?? null },
 });
 
+const toEngagement = (seed: Partial<LeadEngagement>): LeadEngagement => ({
+  clicks: seed.clicks ?? null,
+  lastContactedAt: seed.lastContactedAt ?? null,
+  lastOpenedAt: seed.lastOpenedAt ?? null,
+  lastRepliedAt: seed.lastRepliedAt ?? null,
+  opens: seed.opens ?? null,
+  repliedStepIndex: seed.repliedStepIndex ?? null,
+  replies: seed.replies ?? null,
+  stepIndex: seed.stepIndex ?? null,
+});
+
 export const toLead = (identity: Identity, seed: MemoryLead): Lead => ({
   ...base(identity, seed.id),
   campaignRef: refOrNull(identity, seed.campaignId),
@@ -219,17 +230,7 @@ export const toLead = (identity: Identity, seed: MemoryLead): Lead => ({
   custom: { ...seed.custom },
   email: seed.email?.trim().toLowerCase() ?? null,
   engagement:
-    seed.engagement === undefined
-      ? null
-      : {
-          clicks: seed.engagement.clicks ?? null,
-          lastContactedAt: seed.engagement.lastContactedAt ?? null,
-          lastOpenedAt: seed.engagement.lastOpenedAt ?? null,
-          lastRepliedAt: seed.engagement.lastRepliedAt ?? null,
-          opens: seed.engagement.opens ?? null,
-          replies: seed.engagement.replies ?? null,
-          stepIndex: seed.engagement.stepIndex ?? null,
-        },
+    seed.engagement === undefined ? null : toEngagement(seed.engagement),
   firstName: seed.firstName ?? null,
   interest: seed.interest ?? null,
   tags: [...(seed.tags ?? [])],

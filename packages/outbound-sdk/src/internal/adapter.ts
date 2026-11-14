@@ -86,6 +86,10 @@ export interface LeadQuery extends PageQuery, TimeRange {
   readonly campaignId?: string | undefined;
   /** A saved lead list. Never set together with `campaignId`. */
   readonly listId?: string | undefined;
+  /** Only the lead records with exactly this address, lowercased. One per campaign the person is in. */
+  readonly email?: string | undefined;
+  /** Only the lead records with exactly this LinkedIn profile URL. */
+  readonly linkedinUrl?: string | undefined;
 }
 
 export interface MessageQuery extends PageQuery, TimeRange {

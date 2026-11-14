@@ -33,6 +33,8 @@ export interface Capabilities {
   /** List the leads of one campaign. Does not need `leads.list`. */
   "leads.byCampaign": boolean;
   "leads.since": FilterGrade;
+  /** Find a lead by its exact email address or LinkedIn profile, without walking every lead. */
+  "leads.lookup": boolean;
   /** Leads carry open, click and reply counts. */
   "leads.engagement": boolean;
   /** List the saved lead lists. */
@@ -89,6 +91,7 @@ export const NO_CAPABILITIES: Capabilities = {
   "leads.engagement": false,
   "leads.get": false,
   "leads.list": false,
+  "leads.lookup": false,
   "leads.since": false,
   "leads.timeline": false,
   "lists.leads": false,

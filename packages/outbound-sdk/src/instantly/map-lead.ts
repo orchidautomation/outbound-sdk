@@ -123,6 +123,12 @@ const stepPosition = (value: Json | undefined): StepPosition => {
       };
 };
 
+const wholeStep = (value: Json | undefined): number | null => {
+  const step = count(value);
+
+  return step !== null && Number.isInteger(step) ? step : null;
+};
+
 const engagement = (raw: JsonObject): LeadEngagement | null => {
   const read = {
     clicks: count(raw.email_click_count),
@@ -137,6 +143,8 @@ const engagement = (raw: JsonObject): LeadEngagement | null => {
     ? null
     : {
         ...read,
+        // Counted from 0, like every step Instantly reports (seen live).
+        repliedStepIndex: wholeStep(raw.email_replied_step),
         // The last step sent, from the lead's status summary.
         stepIndex: stepPosition(
           field(field(raw.status_summary, "lastStep"), "stepID")

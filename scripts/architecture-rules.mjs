@@ -19,12 +19,13 @@ export const layers = {
   budget: ["internal"],
   cache: ["internal"],
   clients: ["combine", "internal"],
-  cli: ["internal", "loader", "providers", "tools"],
+  cli: ["insights", "internal", "loader", "providers", "tools"],
   combine: ["internal"],
   exporter: ["internal", "sync"],
   failover: ["cache", "internal"],
   fixtures: ["internal"],
   identity: ["combine", "internal"],
+  insights: ["internal", "tools"],
   internal: [],
   loader: [...adapters, "internal", "providers"],
   providers: [],
@@ -43,6 +44,7 @@ export const nodeFolders = ["cli", "exporter", "fixtures"];
 
 // External packages a folder may import. zod is the only runtime dependency.
 export const externalPackages = {
+  insights: ["zod"],
   tools: ["zod", "ai", "@anthropic-ai/claude-agent-sdk"],
 };
 

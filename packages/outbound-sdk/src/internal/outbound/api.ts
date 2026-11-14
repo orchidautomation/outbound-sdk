@@ -140,6 +140,10 @@ export interface LeadFilters extends TimeRange {
   readonly campaignId?: string | undefined;
   /** A saved lead list. Not together with `campaignId`. */
   readonly listId?: string | undefined;
+  /** Only the records of the person with exactly this email address. */
+  readonly email?: string | undefined;
+  /** Only the records of the person with exactly this LinkedIn profile. */
+  readonly linkedinUrl?: string | undefined;
 }
 
 export interface WebhookFilters {

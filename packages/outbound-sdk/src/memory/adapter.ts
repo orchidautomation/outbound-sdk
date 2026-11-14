@@ -6,6 +6,7 @@ import type { CapabilityDeclaration } from "../internal/capabilities.ts";
 import { makeErrorMapper } from "../internal/errors.ts";
 import { recordBase } from "../internal/record.ts";
 import { assertWorkspaceId } from "../internal/ref.ts";
+import { profileSlug } from "../internal/url.ts";
 import { accountReads } from "./account-reads.ts";
 import {
   toCampaign,
@@ -40,6 +41,7 @@ const FULL_CAPABILITIES: CapabilityDeclaration = {
   "leads.engagement": true,
   "leads.get": true,
   "leads.list": true,
+  "leads.lookup": true,
   "leads.since": "server",
   "leads.timeline": true,
   "lists.leads": true,
@@ -106,6 +108,11 @@ const selectLeads = (store: Store, query: LeadQuery): MemoryLead[] =>
         lead.campaignId === query.campaignId) &&
       (query.listId === undefined ||
         (lead.listIds ?? []).includes(query.listId)) &&
+      (query.email === undefined ||
+        lead.email?.trim().toLowerCase() === query.email) &&
+      (query.linkedinUrl === undefined ||
+        (profileSlug(lead.linkedinUrl) !== null &&
+          profileSlug(lead.linkedinUrl) === profileSlug(query.linkedinUrl))) &&
       (!filtersByTime(store, "leads.since") || within(lead.createdAt, query))
   );
 
