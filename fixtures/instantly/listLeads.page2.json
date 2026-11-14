@@ -1,0 +1,75 @@
+{
+  "items": [
+    {
+      "id": "01a1d77f-5156-7723-b616-dca4fb99144b",
+      "timestamp_created": "2026-11-14T00:40:07.768Z",
+      "timestamp_updated": "2026-11-14T00:40:07.768Z",
+      "organization": "01a1d77f-5158-772f-ad63-67d98f6cd2f6",
+      "campaign": "01a1d77f-5158-772f-ad63-67da136d2f78",
+      "status": 1,
+      "email": "person21@example.com",
+      "personalization": "Hello, how are you?",
+      "website": "https://example.com",
+      "last_name": "Example",
+      "first_name": "Alex",
+      "company_name": "Example Co",
+      "job_title": "Head of Growth",
+      "phone": "+1234567890",
+      "email_open_count": 0,
+      "email_reply_count": 0,
+      "email_click_count": 0,
+      "company_domain": "example.com",
+      "status_summary": {
+        "lastStep": {
+          "from": "campaign",
+          "stepID": "01a1d77f-5158-772f-ad63-67db9bf6ecd2",
+          "timestamp_executed": "2026-11-14T00:40:07.768Z"
+        },
+        "domain_complete": true
+      },
+      "payload": {
+        "firstName": "Alex",
+        "lastName": "Example",
+        "companyName": "Example Co",
+        "jobTitle": "Head of Growth",
+        "website": "https://example.com",
+        "phone": "+1234567890",
+        "personalization": "Hi {{first_name}}, I noticed you work at {{company_name}}..."
+      },
+      "status_summary_subseq": {
+        "from": "campaign",
+        "stepID": "01a1d77f-5158-772f-ad63-67dc5c4f93f2",
+        "timestampExecuted": "2026-11-14T00:40:07.768Z"
+      },
+      "last_step_from": "campaign",
+      "last_step_id": "01a1d77f-5158-772f-ad63-67dd15436cd2",
+      "last_step_timestamp_executed": "2026-11-14T00:40:07.768Z",
+      "email_opened_step": 1,
+      "email_opened_variant": 1,
+      "email_replied_step": 1,
+      "email_replied_variant": 1,
+      "email_clicked_step": 1,
+      "email_clicked_variant": 1,
+      "lt_interest_status": 1,
+      "subsequence_id": "01a1d77f-5158-772f-ad63-67de27304d7d",
+      "verification_status": 1,
+      "pl_value_lead": "High",
+      "timestamp_added_subsequence": "2026-11-14T00:40:07.768Z",
+      "timestamp_last_contact": "2026-11-14T00:40:07.768Z",
+      "timestamp_last_open": "2026-11-14T00:40:07.768Z",
+      "timestamp_last_reply": "2026-11-14T00:40:07.768Z",
+      "timestamp_last_interest_change": "2026-11-14T00:40:07.768Z",
+      "timestamp_last_click": "2026-11-14T00:40:07.768Z",
+      "enrichment_status": 1,
+      "list_id": "01a1d77f-5158-772f-ad63-67dfbd8ffdfc",
+      "last_contacted_from": "email",
+      "uploaded_by_user": "01a1d77f-5158-772f-ad63-67e0d94714f8",
+      "upload_method": "manual",
+      "assigned_to": "01a1d77f-5158-772f-ad63-67e1e957683e",
+      "is_website_visitor": true,
+      "timestamp_last_touch": "2026-11-14T00:40:07.769Z",
+      "esp_code": 1,
+      "esg_code": 1
+    }
+  ]
+}

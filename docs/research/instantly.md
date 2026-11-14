@@ -1,0 +1,330 @@
+# Instantly (instantly.ai) API V2 — research for a read-only adapter
+
+> This is the research record the Instantly adapter was written from. The companion files it mentions (`endpoints.json`, `sources/`, `_gen/`) were working files and are not in this repository; the fixtures used by the tests are in `fixtures/instantly/`.
+
+Fetched 2026-11-14 from public documentation only. No API call was made with credentials, so everything here is "as documented", not "as observed". The primary source is the OpenAPI 3.1 spec at `https://api.instantly.ai/openapi/api_v2.json` (268 operations, `info.version` 2.0.0), which the Mintlify docs site is generated from. Field names below are copied from that spec. A copy is in `sources/api_v2.openapi.json`.
+
+Companions in this folder: `endpoints.json` (37 operations with every parameter and response field), `limits.json`, `fixtures/`, `sources/` (raw downloaded documents), `_gen/gen.py` (rebuilds the JSON deliverables from the spec).
+
+## 0. Basics that apply to every endpoint
+
+| Topic | Documented value |
+| --- | --- |
+| Base URL | `https://api.instantly.ai/api/v2` (spec `servers[0].url` = `https://api.instantly.ai`, paths start `/api/v2/`) |
+| Auth | Header `Authorization: Bearer <API_KEY>`. The docs write the header name lower-case (`authorization`) with value `Bearer {{key}}`. |
+| Keys | Created in the app (Settings > Integrations > API Keys), shown once. Each key carries scopes. V1 keys do not work on V2. |
+| Scopes | `<resource>:<read\|create\|update\|delete\|all>` plus `all:read`, `all:all` etc. A read-only adapter is fully served by a key with `all:read`. Each endpoint lists its accepted scopes (in `endpoints.json` as `scopes_any_of`). |
+| Workspace scoping | One key = one workspace. Exception: a key from an "admin workspace" of a workspace group can act as any sub workspace by adding header `x-as-workspace: <sub workspace id>` (section 8). |
+| Pagination | Cursor. Request `limit` (integer, min 1, max 100, default not documented) and `starting_after`; the response is `{ "items": [...], "next_starting_after": "..." }`. Pass `next_starting_after` back as `starting_after`. The cursor is opaque: "this could either be a UUID, a timestamp, on an email depending on the specific API". |
+| End of list | Not documented. `next_starting_after` is optional in the schema, so presumably absent on the last page. UNVERIFIED. |
+| Timestamps | ISO 8601 UTC strings, fields named `timestamp_*`. |
+| Versioning | Path version `/api/v2`. No date-based or header versioning. V1 "was deprecated on January 19, 2026"; V1 and V2 are incompatible. |
+| Plan | Help center: "API access is available on all Outbound plans." Every endpoint documents `402` "Workspace does not have an active paid plan". Webhooks need Hyper Growth or above (section 9). |
+
+### Error shape
+
+All documented error responses share one shape:
+
+```json
+{
+  "statusCode": 401,
+  "error": "Unauthorized",
+  "message": "Missing Authorization header"
+}
+```
+
+| Status | `error` | Meaning as documented |
+| --- | --- | --- |
+| 400 | `Bad Request` | Invalid request body or parameters; `message` example `body must have required property 'name'` |
+| 401 | `Unauthorized` | "the Authorization header is missing or invalid, or the API key has been revoked" |
+| 402 | `Payment Required` | "the workspace does not have an active paid plan" |
+| 403 | (in spec on 26 operations) | Quickstart: "the API key does not have the required scope" |
+| 404 | `Not Found` | `message` example `Resource not found` |
+| 413 |  | Only on `GET /accounts/analytics/daily`: "The analytics request is too large for the requested workspace or date range." |
+| 429 | `Too Many Requests` | `message` example `Rate limit exceeded` |
+
+401, 402, 404 and 429 are declared on every operation. 403 is declared on only 26 of 268 operations in the spec even though a missing scope can presumably happen anywhere (UNVERIFIED).
+
+### Rate limits
+
+- "No more than 100 requests per second" and "No more than 6,000 requests per minute". Either limit blocks requests.
+- Scope: "the entire Workspace, even if it's using multiple API keys", and "shared between API v2 and API v1".
+- Over the limit: HTTP `429`. No rate-limit headers and no `Retry-After` are documented for the general API. The spec declares a `Retry-After` header only on the 429 of two SuperSearch endpoints.
+- **`GET /api/v2/emails` has its own limit: "20 requests per minute, unlike other API endpoints."** At 100 items a page that is at most 2,000 emails a minute. The scope of this limit (workspace or key) is not stated. `GET /emails/{id}` has no special limit documented.
+- Other per-endpoint limits exist only on write/utility endpoints (see `limits.json`).
+
+## 1. Campaigns
+
+| Operation | Endpoint |
+| --- | --- |
+| List | `GET /api/v2/campaigns` |
+| Get one | `GET /api/v2/campaigns/{id}` (`id` uuid) |
+| Campaigns a lead email is in | `GET /api/v2/campaigns/search-by-contact?search=<lead email>` (returns `{ items }`, no cursor documented) |
+| Why a campaign is not sending | `GET /api/v2/campaigns/{id}/sending-status` |
+
+List query params: `limit`, `starting_after`, `search` (campaign name), `tag_ids` (comma-separated), `ai_sales_agent_id`, `status`, `exclude_status`, `include_ai_sales_agent_campaigns` (boolean; AI-agent campaigns are excluded by default). There is no date filter and no sort parameter.
+
+Campaign `status` is a number:
+
+| Value | Meaning              |
+| ----- | -------------------- |
+| `0`   | Draft                |
+| `1`   | Active               |
+| `2`   | Paused               |
+| `3`   | Completed            |
+| `4`   | Running Subsequences |
+| `-99` | Account Suspended    |
+| `-1`  | Accounts Unhealthy   |
+| `-2`  | Bounce Protect       |
+
+`not_sending_status` (number or null): `1` not within sending schedule, `2` waiting for a lead to process, `3` campaign daily limit reached, `4` all sending accounts reached their daily limit, `99` error (contact support).
+
+Main campaign fields (full list with types in `endpoints.json`): `id`, `name`, `status`, `timestamp_created`, `timestamp_updated`, `campaign_schedule` (`start_date`, `end_date`, `schedules[]` with `name`, `timing.from/to`, `days` keyed `"0"`..`"6"`, `timezone`), `sequences`, `email_list` (sending account emails), `email_tag_list` (tag uuids), `daily_limit`, `daily_max_leads`, `email_gap`, `random_wait_max`, `stop_on_reply`, `stop_on_auto_reply`, `link_tracking`, `open_tracking`, `text_only`, `first_email_text_only`, `is_evergreen`, `pl_value`, `not_sending_status`, `organization` (the workspace id), `owned_by`, `created_by`, `ai_sdr_id`, `cc_list`, `bcc_list`, `core_variables`, `custom_variables`, `provider_routing_rules`, `auto_variant_select`. Required in the schema: `id`, `name`, `status`, `campaign_schedule`, `timestamp_created`, `timestamp_updated`.
+
+The sending-status endpoint returns `diagnostics.status`, one of: `campaign_paused`, `campaign_draft`, `campaign_completed`, `campaign_running_subsequences`, `campaign_bounce_protect`, `campaign_accounts_unhealthy`, `campaign_account_suspended`, `out_of_schedule`, `waiting_for_lead_timezone_window`, `invalid_lead_timezone_configuration`, `waiting_for_leads`, `daily_limit_met`, `account_daily_limit_met`, `account_slow_ramp_limit_met`, `new_lead_limit_met`, `all_accounts_unhealthy`, `waiting_for_esp_match`, `domain_limit_reached`, `follow_up_delay_not_met`, `no_accounts_available`, `healthy`.
+
+## 2. Sequence / steps / variants
+
+There is no sequence endpoint. The copy is inside the campaign object (returned by both list and get):
+
+```
+sequences[0].steps[] = { type: "email", delay: number, delay_unit: "minutes"|"hours"|"days" (default "days"),
+                         pre_delay, pre_delay_unit,            // subsequences only
+                         variants[] = { subject: string, body: string (HTML), v_disabled?: boolean } }
+```
+
+- "Even though this field is an array, only the first element is used."
+- `delay` is "the delay value before sending the NEXT email", so it belongs to the gap after the step, not before it.
+- Steps and variants have no ids in this schema. Analytics refer to them by position: step `"1"`.., variant `"0"`.. (0 = A). Webhooks say variant starts at 1. See "Unverified".
+- `type` is always `"email"`.
+
+Subsequences (follow-up sequences triggered by a label, activity or reply text) are a separate resource: `GET /api/v2/subsequences?parent_campaign=<campaign id>` and `GET /api/v2/subsequences/{id}`. They carry their own `sequences[].steps[].variants[]`, `status` (same numbers as campaigns), `conditions` (`crm_status[]`, `lead_activity[]`, `reply_contains`) and `subsequence_schedule`.
+
+## 3. Senders (email accounts)
+
+| Operation | Endpoint |
+| --- | --- |
+| List | `GET /api/v2/accounts` |
+| Get one | `GET /api/v2/accounts/{email}` (keyed by email address, not uuid) |
+| Campaigns using an account | `GET /api/v2/account-campaign-mappings/{email}` |
+| Warmup analytics | `POST /api/v2/accounts/warmup-analytics` (POST for a read) |
+| Per-day sending stats | `GET /api/v2/accounts/analytics/daily` |
+
+List params: `limit`, `starting_after` ("in `timestamp_created&email` format. Legacy ISO date-time cursor is still supported"), `search`, `status`, `provider_code`, `tag_ids` (any), `tag_ids_all` (all), `filter`, `include_tags`, `sort_by` (`timestamp_created`, `email`, `stat_warmup_score`, `status`), `sort_order`, `skip` (offset, "used with `sort_by` when cursor pagination is not available").
+
+Account fields: `email`, `first_name`, `last_name`, `status`, `warmup_status`, `provider_code`, `daily_limit`, `daily_limit_max`, `warmup_limit_max`, `sending_gap` (minutes), `enable_slow_ramp`, `stat_warmup_score`, `timestamp_warmup_start`, `warmup` (`limit`, `increment`, `reply_rate`, `warmup_custom_ftag`, `advanced.*`), `tracking_domain_name`, `tracking_domain_status`, `status_message` (`code`, `command`, `response`, `e_message`, `responseCode`), `setup_pending`, `is_managed_account`, `signature`, `reply_to`, `autofix_failed`, `organization`, `added_by`, `modified_by`, `timestamp_created`, `timestamp_updated`, `tags` (only with `include_tags=true`).
+
+| Enum | Values |
+| --- | --- |
+| `status` | `1` Active, `2` Paused, `3` Temporarily paused for maintenance, `-1` Connection Error, `-2` Soft Bounce Error, `-3` Sending Error |
+| `warmup_status` | `0` Paused, `1` Active, `-1` Banned, `-2` Spam Folder Unknown, `-3` Permanent Suspension |
+| `provider_code` | `1` Custom IMAP/SMTP, `2` Google, `3` Microsoft, `4` AWS, `8` AirMail, `11` Airmail Instant |
+| `filter` (query) | `ACC_FILTER_PAUSED`, `ACC_FILTER_ERROR`, `ACC_FILTER_NO_CTD`, `ACC_FILTER_PW_ACCOUNTS`, `ACC_FILTER_DFY`, `ACC_FILTER_DFY_SETUP_PENDING`, `ACC_FILTER_W_ACTIVE`, `ACC_FILTER_W_PAUSED`, `ACC_FILTER_W_ERROR` |
+
+Warmup analytics: body `{ "emails": ["a@x.com", ...] }` (required; no documented maximum). Response is keyed by email:
+
+```
+email_date_data[<email>][<YYYY-MM-DD>] = { sent, landed_inbox, landed_spam, received }
+aggregate_data[<email>] = { sent, received, landed_inbox, landed_spam, health_score_label, health_score }
+```
+
+Keys with a zero count are simply missing in the documented example (`landed_spam`, `received`). No date range parameter exists; the window covered is not documented. This is the one endpoint with a real documented example (`fixtures/getAccountWarmupAnalytics.json`).
+
+Instantly has no LinkedIn accounts or seats in this API.
+
+## 4. Leads
+
+| Operation | Endpoint |
+| --- | --- |
+| List | `POST /api/v2/leads/list` (**POST for a read**; every filter and the cursor go in the JSON body) |
+| Get one | `GET /api/v2/leads/{id}` |
+| Lead lists | `GET /api/v2/lead-lists` |
+
+Body fields: `campaign` (campaign uuid), `list_id`, `in_campaign`, `in_list`, `search`, `filter`, `ids[]`, `excluded_ids[]`, `contacts[]` (emails), `queries[]` (smart-view conditions), `smart_view_id`, `organization_user_ids[]`, `is_website_visitor`, `distinct_contacts`, `enrichment_status`, `esg_code`, `limit` (1..100), `starting_after`. With no `campaign`/`list_id` the list is workspace-wide.
+
+- Ordering: "by each lead's `id` field in ascending order (or by `contact` when distinct_contacts is true)". Leads created on or after October 15, 2025 are chronological by id; "older records may appear out of sequence".
+- Cursor: the last lead's `id`, or its email when `distinct_contacts` is true.
+- A lead row is per campaign/list membership: the same email in two campaigns is two leads with different `id` (inferred from the `campaign`/`list_id` fields on the lead and the `distinct_contacts` option; not stated outright).
+- No date filter (no `updated_since`). The only time-based filtering is `queries[].values["occurrence-days"]`.
+
+Lead `status`: `1` Active, `2` Paused, `3` Completed, `-1` Bounced, `-2` Unsubscribed, `-3` Skipped.
+
+Lead interest status, field **`lt_interest_status`** (number): `0` Out of Office, `1` Interested, `2` Meeting Booked, `3` Meeting Completed, `4` Won, `-1` Not Interested, `-2` Wrong Person, `-3` Lost, `-4` No Show. "It can be either a static value, or a custom status interest value": custom labels get their own number, found as `interest_status` on `GET /api/v2/lead-labels`, whose `interest_status_label` (`positive`, `negative`, `neutral`) tells you the sentiment. Subsequence conditions bound these numbers to -30000..30000.
+
+`verification_status`: `0` Not verified, `1` Verified, `11` Pending, `12` Pending Verification Job, `-1` Invalid, `-2` Risky, `-3` Catch All, `-4` Job Change.
+
+Other lead fields: `id`, `email`, `first_name`, `last_name`, `company_name`, `company_domain`, `job_title`, `phone`, `website`, `personalization`, `campaign`, `list_id`, `subsequence_id`, `organization`, `payload`, `status_summary`, `status_summary_subseq`, `email_open_count`, `email_reply_count`, `email_click_count`, `email_opened_step`, `email_opened_variant`, `email_replied_step`, `email_replied_variant`, `email_clicked_step`, `email_clicked_variant`, `last_step_from`, `last_step_id`, `last_step_timestamp_executed`, `timestamp_created`, `timestamp_updated`, `timestamp_last_contact`, `timestamp_last_open`, `timestamp_last_reply`, `timestamp_last_click`, `timestamp_last_interest_change`, `timestamp_last_touch`, `timestamp_added_subsequence`, `pl_value_lead`, `assigned_to`, `uploaded_by_user`, `upload_method` (`manual`, `api`, `website-visitor`), `is_website_visitor`, `enrichment_status`, `esp_code`, `esg_code`, `last_contacted_from`.
+
+Custom fields live in **`payload`**: an object with any keys whose values are "string, number, boolean, or null" (no objects or arrays). The documented example keys are camelCase (`firstName`, `lastName`, `companyName`, `jobTitle`, `website`, `phone`, `personalization`) and duplicate the snake_case top-level fields.
+
+`filter` values: `FILTER_VAL_CONTACTED`, `FILTER_VAL_NOT_CONTACTED`, `FILTER_VAL_COMPLETED`, `FILTER_VAL_UNSUBSCRIBED`, `FILTER_VAL_ACTIVE`, `FILTER_VAL_BOUNCED`, `FILTER_VAL_SKIPPED`, `FILTER_VAL_RISKY`, `FILTER_VAL_INVALID`, `FILTER_VAL_VALID`, `FILTER_VAL_CATCH_ALL`, `FILTER_VAL_NOT_VERIFIED`, `FILTER_VAL_IN_SUBSEQUENCE`, `FILTER_VAL_OPENED_NO_REPLY`, `FILTER_VAL_COMPLETED_NO_REPLY`, `FILTER_VAL_NO_OPENS`, `FILTER_VAL_REPLIED`, `FILTER_VAL_LINK_CLICKED`, `FILTER_LEAD_INTERESTED`, `FILTER_LEAD_NOT_INTERESTED`, `FILTER_LEAD_MEETING_BOOKED`, `FILTER_LEAD_MEETING_COMPLETED`, `FILTER_LEAD_CLOSED`, `FILTER_LEAD_OUT_OF_OFFICE`, `FILTER_LEAD_WRONG_PERSON`, `FILTER_LEAD_LOST`, `FILTER_LEAD_NO_SHOW`, `FILTER_LEAD_CUSTOM_LABEL_POSITIVE`, `FILTER_LEAD_CUSTOM_LABEL_NEGATIVE`.
+
+## 5. Messages (emails sent and received)
+
+| Operation | Endpoint |
+| --- | --- |
+| List | `GET /api/v2/emails` (20 requests/minute) |
+| Get one | `GET /api/v2/emails/{id}` |
+| Unread count | `GET /api/v2/emails/unread/count` returns `{ "count": number }` |
+
+One resource covers everything visible in the Unibox: "A campaign email, a reply, a manually sent email, or any other email". Direction is `ue_type`: `1` Sent from campaign, `2` Received, `3` Sent, `4` Scheduled.
+
+Query params: `limit`, `starting_after`, `campaign_id`, `list_id`, `lead` (lead email), `eaccount` (sending account, comma-separated for several), `email_type` (`received`, `sent`, `manual`), `search` (a lead email, or `thread:<thread uuid>`), `i_status` (number), `is_unread`, `has_reminder`, `mode` (`emode_focused`, `emode_others`, `emode_all`), `preview_only`, `sort_order` (`asc`/`desc`, by creation date, default `desc`), `scheduled_only`, `assigned_to`, `company_domain`, `marked_as_done`, `latest_of_thread`, `min_timestamp_created`, `max_timestamp_created` (ISO timestamps; these filter on `timestamp_created`, the time Instantly stored the email, not `timestamp_email`).
+
+Bodies are returned: `body: { text, html }`. In list responses a large body may be cut: `body_fallback_reason` is `too_large` or `unavailable`, and then `body` "holds at most a plain-text excerpt (`text`, no `html`) and may be empty. Get the full body from `GET /api/v2/emails/{id}`."
+
+Email fields: `id`, `timestamp_created`, `timestamp_email`, `message_id`, `subject`, `from_address_email`, `to_address_email_list` (comma-separated string), `cc_address_email_list`, `bcc_address_email_list`, `reply_to`, `body`, `content_preview`, `organization_id`, `campaign_id`, `subsequence_id`, `list_id`, `lead` (lead email), `lead_id`, `eaccount`, `ue_type`, `step` (string), `is_unread` (number), `is_auto_reply` (number 0/1), `ai_interest_value` (number, example 0.75), `ai_assisted`, `is_focused`, `i_status`, `thread_id`, `reminder_ts`, `attachment_json`, `from_address_json`, `to_address_json`, `cc_address_json`, `ai_agent_id`, `body_fallback_reason`.
+
+## 6. Replies and reply categories
+
+No separate replies endpoint. Replies are `GET /api/v2/emails?email_type=received` (rows with `ue_type` 2), optionally with `campaign_id` or `lead`. Useful per-reply fields: `is_auto_reply`, `i_status` ("Indicates the interest status of the email"; values not enumerated, parameter examples are 1, 2, 3), `ai_interest_value`, `thread_id`.
+
+The category of a reply is really a property of the lead, `lt_interest_status` (section 4). There is no sentiment field other than the `interest_status_label` (`positive`/`negative`/`neutral`) of custom lead labels. `AI Inbox Manager` endpoints (`/api/v2/ai-agents/inbox-manager/{id}/replies`) list AI-drafted replies, which is a different thing and not needed for a read adapter.
+
+## 7. Analytics
+
+All four campaign analytics endpoints take `start_date` / `end_date` ("a date-only value (`YYYY-MM-DD`) or a full ISO 8601 timestamp. Date-only values are interpreted as UTC midnight"). None is paginated. No default range is documented.
+
+| Scope | Endpoint | Response |
+| --- | --- | --- |
+| Per campaign totals | `GET /api/v2/campaigns/analytics` with `id` or repeated `ids=` (empty = all), `exclude_total_leads_count` | bare array, one object per campaign |
+| Aggregate totals | `GET /api/v2/campaigns/analytics/overview` with `id`, `ids`, `campaign_status`, `expand_crm_events` | one object (summed across the selected campaigns) |
+| Per day | `GET /api/v2/campaigns/analytics/daily` with `campaign_id` (one or none), `campaign_status` | bare array, one object per date |
+| Per step and variant | `GET /api/v2/campaigns/analytics/steps` with `campaign_id`, `include_opportunities_count` | bare array |
+| Per sender per day | `GET /api/v2/accounts/analytics/daily` with `emails` (required, max 200), `start_date`, `end_date` (max range 31 days, default 30 days ending today) | bare array |
+| Per subsequence | `GET /api/v2/subsequences/analytics?campaign_id=` (required) | bare array of `subsequence_id`, `emails_sent`, `unique_opens`, `unique_replies` |
+
+Field names differ between the endpoints:
+
+| Count | `/analytics` and `/analytics/overview` | `/analytics/daily`, `/analytics/steps`, accounts daily |
+| --- | --- | --- |
+| Sent | `emails_sent_count` | `sent` |
+| Leads contacted | `contacted_count`, `new_leads_contacted_count` | `contacted`, `new_leads_contacted` (not in steps) |
+| Opens total / unique | `open_count` / `open_count_unique`, `open_count_unique_by_step` | `opened` / `unique_opened` |
+| Replies total / unique | `reply_count` / `reply_count_unique`, `reply_count_unique_by_step` | `replies` / `unique_replies` |
+| Auto replies | `reply_count_automatic`, `reply_count_automatic_unique`, `reply_count_automatic_unique_by_step` | `replies_automatic`, `unique_replies_automatic` |
+| Clicks | `link_click_count`, `link_click_count_unique`, `link_click_count_unique_by_step` | `clicks`, `unique_clicks` |
+| Bounced | `bounced_count` | `bounced` (accounts daily only) |
+| Unsubscribed | `unsubscribed_count` | not available |
+| Completed | `completed_count` | not available |
+| Opportunities | `total_opportunities`, `total_opportunity_value` | `opportunities`, `unique_opportunities` (campaign daily; steps only with the flag, plus `meetings_booked`, `won`) |
+| Positive / interested | overview only: `total_interested`, `total_meeting_booked`, `total_meeting_completed`, `total_closed` | not available |
+
+Notes:
+
+- There is no "delivered" count anywhere. Bounces per day or per step for a campaign are not available.
+- `/analytics` adds `campaign_name`, `campaign_id`, `campaign_status`, `campaign_is_evergreen`, `leads_count`.
+- `open_count` is described as "the number of leads that opened at least one email" on `/analytics` but "the total number of times the emails were opened, including duplicates" on `/overview`. Contradictory, see "Unverified".
+- `reply_count_unique` "excludes automatic replies".
+- Positive counts are opportunity events: by default "the first occurrence of each event per contact"; `expand_crm_events=true` counts every status change. A 10 minute window suppresses duplicate status changes.
+- Steps: `step` is a string or null ("1"..), `variant` a string or null ("0" = A). Null means the event could not be tied to a step, "for instance for list leads".
+- Accounts daily returns `date`, `email_account`, `sent`, `bounced`, `contacted`, `new_leads_contacted`, `opened`, `unique_opened`, `replies`, `unique_replies`, `replies_automatic`, `unique_replies_automatic`, `clicks`, `unique_clicks`; it can answer `413`.
+
+## 8. Workspaces, clients, sub-accounts
+
+- A key belongs to exactly one workspace. `GET /api/v2/workspaces/current` "will return the workspace based on the API key sent in the headers" (`id`, `name`, `owner`, `plan_id`, `timestamp_created`, ...). There is no endpoint that lists all workspaces of a user.
+- Agencies: a "workspace group" has one admin workspace and sub workspaces. "You can use a single API key to manage any of your sub workspaces. It works with **all** API endpoints." Add header `x-as-workspace` with the sub workspace `id`. Without the header the call hits the key's own workspace.
+- Sub workspaces are listed with `GET /api/v2/workspace-group-members` (cursor-paginated): `id` (the membership id), `admin_workspace_id`, `sub_workspace_id`, `sub_workspace_name`, `admin_workspace_name`, `status` (`pending`, `accepted`, `rejected`), `billing_shared`, timestamps. Only `accepted` members can sensibly be impersonated (inference, not stated).
+- `GET /api/v2/workspace-group-members/admin` tells a workspace whether it has an admin workspace (`has_admin_workspace`, `workspace_name`, ...).
+- A workspace cannot be both admin and sub.
+- Resources carry the workspace id under inconsistent names: `organization` (campaign, account, lead, webhook), `organization_id` (email, lead label, lead list, tag, API key, webhook event), `workspace` (subsequence, webhook payload), `workspace_id` (workspace member).
+- `GET /api/v2/workspace-members` lists human users, not clients.
+
+## 9. Webhooks
+
+Registration (API): `POST /api/v2/webhooks` with `target_hook_url` (required), `event_type`, `campaign` (uuid or null = all campaigns), `name`, `custom_interest_value` (for custom label events), `headers` (object of static HTTP headers Instantly will send). Also `GET /api/v2/webhooks`, `GET/PATCH/DELETE /api/v2/webhooks/{id}`, `POST /api/v2/webhooks/{id}/test`, `POST /api/v2/webhooks/{id}/resume`, `GET /api/v2/webhooks/event-types` (returns `{ event_types: [{ id, label, type }] }`, including custom labels). One webhook = one `event_type` (or `all_events`). Webhook `status`: `1` active, `-1` error (disabled after delivery failures), with `timestamp_error`.
+
+Delivery log: `GET /api/v2/webhook-events` (filters `success`, `from`, `to` as YYYY-MM-DD, `search`), plus `/webhook-events/{id}`, `/summary`, `/summary-by-date`. Rows include `payload`, `success`, `retry_count`, `will_retry`, `status_code`, `timestamp_next_retry`, `lead_email`, `response_time_ms`, so retries exist, but the retry schedule is not documented.
+
+**Signatures: none documented.** No signing secret, HMAC or signature header appears in the spec, the webhook guide or the help center. The only verification mechanism is the static `headers` you configure (example `{"Authorization": "Basic ..."}`). Third-party pages mentioning an `x-instantly-signature` header are not backed by any Instantly document.
+
+**Plan gating:** help center: "This feature is available on the Hyper Growth plan or above." (API access itself is on all Outbound plans.)
+
+Event type names. The spec enum (create/patch webhook) is:
+
+`all_events`, `email_sent`, `email_opened`, `email_link_clicked`, `reply_received`, `email_bounced`, `lead_unsubscribed`, `campaign_completed`, `account_error`, `lead_neutral`, `lead_interested`, `lead_not_interested`, `lead_meeting_booked`, `lead_meeting_completed`, `lead_closed`, `lead_out_of_office`, `lead_wrong_person`, `lead_no_show`, `supersearch_enrichment_completed`
+
+The webhook guide instead lists `link_clicked` (not `email_link_clicked`) and an extra `auto_reply_received`, and omits `lead_no_show` and `supersearch_enrichment_completed`. The list-webhooks `event_type` filter enum also omits the last two. Custom labels: `event_type` is null on the webhook (matched by `custom_interest_value`), and in the payload "any custom label configured in your workspace will be sent as the `event_type` value as-is".
+
+Payload (one generic schema for all events, HTTP POST, JSON):
+
+- Always: `timestamp` (ISO), `event_type`, `workspace` (uuid), `campaign_id`, `campaign_name`.
+- Optional: `lead_email`, `email_account`, `unibox_url` (reply events only), `step` (from 1), `variant` (from 1), `is_first`, `email_id`, `email_subject`, `email_text`, `email_html` (sent emails), `reply_text_snippet`, `reply_subject`, `reply_text`, `reply_html` (reply events).
+- "Additional lead data fields from your database may appear as extra keys" at the top level (help center names `firstName`, `lastName`, `companyName`, `website`, `phone`), so custom lead variables can collide with base keys.
+- The payload carries no event id and no lead id. `email_id` is the only stable identifier, and only on some events.
+
+## 10. Whoami / key check
+
+No dedicated endpoint. Use `GET /api/v2/workspaces/current` (scope `workspaces:read` or `all:read`): 200 gives the workspace id and name, 401 a bad key, 402 no paid plan. `GET /api/v2/api-keys` lists keys with their `scopes` but needs `api_keys:read`, and returns all keys of the workspace without marking the calling one.
+
+## Changelog (last ~6 months)
+
+Instantly publishes no API changelog. `developer.instantly.ai` has no changelog page (404), and the product changelog at `feedback.instantly.ai/changelog` covers product launches only. Product entries since June 2026:
+
+| Date | Entry | API area now in the spec (my matching by name, not stated by Instantly) |
+| --- | --- | --- |
+| 2026-10-27 | "The Search is Over." | `creator-search`, `local-business-search` |
+| 2026-09-29 | "Discover the New Instantly Experience" | none identified |
+| 2026-09-22 | "The new Instantly Agents are here" | `/api/v2/ai-agents/sales`, `/inbox-manager` |
+| 2026-08-20 | "Share Your Campaign Results" | `POST /api/v2/campaigns/{id}/share` |
+| 2026-08-12 | "Turn company sources into targeted contacts" | `supersearch-enrichment/company-lists` |
+| 2026-07-23 | "Never Run Out of Leads Again" | `/api/v2/ai-agents/lead-finder` |
+| 2026-07-02 | "Go from idea to automation in seconds" | none identified |
+| 2026-06-17 | "Introducing the AI Deliverability Agent" | `/api/v2/ai-agents/deliverability` |
+| 2026-06-09 | "Autofill in SuperSearch is Live" | none identified |
+| 2026-06-03 | "More control over workflows and security" | none identified |
+
+Signs of recent API changes visible in the spec text itself: accounts cursor changed to `timestamp_created&email` ("Legacy ISO date-time cursor is still supported"); lead ordering by id guaranteed only for leads created on or after 2025-10-15; `delay_unit` added to steps ("Defaults to days for backward compatibility"); `body_fallback_reason` on emails; `lead_no_show` and `supersearch_enrichment_completed` webhook events. None of these is dated. The spec is regenerated continuously (example timestamps inside it are today's date), so it should be re-fetched rather than vendored once.
+
+## Unverified / unclear
+
+1. **End of pagination.** How the last page is signalled (missing `next_starting_after`, null, or empty `items`) is not documented.
+2. **Default `limit`** is not documented (only min 1, max 100).
+3. **Webhook event names** conflict between the guide (`link_clicked`, `auto_reply_received`) and the spec enum (`email_link_clicked`, no auto-reply event). Which string arrives in `event_type` is unknown; accept both.
+4. **Webhook payload per event** is not documented, only one generic schema. Which optional fields accompany which event is unknown; the `webhook.*.json` fixtures are guesses built from that schema.
+5. **Webhook signing**: absence is inferred from silence in three official sources, not from a statement saying "we do not sign".
+6. **Webhook retry policy** (count, spacing, when a webhook flips to status `-1`) is not documented.
+7. **`open_count`** means leads on `/campaigns/analytics` and total opens on `/campaigns/analytics/overview`, according to the two descriptions.
+8. **Variant numbering**: "0 = A" in step analytics, "starting at 1" in webhook payloads; lead fields `email_opened_variant` etc. do not say which. Step numbering starts at 1 in both.
+9. **`i_status` on emails**: values not enumerated. Probably the same numbers as `lt_interest_status`; not stated.
+10. **Email `step` field** is a string with example `"step-123"`; its real format (index, id, or composite) is unknown.
+11. **`GET /emails` 20/min limit scope** (per workspace or per key) is not stated, and no headers reveal remaining quota.
+12. **429 behaviour**: no `Retry-After` documented for general endpoints.
+13. **Rate limit with `x-as-workspace`**: unknown whether the admin or the sub workspace is charged.
+14. **403** is declared on only 26 operations; whether a missing scope returns 403 or 401 elsewhere is unknown.
+15. **Analytics default date range** and whether `end_date` is inclusive are not documented. Account daily analytics does not state a timezone.
+16. **Warmup analytics** time window and maximum number of `emails` per call are not documented.
+17. **`search-by-contact`** documents no pagination; behaviour for a lead in more than 100 campaigns is unknown.
+18. **Lead `filter` description** says "For custom lead labels, use the `interest_status` field", but the list body has no `interest_status` field. The nearest documented route is `queries[]` with `actionType: "lead-status"`.
+19. **Plan names**: "all Outbound plans" for API access and "Hyper Growth plan or above" for webhooks come from the help center (articles dated October 9, 2026), not the developer docs.
+20. The copy of the spec served at `https://developer.instantly.ai/api-reference/openapi.json` is smaller (167 operations) than `https://api.instantly.ai/openapi/api_v2.json` (268). All endpoints used here are in both.
+21. **One lead row per campaign membership** (section 4) is my reading of the schema, not a documented statement.
+
+## Sources
+
+All fetched 2026-11-14. The file in `sources/` holding each download is given in parentheses.
+
+- https://api.instantly.ai/openapi/api_v2.json (`api_v2.openapi.json`; primary source for every endpoint, parameter, field and enum)
+- https://developer.instantly.ai/api-reference/openapi.json (`docs-site.openapi.json`)
+- https://developer.instantly.ai/llms.txt (`llms.txt`)
+- https://developer.instantly.ai/llms-full.txt (`llms-full.txt`)
+- https://developer.instantly.ai/index.md (`index.md`)
+- https://developer.instantly.ai/quickstart.md (`quickstart.md`)
+- https://developer.instantly.ai/api-reference/introduction.md (`api-reference_introduction.md`)
+- https://developer.instantly.ai/getting-started/getting-started.md (`getting-started_getting-started.md`)
+- https://developer.instantly.ai/getting-started/authorization.md (`getting-started_authorization.md`)
+- https://developer.instantly.ai/getting-started/rate-limit.md (`getting-started_rate-limit.md`)
+- https://developer.instantly.ai/guides/webhook-events.md (`guides_webhook-events.md`)
+- https://developer.instantly.ai/guides/workspace-group.md (`guides_workspace-group.md`)
+- https://developer.instantly.ai/guides/api-v1-migration.md (`guides_api-v1-migration.md`)
+- https://developer.instantly.ai/api-reference/campaign/list-campaign.md (`api-reference_campaign_list-campaign.md`)
+- https://developer.instantly.ai/api-reference/email/list-email.md (`api-reference_email_list-email.md`)
+- https://developer.instantly.ai/api-reference/lead/list-leads.md (`api-reference_lead_list-leads.md`)
+- https://developer.instantly.ai/sdk/introduction.md, https://developer.instantly.ai/sdk/quickstart.md, https://developer.instantly.ai/mcp/introduction.md (`sdk_*.md`, `mcp_introduction.md`)
+- https://developer.instantly.ai/sitemap.xml (`sitemap.xml`)
+- https://developer.instantly.ai/changelog (404; no API changelog exists; not saved)
+- https://help.instantly.ai/en/articles/6261906-webhooks (`help-webhooks.html`)
+- https://help.instantly.ai/en/articles/10432807-api-v2 (`help-api-v2.html`)
+- https://feedback.instantly.ai/changelog (`feedback-changelog.html`)
+- Per-endpoint doc pages are linked from each entry's `source` in `endpoints.json`.
+- Web search results (hookdeck.com, instantly.ai/blog) were used only as pointers; no claim above rests on them.

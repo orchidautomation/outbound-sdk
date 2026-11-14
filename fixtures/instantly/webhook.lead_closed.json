@@ -1,0 +1,14 @@
+{
+  "timestamp": "2026-11-14T00:36:06.650Z",
+  "event_type": "lead_closed",
+  "workspace": "01a1d77b-a384-76a2-ab44-5b34d0cfadd5",
+  "campaign_id": "01a1d77b-a332-7a01-8e03-6f1a3f4d7599",
+  "campaign_name": "My First Campaign",
+  "lead_email": "person1@example.com",
+  "email_account": "person2@example.com",
+  "firstName": "Alex",
+  "lastName": "Example",
+  "companyName": "Example Co",
+  "website": "https://example.com",
+  "phone": "+1234567890"
+}

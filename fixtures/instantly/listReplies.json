@@ -1,0 +1,119 @@
+{
+  "items": [
+    {
+      "id": "01a1d77f-5e65-78a7-8eb0-021174eeab65",
+      "timestamp_created": "2026-11-14T00:40:11.109Z",
+      "timestamp_email": "2026-11-14T00:40:11.109Z",
+      "message_id": "<example-message-1@mail.example.com>",
+      "subject": "Re: Your inquiry",
+      "from_address_email": "person1@example.com",
+      "to_address_email_list": "person2@example.com",
+      "cc_address_email_list": "person3@example.com",
+      "bcc_address_email_list": "person4@example.com",
+      "reply_to": "person5@example.com",
+      "body": {
+        "text": "This is a test email",
+        "html": "This is a test email.<br/><br/>Second line."
+      },
+      "organization_id": "01a1d77f-5e65-78a7-8eb0-0212308950a6",
+      "campaign_id": "01a1d77f-5e65-78a7-8eb0-0213c3e7d6dc",
+      "subsequence_id": "01a1d77f-5e65-78a7-8eb0-02147657011f",
+      "list_id": "01a1d77f-5e65-78a7-8eb0-021556b3b1bf",
+      "lead": "person6@example.com",
+      "lead_id": "01a1d77f-5e65-78a7-8eb0-0216d691e16c",
+      "eaccount": "eaccount-123",
+      "ue_type": 2,
+      "step": "step-123",
+      "is_unread": 1,
+      "is_auto_reply": 0,
+      "reminder_ts": "2026-11-14T00:40:11.109Z",
+      "ai_interest_value": 0.75,
+      "ai_assisted": 1,
+      "is_focused": 1,
+      "i_status": 0,
+      "thread_id": "01a1d77f-5e65-78a7-8eb0-021717740220",
+      "content_preview": "This is a preview of the email content.",
+      "body_fallback_reason": "too_large",
+      "attachment_json": {
+        "files": [
+          {
+            "filename": "attachment.pdf",
+            "size": 1927,
+            "type": "application/pdf",
+            "url": "https://cdn.instantly.ai/example-attachment/file.pdf",
+            "error": "Upload failed"
+          },
+          {
+            "filename": "attachment.pdf",
+            "size": 1927,
+            "type": "application/pdf",
+            "url": "https://cdn.instantly.ai/example-attachment/file.pdf",
+            "error": "Upload failed"
+          }
+        ]
+      },
+      "from_address_json": [],
+      "to_address_json": [],
+      "cc_address_json": [],
+      "ai_agent_id": "01a1d77f-5e65-78a7-8eb0-0218a5ac447f"
+    },
+    {
+      "id": "01a1d77f-5e65-78a7-8eb0-021174eeab66",
+      "timestamp_created": "2026-11-14T00:40:11.109Z",
+      "timestamp_email": "2026-11-14T00:40:11.109Z",
+      "message_id": "<example-message-1@mail.example.com>",
+      "subject": "Re: Your inquiry",
+      "from_address_email": "person11@example.com",
+      "to_address_email_list": "person12@example.com",
+      "cc_address_email_list": "person13@example.com",
+      "bcc_address_email_list": "person14@example.com",
+      "reply_to": "person15@example.com",
+      "body": {
+        "text": "This is a test email",
+        "html": "This is a test email.<br/><br/>Second line."
+      },
+      "organization_id": "01a1d77f-5e65-78a7-8eb0-0212308950a7",
+      "campaign_id": "01a1d77f-5e65-78a7-8eb0-0213c3e7d6dd",
+      "subsequence_id": "01a1d77f-5e65-78a7-8eb0-021476570110",
+      "list_id": "01a1d77f-5e65-78a7-8eb0-021556b3b1b0",
+      "lead": "person16@example.com",
+      "lead_id": "01a1d77f-5e65-78a7-8eb0-0216d691e16d",
+      "eaccount": "eaccount-123",
+      "ue_type": 2,
+      "step": "step-123",
+      "is_unread": 1,
+      "is_auto_reply": 0,
+      "reminder_ts": "2026-11-14T00:40:11.109Z",
+      "ai_interest_value": 0.75,
+      "ai_assisted": 1,
+      "is_focused": 1,
+      "i_status": 0,
+      "thread_id": "01a1d77f-5e65-78a7-8eb0-021717740221",
+      "content_preview": "This is a preview of the email content.",
+      "body_fallback_reason": "too_large",
+      "attachment_json": {
+        "files": [
+          {
+            "filename": "attachment.pdf",
+            "size": 1927,
+            "type": "application/pdf",
+            "url": "https://cdn.instantly.ai/example-attachment/file.pdf",
+            "error": "Upload failed"
+          },
+          {
+            "filename": "attachment.pdf",
+            "size": 1927,
+            "type": "application/pdf",
+            "url": "https://cdn.instantly.ai/example-attachment/file.pdf",
+            "error": "Upload failed"
+          }
+        ]
+      },
+      "from_address_json": [],
+      "to_address_json": [],
+      "cc_address_json": [],
+      "ai_agent_id": "01a1d77f-5e65-78a7-8eb0-0218a5ac4470"
+    }
+  ],
+  "next_starting_after": "01a1d77f-9718-7f17-93bf-ef04679aaecf"
+}
