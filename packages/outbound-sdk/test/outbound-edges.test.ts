@@ -226,3 +226,43 @@ test("works end to end over real HTTP with the default runtime", async () => {
     });
   }
 });
+
+test("a vendor with leads and senders only per campaign serves the scoped listing alone", async () => {
+  const outbound = createOutbound({
+    adapter: memory({
+      capabilities: { "leads.list": false, "senders.list": false },
+      data: demoData(),
+    }),
+  });
+
+  assert.equal(
+    (await outbound.campaign("cmp_founders").leads.list()).items.length,
+    2
+  );
+  assert.equal(
+    (await outbound.campaign("cmp_founders").senders.list()).items.length,
+    2
+  );
+  assert.equal(
+    (await failure(() => outbound.leads.list())).code,
+    "Unsupported"
+  );
+  assert.equal(
+    (await failure(() => outbound.senders.list())).code,
+    "Unsupported"
+  );
+
+  const unscopedOnly = createOutbound({
+    adapter: memory({
+      capabilities: { "leads.byCampaign": false },
+      data: demoData(),
+    }),
+  });
+
+  assert.equal((await unscopedOnly.leads.list()).items.length, 3);
+  assert.equal(
+    (await failure(() => unscopedOnly.campaign("cmp_founders").leads.list()))
+      .code,
+    "Unsupported"
+  );
+});

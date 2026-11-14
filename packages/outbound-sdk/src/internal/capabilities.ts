@@ -15,14 +15,16 @@ export interface Capabilities {
   "campaigns.status": FilterGrade;
   /** A campaign's steps and variants. */
   sequence: boolean;
+  /** List every sender on the credential. */
   "senders.list": boolean;
   "senders.get": boolean;
-  /** List the senders attached to one campaign. */
+  /** List the senders attached to one campaign. Does not need `senders.list`. */
   "senders.byCampaign": boolean;
   "senders.warmup": boolean;
+  /** List every lead on the credential, across campaigns. */
   "leads.list": boolean;
   "leads.get": boolean;
-  /** List the leads of one campaign. */
+  /** List the leads of one campaign. Does not need `leads.list`. */
   "leads.byCampaign": boolean;
   "leads.since": FilterGrade;
   /** Every message for one lead, in order. */

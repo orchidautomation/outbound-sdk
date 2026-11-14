@@ -89,9 +89,11 @@ export const senderList = (core: Core): ListSpec<Sender, SenderFilters> => ({
   action: "senders.list",
   keyOf: refOf,
   prepare: (filters) => {
-    requireCapability(core.gate, "senders.list", "Listing senders");
-
-    if (filters.campaignId !== undefined) {
+    // Some vendors list senders only per campaign, so the scoped listing
+    // does not depend on the unscoped one.
+    if (filters.campaignId === undefined) {
+      requireCapability(core.gate, "senders.list", "Listing senders");
+    } else {
       requireCapability(
         core.gate,
         "senders.byCampaign",
@@ -122,9 +124,10 @@ export const leadList = (core: Core): ListSpec<Lead, LeadFilters> => ({
   action: "leads.list",
   keyOf: refOf,
   prepare: (filters) => {
-    requireCapability(core.gate, "leads.list", "Listing leads");
-
-    if (filters.campaignId !== undefined) {
+    // Some vendors have no global lead list: leads exist only per campaign.
+    if (filters.campaignId === undefined) {
+      requireCapability(core.gate, "leads.list", "Listing leads");
+    } else {
       requireCapability(
         core.gate,
         "leads.byCampaign",
