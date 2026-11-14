@@ -1,0 +1,65 @@
+{
+  "totalCount": 3,
+  "items": [
+    {
+      "id": 62658,
+      "linkedInUserProfileId": "ACoAAExampleProfileId1",
+      "linkedInUserProfile": {
+        "linkedin_id": "58344979",
+        "profileUrl": "https://www.linkedin.com/in/example-person-1",
+        "firstName": "Alex",
+        "lastName": "Example",
+        "headline": "Communications and Marketing Professional",
+        "imageUrl": "https://example.com/image.jpg",
+        "location": "Princetown",
+        "companyName": "Example Co",
+        "companyUrl": null,
+        "position": "",
+        "about": null,
+        "connections": 0,
+        "followers": 0,
+        "emailAddress": null
+      },
+      "lastActionTime": "2024-10-01T03:28:22.414791Z",
+      "failedTime": null,
+      "creationTime": "2024-09-30T21:28:06.933349Z",
+      "leadCampaignStatus": "Finished",
+      "leadConnectionStatus": "None",
+      "leadMessageStatus": "None",
+      "errorCode": null,
+      "leadCampaignStatusMessage": null,
+      "linkedInSenderId": 1108,
+      "linkedInSenderFullName": "Sam Example"
+    },
+    {
+      "id": 62659,
+      "linkedInUserProfileId": "ACoAAExampleProfileId2",
+      "linkedInUserProfile": {
+        "linkedin_id": "58344980",
+        "profileUrl": "https://www.linkedin.com/in/example-person-2",
+        "firstName": "Sam",
+        "lastName": "Example",
+        "headline": "Communications and Marketing Professional",
+        "imageUrl": "https://example.com/image.jpg",
+        "location": "Princetown",
+        "companyName": "Example Co",
+        "companyUrl": null,
+        "position": "",
+        "about": null,
+        "connections": 0,
+        "followers": 0,
+        "emailAddress": null
+      },
+      "lastActionTime": "2024-10-01T03:28:22.414791Z",
+      "failedTime": null,
+      "creationTime": "2024-09-30T21:28:06.933349Z",
+      "leadCampaignStatus": "InSequence",
+      "leadConnectionStatus": "ConnectionAccepted",
+      "leadMessageStatus": "MessageReply",
+      "errorCode": null,
+      "leadCampaignStatusMessage": null,
+      "linkedInSenderId": 1108,
+      "linkedInSenderFullName": "Sam Example"
+    }
+  ]
+}

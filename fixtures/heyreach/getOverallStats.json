@@ -1,0 +1,68 @@
+{
+  "byDayStats": {
+    "2024-12-17T00:00:00Z": {
+      "profileViews": 0,
+      "postLikes": 0,
+      "follows": 0,
+      "messagesSent": 723,
+      "totalMessageStarted": 593,
+      "totalMessageReplies": 136,
+      "inmailMessagesSent": 0,
+      "totalInmailStarted": 0,
+      "totalInmailReplies": 0,
+      "connectionsSent": 4650,
+      "connectionsAccepted": 637,
+      "messageReplyRate": 0.22934233,
+      "inMailReplyRate": 0.0,
+      "connectionAcceptanceRate": 0.13698925
+    },
+    "2024-12-18T00:00:00Z": {
+      "profileViews": 0,
+      "postLikes": 0,
+      "follows": 0,
+      "messagesSent": 1033,
+      "totalMessageStarted": 592,
+      "totalMessageReplies": 119,
+      "inmailMessagesSent": 0,
+      "totalInmailStarted": 0,
+      "totalInmailReplies": 0,
+      "connectionsSent": 5161,
+      "connectionsAccepted": 652,
+      "messageReplyRate": 0.20101352,
+      "inMailReplyRate": 0.0,
+      "connectionAcceptanceRate": 0.1263321
+    },
+    "2024-12-19T00:00:00Z": {
+      "profileViews": 0,
+      "postLikes": 0,
+      "follows": 0,
+      "messagesSent": 845,
+      "totalMessageStarted": 581,
+      "totalMessageReplies": 140,
+      "inmailMessagesSent": 0,
+      "totalInmailStarted": 0,
+      "totalInmailReplies": 0,
+      "connectionsSent": 4929,
+      "connectionsAccepted": 539,
+      "messageReplyRate": 0.24096386,
+      "inMailReplyRate": 0.0,
+      "connectionAcceptanceRate": 0.10935281
+    }
+  },
+  "overallStats": {
+    "profileViews": 0,
+    "postLikes": 0,
+    "follows": 0,
+    "messagesSent": 2601,
+    "totalMessageStarted": 1766,
+    "totalMessageReplies": 395,
+    "inmailMessagesSent": 0,
+    "totalInmailStarted": 0,
+    "totalInmailReplies": 0,
+    "connectionsSent": 14740,
+    "connectionsAccepted": 1828,
+    "messageReplyRate": 0.2236693,
+    "inMailReplyRate": 0.0,
+    "connectionAcceptanceRate": 0.124016285
+  }
+}
