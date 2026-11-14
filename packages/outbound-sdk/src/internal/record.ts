@@ -1,5 +1,6 @@
 import { SCHEMA_VERSION } from "./entities.ts";
-import type { EventType } from "./entities.ts";
+import type { EventData, EventType } from "./entities.ts";
+import { compactObject } from "./json.ts";
 import type { Json } from "./json.ts";
 import { makeRef } from "./ref.ts";
 
@@ -56,3 +57,21 @@ export const eventTypesOf = (
       })
     ),
   ].toSorted();
+
+/** The shared keys of an event's data, each with the type it must have. */
+type SharedEventData = {
+  readonly [
+    Key in keyof EventData as string extends Key ? never : Key
+  ]?: EventData[Key];
+};
+
+/**
+ * An event's `data` from what an adapter read: the shared keys are typed, a
+ * vendor's extras are any JSON, and a key with no value is left out.
+ */
+export const eventData = (
+  shared: SharedEventData,
+  extras: Readonly<Record<string, Json | undefined>> = {}
+): EventData =>
+  // SAFETY: the shared keys were typed on the way in and only absent values are dropped.
+  compactObject({ ...extras, ...shared }) as EventData;

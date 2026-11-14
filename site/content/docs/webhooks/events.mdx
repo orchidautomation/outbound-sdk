@@ -51,6 +51,24 @@ Any other event name comes back as `type: "unknown"` with the vendor's name in `
 - **Several vendor events share a type.** Use `data.vendorEvent` when you need to tell `lead_interested` from `lead_closed`.
 - **Two events can describe one thing.** HeyReach can send both `message_reply_received` and `every_message_reply_received` for one reply. They have different ids, so they are two events to you.
 
+## What `data` holds
+
+An event's `data` has a set of keys that mean the same on every vendor, and the vendor's own extras beside them. The shared keys are checked against the event schema, so a `category` is always one of the SDK's categories and a `stepIndex` always counts from 0. A key is absent when the vendor's payload does not carry it.
+
+| Key | Type | Holds |
+| --- | --- | --- |
+| `vendorEvent` | `string` | The event's name in the vendor's own words. |
+| `campaignName` | `string` |  |
+| `leadEmail`, `leadName`, `senderEmail` | `string` | Addresses are lowercased. |
+| `subject`, `text` | `string` | The message or reply, when the vendor sends it. |
+| `stepIndex` | integer | The step the message belongs to, counted from 0. |
+| `variantKey` | `string` | The variant that sent it. |
+| `category` | a reply category | What a categorized reply was categorized as. |
+| `categoryName` | `string` | The vendor's own name for that category. |
+| `isAuto`, `isFirst`, `isInmail`, `isTest`, `untracked` | boolean | An automatic reply, the first event of its kind for the lead, a LinkedIn InMail, a test delivery, a reply tied to no campaign. |
+
+Anything else in `data` is the vendor's own, such as HeyReach's `conversationId` and `recentMessages` or Smartlead's `currentStatus` on a campaign status change.
+
 ## Idempotency
 
 `event.id` is the same every time the vendor delivers the same event, so handling an event twice can be made a no-op. How the id is built depends on what the vendor sends:

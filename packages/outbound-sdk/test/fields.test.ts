@@ -6,7 +6,11 @@ import { test } from "node:test";
 
 import { combine } from "../src/combine/index.ts";
 import { heyreach } from "../src/heyreach/index.ts";
-import { createOutbound, resolveFields } from "../src/index.ts";
+import {
+  createOutbound,
+  outboundEventSchema,
+  resolveFields,
+} from "../src/index.ts";
 import { instantly } from "../src/instantly/index.ts";
 import { memory } from "../src/memory/index.ts";
 
@@ -252,4 +256,46 @@ test("lists and webhooks: one record by id, in memory, combined and refused", as
     async () => await off.webhooks.get("w1"),
     /webhooks\.get/u
   );
+});
+
+test("events: the shared keys of an event's data are checked, and a vendor's extras ride along", () => {
+  const event = {
+    campaignRef: null,
+    data: {
+      category: "positive",
+      conversationId: "abc",
+      recentMessages: [{ text: "hi" }],
+      stepIndex: 2,
+      vendorEvent: "reply_received",
+    },
+    id: "e1",
+    leadRef: null,
+    messageRef: null,
+    occurredAt: null,
+    provider: "memory",
+    raw: null,
+    schemaVersion: 1,
+    senderRef: null,
+    type: "reply.received",
+    workspaceId: "default",
+  };
+
+  assert.equal(outboundEventSchema.safeParse(event).success, true);
+
+  for (const wrong of [
+    { category: "interested" },
+    { stepIndex: -1 },
+    { stepIndex: "2" },
+    { isAuto: "yes" },
+    { leadEmail: 7 },
+  ]) {
+    assert.equal(
+      outboundEventSchema.safeParse({
+        ...event,
+        data: { ...event.data, ...wrong },
+      }).success,
+      false,
+      `${JSON.stringify(wrong)} is not what the key means`
+    );
+  }
 });

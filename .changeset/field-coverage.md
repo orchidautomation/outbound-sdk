@@ -13,3 +13,5 @@ Say which fields each adapter fills, and normalize more of what the three vendor
 - A campaign, list, tag or workspace the vendor gave no name is named by its id; `name` is never an empty string.
 - A webhook subscription carries `eventTypes`: the SDK's event types its vendor event names become.
 - `outbound.lists.get(id)`, `outbound.list(id).get()` and `outbound.webhooks.get(id)` read one list or one webhook (`lists.get`, `webhooks.get`). On Instantly a list read by id has its `size`.
+- An event's `data` has a checked shape for the keys every vendor shares, as part of `outboundEventSchema`; a vendor's extras still ride along.
+- A block entry the vendor gave no value is skipped, and `value` is never empty.

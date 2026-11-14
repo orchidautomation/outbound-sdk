@@ -344,11 +344,53 @@ export const eventTypeSchema = z.enum([
 
 export type EventType = z.infer<typeof eventTypeSchema>;
 
+const said = z.string().nullable().optional();
+const told = z.boolean().nullable().optional();
+
+/**
+ * What an event says beyond its refs. The keys below mean the same on every
+ * vendor and are checked; a vendor's own extras ride along beside them. A key
+ * is absent when the vendor's payload does not carry it.
+ */
+export const eventDataSchema = z
+  .object({
+    campaignName: said,
+    /** What a categorized reply was categorized as. */
+    category: replyCategorySchema.nullable().optional(),
+    /** The vendor's own name for that category. */
+    categoryName: said,
+    /** `true` for an automatic reply. */
+    isAuto: told,
+    /** `true` for the first event of its kind for the lead. */
+    isFirst: told,
+    /** `true` for a LinkedIn InMail. */
+    isInmail: told,
+    /** `true` for a test delivery the vendor sent on request. */
+    isTest: told,
+    /** Lowercased. */
+    leadEmail: said,
+    leadName: said,
+    senderEmail: said,
+    /** The step the message belongs to, counted from 0. */
+    stepIndex: z.number().int().nonnegative().nullable().optional(),
+    subject: said,
+    /** The message or reply text, when the vendor sends it. */
+    text: said,
+    /** `true` for a reply the vendor could not tie to a campaign. */
+    untracked: told,
+    variantKey: said,
+    /** The event's name in the vendor's own words. */
+    vendorEvent: said,
+  })
+  .catchall(z.json());
+
+export type EventData = z.infer<typeof eventDataSchema>;
+
 /** Every webhook and every sync diff becomes this one shape. */
 export const outboundEventSchema = z.object({
   campaignRef: z.string().nullable(),
-  /** The type-specific normalized payload. */
-  data: z.record(z.string(), z.json()),
+  /** What the event says beyond its refs: shared keys, then the vendor's extras. */
+  data: eventDataSchema,
   /** Stable across redelivery, so handling an event twice is a no-op. */
   id: z.string().min(1),
   leadRef: z.string().nullable(),

@@ -8,12 +8,12 @@
 import type { EventFormat, WebhookRequest } from "../internal/adapter.ts";
 import { SCHEMA_VERSION } from "../internal/entities.ts";
 import type {
+  EventData,
   EventType,
   OutboundEvent,
   ReplyCategory,
 } from "../internal/entities.ts";
 import {
-  compactObject,
   count,
   emailAddress,
   field,
@@ -24,7 +24,7 @@ import {
   timestamp,
 } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
-import { refTo } from "../internal/record.ts";
+import { eventData, refTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
 import { fromOne } from "../internal/sequence.ts";
 import { stableId } from "../internal/sha256.ts";
@@ -80,27 +80,31 @@ const statusChange = (name: string, body: JsonObject): JsonObject =>
       }
     : {};
 
-const eventData = (name: string, body: JsonObject): JsonObject =>
-  compactObject({
-    ...statusChange(name, body),
-    campaignName: text(body.campaign_name),
-    category:
-      name === "LEAD_CATEGORY_UPDATED" ? categoryOf(body.lead_data) : undefined,
-    categoryName: text(field(body.lead_category, "new_name")),
-    isTest: flag(body.is_test),
-    leadEmail:
-      emailAddress(body.to_email) ??
-      emailAddress(body.lead_email) ??
-      emailAddress(body.sl_lead_email),
-    senderEmail: emailAddress(body.from_email),
-    stepIndex: stepIndex(body),
-    subject: text(body.subject),
-    text: REPLIES.has(name)
-      ? (text(field(body.reply_message, "text")) ?? text(body.preview_text))
-      : undefined,
-    untracked: name === "UNTRACKED_REPLIES" ? true : undefined,
-    vendorEvent: name,
-  });
+const dataOf = (name: string, body: JsonObject): EventData =>
+  eventData(
+    {
+      campaignName: text(body.campaign_name),
+      category:
+        name === "LEAD_CATEGORY_UPDATED"
+          ? categoryOf(body.lead_data)
+          : undefined,
+      categoryName: text(field(body.lead_category, "new_name")),
+      isTest: flag(body.is_test),
+      leadEmail:
+        emailAddress(body.to_email) ??
+        emailAddress(body.lead_email) ??
+        emailAddress(body.sl_lead_email),
+      senderEmail: emailAddress(body.from_email),
+      stepIndex: stepIndex(body),
+      subject: text(body.subject),
+      text: REPLIES.has(name)
+        ? (text(field(body.reply_message, "text")) ?? text(body.preview_text))
+        : undefined,
+      untracked: name === "UNTRACKED_REPLIES" ? true : undefined,
+      vendorEvent: name,
+    },
+    statusChange(name, body)
+  );
 
 const occurredAt = (body: JsonObject): string | null =>
   timestamp(body.event_timestamp) ??
@@ -128,7 +132,7 @@ const toEvent = (
 
   return {
     campaignRef: refTo(identity, campaignId),
-    data: eventData(name, body),
+    data: dataOf(name, body),
     // A signed webhook carries a `webhook-id` that is the same on every
     // retry. Without it the id is built from what identifies the event.
     id:
@@ -163,12 +167,16 @@ const toNotice = (identity: Identity, body: JsonObject): OutboundEvent => {
 
   return {
     campaignRef: refTo(identity, text(field(body.data, "campaign_id"))),
-    data: compactObject({
-      action: text(field(body.data, "action")),
-      reason: text(field(body.data, "reason")),
-      senderEmail: emailAddress(field(body.data, "email")),
-      vendorEvent: name,
-    }),
+    data: eventData(
+      {
+        senderEmail: emailAddress(field(body.data, "email")),
+        vendorEvent: name,
+      },
+      {
+        action: text(field(body.data, "action")),
+        reason: text(field(body.data, "reason")),
+      }
+    ),
     id: stableId(identity.provider, name, text(body.id), at),
     leadRef: null,
     messageRef: null,
