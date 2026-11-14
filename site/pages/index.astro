@@ -40,6 +40,8 @@ const samples = [
   output: example(`${sample.name}.out.txt`),
 }));
 
+const CHANNELS = { email: "Email", linkedin: "LinkedIn" } as const;
+
 const vendors = providers.filter(({ id }) => id !== "memory");
 
 const promises = [
@@ -235,7 +237,7 @@ const maturityLabel = {
                   {maturityLabel[provider.maturity]}
                 </span>
               </div>
-              <p class="vendor-channel">{provider.channels.join(" · ")}</p>
+              <p class="vendor-channel">{provider.channels.map((channel) => CHANNELS[channel]).join(" · ")}</p>
               <p>{provider.note}</p>
               <code class="vendor-import">outbound-sdk/{provider.id}</code>
             </a>
@@ -392,7 +394,7 @@ const maturityLabel = {
 <style>
   .home {
     --home-radius: 14px;
-    --home-wrap: 72rem;
+    --home-wrap: 76rem;
     color: var(--color-foreground);
   }
 
@@ -457,7 +459,7 @@ const maturityLabel = {
   @media (min-width: 64rem) {
     .hero-inner {
       gap: 3.5rem;
-      grid-template-columns: 1fr 1.05fr;
+      grid-template-columns: 0.9fr 1.2fr;
       padding-block: 6rem 6.5rem;
     }
   }
@@ -502,7 +504,7 @@ const maturityLabel = {
     color: var(--color-muted-foreground);
     font-size: 1.125rem;
     line-height: 1.65;
-    margin: 1.4rem 0 0;
+    margin: 1.75rem 0 0;
     max-width: 34rem;
     text-wrap: pretty;
   }
@@ -653,7 +655,7 @@ const maturityLabel = {
   .output {
     background: transparent !important;
     font-family: var(--font-mono, ui-monospace, monospace);
-    font-size: 0.8125rem;
+    font-size: 0.78rem;
     line-height: 1.7;
     margin: 0;
     overflow-x: auto;
@@ -753,7 +755,8 @@ const maturityLabel = {
     margin: 0;
   }
 
-  .home p {
+  /* No specificity, so a component's own margin wins over this reset. */
+  :where(.home) p {
     margin: 0;
   }
 
@@ -796,7 +799,6 @@ const maturityLabel = {
 
   .vendor .vendor-channel {
     font-size: 0.8125rem;
-    text-transform: capitalize;
   }
 
   .vendor-import {
