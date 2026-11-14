@@ -22,7 +22,7 @@ const ADAPTERS: Readonly<Record<string, () => Adapter<NativeCatalog>>> = {
 };
 
 /** Vendors that must have a coverage file. */
-const REQUIRED: readonly string[] = [];
+const REQUIRED: readonly string[] = ["heyreach", "instantly", "smartlead"];
 
 const METHODS = new Set(["DELETE", "GET", "PATCH", "POST", "PUT"]);
 

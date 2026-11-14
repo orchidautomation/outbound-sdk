@@ -1,34 +1,16 @@
 # Smartlead coverage
 
-Inventoried on 2026-11-14 from Smartlead's API reference at
-https://api.smartlead.ai/api-reference/, read through
-`https://api.smartlead.ai/llms-full.txt` (all 262 pages, 242 of them endpoint
-pages) and checked against `https://api.smartlead.ai/llms.txt`. The table has
-230 endpoints: 27 normalized, 78 native, 20 excluded and 105 writes. It covers
-the main API (`https://server.smartlead.ai/api/v1`) and the four sister
-services the reference documents, each on its own host under `/api/v1`:
-SmartDelivery (`smartdelivery.smartlead.ai`), SmartProspect
-(`prospect-api.smartlead.ai`), SmartSenders (`smart-senders.smartlead.ai`) and
-SmartServers (`smartservers.smartlead.ai`); their rows name the service in the
-Reads column.
+Inventoried on 2026-11-14 from Smartlead's API reference at https://api.smartlead.ai/api-reference/, read through `https://api.smartlead.ai/llms-full.txt` (all 262 pages, 242 of them endpoint pages) and checked against `https://api.smartlead.ai/llms.txt`. The table has 230 endpoints: 27 normalized, 78 native, 20 excluded and 105 writes. It covers the main API (`https://server.smartlead.ai/api/v1`) and the four sister services the reference documents, each on its own host under `/api/v1`: SmartDelivery (`smartdelivery.smartlead.ai`), SmartProspect (`prospect-api.smartlead.ai`), SmartSenders (`smart-senders.smartlead.ai`) and SmartServers (`smartservers.smartlead.ai`); their rows name the service in the Reads column.
 
 Notes on the count:
 
-- Several endpoints have two reference pages (one under Campaigns, one under
-  Leads, Inbox or Campaign Statistics). Each endpoint is listed once.
-- Two pages document several endpoints each: client API keys and the domain
-  block list. Every endpoint on them has its own row.
-- `GET /leads/{lead_id}/campaigns` is only in the deprecated Notion reference.
-  It is listed because `leads.timeline` calls it.
-- `llms.txt` and the quickstart name a few short paths that have no reference
-  page and contradict the reference (`GET /webhooks`, `GET /leads/by-email`,
-  `GET /analytics/overview`, `POST /campaigns/new`). They are not listed.
+- Several endpoints have two reference pages (one under Campaigns, one under Leads, Inbox or Campaign Statistics). Each endpoint is listed once.
+- Two pages document several endpoints each: client API keys and the domain block list. Every endpoint on them has its own row.
+- `GET /leads/{lead_id}/campaigns` is only in the deprecated Notion reference. It is listed because `leads.timeline` calls it.
+- `llms.txt` and the quickstart name a few short paths that have no reference page and contradict the reference (`GET /webhooks`, `GET /leads/by-email`, `GET /analytics/overview`, `POST /campaigns/new`). They are not listed.
 - Nothing here was checked against a live account.
 
-Two parameters are left out of the native catalog because they carry or
-return secrets: `includeWhitelabel` on `GET /client/{id}` (whitelabel
-credentials) and `private_api_key` on
-`GET /campaigns/{campaign_id}/mailbox-statistics`.
+Two parameters are left out of the native catalog because they carry or return secrets: `includeWhitelabel` on `GET /client/{id}` (whitelabel credentials) and `private_api_key` on `GET /campaigns/{campaign_id}/mailbox-statistics`.
 
 | Method | Path | Reads | Coverage | Through |
 | --- | --- | --- | --- | --- |

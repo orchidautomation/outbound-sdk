@@ -39,11 +39,11 @@ Generated from the adapters' own declarations. A filter is `server` (the vendor 
 | `messages.body`         | full      | full      | full     |
 | `messages.byThread`     | yes       | yes       | yes      |
 | `messages.list`         | yes       | yes       | yes      |
-| `messages.since`        | server    | client    | client   |
-| `native`                | yes       | no        | no       |
+| `messages.since`        | server    | client    | server   |
+| `native`                | yes       | yes       | yes      |
 | `replies.category`      | vendor    | vendor    | no       |
 | `replies.list`          | yes       | yes       | yes      |
-| `replies.since`         | server    | client    | client   |
+| `replies.since`         | server    | client    | server   |
 | `senders.byCampaign`    | yes       | yes       | yes      |
 | `senders.get`           | yes       | yes       | yes      |
 | `senders.health`        | yes       | yes       | yes      |

@@ -35,6 +35,7 @@ const entries: [string, NativeRead][] = Object.entries(NATIVE);
 const SAMPLES: Readonly<Record<NativeParam["type"], Json>> = {
   boolean: true,
   json: { ids: [1, 2] },
+  list: ["first", "second"],
   number: 7,
   string: "a b/c",
 };
