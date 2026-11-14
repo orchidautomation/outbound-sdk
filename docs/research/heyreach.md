@@ -486,3 +486,17 @@ Each campaign gives one record with that campaign's ref and the lead's status in
 - A known person in no campaign was not seen: whether `GetCampaignsForLead` then answers 200 with no items or 404 is not known, and both are read as no campaigns.
 - Which of the email fields `GetCampaignsForLead` and `GetListsForLead` match on is not documented.
 - How HeyReach stores a slug with upper-case or non-ASCII letters is not known.
+
+## Load test, 2026-11-14
+
+Hand-run once against one live workspace, read-only, from one process, with the default `share` of 0.5.
+
+HeyReach enforces a burst limit its documentation does not mention. The 429 body reads "Too many requests. Limit is 15 requests per 2 second(s)", and it carried no `Retry-After` and no rate-limit headers. The documented limit is 300 requests a minute.
+
+| 100 `campaigns.get` fired at once | Before the limit was declared | After |
+| --- | --- | --- |
+| Succeeded | 100 | 100 |
+| Responses of 429 | 35, all recovered by retry | 0 |
+| Time | 187 seconds | 33 seconds |
+
+An earlier run of 200 at once saw 13 responses of 429, also all recovered. The adapter now declares both windows: 15 per 2 seconds and 300 per minute. These are single observations, not a benchmark, and whether the limit is per key, per workspace or per organization is still unknown.
