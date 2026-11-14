@@ -49,6 +49,9 @@ export const capabilities: CapabilityDeclaration = {
   // Smartlead has no list of all leads. Without a campaign the adapter walks
   // every campaign's leads; see the caveats.
   "leads.list": true,
+  // GET /leads/?email= returns the lead and its campaigns. Nothing finds a
+  // lead by its LinkedIn profile, so that filter matches no lead.
+  "leads.lookup": true,
   // created_at_gt does not say which created_at it compares, so it is not
   // sent and the wrapper filters after fetching.
   "leads.since": "client",
@@ -114,7 +117,8 @@ export const costs = {
   // The lead, then its tags.
   "leads.get": { perPage: 2 },
   // The first page also reads the lead category list and, without a
-  // campaign, the campaign list.
+  // campaign, the campaign list. A lookup by address is one request, two
+  // when a campaign gives a lead category, and never walks leads.
   "leads.list": { pageSize: PAGE_SIZE, perPage: 1 },
   "lists.list": { pageSize: PAGE_SIZE, perPage: 1 },
   // A lead's timeline costs one request per campaign the lead is in, plus one
@@ -145,6 +149,8 @@ export const caveats: readonly string[] = [
   "Nothing is checked against a live account; mappings follow the documentation read on 2026-11-14, whose three sources disagree, also on envelopes (bare or { ok | success, data }; both are accepted).",
   "The API key travels in the URL (api_key): the SDK redacts it, but a proxy or server log can record it.",
   "leads.list without a campaign walks every campaign: a lead in no campaign is never returned, and one in several is returned once by listAll.",
+  "leads.list({ email }) reads GET /leads/?email=: one record per campaign, all with the lead's id (listAll keeps one), status unknown unless unsubscribed, createdAt the lead's own. Address matching is undocumented; other addresses are dropped.",
+  "No endpoint finds a lead by LinkedIn profile: leads.list({ linkedinUrl }) returns nothing and sends no request.",
   "A lead's status, campaign and creation time are per campaign; leads.get returns no campaign and its example looks illustrative.",
   "STOPPED maps to paused; lead status BLOCKED maps to bounced.",
   "Messages come from GET /campaigns/all-leads-activities (10 requests per 60 s, no campaign filter, pages of leads): campaign(id).messages reads the whole feed, and thread_replies is not read.",

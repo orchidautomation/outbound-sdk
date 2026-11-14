@@ -444,6 +444,19 @@ Which source was followed: the **reference pages on `api.smartlead.ai`** for URL
 
 - `interest` is the lead category's name. `GET /campaigns/{id}/leads` gives `lead_category_id`; the name comes from `GET /leads/fetch-categories`, read once per walk. `GET /leads/{id}` shows `category_name` in its illustrative example only.
 
+### Lead lookup by address: `GET /leads/?email=` (added 2026-11-14)
+
+Read again on 2026-11-14 from https://api.smartlead.ai/llms-full.txt, page https://api.smartlead.ai/api-reference/leads/get-by-email.
+
+- `leads.list({ email })` sends one `GET /leads/?email=<address>`. The response is the bare lead (`id`, `email`, names, `company_name`, `linkedin_profile`, `custom_fields`, `is_unsubscribed`, `created_at`) with `lead_campaign_data[]`: `campaign_lead_map_id`, `campaign_id`, `campaign_name`, `client_id`, `client_email`, `lead_category_id`. The adapter returns one record per item, with that campaign's ref. With a `campaignId` it keeps that campaign's item only.
+- An unknown address is `{}` with HTTP 200 (also 401 and 422 `{"error": "email is required"}`); `{}` gives an empty page.
+- `lead_campaign_data` has no lead status and no per-campaign creation time. The status is `unknown` (or `unsubscribed` from `is_unsubscribed`) and `createdAt` is the lead's own `created_at`. The status per campaign is only in `GET /leads/{leadId}/campaign-overview`, which refuses client-level keys, so it is not read.
+- `interest` needs the category names: one more request (`GET /leads/fetch-categories`) when a returned item has a `lead_category_id`. A lookup is therefore 1 or 2 requests.
+- Fallback, not documented as needed: if the lead comes without `lead_campaign_data`, the campaigns are read from the legacy `GET /leads/{lead_id}/campaigns` (`{ id, status, name }`, where `status` is the campaign's, not the lead's).
+- Unconfirmed: whether the address match is exact or case-sensitive (the adapter sends the lowercased address and drops a lead whose `email` differs), whether the response is ever wrapped in `{ ok, data }` (accepted), and whether inactive campaign memberships are listed.
+- No endpoint looks a lead up by LinkedIn profile: `linkedin_profile` is only a field on lead payloads. `leads.list({ linkedinUrl })` returns an empty page without a request.
+- Every record of one person carries the same lead id, so the refs are equal: `list` returns one record per campaign and `listAll`, which keeps each ref once, returns one.
+
 ### Not available from the API
 
 - **`leads.engagement`** (per-lead open, click and reply counts): the endpoint for it, `GET /campaigns/{id}/leads-statistics`, documents only the placeholder `{ "ok": true, "data": [] }` in every source, so nothing can be mapped without guessing. `GET /campaigns/{id}/leads-export` has `open_count`, `click_count`, `reply_count` but returns CSV. `POST /campaigns/{id}/leads/filter` (`fieldSet: "active_table"`) has `last_sent_time`, `latest_reply_time` and `current_seq_num`, but no counts, no creation time, a different order from the lead list, and it refuses client keys.

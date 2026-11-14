@@ -22,6 +22,15 @@ const paged = (name: string) => (request: RouteRequest) => {
   return offset > 0 ? `${name}.page2.json` : `${name}.json`;
 };
 
+/** The address the lead-by-email fixture answers for. */
+export const EMAIL = "person1@example.com";
+
+// Any other address gets the documented empty object.
+const byEmail = (request: RouteRequest) =>
+  request.url.searchParams.get("email") === EMAIL
+    ? "getLeadByEmail.json"
+    : "getLeadByEmail.notfound.json";
+
 /** The request as a URL, to read its path and query. */
 export const urlOf = (request: RecordedRequest | undefined): URL =>
   new URL(request?.url ?? "");
@@ -97,6 +106,7 @@ export const suite: AdapterSuite = {
       method: "GET",
       path: `${API}/leads/fetch-categories`,
     },
+    { fixture: byEmail, method: "GET", path: `${API}/leads/` },
     {
       fixture: "getLeadById.json",
       method: "GET",

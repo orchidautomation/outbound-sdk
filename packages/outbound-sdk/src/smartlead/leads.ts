@@ -7,6 +7,7 @@ import { OutboundError } from "../internal/errors.ts";
 import { count, field, isJsonObject, objects, text } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
 import type { SmartleadClient } from "./client.ts";
+import { leadsByEmail } from "./lookup.ts";
 import { toCampaignLead, toLead, unwrap } from "./map.ts";
 import {
   campaignIds,
@@ -106,6 +107,10 @@ export const listLeads = async (
   ctx: AdapterContext,
   query: LeadQuery
 ): Promise<Page<Lead>> => {
+  if (query.email !== undefined || query.linkedinUrl !== undefined) {
+    return await leadsByEmail(client, ctx, query);
+  }
+
   if (query.campaignId === undefined) {
     return await allLeads(client, ctx, query);
   }

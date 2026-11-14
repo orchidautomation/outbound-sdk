@@ -289,6 +289,38 @@ export const toCampaignLead = (
     tags: [],
   });
 
+interface FoundPlace {
+  readonly campaignId: string;
+  /** The campaign's item: of `lead_campaign_data`, or of the lead's campaigns. */
+  readonly entry: JsonObject;
+  readonly categories: Readonly<Record<string, string>>;
+}
+
+/**
+ * `GET /leads/?email=`: the lead inside one of its campaigns. `raw` has the
+ * shape of a campaign's lead row: the campaign's item with the lead under
+ * `lead`. Neither read gives the lead's status in the campaign, so the status
+ * is unknown unless the lead is unsubscribed, and the creation time is the
+ * lead's own.
+ */
+export const toFoundLead = (
+  identity: Identity,
+  found: JsonObject,
+  place: FoundPlace
+): Lead => {
+  const { lead_campaign_data: _campaigns, ...lead } = found;
+
+  return leadRecord(identity, lead, {
+    campaignId: place.campaignId,
+    createdAt: lead.created_at,
+    interest:
+      place.categories[text(place.entry.lead_category_id) ?? ""] ?? null,
+    raw: { ...place.entry, lead },
+    status: undefined,
+    tags: [],
+  });
+};
+
 /**
  * `GET /leads/{id}`: the lead on its own, with no campaign. `tags` are the
  * names from `GET /crm/leads/tags?leadId=`.
