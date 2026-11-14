@@ -1,0 +1,13 @@
+2 campaigns; [
+  {
+    error: null,
+    evidence: 'exact',
+    kind: 'campaigns.list',
+    ms: 0,
+    records: 2
+  }
+]
+typed extension: 1
+2 senders; 1 failed
+Unsupported and the log saw 0 reads
+Invalid The read-log plugin is listed twice
