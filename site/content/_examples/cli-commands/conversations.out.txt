@@ -31,6 +31,7 @@ $ outbound replies --campaign cmp_founders --since 2026-10-06T00:00:00Z --bodies
 $ outbound thread thr_1 --bodies
 {
   "complete": true,
+  "failures": [],
   "items": [
     {
       "provider": "memory",

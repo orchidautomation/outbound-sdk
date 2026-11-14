@@ -66,6 +66,38 @@ A listing filtered to one campaign or one saved list goes straight to the member
 
 A person lookup, a lead listing filtered by `email` or `linkedinUrl`, is the exception: it asks every member at the same time, because each answers with a record or two. Records still come back in member order, and the cursor holds only the members with more to give. Each request still counts against its own vendor's rate budget.
 
+### When one member fails
+
+One failing member fails a combined read: a listing, a lookup by ref, `stats()`. There is no partial result.
+
+A person lookup is the exception. Every member was asked at once, so when one fails the others' answers are already in hand, and they are returned:
+
+| Field | With one member down |
+| --- | --- |
+| `items` | The records of the members that answered. |
+| `complete` | `false`, on the page and on `meta`. |
+| `failures` | One entry per failed member: `provider`, `workspaceId`, `code`, `status` (`null` when there was no HTTP status) and `message`. Empty when every member answered. |
+| `cursor` | Holds only the members that answered and have more to give. The failed member is not asked again on the next page. |
+
+On a walk, `listAll(...).failures` lists each failed member once, across every page fetched.
+
+An empty `items` with an entry in `failures` does not say the person is absent. It says one tool was not read.
+
+Which failures count:
+
+| The member's failure | What the lookup does |
+| --- | --- |
+| `Unauthorized`: the key was rejected | Returns the others, lists the member. |
+| `Provider`: the tool is down, the network failed, or it did not answer within `timeout`, after the retries | Returns the others, lists the member. |
+| `RateLimited` by the vendor (a 429 that outlasted the retries) | Returns the others, lists the member. |
+| `Invalid`, `Unsupported`, `NotFound` | Throws. It is a mistake in the call, and no other member's answer makes up for it. |
+| A cap you set: `maxRequests`, the [`budget`](/docs/plugins/budget) plugin, `signal`, `deadline` | Throws. Your cap stops the whole call. |
+| Every member fails | Throws the first member's error. |
+
+The [`cache`](/docs/plugins/cache) and [`failover`](/docs/plugins/failover) plugins do not keep an answer that has `failures`, so a tool that comes back is read again on the next call.
+
+The `identity` plugin's `person()` and the people insights (`person_summary` and the others that look a person up) are built on this lookup. `person()` returns `complete` and `failures`. An insight sets `meta.complete` to `false` and adds a note naming the tool and its error code.
+
 ### Lookups need a ref
 
 Three members above each have a campaign with the id `cmp_1`. A lookup on a combined instance therefore takes the record's `ref` (`provider:workspace:id`), which every record carries. A bare vendor id is refused with `Invalid`. This applies to `campaigns.get`, to `campaign(id)`, `sender(id)`, `lead(id)` and `list(id)`, and to a `campaignId` filter.

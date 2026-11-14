@@ -51,24 +51,44 @@ await attempt("thread on one member", () =>
 
 // 5. A failing member fails the combined read. Nothing is returned for the
 //    members that answered.
-const base = memory({ data: acmeEmail, name: "emailtool", workspaceId: "b" });
+const person = "dana@example.com";
+
+const withLead = {
+  ...acmeEmail,
+  leads: [{ campaignId: "cmp_1", email: person, id: "lead_1" }],
+};
+
+const base = memory({ data: withLead, name: "emailtool", workspaceId: "b" });
+
+const rejected = (): Promise<never> =>
+  Promise.reject(
+    new OutboundError("Unauthorized", "emailtool responded 401", {
+      provider: "emailtool",
+      status: 401,
+    })
+  );
 
 const oneDown = createOutbound({
   adapter: combine([
-    memory({ data: acmeEmail, name: "emailtool", workspaceId: "a" }),
-    {
-      ...base,
-      stats: () =>
-        Promise.reject(
-          new OutboundError("Unauthorized", "emailtool responded 401", {
-            provider: "emailtool",
-            status: 401,
-          })
-        ),
-    },
+    memory({ data: withLead, name: "emailtool", workspaceId: "a" }),
+    { ...base, listLeads: rejected, stats: rejected },
   ]),
 });
 
 await attempt("one key rejected", () => oneDown.stats());
 
 await attempt("the other client alone", () => oneDown.workspace("a").stats());
+
+// 6. A person lookup is the exception. It returns what the members that
+//    answered hold, says the answer is incomplete, and names the member
+//    that did not answer.
+const lookup = await oneDown.leads.list({ email: person });
+
+console.log(
+  "lookup with one key rejected:",
+  lookup.items.map((lead) => lead.ref),
+  "complete:",
+  lookup.complete
+);
+
+console.log(lookup.failures);

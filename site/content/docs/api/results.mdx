@@ -26,7 +26,7 @@ The in-memory adapter sends no HTTP requests, so `requests` is 0 here. On a vend
 | Field | Type | Meaning |
 | --- | --- | --- |
 | `evidence` | `"exact"`, `"derived"` or `"sampled"` | How the answer was obtained. See [evidence](#evidence). |
-| `complete` | `boolean` | `false` when more pages exist. On a single record and on stats it is `true`. |
+| `complete` | `boolean` | `false` when more pages exist, or when a tool on a [combined](/docs/adapters/combine#when-one-member-fails) instance did not answer a person lookup. On a single record and on stats it is `true`. |
 | `fetchedAt` | ISO 8601 UTC timestamp | When the SDK got the answer. On an answer served from a store, when it was first fetched. |
 | `requests` | `number` | Vendor HTTP requests the call sent, retries included. |
 | `throttledMs` | `number` | Milliseconds the call spent waiting for the [rate budget](/docs/rate-limits). |
@@ -38,14 +38,14 @@ The in-memory adapter sends no HTTP requests, so `requests` is 0 here. On a vend
 
 | Result | Type | Shape |
 | --- | --- | --- |
-| A page, from `list` | `PageResult<Item>` | `{ items, cursor, complete, meta }` |
+| A page, from `list` | `PageResult<Item>` | `{ items, cursor, complete, failures, meta }` |
 | One record, from `get` and most handle methods | `WithMeta<Item>` | The record's own fields, plus `meta` |
 | Stats | `StatsResult` | `{ rows, meta }` |
 | A walk, from `listAll` | `ListAll<Item>` | `walk.meta`: the meta of the last page fetched. `undefined` before the first page. |
 | A bulk read, from `getMany` | `BulkResult<Item>` | `meta` on each `results[n].value` |
 | A native read | `NativeResult` | `{ data, meta }` |
 
-`PageResult` has `complete` at the top level too. It is the same value as `meta.complete`. `cursor` is absent on the last page.
+`PageResult` has `complete` at the top level too. It is the same value as `meta.complete`. `cursor` is absent on the last page. `failures` lists the tools on a combined instance that did not answer a person lookup; it is empty on every other read. A walk has `walk.failures` too.
 
 `WithMeta<Item>` is the record with one more field, so `campaign.name` and `campaign.meta` sit side by side. Remove `meta` before you store the record if your table has no column for it.
 

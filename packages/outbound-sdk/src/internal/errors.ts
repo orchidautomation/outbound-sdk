@@ -75,6 +75,23 @@ export class OutboundError extends Error {
   }
 }
 
+// Registered for the same reason as BRAND.
+const CALLER_LIMIT = Symbol.for("outbound-sdk.callerLimit");
+
+/**
+ * Marks an error as a cap the caller set (a deadline or a request budget), as
+ * opposed to the vendor failing. Returns the same error.
+ */
+export const callerLimit = (error: OutboundError): OutboundError => {
+  Object.defineProperty(error, CALLER_LIMIT, { value: true });
+
+  return error;
+};
+
+/** `true` when the caller's abort signal, deadline or request budget stopped the read. */
+export const stoppedByCaller = (error: OutboundError): boolean =>
+  error.aborted || CALLER_LIMIT in error;
+
 /** What the request engine hands an adapter's `mapError`. */
 export interface HttpFailure {
   readonly status: number;

@@ -133,7 +133,12 @@ const collect = async (
     });
   }
 
-  return { complete: true, items: items.toSorted(bySentAt), meta: walk.meta };
+  return {
+    complete: true,
+    failures: [],
+    items: items.toSorted(bySentAt),
+    meta: walk.meta,
+  };
 };
 
 export const makeLeadHandle = (core: Core, id: string): LeadHandle => {

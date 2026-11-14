@@ -40,7 +40,7 @@ Every insight returns the same three parts: its tool name in `insight`, the answ
 | --- | --- |
 | `data` | The answer. Its type is exported under the insight's name: `CampaignRanking`, `PersonSummary` and so on. |
 | `meta.requests` | Vendor requests the insight made. The in-memory adapter makes none, so the samples on this site show 0. |
-| `meta.complete` | `false` when a cap stopped a read early, so the answer covers part of the data. |
+| `meta.complete` | `false` when a cap stopped a read early, or a tool on a combined instance did not answer a person lookup, so the answer covers part of the data. |
 | `meta.evidence` | `exact` only when every read behind the answer was exact. Otherwise the weakest of them: `sampled`, then `derived`. |
 | `meta.notes` | What to know before trusting the numbers: which cap was reached, or a part that was skipped because the adapter cannot read it. |
 | `meta.computedAt` | When the insight ran, ISO 8601 UTC. |
@@ -244,8 +244,8 @@ outbound insight client_report --input '{}'
 | `now` | The time the insight runs at, in milliseconds. Use it, not `Date.now()`, so a test can fix the clock with the `now` option of `runInsight`. |
 | `rows(stats)` | Records a stats read and returns its rows. |
 | `one(item)` | Records one lookup and returns the record. |
-| `page(page)` | Records one page and returns its items. An unfinished page marks the answer incomplete. |
-| `all(walk, cap)` | Walks a `listAll` to its end or its `max`, and marks the answer incomplete when `max` cut it short. |
+| `page(page)` | Records one page and returns its items. An unfinished page, or one a tool did not answer for, marks the answer incomplete. |
+| `all(walk, cap)` | Walks a `listAll` to its end or its `max`, and marks the answer incomplete when `max` cut it short or a tool on a combined instance did not answer. The note names the tool. |
 | `note(text)` | Adds a note. The same note is kept once. |
 | `partial(reason)` | Marks the answer incomplete, with the reason as a note. |
 

@@ -2,6 +2,8 @@
 // so a sync that dies on page 40 restarts on page 40.
 
 import type { CallState } from "../engine/request.ts";
+import { mergeFailures } from "../failures.ts";
+import type { MemberFailure } from "../failures.ts";
 import type { ListAll, PageResult, ResultMeta } from "./api.ts";
 
 export interface WalkerOptions<Item> {
@@ -21,6 +23,7 @@ export class PageWalker<Item> implements ListAll<Item> {
   #cursor: string | undefined;
   #meta: ResultMeta | undefined;
   #truncated = false;
+  #failures: readonly MemberFailure[] = [];
 
   constructor(options: WalkerOptions<Item>) {
     this.#options = options;
@@ -39,6 +42,10 @@ export class PageWalker<Item> implements ListAll<Item> {
     return this.#truncated;
   }
 
+  get failures(): readonly MemberFailure[] {
+    return this.#failures;
+  }
+
   async *[Symbol.asyncIterator](): AsyncGenerator<Item, void, undefined> {
     const { fetchPage, keyOf, max } = this.#options;
     const seen = new Set<string>();
@@ -50,6 +57,10 @@ export class PageWalker<Item> implements ListAll<Item> {
       const fetched = await fetchPage(this.#cursor, state);
       ({ state } = fetched);
       this.#meta = fetched.page.meta;
+
+      if (fetched.page.failures.length > 0) {
+        this.#failures = mergeFailures(this.#failures, fetched.page.failures);
+      }
 
       for (const item of fetched.page.items) {
         const key = keyOf(item);

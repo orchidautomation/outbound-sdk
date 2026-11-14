@@ -26,6 +26,7 @@ import type {
   Workspace,
 } from "./entities.ts";
 import type { ErrorMapper } from "./errors.ts";
+import type { MemberFailure } from "./failures.ts";
 import type { Json } from "./json.ts";
 import type { LimitDeclaration } from "./limits.ts";
 import type { NativeCatalog, NoNative } from "./native.ts";
@@ -58,6 +59,11 @@ export interface AdapterContext {
 export interface Page<Item> {
   readonly items: readonly Item[];
   readonly next?: Json | undefined;
+  /**
+   * Set by a combined adapter only: the members that could not answer while
+   * the others did. Their records are missing from `items`.
+   */
+  readonly failures?: readonly MemberFailure[] | undefined;
 }
 
 export interface PageQuery {

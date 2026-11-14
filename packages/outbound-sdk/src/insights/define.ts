@@ -8,6 +8,8 @@ import type { ZodObject, ZodType } from "zod";
 import type { CapabilityKey } from "../internal/capabilities.ts";
 import type { Evidence, MetricRow } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
+import { describeFailure } from "../internal/failures.ts";
+import type { MemberFailure } from "../internal/failures.ts";
 import { toJson, unknownKey } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
 import type {
@@ -24,7 +26,7 @@ export interface InsightMeta {
   readonly evidence: Evidence;
   /** Vendor requests the insight made. */
   readonly requests: number;
-  /** `false` when a cap stopped a read early, so the answer covers part of the data. */
+  /** `false` when a cap stopped a read early or a tool on a combined instance did not answer, so the answer covers part of the data. */
   readonly complete: boolean;
   /** What the reader should know before trusting the numbers. */
   readonly notes: readonly string[];
@@ -44,12 +46,14 @@ export interface InsightContext {
   readonly outbound: OutboundApi;
   /** The time the insight runs at, in milliseconds. Fixed in tests. */
   readonly now: number;
-  /** Records a page's cost and returns its items. An unfinished page marks the answer incomplete. */
+  /** Records a page's cost and returns its items. An unfinished page, or one a tool did not answer for, marks the answer incomplete. */
   readonly page: <Item>(page: PageResult<Item>) => readonly Item[];
   /**
    * Walks a listing to its end or its `max`, records the cost and returns the
    * records. When `max` cut it short the answer is marked incomplete; `cap`
-   * names what was capped for the note, for example `50 campaigns`.
+   * names what was capped for the note, for example `50 campaigns`. A tool on
+   * a combined instance that did not answer also marks it incomplete, with a
+   * note naming the tool and its error code.
    */
   readonly all: <Item>(walk: ListAll<Item>, cap?: string) => Promise<Item[]>;
   /** Records one lookup's cost and returns the record. */
@@ -158,11 +162,20 @@ const track = (outbound: OutboundApi, now: number): Tracker => {
     note(reason);
   };
 
+  // A tool that did not answer is named, so its silence is never read as
+  // "nothing found".
+  const unanswered = (failures: readonly MemberFailure[]): void => {
+    for (const failure of failures) {
+      partial(describeFailure(failure));
+    }
+  };
+
   return {
     context: {
       all: async (walk, cap) => {
         const items = await walk.toArray();
         seen(walk.meta);
+        unanswered(walk.failures);
 
         if (walk.truncated) {
           partial(
@@ -184,8 +197,12 @@ const track = (outbound: OutboundApi, now: number): Tracker => {
       outbound,
       page: (page) => {
         seen(page.meta);
+        unanswered(page.failures);
 
-        if (!page.complete) {
+        if (
+          !page.complete &&
+          (page.cursor !== undefined || page.failures.length === 0)
+        ) {
           partial("Only the first page of a listing was read.");
         }
 

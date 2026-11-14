@@ -60,6 +60,8 @@ A `Person` has:
 | `key` | The key that was looked up. |
 | `keys` | Every key found on the matching records, sorted. |
 | `found` | `false` when no record carries the key. The link is unknown, not proven absent. |
+| `complete` | `false` when a tool on a [combined](/docs/adapters/combine#when-one-member-fails) instance did not answer the lookup. Its records are missing, so `found: false` then says nothing about that tool. |
+| `failures` | The tools that did not answer: `provider`, `workspaceId`, `code`, `status` and `message` for each. Empty when every tool answered. |
 | `records` | One lead record per tool or campaign the person is in. |
 | `timeline` | Every message to and from the person across those records, oldest first. Empty when `timeline` is `false` or the adapter does not declare `leads.timeline`. |
 
@@ -108,4 +110,5 @@ With [`redact`](/docs/plugins/redact#with-other-plugins) on the same instance:
 | No record carries the key | `found: false`, empty `records` and `timeline` | Treat it as unknown. The person may exist under an identifier the vendor did not give you. |
 | `redact` on the instance masks `email` or `linkedin` | `Unsupported`, before any read. The message names the plugin. | Use an instance without `redact`, or leave both fields out of its `fields`. |
 | The adapter cannot read a lead's timeline | Records link, `timeline` is empty | Check `outbound.capabilities["leads.timeline"]` before relying on the timeline. |
-| A read fails part way | `person()` throws that error. No partial answer is returned. | Retry, or bound the lookup with `campaignIds`. |
+| One tool on a combined instance fails the lookup: a rejected key, an outage, a timeout, a vendor rate limit | The records of the tools that answered, `complete: false`, and the tool in `failures` | Say the answer is partial and which tool is missing. Do not report the person as not found. |
+| Every tool fails, a cap you set stops the call, or a timeline read fails | `person()` throws that error. No partial answer is returned. | Retry, or bound the lookup with `campaignIds`. |

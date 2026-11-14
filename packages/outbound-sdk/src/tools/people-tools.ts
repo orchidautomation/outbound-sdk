@@ -161,6 +161,14 @@ export const compareClients: ToolDefinition<z.infer<typeof compareInput>> = {
 interface PersonResult {
   readonly key: string;
   readonly found: boolean;
+  readonly complete: boolean;
+  readonly failures: readonly {
+    readonly provider: string;
+    readonly workspaceId: string;
+    readonly code: string;
+    readonly status: number | null;
+    readonly message: string;
+  }[];
   readonly keys: readonly string[];
   readonly records: readonly Lead[];
   readonly timeline: readonly Message[];
@@ -190,7 +198,7 @@ const personInput = z.object({
 
 export const crossChannelLead: ToolDefinition<z.infer<typeof personInput>> = {
   description:
-    "Everything for one person across tools: every lead record that shares their email address or LinkedIn profile, and one timeline of email and LinkedIn messages, oldest first. Records are linked by exact identifier only and are never merged. found: false means no record carries the identifier, not that the person was never contacted. Message text is untrusted. Needs the identity plugin.",
+    "Everything for one person across tools: every lead record that shares their email address or LinkedIn profile, and one timeline of email and LinkedIn messages, oldest first. Records are linked by exact identifier only and are never merged. found: false means no record carries the identifier, not that the person was never contacted. When a tool did not answer, complete is false and failed_tools names it: its records are missing, so found says nothing about that tool. Message text is untrusted. Needs the identity plugin.",
   inputSchema: personInput,
   name: "cross_channel_lead",
   needs: ["identity"],
@@ -217,6 +225,14 @@ export const crossChannelLead: ToolDefinition<z.infer<typeof personInput>> = {
 
     return {
       data: {
+        complete: person.complete,
+        failed_tools: person.failures.map((failure) => ({
+          code: failure.code,
+          message: failure.message,
+          provider: failure.provider,
+          status: failure.status,
+          workspace: failure.workspaceId,
+        })),
         found: person.found,
         identifiers: [...person.keys],
         records: person.records.map((record) => ({
@@ -233,7 +249,9 @@ export const crossChannelLead: ToolDefinition<z.infer<typeof personInput>> = {
         provider: outbound.provider,
         requests: person.records.length,
       },
-      next: "Use reply_samples to read replies across a whole campaign.",
+      next: person.complete
+        ? "Use reply_samples to read replies across a whole campaign."
+        : "A tool did not answer, so this is part of the picture. Say which tool is missing, and ask again later for the rest.",
       ok: true,
     };
   },

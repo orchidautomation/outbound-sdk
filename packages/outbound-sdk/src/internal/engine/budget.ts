@@ -2,7 +2,7 @@
 // lane's own windows when it has one, and the concurrency cap. After a 429
 // the lane pauses and the rate halves, then climbs back slowly.
 
-import { OutboundError } from "../errors.ts";
+import { callerLimit, OutboundError } from "../errors.ts";
 import { fire } from "../hooks.ts";
 import type { OutboundHooks } from "../hooks.ts";
 import { DEFAULT_CONCURRENCY, scaleWindow } from "../limits.ts";
@@ -146,10 +146,12 @@ export class Budget {
         }
 
         if (deadlineAt !== undefined && now + waitMs > deadlineAt) {
-          throw new OutboundError(
-            "RateLimited",
-            `${provider} rate budget is full and the deadline would pass before it frees up`,
-            { provider, retryAfterMs: waitMs, timedOut: true }
+          throw callerLimit(
+            new OutboundError(
+              "RateLimited",
+              `${provider} rate budget is full and the deadline would pass before it frees up`,
+              { provider, retryAfterMs: waitMs, timedOut: true }
+            )
           );
         }
 

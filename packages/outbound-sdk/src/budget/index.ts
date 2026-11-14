@@ -5,7 +5,7 @@
 // The cap is enforced inside the engine, request by request: a call that
 // reaches it stops with `RateLimited` and says how many requests it used.
 
-import { OutboundError } from "../internal/errors.ts";
+import { callerLimit, OutboundError } from "../internal/errors.ts";
 import type { OutboundPlugin } from "../internal/outbound/plugins.ts";
 
 export interface BudgetOptions {
@@ -46,10 +46,12 @@ export const budget = (
   const live = new WeakMap<object, number>();
 
   const spent = (provider: string): OutboundError =>
-    new OutboundError(
-      "RateLimited",
-      `The run used its budget of ${options.maxRequests} request(s) to ${provider}`,
-      { provider }
+    callerLimit(
+      new OutboundError(
+        "RateLimited",
+        `The run used its budget of ${options.maxRequests} request(s) to ${provider}`,
+        { provider }
+      )
     );
 
   return {
