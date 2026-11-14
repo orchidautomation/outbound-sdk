@@ -29,7 +29,6 @@ test("instantly: listed campaigns carry the names of their tags", async () => {
     "GET /api/v2/campaigns",
     "GET /api/v2/custom-tag-mappings",
     "GET /api/v2/custom-tags",
-    "GET /api/v2/custom-tags",
   ]);
 
   const mappings = new URL(requests[1]?.url ?? "").searchParams;
@@ -46,9 +45,39 @@ test("instantly: listed campaigns carry the names of their tags", async () => {
     "each tag id is asked for once"
   );
   assert.equal(
+    requests.length,
+    3,
+    "Instantly sends a next marker on a last page too; a page that is not full ends the lookup"
+  );
+});
+
+test("instantly: a full page of tag names is followed to the next", async () => {
+  const names = Array.from({ length: 100 }, (_, index) => ({
+    id: `filler-${index}`,
+    label: `Filler ${index}`,
+  }));
+
+  const { outbound, requests, settle } = harness(suite, (request) => {
+    const url = new URL(request.url);
+
+    if (url.pathname !== "/api/v2/custom-tags") {
+      return;
+    }
+
+    return url.searchParams.has("starting_after")
+      ? Response.json({
+          items: [
+            { id: "01a1d77f-5e57-7861-bab6-41dac7e7804a", label: "Late" },
+          ],
+        })
+      : Response.json({ items: names, next_starting_after: "filler-99" });
+  });
+
+  const page = await settle(outbound.campaigns.list());
+  assert.deepEqual(page.items[0]?.tags, ["Late"], "found on the second page");
+  assert.equal(
     new URL(requests[3]?.url ?? "").searchParams.get("starting_after"),
-    "01a1d77f-5e57-7861-bab6-41dac7e7804b",
-    "a second page of tags is followed"
+    "filler-99"
   );
 });
 
@@ -100,7 +129,11 @@ test("instantly: more tag assignments than the adapter reads is an error, not mi
   const { outbound, requests, settle } = harness(suite, (request) =>
     new URL(request.url).pathname === "/api/v2/custom-tag-mappings"
       ? Response.json({
-          items: [{ resource_id: CAMPAIGN, tag_id: "t" }],
+          // Full pages, each with a next marker: the list never ends.
+          items: Array.from({ length: 100 }, () => ({
+            resource_id: CAMPAIGN,
+            tag_id: "t",
+          })),
           next_starting_after: "more",
         })
       : undefined

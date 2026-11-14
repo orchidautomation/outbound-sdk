@@ -118,7 +118,7 @@ export const costs = {
 
 export const caveats: readonly string[] = [
   "The reads were run once, read-only, against one live workspace on 2026-11-14. Fixtures are still built from the API V2 documentation, and subsequences, a campaign's own webhooks and a second page of most lists were not exercised because that workspace had none or too few.",
-  "The end of a list is assumed to be a response without next_starting_after. The documentation does not say.",
+  "Instantly sends next_starting_after on a last page too (seen live), and the page after it is empty. A listing therefore ends one request late; the small lookups for tags and labels stop at the first page that is not full.",
   "A reply's category is read from the email's i_status using the lead interest status values (seen live: 0, 1, -1 and -2). A received email carries the lead's address but no lead id, so a reply's leadRef is null; a sent message has one. Instantly does not mark an email as automatic, so isAuto is null.",
   "An email's step and a lead's last step are ids of the form sequence_step_variant, each counted from 0 (seen live, not documented); any other form gives a null step. Step analytics count steps from 0 too, and can hold a row with no step for counts Instantly could not tie to one.",
   "Whether reply_count includes automatic replies is not documented; replied uses the unique reply count and repliedAuto the unique automatic count.",

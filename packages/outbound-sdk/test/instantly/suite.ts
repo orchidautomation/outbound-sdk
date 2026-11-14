@@ -104,7 +104,11 @@ export const suite: AdapterSuite = {
       path: "/api/v2/custom-tag-mappings",
     },
     {
-      fixture: paged("listCustomTags"),
+      // A lookup by tag ids answers on one page, with a next marker all the same.
+      fixture: (request) =>
+        request.url.searchParams.has("tag_ids")
+          ? "listCustomTags.byIds.json"
+          : paged("listCustomTags")(request),
       method: "GET",
       path: "/api/v2/custom-tags",
     },

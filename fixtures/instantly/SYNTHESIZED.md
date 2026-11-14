@@ -40,6 +40,7 @@ Added on 2026-11-14 for the lookup by email: `listLeadsByEmail*.json`, the respo
 - listCampaigns.json
 - listCampaigns.page2.json
 - listCustomTagMappings.json
+- listCustomTags.byIds.json
 - listCustomTags.json
 - listCustomTags.page2.json
 - listEmails.json

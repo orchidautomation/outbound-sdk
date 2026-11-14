@@ -65,7 +65,10 @@ export const readLookup = async (
     lookup.filters
   );
 
-  if (envelope.next === undefined) {
+  // Instantly returns a next marker even on the last page (seen live: a page
+  // of 11 tags came with one, and the page after it was empty). A page that
+  // is not full is the last one, which saves a request per lookup.
+  if (envelope.next === undefined || envelope.items.length < PAGE_SIZE) {
     return envelope.items;
   }
 
