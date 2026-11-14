@@ -374,6 +374,13 @@ test("a tool never throws: bad input, a missing record and an unsupported read a
   assert.equal(badInput.error.code, "Invalid");
   assert.match(badInput.error.message, /campaign_trend: from Use YYYY-MM-DD/u);
 
+  // An argument the tool does not take is told to the model, not dropped.
+  const extra = await call(plain(), "campaign_overview", { client: "acme" });
+
+  assert.ok(!extra.ok);
+  assert.equal(extra.error.code, "Invalid");
+  assert.match(extra.error.message, /campaign_overview: .*"client"/u);
+
   const unsupported = await call(
     createOutbound({
       adapter: memory({

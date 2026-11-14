@@ -129,3 +129,22 @@ export const compactObject = (
  */
 export const toJson = <Value>(value: Value): Json =>
   parseJson(JSON.stringify(value) ?? "null") ?? null;
+
+/**
+ * Says which key of `input` is not one of `known`, or `undefined` when every
+ * key is. Used so an input that would be ignored is refused instead.
+ */
+export const unknownKey = (
+  known: readonly string[],
+  input: Json | undefined
+): string | undefined => {
+  if (!isJsonObject(input)) {
+    return undefined;
+  }
+
+  const stray = Object.keys(input).find((key) => !known.includes(key));
+
+  return stray === undefined
+    ? undefined
+    : `"${stray}" is not an input. It takes: ${known.toSorted().join(", ") || "nothing"}`;
+};

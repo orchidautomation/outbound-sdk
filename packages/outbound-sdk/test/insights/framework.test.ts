@@ -206,6 +206,16 @@ test("bad input and a missing capability are refused before the insight runs", a
       error.code === "Invalid" &&
       error.message.startsWith("probe: limit ")
   );
+  // An input the insight does not take is refused, never silently dropped:
+  // a filter that was ignored would answer a wider question than was asked.
+  await assert.rejects(
+    async () =>
+      await runInsightByName(outbound, "client_report", { tag: "acme" }),
+    (error) =>
+      OutboundError.is(error) &&
+      error.code === "Invalid" &&
+      /client_report: "tag" is not an input/u.test(error.message)
+  );
   await assert.rejects(
     async () => await runInsight(outbound, probe, {}),
     (error) =>

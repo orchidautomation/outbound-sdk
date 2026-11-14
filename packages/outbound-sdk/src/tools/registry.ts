@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { OutboundError } from "../internal/errors.ts";
+import { unknownKey } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
 import {
@@ -53,6 +54,15 @@ const bind = <Input>(
   definition: Definition<Input>
 ): OutboundTool => ({
   call: async (input) => {
+    // An argument the tool does not take is reported to the model, not dropped.
+    const stray = unknownKey(Object.keys(definition.inputSchema.shape), input);
+
+    if (stray !== undefined) {
+      return failure(
+        new OutboundError("Invalid", `${definition.name}: ${stray}`)
+      );
+    }
+
     const parsed = definition.inputSchema.safeParse(input ?? {});
 
     if (!parsed.success) {

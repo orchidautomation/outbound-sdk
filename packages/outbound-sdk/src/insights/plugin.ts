@@ -10,10 +10,10 @@ import type { InsightResult, RunOptions } from "./define.ts";
 import { ENTRIES } from "./registry.ts";
 import type { AnyInsight } from "./registry.ts";
 
-type InputOf<Definition> = Definition extends {
-  readonly inputSchema: infer Schema;
-}
-  ? z.input<Schema>
+// What a caller writes: the schema's input type, where a field with a
+// default is optional.
+type InputOf<Definition> = Definition extends { readonly given?: infer Given }
+  ? Given
   : never;
 
 type DataOf<Definition> = Definition extends {

@@ -1,0 +1,52 @@
+// The typed methods on `outbound.insights` check their input at compile time
+// and at run time. Each `@ts-expect-error` below fails the type check if the
+// line it marks ever starts compiling.
+
+import assert from "node:assert/strict";
+import { test } from "node:test";
+
+import { createOutbound, OutboundError } from "../../src/index.ts";
+import { insights } from "../../src/insights/index.ts";
+import { demoData, memory } from "../../src/memory/index.ts";
+
+const outbound = createOutbound({
+  adapter: memory({ data: demoData() }),
+  plugins: [insights()],
+});
+
+const invalid = (pattern: RegExp) => (error: unknown) =>
+  OutboundError.is(error) &&
+  error.code === "Invalid" &&
+  pattern.test(error.message);
+
+test("an insight refuses a value of the wrong type", async () => {
+  await assert.rejects(
+    // @ts-expect-error -- `days` is a number
+    async () => await outbound.insights.clientReport({ days: "seven" }),
+    invalid(/client_report: days /u)
+  );
+});
+
+test("an insight refuses a missing required input", async () => {
+  await assert.rejects(
+    // @ts-expect-error -- `person` is required
+    async () => await outbound.insights.personSummary({}),
+    invalid(/person_summary: person /u)
+  );
+});
+
+test("an insight refuses an input it does not take, and lists what it takes", async () => {
+  await assert.rejects(
+    // @ts-expect-error -- `tag` is not an input of clientReport
+    async () => await outbound.insights.clientReport({ tag: "acme" }),
+    invalid(
+      /client_report: "tag" is not an input\. It takes: alpha, .*statuses/u
+    )
+  );
+});
+
+test("an input with a default may be left out", async () => {
+  const report = await outbound.insights.clientReport({});
+
+  assert.equal(report.data.days, 7);
+});
