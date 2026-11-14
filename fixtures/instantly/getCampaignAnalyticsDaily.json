@@ -1,0 +1,34 @@
+[
+  {
+    "date": "2025-03-01",
+    "sent": 5421,
+    "contacted": 5000,
+    "new_leads_contacted": 200,
+    "opened": 99,
+    "unique_opened": 60,
+    "replies": 60,
+    "unique_replies": 60,
+    "replies_automatic": 5,
+    "unique_replies_automatic": 4,
+    "clicks": 60,
+    "unique_clicks": 60,
+    "opportunities": 5,
+    "unique_opportunities": 3
+  },
+  {
+    "date": "2025-03-01",
+    "sent": 5421,
+    "contacted": 5000,
+    "new_leads_contacted": 200,
+    "opened": 99,
+    "unique_opened": 60,
+    "replies": 60,
+    "unique_replies": 60,
+    "replies_automatic": 5,
+    "unique_replies_automatic": 4,
+    "clicks": 60,
+    "unique_clicks": 60,
+    "opportunities": 5,
+    "unique_opportunities": 3
+  }
+]

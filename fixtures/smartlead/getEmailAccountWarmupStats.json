@@ -1,0 +1,23 @@
+{
+  "id": 123,
+  "sent_count": "140",
+  "spam_count": "3",
+  "inbox_count": "131",
+  "warmup_email_received_count": "152",
+  "stats_by_date": [
+    {
+      "id": 1,
+      "date": "2025-11-20",
+      "sent_count": 15,
+      "reply_count": 4,
+      "save_from_spam_count": 0
+    },
+    {
+      "id": 2,
+      "date": "2025-11-21",
+      "sent_count": 18,
+      "reply_count": 5,
+      "save_from_spam_count": 1
+    }
+  ]
+}

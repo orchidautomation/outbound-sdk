@@ -1,0 +1,21 @@
+{
+  "ok": true,
+  "data": [
+    {
+      "id": 2001,
+      "from_email": "person1@example.com",
+      "from_name": "Alex Example",
+      "type": "SMTP",
+      "warmup_enabled": true,
+      "warmup_reputation": "excellent"
+    },
+    {
+      "id": 2002,
+      "from_email": "person2@example.com",
+      "from_name": "Sam Example",
+      "type": "SMTP",
+      "warmup_enabled": true,
+      "warmup_reputation": "excellent"
+    }
+  ]
+}

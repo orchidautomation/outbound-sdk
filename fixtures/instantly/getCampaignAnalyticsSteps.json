@@ -1,0 +1,49 @@
+[
+  {
+    "step": "0",
+    "variant": "0",
+    "sent": 5421,
+    "opened": 99,
+    "unique_opened": 60,
+    "replies": 60,
+    "unique_replies": 60,
+    "replies_automatic": 5,
+    "unique_replies_automatic": 4,
+    "clicks": 60,
+    "unique_clicks": 60,
+    "opportunities": 10,
+    "unique_opportunities": 8,
+    "meetings_booked": 2,
+    "won": 1
+  },
+  {
+    "step": "3",
+    "variant": "1",
+    "sent": 5422,
+    "opened": 99,
+    "unique_opened": 60,
+    "replies": 60,
+    "unique_replies": 60,
+    "replies_automatic": 5,
+    "unique_replies_automatic": 4,
+    "clicks": 60,
+    "unique_clicks": 60,
+    "opportunities": 10,
+    "unique_opportunities": 8,
+    "meetings_booked": 2,
+    "won": 1
+  },
+  {
+    "step": "\\N",
+    "variant": null,
+    "sent": 7,
+    "opened": 0,
+    "unique_opened": 0,
+    "replies": 0,
+    "unique_replies": 0,
+    "replies_automatic": 0,
+    "unique_replies_automatic": 0,
+    "clicks": 0,
+    "unique_clicks": 0
+  }
+]

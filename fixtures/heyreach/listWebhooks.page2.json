@@ -1,0 +1,16 @@
+{
+  "totalCount": 3,
+  "items": [
+    {
+      "id": 125,
+      "webhookName": "Example Webhook 3",
+      "webhookUrl": "https://hooks.example.com/heyreach/three",
+      "eventType": "CAMPAIGN_COMPLETED",
+      "campaignIds": [
+        274079,
+        274080
+      ],
+      "isActive": true
+    }
+  ]
+}

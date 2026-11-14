@@ -1,0 +1,42 @@
+{
+  "name": "outbound-sdk-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "workspaces": [
+    "packages/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "lint": "ultracite check",
+    "fix": "ultracite fix",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "architecture": "node scripts/check-architecture.mjs",
+    "shape": "node scripts/check-repo-shape.mjs",
+    "test": "node --test \"scripts/*.test.mjs\" \"packages/*/test/**/*.test.ts\"",
+    "build": "node scripts/build.mjs && node scripts/smoke-dist.mjs && node scripts/check-size.mjs",
+    "check:static": "npm run typecheck && npm run architecture && npm run shape && npm run fixtures && git diff --check",
+    "check:fast": "npm run lint && npm run check:static",
+    "check": "npm run check:fast && npm test && npm run coverage && npm run build",
+    "check:changed": "node scripts/check-changed.mjs",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "fixtures": "node scripts/check-fixtures.mjs",
+    "coverage": "node scripts/check-coverage.mjs",
+    "test:live": "node --test \"packages/*/test/live/*.live.ts\""
+  },
+  "devDependencies": {
+    "@changesets/cli": "3.0.3",
+    "@types/node": "26.6.6",
+    "dependency-cruiser": "18.7.2",
+    "esbuild": "0.28.2",
+    "oxfmt": "0.78.0",
+    "oxlint": "1.93.0",
+    "oxlint-plugin-complexity": "4.1.0",
+    "typescript": "6.0.3",
+    "ultracite": "8.2.0"
+  },
+  "engines": {
+    "node": ">=24.15.0"
+  }
+}

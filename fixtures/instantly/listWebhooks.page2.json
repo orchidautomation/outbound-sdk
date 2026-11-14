@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": "01a1d77f-5ea4-7b53-a085-00338a94f593",
+      "organization": "01a1d77f-5e23-7a9a-9112-a6f7089f3200",
+      "campaign": null,
+      "name": "Hot lead label",
+      "target_hook_url": "https://hooks.example.com/instantly/hot",
+      "event_type": null,
+      "custom_interest_value": 7,
+      "headers": null,
+      "timestamp_created": "2026-08-03T06:00:00.000Z",
+      "status": null,
+      "timestamp_error": "2026-11-09T04:00:00.000Z"
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "items": [
+    {
+      "blockedByMe": false,
+      "blockedByParticipant": false,
+      "correspondentProfile": {
+        "about": "Example bio",
+        "autoTags": [],
+        "companyName": "Example Co",
+        "companyUrl": "https://www.linkedin.com/company/example-co",
+        "connections": 500,
+        "firstName": "Alex",
+        "followers": 120,
+        "headline": "Founder at Example Co",
+        "imageUrl": "https://media.example.com/p3.jpg",
+        "lastName": "Example",
+        "linkedin_id": "ACoAAExample3",
+        "location": "Example City",
+        "position": "Founder",
+        "profileUrl": "https://www.linkedin.com/in/example-person-3",
+        "tags": []
+      },
+      "groupChat": false,
+      "id": "2-ExampleConversationId3==",
+      "lastMessageAt": "2026-10-08T08:00:00.000Z",
+      "lastMessageSender": "ME",
+      "lastMessageText": "Hi, following up.",
+      "lastMessageType": "TEXT",
+      "linkedInAccount": {
+        "authIsValid": true,
+        "emailAddress": "sender1@example.com",
+        "firstName": "Sam",
+        "id": 4101,
+        "isValidNavigator": false,
+        "isValidRecruiter": false,
+        "lastName": "Sender",
+        "profileUrl": "https://www.linkedin.com/in/example-sender-1"
+      },
+      "linkedInAccountId": 4101,
+      "messages": [
+        {
+          "body": "Hi, following up.",
+          "createdAt": "2026-10-08T08:00:00.000Z",
+          "isInMail": false,
+          "postLink": null,
+          "sender": "ME",
+          "subject": null
+        }
+      ],
+      "read": true,
+      "totalMessages": 1
+    }
+  ],
+  "totalCount": 3,
+  "hasNextPage": false,
+  "nextCursor": null
+}

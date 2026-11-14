@@ -1,0 +1,23 @@
+{
+  "id": "01a1d77f-5e6e-71ef-a479-ca3a5e94107f",
+  "timestamp_created": "2026-11-14T00:40:11.118Z",
+  "timestamp_updated": "2026-11-14T00:40:11.118Z",
+  "scheduled_for_removal_at": "2026-11-14T00:40:11.118Z",
+  "owner": "01a1d77f-5e6e-71ef-a479-ca3bd30e8488",
+  "name": "My Workspace",
+  "plan_id": "pid_hg_v1",
+  "plan_id_bundle": "pid_bundle_scale_v2",
+  "add_unsub_to_block": false,
+  "default_opportunity_value": 250,
+  "plan_id_leadfinder": "pid_lf_ls_v1",
+  "plan_id_verification": {
+    "quantity": 5,
+    "product_id": "pid_verify_v1_monthly",
+    "timestamp_updated": "2024-07-22T05:56:58.667Z"
+  },
+  "org_logo_url": "https://example.com/logo.png",
+  "org_client_domain": "example.com",
+  "plan_id_crm": "pid_crm_hg",
+  "plan_id_website_visitor": "pid_wvw_v1",
+  "plan_id_inbox_placement": "pid_ip_v1"
+}

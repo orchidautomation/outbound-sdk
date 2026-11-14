@@ -1,0 +1,45 @@
+{
+  "items": [
+    {
+      "id": "01a1d77f-5e80-7e44-bbfc-1c968e7cfe03",
+      "timestamp_created": "2026-11-06T12:00:00.000Z",
+      "parent_campaign": "01a1d77f-5e23-7a9a-9112-a6f7089f329f",
+      "workspace": "01a1d77f-5e23-7a9a-9112-a6f7089f3200",
+      "status": 1,
+      "timestamp_leads_updated": "2026-11-07T12:00:00.000Z",
+      "name": "No show follow-up",
+      "conditions": {
+        "crm_status": [
+          1
+        ],
+        "lead_activity": [
+          2
+        ],
+        "reply_contains": "yes"
+      },
+      "sequences": [
+        {
+          "steps": [
+            {
+              "type": "email",
+              "delay": 0,
+              "delay_unit": "days",
+              "variants": [
+                {
+                  "subject": "Sorry we missed you",
+                  "body": "Shall we find another time?"
+                }
+              ],
+              "pre_delay": 6,
+              "pre_delay_unit": "hours"
+            }
+          ]
+        }
+      ],
+      "auto_variant_select": null,
+      "daily_limit_mode": "inherit",
+      "daily_limit": null,
+      "ignore_account_daily_limit": false
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "data": [
+    {
+      "lead_id": 2995276772,
+      "email_lead_map_id": 2433664093,
+      "campaign_id": 123,
+      "campaign_name": "Q4 Outreach",
+      "campaign_status": "ACTIVE",
+      "status": "INPROGRESS",
+      "current_seq_num": 2,
+      "created_at": "2025-11-25T12:54:54.000Z",
+      "activities": [
+        {
+          "stats_id": 12347,
+          "message_id": "<abc125@mail.example.com>",
+          "subject": "Quick question about your workflow",
+          "email_body": "Hi Alex, I wanted to reach out...",
+          "sent_time": "2025-11-26T10:00:00.000Z",
+          "from_email": "person9@example.com",
+          "to_email": "person3@example.com",
+          "email_seq_number": 1,
+          "open_count": 3,
+          "click_count": 1,
+          "click_details": {},
+          "reply_details": {
+            "time": "2025-11-26T14:30:00.000Z",
+            "reply_email_body": "Thanks for reaching out...",
+            "message_id": "<reply125@example.com>"
+          },
+          "thread_replies": []
+        }
+      ]
+    }
+  ],
+  "hasMore": false
+}

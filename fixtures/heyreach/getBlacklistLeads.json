@@ -1,0 +1,33 @@
+{
+  "totalCount": 3,
+  "items": [
+    {
+      "id": 1,
+      "profileUrl": "https://www.linkedin.com/in/example-blocked-1",
+      "email": "Blocked1@Example.com",
+      "fullName": "Blocked One",
+      "imageUrl": null,
+      "companyName": "Example Co",
+      "position": "Director",
+      "linkedInProfileId": "ACoAAExampleBlocked1",
+      "matchingStatus": "Matched",
+      "resolutionStage": "Resolved",
+      "resolutionError": null,
+      "creationTime": "2026-09-16T12:00:01Z"
+    },
+    {
+      "id": 2,
+      "profileUrl": null,
+      "email": " Blocked2@Example.com ",
+      "fullName": null,
+      "imageUrl": null,
+      "companyName": null,
+      "position": null,
+      "linkedInProfileId": null,
+      "matchingStatus": "Matching",
+      "resolutionStage": "AwaitingReverseLookup",
+      "resolutionError": null,
+      "creationTime": "2026-09-16T12:00:02Z"
+    }
+  ]
+}

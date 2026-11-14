@@ -1,0 +1,26 @@
+{
+  "linkedin_id": "63456789",
+  "imageUrl": "https://example.com/image.jpg",
+  "firstName": "Alex",
+  "lastName": "Example",
+  "fullName": "Alex Example",
+  "location": "Texas",
+  "summary": "",
+  "companyName": "Example Co",
+  "companyUrl": "https://www.linkedin.com/company/example-co",
+  "position": "Director",
+  "industry": null,
+  "about": null,
+  "username": "example-person-1",
+  "emailAddress": null,
+  "connections": 0,
+  "followers": 0,
+  "experiences": "[]",
+  "education": "[]",
+  "profileUrl": "https://www.linkedin.com/in/example-person-1",
+  "enrichedEmailAddress": "person1@example.com",
+  "headline": null,
+  "emailEnrichments": [
+    "person1@example.com"
+  ]
+}

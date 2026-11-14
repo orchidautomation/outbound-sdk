@@ -1,0 +1,23 @@
+{
+  "lead_name": "Alex Example",
+  "lead_id": "138084",
+  "lead_email": "person1@example.com",
+  "sent_message_ids": [
+    "<sw-00000000-0000-4000-8000-000000000001@example.com>"
+  ],
+  "campaign_status": "ACTIVE",
+  "campaign_name": "test56778",
+  "client_id": null,
+  "campaign_id": 353,
+  "current_sequence_number": 1,
+  "secret_key": "redacted",
+  "app_url": "https://app.smartlead.ai/app/email-campaign/353/lead-list",
+  "description": "Manual step reached for Campaign - test56778 and lead email - person1@example.com",
+  "metadata": {
+    "webhook_created_at": "2024-04-12T13:51:26.269Z"
+  },
+  "webhook_url": "https://hooks.example.com/smartlead",
+  "webhook_id": 94,
+  "webhook_name": "test",
+  "event_type": "MANUAL_STEP_REACHED"
+}

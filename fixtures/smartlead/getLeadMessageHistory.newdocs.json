@@ -1,0 +1,17 @@
+{
+  "messages": [
+    {
+      "id": "msg_1",
+      "subject": "Partnership Opportunity",
+      "direction": "outbound",
+      "sent_at": "2025-01-15T10:00:00Z",
+      "opened_at": "2025-01-15T10:30:00Z"
+    },
+    {
+      "id": "msg_2",
+      "subject": "Re: Partnership Opportunity",
+      "direction": "inbound",
+      "received_at": "2025-01-20T14:00:00Z"
+    }
+  ]
+}

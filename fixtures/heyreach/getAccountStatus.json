@@ -1,0 +1,17 @@
+{
+  "accountId": 1101,
+  "status": "Disconnected",
+  "failureReason": "Session expired, sign in again",
+  "profile": {
+    "fullName": "Alex Example",
+    "email": "person1@example.com",
+    "profileUrl": "https://www.linkedin.com/in/example-person-1",
+    "avatarUrl": "https://media.example.com/avatar1.jpg"
+  },
+  "salesNavigator": {
+    "authenticated": true
+  },
+  "recruiter": {
+    "authenticated": false
+  }
+}

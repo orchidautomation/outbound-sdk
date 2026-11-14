@@ -1,0 +1,1 @@
+You have exceeded the 10 requests in 60 sec limit for this endpoint!

@@ -1,0 +1,28 @@
+{
+  "event_type": "message_sent",
+  "correlation_id": "e6bf8960-0000-0000-0000-000000000000",
+  "timestamp": "2026-06-19T04:51:13.910Z",
+  "sender": {
+    "profile_url": "https://www.linkedin.com/in/example-person-2",
+    "full_name": "Sam Example",
+    "email_address": "person2@example.com"
+  },
+  "lead": {
+    "profile_url": "https://www.linkedin.com/in/example-person-1",
+    "full_name": "Alex Example",
+    "email_address": "person1@example.com",
+    "company_name": "Example Co",
+    "position": "Engineering Manager"
+  },
+  "campaign": {
+    "id": 425166,
+    "name": "Q2 Outreach"
+  },
+  "recent_messages": [
+    {
+      "message": "Hey Alex, thanks for connecting!...",
+      "creation_time": "2026-06-19T04:51:13.603Z",
+      "is_reply": false
+    }
+  ]
+}

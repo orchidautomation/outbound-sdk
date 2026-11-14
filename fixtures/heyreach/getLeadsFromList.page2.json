@@ -1,0 +1,29 @@
+{
+  "totalCount": 3,
+  "items": [
+    {
+      "id": "lead-row-13",
+      "linkedin_id": "ACoAAExampleList13",
+      "profileUrl": "https://www.linkedin.com/in/example-person-13",
+      "firstName": "Jo",
+      "lastName": "Listed",
+      "headline": "Headline 13",
+      "imageUrl": "https://media.example.com/list13.jpg",
+      "location": "Example City 13",
+      "companyName": "Example Co 13",
+      "companyUrl": "https://www.linkedin.com/company/example-co-13",
+      "position": "Position 13",
+      "about": "Example bio 13",
+      "connections": 113,
+      "followers": 213,
+      "tags": [
+        "cold"
+      ],
+      "autoTags": [],
+      "emailAddress": null,
+      "enrichedEmailAddress": "enriched13@example.com",
+      "customEmailAddress": null,
+      "customFields": []
+    }
+  ]
+}

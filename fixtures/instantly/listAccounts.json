@@ -1,0 +1,111 @@
+{
+  "items": [
+    {
+      "email": "person1@example.com",
+      "timestamp_created": "2026-11-14T00:40:11.100Z",
+      "timestamp_updated": "2026-11-14T00:40:11.100Z",
+      "first_name": "Alex",
+      "last_name": "Example",
+      "warmup": {
+        "limit": 100,
+        "advanced": {
+          "warm_ctd": false,
+          "open_rate": 0.95,
+          "important_rate": 0.8,
+          "read_emulation": true,
+          "spam_save_rate": 0.02,
+          "weekday_only": true
+        },
+        "warmup_custom_ftag": "warmup",
+        "increment": "disabled",
+        "reply_rate": 0.1
+      },
+      "added_by": "01a1d77f-5e5c-73a4-ad9e-9ff83930b816",
+      "daily_limit": 100,
+      "daily_limit_max": 100,
+      "warmup_limit_max": 100,
+      "modified_by": "01a1d77f-5e5c-73a4-ad9e-9ff938b6e363",
+      "tracking_domain_name": "example.com",
+      "tracking_domain_status": "active",
+      "status": 1,
+      "enable_slow_ramp": false,
+      "inbox_placement_test_limit": 10,
+      "organization": "01a1d77f-5e5c-73a4-ad9e-9ffae30cada9",
+      "warmup_status": 1,
+      "status_message": {
+        "code": "EENVELOPE",
+        "command": "DATA",
+        "response": "550-5.4.5 Daily user sending limit exceeded. For more information on Gmai",
+        "e_message": "error: data command failed: 550-5.4.5 daily user sending limit exceeded",
+        "responseCode": 550
+      },
+      "timestamp_warmup_start": "2026-11-14T00:40:11.100Z",
+      "provider_code": 2,
+      "setup_pending": false,
+      "is_managed_account": false,
+      "stat_warmup_score": 85,
+      "sending_gap": 10,
+      "signature": "Best regards, Alex Example",
+      "reply_to": "person2@example.com",
+      "autofix_failed": false,
+      "tags": []
+    },
+    {
+      "email": "person11@example.com",
+      "timestamp_created": "2026-11-14T00:40:11.100Z",
+      "timestamp_updated": "2026-11-14T00:40:11.100Z",
+      "first_name": "Alex",
+      "last_name": "Example",
+      "warmup": {
+        "limit": 100,
+        "advanced": {
+          "warm_ctd": false,
+          "open_rate": 0.95,
+          "important_rate": 0.8,
+          "read_emulation": true,
+          "spam_save_rate": 0.02,
+          "weekday_only": true
+        },
+        "warmup_custom_ftag": "warmup",
+        "increment": "disabled",
+        "reply_rate": 0.1
+      },
+      "added_by": "01a1d77f-5e5c-73a4-ad9e-9ff83930b817",
+      "daily_limit": 100,
+      "daily_limit_max": 100,
+      "warmup_limit_max": 100,
+      "modified_by": "01a1d77f-5e5c-73a4-ad9e-9ff938b6e364",
+      "tracking_domain_name": "example.com",
+      "tracking_domain_status": "active",
+      "status": 1,
+      "enable_slow_ramp": false,
+      "inbox_placement_test_limit": 10,
+      "organization": "01a1d77f-5e5c-73a4-ad9e-9ffae30cadaa",
+      "warmup_status": 1,
+      "status_message": {
+        "code": "EENVELOPE",
+        "command": "DATA",
+        "response": "550-5.4.5 Daily user sending limit exceeded. For more information on Gmai",
+        "e_message": "error: data command failed: 550-5.4.5 daily user sending limit exceeded",
+        "responseCode": 550
+      },
+      "timestamp_warmup_start": "2026-11-14T00:40:11.100Z",
+      "provider_code": 2,
+      "setup_pending": false,
+      "is_managed_account": false,
+      "stat_warmup_score": 85,
+      "sending_gap": 10,
+      "signature": "Best regards, Alex Example",
+      "reply_to": "person12@example.com",
+      "autofix_failed": false,
+      "tags": [
+        {
+          "id": "01a1d77f-5e57-7861-bab6-41dac7e7804b",
+          "label": "Warm pool",
+          "description": null
+        }
+      ]
+    }
+  ],
+  "next_starting_after": "01a1d77f-95e3-789f-872a-c1b290e61550"
+}

@@ -1,0 +1,33 @@
+{
+  "nodeType": "CONNECTION_REQUEST",
+  "actionDelay": 0,
+  "actionDelayUnit": "DAY",
+  "payload": {
+    "messages": [
+      "Hi {FIRST_NAME}, I'd love to connect!"
+    ],
+    "fallbackMessage": "Hi there, I'd love to connect!",
+    "toBeWithdrawnAfterDays": 30
+  },
+  "conditionalNode": {
+    "nodeType": "MESSAGE",
+    "actionDelay": 2,
+    "actionDelayUnit": "DAY",
+    "payload": {
+      "messages": [
+        "Thanks for connecting, {FIRST_NAME}!"
+      ],
+      "fallbackMessage": "Thanks for connecting!"
+    },
+    "unconditionalNode": {
+      "nodeType": "END",
+      "actionDelay": 3,
+      "actionDelayUnit": "HOUR"
+    }
+  },
+  "unconditionalNode": {
+    "nodeType": "END",
+    "actionDelay": 3,
+    "actionDelayUnit": "HOUR"
+  }
+}

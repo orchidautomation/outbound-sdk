@@ -1,0 +1,59 @@
+{
+  "messages": [
+    {
+      "id": "msg_xyz789",
+      "campaign_lead_map_id": "2433664091",
+      "lead": {
+        "id": 2995276770,
+        "email": "person1@example.com",
+        "first_name": "Alex",
+        "last_name": "Example"
+      },
+      "campaign": {
+        "id": 12345,
+        "name": "Q1 2025 SaaS Outreach"
+      },
+      "email_account": {
+        "id": 789,
+        "email": "person9@example.com",
+        "name": "Sales Team"
+      },
+      "last_message": {
+        "id": "email_abc123",
+        "subject": "Re: Partnership Opportunity",
+        "body": "One more thing: could you send pricing?",
+        "received_at": "2025-01-21T09:15:00Z"
+      },
+      "message_history": [
+        {
+          "id": "msg_1",
+          "subject": "Partnership Opportunity",
+          "body": "Hi Alex, I noticed your company...",
+          "direction": "outbound",
+          "sent_at": "2025-01-15T10:00:00Z",
+          "opened_at": "2025-01-15T10:30:00Z"
+        },
+        {
+          "id": "msg_2",
+          "subject": "Re: Partnership Opportunity",
+          "body": "Thanks for reaching out! I'm interested...",
+          "direction": "inbound",
+          "received_at": "2025-01-20T14:30:00Z"
+        },
+        {
+          "id": "msg_3",
+          "subject": "Re: Re: Partnership Opportunity",
+          "body": "One more thing: could you send pricing?",
+          "direction": "inbound",
+          "received_at": "2025-01-21T09:15:00Z"
+        }
+      ],
+      "email_status": "Replied",
+      "category": {
+        "id": 1,
+        "name": "Interested"
+      }
+    }
+  ],
+  "total_count": 1
+}
