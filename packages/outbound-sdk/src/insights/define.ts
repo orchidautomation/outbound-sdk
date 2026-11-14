@@ -99,6 +99,11 @@ export interface InsightSpec<Key extends string, Input, Data, Given = Input> {
   readonly description: string;
   readonly inputSchema: ZodObject & ZodType<Input, Given>;
   readonly needs: readonly CapabilityKey[];
+  /**
+   * Capabilities this input needs on top of `needs`, when what is read
+   * depends on the input. Checked before any request, like `needs`.
+   */
+  readonly needsFor?: ((input: Input) => readonly CapabilityKey[]) | undefined;
   readonly next: string;
   readonly run: (context: InsightContext, input: Input) => Promise<Data>;
 }
@@ -231,11 +236,13 @@ const prepare = <Key extends string, Input, Data, Given>(
   }
 
   const absent = missing(outbound, spec.needs);
+  // What only this input needs is named apart, so the caller knows another input may work.
+  const forInput = missing(outbound, spec.needsFor?.(parsed.data) ?? []);
 
-  if (absent.length > 0) {
+  if (absent.length > 0 || forInput.length > 0) {
     throw new OutboundError(
       "Unsupported",
-      `${spec.name} is not available: the ${outbound.provider} adapter does not support ${absent.join(", ")}`,
+      `${spec.name} is not available${absent.length > 0 ? "" : " for this input"}: the ${outbound.provider} adapter does not support ${[...new Set([...absent, ...forInput])].join(", ")}`,
       { provider: outbound.provider }
     );
   }

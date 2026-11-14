@@ -46,7 +46,9 @@ export const perform = async <Result>(
   action: string,
   options: OperationOptions | undefined,
   body: (state: CallState) => Promise<Result>,
-  shared?: CallState
+  shared?: CallState,
+  /** Says whether a failure is an answer to the caller, not an error: `onError` is not told of it. */
+  isAnswer?: (error: OutboundError) => boolean
 ): Promise<Result> => {
   const state = shared ?? core.engine.begin(options);
   const startedAt = core.engine.now();
@@ -58,19 +60,29 @@ export const perform = async <Result>(
     workspaceId: core.adapter.workspaceId,
   };
 
-  try {
-    const result = await body(state);
+  const done = (): void => {
     fire(hooks.onAction, {
       ...scope,
       durationMs: core.engine.now() - startedAt,
       requests: state.requests,
       throttledMs: state.throttledMs,
     });
+  };
+
+  try {
+    const result = await body(state);
+    done();
 
     return result;
   } catch (error) {
     const mapped = toOutboundError(core, error);
-    fire(hooks.onError, { ...scope, error: mapped });
+
+    if (isAnswer?.(mapped) === true) {
+      done();
+    } else {
+      fire(hooks.onError, { ...scope, error: mapped });
+    }
+
     throw mapped;
   }
 };

@@ -10,7 +10,7 @@ import { sumCounts } from "../../internal/metrics.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
 import type { ListAll } from "../../internal/outbound/api.ts";
 import type { InsightContext } from "../define.ts";
-import { rate, wilson } from "../stats.ts";
+import { rate, total, wilson } from "../stats.ts";
 
 const DAY_MS = 86_400_000;
 
@@ -150,6 +150,93 @@ export const ratesOf = (counts: Totals): Rates => ({
   positiveRate: measure(counts.positive, perLeadBase(counts)),
   replyRate: measure(counts.replied, perLeadBase(counts)),
 });
+
+/** How many of the rows added up are behind a rate. */
+export interface RateCoverage {
+  /** Rows that report both the rate's count and what it divides by. */
+  readonly counted: number;
+  /** Rows that report either. One that reports neither adds nothing and is not left out of anything. */
+  readonly of: number;
+}
+
+export interface MeasuredAcross extends RateCoverage {
+  readonly measured: Measured;
+}
+
+/**
+ * One rate over several rows (campaigns, or the tools of a combined
+ * instance), counting only the rows that report both sides of it: one
+ * campaign's bounces over every campaign's sends would understate the rate.
+ */
+export const measureAcross = <Row>(
+  rows: readonly Row[],
+  countOf: (row: Row) => number | null,
+  baseOf: (row: Row) => number | null
+): MeasuredAcross => {
+  const sides = rows.map((row) => ({ base: baseOf(row), count: countOf(row) }));
+
+  const pairs = sides.flatMap(({ base, count }) =>
+    count === null || base === null ? [] : [{ base, count }]
+  );
+
+  return {
+    counted: pairs.length,
+    measured:
+      pairs.length === 0
+        ? measure(total(sides.map((side) => side.count)), null)
+        : measure(
+            total(pairs.map((pair) => pair.count)),
+            total(pairs.map((pair) => pair.base))
+          ),
+    of: sides.filter((side) => side.base !== null || side.count !== null)
+      .length,
+  };
+};
+
+export interface RatesAcross {
+  readonly rates: Rates;
+  /** The rates that leave rows out, in words: `bounce rate (1 of 2)`. Empty when every row is in every rate. */
+  readonly partial: readonly string[];
+}
+
+/** Names a rate that leaves rows out, or nothing when every row is in it. */
+export const partialRate = (name: string, across: RateCoverage): string[] =>
+  across.counted > 0 && across.counted < across.of
+    ? [`${name} (${across.counted} of ${across.of})`]
+    : [];
+
+/** The three rates over several rows of counts, each over the rows that report it. */
+export const ratesAcross = (rows: readonly Totals[]): RatesAcross => {
+  const reply = measureAcross(rows, (row) => row.replied, perLeadBase);
+  const positive = measureAcross(rows, (row) => row.positive, perLeadBase);
+
+  const bounce = measureAcross(
+    rows,
+    (row) => row.bounced,
+    (row) => row.sent
+  );
+
+  return {
+    partial: [
+      ...partialRate("reply rate", reply),
+      ...partialRate("positive reply rate", positive),
+      ...partialRate("bounce rate", bounce),
+    ],
+    rates: {
+      bounceRate: bounce.measured,
+      positiveRate: positive.measured,
+      replyRate: reply.measured,
+    },
+  };
+};
+
+/** The note for rates that leave rows out. `where` names the group, for example `Tag saas`. */
+export const partialNote = (
+  where: string,
+  partial: readonly string[],
+  rows = "campaigns"
+): string =>
+  `${where}: ${partial.join(", ")} ${partial.length === 1 ? "counts" : "count"} only the ${rows} that report both the count and what it is divided by. The others are left out of the rate, not counted as 0.`;
 
 /** How much a campaign sent: messages, or leads contacted when messages are not reported. */
 export const volumeOf = (counts: Totals): number | null =>

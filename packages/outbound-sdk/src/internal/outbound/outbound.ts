@@ -197,7 +197,14 @@ export class Outbound<
     this.blocklist = makeReadCollection(this.#core, blocklistList(this.#core));
     this.tags = makeReadCollection(this.#core, tagList(this.#core));
     this.webhooks = makeReadCollection(this.#core, webhookList(this.#core));
-    this.raw = makeRawClient(this.#core);
+    this.raw = makeRawClient(
+      this.#core,
+      // Asked as if the adapter had native reads: a plugin that would turn
+      // them off must stop raw on an adapter that has none, too.
+      narrowCapabilities({ ...declared, native: true }, plugins).narrowedBy.get(
+        "native"
+      )
+    );
     this.native = makeNativeClient<Native>(this.#core);
   }
 

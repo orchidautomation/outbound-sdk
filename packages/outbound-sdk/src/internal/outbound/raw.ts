@@ -1,7 +1,9 @@
 // outbound.raw: the vendor's own API for anything not normalized yet. The SDK
 // promises read-only, so a request that is not a known read is refused unless
 // the instance was created with `allowWrites: true`. A read whose response
-// holds secrets is refused either way.
+// holds secrets is refused either way. So is every request once a plugin has
+// turned `native` off: raw returns the same untouched payload a native read
+// does, so what a plugin could not let through there cannot go through here.
 
 import type { HttpMethod } from "../adapter.ts";
 import { OutboundError } from "../errors.ts";
@@ -74,10 +76,21 @@ const resolve = (
   return { path: relative, query: url.searchParams, url: url.toString() };
 };
 
-export const makeRawClient = (core: Core): RawClient => {
+/**
+ * `nativeOffBy` names the plugin that turns the `native` capability off, when
+ * one does. It is asked for apart from the gate, because the gate records a
+ * plugin only for a capability the adapter declared, and raw exists on every
+ * adapter.
+ */
+export const makeRawClient = (
+  core: Core,
+  nativeOffBy?: string | undefined
+): RawClient => {
   const { adapter } = core;
 
-  const request = (
+  // async, so a refusal rejects like every other failure and a chained
+  // `.catch()` sees it.
+  const request = async (
     method: HttpMethod,
     path: string,
     options: RawRequestOptions = {}
@@ -85,7 +98,14 @@ export const makeRawClient = (core: Core): RawClient => {
     if (adapter.members !== undefined) {
       throw refuse(
         core,
-        "raw is not available on a combined instance. Use outbound.workspace(id).raw"
+        `raw is not available on a combined instance: it belongs to one vendor. Use outbound.workspace("provider:workspace").raw, for example ${adapter.members.map((member) => `"${member.name}:${member.workspaceId}"`).join(" or ")}`
+      );
+    }
+
+    if (nativeOffBy !== undefined) {
+      throw refuse(
+        core,
+        `raw is not available: the ${nativeOffBy} plugin turned the vendor's own reads off (native), and raw returns the same untouched payload`
       );
     }
 
@@ -98,14 +118,24 @@ export const makeRawClient = (core: Core): RawClient => {
       );
     }
 
-    if (!core.allowWrites && !adapter.raw.isRead(method, target.path)) {
+    const isRead = adapter.raw.isRead(method, target.path);
+
+    if (!core.allowWrites && !isRead) {
       throw refuse(
         core,
         `${method} ${target.path} is not a known read on ${adapter.name}. The SDK is read-only; pass allowWrites: true to createOutbound to permit it`
       );
     }
 
-    return perform(core, "raw", options, async (state) => {
+    // A read is safe to repeat. A request that is not a known read may have
+    // been applied before its response was lost, so it is sent once unless
+    // the caller asks for retries.
+    const settings =
+      isRead || options.retries !== undefined
+        ? options
+        : { ...options, retries: 0 };
+
+    return await perform(core, "raw", settings, async (state) => {
       const spec = adapter.raw.authorize({
         body: options.body,
         lane: options.lane,

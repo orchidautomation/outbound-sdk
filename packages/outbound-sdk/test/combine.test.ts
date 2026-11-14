@@ -262,6 +262,18 @@ test("workspaces are the members, and workspace(id) scopes to one of them", asyn
     (await both.workspaces.list()).items.map((workspace) => workspace.ref),
     ["mailtool:client-a:client-a", "lntool:client-a:client-a"]
   );
+  // `provider:workspace` names one member, for what one vendor alone answers.
+  const oneTool = outbound.workspace("lntool:client-a");
+  assert.equal(oneTool.provider, "lntool");
+  assert.equal(oneTool.workspaceId, "client-a");
+  await assert.rejects(
+    async () => await both.raw.get("/anything"),
+    (error) =>
+      OutboundError.is(error) &&
+      error.code === "Unsupported" &&
+      error.message.includes('outbound.workspace("provider:workspace").raw') &&
+      error.message.includes('"lntool:client-a"')
+  );
   const scoped = outbound.workspace("client-b");
   assert.equal(scoped.provider, "mailtool");
   assert.equal(scoped.workspaceId, "client-b");

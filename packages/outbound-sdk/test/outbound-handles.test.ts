@@ -304,6 +304,46 @@ test("raw allows writes only when the instance opts in", async () => {
   });
 });
 
+test("a raw request that is not a read is sent once, because repeating a write is not safe", async () => {
+  const failing = createFetch(() => new Response(null, { status: 503 }));
+
+  const outbound = createOutbound({
+    adapter: testAdapter(),
+    allowWrites: true,
+    fetch: failing.fetch,
+    retries: { backoff: () => 0, max: 2 },
+  });
+
+  const refused = await failure(() =>
+    outbound.raw.request("POST", "/campaigns/1/pause")
+  );
+
+  assert.equal(refused.code, "Provider");
+  assert.equal(failing.requests.length, 1, "a write is not retried");
+
+  // A read is still retried, and a caller may ask for retries on a write.
+  await failure(() => outbound.raw.get("/campaigns"));
+  assert.equal(failing.requests.length, 4, "one attempt and two retries");
+  await failure(() =>
+    outbound.raw.request("POST", "/campaigns/1/pause", {
+      retries: { backoff: () => 0, max: 1 },
+    })
+  );
+  assert.equal(failing.requests.length, 6);
+});
+
+test("a raw refusal rejects, so a chained catch sees it", async () => {
+  const outbound = createOutbound({ adapter: testAdapter() });
+
+  const seen = await outbound.raw
+    .request("DELETE", "/leads/1")
+    .catch((error: unknown) =>
+      OutboundError.is(error) ? error.code : "other"
+    );
+
+  assert.equal(seen, "Unsupported");
+});
+
 test("estimate returns the request count before reading", () => {
   const base = memory();
 

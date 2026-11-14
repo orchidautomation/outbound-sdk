@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { OutboundError } from "../../src/index.ts";
+import { combine } from "../../src/combine/index.ts";
+import { createOutbound, OutboundError } from "../../src/index.ts";
+import { insights } from "../../src/insights/index.ts";
+import { memory } from "../../src/memory/index.ts";
 import type { MemoryData } from "../../src/memory/index.ts";
 import { agency, NOW, single } from "./helpers.ts";
 
@@ -339,4 +342,35 @@ test("hot_leads ranks leads from two tools together", async () => {
     withoutData: 4,
   });
   assert.equal(result.meta.provider, "combined");
+  assert.deepEqual(result.meta.notes, []);
+});
+
+test("hot_leads on two tools names only the tool whose leads lack the counts", async () => {
+  const outbound = createOutbound({
+    adapter: combine([
+      memory({ data: DATA, name: "mailtool", workspaceId: "agency" }),
+      memory({
+        capabilities: { "leads.engagement": false },
+        data: {
+          campaigns: [{ channel: "linkedin", id: "k1" }],
+          leads: [{ campaignId: "k1", id: "p1", interest: "Interested" }],
+        },
+        name: "lntool",
+        workspaceId: "agency",
+      }),
+    ]),
+    plugins: [insights()],
+  });
+
+  const result = await outbound.insights.hotLeads({}, { now: NOW });
+
+  const top = result.data.leads.find(
+    (each) => each.lead === "mailtool:agency:h1"
+  );
+
+  // The email tool's lead keeps its counts in the score.
+  assert.deepEqual([top?.replies, top?.clicks, top?.opens], [2, 1, 3]);
+  assert.deepEqual(result.meta.notes, [
+    "lntool reports no per-lead open, click or reply counts, so scores rest on the interest label and the lead's status for its records. Records from the other tools carry what their vendor reports.",
+  ]);
 });

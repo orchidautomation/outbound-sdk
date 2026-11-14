@@ -4,7 +4,7 @@
 // fails because the vendor is unavailable or rate limited, the stored answer
 // is returned with `meta.stale: true` and its original `meta.fetchedAt`. A
 // failure that is the caller's own (a bad request, a missing record, a
-// rejected key) is never papered over.
+// rejected key, a request cap) is never papered over.
 
 import { cacheKey } from "../cache/index.ts";
 import type { CacheStore } from "../cache/index.ts";
@@ -21,10 +21,19 @@ export interface FailoverOptions {
 
 const WEEK_SECONDS = 7 * 24 * 60 * 60;
 
+// A `RateLimited` the vendor sent carries the HTTP status (429). The ones the
+// SDK raises itself carry none: `maxRequests`, the budget plugin, and a
+// deadline that would pass while the local rate budget is full. Those are the
+// caller's own caps, not an outage.
 const vendorIsDown = (cause: unknown): boolean =>
   OutboundError.is(cause) &&
   !cause.aborted &&
-  (cause.code === "Provider" || cause.code === "RateLimited");
+  (cause.code === "Provider" ||
+    (cause.code === "RateLimited" && cause.status !== undefined));
+
+/** When the vendor was asked: an answer a layer inside served from a store says so itself. */
+const fetchedAtOf = (fetchedAt: string | undefined, now: number): number =>
+  fetchedAt === undefined ? now : Date.parse(fetchedAt);
 
 /** Serves the last good answer, marked stale, when the vendor is down. */
 export const failover = (options: FailoverOptions): OutboundPlugin => {
@@ -38,7 +47,12 @@ export const failover = (options: FailoverOptions): OutboundPlugin => {
 
       try {
         const output = await next(operation);
-        await options.store.set(key, { output, storedAt: now() }, maxAgeMs);
+
+        await options.store.set(
+          key,
+          { output, storedAt: fetchedAtOf(output.fetchedAt, now()) },
+          maxAgeMs
+        );
 
         return output;
       } catch (error) {

@@ -15,8 +15,11 @@ const SCOPE_CAPABILITY = {
   workspace: "stats.workspace",
 } as const satisfies Record<MetricScope, CapabilityKey>;
 
-/** Counts for a scope, as totals or one row per day. */
-export const readStats = (
+/**
+ * Counts for a scope, as totals or one row per day. Async, so a refused
+ * input or capability rejects like every other failure of the call.
+ */
+export const readStats = async (
   core: Core,
   options: TopLevelStatsOptions = {}
 ): Promise<StatsResult> => {
@@ -39,14 +42,14 @@ export const readStats = (
   requireCapability(
     core.gate,
     SCOPE_CAPABILITY[scope],
-    `Stats for the ${scope} scope`
+    `Reading stats for the ${scope} scope`
   );
 
   if (by === "day") {
-    requireCapability(core.gate, "stats.byDay", "Stats by day");
+    requireCapability(core.gate, "stats.byDay", "Reading stats by day");
   }
 
-  return perform(core, "stats", options, async (state) => {
+  return await perform(core, "stats", options, async (state) => {
     const output = await core.run(
       {
         kind: "stats",

@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import type { CapabilityKey } from "../internal/capabilities.ts";
 import { OutboundError } from "../internal/errors.ts";
 import { unknownKey } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
@@ -77,7 +78,17 @@ const bind = <Input>(
     }
 
     try {
-      return await definition.run(outbound, parsed.data);
+      const result = await definition.run(outbound, parsed.data);
+
+      return result.ok
+        ? {
+            ...result,
+            meta: {
+              ...result.meta,
+              today: new Date().toISOString().slice(0, 10),
+            },
+          }
+        : result;
     } catch (error) {
       return failure(error);
     }
@@ -114,9 +125,48 @@ export interface ToolsOptions {
   readonly extra?: readonly OutboundTool[] | undefined;
 }
 
+interface Redacted {
+  readonly redacted: { readonly fields: readonly string[] };
+}
+
+const isRedacted = (
+  outbound: OutboundApi
+): outbound is OutboundApi & Redacted => "redacted" in outbound;
+
+const masksIdentifiers = (outbound: OutboundApi): boolean =>
+  isRedacted(outbound) &&
+  outbound.redacted.fields.some(
+    (field) => field === "email" || field === "linkedin"
+  );
+
+/** What `next` says when the hint a tool wrote names a tool that is not on offer. */
+export const NEXT_FALLBACK = "Pick another of the listed tools to go further.";
+
+// A hint may only name a tool the model was given.
+const withOfferedHints = (
+  tool: OutboundTool,
+  offered: ReadonlySet<string>
+): OutboundTool => {
+  const hidden = TOOL_NAMES.filter((name) => !offered.has(name));
+
+  return hidden.length === 0
+    ? tool
+    : {
+        ...tool,
+        call: async (input) => {
+          const result = await tool.call(input);
+
+          return hidden.some((name) => result.next.includes(name))
+            ? { ...result, next: NEXT_FALLBACK }
+            : result;
+        },
+      };
+};
+
 /**
  * The tool set for one instance. A tool that needs a plugin the instance does
- * not have is left out, so a model is never offered a tool that cannot work.
+ * not have, or a capability the adapter lacks or a plugin turned off, is left
+ * out, so a model is never offered a tool that cannot work.
  */
 export const createTools = (
   outbound: OutboundApi,
@@ -141,9 +191,10 @@ export const createTools = (
     options.only === undefined ? undefined : new Set<string>(options.only);
 
   // The clients plugin adds `clients`; the identity plugin adds `person`.
-  const available = new Map([
+  const added = new Map([
     ["clients", "clients" in outbound],
-    ["identity", "person" in outbound],
+    // person() refuses when redact masks the identifiers it links by.
+    ["identity", "person" in outbound && !masksIdentifiers(outbound)],
     // Offered only when the vendor has reads of its own and no plugin turned them off.
     [
       "native",
@@ -152,11 +203,24 @@ export const createTools = (
     ],
   ]);
 
-  const offered = all.filter(
-    (tool) =>
-      (wanted === undefined || wanted.has(tool.name)) &&
-      tool.needs.every((need) => available.get(need) ?? false)
-  );
+  const { capabilities } = outbound;
 
-  return [...offered, ...(options.extra ?? [])];
+  const isCapability = (need: string): need is CapabilityKey =>
+    Object.hasOwn(capabilities, need);
+
+  // Anything else a tool needs is a capability key. An unknown name is unmet.
+  const met = (need: string): boolean =>
+    added.get(need) ?? (isCapability(need) && capabilities[need] !== false);
+
+  const offered = [
+    ...all.filter(
+      (tool) =>
+        (wanted === undefined || wanted.has(tool.name)) && tool.needs.every(met)
+    ),
+    ...(options.extra ?? []),
+  ];
+
+  const names = new Set(offered.map((tool) => tool.name));
+
+  return offered.map((tool) => withOfferedHints(tool, names));
 };

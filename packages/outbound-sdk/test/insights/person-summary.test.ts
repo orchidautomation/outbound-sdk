@@ -173,6 +173,10 @@ test("person_summary stops at max_campaigns and rejects text that is not an addr
 
   assert.equal(capped.data.campaigns.length, 1);
   assert.equal(capped.meta.complete, false);
+  // The note names the cap, as the other insights do.
+  assert.deepEqual(capped.meta.notes, [
+    "Stopped at 1 records of the person; more exist.",
+  ]);
 
   await assert.rejects(
     async () => await agency().insights.personSummary({ person: "Jane Doe" }),

@@ -149,7 +149,8 @@ export const makeNativeClient = <Native extends NativeCatalog>(
   // SAFETY: an adapter's catalog is a NativeCatalog; the default type only hides its names.
   const catalog = (adapter.native ?? {}) as NativeCatalog;
 
-  const read = (
+  // async, so a refusal rejects like every other failure.
+  const read = async (
     name: string,
     params: NativeParams = {},
     options: OperationOptions = {}
@@ -157,7 +158,7 @@ export const makeNativeClient = <Native extends NativeCatalog>(
     if (adapter.members !== undefined) {
       throw new OutboundError(
         "Unsupported",
-        "native is not available on a combined instance. Use outbound.workspace(id).native",
+        `native is not available on a combined instance: it belongs to one vendor. Use outbound.workspace("provider:workspace").native, for example ${adapter.members.map((member) => `"${member.name}:${member.workspaceId}"`).join(" or ")}`,
         { provider: adapter.name }
       );
     }
@@ -174,7 +175,7 @@ export const makeNativeClient = <Native extends NativeCatalog>(
 
     const built = build(core, { name, read: entry }, params);
 
-    return perform(core, `native.${name}`, options, async (state) => {
+    return await perform(core, `native.${name}`, options, async (state) => {
       const spec = adapter.raw.authorize({
         body: built.body,
         lane: entry.lane,

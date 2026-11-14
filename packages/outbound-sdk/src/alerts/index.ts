@@ -6,6 +6,7 @@
 export {
   alerts,
   bounceRateAbove,
+  memoryAlertDedupe,
   noSends,
   replyRateBelow,
   senderNotActive,
@@ -13,6 +14,7 @@ export {
 
 export type {
   Alert,
+  AlertDedupe,
   AlertRule,
   AlertsExtension,
   AlertsOptions,

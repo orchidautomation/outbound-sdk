@@ -5,14 +5,16 @@ import { z } from "zod";
 import type { Channel } from "../../internal/entities.ts";
 import { sumCounts } from "../../internal/metrics.ts";
 import { defineInsight } from "../define.ts";
-import { compareRates, round } from "../stats.ts";
+import { compareRates, pText, round } from "../stats.ts";
 import type { ProportionTest } from "../stats.ts";
 import {
   listFields,
-  measure,
+  measureAcross,
+  partialNote,
+  partialRate,
+  perLeadBase,
   percent,
   rangeFields,
-  ratesOf,
   readCampaignTotals,
   totalsOf,
 } from "./shared.ts";
@@ -63,30 +65,48 @@ export interface ChannelMix {
   readonly byProvider: readonly ProviderGroup[];
 }
 
+interface Grouped {
+  readonly group: ChannelGroup;
+  /** The rates that leave campaigns out. */
+  readonly partial: readonly string[];
+}
+
 const groupOf = (
   channel: Channel,
   entries: readonly CampaignTotals[]
-): ChannelGroup => {
-  const counts = sumCounts(entries.map((entry) => entry.counts));
-  const totals = totalsOf(counts);
-  const rates = ratesOf(totals);
+): Grouped => {
+  const counts = entries.map((entry) => entry.counts);
+  const reply = measureAcross(counts, (row) => row.replied, perLeadBase);
+  const positive = measureAcross(counts, (row) => row.positive, perLeadBase);
+
+  const acceptance = measureAcross(
+    counts,
+    (row) => row.connectionsAccepted,
+    (row) => row.connectionsSent
+  );
 
   return {
-    ...totals,
-    acceptance:
-      channel === "linkedin"
-        ? measure(counts.connectionsAccepted, counts.connectionsSent)
-        : null,
-    campaigns: entries.length,
-    channel,
-    positiveRate: rates.positiveRate,
-    replyRate: rates.replyRate,
+    group: {
+      ...totalsOf(sumCounts(counts)),
+      acceptance: channel === "linkedin" ? acceptance.measured : null,
+      campaigns: entries.length,
+      channel,
+      positiveRate: positive.measured,
+      replyRate: reply.measured,
+    },
+    partial: [
+      ...partialRate("reply rate", reply),
+      ...partialRate("positive reply rate", positive),
+      ...(channel === "linkedin"
+        ? partialRate("acceptance rate", acceptance)
+        : []),
+    ],
   };
 };
 
 const CHANNELS = ["email", "linkedin"] as const;
 
-const byChannel = (entries: readonly CampaignTotals[]): ChannelGroup[] =>
+const byChannel = (entries: readonly CampaignTotals[]): Grouped[] =>
   CHANNELS.flatMap((channel) => {
     const members = entries.filter(
       (entry) => entry.campaign.channel === channel
@@ -95,13 +115,21 @@ const byChannel = (entries: readonly CampaignTotals[]): ChannelGroup[] =>
     return members.length === 0 ? [] : [groupOf(channel, members)];
   });
 
-const byProvider = (entries: readonly CampaignTotals[]): ProviderGroup[] =>
+interface ProviderGrouped {
+  readonly group: ProviderGroup;
+  readonly partial: readonly string[];
+}
+
+const byProvider = (entries: readonly CampaignTotals[]): ProviderGrouped[] =>
   [...new Set(entries.map((entry) => entry.campaign.provider))]
     .toSorted()
     .flatMap((provider) =>
       byChannel(
         entries.filter((entry) => entry.campaign.provider === provider)
-      ).map((group) => ({ ...group, provider }))
+      ).map(({ group, partial }) => ({
+        group: { ...group, provider },
+        partial,
+      }))
     );
 
 const NAMES = { email: "email", linkedin: "LinkedIn" } as const;
@@ -153,13 +181,13 @@ const compare = (
       test.significant
         ? "the difference is more than chance"
         : "the difference could be chance"
-    } (p = ${test.pValue}).`,
+    } (${pText(test.pValue)}).`,
   };
 };
 
 export const channelMix = defineInsight({
   description:
-    "Email against LinkedIn: campaign totals added up per channel, with campaigns, leads contacted, messages sent, replies, positive replies, the reply rate with its 95% interval and, for LinkedIn, the connection acceptance rate; whether the difference in reply rate is more than chance (a two-proportion test); and the same numbers per tool. Use it to decide where to put volume. With one channel present it returns that channel and says there is nothing to compare. A null count is one the vendor does not report. Costs one listing per status plus one stats request per campaign.",
+    "Email against LinkedIn: campaign totals added up per channel, with campaigns, leads contacted, messages sent, replies, positive replies, the reply rate with its 95% interval and, for LinkedIn, the connection acceptance rate; whether the difference in reply rate is more than chance (a two-proportion test); and the same numbers per tool. Use it to decide where to put volume. With one channel present it returns that channel and says there is nothing to compare. A null count is one the vendor does not report; a rate counts only the campaigns that report both its count and what it divides by, and a note names a group whose rate leaves campaigns out. Costs one listing per status plus one stats request per campaign.",
   inputSchema: input,
   key: "channelMix",
   name: "channel_mix",
@@ -168,11 +196,29 @@ export const channelMix = defineInsight({
   run: async (context, options) => {
     const entries = await readCampaignTotals(context, options);
     const channels = byChannel(entries);
+    const providers = byProvider(entries);
+
+    for (const { group, partial } of channels) {
+      if (partial.length > 0) {
+        context.note(partialNote(`Channel ${group.channel}`, partial));
+      }
+    }
+
+    for (const { group, partial } of providers) {
+      if (partial.length > 0) {
+        context.note(
+          partialNote(`${group.provider} ${group.channel}`, partial)
+        );
+      }
+    }
 
     const mix: ChannelMix = {
-      ...compare(channels, options.alpha),
-      byProvider: byProvider(entries),
-      channels,
+      ...compare(
+        channels.map((each) => each.group),
+        options.alpha
+      ),
+      byProvider: providers.map((each) => each.group),
+      channels: channels.map((each) => each.group),
       period: { from: options.from, to: options.to },
     };
 

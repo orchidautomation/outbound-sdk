@@ -222,3 +222,114 @@ test("channel_mix says when the cap cut the list, and needs campaign stats", asy
     unsupported("stats.campaign")
   );
 });
+
+test("channel_mix divides replies only by the leads of the campaigns that report replies, and says so", async () => {
+  const result = await pair(
+    {
+      campaigns: [
+        { id: "m1", name: "Reports replies" },
+        { id: "m2", name: "Sends only" },
+      ],
+      stats: [
+        row("m1", "2026-11-03", {
+          contacted: 500,
+          positive: 5,
+          replied: 50,
+          sent: 500,
+        }),
+        row("m2", "2026-11-04", { contacted: 1500, sent: 1500 }),
+      ],
+    },
+    {
+      campaigns: [
+        { channel: "linkedin", id: "k1" },
+        { channel: "linkedin", id: "k2" },
+      ],
+      stats: [
+        row("k1", "2026-11-05", {
+          connectionsAccepted: 40,
+          connectionsSent: 100,
+          contacted: 100,
+          replied: 20,
+          sent: 100,
+        }),
+        // Connection requests are not reported for this one.
+        row("k2", "2026-11-05", { contacted: 100, replied: 20, sent: 100 }),
+      ],
+    }
+  ).insights.channelMix(NOVEMBER, { now: NOW });
+
+  const [email, linkedin] = result.data.channels;
+
+  // 50 replies of the 500 leads of the campaign that reports replies: 10%,
+  // not 50 of 2,000 (2.5%). The counts beside it are still both campaigns'.
+  assert.deepEqual(
+    [
+      email?.contacted,
+      email?.replied,
+      email?.replyRate.of,
+      email?.replyRate.rate,
+    ],
+    [2000, 50, 500, 0.1]
+  );
+  assert.deepEqual(
+    [
+      email?.positiveRate.count,
+      email?.positiveRate.of,
+      email?.positiveRate.rate,
+    ],
+    [5, 500, 0.01]
+  );
+  // 40 accepted of the 100 requests that campaign sent.
+  assert.deepEqual(
+    [
+      linkedin?.acceptance?.count,
+      linkedin?.acceptance?.of,
+      linkedin?.replyRate.rate,
+    ],
+    [40, 100, 0.2]
+  );
+  // 10% against 20%: the comparison uses the same rates.
+  assert.equal(result.data.comparison?.higher, "linkedin");
+  assert.equal(result.data.comparison?.difference, 0.1);
+  assert.deepEqual(result.meta.notes, [
+    "Channel email: reply rate (1 of 2), positive reply rate (1 of 2) count only the campaigns that report both the count and what it is divided by. The others are left out of the rate, not counted as 0.",
+    "mailtool email: reply rate (1 of 2), positive reply rate (1 of 2) count only the campaigns that report both the count and what it is divided by. The others are left out of the rate, not counted as 0.",
+  ]);
+});
+
+test("a finding prints a p-value too small to round as p < 0.0001, never as p = 0", async () => {
+  const result = await pair(
+    {
+      campaigns: [{ id: "m1" }],
+      stats: [
+        row("m1", "2026-11-03", { contacted: 5000, replied: 50, sent: 5000 }),
+      ],
+    },
+    {
+      campaigns: [{ channel: "linkedin", id: "k1" }],
+      stats: [
+        row("k1", "2026-11-05", { contacted: 5000, replied: 1000, sent: 5000 }),
+      ],
+    }
+  ).insights.channelMix(NOVEMBER, { now: NOW });
+
+  assert.equal(result.data.comparison?.test.pValue, 0);
+  assert.equal(
+    result.data.finding,
+    "The reply rate is 20% on LinkedIn against 1% on email; the difference is more than chance (p < 0.0001)."
+  );
+
+  const periods = await single({
+    campaigns: [{ id: "c1" }],
+    stats: [
+      row("c1", "2026-11-03", { contacted: 5000, replied: 50, sent: 5000 }),
+      row("c1", "2026-11-10", { contacted: 5000, replied: 1000, sent: 5000 }),
+    ],
+  }).insights.periodComparison({}, { now: NOW });
+
+  assert.equal(
+    periods.data.total.finding,
+    "Reply rate went from 1% to 20%; more than chance (p < 0.0001)."
+  );
+});

@@ -377,4 +377,57 @@ test("account_summary joins one person's records across two tools", async () => 
   assert.equal(result.data.totals.records, 6);
   assert.equal(result.data.totals.campaigns, 3);
   assert.equal(result.meta.provider, "combined");
+  assert.deepEqual(result.meta.notes, []);
+});
+
+// The email tool beside a LinkedIn tool that declares no per-lead counts.
+const two = (linkedin: MemoryData) =>
+  createOutbound({
+    adapter: combine([
+      memory({ data: MAIL, name: "mailtool", workspaceId: "agency" }),
+      // One tool without the counts turns `leads.engagement` off for the whole instance.
+      memory({
+        capabilities: { "leads.engagement": false },
+        data: linkedin,
+        name: "lntool",
+        workspaceId: "agency",
+      }),
+    ]),
+    plugins: [insights()],
+  });
+
+test("account_summary on two tools names the tool whose records lack the counts, and keeps the other tool's", async () => {
+  const bare: MemoryData = {
+    campaigns: [{ channel: "linkedin", id: "k1" }],
+    leads: [{ campaignId: "k1", email: "ann@acme.example", id: "p1" }],
+  };
+
+  const mixed = two(bare);
+
+  assert.equal(mixed.capabilities["leads.engagement"], false);
+
+  const result = await mixed.insights.accountSummary({
+    domain: "acme.example",
+  });
+
+  const [ann] = result.data.people;
+  const counts = ann?.records.map((each) => [each.provider, each.replies]);
+
+  // The email tool's records still carry their counts; only lntool's are null.
+  assert.deepEqual(counts, [
+    ["mailtool", 1],
+    ["mailtool", 3],
+    ["lntool", null],
+  ]);
+  assert.equal(ann?.replies, 4);
+  assert.deepEqual(result.meta.notes, [
+    "lntool reports no per-lead open, click or reply counts, so those are null for its records. Records from the other tools carry what their vendor reports.",
+  ]);
+
+  // Every tool's records carry counts: nothing is null because of a tool, so nothing is said.
+  const full = await two(LINKEDIN).insights.accountSummary({
+    domain: "acme.example",
+  });
+
+  assert.deepEqual(full.meta.notes, []);
 });

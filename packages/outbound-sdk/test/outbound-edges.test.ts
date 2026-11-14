@@ -143,7 +143,10 @@ test("raw is not available on an instance that fronts several adapters", async (
   const outbound = createOutbound({ adapter: { ...base, members: [base] } });
   const error = await failure(() => outbound.raw.get("/anything"));
   assert.equal(error.code, "Unsupported");
-  assert.match(error.message, /Use outbound\.workspace\(id\)\.raw/u);
+  assert.match(
+    error.message,
+    /Use outbound\.workspace\("provider:workspace"\)\.raw/u
+  );
 });
 
 test("an adapter without caveats reports none", () => {

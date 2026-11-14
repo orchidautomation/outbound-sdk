@@ -119,6 +119,9 @@ test("campaign_overview reports each active campaign with rates computed from co
     sent: 90,
   });
   assert.ok(result.ok && result.meta.evidence === "exact");
+  // A model does not know the date, so every result carries it.
+  assert.match(result.meta.today ?? "", /^\d{4}-\d{2}-\d{2}$/u);
+  assert.equal(result.meta.today, new Date().toISOString().slice(0, 10));
   assert.ok(result.ok && result.next.includes("campaign_trend"));
 
   const paused = await call(plain(), "campaign_overview", { status: "paused" });
@@ -381,15 +384,16 @@ test("a tool never throws: bad input, a missing record and an unsupported read a
   assert.equal(extra.error.code, "Invalid");
   assert.match(extra.error.message, /campaign_overview: .*"client"/u);
 
+  // The tool itself can be served; the filter this input adds cannot.
   const unsupported = await call(
     createOutbound({
       adapter: memory({
-        capabilities: { "stats.byStep": false },
+        capabilities: { "replies.category": false },
         data: demoData(),
       }),
     }),
-    "winning_steps",
-    { campaign: "cmp_founders" }
+    "reply_samples",
+    { category: "positive" }
   );
 
   assert.ok(!unsupported.ok);

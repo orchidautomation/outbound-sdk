@@ -183,7 +183,7 @@ const toDropped = (
       category: first.category,
       channel: first.channel,
       checkedBy: by,
-      finding: `A ${first.category} reply has waited ${Math.floor(hoursWaiting)} hours with nothing sent after it.`,
+      finding: `${/^[aeiou]/u.test(first.category) ? "An" : "A"} ${first.category} reply has waited ${Math.floor(hoursWaiting)} hours with nothing sent after it.`,
       hoursWaiting,
       lead: first.leadRef,
       provider: first.provider,

@@ -5,6 +5,7 @@
 // so the next run asks only for newer records. Nothing is stored on our side.
 
 import type { Entity } from "../internal/entities-account.ts";
+import { OutboundError } from "../internal/errors.ts";
 import type {
   CampaignFilters,
   LeadFilters,
@@ -104,6 +105,25 @@ export interface SyncExtension {
   };
 }
 
+const COLLECTIONS: readonly string[] = [
+  "campaigns",
+  "leads",
+  "messages",
+  "replies",
+  "senders",
+] satisfies readonly SyncCollection[];
+
+/** Refuses a name that is not a collection. A caller without types can pass any string. */
+const assertCollection = (outbound: OutboundApi, collection: string): void => {
+  if (!COLLECTIONS.includes(collection)) {
+    throw new OutboundError(
+      "Invalid",
+      `sync: "${collection}" is not a collection. Use one of ${COLLECTIONS.join(", ")}.`,
+      { provider: outbound.provider }
+    );
+  }
+};
+
 interface Walk {
   readonly since: string | undefined;
   readonly start: (cursor: string | undefined) => ListAll<Entity>;
@@ -187,6 +207,7 @@ const runSync = async <Item extends Entity>(
   options: SyncOptions<Item>
 ): Promise<SyncResult> => {
   const { now, outbound, overlapMs, store } = runner;
+  assertCollection(outbound, collection);
   const key = keyFor(outbound, collection, options.campaignId);
   const previous = (await store.get(key)) ?? {};
   const startedAt = previous.startedAt ?? new Date(now()).toISOString();
@@ -270,8 +291,12 @@ export const sync = (
 
     return {
       sync: {
-        reset: (collection, campaignId) =>
-          options.checkpoints.delete(keyFor(outbound, collection, campaignId)),
+        reset: async (collection, campaignId) => {
+          assertCollection(outbound, collection);
+          await options.checkpoints.delete(
+            keyFor(outbound, collection, campaignId)
+          );
+        },
         run: (collection, runOptions) =>
           runSync(runner, collection, runOptions),
       },

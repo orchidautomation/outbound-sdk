@@ -34,8 +34,8 @@ export interface InsightsExtension {
   readonly insights: Insights;
 }
 
-/** Runs one insight by its tool name or method name, with JSON input. Throws `Invalid` for an unknown name. */
-export const runInsightByName = (
+/** Runs one insight by its tool name or method name, with JSON input. Rejects with `Invalid` for an unknown name. */
+export const runInsightByName = async (
   outbound: OutboundApi,
   name: string,
   input: Json = {},
@@ -53,7 +53,7 @@ export const runInsightByName = (
     );
   }
 
-  return entry.execute(outbound, input, options);
+  return await entry.execute(outbound, input, options);
 };
 
 export interface ListedInsight {

@@ -70,6 +70,10 @@ const DATA: MemoryData = {
   ],
 };
 
+// Small reports no bounces, and in the earlier period only Bouncy does.
+const BOUNCE_NOTE =
+  "Totals: this period's bounce rate (3 of 4), the earlier period's bounce rate (1 of 3) count only the campaigns that report both the count and what it is divided by. The others are left out of the rate, not counted as 0.";
+
 test("client_report composes totals, best and worst campaigns, bounce problems, unusual days, leads left and actions", async () => {
   const result = await single(DATA).insights.clientReport(
     { top: 1 },
@@ -89,9 +93,11 @@ test("client_report composes totals, best and worst campaigns, bounce problems, 
   });
   // Current: 400 + 300 + 200 + 20 sends, 70 + 140 + 70 + 20 contacted,
   // 14 + 14 + 2 + 1 replies, 4 + 3 + 20 bounces. Previous: 900 sends,
-  // 280 contacted, 12 + 14 + 9 replies, 2 bounces.
+  // 280 contacted, 12 + 14 + 9 replies, 2 bounces. Small reports no bounces,
+  // so the 27 are divided by the other three's 900 sends, not by 920; in the
+  // earlier period only Bouncy reports them: 2 of its 200.
   assert.deepEqual(result.data.totals.current, {
-    bounceRate: 0.0293,
+    bounceRate: 0.03,
     bounced: 27,
     contacted: 300,
     positive: null,
@@ -101,7 +107,7 @@ test("client_report composes totals, best and worst campaigns, bounce problems, 
     sent: 920,
   });
   assert.deepEqual(result.data.totals.previous, {
-    bounceRate: 0.0022,
+    bounceRate: 0.01,
     bounced: 2,
     contacted: 280,
     positive: null,
@@ -237,7 +243,7 @@ test("client_report composes totals, best and worst campaigns, bounce problems, 
   ]);
   assert.deepEqual(result.data.leftOut, []);
   assert.equal(result.meta.complete, true);
-  assert.deepEqual(result.meta.notes, []);
+  assert.deepEqual(result.meta.notes, [BOUNCE_NOTE]);
 });
 
 test("client_report moves with top, the bounce limit, min_sent and the runway", async () => {
@@ -377,6 +383,7 @@ test("client_report leaves out the sections the adapter cannot serve, and names 
   assert.equal(noDays.data.runningOutOfLeads, null);
   assert.deepEqual(noDays.data.leftOut, [unusual, runway]);
   assert.deepEqual(noDays.meta.notes, [
+    BOUNCE_NOTE,
     `Left out. ${unusual}`,
     `Left out. ${runway}`,
   ]);
