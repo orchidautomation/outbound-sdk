@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "data": [
+    {
+      "id": 1,
+      "tag_mapping_id": 789,
+      "name": "VIP",
+      "color": "#FF5733"
+    },
+    {
+      "id": 2,
+      "tag_mapping_id": 790,
+      "name": "Enterprise",
+      "color": "#4CAF50"
+    }
+  ]
+}

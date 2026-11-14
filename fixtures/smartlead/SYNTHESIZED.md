@@ -8,6 +8,23 @@
 - `listInboxReplies.json`, `listInboxReplies.page2.json`: the synthesized extra items repeated `last_message.id`. Each item now has its own (`email_abc123` to `email_abc125`).
 - `webhook.*.json`: every `secret_key` value is `redacted`. The documented examples show placeholder secrets, which the fixture check reads as credentials.
 
+## Added for the account-level reads (2026-11-14)
+
+| File | Source and what was synthesized |
+| --- | --- |
+| `getEmailAccountWarmupStats.json` | The older (Notion) shape. Its example is all zeros, so every count was given its own value. |
+| `getEmailAccountWarmupStats.newdocs.json` | The newer example, with `total_sent`, `spam_count` and `reputation_score` changed so they differ from the older file. |
+| `listLeadLists.json`, `listLeadLists.page2.json` | The documented example; the last page was added. |
+| `listDomainBlockList.json`, `listDomainBlockList.page2.json` | The docs example has 1 entry; an address entry and the last page were added, with mixed case to test lowercasing. |
+| `listEmailAccountTags.json` | The documented example of `GET /email-accounts/tags`. |
+| `listLeadTags.json` | The documented example of `GET /crm/leads/tags`. |
+| `listCampaignWebhooks.json` | The older example is one object; wrapped in an array and a second added. |
+| `listCampaignWebhooks.newdocs.json` | The newer example, whose event names are not real ones. |
+| `getInboxItem.json` | The documented example of `GET /master-inbox/{id}`, which looks hand-written. |
+| `listInboxReplies.history.json` | Built from the "with message history" example, whose items are elided with `{...}`: the thread fields come from the first example, and a second inbound message and a `lead.id` were added. |
+| `analyticsMailboxNameWiseHealth.json` | The docs example has 1 row; a second was added, and the first mailbox's address is in mixed case. |
+| `listCampaigns.subsequences.json` | `listCampaigns.json` plus three child campaigns (`parent_campaign_id` set): two of campaign 372 and one of another campaign. No documented example shows a child campaign. |
+
 All personal data was replaced with fakes (`personN@example.com`, "Alex Example", "Example Co", `example.com`). No fixture comes from a live API call. Field names are copied from the docs.
 
 Smartlead publishes two generations of docs that often disagree on the response envelope:

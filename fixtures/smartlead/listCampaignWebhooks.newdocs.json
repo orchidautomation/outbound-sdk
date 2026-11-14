@@ -1,0 +1,15 @@
+{
+  "success": true,
+  "data": [
+    {
+      "id": 456,
+      "name": "CRM Integration",
+      "webhook_url": "https://hooks.example.com/webhook",
+      "event_types": [
+        "LEAD_REPLIED",
+        "LEAD_OPENED"
+      ],
+      "is_active": true
+    }
+  ]
+}

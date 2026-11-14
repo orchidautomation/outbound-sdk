@@ -1,0 +1,17 @@
+[
+  {
+    "id": 10,
+    "name": "Winners",
+    "color": "#B1FCCF"
+  },
+  {
+    "id": 15,
+    "name": "Webinar Emails",
+    "color": "#F5B1FC"
+  },
+  {
+    "id": 22,
+    "name": "High Priority",
+    "color": "#FCB1B1"
+  }
+]

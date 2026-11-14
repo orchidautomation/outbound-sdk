@@ -43,8 +43,10 @@ export interface SmartleadClient {
 }
 
 // The reads Smartlead serves over POST: the master inbox folders, the lead
-// search, and the bulk message history (the suffix is part of its path).
+// search, the bulk message history (the suffix is part of its path) and the
+// tags of a set of mailboxes.
 const READ_POSTS = [
+  /^\/email-accounts\/tag-list$/u,
   /^\/master-inbox\/(?:inbox-replies|unread-replies|sent|important|assigned-me|archived|snoozed|reminders|scheduled|views)$/u,
   /^\/campaigns\/\d+\/leads\/filter$/u,
   /^\/campaigns\/\d+\/message-history-for-leads\/bbfbdsFGHlBr76ruhjvh6fhHL$/u,

@@ -35,6 +35,8 @@ test("smartlead: messages come from the activity feed, in its own lane", async (
   assert.equal(sent?.leadRef, "smartlead:client-a:2995276770");
   assert.equal(sent?.senderRef, null, "the feed names the mailbox by address");
   assert.equal(sent?.channel, "email");
+  assert.equal(sent?.threadId, "2433664091", "email_lead_map_id");
+  assert.equal(reply?.threadId, "2433664091");
   assert.equal(sent?.bodyText, null, "bodies are left out unless asked for");
   assert.equal(reply?.sourceId, "<reply123@example.com>");
   assert.equal(reply?.direction, "in");
@@ -246,6 +248,11 @@ test("smartlead: replies come from the master inbox with a fetched category", as
       ["POST", `${API}/master-inbox/inbox-replies`],
     ],
     "the categories are read once and then travel in the cursor"
+  );
+  assert.equal(
+    urlOf(requests[1]).searchParams.get("fetch_message_history"),
+    "true",
+    "so a thread carries every reply when the API returns its history"
   );
   assert.deepEqual(bodyOf(requests[1]), { filters: {}, limit: 20, offset: 0 });
   assert.deepEqual(bodyOf(requests[2]), { filters: {}, limit: 20, offset: 2 });

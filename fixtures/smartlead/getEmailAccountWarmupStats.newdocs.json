@@ -1,0 +1,23 @@
+{
+  "total_sent": 141,
+  "spam_count": 4,
+  "reputation_score": 96,
+  "daily_stats": [
+    {
+      "date": "2025-11-20",
+      "sent": 15,
+      "spam": 0,
+      "delivered": 15,
+      "opened": 12,
+      "replied": 4
+    },
+    {
+      "date": "2025-11-21",
+      "sent": 18,
+      "spam": 1,
+      "delivered": 17,
+      "opened": 14,
+      "replied": 5
+    }
+  ]
+}

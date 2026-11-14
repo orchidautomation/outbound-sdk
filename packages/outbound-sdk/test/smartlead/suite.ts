@@ -6,6 +6,9 @@ export const KEY = "sl_test_key_0123456789abcdef";
 export const CAMPAIGN = "372";
 export const LEAD = "789";
 export const SENDER = "123";
+
+/** The lead-in-campaign mapping id the inbox fixtures use as the thread id. */
+export const THREAD = "2433664091";
 export const API = "/api/v1";
 
 // A request with an offset above 0 gets the last page.
@@ -24,7 +27,7 @@ export const urlOf = (request: RecordedRequest | undefined): URL =>
   new URL(request?.url ?? "");
 
 export const suite: AdapterSuite = {
-  ids: { campaign: CAMPAIGN, lead: LEAD, sender: SENDER },
+  ids: { campaign: CAMPAIGN, lead: LEAD, sender: SENDER, thread: THREAD },
   // The key is the `api_key` query parameter and is sent nowhere else.
   isAuthorized: (request) =>
     urlOf(request).searchParams.get("api_key") === KEY &&
@@ -120,13 +123,66 @@ export const suite: AdapterSuite = {
       path: `${API}/analytics/day-wise-overall-stats`,
     },
     { fixture: "listClients.json", method: "GET", path: `${API}/client/` },
+    {
+      fixture: "getEmailAccountWarmupStats.json",
+      method: "GET",
+      path: /^\/api\/v1\/email-accounts\/\d+\/warmup-stats$/u,
+    },
+    {
+      fixture: "listEmailAccountTags.json",
+      method: "GET",
+      path: `${API}/email-accounts/tags`,
+    },
+    {
+      fixture: paged("listLeadLists"),
+      method: "GET",
+      path: `${API}/lead-list/`,
+    },
+    {
+      fixture: paged("listDomainBlockList"),
+      method: "GET",
+      path: `${API}/leads/get-domain-block-list`,
+    },
+    {
+      fixture: "listLeadTags.json",
+      method: "GET",
+      path: `${API}/crm/leads/tags`,
+    },
+    {
+      fixture: "listCampaignWebhooks.json",
+      method: "GET",
+      path: /^\/api\/v1\/campaigns\/\d+\/webhooks$/u,
+    },
+    {
+      fixture: "getInboxItem.json",
+      method: "GET",
+      path: /^\/api\/v1\/master-inbox\/\d+$/u,
+    },
+    {
+      fixture: "analyticsMailboxNameWiseHealth.json",
+      method: "GET",
+      path: `${API}/analytics/mailbox/name-wise-health-metrics`,
+    },
   ],
   secret: KEY,
   // Leads: both fixture campaigns answer with the same three leads, and a
   // walk returns each lead once. Senders: the first page is shorter than the
   // page size the suite asks for, so the walk ends there; the adapter tests
-  // walk both pages with a page size of 2.
-  totals: { campaigns: 2, leads: 3, messages: 6, replies: 3, senders: 2 },
+  // walk both pages with a page size of 2. Lists and the block list end the
+  // same way. Webhooks: both fixture campaigns answer with the same two, and
+  // each is returned once. Subsequences have their own tests, because the
+  // shared campaign list holds no child campaign.
+  totals: {
+    blocklist: 2,
+    campaigns: 2,
+    leads: 3,
+    lists: 2,
+    messages: 6,
+    replies: 3,
+    senders: 2,
+    tags: 3,
+    webhooks: 2,
+  },
   webhooks: {
     // First on purpose: the shared "unknown event" test compares `raw` with
     // the body it sent, and this is the only payload without `secret_key`,
