@@ -37,8 +37,8 @@ jobs:
           COMMIT: ${{ github.event.inputs.commit }}
           EXPECTED: ${{ github.event.inputs.digest }}
         run: |
-          printf '%s' "$COMMIT" | grep -Eqx '[0-9a-f]{40}'
-          printf '%s' "$EXPECTED" | grep -Eqx '[0-9a-f]{64}'
+          [[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$EXPECTED" =~ ^[0-9a-f]{64}$ ]]
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.inputs.commit }}
