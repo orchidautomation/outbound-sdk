@@ -17,7 +17,7 @@ The SDK keeps every request inside the vendor's rate limit, but by default it co
 
 - Node 22 or later, and a Redis you can reach from every worker: Redis, Valkey or Upstash.
 - A Redis client you already use. The package ships none; you pass one function.
-- **What was verified.** On 2026-11-14 the store was run by hand against a real Redis 7 server, not Valkey or Upstash: it gave the same answers as the in-memory store over a schedule of request times, and a pause set by one caller blocked the key for the others. Nobody has run it in production. The samples on this page run without Redis, and say so where that matters.
+- **What was verified.** On 2026-11-14 the store was run by hand against a real Redis 7 server, not Valkey or Upstash: it gave the same answers as the in-memory store over a schedule of request times, a pause set by one caller blocked the key for the others, and two workers sharing a budget of 5 requests a second never reserved more than 5 in any second. Nobody has run it in production. The samples on this page run without Redis, and say so where that matters.
 
 ## The problem, shown
 

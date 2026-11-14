@@ -37,7 +37,7 @@ Measured on live workspaces on 2026-11-14:
 - **Instantly:** 300 reads fired at once all succeeded, with no 429 and no retry (1,505 HTTP requests in 30 seconds).
 - **HeyReach:** 100 reads fired at once all succeeded, with no 429 (33 seconds). HeyReach's real burst limit, 15 requests per 2 seconds, is not in its documentation; it was read from the live API's 429 response and is now declared by the adapter.
 - **Smartlead:** not load-tested.
-- **The Redis store** that shares one budget between processes was checked against a real Redis server. It has not been run in production by anyone.
+- **The Redis store** that shares one budget between processes was checked by hand against a real Redis 7 server, including two workers on one budget. It has not been run in production by anyone, nor on Valkey or Upstash.
 
 See [rate limits](/docs/rate-limits).
 
