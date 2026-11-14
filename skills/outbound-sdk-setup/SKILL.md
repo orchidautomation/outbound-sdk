@@ -1,6 +1,6 @@
 ---
 name: outbound-sdk-setup
-description: Set up outbound-sdk in a project and connect it to an agent, either by installing the package, choosing a vendor adapter (Instantly, Smartlead, HeyReach or the in-memory demo) and its API key, running `outbound mcp` as a local MCP server for Claude Code, Cursor or Claude Desktop, or by building your own MCP server with plugins such as `redact`. Use when someone wants an agent or a script to read their outbound campaigns, or when the `outbound` MCP server or CLI is not starting.
+description: Set up outbound-sdk in a project and connect it to an agent, either by installing the package, choosing a vendor adapter (Instantly, Smartlead, HeyReach or the in-memory demo) and its API key, running `outbound mcp` as a local MCP server for Claude Code, Cursor or Claude Desktop, with plugins from flags or a config file, or by building your own MCP server. Use when someone wants an agent or a script to read their outbound campaigns, or when the `outbound` MCP server or CLI is not starting.
 ---
 
 # Setting up outbound-sdk and its MCP server
@@ -79,15 +79,26 @@ echo '{"jsonrpc":"2.0","id":1,"method":"ping"}' | OUTBOUND_SDK_PROVIDER=memory n
 
 It answers `{"id":1,"jsonrpc":"2.0","result":{}}` and exits when its input closes.
 
-## 4. When `outbound mcp` is not enough: your own server
+## 4. Plugins
 
-`outbound mcp` takes no plugins. That means no masking of personal data, and no `compare_clients` or `cross_channel_lead`, which need the `clients` and `identity` plugins. A server of your own is one file: [examples/server.ts](examples/server.ts) picks the adapter from `OUTBOUND_SDK_PROVIDER`, as `outbound mcp` does, and adds `redact()`.
+**`outbound mcp` masks personal data by default.** It runs with `redact()`, so emails, names, companies and message text come back masked, reply text is refused, and `cross_channel_lead` is not offered. Tell the user before turning it off. Turn it off only when the agent needs reply text or the person lookup, by adding `--no-redact` to the client's `args`.
+
+Three flags cover the usual needs. Add them after `mcp` in `args`:
+
+| Flag | Adds |
+| --- | --- |
+| `--no-redact` | Nothing: turns the default `redact()` off |
+| `--cache <seconds>` | `cache()`: a repeat read within that time makes no vendor request |
+| `--max-requests <n>` | `budget()`: the most vendor requests one tool call may make |
+
+For any other plugin, or plugin options, use a config file: [examples/outbound.config.ts](examples/outbound.config.ts) is one, and [examples/check.ts](examples/check.ts) ends by starting `outbound mcp --config` on it. Copy it into the project as `outbound.config.mjs` and add `--config /absolute/path/to/outbound.config.mjs` to `args`. Its default export lists the plugins, and `redact()` is put in front of them unless the list has its own.
+
+A `.mjs` or `.js` file works on every supported Node. A `.ts` file needs a Node version that runs TypeScript files directly. The server's `instructions` name the plugins that are on. Plugins and their order are on the [plugins](https://outbound-sdk.dev/docs/plugins) page.
+
+**A server of your own** is for when you want to build the instance in code: [examples/server.ts](examples/server.ts) picks the adapter from `OUTBOUND_SDK_PROVIDER`, as `outbound mcp` does, adds `redact()`, and serves stdio with `serveStdio`.
 
 - Copy it into the project as `server.mts` (or `server.ts` in a `"type": "module"` project) and point the client at `node /absolute/path/to/server.mts`. Node 24 runs it as is.
 - [examples/check.ts](examples/check.ts) feeds it a `ping`, a `tools/list` and a call for reply text, which `redact()` refuses. [examples/check.out.txt](examples/check.out.txt) is what it printed.
-- On 2026-11-14 the copied `server.mts` ran from a tarball install, and Claude Code reported it as connected.
-
-Plugins and their order are on the [plugins](https://outbound-sdk.dev/docs/plugins) page. Put `redact()` first, so that it is the outermost plugin.
 
 ## 5. Tools in code, not over MCP
 
@@ -97,7 +108,7 @@ For an agent you build yourself, hand it the tools directly. Each wrapper takes 
 - [AI SDK](https://outbound-sdk.dev/docs/tools/ai-sdk): `aiSdkTools` from `outbound-sdk/tools/ai-sdk`, which needs `ai` 6 or 7
 - [Claude Agent SDK](https://outbound-sdk.dev/docs/tools/claude-agent): `claudeAgentTools` from `outbound-sdk/tools/claude-agent`, which needs `@anthropic-ai/claude-agent-sdk`
 
-Add the insights with `extra: insightTools(outbound)` from `outbound-sdk/insights`. Pass `maxRequests` to `createOutbound` to cap what one call may spend against the vendor's rate limit; the CLI server sets none.
+Add the insights with `extra: insightTools(outbound)` from `outbound-sdk/insights`. Pass `maxRequests` to `createOutbound` to cap what one call may spend against the vendor's rate limit; `outbound mcp` sets a cap only with `--max-requests`.
 
 ## When it does not start
 

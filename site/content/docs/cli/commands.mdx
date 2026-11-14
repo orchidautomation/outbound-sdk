@@ -133,7 +133,7 @@ Message text is left out unless you pass `--bodies`: `bodyText` is `null` withou
 
 Both commands exit 1 on failure, and say why in different places. A tool never throws, so `outbound tool` prints the tool's `{ "ok": false }` result on standard output, where a script can read `error` and `next`. An insight throws, so `outbound insight` writes the reason to standard error and prints nothing on standard output.
 
-The CLI builds an instance with no plugins, so `tools` never lists `compare_clients` or `cross_channel_lead`.
+`tools` lists `compare_clients` only with the `clients` plugin, and `cross_channel_lead` only with the `identity` plugin, both from a file passed to [`--config`](/docs/cli#plugins).
 
 ## native
 

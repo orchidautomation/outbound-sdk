@@ -53,7 +53,21 @@ outbound campaigns --status active
 outbound campaigns --provider memory
 ```
 
-Those shell lines are not run by the test suite. The CLI takes no key on the command line and reads no configuration file. It builds a plain instance with no [plugins](/docs/plugins) and one adapter, so there is no CLI flag for a cache, redaction or several clients. How far each real adapter has been checked is on [what is verified](/docs/status).
+Those shell lines are not run by the test suite. The CLI takes no key on the command line.
+
+## Plugins
+
+A command runs on one adapter and, by default, no [plugins](/docs/plugins). `outbound mcp` is the exception: it runs with [`redact()`](/docs/plugins/redact) unless given `--no-redact`, because what it returns goes to a model. Any command takes these options:
+
+| Option | Adds |
+| --- | --- |
+| `--redact` | `redact()`: masks personal fields. On by default for `outbound mcp` only. |
+| `--no-redact` | Turns the default `redact()` off for `outbound mcp`. |
+| `--cache <seconds>` | `cache()` with that time to live. |
+| `--max-requests <n>` | `budget({ maxRequests: n, per: "run" })`. A command is one run; on the MCP server each tool call is one. |
+| `--config <file>` | The plugins a file lists as `export default defineConfig({ plugins: [...] })`. |
+
+[The MCP server page](/docs/cli/mcp#plugins) has a run of each, the order the plugins are placed in, and what a config file may hold. How far each real adapter has been checked is on [what is verified](/docs/status).
 
 `help` and `providers` need no adapter and work with nothing set.
 

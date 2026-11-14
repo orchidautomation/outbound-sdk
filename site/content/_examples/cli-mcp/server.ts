@@ -2,9 +2,12 @@ import { createOutbound } from "outbound-sdk";
 import { createMcpServer, PROTOCOL_VERSIONS } from "outbound-sdk/cli";
 import { insightTools } from "outbound-sdk/insights";
 import { demoData, memory } from "outbound-sdk/memory";
+import { redact } from "outbound-sdk/redact";
 
 const outbound = createOutbound({
   adapter: memory({ data: demoData(), workspaceId: "acme" }),
+  // `outbound mcp` turns redact on unless it is started with --no-redact.
+  plugins: [redact()],
 });
 
 // What `outbound mcp` builds: the tools the instance can serve, then the insights.
