@@ -100,6 +100,7 @@ const tableNodes = (
   const shown: TableData = {
     align: table.align,
     caption,
+    cards: table.cards,
     headers: table.headers,
     rows: table.rows
       .slice(0, max)

@@ -16,20 +16,52 @@ Sender health: 🟢 No sender needs attention (2 checked).
     "type": "section"
   },
   {
-    "fields": [
+    "fallback": [
       {
-        "text": "*Senders*\n2",
-        "type": "mrkdwn"
-      },
-      {
-        "text": "*Not active*\n0",
-        "type": "mrkdwn"
+        "fields": [
+          {
+            "text": "*Senders*\n2",
+            "type": "mrkdwn"
+          },
+          {
+            "text": "*Not active*\n0",
+            "type": "mrkdwn"
+          }
+        ],
+        "type": "section"
       }
     ],
-    "type": "section"
+    "grid_lines": "outer",
+    "label": "Numbers",
+    "rows": [
+      {
+        "items": [
+          {
+            "block": {
+              "text": {
+                "text": "Senders\n*2*",
+                "type": "mrkdwn"
+              },
+              "type": "section"
+            }
+          },
+          {
+            "block": {
+              "text": {
+                "text": "Not active\n*0*",
+                "type": "mrkdwn"
+              },
+              "type": "section"
+            }
+          }
+        ]
+      }
+    ],
+    "type": "layout"
   },
   {
     "caption": "Sender health",
+    "page_size": 2,
     "rows": [
       [
         {
@@ -55,8 +87,21 @@ Sender health: 🟢 No sender needs attention (2 checked).
       ],
       [
         {
-          "text": "memory:acme:mbx_1",
-          "type": "raw_text"
+          "elements": [
+            {
+              "elements": [
+                {
+                  "style": {
+                    "bold": true
+                  },
+                  "text": "memory:acme:mbx_1",
+                  "type": "text"
+                }
+              ],
+              "type": "rich_text_section"
+            }
+          ],
+          "type": "rich_text"
         },
         {
           "text": "mailbox",
@@ -68,17 +113,32 @@ Sender health: 🟢 No sender needs attention (2 checked).
         },
         {
           "text": "40",
-          "type": "raw_text"
+          "type": "raw_number",
+          "value": 40
         },
         {
           "text": "96",
-          "type": "raw_text"
+          "type": "raw_number",
+          "value": 96
         }
       ],
       [
         {
-          "text": "memory:acme:mbx_2",
-          "type": "raw_text"
+          "elements": [
+            {
+              "elements": [
+                {
+                  "style": {
+                    "bold": true
+                  },
+                  "text": "memory:acme:mbx_2",
+                  "type": "text"
+                }
+              ],
+              "type": "rich_text_section"
+            }
+          ],
+          "type": "rich_text"
         },
         {
           "text": "mailbox",
@@ -90,11 +150,13 @@ Sender health: 🟢 No sender needs attention (2 checked).
         },
         {
           "text": "40",
-          "type": "raw_text"
+          "type": "raw_number",
+          "value": 40
         },
         {
           "text": "88",
-          "type": "raw_text"
+          "type": "raw_number",
+          "value": 88
         }
       ]
     ],

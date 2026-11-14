@@ -35,7 +35,7 @@ export const read = (
 ): string => {
   // Chat SDK's own types differ only under exactOptionalPropertyTypes.
   const card = toCard(spec as never, { limits }) as never;
-  const blocks = toSlackBlocks(spec);
+  const blocks = toSlackBlocks(spec, { style: "plain" });
 
   assert.deepEqual(blocks, cardToSlackBlocks(card));
   assert.ok(blocks.length <= 50, "a Slack message holds 50 blocks");

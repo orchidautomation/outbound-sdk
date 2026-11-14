@@ -39,6 +39,17 @@ export interface TableData {
   readonly align?: readonly Align[] | undefined;
   /** What the table is, for a screen reader and for Slack's table title. */
   readonly caption?: string | undefined;
+  /**
+   * Which columns make a card when each row is a person or a thing: Slack
+   * then draws a short table as cards side by side.
+   */
+  readonly cards?: TableCards | undefined;
+}
+
+export interface TableCards {
+  readonly title: number;
+  readonly subtitle: readonly number[];
+  readonly body?: number | undefined;
 }
 
 export interface PieChart {
@@ -130,6 +141,14 @@ const tableProps = (table: TableData): JsonObject =>
   compactObject({
     align: table.align === undefined ? undefined : [...table.align],
     caption: table.caption,
+    cards:
+      table.cards === undefined
+        ? undefined
+        : compactObject({
+            body: table.cards.body,
+            subtitle: [...table.cards.subtitle],
+            title: table.cards.title,
+          }),
     headers: [...table.headers],
     rows: table.rows.map((row) => [...row]),
   });

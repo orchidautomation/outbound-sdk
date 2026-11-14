@@ -19,7 +19,7 @@ export type { EventCardOptions } from "./notify-cards.ts";
 
 export { toSlackBlocks, toSlackMessage } from "./slack.ts";
 
-export type { SlackMessage } from "./slack.ts";
+export type { SlackMessage, SlackOptions } from "./slack.ts";
 
 export { safe } from "./format.ts";
 

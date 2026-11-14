@@ -4,7 +4,18 @@
 import type { Alert } from "../alerts/index.ts";
 import type { OutboundEvent } from "../internal/entities.ts";
 import { isNumber } from "../internal/json.ts";
-import { clip, DASH, day, int, num, safe, show, str, words } from "./format.ts";
+import {
+  clip,
+  DASH,
+  day,
+  int,
+  num,
+  pct,
+  safe,
+  show,
+  str,
+  words,
+} from "./format.ts";
 import { buildSpec } from "./spec.ts";
 import type { CardNode, CardSpec } from "./spec.ts";
 
@@ -87,12 +98,17 @@ export const eventCard = (
   });
 };
 
-const written = (value: number | string | null): string => {
+/** A rule about a rate measures a share between 0 and 1: write it as a percentage. */
+const written = (value: number | string | null, rate: boolean): string => {
   if (value === null) {
     return DASH;
   }
 
-  return isNumber(value) ? int(value) : safe(value);
+  if (!isNumber(value)) {
+    return safe(value);
+  }
+
+  return rate && value >= 0 && value <= 1 ? pct(value) : int(value);
 };
 
 /** A card for one alert from the alerts plugin's `notify`. */
@@ -103,8 +119,8 @@ export const alertCard = (alert: Alert): CardSpec =>
       {
         fields: [
           ["About", safe(alert.subject)],
-          ["Measured", written(alert.value)],
-          ["Limit", written(alert.threshold)],
+          ["Measured", written(alert.value, alert.rule.includes("rate"))],
+          ["Limit", written(alert.threshold, alert.rule.includes("rate"))],
         ],
         type: "Fields",
       },

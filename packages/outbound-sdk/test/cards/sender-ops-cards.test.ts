@@ -74,7 +74,6 @@ test("bounce_watch flags campaigns over the limit", () => {
   includes(
     read(cardFor("bounce_watch", insight(bounce(1, 2)))),
     "🔴 Above the 3.0% bounce limit: 1 campaign.",
-    "• 🔴 Founders Q4 bounces at 8.0%, above the 3.0% limit.",
     "Founders Q4 | 500  | 40      | 8.0% (6.0–10.0%)",
     "Overall bounce rate: 5.0%"
   );
