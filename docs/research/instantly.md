@@ -2,7 +2,7 @@
 
 > This is the research record the Instantly adapter was written from. The companion files it mentions (`endpoints.json`, `sources/`, `_gen/`) were working files and are not in this repository; the fixtures used by the tests are in `fixtures/instantly/`.
 
-Fetched 2026-11-14 from public documentation only. No API call was made with credentials, so everything here is "as documented", not "as observed". The primary source is the OpenAPI 3.1 spec at `https://api.instantly.ai/openapi/api_v2.json` (268 operations, `info.version` 2.0.0), which the Mintlify docs site is generated from. Field names below are copied from that spec. A copy is in `sources/api_v2.openapi.json`.
+The sections below were fetched 2026-11-14 from public documentation only and describe the API "as documented". Later the same day the adapter was run, read-only, against one live workspace; what that run showed is in "Live run, 2026-11-14" at the end, and it overrides anything above that it contradicts. The primary source is the OpenAPI 3.1 spec at `https://api.instantly.ai/openapi/api_v2.json` (268 operations, `info.version` 2.0.0), which the Mintlify docs site is generated from. Field names below are copied from that spec. A copy is in `sources/api_v2.openapi.json`.
 
 Companions in this folder: `endpoints.json` (37 operations with every parameter and response field), `limits.json`, `fixtures/`, `sources/` (raw downloaded documents), `_gen/gen.py` (rebuilds the JSON deliverables from the spec).
 
@@ -278,7 +278,7 @@ Signs of recent API changes visible in the spec text itself: accounts cursor cha
 
 ## 11. Read parity (added 2026-11-14)
 
-Re-read on 2026-11-14 from `https://api.instantly.ai/openapi/api_v2.json` (`info.version` 2.0.0, 198 paths) and `https://developer.instantly.ai/llms.txt`. No API key was available, so nothing below was observed live. Each section names the endpoint, the fields the adapter reads and what is not confirmed.
+Re-read on 2026-11-14 from `https://api.instantly.ai/openapi/api_v2.json` (`info.version` 2.0.0, 198 paths) and `https://developer.instantly.ai/llms.txt`. No API key was available when this section was written, so it describes the API as documented; "Live run, 2026-11-14" at the end records what was later observed. Each section names the endpoint, the fields the adapter reads and what is not confirmed.
 
 ### Campaign settings (`campaigns.settings`)
 
@@ -446,3 +446,34 @@ All fetched 2026-11-14. The file in `sources/` holding each download is given in
 - https://feedback.instantly.ai/changelog (`feedback-changelog.html`)
 - Per-endpoint doc pages are linked from each entry's `source` in `endpoints.json`.
 - Web search results (hookdeck.com, instantly.ai/blog) were used only as pointers; no claim above rests on them.
+
+## Live run, 2026-11-14
+
+The adapter was run read-only against one live Instantly workspace (more than 100 campaigns, more than 100 mailboxes) with an API V2 key. Nothing from the account is in this repository: the checks printed counts and field names only, and the fixtures are still built from the documentation. `npm run test:live` repeats the reads.
+
+### What the documentation got wrong or left out
+
+- **Steps count from 0.** `GET /campaigns/analytics/steps` reports a seven-step campaign as steps `"0"` to `"6"`. The adapter had read them as 1-based.
+- **A step is an id of the form `sequence_step_variant`,** each counted from 0, for example `0_6_0`. It appears as `step` on an email and as `status_summary.lastStep.stepID` on a lead. The documentation types `step` only as a string.
+- **Step analytics can hold rows with no step:** `step` is `null` or the text `\N`, with counts Instantly could not tie to a step.
+- **`next_starting_after` is sent on a last page too.** A page of 11 tags came with one, and the page after it was empty. A page that is not full is the last one.
+- **The email list does not hold every email a campaign sent.** A lead on its sixth step had one sent email and two replies. A received email carries the lead's address but no `lead_id`, and carries the step it replies to.
+- **`i_status` on an email** took the values 0, 1, -1 and -2, matching the lead interest statuses. No email carried an automatic-reply flag.
+- **A lead object** carried `email_open_count`, `email_reply_count`, `email_click_count`, `email_replied_step` (counted from 0) and `lt_interest_status`, and no `job_title`.
+- **`GET /accounts/analytics/daily` without a mailbox** answers 413 on a workspace this size ("Add an emails filter or request a smaller date range").
+- **`POST /leads/list` with `contacts: [address]`** returned exactly the lead with that address, in one request, and an address typed in capitals matched.
+
+### Not exercised
+
+The workspace had no subsequences and no campaign-scoped webhooks, and one whitelabel domain read answered 404 ("Domain not found"). Of 105 native reads, 34 take no required input and answered 200; the other 70 were not called.
+
+### Load test
+
+Hand-run once, from one process, with the default `share` of 0.5 (so 50 requests a second and 3,000 a minute against Instantly's documented 100 and 6,000):
+
+| Fired at once | Result |
+| --- | --- |
+| 300 `campaigns.get` | all 300 succeeded; 1,505 HTTP requests (each read then cost 5, it now costs 3); no 429, no retry; 30 seconds |
+| 14 `messages.list` on the lane limited to 20 a minute | all 14 succeeded; no 429; 60 seconds |
+
+These are single observations, not a benchmark, and other tools on the same workspace may have been using the same limit at the time.
