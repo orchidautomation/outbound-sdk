@@ -129,8 +129,28 @@ test("person_summary says so when nobody matches, and counts a reply the vendor 
           lastContactedAt: "2026-11-02T00:00:00.000Z",
           lastRepliedAt: "2026-11-03T00:00:00.000Z",
           replies: 2,
+          stepIndex: 4,
         },
         id: "l9",
+      },
+    ],
+    messages: [
+      // The vendor kept one sent message and one reply, which names its own step.
+      {
+        campaignId: "c1",
+        direction: "out",
+        id: "x1",
+        leadId: "l9",
+        sentAt: "2026-11-02T00:00:00.000Z",
+        stepIndex: 4,
+      },
+      {
+        campaignId: "c1",
+        direction: "in",
+        id: "x2",
+        leadId: "l9",
+        sentAt: "2026-11-03T00:00:00.000Z",
+        stepIndex: 3,
       },
     ],
   }).insights.personSummary({ person: "person9@example.com" });
@@ -138,6 +158,9 @@ test("person_summary says so when nobody matches, and counts a reply the vendor 
   const [campaign] = counted.data.campaigns;
   assert.equal(campaign?.replies, 2);
   assert.equal(campaign?.replied, true);
+  assert.equal(campaign?.messagesSent, 5, "the last step sent is step 4");
+  assert.deepEqual(campaign?.repliedSteps, [3], "the reply's own step wins");
+  assert.match(counted.meta.notes[0] ?? "", /counted from the last step/u);
   assert.equal(campaign?.lastContactedAt, "2026-11-02T00:00:00.000Z");
   assert.equal(campaign?.lastRepliedAt, "2026-11-03T00:00:00.000Z");
 });

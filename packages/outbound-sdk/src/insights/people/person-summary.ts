@@ -72,7 +72,11 @@ const times = (messages: readonly Message[], direction: "in" | "out") =>
       : []
   );
 
-/** The step of the last message sent before each reply, plus the step the vendor names. */
+/**
+ * The step each reply answers: the reply's own step when the vendor gives it
+ * one, otherwise the last step sent before it; plus the step the vendor names
+ * on the lead.
+ */
 const repliedSteps = (lead: Lead, messages: readonly Message[]): number[] => {
   const steps = new Set<number>();
   let lastSent: number | null = null;
@@ -80,8 +84,8 @@ const repliedSteps = (lead: Lead, messages: readonly Message[]): number[] => {
   for (const message of messages) {
     if (message.direction === "out") {
       lastSent = message.stepIndex ?? lastSent;
-    } else if (lastSent !== null) {
-      steps.add(lastSent);
+    } else if ((message.stepIndex ?? lastSent) !== null) {
+      steps.add(message.stepIndex ?? lastSent ?? 0);
     }
   }
 
@@ -110,9 +114,12 @@ const activityOf = (lead: Lead, messages: readonly Message[]) => {
         (message) => message.direction === "out" && message.stepIndex !== null
       )?.stepIndex ??
       null,
-    messagesSent: sent.length,
+    // A vendor's thread can hold fewer messages than were sent; the last
+    // step sent (counted from 0) is then the better count.
+    messagesSent: Math.max(sent.length, (counted?.stepIndex ?? -1) + 1),
     // A vendor that keeps no thread still counts replies on the lead.
     replies: Math.max(received.length, counted?.replies ?? 0),
+    threadIsShort: sent.length < (counted?.stepIndex ?? -1) + 1,
   };
 };
 
@@ -128,7 +135,13 @@ const summarize = async (
       ? null
       : context.one(await outbound.campaigns.get(lead.campaignRef));
 
-  const activity = activityOf(lead, messages);
+  const { threadIsShort, ...activity } = activityOf(lead, messages);
+
+  if (threadIsShort) {
+    context.note(
+      "A thread held fewer sent messages than the lead's last step, so messages sent is counted from the last step."
+    );
+  }
 
   return {
     ...activity,

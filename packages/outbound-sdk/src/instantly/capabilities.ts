@@ -140,4 +140,5 @@ export const caveats: readonly string[] = [
   "A webhook made for a custom lead label has no event_type, so its events are empty; custom_interest_value stays in raw. raw also holds the headers Instantly sends, which can carry a secret.",
   "A truncated message body costs one more read of that email (GET /emails/{id}) when bodies are asked for. That read is assumed to share the 20-per-minute limit of the email list.",
   "Messages of a thread are found with the documented search value thread:<id>.",
+  "Instantly's email list does not hold every email a campaign sent (seen live: a lead on its sixth step had one sent email and two replies). A timeline or a thread can therefore be shorter than the sequence; a lead's engagement.stepIndex says how far it got. A received email carries the step it replies to.",
 ];
