@@ -1,0 +1,45 @@
+---
+title: Introduction
+description: outbound-sdk is one read-only TypeScript API over Instantly, Smartlead and HeyReach, with a typed catalog of each vendor's own reads, 26 computed insights, plugins, AI tools, a CLI and an MCP server.
+---
+
+## What is outbound-sdk?
+
+A single TypeScript API for reading what your outbound tools know: campaigns and their settings, sequences, senders and their health, leads, lists, messages, replies, stats, tags, the block list and webhooks. The same code runs on Instantly, Smartlead and HeyReach. Swap the adapter to switch vendors, or put several behind one instance.
+
+<include>../_snippets/status.mdx</include>
+
+<include meta='title="first-read.ts"'>../_examples/usage/first-read.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/usage/first-read.out.txt
+</include>
+
+## What it promises
+
+- **Read-only.** No method sends, pauses, edits or deletes anything in a vendor tool. There is one way to send anything else, and it is off by default: `outbound.raw` with `allowWrites: true` set on the constructor. See [raw](/docs/api/raw).
+- **Stores nothing.** A plugin that keeps state takes a store you supply.
+- **Runs no AI model.** Your agent does the reasoning; the SDK supplies the numbers. Insights and tools are arithmetic. Two reads in Instantly's [native catalog](/docs/native), `leadLabelPrediction` and `localBusinessFilters`, ask Instantly's own AI when you call them by name.
+- **Never a silent zero.** A count the vendor does not report is `null`, never `0`.
+- **Says what it cannot do.** An adapter declares its [capabilities](/docs/capabilities). A call that needs one it lacks throws `Unsupported` before any request leaves.
+- **Every record says where it came from.** `provider`, `workspaceId` and a `ref` (`provider:workspace:id`), so data from two tools or two clients cannot be confused.
+- **What is not normalized is still readable.** It is in the [native catalog](/docs/native), returned as the vendor sent it. The few endpoints left out, and why, are listed per vendor under [coverage](/docs/coverage).
+- **You do not write a sleep or a retry loop.** Each process keeps its requests inside the limits the adapter declares for the vendor, and reads are [retried](/docs/retries) with backoff. Several processes on one key need a [shared budget](/docs/rate-limits).
+
+## Reading these docs from an agent
+
+- [`/llms.txt`](https://outbound-sdk.dev/llms.txt) is an index of every page, and [`/llms-full.txt`](https://outbound-sdk.dev/llms-full.txt) is all of them in one file.
+- Add `.md` to any page's address for its Markdown.
+- `https://outbound-sdk.dev/mcp` is an MCP server over these docs, with `search_docs` and `get_page`. It serves the documentation only. To let an agent read your campaigns, see [the SDK's own MCP server](/docs/cli/mcp).
+
+## Next steps
+
+- [Installation](/docs/installation): how to use the package today, while it is unpublished.
+- [Usage](/docs/usage): construct an instance and make the core reads.
+- [Adapters](/docs/adapters): what each vendor's adapter can do.
+- [API](/docs/api): collections, handles, stats, results, pagination and errors.
+- [Insights](/docs/insights): 26 computed answers, from one person across email and LinkedIn to a weekly client report.
+- [Plugins](/docs/plugins): several clients behind one instance, caching, redaction, sync and more.
+- [AI tools](/docs/tools), the [CLI](/docs/cli) and its [MCP server](/docs/cli/mcp).
+- [Webhooks](/docs/webhooks): one event shape for every vendor.
+- [Guides](/guides): complete tasks, end to end.

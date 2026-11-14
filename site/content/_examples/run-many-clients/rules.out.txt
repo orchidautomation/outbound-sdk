@@ -1,0 +1,7 @@
+clients: [ 'Initech', 'Umbrella' ]
+Initech: 2 campaigns, sent 160, replied 7
+Umbrella: 1 campaigns, sent 90, replied 3
+unassigned: 1 campaigns, sent 4, replied 0
+ana@example.com -> Initech
+ben@example.com -> Umbrella
+caro@example.com -> unassigned

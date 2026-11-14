@@ -1,0 +1,3 @@
+entries: 1
+stored under this key: true outbound:
+entries after delete: 0

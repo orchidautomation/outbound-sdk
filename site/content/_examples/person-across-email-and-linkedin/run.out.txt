@@ -1,0 +1,28 @@
+dana.whitfield@example.com: 3 campaigns, 5 messages sent, 2 replies
+Known as: email:dana.whitfield@example.com, linkedin:dana-whitfield-example
+
+  email via mailtool: Founders Q4 (active)
+    sent 2, replies 1, last contacted 2026-11-06, last reply 2026-11-07, marked Interested
+  email via mailtool: Webinar follow-up (completed)
+    sent 1, replies 0, last contacted 2026-10-12, last reply never
+  linkedin via lntool: LinkedIn founders (active)
+    sent 2, replies 1, last contacted 2026-11-10, last reply 2026-11-08
+
+email: 3 sent, 1 replies
+linkedin: 2 sent, 1 replies
+
+omar.haddad@example.com: 1 campaigns, 1 messages sent, 0 replies
+Known as: email:omar.haddad@example.com
+
+  email via mailtool: Founders Q4 (active)
+    sent 1, replies 0, last contacted 2026-11-03, last reply never
+
+email: 1 sent, 0 replies
+
+https://www.linkedin.com/in/omar-haddad-example: 1 campaigns, 1 messages sent, 1 replies
+Known as: linkedin:omar-haddad-example
+
+  linkedin via lntool: LinkedIn founders (active)
+    sent 1, replies 1, last contacted 2026-11-04, last reply 2026-11-09
+
+linkedin: 1 sent, 1 replies

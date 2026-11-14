@@ -1,0 +1,117 @@
+---
+title: Native catalog
+description: Call any read a vendor offers that has no normalized form, by name and with typed parameters, and know what comes back, what it costs and when it is refused.
+sidebar:
+  label: Native catalog
+related:
+  - /docs/coverage
+  - /docs/api/raw
+  - /guides/native-reads
+---
+
+The normalized reads are the part all three vendors share. Everything else a vendor can report is in its adapter's native catalog: a list of the vendor's own reads, by name, each with its method, path, parameters and a link to the vendor's documentation. A native read returns the vendor's response as it was sent.
+
+Together the two layers cover every read in each vendor's API reference. The [coverage](/docs/coverage) pages account for each endpoint.
+
+| Adapter   | Native reads |
+| --------- | ------------ |
+| Instantly | 105          |
+| Smartlead | 78           |
+| HeyReach  | 25           |
+| In-memory | none         |
+
+## List the catalog
+
+`outbound.native.catalog` is data on the adapter. Reading it makes no request, so you can list it with any key, or with none that works.
+
+<include meta='title="catalog.ts"'>../_examples/native/catalog.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/native/catalog.out.txt
+</include>
+
+Each entry is a `NativeRead`:
+
+| Field | Holds |
+| --- | --- |
+| `description` | What the read answers, in one sentence. |
+| `method` | `GET` or `POST`. Some vendors read with `POST`. |
+| `path` | The vendor's path, with `{name}` for each path parameter. |
+| `params` | Each parameter's `type` (`string`, `number`, `boolean`, `list` or `json`), where it goes (`path`, `query` or `body`), whether it is `required`, and a description. |
+| `docs` | The vendor's documentation page for the read. |
+| `lane` | The rate lane it draws on, when the vendor limits it separately. |
+| `baseUrl` | Another host, for a vendor's sister service. |
+
+The same catalog is what the CLI lists and what the `vendor_read` tool offers an agent. See the [CLI](/docs/cli) and [AI tools](/docs/tools).
+
+## Run a read
+
+There are two ways to call one:
+
+- `outbound.native.reads.<name>(params)` is typed from the adapter. The name and its parameters autocomplete, and a missing required parameter is a type error.
+- `outbound.native.read(name, params)` takes a name learned at run time, for a CLI or an agent.
+
+The sample below runs on an injected `fetch` that answers from the repository's `fixtures/heyreach/` folder. That payload was built from HeyReach's documented shape with made-up values. It is not a live response.
+
+<include meta='title="read.ts"'>../_examples/native/read.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/native/read.out.txt
+</include>
+
+The result is `{ data, meta }`. `data` is the vendor's JSON. `meta` is the same [result meta](/docs/api/results) every read carries: here one request, evidence `exact`.
+
+## What a native read is, and is not
+
+- **Every entry is a read.** The catalog holds nothing that changes vendor data. A vendor read that spends credits is left out and listed as a write on the coverage page.
+- **One call is one vendor request.** There is no `listAll`. To page, pass the vendor's own paging parameters, as the second call above does with HeyReach's `offset`. Each vendor pages differently; the parameter descriptions say how.
+- **It goes through the same request engine** as a normalized read: it is [rate limited](/docs/rate-limits), [retried](/docs/retries), and a failure is an `OutboundError` with the key kept out of it.
+- **It is not normalized.** Field names, ids, time formats and status values are the vendor's. There is no `ref`, `provider` or `workspaceId` on what comes back, and code written against one vendor's native read does not run on another.
+- **It is not redacted.** The response can hold names, addresses and message text. Reads that return secrets (API keys, mailbox passwords, proxy credentials) are left out of every catalog.
+- **Treat the content as untrusted** when it reaches a model: it is text a third party wrote. See [untrusted content](/docs/tools/untrusted-content).
+
+## When a read is refused
+
+<include meta='title="refused.ts"'>../_examples/native/refused.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/native/refused.out.txt
+</include>
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| The name is not in the catalog | `Invalid`, before any request | List `outbound.native.catalog`. |
+| A parameter the read does not take, a missing required one, or a wrong type | `Invalid`, before any request, naming the parameter | Check the entry's `params`. |
+| The [redact plugin](/docs/plugins/redact) is on | `Unsupported`: `capabilities.native` is `false` | A native payload cannot be redacted, so native reads and `outbound.raw` stay off while `redact` is on. |
+| The instance is [combined](/docs/adapters/combine) | `Unsupported` | `outbound.workspace(id).native`, when one member carries the label. |
+| The adapter has no catalog (in-memory) | `Unsupported` | Nothing to call. |
+| The vendor refuses (plan, key type, product not enabled) | The vendor's error as an `OutboundError` | See the adapter's page. |
+
+Branch on `outbound.capabilities.native` before offering native reads to a caller.
+
+## On a combined instance
+
+A native read belongs to one vendor, so `outbound.native` is not available on a combined instance. Scope first: `outbound.workspace(id).native`. That works when exactly one member carries the label. A label carried by two members scopes to both, which is still a combined instance. See [combine](/docs/adapters/combine#scope-to-one-client).
+
+## For adapter authors: defineNative
+
+An adapter declares its catalog with `defineNative`, exported from `outbound-sdk`. It returns the catalog unchanged and keeps each name and parameter as a literal type, which is what types `outbound.native.reads`. The SDK builds the request from the entry: a `path` parameter is URL-encoded into the path, a `query` list becomes a repeated key, a `body` parameter goes into a JSON body.
+
+<include meta='title="define.ts"'>../_examples/native/define.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/native/define.out.txt
+</include>
+
+Rules for a catalog entry, from the adapters in the repository:
+
+- Reads only. A `POST` belongs in the catalog only when it changes nothing and spends nothing.
+- Leave out any read that returns secrets, and any parameter that asks for them.
+- Declare `native: true` in the adapter's capabilities exactly when the catalog has entries.
+- Give a read its `lane` when the vendor limits it separately, and declare the lane in the adapter's limits.
+
+## What the catalog does not name
+
+`outbound.raw` sends a request to the vendor's own API by method and path, through the same engine. It is for an endpoint the catalog does not name yet, such as one the vendor added after the inventory was taken. It refuses anything that is not a known read unless the instance was created with `allowWrites: true`. See [raw](/docs/api/raw).
+
+Prefer a catalog read where one exists: its parameters are checked before a request is spent, and it is listed on the coverage page.

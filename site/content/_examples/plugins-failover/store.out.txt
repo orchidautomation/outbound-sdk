@@ -1,0 +1,2 @@
+[ 'failover:outbound:', 'failover:outbound:' ]
+sent: 200 stale: true

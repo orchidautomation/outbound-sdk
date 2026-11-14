@@ -1,0 +1,146 @@
+---
+title: Find people in two campaigns at once, and leads that are on a block list
+description: Two functions, one that lists each person who is in two or more campaigns inside a tool or across tools, and one that lists leads sitting in campaigns although a block list holds their address, domain or profile. Both report; neither removes anyone.
+sidebar:
+  label: Double-contacted leads
+related:
+  - /docs/insights/people
+  - /docs/adapters/combine
+  - /guides/person-across-email-and-linkedin
+  - /guides/pre-launch-audit
+---
+
+Two mistakes cost an agency a client: the same person getting two sequences in the same week, and someone who asked not to be contacted getting another email. Both are visible in the data before they happen again.
+
+- `leadCollisions` reads the campaigns in the statuses you name and their leads, and returns each person who is in two or more of them, with the campaigns, the channel and the tool.
+- `suppressionCheck` reads the block list and the same leads, and returns each lead in a campaign whose address, domain or LinkedIn profile is on the list.
+
+Both only report. Neither removes a lead, pauses a campaign or edits a block list. People are matched by exact email address or LinkedIn profile, never by name.
+
+<include>../_snippets/status.mdx</include>
+
+## Before you start
+
+- Node 22 or later.
+- The code below runs on the in-memory adapter, so it needs no vendor key. Each sample on this page is a file in the repository that the test suite runs; the output shown is what it printed.
+- For real data: an API key for each tool. A read-only key is enough. The SDK never writes to a vendor.
+
+## What you get
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/double-contacted-leads/run.out.txt
+</include>
+
+## Put the tools behind one instance
+
+One adapter works: every collision is then inside that tool. With two, `combine` puts them behind one instance and the same calls also find people who are in both.
+
+<include meta='title="agency.ts"'>
+  ../_examples/double-contacted-leads/agency.ts
+</include>
+
+## Write the two reports
+
+<include meta='title="overlap.ts"'>
+  ../_examples/double-contacted-leads/overlap.ts
+</include>
+
+How a collision is found:
+
+- Only campaigns in `statuses` are read. The default is `["active"]`.
+- Records that share an exact email address or LinkedIn profile are one person. A record that carries both joins the two groups: that is how Raj's LinkedIn record is tied to his email records above.
+- A person in two or more different campaigns is a collision. The same person twice in one campaign is not.
+- `scope` is `across_tools` when the campaigns are in more than one tool, otherwise `within_tool`.
+- `stillActive` counts the campaigns in which the lead's own status is still `active`. A lead who finished one sequence and is active in another has `stillActive` 1.
+
+How a block list match is found:
+
+- An `email` entry matches the exact address. A `domain` entry matches the part of the address after the `@`. A `linkedin` entry matches the profile.
+- The most specific match is reported: the address, then the profile, then the domain.
+- On several tools, an entry on one tool's list is matched against the other tools' leads as well, and `sameTool` is `false`. Sue above is blocked in the LinkedIn tool and still in an email campaign.
+- Entries that are a company name, or that the adapter maps to the kind `other`, cannot be matched to a lead. They are counted in `totals.blockEntriesNotChecked`.
+- A violation is reported whatever the lead's status. Leads still `active` come first; Leo, who finished his sequence, is last.
+
+## Try it without a key
+
+<include meta='title="seed.ts"'>
+  ../_examples/double-contacted-leads/seed.ts
+</include>
+
+<include meta='title="run.ts"'>
+  ../_examples/double-contacted-leads/run.ts
+</include>
+
+That is the script that printed the output above.
+
+## Include paused campaigns
+
+A paused campaign that will be resumed is worth checking before it is. Pass the statuses to read.
+
+<include meta='title="paused.ts"'>
+  ../_examples/double-contacted-leads/paused.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/double-contacted-leads/paused.out.txt
+</include>
+
+Zoe appears now. `stillActive` is about the lead's status in each campaign, not the campaign's: her record in the paused campaign is still `active`.
+
+## Point it at your vendor
+
+Swap the adapters. Nothing else changes.
+
+<include meta='title="outbound.ts"'>
+  ../_examples/double-contacted-leads/production.ts
+</include>
+
+A collision across tools needs a record that carries both an address and a profile. Instantly leads carry no LinkedIn profile, so between Instantly and HeyReach the link can only come from a HeyReach lead that has an email address.
+
+## What each vendor can serve
+
+Both reports, run on the in-memory adapter limited to what each vendor's adapter declares. This shows which calls a vendor's adapter would refuse. It does not show what that vendor's API returns.
+
+<include meta='title="vendors.ts"'>
+  ../_examples/double-contacted-leads/vendors.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/double-contacted-leads/vendors.out.txt
+</include>
+
+`leadCollisions` needs `leads.byCampaign`. `suppressionCheck` needs that and `blocklist`. All three adapters declare both, so none refuses either call.
+
+## What it costs
+
+- `leadCollisions`: one request per page of campaigns, plus one per page of each campaign's leads.
+- `suppressionCheck`: one request per page of block list entries, plus one per page of each campaign's leads.
+
+The defaults read up to 20 campaigns (`max_campaigns`, at most 200), 500 leads from each (`max_leads_per_campaign`, at most 20,000) and 2,000 block list entries (`max_block_entries`, at most 100,000). A vendor request returns about 50 to 100 records. The two insights each read the leads, so running both reads them twice. `maxRequests` on the instance caps a call; past it the call fails with `RateLimited` instead of spending your vendor quota.
+
+## When it cannot answer
+
+<include meta='title="failures.ts"'>
+  ../_examples/double-contacted-leads/failures.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/double-contacted-leads/failures.out.txt
+</include>
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| A cap stopped a read | `meta.complete` is `false` and a note says which cap | Raise the cap. A collision or a blocked lead can be among the leads not read. |
+| The same person under an address in one tool and a profile in another, with no record holding both | No collision. Nothing says one was missed. | Store the address on the LinkedIn lead, or the profile on the email lead. |
+| A lead with neither an address nor a profile | Counted in `totals.leadsWithoutIdentifier`, matched to nobody | Nothing in the SDK can match it. |
+| An empty `statuses`, or another input out of range | `Invalid`, before any request | Fix the value. |
+| The adapter has no block list read | `suppressionCheck` fails with `Unsupported`. `leadCollisions` still runs. | Use an adapter that declares `blocklist`. |
+| A rejected key | `Unauthorized`. It is not retried. | Check the key and its scope. |
+
+## Limits
+
+- "At once" means in two campaigns that are both in `statuses` when you ask. It does not compare send dates, so it does not say the person got two messages on the same day.
+- No fuzzy matching. `nina@example.com` and `n.ortega@example.com` are two people.
+- A domain entry matches that exact domain. A lead at a subdomain of it is not matched.
+- A clean result under a cap is not a clean account. Read `meta.complete` before you report "no overlaps".
+- On an `unverified` adapter, check a finding against the vendor's own campaign view before acting on it.

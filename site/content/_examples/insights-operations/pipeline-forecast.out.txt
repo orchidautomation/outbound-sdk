@@ -1,0 +1,13 @@
+100 leads remain; expect about 6 replies (between 4.72 and 7.6). This is an estimate.
+by status: {
+  active: 100,
+  bounced: 10,
+  completed: 45,
+  paused: 0,
+  replied: 40,
+  unknown: 0,
+  unsubscribed: 5
+}
+100 leads at 50 a day: 2 days left
+expected positive replies: { expected: 2, high: 3.04, low: 1.31 }
+The reply rate so far is 6%, from 63 replies over 1050.

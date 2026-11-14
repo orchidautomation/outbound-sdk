@@ -1,0 +1,5 @@
+outreach2@example.com mailbox active 40
+{ enabled: true, score: 88 }
+example.com { dkim: false, dmarc: true, mx: true, spf: true } [ 'DKIM selector not found' ]
+{ inbox: 75, received: 70, score: 88, sent: 100, spam: 25 }
+rows: 0

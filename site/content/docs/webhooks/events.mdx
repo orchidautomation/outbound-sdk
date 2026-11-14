@@ -1,0 +1,106 @@
+---
+title: Webhook events
+description: Which vendor event becomes which normalized type, how event ids stay stable when a vendor delivers twice, and how to drop events you already handled.
+sidebar:
+  label: Events and idempotency
+related:
+  - /docs/webhooks
+  - /docs/webhooks/verification
+  - /docs/plugins/reconcile
+  - /guides/webhooks-and-reconcile
+---
+
+## What each vendor event becomes
+
+The table below was produced by running every documented webhook payload in the repository's `fixtures/` folder through `parse`. The payloads are built from each vendor's documentation with personal data removed. They are not captured deliveries, and no parser has received a live one. See [what is verified](/docs/status).
+
+<include meta='title="table.ts"'>
+  ../../_examples/webhooks-events/table.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/webhooks-events/table.out.txt
+</include>
+
+How close each set of payloads is to the vendor's documentation differs:
+
+- **Instantly** documents one generic payload schema for all events, not one example per event. The payloads were built from that schema, so which optional fields a given event really carries is not verified.
+- **Smartlead** documents an example for each event in the table. The three `EMAIL_REPLY` rows are three documented variants of the same event. The last two rows are account-level notices with a different envelope.
+- **HeyReach** documents one payload, `voice_note_received`. The `message_sent` payload was published by a third party, not by HeyReach.
+
+The parsers also map these event names, for which the repository has no documented payload. The mapping is by name only and was not run for this page:
+
+| Vendor | Event names | Type |
+| --- | --- | --- |
+| Instantly | `auto_reply_received` | `reply.received`, with `data.isAuto` set |
+| Instantly | `link_clicked` (the guide's spelling of `email_link_clicked`) | `message.clicked` |
+| Smartlead | `FIRST_EMAIL_SENT` | `message.sent` |
+| HeyReach | `connection_request_sent` | `linkedin.connection_sent` |
+| HeyReach | `connection_request_accepted` | `linkedin.connection_accepted` |
+| HeyReach | `inmail_sent` | `linkedin.message_sent` |
+| HeyReach | `message_reply_received`, `every_message_reply_received`, `inmail_reply_received` | `linkedin.message_received` |
+| HeyReach | `lead_tag_updated` | `lead.status_changed` |
+| HeyReach | `campaign_completed` | `campaign.status_changed` |
+| HeyReach | `follow_sent`, `liked_post`, `viewed_profile` | `unknown` |
+
+Any other event name comes back as `type: "unknown"` with the vendor's name in `data.vendorEvent` and the body in `raw`.
+
+### Reading the type
+
+- **`reply.categorized` carries `data.category`** where the vendor's event implies one: `positive`, `negative`, `neutral` or `ooo`. The category is the vendor's. The SDK calls no model.
+- **Several vendor events share a type.** Use `data.vendorEvent` when you need to tell `lead_interested` from `lead_closed`.
+- **Two events can describe one thing.** HeyReach can send both `message_reply_received` and `every_message_reply_received` for one reply. They have different ids, so they are two events to you.
+
+## Idempotency
+
+`event.id` is the same every time the vendor delivers the same event, so handling an event twice can be made a no-op. How the id is built depends on what the vendor sends:
+
+| Vendor | The id is built from |
+| --- | --- |
+| Smartlead campaign event, signed | The `webhook-id` header, which is the same on every retry |
+| Smartlead campaign event, unsigned | Event name, campaign, lead address, message id, status and event time |
+| Smartlead account notice | The notice's type, its own `id` and its time |
+| Instantly | Event name, campaign, lead address, message id and event time. Instantly sends no event id. |
+| HeyReach | Event name and `correlation_id`, or event name, conversation, lead profile and event time when there is none |
+| unrecognised body | The whole body |
+
+An id built from the payload's fields is stable only as far as the vendor resends the same values. Whether a vendor's retry repeats its timestamp was not checked against live deliveries.
+
+Within one request, `parse` already drops an event whose id repeats.
+
+## Drop events you already handled
+
+Pass a `dedupe` store and `parse` returns only events whose id it has not seen.
+
+<include meta='title="dedupe.ts"'>
+  ../../_examples/webhooks-events/dedupe.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/webhooks-events/dedupe.out.txt
+</include>
+
+### memoryDedupeStore
+
+`memoryDedupeStore(maxIds)` keeps ids in the memory of one process. It holds 10,000 ids by default and forgets the oldest when full. It is enough for one long-running process. It is wrong for anything with more than one instance, and for serverless functions, where each invocation may start with an empty store.
+
+### Your own store
+
+`DedupeStore` is one method:
+
+| Method | Contract |
+| --- | --- |
+| `claim(id)` | Record the id. Resolve to `true` if it had not been seen before, `false` if it had. |
+
+Recording and testing must be one atomic step, or two deliveries that arrive together will both be claimed. A unique-key insert in a database, or `SET` with `NX` in Redis, does that. The SDK stores nothing itself; the store is yours.
+
+<Callout type="warning" title="An id is claimed before your code runs">
+  `parse` claims each id before it returns the events. If your handler then
+  fails, the vendor's retry of that event is dropped as already handled. Either
+  make the work after `parse` safe to lose and reconcile against list calls, or
+  leave `dedupe` out and record `event.id` yourself once the work is done.
+</Callout>
+
+## Events are hints
+
+Deduplication handles the event that arrives twice. It does nothing for the event that never arrives. Do not treat a stream of events as complete: check event-driven numbers against list calls, which the [`reconcile` plugin](/docs/plugins/reconcile) does.

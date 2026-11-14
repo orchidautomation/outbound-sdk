@@ -1,0 +1,117 @@
+---
+title: Smartlead adapter
+description: Construct the Smartlead adapter, know which key it needs, what it can and cannot read, what its reads cost in requests, the rate limits it keeps to and the assumptions it has not confirmed.
+sidebar:
+  label: Smartlead
+related:
+  - /docs/adapters
+  - /docs/coverage/smartlead
+  - /docs/status
+---
+
+`outbound-sdk/smartlead` reads Smartlead's API v1. It is an email adapter. It is `unverified`: it has never been run against a live account. See [what is verified](/docs/status).
+
+<Callout type="warning" title="Written from documentation only">
+  Smartlead has three public documentation sources and they disagree with each
+  other, also on response shapes. The adapter accepts both documented shapes
+  where they differ. Expect to find differences on a live account, and check
+  `outbound.caveats` before relying on a field.
+</Callout>
+
+## Construct it
+
+<include meta='title="smartlead.ts"'>
+  ../../_examples/adapters-smartlead/adapter.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/adapters-smartlead/adapter.out.txt
+</include>
+
+| Option | Default | What it is |
+| --- | --- | --- |
+| `apiKey` | `SMARTLEAD_API_KEY` | An admin key or a client-level key. |
+| `workspaceId` | `SMARTLEAD_WORKSPACE_ID`, then `default` | Your own label for the client or workspace. It is part of every ref and may not contain a colon. |
+| `baseUrl` | `https://server.smartlead.ai/api/v1` | For a proxy or a test server. |
+| `capabilities` | what the adapter declares | Overrides single capabilities, for example on a key some endpoints refuse. |
+
+The module also exports `envVars` (the two variable names) and `PROVIDER` (`"smartlead"`).
+
+## Key and scope
+
+- By Smartlead's documentation, API access needs the Pro plan or higher.
+- An **admin key** sees the whole account, every client included. A **client-level key** sees one client. Smartlead documents that some endpoints refuse a client key with `401`; turn the matching capability off with `capabilities` if yours does.
+- Smartlead takes the key in the URL (`api_key`) and accepts it nowhere else. The SDK redacts it from errors, hooks and logs, but a proxy or a server log between you and Smartlead can record it.
+- `outbound.workspaces` lists Smartlead clients. A client-level key may be refused there.
+
+## What it can and cannot do
+
+Against the [table](/docs/adapters#what-each-adapter-can-do), Smartlead lacks two capabilities besides `deletionDetection`, and applies four filters on the client:
+
+| Capability | Value | Why |
+| --- | --- | --- |
+| `leads.engagement` | `no` | No JSON response documents per-lead open or reply counts. `lead.engagement` is `null`. |
+| `lists.leads` | `no` | No endpoint returns the leads of a saved lead list. |
+| `campaigns.status` | `client` | `GET /campaigns/` has no status filter and returns every campaign at once. |
+| `leads.since`, `messages.since`, `replies.since` | `client` | The SDK filters on the time after fetching and marks the result `derived`. |
+| `events.verify` | `signature` | Smartlead signs webhooks once you turn signing on for the webhook. |
+
+`leads.lookup` works by email only. No endpoint finds a lead by LinkedIn profile, so that lookup returns nothing and sends no request.
+
+## Rate limits
+
+The adapter declares 60 requests per minute. Smartlead documents 60 per minute for a client-level key and 200 per minute shared by an account's admin keys, and the key type cannot be detected, so every key gets the lower number. Three endpoints have their own lane at 10 requests per 60 seconds:
+
+- `GET /campaigns/all-leads-activities`, which every message listing reads.
+- `GET /campaigns/{id}/leads-statistics` and the domain health metrics, which only native reads use.
+
+At the default `share` of 0.5 that is 30 requests a minute, and 5 a minute on each lane, as the output above shows. Smartlead has not been load-tested. See [rate limits](/docs/rate-limits).
+
+## What reads cost
+
+| Read | Vendor requests |
+| --- | --- |
+| Every campaign | 1: one request returns all of them, with no pages |
+| One lead | 2: the lead, then its tags |
+| Find a person by email | 1, or 2 when a campaign gives the lead a category |
+| Sender health | 2: the mailbox, then its warmup statistics |
+| A lead's timeline | 1 per campaign the lead is in, plus 1 to find those campaigns |
+| A mailbox's totals | 2: the mailbox for its address, then the list of all mailboxes |
+| Replies | 1 per page of 20 threads; the first page also reads the lead category list |
+| Any other listing | 1 per page |
+
+Two reads walk more than they look like they do:
+
+- **`outbound.leads.list()` without a campaign walks every campaign.** Smartlead has no list of all leads. A lead in no campaign is never returned.
+- **`outbound.campaign(id).messages` reads the whole activity feed**, which has no campaign filter, on the 10 per minute lane.
+
+## Vendor behavior that affects your code
+
+- **`outbound.raw` can return passwords.** `GET /email-accounts` includes SMTP and IMAP passwords. Only normalized records drop them. The native catalog leaves out the reads that return secrets.
+- **A lead's status, campaign and creation time are per campaign.** A lookup by email returns one record per campaign, all with the lead's id.
+- **`senderRef` is `null`** on feed and history messages: Smartlead names the mailbox by address there.
+- **Replies in one thread share the lead's current category.**
+- **No delivered count and no automatic-reply count exist.** Daily rows have a `null` bounce count: the daily endpoint always reports 0, and the SDK does not pass that on as a number.
+- **Dated statistics need both dates.** A missing end is today (UTC); a missing start is 2000-01-01 for totals, or 30 days before the end for daily rows.
+- **Webhooks are listed per campaign.** Without a campaign the adapter walks the campaigns. A user-level or client-level webhook may appear under none.
+- **Four sister services use other hosts** with the same key (SmartDelivery, SmartProspect, SmartSenders, SmartServers). Their reads are native only, and an account without the product is refused.
+
+## Caveats
+
+`outbound.caveats` is the adapter's own list of what it assumes and has not confirmed.
+
+<include meta='title="caveats.ts"'>
+  ../../_examples/adapters-smartlead/caveats.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/adapters-smartlead/caveats.out.txt
+</include>
+
+## Webhooks
+
+Verification mode: `signature`. Turn on signing for the webhook in Smartlead and pass its `whsec_` secret as `secret` when parsing: the SDK checks the Standard Webhooks signature and rejects anything older than five minutes. An unsigned Smartlead webhook fails verification. See [webhook verification](/docs/webhooks/verification).
+
+## Coverage
+
+[Smartlead coverage](/docs/coverage/smartlead) lists 230 endpoints of the API reference: 27 behind normalized reads, 78 in the [native catalog](/docs/native), 20 excluded and 105 writes. The research note the adapter was written from is in the repository at `docs/research/smartlead.md`.

@@ -1,0 +1,90 @@
+---
+title: The outbound CLI
+description: The outbound command reads campaigns, senders, leads, replies and stats from the terminal and prints JSON. How it picks an adapter, what it prints, and how it reports failure.
+sidebar:
+  label: Overview
+related:
+  - /docs/cli/commands
+  - /docs/cli/mcp
+  - /docs/installation
+---
+
+The package ships one binary, `outbound`. It is a thin shell over the SDK: each command makes the same read you would make in code and prints the result as JSON. It adds no behaviour of its own, and like the SDK it only reads.
+
+<Callout type="warning" title="Not on npm yet">
+  `outbound-sdk` is not published, so `npx outbound-sdk` does not work today.
+  The binary is available after you install the package from a tarball built in
+  the repository. See [installation](/docs/installation).
+</Callout>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/cli-index/help.out.txt
+</include>
+
+That text was printed by the CLI's own code, run by this sample:
+
+<include meta='title="help.ts"'>../../_examples/cli-index/help.ts</include>
+
+## How the samples run the CLI
+
+Every command shown in this section went through `run`, the function the `outbound` executable calls, exported from `outbound-sdk/cli`. The helper below runs it in the test process with the provider set to `memory`, prints a `$ outbound ...` line, then what the CLI wrote. The executable itself, as a separate process, is covered by the SDK's own tests and is not what these samples start.
+
+<include meta='title="cli.ts"'>../../_examples/cli-commands/cli.ts</include>
+
+`run(argv, io)` takes the arguments after `outbound` and an object with `stdout` and `stderr` functions, and resolves to the exit code. You can call it the same way to embed the CLI in a script. `io.stdin` supplies lines for `outbound mcp`, and `io.adapter` replaces the adapter the environment would choose, which is meant for tests.
+
+## Choosing the provider
+
+A command that reads data needs an adapter. The CLI builds one from the environment:
+
+1. `--provider <id>` if given, otherwise the `OUTBOUND_SDK_PROVIDER` environment variable.
+2. The id is one of `instantly`, `smartlead`, `heyreach` or `memory`.
+3. The adapter reads its own key from the environment: `INSTANTLY_API_KEY`, `SMARTLEAD_API_KEY` or `HEYREACH_API_KEY`. `outbound providers` lists the variables each one reads.
+
+`memory` needs no key. It runs on a small built-in demo data set, the same one behind `demoData()` in `outbound-sdk/memory`: two campaigns, three leads, a few messages. Use it to try a command before pointing the CLI at a real account.
+
+```sh
+# a real account
+export OUTBOUND_SDK_PROVIDER=instantly
+export INSTANTLY_API_KEY=...
+outbound campaigns --status active
+
+# the demo data, for one command
+outbound campaigns --provider memory
+```
+
+Those shell lines are not run by the test suite. The CLI takes no key on the command line and reads no configuration file. It builds a plain instance with no [plugins](/docs/plugins) and one adapter, so there is no CLI flag for a cache, redaction or several clients. How far each real adapter has been checked is on [what is verified](/docs/status).
+
+`help` and `providers` need no adapter and work with nothing set.
+
+## Output
+
+A command prints one JSON value on standard output: indented by default, on one line with `--compact`. Records are the SDK's [records](/docs/api/records), with `meta` on a single read. List commands print a plain array and stop at `--limit`, which defaults to 50.
+
+<include meta='title="output.ts"'>../../_examples/cli-index/output.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/cli-index/output.out.txt
+</include>
+
+## Exit codes and errors
+
+| Exit code | When |
+| --- | --- |
+| `0` | The command ran and got its answer. |
+| `1` | Anything else: an unknown command or option, a missing argument, a flag value that is not one of the allowed words, a record that does not exist, a read the adapter cannot serve, a rejected key, or a tool whose result is `{ "ok": false }`. |
+
+On failure nothing is written to standard output, with one exception: `outbound tool` prints the tool's `{ "ok": false }` result there and writes nothing to standard error. Standard error gets `<code>: <message>`, where the code is an [`OutboundError` code](/docs/api/errors) such as `Invalid`, `NotFound`, `Unsupported` or `Unauthorized`, or `Error` for a failure that is not an `OutboundError`.
+
+<include meta='title="errors.ts"'>../../_examples/cli-index/errors.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/cli-index/errors.out.txt
+</include>
+
+The helper prints standard error where a terminal would show it and adds the `(exit code 1)` line. That line is not CLI output.
+
+## Next
+
+- [Commands](/docs/cli/commands): every command and flag, with its output.
+- [`outbound mcp`](/docs/cli/mcp): the same reads served to an agent over stdio.

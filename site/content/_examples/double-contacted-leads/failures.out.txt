@@ -1,0 +1,12 @@
+capped: 6 2 false [ 'Stopped at 2 leads of a campaign; more exist.' ]
+no shared identifier: {
+  acrossTools: 0,
+  campaignsRead: 2,
+  collisions: 0,
+  leadsRead: 3,
+  leadsWithoutIdentifier: 1,
+  withinTool: 0
+}
+bad input: Invalid
+no block list: Unsupported - suppression_check is not available: the memory adapter does not support blocklist
+collisions still run: 2

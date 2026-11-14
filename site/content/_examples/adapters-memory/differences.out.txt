@@ -1,0 +1,9 @@
+memory default stable
+caveats: 0
+native: false
+events.parse: false
+events.verify: false
+estimate: memory declares no cost for leads.list
+native - Unsupported
+raw - Unsupported
+webhooks: 1 0

@@ -208,7 +208,10 @@ test("smartlead native: a path parameter is required, before any request", async
   assert.equal(requests.length, 0);
 });
 
-const FOLDER = path.resolve(import.meta.dirname, "../../../../docs/coverage");
+const FOLDER = path.resolve(
+  import.meta.dirname,
+  "../../../../site/content/docs/coverage"
+);
 
 const endpoint = (method: string, route: string): string =>
   `${method} ${route.replaceAll(/\{[^}]+\}/gu, "{}").replace(/\/$/u, "")}`;
@@ -216,7 +219,7 @@ const endpoint = (method: string, route: string): string =>
 /** `METHOD path` of every row with the given coverage, ids blanked. */
 const rows = (coverage: string): Set<string> =>
   new Set(
-    readFileSync(path.join(FOLDER, "smartlead.md"), "utf-8")
+    readFileSync(path.join(FOLDER, "smartlead.mdx"), "utf-8")
       .split("\n")
       .filter((line) => line.startsWith("| `"))
       .map((line) => line.split("|").map((cell) => cell.trim()))

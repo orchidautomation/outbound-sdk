@@ -1,0 +1,111 @@
+---
+title: Tell whether an A/B variant is ahead by more than chance
+description: One function that reads a campaign's step stats and says, for each step with two or more variants, whether the leader's gap is larger than chance would give, plus which step the replies come from.
+sidebar:
+  label: A/B test verdict
+related:
+  - /docs/insights/copy
+  - /guides/pre-launch-audit
+  - /guides/diagnose-campaign
+---
+
+Variant A has a 6% reply rate and variant B has 3%. Whether that is a result or noise depends on how many leads each one reached. `variantTest` answers that for every step of a campaign that has two or more variants: it takes the variant with the highest rate, compares it with each of the others by a two-proportion z-test, and returns one of three verdicts: `winner`, `no_difference_yet` or `too_little_data`. `stepFunnel` adds which step the replies come from, so you know how much a winner is worth.
+
+It does not tell you when a test is finished. It has no stopping rule, it makes no correction when a step has three or more variants, and reading it every day until it says `winner` will produce winners that are not real. [Limits](#limits) says what to do about each. It calls no AI model and changes nothing in your vendor tool: turning a variant off is up to you.
+
+<include>../_snippets/status.mdx</include>
+
+## Before you start
+
+- Node 22 or later.
+- The code below runs on the in-memory adapter, so it needs no vendor key. Each sample on this page is a file in the repository that the test suite runs; the output shown is what it printed.
+- For real data: an Instantly or Smartlead API key. A read-only key is enough. HeyReach cannot serve this guide, see [what each vendor can serve](#what-each-vendor-can-serve).
+
+## What you get
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/ab-test-winner/run.out.txt
+</include>
+
+## Write the verdict
+
+`outbound.insights.variantTest` takes a campaign and returns one entry per tested step. `outbound.insights.stepFunnel` takes the same campaign and returns one row per step.
+
+<include meta='title="verdict.ts"'>
+  ../_examples/ab-test-winner/verdict.ts
+</include>
+
+How a step gets its verdict:
+
+- **The rate.** Replies and positive replies are divided by leads contacted, or by sends when the vendor reports no contacted count. Opens and clicks are divided by messages delivered, or by sends. `basis` on each variant says which. Choose the metric with `metric` (default `replied`).
+- **Enough data.** A variant whose base is under `min_sent` (default 100) is not compared, even when its raw rate is the highest. With fewer than two variants over that bar the verdict is `too_little_data`.
+- **The test.** The leader is the variant with the highest rate among those with enough data. It is compared with every other one by a two-sided two-proportion z-test. It is a `winner` only when every comparison has a p-value under `alpha` (default 0.05, at most 0.5). Otherwise the verdict is `no_difference_yet`, and `pValue` is the leader against its closest rival.
+- **The interval.** Each variant also carries the 95% Wilson interval of its rate in `interval`.
+- **`moreSendsNeeded` is rough.** For `no_difference_yet` it is how much larger the sample would have to be if both rates stayed exactly where they are, which they will not. For `too_little_data` it is the sends still missing to bring every variant to `min_sent`. It is `null` for a winner.
+
+A count the vendor does not report is `null`, never `0`, and a rate built on it is `null` too. `from` and `to` (`YYYY-MM-DD`) limit the days counted.
+
+## Try it without a key
+
+The in-memory adapter takes plain data. A stats row in its seed can name a step and a variant (`stepIndex` and `variantKey`), so this seed holds one row per variant, which is the shape the Instantly and Smartlead adapters produce for step stats.
+
+<include meta='title="seed.ts"'>../_examples/ab-test-winner/seed.ts</include>
+
+<include meta='title="run.ts"'>../_examples/ab-test-winner/run.ts</include>
+
+That is the script that printed the verdict above. Step 0 is 48 of 800 against 24 of 800, a gap chance would produce about 4 times in 1,000. Step 1 is 28 of 700 against 20 of 700, a gap chance would produce about one time in four.
+
+## Point it at your vendor
+
+Swap the adapter. Nothing else changes.
+
+<include meta='title="outbound.ts"'>
+  ../_examples/ab-test-winner/production.ts
+</include>
+
+Pass the campaign's vendor id or its `ref` to the function.
+
+## What each vendor can serve
+
+The same function, run on the in-memory adapter limited to what each vendor's adapter declares. This shows which calls a vendor's adapter would refuse. It does not show what that vendor's API returns.
+
+<include meta='title="vendors.ts"'>
+  ../_examples/ab-test-winner/vendors.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/ab-test-winner/vendors.out.txt
+</include>
+
+Both insights need `stats.byStep`. The HeyReach adapter declares it `false` because HeyReach's API has no statistics per step, so the call is refused before any request. There is no fallback: without counts per variant there is nothing to test.
+
+## What it costs in vendor requests
+
+`variantTest` is one stats read. `stepFunnel` is two: the sequence and the same stats read. Neither grows with the size of the campaign.
+
+## When it cannot answer
+
+<include meta='title="failures.ts"'>
+  ../_examples/ab-test-winner/failures.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/ab-test-winner/failures.out.txt
+</include>
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| The step stats have no row per variant | `variantStatsReported` is `false`, `steps` is empty and a note says there is nothing to compare | Nothing can be tested from this data. Compare the variants in the vendor's own interface. |
+| The vendor does not report the metric for every variant | `too_little_data`, with the reason in `reason` and `moreSendsNeeded` `null` | Pick a metric the vendor reports. More sends will not help. |
+| An input the insight does not take | `Invalid`, naming the key and listing the inputs | Fix the key. There is no filter by step: the answer covers every tested step. |
+| Input out of range | `Invalid`, before any request | Fix the value. |
+| A campaign that does not exist | `NotFound`, from the first read of it | Check the id. |
+| The adapter has no stats per step | `Unsupported`, before any request | Use an adapter that declares `stats.byStep`. |
+
+## Limits
+
+- **No stopping rule.** The test assumes you look once, at a sample size you chose in advance. Decide before launch how many leads each variant should reach, then read the verdict at that point. `moreSendsNeeded` is a rough guide to that size, not a signal to stop.
+- **Checking daily is peeking.** Each look at a fixed `alpha` is another chance for noise to cross the line. If you run this on a schedule and act on the first `winner`, you will call more false winners than `alpha` says. Act on a verdict that holds at the planned sample size, or pass a smaller `alpha`.
+- **No correction for three or more variants.** The leader is picked because it has the highest rate and is then tested against each other variant at the same `alpha`. With several variants the chance that the best-looking one clears every test by luck is higher than with two. Use a smaller `alpha` for a step with more than two variants.
+- It tests what the vendor counts. If the vendor attributes a reply to the wrong step or variant, so does the verdict.
+- A `winner` says the gap is unlikely to be chance. It does not say the gap is large enough to matter: read the two intervals for that.

@@ -21,7 +21,9 @@ One small, typed, read-only TypeScript API over outbound sending tools. MIT, ope
 | `packages/outbound-sdk/test/` | Tests, through entry points only |
 | `fixtures/<provider>/` | Documented vendor payloads with personal data removed |
 | `scripts/` | Guardrail checks, each with its own test |
-| `docs/` | Architecture, adapters, plugins, tools, guardrails, per-vendor research |
+| `docs/` | For contributors: architecture, guardrails, adding an adapter, per-vendor research |
+| `site/` | The public documentation site (Blume), deployed to outbound-sdk.dev |
+| `site/content/_examples/` | Every code sample the site shows. `npm test` runs each one |
 
 The design authority is the Outbound SDK spec and the Linear document "Tech stack and engineering standards", both linked from the Linear project `Outbound SDK` (team `OUT`).
 
@@ -50,6 +52,8 @@ Node is pinned in `.node-version`. Install with `npm ci`.
 - Every mechanical check ships with a test proving an accepted and a rejected case.
 - Size limits are in `docs/engineering-guardrails.md`. Split by responsibility; never minify to pass.
 - Vendor facts come from that vendor's current documentation, fetched fresh. Record the URLs and the date in `docs/research/<provider>.md` before changing an adapter.
+- A page on the site carries no code of its own. A sample is a file under `site/content/_examples/`, spliced in with `<include>`; record its output with `UPDATE_EXAMPLES=1 npm test` and read it before committing.
+- The site says only what is true today: what `site/content/docs/status.mdx` records as verified, and no install command while the package is unpublished. `site/test/site-truth.test.ts` holds it to the code.
 - Each fact has one home. Link between Linear and this repository instead of copying text.
 - The vendor-drift agent may edit one vendor's `map*.ts`, `capabilities.ts`, `webhooks.ts`, tests, fixtures and research note, and nothing else. `scripts/check-drift-scope.mjs` enforces it.
 

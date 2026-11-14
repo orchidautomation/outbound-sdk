@@ -41,7 +41,7 @@ Modelled on Files SDK: a small unified surface, and a typed way down to the vend
 - **Normalized reads** are what every vendor shares: campaigns and their settings, sequences, senders and their health, leads, lists, messages, replies, stats, tags, the block list and webhooks. They return the SDK's own records and mean the same thing on every adapter.
 - **Native reads** are the rest. No outbound vendor publishes a client of its own, so each adapter declares a catalog (`defineNative`) and the instance exposes it as `outbound.native`, typed from the adapter that was passed in. A native read is one vendor request through the same engine, and returns the vendor's payload untouched.
 
-`docs/coverage/<vendor>.md` accounts for every endpoint a vendor documents, and a test holds each table to the adapter. An adapter may not drop a read: it normalizes it, catalogues it, or excludes it for one of the reasons in `docs/coverage/README.md`.
+`site/content/docs/coverage/<vendor>.mdx` accounts for every endpoint a vendor documents, and a test holds each table to the adapter. An adapter may not drop a read: it normalizes it, catalogues it, or excludes it for one of the reasons in `site/content/docs/coverage/index.mdx`.
 
 ## Results
 

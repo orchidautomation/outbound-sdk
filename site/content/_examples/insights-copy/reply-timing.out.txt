@@ -1,0 +1,19 @@
+time to reply: {
+  medianHours: 24,
+  p75Hours: 48,
+  p90Hours: 76.8,
+  sample: 5,
+  within1Hour: 0.2,
+  within24Hours: 0.6,
+  within72Hours: 0.8
+}
+replies arrive most on Monday and at hour 9
+sends that drew a reply went out most on Monday at hour 9
+counts: {
+  followOnReplies: 1,
+  messagesRead: 12,
+  paired: 5,
+  received: 7,
+  sent: 5,
+  unpaired: 1
+}

@@ -1,0 +1,86 @@
+---
+title: clients
+description: Tag every record with the client it belongs to, by workspace or by rules on provider, workspace, campaign tag, name or ref, and add up results per client.
+sidebar:
+  label: clients
+related:
+  - /docs/adapters/combine
+  - /guides/run-many-clients
+  - /docs/plugins/identity
+---
+
+`clients()` from `outbound-sdk/clients` adds a `client` field to every record an instance returns. A key and a client do not always match one to one: one key can hold several clients as campaigns, and one client can span several keys. Without rules, one workspace is one client. With rules, the first rule that matches a record decides, and a record that matches no rule is `unassigned`. Nothing is assigned by guessing.
+
+## Sample
+
+One workspace holds campaigns for two clients, told apart by a tag and by a name prefix. It runs on the [shared seed](/docs/plugins#every-plugin).
+
+<include meta='title="run.ts"'>../../_examples/plugins-clients/run.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/plugins-clients/run.out.txt
+</include>
+
+The totals are the seed's: 200 sent for Acme's one campaign over the two days, 400 for Globex, and 200 for the campaign no rule matched.
+
+## Options
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `rules` | `ClientRule[]` | `[]` | Checked in order. The first rule whose every condition holds assigns its `client`. With no rules, a record's client is its `workspaceId`. |
+
+A `ClientRule` has a `client` and any of these conditions. All the conditions on a rule must hold.
+
+| Field | Type | Matches |
+| --- | --- | --- |
+| `client` | `string` | Required. The label to assign. |
+| `provider` | `string` | Records whose `provider` is exactly this. |
+| `workspaceId` | `string` | Records whose `workspaceId` is exactly this. |
+| `campaignTag` | `string` | Records of a campaign that carries this tag. |
+| `campaignIds` | `string[]` | Records of a campaign whose `ref` is in the list. Use refs, not bare vendor ids. |
+| `campaignName` | `RegExp` | Records of a campaign whose name the pattern matches. |
+
+A record's campaign is the campaign itself, the `campaignRef` a lead, message or reply carries, or the `scopeRef` of a stats row that is not scoped to a workspace or a sender. A record with no campaign (a sender, a workspace, a workspace stats row) can only match `provider` and `workspaceId` conditions.
+
+## What it adds
+
+| Member | Returns |
+| --- | --- |
+| Every record | `client: string`, added at run time. The record types do not declare it, so read it with an `in` check, as the sample does. |
+| `outbound.clients.names()` | The clients named by rules, in rule order, without repeats. Empty when there are no rules. `unassigned` is not listed. |
+| `outbound.clients.stats(options?)` | One row per client: `client`, `campaigns` and `counts`, sorted by client name. Takes `from` and `to` (`YYYY-MM-DD`) and the per-call options (`signal`, `timeout`, `retries`, `deadline`, `maxRequests`). |
+
+`clients.stats()` lists every campaign, reads each campaign's stats one at a time, and adds the rows up per client. It costs one stats request per campaign on top of the listing. `campaigns` is the number of stats rows added together. The exported constant `UNASSIGNED` is the string `"unassigned"`.
+
+## Without rules
+
+<include meta='title="default.ts"'>
+  ../../_examples/plugins-clients/default.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/plugins-clients/default.out.txt
+</include>
+
+`outbound.workspace("acme")` reads only that member, so its stats hold one client. The 800 sends are the seed's three campaigns over the two days.
+
+## What it changes
+
+It changes no capability and nothing in `meta`. It adds one field to each record.
+
+A rule on `campaignTag` or `campaignName` needs the campaign itself. When a record's campaign has not been seen yet, the plugin reads it with one `campaigns.get` and remembers it for the life of the plugin object. Campaigns that pass through any read are remembered too, so listing campaigns first costs nothing extra later. A rule on `campaignIds` alone needs no lookup. Remembered campaigns are not refreshed: a tag changed at the vendor is seen only by a new plugin object.
+
+## With other plugins
+
+- List it after `redact` and before `cache`. Inside the cache, the cached records would keep the client they were given when they were stored.
+- Its campaign lookup goes inward, through `cache`, `audit` and `budget` when they are listed after it. The [ordering sample](/docs/plugins#the-order-that-matters) shows the extra `campaigns.get` in the audit log.
+- `redact` leaves `client` alone. It is your label, not the vendor's data.
+- On a [combined](/docs/adapters/combine) instance with no rules, each member's records carry that member's `workspaceId`.
+
+## When it fails
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| A record matches no rule | `client` is `unassigned` | Add a rule, or treat `unassigned` as a list to review. |
+| The campaign lookup for a tag or name rule fails | The read that triggered it fails with that error | Handle it as you would the read's own failure. |
+| The adapter cannot read campaign stats | `clients.stats()` throws `Unsupported` | Use an adapter that declares `stats.campaign`. |

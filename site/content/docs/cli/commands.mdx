@@ -1,0 +1,154 @@
+---
+title: CLI commands
+description: Every outbound command and flag, each with a real invocation on the demo data and the output it printed.
+sidebar:
+  label: Commands
+related:
+  - /docs/cli
+  - /docs/cli/mcp
+  - /docs/api/collections
+---
+
+Every block on this page is the output of the CLI's own code, run on the in-memory adapter's demo data by the test suite. [The overview](/docs/cli#how-the-samples-run-the-cli) shows the helper that runs it. A line starting with `$` is the command. A line `(exit code 1)` is added by the helper, and a line in square brackets stands in for output too long to print.
+
+The output shows what the CLI does with the demo data. It does not show what a vendor returns. See [what is verified](/docs/status).
+
+## All commands
+
+| Command | Reads | SDK call |
+| --- | --- | --- |
+| `providers` | The adapters the CLI can load. Needs no adapter. | the provider catalog |
+| `capabilities` | What the chosen adapter can do, its maturity and caveats | `outbound.capabilities`, `maturity`, `caveats` |
+| `campaigns` | Campaigns | `outbound.campaigns.listAll` |
+| `campaign <id>` | One campaign, or with a flag its stats, sequence, subsequences or settings | `outbound.campaign(id)` |
+| `senders` | Mailboxes and LinkedIn seats | `outbound.senders.listAll` |
+| `health <sender id>` | One sender's DNS, sign-in and warmup state | `outbound.sender(id).health` |
+| `leads` | Leads, across the account or in one campaign or list | `outbound.leads.listAll` |
+| `lists` | Saved lead lists | `outbound.lists.listAll` |
+| `replies` | Replies from prospects | `outbound.replies.listAll` |
+| `thread <id>` | The messages in one conversation | `outbound.thread(id).messages` |
+| `stats` | Workspace totals, or one row per day | `outbound.stats` |
+| `tags` | Tags | `outbound.tags.listAll` |
+| `blocklist` | Blocked addresses and domains | `outbound.blocklist.listAll` |
+| `webhooks` | Webhook subscriptions registered at the vendor | `outbound.webhooks.listAll` |
+| `limits` | The current rate budget | `outbound.limits` |
+| `tools` | The [AI tools](/docs/tools) the instance can serve | `createTools` |
+| `tool <name>` | Runs one AI tool | `tool.call` |
+| `insight [name]` | Lists the [insights](/docs/insights), or runs one | `listInsights`, `runInsightByName` |
+| `native [name]` | Lists the vendor's [own reads](/docs/native), or runs one | `outbound.native` |
+| `mcp` | Starts the [MCP server](/docs/cli/mcp) on stdio | `createMcpServer` |
+| `help` | The usage text. Also `--help`, `-h`, or no command. |  |
+
+## Flags
+
+| Flag | Commands | Meaning |
+| --- | --- | --- |
+| `--provider <id>` | all that need an adapter | The adapter to use. Overrides `OUTBOUND_SDK_PROVIDER`. |
+| `--compact` | all that print JSON | Print the JSON on one line. |
+| `--help`, `-h` | all | Print the usage text and exit 0. |
+| `--limit <n>` | `campaigns`, `senders`, `leads`, `lists`, `replies`, `tags`, `blocklist`, `webhooks` | Stop after this many records. A positive whole number. Defaults to 50. |
+| `--status <status>` | `campaigns` | Only campaigns with this status: `active`, `paused`, `draft`, `completed`, `archived` or `unknown`. |
+| `--stats` | `campaign` | The campaign's counts. |
+| `--sequence` | `campaign` | The campaign's steps and variants. |
+| `--subsequences` | `campaign` | The campaign's subsequences. |
+| `--settings` | `campaign` | How the campaign is set up to send. |
+| `--from <day>`, `--to <day>` | `campaign --stats`, `stats` | First and last day, `YYYY-MM-DD`. |
+| `--by day\|total` | `campaign --stats`, `stats` | `day` gives one row per day. `total`, the default, gives one total row. Any other value is refused as `Invalid`. |
+| `--campaign <id>` | `leads`, `replies`, `webhooks` | Only records for this campaign. |
+| `--list <id>` | `leads` | Only leads in this saved list. |
+| `--category <category>` | `replies` | Only replies in this category: `positive`, `negative`, `neutral`, `ooo`, `bounce`, `unsubscribe` or `unknown`. |
+| `--since <ISO date>` | `replies` | Only replies on or after this time. |
+| `--bodies` | `replies`, `thread` | Include message text. Left out by default. |
+| `--input <json>` | `tool`, `insight`, `native` | The input, as a JSON object in one argument. Defaults to `{}`. |
+
+When `campaign` gets more than one of its flags, one wins, in this order: `--sequence`, `--subsequences`, `--settings`, `--stats`.
+
+## providers and capabilities
+
+`providers` is the one data command that needs no adapter and no key. `capabilities` prints the [capabilities](/docs/capabilities) of the chosen adapter after construction, without a vendor request.
+
+<include meta='title="discover.ts"'>
+  ../../_examples/cli-commands/discover.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/cli-commands/discover.out.txt
+</include>
+
+## campaigns and campaign
+
+<include meta='title="campaigns.ts"'>
+  ../../_examples/cli-commands/campaigns.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/cli-commands/campaigns.out.txt
+</include>
+
+A campaign id can be the vendor's id or a `ref` from any record. A count the vendor does not report prints as `null`. The demo campaign has no subsequences, so that command prints an empty array.
+
+## senders, health, leads and lists
+
+<include meta='title="people.ts"'>
+  ../../_examples/cli-commands/people.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/cli-commands/people.out.txt
+</include>
+
+## replies and thread
+
+Message text is left out unless you pass `--bodies`: `bodyText` is `null` without it. The CLI prints the text as the vendor returned it. It does not truncate it or mark it as [untrusted content](/docs/tools/untrusted-content), so take care before piping it to a model.
+
+<include meta='title="conversations.ts"'>
+  ../../_examples/cli-commands/conversations.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/cli-commands/conversations.out.txt
+</include>
+
+## stats, tags, blocklist, webhooks and limits
+
+<include meta='title="account.ts"'>
+  ../../_examples/cli-commands/account.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/cli-commands/account.out.txt
+</include>
+
+`webhooks` lists the subscriptions that exist at the vendor. The CLI registers none. `limits` on the in-memory adapter reports a budget that is not a vendor's; on a real adapter it is the adapter's declared [rate limit](/docs/rate-limits) and how much of it this process has used.
+
+## tools, tool and insight
+
+`tools` lists the [AI tools](/docs/tools) and `tool` runs one, with the same input a model would send. `insight` with no name lists the 26 insights with their input schemas, and with a name runs one.
+
+<include meta='title="agent.ts"'>../../_examples/cli-commands/agent.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/cli-commands/agent.out.txt
+</include>
+
+Both commands exit 1 on failure, and say why in different places. A tool never throws, so `outbound tool` prints the tool's `{ "ok": false }` result on standard output, where a script can read `error` and `next`. An insight throws, so `outbound insight` writes the reason to standard error and prints nothing on standard output.
+
+The CLI builds an instance with no plugins, so `tools` never lists `compare_clients` or `cross_channel_lead`.
+
+## native
+
+`native` with no name prints the adapter's catalog of [native reads](/docs/native), which costs no request. With a name it runs that read and prints the vendor's own response. The in-memory adapter has no vendor behind it, so its catalog is empty and any read is refused.
+
+<include meta='title="native.ts"'>
+  ../../_examples/cli-commands/native.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/cli-commands/native.out.txt
+</include>
+
+The last command constructed the Instantly adapter with a placeholder key and listed its catalog. No request was made. A native read on a real adapter was not run by this sample.
+
+## mcp
+
+`outbound mcp` does not print a result and exit. It reads JSON-RPC messages from standard input until it closes. See [`outbound mcp`](/docs/cli/mcp).

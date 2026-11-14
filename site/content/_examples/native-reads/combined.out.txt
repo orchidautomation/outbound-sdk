@@ -1,0 +1,8 @@
+combined: 0 reads
+Unsupported: native is not available on a combined instance: it belongs to one vendor. Use outbound.workspace("provider:workspace").native, for example "instantly:acme-email" or "heyreach:acme-linkedin"
+acme-email: instantly, 105 reads
+acme-linkedin: heyreach, 25 reads
+{
+  totalCount: 1,
+  items: [ { listId: 3457, listName: 'Example list one' } ]
+} heyreach acme-linkedin

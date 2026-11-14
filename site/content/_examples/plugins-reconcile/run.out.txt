@@ -1,0 +1,9 @@
+checked: 3 matched: 2
+uncheckable: 1
+webhook never arrived for: [ 'memory:agency:msg_3' ]
+event with no message: [ 'evt_3 (memory:agency:msg_9)' ]
+late: [ 'evt_2 by 20 min' ]
+
+listed by the vendor: 4
+gone from the vendor: [ 'memory:agency:lead_removed' ]
+not in your copy yet: [ 'memory:agency:lead_priya', 'memory:agency:lead_omar' ]

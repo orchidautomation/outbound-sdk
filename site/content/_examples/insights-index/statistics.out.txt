@@ -1,0 +1,5 @@
+2 of 10: 0.2 { high: 0.5098, low: 0.0567 }
+200 of 1,000: 0.2 { high: 0.2259, low: 0.1764 }
+8% against 4%: { pValue: 0.0077, significant: true, z: 2.6631 }
+2.5% against 1.5%: { pValue: 0.3124, significant: false, z: 1.0102 }
+unknown count: null null

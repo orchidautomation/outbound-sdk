@@ -1,0 +1,141 @@
+---
+title: AI tools
+description: Twelve read-only tools an agent can call to ask about campaigns, senders, replies and leads, what each one needs, and what a tool returns when it cannot answer.
+sidebar:
+  label: Overview
+related:
+  - /docs/tools/untrusted-content
+  - /docs/cli/mcp
+  - /docs/insights
+  - /guides/agent-tools
+---
+
+`outbound-sdk/tools` gives an agent tools shaped like the questions an operator asks: how are my campaigns doing, which step gets replies, which senders need attention. Your model does the reasoning. A tool only reads from the vendor and arranges what it read. The SDK calls no model.
+
+Every tool:
+
+- **Takes one JSON object** and describes it as JSON Schema, so any model API can call it.
+- **Returns compact JSON** with `data`, `meta` and `next`. `meta.evidence` says how far to trust the numbers (`exact`, `sampled` or `derived`), `meta.requests` how many vendor requests the call made, `meta.today` is today's date in UTC (a model does not know it, and otherwise guesses the date range it asks for), and `next` suggests what to ask after this.
+- **Never throws.** Bad input, a missing record and a read the adapter cannot serve all come back as `{ ok: false, error, next }`, which a model can read and recover from.
+- **Only reads.** No tool sends, pauses or edits anything.
+
+This page uses the [in-memory adapter](/docs/adapters/memory). How far each real adapter has been checked is on [what is verified](/docs/status).
+
+## Create the tools
+
+`createTools(outbound)` returns the tools the instance can serve. `TOOL_NAMES` lists all twelve names.
+
+<include meta='title="list.ts"'>../../_examples/tools-index/list.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/tools-index/list.out.txt
+</include>
+
+Each tool has `name`, `description`, `parameters` (JSON Schema), `fields` (the same input as Zod schemas, one per field), `needs` and `call`. To hand the set to a model, use one of the wrappers: [OpenAI](/docs/tools/openai), [AI SDK](/docs/tools/ai-sdk) or [Claude Agent SDK](/docs/tools/claude-agent). To serve it to an agent client with no code, run [`outbound mcp`](/docs/cli/mcp).
+
+## Call a tool
+
+<include meta='title="call.ts"'>../../_examples/tools-index/call.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/tools-index/call.out.txt
+</include>
+
+Rates are computed from the counts beside them. A count the vendor does not report is `null`, never `0`, and a rate built on it is `null` too. `reply_rate_basis` names the count the reply rate was divided by.
+
+## The twelve tools
+
+| Tool | Answers | Needs |
+| --- | --- | --- |
+| `campaign_overview` | How every campaign with a given status is doing | `campaigns.status`, `stats.campaign` |
+| `campaign_trend` | How one count moved day by day for a campaign | `stats.campaign`, `stats.byDay` |
+| `winning_steps` | Which step or variant drives replies | `stats.byStep` |
+| `sender_health` | Status, daily limit and warmup per sender, unhealthy first | `senders.list` |
+| `reply_samples` | Recent replies, optionally by category | `replies.list` |
+| `lead_runway` | Days until a campaign runs out of leads. An estimate. | `leads.byCampaign`, `stats.campaign`, `stats.byDay` |
+| `compare_clients` | The same counts for every client, side by side | the [`clients` plugin](/docs/plugins/clients), `stats.campaign` |
+| `cross_channel_lead` | Every record and message for one person | the [`identity` plugin](/docs/plugins/identity) |
+| `campaign_setup` | How one campaign is set up to send: windows, caps, tracking, stop rules | `campaigns.settings` |
+| `deliverability_check` | Each sender's DNS records, sign-in state and warmup spam rate, problems first | `senders.health` |
+| `audience_lists` | The saved lead lists and their sizes | `lists.list` |
+| `vendor_read` | Anything else the vendor reports: lists the vendor's own reads, then runs one | a [native](/docs/native) catalog |
+
+The last column is the tool's own `needs`: the [capabilities](/docs/capabilities) and plugins it cannot work without. `createTools` reads it to decide what to offer.
+
+<include meta='title="needs.ts"'>../../_examples/tools-index/needs.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/tools-index/needs.out.txt
+</include>
+
+`needs` lists only what every call makes use of. An input can ask for more: `reply_samples` with `category` also needs `replies.category`, `deliverability_check` needs `senders.list`, or with `campaign` `senders.byCampaign`, and `cross_channel_lead` reads a timeline only when the adapter declares `leads.timeline`.
+
+## What is left out, and what is refused
+
+Two different things happen when a tool cannot work.
+
+**Left out of the set.** `createTools` does not offer:
+
+- A tool that needs a capability the adapter lacks, or that a plugin turned off.
+- `compare_clients` without the `clients` plugin on the instance.
+- `cross_channel_lead` without the `identity` plugin, or while the [`redact` plugin](/docs/plugins/redact) masks `email` or `linkedin`, because `outbound.person()` is refused then.
+- `vendor_read` when the adapter has no native reads, or when the `redact` plugin is on the instance, because a native read returns the vendor's payload untouched.
+
+A tool's `next` hint never names a tool that is not in the set. When the hint a tool wrote would, it is replaced by a general one.
+
+**Offered, then refused.** A tool in the set can still be asked for a read only its input needs. Calling it then returns `{ ok: false }` with the code `Unsupported` and a `next` hint that tells the model to try another tool.
+
+The run below constructs each real adapter to count its tools (constructing one makes no request), then calls every tool on the in-memory adapter limited to what each vendor's adapter declares. It shows which tools an adapter is offered and whether a plain call is answered. It does not show what a vendor's API returns.
+
+<include meta='title="vendors.ts"'>
+  ../../_examples/tools-index/vendors.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/tools-index/vendors.out.txt
+</include>
+
+HeyReach's adapter declares no per-step stats and no campaign settings, so `winning_steps` and `campaign_setup` are not offered there. To offer a model fewer tools still, pass `only` with the names you want.
+
+## When a tool fails
+
+<include meta='title="failures.ts"'>
+  ../../_examples/tools-index/failures.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/tools-index/failures.out.txt
+</include>
+
+| What happened | `error.code` | What the model is told |
+| --- | --- | --- |
+| An argument the tool does not take | `Invalid` | The stray key and the inputs the tool takes |
+| A value of the wrong type or shape | `Invalid` | The field and what was wrong with it |
+| A record that does not exist | `NotFound` | Which record |
+| A read the adapter or a plugin does not allow | `Unsupported` | Which capability is missing, and to try another tool |
+| Anything that is not an `OutboundError` | `Provider` | The error's message |
+
+Input is strict. An argument a tool does not take is reported as `Invalid`, never dropped, so a model that invents a filter learns that the filter did nothing. The other codes are the ones on the [errors](/docs/api/errors) page.
+
+## Add the insights
+
+The 26 [insights](/docs/insights) are tools of the same shape. `insightTools(outbound)` from `outbound-sdk/insights` returns the ones the adapter can serve, and the `extra` option of `createTools` and of every wrapper appends them.
+
+<include meta='title="extra.ts"'>../../_examples/tools-index/extra.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/tools-index/extra.out.txt
+</include>
+
+An insight tool wraps its answer as `data.result`, with `data.complete` and `data.notes` beside it. Like the twelve built-in tools, an insight whose adapter lacks a capability it needs is left out of the list.
+
+## Options
+
+| Option | What it does |
+| --- | --- |
+| `only` | Offer only these built-in tools, by name. Defaults to every tool the instance can serve. |
+| `extra` | More tools to offer after the built-in ones. `only` does not filter them. |
+
+## Reply text
+
+`reply_samples` leaves reply text out unless the model asks for it, and marks it as untrusted when it does. Read [untrusted content](/docs/tools/untrusted-content) before you let a model read replies.

@@ -1,0 +1,106 @@
+---
+title: HeyReach adapter
+description: Construct the HeyReach adapter, know which key it needs, what it can and cannot read, what its reads cost in requests, the rate limits it keeps to and the assumptions it has not confirmed.
+sidebar:
+  label: HeyReach
+related:
+  - /docs/adapters
+  - /docs/coverage/heyreach
+  - /docs/status
+---
+
+`outbound-sdk/heyreach` reads HeyReach's public API. It is the LinkedIn adapter: a sender is a LinkedIn account, and a lead is a LinkedIn profile. It is `beta`: see [what is verified](/docs/status).
+
+## Construct it
+
+<include meta='title="heyreach.ts"'>
+  ../../_examples/adapters-heyreach/adapter.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/adapters-heyreach/adapter.out.txt
+</include>
+
+| Option | Default | What it is |
+| --- | --- | --- |
+| `apiKey` | `HEYREACH_API_KEY` | A workspace API key. |
+| `workspaceId` | `HEYREACH_WORKSPACE_ID`, then `default` | Your own label for the client or workspace. It is part of every ref and may not contain a colon. |
+| `baseUrl` | `https://api.heyreach.io/api/public` | For a proxy or a test server. |
+| `capabilities` | what the adapter declares | Overrides single capabilities. |
+
+The module also exports `envVars` (the two variable names), `PROVIDER` (`"heyreach"`) and `NATIVE` (the native catalog).
+
+## Key and scope
+
+- Create the key in HeyReach under Integrations, HeyReach API. It is scoped to one workspace and does not expire.
+- An agency with one workspace per client uses one key per client, each with its own `workspaceId` label, behind [`combine`](/docs/adapters/combine).
+- The five organization reads in the native catalog need an **organization API key** in place of a workspace key and answer `401` without it. They were not run with one.
+- If the account's plan does not include HeyReach's campaign API, sequence reads fail with `Unsupported` and a message that names `CAMPAIGN_API_NOT_ENABLED`. That is not a missing campaign.
+
+## What it can and cannot do
+
+HeyReach is the adapter with the most `no` in the [table](/docs/adapters#what-each-adapter-can-do):
+
+| Capability | Value | Why |
+| --- | --- | --- |
+| `campaigns.settings` | `no` | A campaign's schedule can be written through the API but not read. |
+| `leads.engagement` | `no` | No lead shape carries open, click or reply counts. |
+| `leads.list` | `no` | There is no list of every lead. Read leads per campaign or per saved list. |
+| `replies.category` | `no` | HeyReach's auto-tags describe the lead, not a message. The newest one is the lead's `interest`. |
+| `senders.warmup` | `no` | LinkedIn accounts have no warmup. |
+| `sequence.subsequences` | `no` | A campaign has one sequence tree and nothing attached to it. |
+| `stats.byStep` | `no` | The API has no per-step stats. |
+| `tags` | `no` | No endpoint lists the workspace's tags. A lead's own tags are read with the lead. |
+| `workspaces` | `no` | Only an organization key can list workspaces. |
+| `events.verify` | `secret` | HeyReach does not sign webhooks. |
+
+`outbound.campaign(id).leads` and `outbound.list(id).leads` work. `outbound.leads.list()` is refused. `leads.lookup` works by LinkedIn profile URL and by email.
+
+## Rate limits
+
+The adapter declares two windows: 15 requests per 2 seconds and 300 per minute. The 300 is documented. The burst limit is not: it was read from the live API's 429 response on 2026-11-14. The organization API has a lane of its own at 300 per minute.
+
+At the default `share` of 0.5 that is 7 requests per 2 seconds, as the output above shows. HeyReach does not document whether the limit is per key, per workspace or per organization, and the workspace's n8n, Make, Zapier and MCP keys may draw on the same budget. See [rate limits](/docs/rate-limits).
+
+## What reads cost
+
+| Read | Vendor requests |
+| --- | --- |
+| One lead | 2: the profile, then its tags |
+| Find a person by profile URL | 2 per page: the campaigns they are in, then the profile |
+| Find a person by email | about 4, 8 at most: the campaigns, the saved lists the address is in, a name search in one list, then one profile read per match until one carries the address |
+| A campaign's senders | 1 per page, plus 1 once to read the campaign |
+| Any other listing or lookup | 1 per page of 100 (a saved list's leads: up to 1,000 a page) |
+
+An email lookup can come back empty for a person HeyReach knows: no HeyReach read returns a profile for an email address, so an address that is in no saved list is not found.
+
+## Vendor behavior that affects your code
+
+- **A lead's id is its LinkedIn profile URL.** A person in three campaigns is three records with one ref, told apart by `campaignRef`.
+- **Profile URLs match by exact case.** The lookup sends the slug in lower case. A profile HeyReach stores with upper-case letters would not be found.
+- **Which fields a lead has depends on where it was read.** A campaign's leads carry status but no tags and a `null` `interest`. A saved list's leads carry tags and `interest` but no status, campaign or creation time.
+- **A sequence is a tree.** Every node that acts on the lead is a step. Condition nodes are not steps: the steps under one carry its outcome as their `branch` (`accepted`, `not_accepted`, `connected`, `not_connected` and so on).
+- **A thread id is two ids.** `message.threadId` is the LinkedIn account id and the conversation id joined by a colon, because HeyReach needs both to read a conversation back.
+- **A message's campaign is known only when the listing is filtered to one campaign.** Otherwise `campaignRef` is `null`. A page is a page of conversations, so it can hold more messages than the `limit` you asked for.
+- **A sender's `dailyLimit` is `null`.** HeyReach returns several limit pairs and does not say which are daily. They stay in `raw`.
+- **Lists return a total and no next marker.** The end of a list is computed from the offset.
+
+## Caveats
+
+`outbound.caveats` is the adapter's own list of what it assumes and has not confirmed, and of exactly what the live check covered.
+
+<include meta='title="caveats.ts"'>
+  ../../_examples/adapters-heyreach/caveats.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/adapters-heyreach/caveats.out.txt
+</include>
+
+## Webhooks
+
+Verification mode: `secret`. HeyReach does not sign payloads, so put a secret in the webhook URL or in a custom header named `x-webhook-secret` and pass the same value as `secret` when parsing. HeyReach documents one payload only (`voice_note_received`); the other events are assumed to share its shape. See [webhook verification](/docs/webhooks/verification).
+
+## Coverage
+
+[HeyReach coverage](/docs/coverage/heyreach) lists all 106 endpoints of the public API reference: 17 behind normalized reads, 25 in the [native catalog](/docs/native), 3 excluded and 61 writes. The research note the adapter was written from is in the repository at `docs/research/heyreach.md`.

@@ -1,0 +1,13 @@
+overused: ana@send-one.example.com is attached to 3 campaigns, 1 over the limit of 2.
+unused: [ 'eli@send-three.example.com' ]
+inactive_sender: Agency owners has 3 senders, 1 of them not active.
+single_sender: Ecommerce ops has 1 sender.
+single_sender: LinkedIn founders has 1 sender.
+totals: {
+  activeSenders: 5,
+  campaigns: 4,
+  campaignsAtRisk: 3,
+  overused: 1,
+  senders: 6,
+  unused: 1
+}

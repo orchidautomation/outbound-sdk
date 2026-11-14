@@ -1,0 +1,112 @@
+---
+title: See everyone you have contacted at one company before a call, from its domain
+description: One function that takes a company domain and returns each person at it across campaigns and tools, with who replied, who the vendor marked interested and who replied last. People are matched by exact email domain only.
+sidebar:
+  label: Account brief
+related:
+  - /docs/insights/people
+  - /docs/adapters/combine
+  - /guides/person-across-email-and-linkedin
+---
+
+Ten minutes before a call with someone at a company, you want to know who else there you have written to, and what came back. `accountSummary` takes the company's domain, or any email address at it, and returns each person whose address is at that domain: name, title, the campaigns they are in, their status and interest label in each, and open, click and reply counts. It adds totals and the most recent reply.
+
+It matches on the exact email domain and nothing else. A lead the tool knows only by a LinkedIn profile is not found, even when its company field names the company. The answer says how many leads it read that had no address.
+
+<include>../_snippets/status.mdx</include>
+
+## Before you start
+
+- Node 22 or later.
+- The code below runs on the in-memory adapter, so it needs no vendor key. Each sample on this page is a file in the repository that the test suite runs; the output shown is what it printed.
+- For real data: an API key for each tool. A read-only key is enough. The SDK never writes to a vendor.
+
+## What you get
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/account-brief/run.out.txt
+</include>
+
+## Write the brief
+
+<include meta='title="brief.ts"'>../_examples/account-brief/brief.ts</include>
+
+What the insight does:
+
+1. It reads leads: from the tool's list of every lead when the adapter has one, otherwise campaign by campaign, up to `max_campaigns` campaigns. Either way it stops at `max_leads` (default 1,000).
+2. It keeps the leads whose address is at the domain, and groups them by address. One person in three campaigns is one entry with three `records`.
+3. For each person it adds up the counts over their records, and takes the first known name, title and company.
+4. It sorts people by most recent reply, then people who replied at an unknown time, then the rest by address.
+
+Three things in the answer are worth copying:
+
+- **`interested` has three values.** `true` when one of the person's labels is a positive one, `false` when they carry a label and none is positive, `null` when they carry no label. "No label" is not "not interested".
+- **A count is `null` when the vendor reports none.** A sum over records ignores the unknown ones: Ava's LinkedIn record has no counts, and her totals come from the two email records.
+- **`totals.leadsWithoutEmail` tells you what the domain could not see.** One lead in the output above has no address. That is Eve, who works at the company.
+
+Records name their campaign by ref. To print a campaign's name, read it with `outbound.campaign(ref).get()`, which is one request each.
+
+## Try it without a key
+
+Two made-up tools and four people at one company, one of them known by profile only.
+
+<include meta='title="seed.ts"'>../_examples/account-brief/seed.ts</include>
+
+<include meta='title="run.ts"'>../_examples/account-brief/run.ts</include>
+
+That is the script that printed the brief above.
+
+## Point it at your vendor
+
+Swap the adapters. Nothing else changes. One tool works too.
+
+<include meta='title="outbound.ts"'>
+  ../_examples/account-brief/production.ts
+</include>
+
+A combined instance promises only what every tool behind it can do. With HeyReach in it, there is no list of every lead, so leads are read campaign by campaign, and the answer carries a note that names the tools whose records have no per-lead counts. Records from a tool that does report counts still carry them.
+
+## What each vendor can serve
+
+The insight, run on the in-memory adapter limited to what each vendor's adapter declares. This shows which calls a vendor's adapter would refuse and which notes it adds. It does not show what that vendor's API returns.
+
+<include meta='title="vendors.ts"'>
+  ../_examples/account-brief/vendors.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/account-brief/vendors.out.txt
+</include>
+
+No adapter refuses the call: it needs leads by list or by campaign, and each has one of them. The Smartlead and HeyReach adapters report no per-lead open, click or reply counts, so those are `null` for them and the brief shows who is in which campaign, their status and their label. On HeyReach a lead is found only when HeyReach holds an email address for it.
+
+## What it costs
+
+One request per page of leads read. `max_leads` (default 1,000, at most 20,000) sets the ceiling, and a vendor request returns about 50 to 100 leads, so a full read at the default is roughly 10 to 20 requests. It reads every lead to find the few at the domain: there is no lookup by domain. When leads are read campaign by campaign, add one request per page of campaigns; `max_campaigns` defaults to 20. `maxRequests` on the instance caps the whole call; past it the call fails with `RateLimited` instead of spending your vendor quota.
+
+## When it cannot answer
+
+<include meta='title="failures.ts"'>
+  ../_examples/account-brief/failures.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/account-brief/failures.out.txt
+</include>
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| The domain is an email provider such as `gmail.com` | `Invalid`: it is not one company | Pass the company's own domain, or `allow_free_domains: true` if you mean it. |
+| Text that is not a domain or an address, such as a company name | `Invalid`, before any request | Pass `acme.com`, an address at it, or its URL. |
+| Nobody at the domain | `people` is empty and `totals.leadsRead` says how many leads were looked at | Check the spelling, and check `meta.complete`. |
+| More leads than `max_leads`, or more campaigns than `max_campaigns` | `meta.complete` is `false` and a note says where it stopped. People past the cap are missing. | Raise the cap. |
+| The adapter can list leads neither way | `Unsupported`, before any request | Use an adapter that declares `leads.list` or `leads.byCampaign`. |
+| A rejected key | `Unauthorized`. It is not retried. | Check the key and its scope. |
+
+## Limits
+
+- Exact domain only. `acme.com` does not find people at `eu.acme.com` or `acme.co.uk`, and a person who signed up with a personal address is not at the company as far as this goes.
+- LinkedIn-only leads are never found. `totals.leadsWithoutEmail` counts every lead without an address that was read, at any company.
+- When leads are read campaign by campaign, every campaign is read whatever its status, in the order the vendor lists them, until a cap is reached.
+- `lastReply` is the most recent reply with a known time. A person the vendor marks as replied with no time is counted in `totals.replied` and cannot be `lastReply`.
+- On an `unverified` adapter, check a brief against the vendor's own lead view before a call.

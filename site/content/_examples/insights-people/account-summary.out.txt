@@ -1,0 +1,12 @@
+Ana Ruiz (CEO): 2 campaigns, replied true, interested true, opens 8, replies 2
+Ben Okafor (Head of Sales): 2 campaigns, replied false, interested false, opens 3, replies 0
+totals: {
+  campaigns: 3,
+  interested: 1,
+  leadsRead: 12,
+  leadsWithoutEmail: 2,
+  people: 2,
+  records: 4,
+  replied: 1
+}
+last reply: ana@northwind.example.com at 2026-11-12T12:00:00.000Z

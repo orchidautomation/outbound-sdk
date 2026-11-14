@@ -1,0 +1,6 @@
+instantly: 5 requests to read 500 leads of one campaign (5 page(s) of 100 at 1 request(s) each, plus 0 per record)
+instantly: 20 requests to read 2000 leads of one campaign (20 page(s) of 100 at 1 request(s) each, plus 0 per record)
+smartlead: 5 requests to read 500 leads of one campaign (5 page(s) of 100 at 1 request(s) each, plus 0 per record)
+smartlead: 20 requests to read 2000 leads of one campaign (20 page(s) of 100 at 1 request(s) each, plus 0 per record)
+heyreach: 5 requests to read 500 leads of one campaign (5 page(s) of 100 at 1 request(s) each, plus 0 per record)
+heyreach: 20 requests to read 2000 leads of one campaign (20 page(s) of 100 at 1 request(s) each, plus 0 per record)

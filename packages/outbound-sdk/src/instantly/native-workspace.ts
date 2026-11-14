@@ -1,5 +1,5 @@
 // The workspace itself: audit log, background jobs, webhook deliveries and members.
-// Each entry is one read Instantly documents; docs/coverage/instantly.md lists them all.
+// Each entry is one read Instantly documents; site/content/docs/coverage/instantly.mdx lists them all.
 
 import { defineNative } from "../internal/native.ts";
 import { docs, inPath, inQuery, PAGE } from "./native-params.ts";

@@ -1,0 +1,6 @@
+Q4 SaaS founders exact
+true
+false
+ok: cmp_agencies Agency owners
+ok: cmp_founders Q4 SaaS founders
+failed: cmp_gone NotFound - Campaign cmp_gone was not found

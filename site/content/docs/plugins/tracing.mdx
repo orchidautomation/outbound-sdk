@@ -1,0 +1,79 @@
+---
+title: tracing
+description: Emit one OpenTelemetry span per SDK operation and one per HTTP request, with the span names and attributes the plugin sets.
+sidebar:
+  label: tracing
+related:
+  - /docs/plugins/audit
+  - /docs/api/hooks
+---
+
+`tracing({ tracer })` from `outbound-sdk/tracing` emits OpenTelemetry spans: one for every operation the instance runs and one for every HTTP request. Pass a tracer from `@opentelemetry/api`. The plugin is written against the small part of the tracer and span interfaces it uses (`TracerLike`, `SpanLike`), so the package does not depend on OpenTelemetry and anything with a matching `startSpan` works.
+
+## Sample
+
+The tracer here is a stand-in that prints each span when it ends. The first instance runs Instantly's adapter on the `fetch` from the [budget page](/docs/plugins/budget#sample), which serves the vendor's documented payloads from the repository, not live responses. The second is the in-memory adapter.
+
+<include meta='title="run.ts"'>../../_examples/plugins-tracing/run.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/plugins-tracing/run.out.txt
+</include>
+
+## Options
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `tracer` | `TracerLike` | required | An object with `startSpan(name, options?)`. `trace.getTracer(name)` from `@opentelemetry/api` returns one. |
+| `now` | `() => number` | `Date.now` | The clock used to back-date HTTP spans, for tests. |
+
+## Spans
+
+An operation span is named `outbound.<operation kind>`, for example `outbound.campaigns.list`.
+
+| Attribute | Set | Value |
+| --- | --- | --- |
+| `outbound.operation` | At start | The operation kind. |
+| `outbound.provider` | At start | The adapter's name. |
+| `outbound.workspace` | At start | The adapter's workspace label. |
+| `outbound.records` | On success | Records returned. |
+| `outbound.evidence` | On success | `exact`, `sampled` or `derived`. |
+| `outbound.error` | On failure | The error code. An error that is not an `OutboundError` is `Provider`. |
+| `outbound.requests` | Always, at the end | Vendor requests the operation made. |
+
+Its status is OK (code 1) on success. On failure it is ERROR (code 2) with the error's message.
+
+An HTTP span is named `outbound.http <METHOD>`, one per attempt, so a retried request is several spans.
+
+| Attribute                   | Value                                        |
+| --------------------------- | -------------------------------------------- |
+| `http.request.method`       | The method.                                  |
+| `http.response.status_code` | The status. Absent when no response arrived. |
+| `url.full`                  | The request URL with secrets removed.        |
+| `outbound.attempt`          | Which attempt this was, starting at 1.       |
+| `outbound.lane`             | The rate-limit lane.                         |
+| `outbound.provider`         | The adapter's name.                          |
+
+Its status is OK for a status below 400, and ERROR otherwise, including when no response arrived.
+
+Two things to know when reading a trace:
+
+- **HTTP spans are created after the request finishes.** The plugin learns of a request from the `onRequest` hook, which fires once it has settled. It starts the span with `startTime` set to now minus the request's duration and ends it at once. In the sample the HTTP span therefore prints before its operation span.
+- **The plugin passes no parent context.** It calls `startSpan(name, { attributes, startTime })` and nothing else. How a span is parented is up to your tracer and whatever context is active when it is called.
+
+## What it changes
+
+It changes no capability, no record and nothing in `meta`. It adds nothing to the instance.
+
+## With other plugins
+
+The position rules are the same as for [`audit`](/docs/plugins/audit#with-other-plugins): inside `cache` to trace only real work, and outside any layer whose refusals you want to see as failed spans. HTTP spans do not depend on position. They come from a hook, so every request the instance makes is a span.
+
+## When it fails
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| The operation fails | An ERROR span with `outbound.error`, ended, then the error reaches the caller unchanged | Nothing. |
+| A request gets no response | An ERROR HTTP span with no `http.response.status_code` | Nothing. |
+| `startSpan` or a span method throws inside the operation layer | The read fails with that error | Pass a tracer that does not throw. OpenTelemetry's API tracers do not. |
+| `startSpan` throws while recording an HTTP span | Nothing. Hooks cannot fail a read. | Nothing. |

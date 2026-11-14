@@ -1,0 +1,215 @@
+---
+title: Receive vendor webhooks once each, and list the ones that never arrived
+description: A webhook endpoint that rejects forged requests and drops redeliveries, with a dedupe store in your own database, and a scheduled check that reports messages the vendor lists but no webhook announced.
+sidebar:
+  label: Webhooks and reconcile
+related:
+  - /docs/webhooks
+  - /docs/webhooks/verification
+  - /docs/webhooks/events
+  - /docs/plugins/reconcile
+  - /guides/sync-to-database
+---
+
+A webhook can arrive twice, late or not at all. Code that counts replies from webhooks alone drifts from what the vendor shows. This guide builds the two halves that keep it honest:
+
+- An endpoint that checks the request is yours, turns the vendor's payload into `OutboundEvent` records, and drops an event it has already handled.
+- A check you run on a schedule that compares the events you kept with the messages the vendor lists, and reports the difference.
+
+The SDK receives and compares. It does not register a webhook with a vendor, and `reconcile` reports a mismatch without repairing anything.
+
+<include>../_snippets/status.mdx</include>
+
+<Callout type="warning" title="No parser has received a real delivery">
+  The webhook parsers were written from each vendor's documentation. Every
+  request body on this page is a documented payload from the repository's
+  `fixtures/` folder: Instantly's are built from the one payload schema its
+  guide publishes, Smartlead's are the examples in its webhook guide, and
+  HeyReach documents one payload, for `voice_note_received`. None was captured
+  from a vendor. Check the first real deliveries against what you expect.
+</Callout>
+
+## Before you start
+
+- Node 22 or later. The dedupe store in this guide uses `node:sqlite`, which is built into Node; the samples are run on Node 24, where it needs no flag.
+- The code below needs no vendor key and no public URL. Each sample on this page is a file in the repository that the test suite runs; the output shown is what it printed.
+- For real deliveries: an HTTPS endpoint the vendor can reach, and a secret you choose.
+
+## What you get
+
+Five requests arrive at the endpoint: a sent email, a reply, the same reply again, an open, and a sent email with the wrong secret.
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/webhooks-and-reconcile/run.out.txt
+</include>
+
+Later, the check against what the vendor lists for the same morning:
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/webhooks-and-reconcile/reconcile.out.txt
+</include>
+
+## The endpoint
+
+<include meta='title="handler.ts"'>
+  ../_examples/webhooks-and-reconcile/handler.ts
+</include>
+
+- **`verify`** answers `true` or `false` and never throws for a bad secret. It reads a copy of the request, so the body is still there for `parse`. Passing `secret` to `parse` does the same check and throws `Unauthorized` instead.
+- **Name the provider.** Without `provider`, the parser is picked from the shape of the payload, so the request decides which vendor's rules it is checked by. Use one URL per vendor and name the provider on each.
+- **`workspaceId`** is your label for the account the webhook belongs to. It goes into every ref the event carries, so it must be the label the adapter for that account uses.
+- **`event.id` is the idempotency key.** It is the same for every redelivery of an event. Where the vendor sends an id it is built from that; otherwise from the fields that identify the event.
+- **Save first, work later.** The handler writes the event with the time it arrived and returns. Whatever you do with a reply (a CRM update, a notification) reads from that table.
+
+How each vendor authenticates is different. This is `setupInstructions(provider)` for each one, printed by a script:
+
+<include meta='title="setup.ts"'>
+  ../_examples/webhooks-and-reconcile/setup.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/webhooks-and-reconcile/setup.out.txt
+</include>
+
+For a vendor that does not sign, the shared secret is looked for in a path segment of the URL, in a `secret`, `token` or `key` query parameter, in an `x-webhook-secret` or `x-outbound-secret` header, and in `Authorization: Bearer`.
+
+## A dedupe store of your own
+
+`parse` asks the store to claim each event's id. A claim that succeeds means the event is new. `memoryDedupeStore()` ships with the package: it lives in one process and forgets its oldest ids after 10,000. Behind a load balancer, or on a platform that starts a process per request, every process must share one store. It is one function:
+
+<include meta='title="dedupe-store.ts"'>
+  ../_examples/webhooks-and-reconcile/dedupe-store.ts
+</include>
+
+The claim has to be atomic: two requests carrying the same event at the same moment must not both win. An insert on a primary key gives you that. The same claim in Postgres, which the test suite does not run:
+
+```sql
+INSERT INTO webhook_events (id, claimed_at)
+VALUES ($1, now())
+ON CONFLICT (id) DO NOTHING
+RETURNING id;
+```
+
+A row back means the claim succeeded.
+
+<Callout type="warning" title="The id is claimed before your code runs">
+  `parse` claims the id and then returns the event. If your handler fails after
+  that, the vendor's retry carries an id that is already claimed and is dropped
+  as a repeat. The event is lost. Keep the handler to one durable write, do it
+  in the same database as the claim where you can, and let reconcile catch what
+  still slips through.
+</Callout>
+
+## Try it without a key
+
+The request bodies come from the repository's fixtures:
+
+<include meta='title="payloads.ts"'>
+  ../_examples/webhooks-and-reconcile/payloads.ts
+</include>
+
+<include meta='title="inbox.ts"'>
+  ../_examples/webhooks-and-reconcile/inbox.ts
+</include>
+
+<include meta='title="run.ts"'>
+  ../_examples/webhooks-and-reconcile/run.ts
+</include>
+
+That is the script that printed the five deliveries above. The redelivered reply was answered `204` and kept nothing. The documented payload for an open carries no message id, so its event names no message.
+
+## Report what never arrived
+
+`outbound.reconcile.events()` lists the vendor's messages in a window and compares them with the events you kept.
+
+<include meta='title="seed.ts"'>
+  ../_examples/webhooks-and-reconcile/seed.ts
+</include>
+
+<include meta='title="reconcile.ts"'>
+  ../_examples/webhooks-and-reconcile/reconcile.ts
+</include>
+
+That is the script that printed the report above. What each field means:
+
+| Field | Meaning |
+| --- | --- |
+| `checked` | Events that could be compared. |
+| `matched` | Of those, the ones whose message the vendor lists. |
+| `missingEvents` | Messages the vendor lists that no event announced: a webhook never arrived, or you are not subscribed to it. |
+| `unmatchedEvents` | Events naming a message the vendor does not list in the window. |
+| `late` | Events received more than `lateAfterMinutes` (default 5) after they happened. Needs `receivedAt`. |
+| `uncheckable` | Events that were not compared. |
+
+Reconcile compares exactly four event types, and only when the event names a message:
+
+- `message.sent`
+- `reply.received`
+- `linkedin.message_sent`
+- `linkedin.message_received`
+
+Everything else is counted in `uncheckable`: opens, clicks, bounces, unsubscribes, category changes, status changes, LinkedIn connection events, and any of the four that arrives without a message ref. A missing bounce or unsubscribe webhook is not found by this check.
+
+Three more things to know before trusting the report:
+
+- **It lists every message in the window**, sent and received. If you subscribe to replies only, every sent message appears in `missingEvents`. Filter the list by `direction` for the kind you subscribe to.
+- **It does not filter your events by the window.** Pass the events from the same window you ask the vendor for. An event from before `since` is reported as unmatched.
+- **It reports and stops.** Fetching a missed reply is a call you make: `outbound.replies.list({ since })`, or the sync in [the database guide](/guides/sync-to-database).
+
+## Point it at your vendor
+
+Export the handler from whatever serves your routes, and open your real database where the sample opens one in memory.
+
+<include meta='title="route.ts"'>
+  ../_examples/webhooks-and-reconcile/production.ts
+</include>
+
+For the check, use the adapter for the same account with the same `workspaceId`, add `reconcile()` to its plugins, read the saved events for the window back from your table, and call `outbound.reconcile.events()` from your scheduler.
+
+## What each vendor can serve
+
+One documented payload per vendor, parsed with no provider named, then handed to reconcile on the in-memory adapter limited to what that vendor's adapter declares. This shows what the parser makes of the documented payload. It does not show what the vendor sends.
+
+<include meta='title="vendors.ts"'>
+  ../_examples/webhooks-and-reconcile/vendors.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/webhooks-and-reconcile/vendors.out.txt
+</include>
+
+HeyReach's payloads carry no message id, so its events never name a message and reconcile cannot compare them: every HeyReach event is `uncheckable`. Deduplication still works, because `event.id` is built from HeyReach's `correlation_id`.
+
+## What it costs in vendor requests
+
+Receiving a webhook costs no vendor request. `reconcile.events()` costs one listing of every message in the window, and `campaignId` narrows it to one campaign. Keep the window short and run it often. On Smartlead the date filter for messages is applied by the SDK after fetching, so the window does not reduce the requests there. Pass `maxRequests` or `deadline` to cap one check.
+
+## When it cannot answer
+
+<include meta='title="failures.ts"'>
+  ../_examples/webhooks-and-reconcile/failures.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/webhooks-and-reconcile/failures.out.txt
+</include>
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| The request does not carry the secret | `verify` is `false`; `parse` with `secret` throws `Unauthorized` | Answer 401. Do not log the body as an event. |
+| A provider with no parser | `Invalid`, naming the known providers | Use `instantly`, `smartlead` or `heyreach`. |
+| A body no parser recognises | One event of type `unknown` with the body in `raw` | Keep it and look at it. A vendor may have added an event type. |
+| The same event again | An empty array | Answer 2xx so the vendor stops retrying. |
+| Your handler failed after the claim | The retry is dropped as a repeat | See the callout above. Reconcile reports the message if it is one of the four types. |
+| An event from outside the window | It is in `unmatchedEvents` | Pass only the window's events. |
+| The adapter cannot list messages | `Unsupported`, before any request | Reconcile is not available on that adapter. |
+
+## Limits
+
+- No parser has been checked against a real delivery. That includes whether the message id in a webhook equals the id the vendor's list returns, which the comparison depends on.
+- Instantly sends no event id and no signature. The id is built from the event name, campaign, lead address, message id and timestamp.
+- Smartlead verification needs signing turned on for the webhook. An unsigned Smartlead request fails verification when you pass a secret.
+- HeyReach events name no message and cannot be reconciled.
+- On Instantly, the email list does not hold every email a campaign sent (seen on the live workspace). A genuine `message.sent` webhook can therefore be reported under `unmatchedEvents` although nothing is wrong. Treat that list as leads to check, not as proof.
+- Only the four message event types are compared. Nothing checks that an open, a bounce or an unsubscribe webhook arrived.
+- `late` compares your clock with the vendor's timestamp. A skewed clock on either side shows up as lateness.

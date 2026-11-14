@@ -1,0 +1,14 @@
+{
+  company: '[redacted]',
+  custom: { phone: '[redacted]' },
+  email: '[redacted]',
+  firstName: '[redacted]',
+  lastName: '[redacted]',
+  linkedinUrl: '[redacted]',
+  raw: null,
+  ref: 'memory:agency:lead_jane'
+}
+{ sentAt: '2026-11-10T10:00:00.000Z', subject: '[redacted]' }
+{ address: '[redacted]', name: '[redacted]' }
+Acme: SaaS founders sent 200
+messages.body: false

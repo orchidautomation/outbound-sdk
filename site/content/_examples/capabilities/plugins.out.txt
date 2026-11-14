@@ -1,0 +1,3 @@
+messages.body: false
+senders.health: false
+Reading reply bodies is not available: the no-bodies plugin turned it off (messages.body)

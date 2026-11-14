@@ -1,0 +1,114 @@
+---
+title: Webhooks
+description: Turn a webhook from Instantly, Smartlead or HeyReach into one normalized event shape with a single function, and know what an event can and cannot tell you.
+sidebar:
+  label: Overview
+related:
+  - /docs/webhooks/verification
+  - /docs/webhooks/events
+  - /docs/plugins/reconcile
+  - /guides/webhooks-and-reconcile
+---
+
+`parse(request, options)` from `outbound-sdk/webhooks` takes the `Request` your endpoint received and returns `OutboundEvent[]`: the same shape whichever vendor sent it. It is a pure function over the request. It makes no vendor call and stores nothing.
+
+<Callout type="warning" title="Tested on documented payloads only">
+  The parsers are tested against payloads built from each vendor's
+  documentation. No parser has received a live delivery from a vendor, so expect
+  differences on real traffic and keep `raw`. See [what is
+  verified](/docs/status).
+</Callout>
+
+## Parse a request
+
+<include meta='title="parse.ts"'>
+  ../../_examples/webhooks-index/parse.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/webhooks-index/parse.out.txt
+</include>
+
+The request in these samples is built from a payload in the repository's `fixtures/` folder with this helper. In your code the request comes from your framework.
+
+<include meta='title="fixtures.ts"'>
+  ../../_examples/webhooks-events/fixtures.ts
+</include>
+
+## The event
+
+| Field | What it holds |
+| --- | --- |
+| `type` | The normalized type. See the list below. |
+| `id` | An id that is the same when the vendor delivers the event again. Use it as the idempotency key. See [events](/docs/webhooks/events). |
+| `provider`, `workspaceId` | Who sent it, and the workspace label you passed as `workspaceId` (default `default`). |
+| `occurredAt` | The vendor's time for the event, or `null` when the payload has none. |
+| `campaignRef`, `leadRef`, `messageRef`, `senderRef` | [Refs](/docs/api/records) to the records the event is about. `null` when the payload does not identify one. |
+| `data` | Normalized fields that depend on the type, such as `leadEmail`, `stepIndex`, `category` or `text`. `data.vendorEvent` is the vendor's own event name. |
+| `raw` | The vendor's body, kept whole. |
+| `schemaVersion` | The version of this shape. |
+
+A ref is `null` more often than on a record you read. Instantly names the lead by email address only, so its events have no `leadRef`; the address is in `data.leadEmail`.
+
+The types are `reply.received`, `reply.categorized`, `message.sent`, `message.opened`, `message.clicked`, `message.bounced`, `lead.unsubscribed`, `lead.status_changed`, `meeting.booked`, `campaign.status_changed`, `sender.status_changed`, `linkedin.connection_sent`, `linkedin.connection_accepted`, `linkedin.message_sent`, `linkedin.message_received` and `unknown`. [Events](/docs/webhooks/events) lists which vendor event becomes which type.
+
+## Options
+
+| Option | What it does |
+| --- | --- |
+| `provider` | A provider id, or `auto` (the default) to detect the vendor from the payload. |
+| `secret` | Checks that the request is authentic and throws `Unauthorized` when it is not. Without it nothing is checked. See [verification](/docs/webhooks/verification). |
+| `workspaceId` | The workspace label the events carry. Defaults to `default`. |
+| `dedupe` | A store that drops events already handled. See [events](/docs/webhooks/events). |
+| `plugins` | Plugins whose `event` hooks should run on each event, for example [`redact`](/docs/plugins/redact). Pass the same list, in the same order, as on your instance. |
+
+`webhookProviders()` returns the provider ids that have a parser.
+
+## Named provider or auto
+
+<include meta='title="unknown.ts"'>
+  ../../_examples/webhooks-index/unknown.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/webhooks-index/unknown.out.txt
+</include>
+
+- **Name the provider in production.** One endpoint per vendor, each with its provider named, means a payload is only ever read by the parser you chose and checked the way that vendor is checked. `auto` picks both from the shape of the body.
+- **Unknown events are kept.** A body no parser recognises comes back as one event with `type: "unknown"` and `provider: "unknown"`. A vendor event the SDK has no type for comes back as `unknown` with the vendor's name in `data.vendorEvent`. Neither is dropped, and both keep `raw`, so you can log what you are not handling.
+- **A provider with no parser throws `Invalid`.**
+- **A named provider and a body that is not a JSON object** gives an empty array.
+
+## Events are hints
+
+A webhook can arrive late, arrive twice, or never arrive. So:
+
+- Treat an event as a reason to look, not as the record. Read the record back with the SDK before acting on it.
+- Do not build totals by counting events. Count from list calls, or check event-driven numbers against them with the [`reconcile` plugin](/docs/plugins/reconcile).
+- Use `event.id` so that handling the same event twice does nothing the second time.
+
+## A route handler
+
+<include meta='title="handler.ts"'>
+  ../../_examples/webhooks-index/handler.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/webhooks-index/handler.out.txt
+</include>
+
+The sample calls the handler three times with the documented payload: once with the secret in the URL, once as a redelivery, and once without the secret. No web framework was run.
+
+## Registering the webhook
+
+The SDK is read-only and registers nothing at the vendor. You add the webhook in the vendor's app. `setupInstructions(provider)` returns where to do that and how the request will be authenticated:
+
+<include meta='title="setup.ts"'>
+  ../../_examples/webhooks-index/setup.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/webhooks-index/setup.out.txt
+</include>
+
+The menu paths in those instructions were not checked against a live account for this page. To see the webhooks that already exist at a vendor, list them with `outbound.webhooks` or [`outbound webhooks`](/docs/cli/commands).

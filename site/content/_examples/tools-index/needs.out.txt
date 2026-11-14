@@ -1,0 +1,13 @@
+campaign_overview     campaigns.status, stats.campaign
+campaign_trend        stats.campaign, stats.byDay
+winning_steps         stats.byStep
+sender_health         senders.list
+reply_samples         replies.list
+lead_runway           leads.byCampaign, stats.campaign, stats.byDay
+compare_clients       clients, stats.campaign
+cross_channel_lead    identity
+campaign_setup        campaigns.settings
+deliverability_check  senders.health
+audience_lists        lists.list
+
+without stats.byDay, left out: campaign_trend, lead_runway

@@ -1,0 +1,11 @@
+https://www.linkedin.com/in/hal-voss-example is in "LinkedIn founders" but the block list holds the linkedin https://www.linkedin.com/in/hal-voss-example. (matched by linkedin, same tool: false)
+fay@blocked.example.com is in "Agency owners" but the block list holds the domain blocked.example.com. (matched by domain, same tool: true)
+gus@example.com is in "Agency owners" but the block list holds the email gus@example.com. (matched by email, same tool: true)
+totals: {
+  blockEntriesNotChecked: 1,
+  blockEntriesRead: 4,
+  byMatch: { domain: 1, email: 1, linkedin: 1 },
+  campaignsRead: 3,
+  leadsRead: 11,
+  violations: 3
+}

@@ -1,0 +1,176 @@
+---
+title: Keep a copy of campaigns, leads and replies in your database
+description: A scheduled job that upserts campaigns, leads and replies into your own tables, asks only for what is new where the vendor can filter by date, and restarts on the page it was writing after a crash.
+sidebar:
+  label: Sync to a database
+related:
+  - /docs/plugins/sync
+  - /docs/plugins/reconcile
+  - /docs/api/pagination
+  - /guides/webhooks-and-reconcile
+---
+
+Dashboards and joins want the data in your own database, not behind a vendor's rate limit. The `sync` plugin walks a collection page by page, hands each page to a function you write, and keeps one checkpoint per collection in a store you supply: a cursor, so a run that dies restarts on the page it was reading, and the start time of the last finished run, so the next run asks only for newer records.
+
+The plugin writes nothing itself. This guide supplies the three parts it leaves to you: the tables, the upserts and the checkpoint store. It also shows what a sync does not do: it does not copy stats, and it does not notice a record that was deleted at the vendor.
+
+<include>../_snippets/status.mdx</include>
+
+## Before you start
+
+- Node 22 or later. The sample database is `node:sqlite`, which is built into Node; the samples are run on Node 24, where it needs no flag.
+- The code below runs on the in-memory adapter, so it needs no vendor key. Each sample on this page is a file in the repository that the test suite runs; the output shown is what it printed.
+- For real data: an Instantly, Smartlead or HeyReach API key. A read-only key is enough. The SDK never writes to a vendor.
+
+## What you get
+
+Two runs against the same database, an hour apart. Between them one lead and one reply were added at the vendor.
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/sync-to-database/run.out.txt
+</include>
+
+The first run reads everything. The second asks for leads and replies from five minutes before the first run started, and gets one of each. Campaigns have no date filter, so they are listed in full on every run.
+
+## The tables and the upserts
+
+Every record carries a `ref` (`provider:workspace:id`) that is unique across vendors and clients. Use it as the primary key.
+
+<include meta='title="database.ts"'>
+  ../_examples/sync-to-database/database.ts
+</include>
+
+Two things here are not optional:
+
+- **Every write is an upsert.** The plugin moves its checkpoint only after your `onPage` function resolves. If the process dies after your write and before the checkpoint is saved, the next run delivers that page again. The overlap between runs delivers records twice as well. An `INSERT` without `ON CONFLICT` would fail or duplicate rows.
+- **The checkpoints are in the same database as the records.** A checkpoint kept somewhere that can be lost separately (a file on a container's disk, a cache) lets the two drift. A `CheckpointStore` is three functions: `get`, `set` and `delete`. The key is an opaque string that already includes the provider, the workspace, the collection and the campaign.
+
+The same upsert in Postgres. This statement is not run by the test suite:
+
+```sql
+INSERT INTO leads (ref, campaign_ref, email, status)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (ref) DO UPDATE SET
+  campaign_ref = EXCLUDED.campaign_ref,
+  email = EXCLUDED.email,
+  status = EXCLUDED.status;
+```
+
+## The sync
+
+`outbound.sync.run(collection, options)` syncs one collection: `campaigns`, `leads`, `replies`, `messages` or `senders`. The type argument names the record your `onPage` receives. It is not checked against the collection, so keep the two in step.
+
+<include meta='title="sync-all.ts"'>
+  ../_examples/sync-to-database/sync-all.ts
+</include>
+
+Each run returns a `SyncResult`: how many records and pages it read, whether it continued an unfinished run (`resumed`), the lower bound it asked for (`since`) and whether it reached the end (`complete`).
+
+How the lower bound works:
+
+- A run that finishes saves the time it **started**. The next run asks for records from that time minus `overlapMinutes` (default 5), because a record can land while a listing is in progress.
+- Only `leads`, `replies` and `messages` can be filtered by date. `campaigns` and `senders` are listed in full every run.
+- For leads the date is when the lead was created. A lead whose status changed is not "newer", so a dated sync does not pick the change up. Call `outbound.sync.reset("leads")` before a run to read every lead again, as often as you need statuses to be current.
+
+## Try it without a key
+
+<include meta='title="seed.ts"'>../_examples/sync-to-database/seed.ts</include>
+
+<include meta='title="run.ts"'>../_examples/sync-to-database/run.ts</include>
+
+That is the script that printed the two runs above. The fixed clock of the samples is 12:00, so the second instance is given a clock one hour ahead.
+
+## A run that dies resumes on the page it was writing
+
+Here `onPage` writes the second page and then throws, which is what a lost connection or a killed process looks like to the plugin.
+
+<include meta='title="resume.ts"'>
+  ../_examples/sync-to-database/resume.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/sync-to-database/resume.out.txt
+</include>
+
+The second run starts with `lead_3`, not `lead_1`. `lead_3` and `lead_4` were already written by the run that failed, and they are delivered again. The upsert makes that harmless: five leads, five rows.
+
+## Point it at your vendor
+
+Swap the adapter. The tables, the upserts and the checkpoint store do not change.
+
+<include meta='title="outbound.ts"'>
+  ../_examples/sync-to-database/production.ts
+</include>
+
+Then call `syncAll` from whatever scheduler you already run (cron, a GitHub Actions schedule, a Vercel cron route). The SDK schedules nothing. To bound one invocation, pass `maxPages`: the run stops with `complete: false` and the next invocation continues from the checkpoint.
+
+Do not start two runs of the same collection at once. They would read the same checkpoint and overwrite each other's.
+
+## Stats are not a collection
+
+There is no `sync.run("stats")`: a name that is not a collection is refused as `Invalid`. Stats are totals the vendor computes, not records with a `ref`, and a vendor can revise yesterday's numbers. Read them again on each run with `outbound.campaign(id).stats({ by: "day", from, to })` for the days you keep, and overwrite your rows for those days.
+
+## Deleted records are not detected
+
+A sync only ever sees what the vendor lists. When a lead is deleted at the vendor it stops appearing, and nothing tells the sync. After the second run above, the database still holds the deleted lead.
+
+The `reconcile` plugin's `deletions()` lists the whole collection and compares it with the refs you hold:
+
+<include meta='title="deletions.ts"'>
+  ../_examples/sync-to-database/deletions.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/sync-to-database/deletions.out.txt
+</include>
+
+It reports and changes nothing: deleting the rows, or marking them, is your decision. It lists the whole collection, so it costs as much as a full sync. Run it less often than the sync. It covers `campaigns`, `leads` and `senders`.
+
+## What each vendor can serve
+
+The same sync, run on the in-memory adapter limited to what each vendor's adapter declares. This shows which calls a vendor's adapter would refuse. It does not show what that vendor's API returns.
+
+<include meta='title="vendors.ts"'>
+  ../_examples/sync-to-database/vendors.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/sync-to-database/vendors.out.txt
+</include>
+
+- **HeyReach is refused** because it has no list of every lead: leads exist only inside a campaign or a list. Sync leads once per campaign by passing `campaignId`. Each campaign then has its own checkpoint.
+- **`leads.since` is `client` on Instantly and Smartlead.** Their APIs cannot filter leads by date, so the SDK reads every lead and drops the older ones before your `onPage` sees them. The second run hands you only what is new, and still costs as many vendor requests as the first. On Smartlead the same is true of replies and messages.
+- `server` means the vendor applies the filter, and a later run costs requests in proportion to what changed.
+
+## What it costs in vendor requests
+
+A run is one listing per collection: the number of pages, times that vendor's cost per page. `outbound.estimate({ action: "leads.list", records })` gives the expected request count before you make the call, where the adapter declares a cost. Where a date filter is `client`, estimate with the total number of records, not the number that changed.
+
+## When it cannot answer
+
+<include meta='title="failures.ts"'>
+  ../_examples/sync-to-database/failures.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/sync-to-database/failures.out.txt
+</include>
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| `onPage` threw or rejected | The run rejects with your error. The checkpoint stays before that page. | Fix the cause and run again. The page is delivered again. |
+| `maxPages` was reached | `complete: false`. Not an error. | Run again. It continues from the checkpoint. |
+| The adapter cannot list the collection | `Unsupported`, before any request | Sync per campaign where that is supported, or skip the collection for that vendor. |
+| A rejected key | `Unauthorized`. It is not retried. | Check the key. The checkpoint did not move. |
+| The vendor is down or rate limiting | Waited out and retried for you. The run rejects with `Provider` or `RateLimited` only once the retries or the `deadline` are spent. | Run again later. It resumes. |
+| You changed your tables and need everything again | Nothing is wrong, but dated runs only fetch new records | `outbound.sync.reset(collection)`, then run. |
+
+## Limits
+
+- On Instantly a reply carries the lead's address but no lead id, so `reply.leadRef` is `null` and the `lead_ref` column in this guide's schema stays empty there. Join replies to leads on the address. The in-memory adapter fills `leadRef`, which hides this.
+- Delivery is at least once. A page can arrive twice; it never arrives zero times. Writes must be idempotent.
+- A checkpoint belongs to one provider, workspace, collection and campaign. Syncing with and without `campaignId` keeps two separate checkpoints.
+- A dated run finds new records, not changed ones. See the note on lead status above.
+- Deletions need `reconcile.deletions()`. It does not cover replies or messages.
+- The plugin does not lock. Two concurrent runs of one collection overwrite each other's checkpoint.
+- The numbers are only as good as the vendor's. On an `unverified` adapter, compare a synced table with the vendor's own app before building on it.

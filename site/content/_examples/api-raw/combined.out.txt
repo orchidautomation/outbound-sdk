@@ -1,0 +1,3 @@
+Unsupported - raw is not available on a combined instance: it belongs to one vendor. Use outbound.workspace("provider:workspace").raw, for example "instantly:acme" or "heyreach:acme"
+instantly
+sent: GET https://api.instantly.ai/api/v2/campaigns

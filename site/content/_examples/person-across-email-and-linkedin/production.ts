@@ -1,0 +1,16 @@
+import { createOutbound } from "outbound-sdk";
+import { combine } from "outbound-sdk/combine";
+import { heyreach } from "outbound-sdk/heyreach";
+import { insights } from "outbound-sdk/insights";
+import { instantly } from "outbound-sdk/instantly";
+
+// Reads INSTANTLY_API_KEY and HEYREACH_API_KEY.
+export const outbound = createOutbound({
+  adapter: combine([
+    instantly({ workspaceId: "agency" }),
+    heyreach({ workspaceId: "agency" }),
+  ]),
+  // One call may spend at most 60 vendor requests.
+  maxRequests: 60,
+  plugins: [insights()],
+});

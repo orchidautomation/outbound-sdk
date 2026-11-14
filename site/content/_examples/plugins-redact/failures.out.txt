@@ -1,0 +1,3 @@
+bodies: Unsupported - Reading message bodies is not available: the redact plugin turned it off (messages.body)
+twice: Invalid - The redact plugin is listed twice
+unknown record: Unsupported - The redact plugin does not recognise this record, so it will not pass it through

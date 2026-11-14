@@ -1,0 +1,8 @@
+bodies: Unsupported: Reading reply bodies is not available: the redact plugin turned it off (messages.body)
+thread: Unsupported: Reading message bodies is not available: the redact plugin turned it off (messages.body)
+native: Unsupported: Reading the vendor's own data is not available: the redact plugin turned it off (native)
+vendor_read offered: false
+raw: Unsupported: raw is not available: the redact plugin turned the vendor's own reads off (native), and raw returns the same untouched payload
+person: Unsupported: person() is not available: the redact plugin masks email and linkedin, so records cannot be linked by identifier. Use an instance without redact, or leave "email" and "linkedin" out of its fields
+cross_channel_lead offered: false
+twice: Invalid: The redact plugin is listed twice

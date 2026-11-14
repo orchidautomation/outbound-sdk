@@ -1,0 +1,15 @@
+icebreaker (custom): steps [0], gap true, leads affected 2
+company (builtin): steps [0], gap true, leads affected 1
+firstName (builtin): steps [0, 1], gap true, leads affected 1
+senderSignature (unknown): steps [0], gap false, leads affected null
+cy@example.com is missing firstName, icebreaker
+ben@northwind.example.com is missing icebreaker
+dee@example.com is missing company
+unknown: [ 'senderSignature' ]
+totals: {
+  affectedRate: 0.75,
+  leadsAffected: 3,
+  leadsRead: 4,
+  steps: 2,
+  variables: 4
+}

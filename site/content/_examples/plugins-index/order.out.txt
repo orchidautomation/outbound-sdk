@@ -1,0 +1,3 @@
+email [redacted], client Acme
+email [redacted], client Acme
+audited: [ 'leads.get', 'campaigns.get' ]

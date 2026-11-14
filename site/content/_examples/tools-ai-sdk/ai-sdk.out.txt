@@ -1,0 +1,37 @@
+[ 'campaign_overview', 'sender_health' ]
+How every campaign is doing right now: sends, replies, positive replies, bounces and reply rate for each campaign with the given status. One vendor request per campaign. Rates are computed from counts; a null means the vendor does not report that count.
+{
+  "data": {
+    "campaigns": [
+      {
+        "campaign": "memory:acme:cmp_agencies",
+        "channel": "email",
+        "name": "Agency owners",
+        "metrics": {
+          "bounce_rate": 0.0667,
+          "bounced": 4,
+          "connections_accepted": null,
+          "connections_sent": null,
+          "contacted": 60,
+          "opened": 18,
+          "positive": 0,
+          "positive_reply_rate": 0,
+          "replied": 1,
+          "reply_rate": 0.0167,
+          "reply_rate_basis": "contacted",
+          "sent": 60
+        },
+        "status": "paused"
+      }
+    ]
+  },
+  "meta": {
+    "evidence": "exact",
+    "provider": "memory",
+    "requests": 1,
+    "today": "2026-11-14"
+  },
+  "next": "Pick another of the listed tools to go further.",
+  "ok": true
+}
+{"error":{"code":"Invalid","message":"campaign_overview: \"client\" is not an input. It takes: from, limit, status, to"},"next":"Check the input and try again.","ok":false}

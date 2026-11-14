@@ -1,0 +1,136 @@
+---
+title: Write one function that runs on Instantly, Smartlead and HeyReach
+description: A function that reads outbound.capabilities before each call, says what a vendor cannot serve, and reports how each answer was produced, run as each vendor with the output recorded.
+sidebar:
+  label: Code that runs on any vendor
+related:
+  - /docs/capabilities
+  - /docs/api/results
+  - /docs/api/errors
+  - /docs/adapters
+---
+
+The three vendors do not offer the same reads. HeyReach has no per-step stats and no readable campaign settings. Smartlead cannot filter campaigns by status on its side. Code written against one vendor breaks, or quietly reports less, on another.
+
+The SDK gives you three things to write against instead of a vendor: `outbound.capabilities`, a flat map of what this instance can read; `Unsupported`, thrown before any request when a call is not in that map; and `meta.evidence` on every answer, which says whether a number came from the vendor or was worked out. This guide builds one function on those and runs it as each vendor.
+
+The SDK does not fill a gap with a guess. A read the vendor lacks is refused, and a count the vendor does not report is `null`.
+
+<include>../_snippets/status.mdx</include>
+
+## Before you start
+
+- Node 22 or later.
+- The code runs on the in-memory adapter, so it needs no key. Each sample is a file the test suite runs; the output shown is what it printed.
+- For real data: an Instantly, Smartlead or HeyReach API key. A read-only key is enough.
+
+## What you get
+
+The same function on seeded data, limited in turn to what each vendor's adapter declares.
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/portable-code/vendors.out.txt
+</include>
+
+The numbers are the seed's, so they match across vendors. What differs is what each vendor's adapter can serve and how:
+
+- **Smartlead** lists the same one active campaign, but with `evidence derived`: its API has no status filter, so the SDK read every campaign and filtered after.
+- **HeyReach** has no per-step stats, no campaign settings and no reply categories. The function says so in three lines and still returns the rest.
+- **`opened` is "not reported"** on all three. The seed has no open count, so the count is `null`. The function prints that, not 0.
+
+This run shows which calls a vendor's adapter would refuse. It does not show what that vendor's API returns.
+
+## The function
+
+<include meta='title="portable.ts"'>
+  ../_examples/portable-code/portable.ts
+</include>
+
+It uses four kinds of capability value:
+
+| Kind | Values | Branch on it when |
+| --- | --- | --- |
+| Filter grade, such as `campaigns.status`, `leads.since`, `replies.since` | `server`, `client`, `false` | `client` matters to you: the SDK reads everything and filters after, which costs more requests and marks the answer `derived`. `false` means the filter is refused. |
+| Stat grade, such as `stats.campaign`, `stats.byStep`, `stats.bySender` | `exact`, `derived`, `false` | You must not present a computed number as the vendor's. `derived` means the adapter worked the number out, for example by summing daily rows. |
+| Yes or no, such as `campaigns.settings`, `leads.list` | `true`, `false` | The read exists or it does not. |
+| A source, such as `replies.category` | `vendor`, `false` | Categories come from the vendor or are absent. The SDK never infers one. |
+
+Every value is `false` or something truthy, so a plain `if` works on any key. Compare against a grade only when the grade changes what you do.
+
+Three habits in the function carry over to any portable code:
+
+- **Ask before the call, not after.** The check costs nothing: `capabilities` is data on the instance.
+- **Carry `meta.evidence` to the reader.** `exact` is the vendor's number. `derived` was computed or filtered by the SDK. `sampled` is built on part of the data.
+- **Print `null` as "not reported".** A `null` count means the vendor did not say. A rate built on it is `null` too, which `computeRates` handles.
+
+## Try it without a key
+
+<include meta='title="seed.ts"'>../_examples/portable-code/seed.ts</include>
+
+<include meta='title="run.ts"'>../_examples/portable-code/run.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/portable-code/run.out.txt
+</include>
+
+The in-memory adapter declares every capability, so every branch takes the supported path. Step 0 has 2 replies a day from 20 sends, so 10.0%; step 1 has 1 from 40, so 2.5%. No `contacted` count is seeded per step, so the rate is on `sent` and the line says so.
+
+## Run it as each vendor
+
+The in-memory adapter takes a `capabilities` option. Pass it what a real adapter declares and it refuses what that adapter would refuse. That is all the shared helper does.
+
+<include meta='title="vendors.ts"'>
+  ../_examples/portable-code/vendors.ts
+</include>
+
+Use the same option in your own tests to reach the unsupported branch of your code without a second vendor account: `memory({ capabilities: { "stats.byStep": false }, data })`.
+
+The stand-in has one blind spot. A filter graded `client` is applied by the SDK, so the `derived` on the Smartlead line above is real. A stat graded `derived` is computed inside the vendor's adapter, which the stand-in does not run, so it reports seeded stats as `exact`. Instantly declares `stats.bySender` as `derived`; this page does not show that case.
+
+## Point it at your vendor
+
+Pass an instance built on `instantly()`, `smartlead()` or `heyreach()`. The function does not change. To pick the vendor from the environment, `fromEnv()` from `outbound-sdk/loader` builds the adapter named by `OUTBOUND_SDK_PROVIDER`.
+
+## What it costs in vendor requests
+
+A `client` filter costs the whole listing, because the vendor is asked for everything. `outbound.estimate` says what a listing would cost before you make it. It is arithmetic on the costs each adapter declares, and makes no request.
+
+<include meta='title="estimate.ts"'>
+  ../_examples/portable-code/estimate.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/portable-code/estimate.out.txt
+</include>
+
+- Listing 1,000 campaigns on Instantly is 30 requests, not 10: each page also reads tag assignments and tag names.
+- Replies on Smartlead come 20 to a page, so 1,000 replies are 50 requests.
+- `requests` is `null` when the cost cannot be known up front: Smartlead returns every campaign in one response with no page size, and the in-memory adapter declares no costs.
+- `estimate` does not read `capabilities`. HeyReach gets a number for `leads.list` although it refuses a listing of every lead; the cost there is for one campaign's leads. Check the capability first.
+
+## When it cannot answer
+
+A call the instance does not declare is refused before any request. The sample proves it with a real HeyReach adapter and a `fetch` that counts.
+
+<include meta='title="failures.ts"'>
+  ../_examples/portable-code/failures.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/portable-code/failures.out.txt
+</include>
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| A read the vendor does not have | `Unsupported`, naming the capability key, before any request | Branch on that key. `permanent` is `true`: retrying does not help. |
+| A stat scope the vendor does not report | `Unsupported`, naming the key | Skip that part and say so. |
+| A filter the vendor cannot apply | `Unsupported`. The filter is never dropped silently. | Read without the filter, or filter in your own code and say the result is yours. |
+| A capability turned off by an option or a plugin | `Unsupported`, naming the adapter or the plugin that turned it off | Expected. Use it to test your fallback. |
+| A count the vendor does not report | `null` in the row | Print "not reported". Do not add it up as 0. |
+
+## Limits
+
+- Capabilities say what an adapter can read. They do not say the data is the same: a "reply" or an "active" campaign is each vendor's own notion, mapped to a common name.
+- A `client` filter is applied to each page after it is read. One page from `list` can hold fewer items than `limit`, or none, while its cursor says more exist. `listAll` follows the cursor for you.
+- On a combined instance, `outbound.capabilities` is the lowest grade across its adapters, so one weak vendor lowers the whole instance. Scope with `outbound.workspace(id)` to branch per vendor.
+- A refusal is sometimes thrown by the call and sometimes delivered as a rejected promise. `await` the call inside `try` and both arrive in `catch`.

@@ -1,0 +1,16 @@
+instantly
+  campaigns.list, 1000 records: 30 (10 page(s) of 100 at 3 request(s) each, plus 0 per record)
+  leads.list, 1000 records: 10 (10 page(s) of 100 at 1 request(s) each, plus 0 per record)
+  replies.list, 1000 records: 10 (10 page(s) of 100 at 1 request(s) each, plus 0 per record)
+smartlead
+  campaigns.list, 1000 records: null (1 request(s) per page)
+  leads.list, 1000 records: 10 (10 page(s) of 100 at 1 request(s) each, plus 0 per record)
+  replies.list, 1000 records: 50 (50 page(s) of 20 at 1 request(s) each, plus 0 per record)
+heyreach
+  campaigns.list, 1000 records: 10 (10 page(s) of 100 at 1 request(s) each, plus 0 per record)
+  leads.list, 1000 records: 10 (10 page(s) of 100 at 1 request(s) each, plus 0 per record)
+  replies.list, 1000 records: 10 (10 page(s) of 100 at 1 request(s) each, plus 0 per record)
+memory
+  campaigns.list, 1000 records: null (memory declares no cost for campaigns.list)
+  leads.list, 1000 records: null (memory declares no cost for leads.list)
+  replies.list, 1000 records: null (memory declares no cost for replies.list)

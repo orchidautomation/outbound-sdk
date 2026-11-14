@@ -1,0 +1,65 @@
+{
+  leadFullName: 'Alex Example',
+  totalCount: 3,
+  items: [
+    {
+      campaignId: 274079,
+      campaignName: 'Example campaign one',
+      creationTime: '2024-09-30T21:00:00.000000Z',
+      campaignStatus: 'FINISHED',
+      leadStatus: 'Finished'
+    },
+    {
+      campaignId: 274080,
+      campaignName: 'Example campaign two',
+      creationTime: '2024-10-05T09:30:00.000000Z',
+      campaignStatus: 'IN_PROGRESS',
+      leadStatus: 'InSequence'
+    }
+  ]
+}
+{
+  complete: true,
+  evidence: 'exact',
+  fetchedAt: '2026-11-14T12:00:00.000Z',
+  provider: 'heyreach',
+  requests: 1,
+  stale: false,
+  throttledMs: 0,
+  workspaceId: 'default'
+}
+{
+  totalCount: 1,
+  items: [ { listId: 3457, listName: 'Example list one' } ]
+}
+{
+  id: 274079,
+  name: 'My First Campaign',
+  creationTime: '2025-12-01T08:06:15.463169Z',
+  linkedInUserListName: 'Example Lead List 1',
+  linkedInUserListId: 123456,
+  campaignAccountIds: [ 1101, 1103 ],
+  status: 'IN_PROGRESS',
+  progressStats: {
+    totalUsers: 9,
+    totalUsersInProgress: 8,
+    totalUsersPending: 0,
+    totalUsersFinished: 1,
+    totalUsersFailed: 0,
+    totalUsersManuallyStopped: 0,
+    totalUsersExcluded: 0
+  },
+  excludeInOtherCampaigns: false,
+  excludeHasOtherAccConversations: false,
+  excludeContactedFromSenderInOtherCampaign: false,
+  excludeListId: null,
+  organizationUnitId: 12345,
+  excludeFromLeadBlacklist: false,
+  excludeFromCompanyBlacklist: false,
+  startedAt: '2025-12-02T09:00:00Z'
+}
+[
+  'POST /api/public/campaign/GetCampaignsForLead {"email":"alex@example.com","limit":10}',
+  'POST /api/public/list/GetListsForLead {"email":"alex@example.com"}',
+  'GET /api/public/campaign/GetById?campaignId=274079'
+]

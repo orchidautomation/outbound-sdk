@@ -1,0 +1,8 @@
+Outbound report for acme: 2026-11-07 to 2026-11-13
+
+Sent 1610, replies 70, bounces 77 
+
+Outbound report for globex: 2026-11-07 to 2026-11-13
+
+Sent not reported, replies not reported, bounces not reported 
+

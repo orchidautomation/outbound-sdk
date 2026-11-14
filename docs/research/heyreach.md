@@ -406,7 +406,7 @@ HeyReach publishes no API changelog. Inferred from differences between the two d
 
 ## Inventory and native catalog (2026-11-14)
 
-Fetched fresh for the inventory in `docs/coverage/heyreach.md`:
+Fetched fresh for the inventory in `site/content/docs/coverage/heyreach.mdx`:
 
 - https://docs.heyreach.io/llms.txt (the page index: 106 endpoint pages)
 - https://docs.heyreach.io/openapi.json (106 operations on 105 paths; byte-identical to the copy read earlier the same day)

@@ -1,0 +1,7 @@
+messages.body: false
+replies.category: false
+turned off: Unsupported - Reading message bodies is not available: the no-bodies plugin turned it off (messages.body)
+name clash: Invalid - The clash plugin adds "campaigns", which already exists on the instance
+listed twice: Invalid - The no-bodies plugin is listed twice
+events without the plugin: 1
+events with it: 0

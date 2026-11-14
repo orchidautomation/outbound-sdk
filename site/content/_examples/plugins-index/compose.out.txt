@@ -1,0 +1,7 @@
+first: in  (campaigns.list)
+second: in  (campaigns.list)
+third: in  (campaigns.list)
+third: out (3 records)
+second: out (3 records)
+first: out (3 records)
+[ 'first', 'second', 'third' ]

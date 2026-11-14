@@ -1,0 +1,33 @@
+provider   documented payload                   type                      data.category
+heyreach   message_sent.THIRD_PARTY             linkedin.message_sent
+heyreach   voice_note_received                  linkedin.message_received
+instantly  account_error                        sender.status_changed
+instantly  campaign_completed                   campaign.status_changed
+instantly  email_bounced                        message.bounced
+instantly  email_link_clicked                   message.clicked
+instantly  email_opened                         message.opened
+instantly  email_sent                           message.sent
+instantly  lead_closed                          reply.categorized         positive
+instantly  lead_interested                      reply.categorized         positive
+instantly  lead_meeting_booked                  meeting.booked
+instantly  lead_meeting_completed               lead.status_changed
+instantly  lead_neutral                         reply.categorized         neutral
+instantly  lead_not_interested                  reply.categorized         negative
+instantly  lead_out_of_office                   reply.categorized         ooo
+instantly  lead_unsubscribed                    lead.unsubscribed
+instantly  lead_wrong_person                    reply.categorized         negative
+instantly  reply_received                       reply.received
+smartlead  CAMPAIGN_STATUS_CHANGED              campaign.status_changed
+smartlead  EMAIL_BOUNCE                         message.bounced
+smartlead  EMAIL_LINK_CLICK                     message.clicked
+smartlead  EMAIL_OPEN                           message.opened
+smartlead  EMAIL_REPLY                          reply.received
+smartlead  EMAIL_REPLY.newdocs                  reply.received
+smartlead  EMAIL_REPLY.threaded                 reply.received
+smartlead  EMAIL_SENT                           message.sent
+smartlead  LEAD_CATEGORY_UPDATED                reply.categorized         positive
+smartlead  LEAD_UNSUBSCRIBED                    lead.unsubscribed
+smartlead  MANUAL_STEP_REACHED                  unknown
+smartlead  UNTRACKED_REPLIES                    reply.received
+smartlead  campaign.bounce_threshold.breached   campaign.status_changed
+smartlead  email.account.disconnected           sender.status_changed

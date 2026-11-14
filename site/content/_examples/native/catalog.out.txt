@@ -1,0 +1,11 @@
+heyreach offers 25 native reads
+campaignSequenceV2, campaignsForLead, checkApiKey, companiesFromList, conversationsV2, enrichEmailJob ...
+
+POST /campaign/GetCampaignsForLead
+The campaigns one lead is in, each with the campaign's status and the lead's status in it. Name the lead by email, LinkedIn id or profile URL.
+https://docs.heyreach.io/hey-reach-api/campaigns/get-campaigns-for-lead
+  email (string, in body): The lead's email address.
+  linkedinId (string, in body): The lead's LinkedIn id, `linkedin_id` in lead payloads.
+  profileUrl (string, in body): The lead's LinkedIn profile URL.
+  limit (number, in body): How many campaigns to return.
+  offset (number, in body): How many campaigns to skip.

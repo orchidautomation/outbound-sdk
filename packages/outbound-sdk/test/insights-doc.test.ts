@@ -1,5 +1,5 @@
-// Checks docs/insights.md against the registry: every insight is listed,
-// with the capabilities it needs, and nothing else is.
+// Checks the insights overview page of the docs site against the registry:
+// every insight is listed, with the capabilities it needs, and nothing else is.
 
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -10,7 +10,10 @@ import { CAPABILITY_KEYS } from "../src/index.ts";
 import { listInsights } from "../src/insights/index.ts";
 
 const TEXT = readFileSync(
-  path.resolve(import.meta.dirname, "../../../docs/insights.md"),
+  path.resolve(
+    import.meta.dirname,
+    "../../../site/content/docs/insights/index.mdx"
+  ),
   "utf-8"
 );
 
@@ -29,7 +32,7 @@ const ROWS = new Map(
   })
 );
 
-test("docs/insights.md lists every insight and no other", () => {
+test("the insights overview lists every insight and no other", () => {
   assert.deepEqual(
     [...ROWS.keys()].toSorted(),
     listInsights()
@@ -38,7 +41,7 @@ test("docs/insights.md lists every insight and no other", () => {
   );
 });
 
-test("docs/insights.md names every capability an insight needs", () => {
+test("the insights overview names every capability an insight needs", () => {
   const known = new Set<string>(CAPABILITY_KEYS);
 
   for (const insight of listInsights()) {

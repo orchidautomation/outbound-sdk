@@ -1,0 +1,6 @@
+ok - no campaign stats: Unsupported
+ok - no reply categories: positiveReplies is null
+ok - Provider once, then the retry succeeds
+ok - RateLimited carries retryAfterMs
+ok - Unauthorized is permanent
+ok - getMany returns the missing record as an error entry

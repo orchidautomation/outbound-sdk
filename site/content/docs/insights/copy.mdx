@@ -1,0 +1,218 @@
+---
+title: Copy and sequence insights
+description: Reference for the five insights about copy (stepFunnel, variantTest, copyAudit, copyReuse, replyTiming), with every input, what the answer holds and a sample that runs.
+sidebar:
+  label: Copy and sequence
+related:
+  - /docs/insights
+  - /guides/ab-test-winner
+  - /guides/pre-launch-audit
+---
+
+Five insights about what a campaign says and when. Each is a method on `outbound.insights` once the [insights plugin](/docs/insights) is added. What every answer carries and how inputs are checked is on the [overview](/docs/insights).
+
+Three of them need per-step stats (`stats.byStep`). An adapter that does not declare it refuses them as `Unsupported`: see [which adapter serves which](/docs/insights#which-adapter-serves-which).
+
+A reply rate here is replies divided by leads contacted, or by messages sent when the vendor does not count leads. Each answer says which in `basis` or `replyRateBasis`.
+
+## The data the samples run on
+
+Two email campaigns. "SaaS founders" tests two variants on its first two steps and has a careless third step. "Agency owners" reuses two pieces of its copy.
+
+<include meta='title="seed.ts"'>../../_examples/insights-copy/seed.ts</include>
+
+A stats row in the in-memory adapter's seed can name a variant as well as a step. "SaaS founders" has a row per step and, for its first two steps, a row per variant, which is what a vendor that splits a step by variant returns. The instance is the in-memory adapter with the insights plugin:
+
+<include meta='title="outbound.ts"'>
+  ../../_examples/insights-copy/outbound.ts
+</include>
+
+## `stepFunnel`
+
+Where a campaign's replies come from, one row per sequence step.
+
+| Input | Default | Range | What it is |
+| --- | --- | --- | --- |
+| `campaign` | required | a campaign ref | The campaign to read. |
+| `from` | `null` | `YYYY-MM-DD` | First day to count. `null` counts from the start. |
+| `to` | `null` | `YYYY-MM-DD` | Last day to count. `null` counts to today. |
+| `min_reply_rate` | 0 | 0 to 1 | A step earns its place when the low end of its reply rate interval is above this. 0 asks only that the rate is reliably above zero. |
+
+`data` (`StepFunnel`):
+
+- `finding`: what the numbers say, in one or two sentences.
+- `topStep`: the step with the most replies, or `null`.
+- `lastStepEarningPlace`: the last step whose reply rate is reliably above `min_reply_rate`, or `null`.
+- `steps`: one entry per step, counted from 0, with `action`, `delayDays`, `inSequence`, `sent`, `replies`, `replyRate`, `replyRateInterval`, `replyRateBasis`, `shareOfReplies`, `sentDrop` and `sentDropRate` (how far sends fell from the step before), `earnsPlace`, and `variants` (empty when the vendor does not split step stats by variant).
+- `totals`: `sent` and `replies`.
+- `unattributed`: counts the vendor tied to no step (`rows`, `sent`, `replies`). They are in no step's row.
+
+- **Needs:** `sequence`, `stats.byStep`.
+- **Costs:** 2 requests.
+- **Notes it can add:** some counts are tied to no step by the vendor and are reported as unattributed.
+- **Does not:** tell you why a step is weak. A step whose stats name it but which the sequence no longer has is listed with `inSequence: false`. A `null` count means the vendor does not report it.
+
+<include meta='title="step-funnel.ts"'>
+  ../../_examples/insights-copy/step-funnel.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/insights-copy/step-funnel.out.txt
+</include>
+
+Step 2 has a reply, but one reply from 600 sends gives an interval of 0.03% to 0.94%, which does not clear the 1% bar set here.
+
+## `variantTest`
+
+Whether a step's A/B leader is ahead by more than chance.
+
+| Input | Default | Range | What it is |
+| --- | --- | --- | --- |
+| `campaign` | required | a campaign ref | The campaign to read. |
+| `metric` | `replied` | `replied`, `positive`, `opened`, `clicked` | What a variant is judged on. Replies and positive replies are divided by leads contacted (or sends); opens and clicks by messages delivered (or sends). |
+| `alpha` | 0.05 | above 0, up to 0.5 | A difference with a p-value under this is a winner. |
+| `min_sent` | 100 | 1 or more, whole | A variant with a smaller base than this is not compared. |
+| `from` | `null` | `YYYY-MM-DD` | First day to count. |
+| `to` | `null` | `YYYY-MM-DD` | Last day to count. |
+
+`data` (`VariantTest`):
+
+- `campaign`, `metric`, `alpha`: what was asked.
+- `variantStatsReported`: `false` when the vendor's step stats carry no variant rows at all.
+- `steps`: one entry per step with two or more variants, with `verdict` (`winner`, `no_difference_yet` or `too_little_data`), `leader`, `pValue` (the leader against its closest rival), `moreSendsNeeded`, a `reason` sentence, and `variants` (each with `sent`, `count`, `trials`, `basis`, `rate`, `interval`, `enoughData` and `pValueVsLeader`). Winners first.
+- `totals`: `stepsTested`, `winners`, `noDifferenceYet` and `tooLittleData`.
+
+- **Needs:** `stats.byStep`.
+- **Costs:** 1 request.
+- **Notes it can add:** the step stats carry no variant rows, so there is nothing to compare.
+- **Does not:** correct for comparing three or more variants. A leader must beat every other variant with enough data to be called a winner. `moreSendsNeeded` is rough: it assumes both rates stay as they are. It pauses nothing.
+
+<include meta='title="variant-test.ts"'>
+  ../../_examples/insights-copy/variant-test.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/insights-copy/variant-test.out.txt
+</include>
+
+On step 1, variant A leads 2.5% to 1.5%, but with 400 sends each that gap has a p-value of 0.31. Pausing B now would be a guess.
+
+## `copyAudit`
+
+Problems in a campaign's copy, found from fixed rules before it sends.
+
+| Input | Default | Range | What it is |
+| --- | --- | --- | --- |
+| `campaign` | required | a campaign ref | The campaign to audit. |
+| `max_subject_chars` | 60 | 0 or more, whole | The most characters a subject may have. |
+| `max_body_words` | 150 | 0 or more, whole | The most words a body may have. |
+| `max_links` | 1 | 0 or more, whole | The most links an email body may have. |
+| `max_caps_words` | 1 | 0 or more, whole | How many words of four or more letters may be in capitals, so one acronym is not a finding. |
+| `max_exclamations` | 1 | 0 or more, whole | How many exclamation marks a message may have. |
+| `max_connection_chars` | 300 | 0 or more, whole | The most characters a LinkedIn connection request may have. |
+| `spam_words` | 14 phrases | at least 1 character each | Words and phrases to flag in email copy, matched whole and without case. Replaces the default list. |
+
+The default `spam_words` are: 100% free, act now, buy now, cash bonus, click here, double your, earn money, free trial, guarantee, limited time, no obligation, risk-free, urgent, winner.
+
+`data` (`CopyAudit`):
+
+- `campaign`, `channel`.
+- `clean`: `true` when no check found anything in the copy that could be read.
+- `findings`: one entry per problem, with `step`, `variantKey`, `action`, `check`, `severity`, a `finding` sentence and the `text` that triggered it. High severity first.
+- `byCheck`: every check that was run, with how often it fired.
+- `bySeverity`: `high`, `medium`, `low`.
+- `stepsChecked`, `variantsChecked`, `variantsWithoutBody`.
+
+The checks:
+
+| Check | Severity | Fires when |
+| --- | --- | --- |
+| `malformed_variable` | high | Braces are unbalanced, or a variable has no name. |
+| `missing_subject` | high | The first email has no subject. Email only. |
+| `connection_request_too_long` | high | A connection request is over the limit. LinkedIn only. |
+| `spam_words` | medium | The copy uses a listed word or phrase. Email only. |
+| `too_many_links` | medium | The body has more links than allowed. Email only. |
+| `image` | medium | The body holds an image or a tracking pixel. Email only. |
+| `subject_breaks_thread` | medium | A follow-up's subject differs from the first email's, so it starts a new thread. Email only. |
+| `subject_too_long` | low | Email only. |
+| `body_too_long` | low |  |
+| `all_caps` | low |  |
+| `exclamation_marks` | low |  |
+
+- **Needs:** `sequence`.
+- **Costs:** 2 requests.
+- **Notes it can add:** some variants have no body in the vendor's answer, so their body checks were skipped.
+- **Does not:** read the copy with a model, judge tone or check facts. It reads template text, never a rendered message. A variant whose body the vendor does not return is counted in `variantsWithoutBody`, not judged.
+
+<include meta='title="copy-audit.ts"'>
+  ../../_examples/insights-copy/copy-audit.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/insights-copy/copy-audit.out.txt
+</include>
+
+## `copyReuse`
+
+How the same piece of copy performs in different campaigns. Variants are matched by the hash of their subject and body.
+
+| Input | Default | Range | What it is |
+| --- | --- | --- | --- |
+| `statuses` | `["active", "paused", "completed"]` | at least one campaign status | The campaign statuses to read. |
+| `max_campaigns` | 20 | 1 to 200 | The most campaigns to read. |
+| `min_sent` | 100 | 1 or more, whole | The smallest base a campaign needs to count in the spread, and a piece of copy needs to be named the best. |
+
+`data` (`CopyReuse`):
+
+- `reused`: every piece of copy used in two or more campaigns, with `contentHash`, `subject`, `bodyPreview` (the first 120 characters), `campaigns`, pooled `sent`, `replies`, `trials`, `replyRate` and `replyRateInterval`, `uses` (per campaign: `places` as `step:variant`, counts and rate), `spread` (best minus worst reply rate), `best`, `worst`, `spreadPValue`, `spreadIsReal` and a `finding` sentence. Widest spread first.
+- `bestCopy`: the copy with the highest pooled reply rate among those with a base of `min_sent`, or `null`.
+- `campaignsRead`, `piecesOfCopy`, `variantsWithoutStats`.
+
+- **Needs:** `sequence`, `stats.byStep`.
+- **Costs:** 2 requests per campaign, plus the campaign listing.
+- **Notes it can add:** some variants have no counts of their own, because the vendor reports their step as a whole or not at all, so their copy is listed without numbers.
+- **Does not:** match copy that differs by one character: the hash is of the exact subject and body. The spread test is always at the 0.05 bar. When a step has several variants and the vendor does not split them, those variants have no numbers.
+
+<include meta='title="copy-reuse.ts"'>
+  ../../_examples/insights-copy/copy-reuse.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/insights-copy/copy-reuse.out.txt
+</include>
+
+The opener gets 8% in one campaign and 2% in the other. Same words, so the audience or the sender differs. The best copy's 4.73% is pooled: 52 replies over 1,100 sends in both campaigns.
+
+## `replyTiming`
+
+How fast people reply, and on which days and hours.
+
+| Input | Default | Range | What it is |
+| --- | --- | --- | --- |
+| `campaign` | `null` | a campaign ref | Look at one campaign. `null` looks at every campaign. |
+| `since` | `null` | ISO 8601 date and time with offset | Only messages from this time on. `null` means 30 days before now. |
+| `max_messages` | 2,000 | 1 to 50,000 | The most messages to read, sent and received together. |
+| `timezone_offset_minutes` | 0 | -720 to 840, whole | Minutes to add to UTC for the weekday and hour tables, for example -300 for New York in winter. |
+
+`data` (`ReplyTiming`):
+
+- `campaign`, `since`, `timezoneOffsetMinutes`: what was used.
+- `timeToReply`: `sample` (replies paired with the message they answer), `medianHours`, `p75Hours`, `p90Hours`, and the share `within1Hour`, `within24Hours` and `within72Hours`.
+- `replies`: when replies arrive, as `byWeekday` (Monday first), `byHour` (0 to 23), `topWeekday` and `topHour`.
+- `sendsThatDrewReplies`: the same tables for the sends that drew a reply.
+- `counts`: `messagesRead`, `sent`, `received`, `paired`, `followOnReplies` and `unpaired`.
+
+- **Needs:** `messages.list`.
+- **Costs:** 1 request per page of messages, up to `max_messages`.
+- **Notes it can add:** the adapter cannot filter messages by date, so the cap applies to all messages and older ones were dropped after reading; a cap was reached.
+- **Does not:** separate automatic replies, because messages carry no automatic flag. A reply is paired with the last message sent before it in the same thread, or to the same lead. A further message from someone who already replied is counted in `followOnReplies` and not timed. A reply with no earlier send in what was read is `unpaired`. The offset is fixed, so it does not follow daylight saving.
+
+<include meta='title="reply-timing.ts"'>
+  ../../_examples/insights-copy/reply-timing.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/insights-copy/reply-timing.out.txt
+</include>
+
+Five replies could be paired, after 0.5, 6, 24, 48 and 96 hours. Every figure in `timeToReply` rests on those five: read `sample` before trusting a percentile.

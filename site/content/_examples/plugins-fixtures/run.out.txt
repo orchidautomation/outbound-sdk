@@ -1,0 +1,10 @@
+files: [
+  'memory.agency.campaigns.list.7d4baf8b2ee5.json',
+  'memory.agency.leads.list.fabfa8ccbfc1.json'
+]
+person1@example.com | Person 1 | Company 1
+person2@example.com | Person 2 | Company 2
+replayed: 2 leads, person1@example.com
+[ 'Campaign 1', 'Campaign 2', 'Campaign 3' ]
+NotFound: No fixture was recorded for senders.list (memory.agency.senders.list.98c8b4dfb6f1.json)
+NotFound: No fixture was recorded for campaigns.list (memory.agency.campaigns.list.dec736233f07.json)

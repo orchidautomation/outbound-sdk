@@ -30,11 +30,21 @@ export default defineConfig({
       },
     },
     {
+      // A documentation sample reads top to bottom, one call after another,
+      // and prints what it found.
+      files: ["site/content/_examples/**"],
+      rules: {
+        "no-await-in-loop": "off",
+        "no-console": "off",
+      },
+    },
+    {
       // Test doubles are casts by nature, so the type-evidence rules are
       // relaxed for tests only. The behavioural rules stay on.
       files: [
         "**/*.test.{ts,mjs}",
         "packages/outbound-sdk/test/**",
+        "site/test/**",
         "scripts/test-fixtures/**",
       ],
       rules: {

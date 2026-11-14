@@ -1,0 +1,8 @@
+lead_1 ada@example.com
+lead_2 ben@example.com
+lead_3 cy@example.com
+lead_4 dee@example.com
+lead_5 eli@example.com
+toArray: 5
+max 3: 3 truncated: true
+max 5: truncated: false

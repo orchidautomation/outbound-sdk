@@ -1,0 +1,3 @@
+instantly: campaigns stale true, workspace stats stale true
+smartlead: campaigns stale true, workspace stats stale true
+heyreach: campaigns stale true, workspace stats stale true

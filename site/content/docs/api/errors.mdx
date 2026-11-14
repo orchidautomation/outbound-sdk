@@ -1,0 +1,101 @@
+---
+title: Errors
+description: The one error class the SDK throws, its six codes with when each is thrown and whether it is retried, the fields that say what to do next, and what is removed from every message.
+sidebar:
+  label: Errors
+related:
+  - /docs/retries
+  - /docs/troubleshooting
+  - /docs/api/hooks
+---
+
+The SDK throws one class, `OutboundError`. It has a `code`, and you branch on the code. There are no subclasses.
+
+<include meta='title="codes.ts"'>../../_examples/api-errors/codes.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/api-errors/codes.out.txt
+</include>
+
+The remote half of that sample runs a real Instantly adapter against a stand-in for the vendor that answers with a status code and an empty body. It shows how a status is mapped. It is not a recording of Instantly. The stand-in and the clock it uses are on the [retries](/docs/retries#how-the-samples-fail) page.
+
+## Codes
+
+| Code | Thrown when | Retried by the SDK | `permanent` |
+| --- | --- | --- | --- |
+| `Invalid` | The call itself is wrong: a bad date, a `limit` that is not a positive integer, an empty id, a ref or cursor from somewhere else. Thrown before any request. Also a vendor answer of 400, 422 or another 4xx not listed below. | no | `true` |
+| `Unsupported` | The adapter cannot serve the read, or a plugin turned it off. Thrown before any request. See [capabilities](/docs/capabilities). | no | `true` |
+| `NotFound` | The record does not exist: a vendor answer of 404, a sender with no warmup data, or a workspace label that is not on the instance. | no | `true` |
+| `Unauthorized` | No API key was given, or the vendor answered 401 or 403. | no | `true` |
+| `RateLimited` | The vendor answered 429 and the retries ran out; the call used up its `maxRequests`; or the rate budget was full and the `deadline` would pass before it freed up. | yes, for a 429 | `false` |
+| `Provider` | The vendor failed: a 408 or 5xx, no connection, no answer within `timeout`, or a record that does not match its schema. Also a call you aborted. | yes, except an abort | `false`, or `true` for an abort |
+
+An adapter can map a status its vendor uses in its own way. Instantly answers 402 when a plan does not include an endpoint, and its adapter maps that to `Unsupported`, as the last line of the output shows.
+
+What "retried" covers, and how to change it, is on the [retries](/docs/retries) page. By the time you catch a `RateLimited` or `Provider` error the SDK has already retried it.
+
+## Fields
+
+| Field | Type | Holds |
+| --- | --- | --- |
+| `code` | one of the six | What went wrong. |
+| `message` | `string` | A sentence for a person. Do not parse it: branch on `code`. |
+| `provider` | `string` or `undefined` | The adapter involved. `undefined` on an input check that no adapter took part in. |
+| `status` | `number` or `undefined` | The HTTP status that produced the error, when there was one. |
+| `retryAfterMs` | `number` or `undefined` | How long the vendor asked to wait, from its `Retry-After` header or its response body. Set on a 429 that says so. |
+| `timedOut` | `boolean` | `true` when time ran out: every attempt hit `timeout`, or the `deadline` would pass before the next retry or before the rate budget frees up. |
+| `aborted` | `boolean` | `true` when your `signal` stopped the call. |
+| `permanent` | `boolean` | `true` when sending the same call again cannot succeed. |
+| `cause` | `unknown` | The original error, when there was one: the network error, or the HTTP failure with its `status` and `body`. |
+| `name` | `"OutboundError"` |  |
+
+### `permanent`
+
+`permanent` is the field to branch on when you run your own retry or queue. It is `false` for `RateLimited` and `Provider`, and `true` for everything else and for any aborted call. A `false` means the same call may work later, not that it will: wait for `retryAfterMs` when it is set.
+
+### `timedOut` and `aborted`
+
+<include meta='title="flags.ts"'>../../_examples/api-errors/flags.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/api-errors/flags.out.txt
+</include>
+
+- A timeout is a `Provider` error with `timedOut: true`. It is retried like any other vendor failure, because every method is a read and a read is safe to repeat. A [`raw`](/docs/api/raw) request that is not a known read is the exception and is sent once.
+- An abort is a `Provider` error with `aborted: true` and `permanent: true`. It is never retried. Check `aborted` before you log a call you cancelled yourself as a vendor failure.
+- `cause` is set for a network failure. A timeout and an abort have none.
+
+### `cause`
+
+For an error mapped from an HTTP status, `cause` is the failure the adapter was handed: `{ status, body, retryAfterMs }`. `body` is the vendor's response body, parsed as JSON where it parses. It is the one place the vendor's own error payload survives, and it is not cleaned: it can hold whatever the vendor sent back. The `message` uses a short text from that body when it has a `message`, `error`, `detail` or `errorMessage` field, cut to 300 characters.
+
+## Catching
+
+`OutboundError.is(error)` is the type guard. Use it and not `instanceof`: it also recognises an error thrown by a second copy of the package, which is what you get when a bundler or a dependency ships its own.
+
+Put the call in a `try` block with `await`, as every sample here does. A method that returns a promise hands its refusals to that promise, so a `.catch()` chained on the call sees them: `list`, `get`, `exists`, `getMany`, `stats` and every handle method, whether the refusal is a capability the adapter lacks or a bad input. A method that does not return a promise throws at the moment it is called: `listAll` (it returns an iterator) for a refused filter or capability, `outbound.campaign(id)` and the other handle makers for an empty id, and `workspace(id)`. So does a refused `raw` or `native` call. `await` inside `try` catches all of them.
+
+A hook can observe every failure without catching it: see [`onError`](/docs/api/hooks).
+
+## What is removed from messages
+
+API keys and email addresses never appear in an error message or in a URL given to a [hook](/docs/api/hooks).
+
+<include meta='title="redaction.ts"'>
+  ../../_examples/api-errors/redaction.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/api-errors/redaction.out.txt
+</include>
+
+- Every `OutboundError` message goes through `redactText`. It replaces each of the adapter's secrets with `[redacted-key]` and anything shaped like an email address with `[redacted-email]`.
+- A secret shorter than four characters is not replaced, since replacing it would shred ordinary text.
+- The cleaning covers `message` and hook URLs. It does not cover `cause`, and it does not cover records: a `Lead` still has its `email`. To mask personal data in results, use the [redact](/docs/plugins/redact) plugin.
+
+`redactText(value, secrets?)`, `REDACTED_KEY` and `REDACTED_EMAIL` are exported for your own logging.
+
+## Related
+
+- [Troubleshooting](/docs/troubleshooting): the errors a new user hits first, with their messages.
+- [Retries](/docs/retries): what the SDK does before an error reaches you.

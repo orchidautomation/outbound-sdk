@@ -1,0 +1,17 @@
+{
+  "name": "outbound-sdk-site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "blume dev",
+    "build": "blume build",
+    "doctor": "blume doctor",
+    "validate": "blume validate"
+  },
+  "dependencies": {
+    "blume": "^2.2.7"
+  },
+  "engines": {
+    "node": ">=22.19"
+  }
+}

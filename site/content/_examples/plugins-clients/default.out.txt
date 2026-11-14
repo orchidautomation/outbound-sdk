@@ -1,0 +1,6 @@
+names: []
+memory:acme:cmp_founders -> acme
+memory:acme:cmp_agencies -> acme
+memory:acme:cmp_ecom -> acme
+memory:globex:cmp_1 -> globex
+[ 'acme: sent 800' ]

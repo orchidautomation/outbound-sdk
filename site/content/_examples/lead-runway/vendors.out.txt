@@ -1,0 +1,3 @@
+instantly: ok, 17 lines
+smartlead: ok, 17 lines
+heyreach: ok, 17 lines

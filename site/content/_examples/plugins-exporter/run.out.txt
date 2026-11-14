@@ -1,0 +1,12 @@
+{
+  columns: [ 'ref', 'email', 'firstName', 'company', 'custom' ],
+  rows: 4
+}
+ref,email,firstName,company,custom
+memory:agency:lead_jane,jane.doe@example.com,Jane,Northwind,"{""phone"":""555-0100""}"
+memory:agency:lead_sam,sam.lee@example.com,Sam,Contoso,{}
+memory:agency:lead_priya,priya.patel@example.com,Priya,Fabrikam,{}
+memory:agency:lead_omar,omar.haddad@example.com,Omar,Tailspin,{}
+
+provider, ref, schemaVersion, sourceId, workspaceId, channel, createdAt, name, status, tags
+{"provider":"memory","ref":"memory:agency:cmp_founders","schemaVersion":1,"sourceId":"cmp_founders","workspaceId":"agency","channel":"email","createdAt":null,"name":"Acme: SaaS founders","status":"active","tags":["acme"]}

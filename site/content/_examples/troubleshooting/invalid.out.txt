@@ -1,0 +1,9 @@
+Invalid - from must be a date in YYYY-MM-DD form, got "11/01/2026"
+Invalid - from must not be after to
+Invalid - stats for the campaign scope need a scopeId
+Invalid - since must be an ISO 8601 date or timestamp, got "yesterday"
+Invalid - limit must be a positive integer, got 2.5
+Invalid - Campaign id must not be empty
+Invalid - Leads can be listed by campaign or by list, not both at once
+Invalid - memory:other-client:cmp_founders belongs to workspace other-client, not default
+Invalid - The cursor is not valid for replies.list (it belongs to leads.list)

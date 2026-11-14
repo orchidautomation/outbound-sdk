@@ -1,0 +1,6 @@
+12:00 vendor up: stale false, fetched 12:00:00, requests 1
+12:00 same read: stale false, fetched 12:00:00, requests 0
+12:10 vendor down: stale true, fetched 12:00:00, requests 1
+12:10 first-time read: Provider - memory responded 503
+12:20 rate limited: stale true, fetched 12:00:00, requests 1
+12:30 vendor up: stale false, fetched 12:30:00, requests 1

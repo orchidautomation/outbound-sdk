@@ -1,0 +1,24 @@
+{
+  "leadFullName": "Alex Example",
+  "totalCount": 3,
+  "items": [
+    {
+      "campaignId": 274079,
+      "campaignName": "Example campaign one",
+      "creationTime": "2024-09-30T21:00:00.000000Z",
+      "campaignStatus": "FINISHED",
+      "leadStatus": "Finished"
+    },
+    {
+      "campaignId": 274080,
+      "campaignName": "Example campaign two",
+      "creationTime": "2024-10-05T09:30:00.000000Z",
+      "campaignStatus": "IN_PROGRESS",
+      "leadStatus": "InSequence"
+    }
+  ]
+}
+requests: 1 evidence: exact
+{"leadFullName":"Alex Example","totalCount":3,"items":[{"campaignId":274081,"campaignName":"Example campaign three","creationTime":"2024-11-12T14:15:00.000000Z","campaignStatus":"PAUSED","leadStatus":"Excluded"}]}
+POST /api/public/campaign/GetCampaignsForLead {"profileUrl":"https://www.linkedin.com/in/example-person-1","limit":2}
+POST /api/public/campaign/GetCampaignsForLead {"profileUrl":"https://www.linkedin.com/in/example-person-1","limit":2,"offset":2}

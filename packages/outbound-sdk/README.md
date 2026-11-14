@@ -11,6 +11,8 @@ One small, typed, read-only TypeScript API over outbound sending tools: Instantl
 
 ## Install
 
+> Not published yet. Until the first release this command does not work; [installation](https://outbound-sdk.dev/docs/installation) says how to use the package today.
+
 ```sh
 npm install outbound-sdk
 ```
@@ -91,7 +93,7 @@ const person = await outbound.insights.personSummary({
 });
 ```
 
-See [the insights](https://github.com/orchidautomation/outbound-sdk/blob/main/docs/insights.md).
+See [the insights](https://outbound-sdk.dev/docs/insights).
 
 ## It tells you what it cannot do
 
@@ -109,9 +111,10 @@ You never write a sleep or a retry loop, and you can fire hundreds of reads at o
 
 ## More
 
-- [Adapters and what each can do](https://github.com/orchidautomation/outbound-sdk/blob/main/docs/adapters.md)
-- [Plugins](https://github.com/orchidautomation/outbound-sdk/blob/main/docs/plugins.md): `combine`, `clients`, `identity`, `redact`, `cache`, `budget`, `audit`, `tracing`, `sync`, `reconcile`, `alerts`, `benchmarks`, `fixtures`, `exporter`, `failover`
-- [AI tools, the MCP server, the CLI and webhooks](https://github.com/orchidautomation/outbound-sdk/blob/main/docs/tools-and-webhooks.md)
+- [Adapters and what each can do](https://outbound-sdk.dev/docs/adapters)
+- [Plugins](https://outbound-sdk.dev/docs/plugins): `combine`, `clients`, `identity`, `redact`, `cache`, `budget`, `audit`, `tracing`, `sync`, `reconcile`, `alerts`, `benchmarks`, `fixtures`, `exporter`, `failover`
+- [AI tools](https://outbound-sdk.dev/docs/tools), the [CLI and MCP server](https://outbound-sdk.dev/docs/cli) and [webhooks](https://outbound-sdk.dev/docs/webhooks)
+- [Guides](https://outbound-sdk.dev/guides) and [what is verified](https://outbound-sdk.dev/docs/status)
 - [Architecture](https://github.com/orchidautomation/outbound-sdk/blob/main/docs/architecture.md)
 
 ## License

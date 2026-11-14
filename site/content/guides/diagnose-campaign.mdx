@@ -1,0 +1,131 @@
+---
+title: Find why one campaign is underperforming
+description: One function that runs a fixed list of checks on a campaign and returns the findings most serious first, with the days that broke from its own trend and its rates beside the rest of the workspace.
+sidebar:
+  label: Diagnose a campaign
+related:
+  - /docs/insights/operations
+  - /docs/plugins/benchmarks
+  - /guides/deliverability-check
+  - /guides/lead-runway
+---
+
+"This campaign is not working" has a short list of usual causes: too few sends to tell, bounces, a mailbox that stopped, a schedule that barely opens, a sequence with no follow-ups. `campaignDiagnosis` checks one campaign for each of them and returns findings with the numbers behind them and what to look at next. Two more reads give context. `anomalies` finds the days whose counts broke from the days before. The `benchmarks` plugin puts the campaign's rates beside the whole workspace's.
+
+The checks are fixed rules on counts. No AI model is called, the copy is not read, and nothing is changed. An empty list of findings means nothing was found in what could be checked, which is why the answer also lists what could not be.
+
+<include>../_snippets/status.mdx</include>
+
+## Before you start
+
+- Node 22 or later.
+- The code below runs on the in-memory adapter, so it needs no vendor key. Each sample on this page is a file in the repository that the test suite runs; the output shown is what it printed.
+- For real data: an Instantly, Smartlead or HeyReach API key. A read-only key is enough.
+
+## What you get
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/diagnose-campaign/run.out.txt
+</include>
+
+## Write the diagnosis
+
+<include meta='title="diagnose.ts"'>
+  ../_examples/diagnose-campaign/diagnose.ts
+</include>
+
+The checks, with their defaults. Each bar is an input.
+
+| Code | Severity | Fires when |
+| --- | --- | --- |
+| `high_bounce_rate` | high | Bounced divided by sent is over `max_bounce_rate` (0.03) |
+| `no_recent_sends` | high | The campaign is active and nothing was sent in the last `recent_days` (7) |
+| `inactive_sender` | high | A sender of the campaign has a status other than `active` |
+| `low_reply_rate` | high or medium | The reply rate is under `min_reply_rate` (0.01). High only when the whole 95% interval is under it. |
+| `too_little_volume` | medium | Fewer than `min_sent` (100) sends in the range |
+| `few_positive_replies` | medium | Positive replies are under `min_positive_share` (0.2) of replies |
+| `falling_sends` | medium | Sends over the last `recent_days` fell by more than `max_send_drop` (0.3) against the same number of days before |
+| `short_sequence` | medium | The sequence has one or two steps |
+| `schedule_limits_volume` | low | Sending windows are open under `min_weekly_hours` (20) a week, or recent days average at or over `daily_limit_share` (0.9) of the daily limit |
+| `tracking_off` | low | Open tracking is off and no opens are counted, so the missing opens are expected |
+
+Things to keep when you format the answer:
+
+- **Under `min_sent`, rates are not judged.** `too_little_volume` replaces the bounce, reply and positive-reply checks. It does not mean they passed.
+- **`notChecked` is part of the answer.** A read the adapter cannot serve, or a count the vendor does not report, is named there.
+- **The reply rate is replies divided by leads contacted**, or by sends when the vendor reports no contacted count. The bounce rate is bounces divided by sends.
+- **`from` and `to` limit the totals.** Left out, the totals cover the campaign's whole history. The recent-sends checks always use the last `recent_days` complete days, ending yesterday.
+
+For context:
+
+- **`anomalies`** holds each of the last `days` complete days (default 30; 14 above) to the `baseline_days` (14) before it. A count `threshold` (2.5) standard deviations or more from that baseline's mean is returned. A day needs at least `min_baseline_points` (5) earlier days with data. When those days all have the same count there is no standard deviation, and a day with any other count is returned with `judgedBy: "flat_baseline"`. Days the vendor has no count for are skipped, never read as zero.
+- **`benchmarks.campaign`** returns each rate as `value` (the campaign), `baseline` (the workspace over the same dates) and `ratio`. The baseline is the whole workspace, this campaign included, so a campaign that is most of the workspace is compared mostly with itself. No outside benchmark is used.
+
+## Try it without a key
+
+This seed is five weeks of results for three campaigns, one of which lost a mailbox a week ago:
+
+<include meta='title="seed.ts"'>../_examples/diagnose-campaign/seed.ts</include>
+
+<include meta='title="run.ts"'>../_examples/diagnose-campaign/run.ts</include>
+
+That is the script that printed the diagnosis above. The paused mailbox, the halved sends and the two unusual days of sends on 2026-11-07 and 2026-11-08 are the same event seen three ways. The findings do not connect them: that reading is yours.
+
+## Point it at your vendor
+
+Swap the adapter. Nothing else changes.
+
+<include meta='title="outbound.ts"'>
+  ../_examples/diagnose-campaign/production.ts
+</include>
+
+Pass the campaign's vendor id or its `ref` to the function.
+
+## What each vendor can serve
+
+The same function, run on the in-memory adapter limited to what each vendor's adapter declares. This shows which calls a vendor's adapter would refuse. It does not show what that vendor's API returns.
+
+<include meta='title="vendors.ts"'>
+  ../_examples/diagnose-campaign/vendors.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/diagnose-campaign/vendors.out.txt
+</include>
+
+`campaignDiagnosis` needs only `stats.campaign`. Every other read is skipped and named when the adapter cannot serve it. The HeyReach adapter cannot read campaign settings, so the schedule and tracking checks are not run there and the two findings that depend on them are missing, not passed.
+
+## What it costs in vendor requests
+
+- `campaignDiagnosis`: up to 7 requests, by its own description: the campaign, its totals, its settings, its sequence, a listing of its senders (up to `max_senders`, default 50) and its daily stats.
+- `anomalies`: one stats read.
+- `benchmarks.campaign`: two stats reads, the campaign and the workspace. Its result carries the count in `requests`.
+
+None of them reads leads or messages, so the cost does not grow with the size of the campaign.
+
+## When it cannot answer
+
+<include meta='title="failures.ts"'>
+  ../_examples/diagnose-campaign/failures.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/diagnose-campaign/failures.out.txt
+</include>
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| A campaign that does not exist | `NotFound` | Check the id. |
+| Too few sends in the range | `too_little_volume`; the rate checks are skipped | Widen the range or wait. Do not read the missing rate findings as a pass. |
+| Daily counts that never vary | `anomalies` still tests each day, and returns none | This is an answer, not a failure. Against a flat baseline a day is flagged as soon as its count differs, with a `null` `zScore`. |
+| The vendor returns no stats for the campaign | `benchmarks.campaign` throws `NotFound`; the diagnosis returns `no_recent_sends` and `too_little_volume` with three entries in `notChecked` | The campaign has not sent, or the vendor has not reported it yet. |
+| The adapter has no campaign stats | `Unsupported`, before any request | Use an adapter that declares `stats.campaign`. |
+| The adapter has no stats by day | `anomalies` is `Unsupported`; the diagnosis names the sending trend in `notChecked` | The function above skips `anomalies` in that case. |
+
+## Limits
+
+- One campaign per call. To find which campaign to diagnose, start from `campaignRanking` or the [weekly client report](/guides/weekly-client-report).
+- The findings are independent checks. Two findings with one cause are reported as two.
+- It does not read the copy or the leads. Follow a finding's `next` to the insight that does: `stepFunnel` and `copyAudit` for replies, `bounceWatch` for bounces, `pipelineForecast` for leads left.
+- Against a flat baseline `anomalies` has no z-score to go by. A campaign that sends the same number every day is flagged on the first day it sends any other number, however small the difference, and `threshold` does not apply.
+- The benchmark is your own workspace. It says "worse than your other campaigns", not "bad".

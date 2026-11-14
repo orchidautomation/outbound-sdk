@@ -59,7 +59,10 @@ const asQuery = (value: Json): string =>
 /** The write rows of the coverage table, as `METHOD /path`. */
 const documentedWrites = (): string[] =>
   readFileSync(
-    path.resolve(import.meta.dirname, "../../../../docs/coverage/heyreach.md"),
+    path.resolve(
+      import.meta.dirname,
+      "../../../../site/content/docs/coverage/heyreach.mdx"
+    ),
     "utf-8"
   )
     .split("\n")

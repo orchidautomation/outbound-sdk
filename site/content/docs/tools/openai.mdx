@@ -1,0 +1,70 @@
+---
+title: OpenAI SDK tools
+description: The outbound tools as OpenAI function definitions for the Responses and Chat Completions APIs, with one function that runs a call from the model and returns the string to send back.
+sidebar:
+  label: OpenAI
+related:
+  - /docs/tools
+  - /docs/tools/untrusted-content
+  - /guides/agent-tools
+---
+
+`openaiTools(outbound)` from `outbound-sdk/tools` returns the [tools](/docs/tools) in the shape the OpenAI SDK takes. It is built without importing `openai`, so it adds no dependency, and it works with any client that accepts the same function-tool shape.
+
+It returns three things:
+
+| Property | What it is |
+| --- | --- |
+| `tools` | Function tools for the Responses API: `type`, `name`, `description`, `parameters`, `strict`. Pass as `tools` to `client.responses.create`. |
+| `chatTools` | The same tools for Chat Completions, each nested under `function`. Pass as `tools` to `client.chat.completions.create`. |
+| `handle(name, argumentsJson)` | Runs one function call. Takes the call's `name` and its `arguments` string, returns the result as a JSON string. |
+
+`openaiTools` takes the same `only` and `extra` options as [`createTools`](/docs/tools#options).
+
+## Build the tools and run a call
+
+<include meta='title="openai.ts"'>
+  ../../_examples/tools-openai/openai.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/tools-openai/openai.out.txt
+</include>
+
+- **`strict` is `false`.** The schemas have optional fields, which OpenAI's strict mode does not accept. The tool validates the arguments itself and reports anything wrong as a result.
+- **An empty `arguments` string means no arguments.** `handle` reads it as `{}`.
+- **`handle` never throws.** An unknown tool name and arguments that are not JSON come back as `{ ok: false }` with the code `Invalid`.
+
+## Answer the model's calls
+
+When a response contains `function_call` items, run each through `handle` and send the outputs back in the next request.
+
+<include meta='title="dispatch.ts"'>
+  ../../_examples/tools-openai/dispatch.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/tools-openai/dispatch.out.txt
+</include>
+
+<Callout type="note" title="No model was called">
+  The samples on this page build the tool set and run `handle` directly. The
+  `function_call` item above was written by hand in the shape the Responses API
+  documents. The round trip through an OpenAI model was not run by the test
+  suite, and the `openai` package is not installed in this repository.
+</Callout>
+
+## Wiring it to a model
+
+The loop around these pieces is yours:
+
+1. Call `client.responses.create` with your model, your input and `tools`.
+2. For each `function_call` item in the output, call `handle(item.name, item.arguments)`.
+3. Append a `function_call_output` item with the same `call_id` and the returned string, and call the API again.
+4. Stop when a response has no function calls.
+
+With Chat Completions, pass `chatTools`, read `message.tool_calls`, and answer each with a `tool` message whose content is the string `handle` returned.
+
+## Reply text
+
+A model given `reply_samples` can ask for reply text. It comes back truncated and marked as untrusted. See [untrusted content](/docs/tools/untrusted-content).

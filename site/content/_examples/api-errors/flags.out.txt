@@ -1,0 +1,6 @@
+no answer: Provider, instantly did not answer within 2000 ms
+  timedOut true, aborted false, permanent false, cause undefined
+no connection: Provider, instantly request failed: fetch failed
+  timedOut false, aborted false, permanent false, cause fetch failed
+caller aborted: Provider, The call was aborted
+  timedOut false, aborted true, permanent true, cause undefined

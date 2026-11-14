@@ -16,13 +16,16 @@ for await (const campaign of outbound.campaigns.listAll({ status: "active" })) {
 
 > Status: not published to npm yet. HeyReach and Instantly are `beta` (their reads were run against a live workspace each). Smartlead ships untested (`unverified`): it has never been run against a live account, and is written from public documentation and tested offline only.
 
+The documentation is at [outbound-sdk.dev](https://outbound-sdk.dev). It is built from `site/` in this repository, and every code sample on it is a file the test suite runs.
+
 - [Using the package](packages/outbound-sdk/README.md)
-- [Adapters and what each can do](docs/adapters.md), with [every endpoint accounted for](docs/coverage/README.md)
-- [Insights](docs/insights.md): 26 computed answers, from one person across email and LinkedIn to a weekly client report
-- [Plugins](docs/plugins.md)
-- [AI tools, the MCP server, the CLI and webhooks](docs/tools-and-webhooks.md)
-- [Architecture](docs/architecture.md) and [engineering guardrails](docs/engineering-guardrails.md)
-- [Adding an adapter](docs/new-adapter.md)
+- [Adapters and what each can do](https://outbound-sdk.dev/docs/adapters), with [every endpoint accounted for](https://outbound-sdk.dev/docs/coverage)
+- [Insights](https://outbound-sdk.dev/docs/insights): 26 computed answers, from one person across email and LinkedIn to a weekly client report
+- [Plugins](https://outbound-sdk.dev/docs/plugins)
+- [AI tools](https://outbound-sdk.dev/docs/tools), the [CLI](https://outbound-sdk.dev/docs/cli) and its [MCP server](https://outbound-sdk.dev/docs/cli/mcp), and [webhooks](https://outbound-sdk.dev/docs/webhooks)
+- [Guides](https://outbound-sdk.dev/guides): complete tasks, end to end
+- [What is verified](https://outbound-sdk.dev/docs/status)
+- For contributors: [architecture](docs/architecture.md), [engineering guardrails](docs/engineering-guardrails.md) and [adding an adapter](docs/new-adapter.md)
 
 ## Working on it
 
@@ -30,6 +33,8 @@ for await (const campaign of outbound.campaigns.listAll({ status: "active" })) {
 npm ci
 npm run check        # lint, types, architecture, repo shape, fixtures, tests, coverage, build, size
 npm run check:fast   # the static checks only
+
+npm --prefix site ci && npm run site:dev   # the documentation site, locally
 ```
 
 See `AGENTS.md` for the rules of the repository.

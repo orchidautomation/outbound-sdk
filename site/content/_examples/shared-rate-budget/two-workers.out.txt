@@ -1,0 +1,6 @@
+separate stores
+  worker 1 sees: 3 of 7 per 2s, 3 of 150 per 60s
+  worker 2 sees: 3 of 7 per 2s, 3 of 150 per 60s
+one shared store
+  worker 1 sees: 6 of 7 per 2s, 6 of 150 per 60s
+  worker 2 sees: 6 of 7 per 2s, 6 of 150 per 60s

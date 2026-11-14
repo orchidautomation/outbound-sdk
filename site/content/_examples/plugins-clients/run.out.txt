@@ -1,0 +1,11 @@
+clients: [ 'Acme', 'Globex' ]
+Acme: SaaS founders -> Acme
+Globex: agency owners -> Globex
+Ecommerce ops -> unassigned
+jane.doe@example.com -> Acme
+sam.lee@example.com -> Acme
+priya.patel@example.com -> Globex
+omar.haddad@example.com -> unassigned
+Acme: 1 campaign(s), sent 200, replied 12, bounced 2
+Globex: 1 campaign(s), sent 400, replied 8, bounced 4
+unassigned: 1 campaign(s), sent 200, replied 2, bounced 18

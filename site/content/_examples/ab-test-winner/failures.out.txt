@@ -1,0 +1,7 @@
+no variant rows: false 0 [
+  'The step stats carry no variant rows, so there is nothing to compare.'
+]
+unreported metric: The vendor does not report opened for every variant of this step, so they cannot be compared.
+unknown input: Invalid - variant_test: "step" is not an input. It takes: alpha, campaign, from, metric, min_sent, to
+bad input: Invalid - variant_test: alpha Too big: expected number to be <=0.5
+unknown campaign: NotFound - Campaign cmp_missing was not found

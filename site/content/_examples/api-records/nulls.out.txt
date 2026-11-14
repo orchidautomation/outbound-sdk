@@ -1,0 +1,5 @@
+bounced: 0 | opened: null
+bounce rate: { basis: 'sent', value: 0 }
+open rate: { basis: null, value: null }
+reply rate: { basis: 'sent', value: 0.03 }
+null null null

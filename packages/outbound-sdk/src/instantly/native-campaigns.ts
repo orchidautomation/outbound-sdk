@@ -1,5 +1,5 @@
 // Campaigns and subsequences: analytics, sending status and exports that have no normalized read.
-// Each entry is one read Instantly documents; docs/coverage/instantly.md lists them all.
+// Each entry is one read Instantly documents; site/content/docs/coverage/instantly.mdx lists them all.
 
 import { defineNative } from "../internal/native.ts";
 import {
