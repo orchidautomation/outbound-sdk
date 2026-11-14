@@ -80,6 +80,19 @@ unread.data; // Smartlead's own response
 
 Native reads are rate limited and retried like the rest, can only read, and return the vendor's payload as sent. `outbound.raw` remains for a request the catalog does not name (reads only unless `allowWrites: true`).
 
+## Answers, not only records
+
+`outbound-sdk/insights` adds 26 computed answers on top of the reads: one person across email and LinkedIn, replies nobody answered, where a sequence's replies come from, whether an A/B winner is real, deliverability per domain, why a campaign is underperforming, a weekly client report. Each is a typed method, an agent tool and a CLI command, and none calls a model.
+
+```ts
+const outbound = createOutbound({ adapter, plugins: [insights()] });
+const person = await outbound.insights.personSummary({
+  person: "jane@example.com",
+});
+```
+
+See [the insights](https://github.com/orchidautomation/outbound-sdk/blob/main/docs/insights.md).
+
 ## It tells you what it cannot do
 
 An adapter declares what it supports. A call that needs something unsupported throws `Unsupported` before any request leaves:

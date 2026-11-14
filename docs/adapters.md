@@ -65,7 +65,7 @@ What a vendor's API cannot answer stays `no`, and the adapter's research note sa
 
 - **HeyReach has no campaign settings, subsequences, tags or per-lead counts.** Its API can set a campaign's schedule but not read it, a campaign has one sequence tree, no endpoint lists the workspace's tags, and no lead carries open or reply counts.
 - **HeyReach replies carry no category.** Its auto-tags describe the lead, not a message; the newest one is the lead's `interest`.
-- **HeyReach has no list of every lead.** Leads are read per campaign or per saved list.
+- **HeyReach has no list of every lead.** Leads are read per campaign or per saved list, or found by profile or email.
 - **Smartlead cannot list the leads of a saved list**, and its per-lead counts are documented only as a placeholder response.
 - **Instantly's per-mailbox stats are `derived`:** its mailbox analytics exist per day only.
 - **No adapter reveals deleted records.** Use the `reconcile` plugin's `deletions()`.

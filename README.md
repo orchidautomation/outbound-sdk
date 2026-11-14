@@ -18,6 +18,7 @@ for await (const campaign of outbound.campaigns.listAll({ status: "active" })) {
 
 - [Using the package](packages/outbound-sdk/README.md)
 - [Adapters and what each can do](docs/adapters.md), with [every endpoint accounted for](docs/coverage/README.md)
+- [Insights](docs/insights.md): 26 computed answers, from one person across email and LinkedIn to a weekly client report
 - [Plugins](docs/plugins.md)
 - [AI tools, the MCP server, the CLI and webhooks](docs/tools-and-webhooks.md)
 - [Architecture](docs/architecture.md) and [engineering guardrails](docs/engineering-guardrails.md)

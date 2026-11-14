@@ -19,6 +19,8 @@
 | `audience_lists` | The saved lead lists and their sizes | `lists.list` |
 | `vendor_read` | Anything else the vendor can report: lists its own reads, then runs one | a native catalog |
 
+The 26 insights in [insights.md](insights.md) are tools too: pass `insightTools(outbound)` as `extra` to any wrapper, and `outbound mcp` serves them already.
+
 A tool that needs a plugin the instance does not have is left out of the set. `vendor_read` is left out when the adapter has no native reads or the `redact` plugin is on; what it returns is the vendor's own response, wrapped as untrusted content.
 
 ```ts
