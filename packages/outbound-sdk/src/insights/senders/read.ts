@@ -30,26 +30,13 @@ export const dayInput = (what: string) =>
       `${what}, as YYYY-MM-DD. Leave out for the vendor's whole history.`
     );
 
-/**
- * Walks a listing up to `max` records. It asks for one more than the cap, so
- * a listing cut inside a page is still reported as incomplete.
- */
-export const readCapped = async <Item>(
+/** Walks a listing up to `max` records, and says so in a note when more exist. */
+export const readCapped = <Item>(
   context: InsightContext,
   walk: (max: number) => ListAll<Item>,
   max: number,
   what: string
-): Promise<Item[]> => {
-  const items = await context.all(walk(max + 1));
-
-  if (items.length <= max) {
-    return items;
-  }
-
-  context.partial(`Only the first ${max} ${what} were read; more exist.`);
-
-  return items.slice(0, max);
-};
+): Promise<Item[]> => context.all(walk(max), `${max} ${what}`);
 
 /** The campaigns in the given statuses, up to `max`. */
 export const readCampaigns = async (

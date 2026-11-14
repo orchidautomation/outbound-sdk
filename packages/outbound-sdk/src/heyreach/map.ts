@@ -202,14 +202,6 @@ export const toCampaignLead = (
   status: leadStatus(raw),
 });
 
-// A looked-up lead is one record per campaign, and a lead's id is its profile
-// URL, so the campaign is added as a URL fragment to keep the records apart.
-const CAMPAIGN_MARK = /#campaign=\d+$/u;
-
-/** The profile URL in a lead id: a looked-up lead's id also names its campaign. */
-export const profileUrlOf = (leadId: string): string =>
-  leadId.replace(CAMPAIGN_MARK, "");
-
 /** Every address a `POST /lead/GetLead` profile carries, lowercased. */
 export const profileEmails = (profile: JsonObject): string[] =>
   [
@@ -234,17 +226,12 @@ export const toLookupLead = (
 ): Lead => {
   const raw: JsonObject = { campaign, lead: profile };
   const lead = profileFields(identity, profile, raw);
-  const campaignId = text(campaign?.campaignId);
 
-  const id =
-    campaignId === null
-      ? lead.sourceId
-      : `${lead.sourceId}#campaign=${campaignId}`;
-
+  // One record per campaign, all with the lead's own id: the profile URL.
+  // The core tells looked-up records apart by their campaign.
   return {
     ...lead,
-    ...recordBase(identity, id, raw),
-    campaignRef: refTo(identity, campaignId),
+    campaignRef: refTo(identity, text(campaign?.campaignId)),
     createdAt: null,
     email: email ?? lead.email,
     status: campaignLeadStatus(campaign?.leadStatus),

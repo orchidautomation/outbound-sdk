@@ -20,7 +20,6 @@ import { toSequence } from "./map-sequence.ts";
 import { dailyRows, totalRow } from "./map-stats.ts";
 import {
   listEnvelope,
-  profileUrlOf,
   toCampaign,
   toCampaignLead,
   toLead,
@@ -160,7 +159,7 @@ const leadReaders = (
   // id also names its campaign, which is dropped here.
   getLead: async (id, ctx) => {
     const path = "/lead/GetLead";
-    const profileUrl = profileUrlOf(id);
+    const profileUrl = id;
 
     const [lead, tags] = await Promise.all([
       client.post(ctx, path, { profileUrl }),

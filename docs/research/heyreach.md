@@ -478,7 +478,7 @@ By profile URL, two requests in parallel: `GetCampaignsForLead` and `GetLead`, b
 
 By email, four requests in the usual case: `GetCampaignsForLead` (which names the person), `GetListsForLead` for one list the address is in, `GetLeadsFromList` with the name as `keyword` (5 rows at most), then `GetLead` for each row until one profile carries the address in `emailAddress`, `enrichedEmailAddress`, `customEmailAddress` or `emailEnrichments`. A later page of campaigns carries the profile URL in its page marker and costs two requests.
 
-Each campaign gives one record with that campaign's ref and the lead's status in it. A lead's id is its profile URL, which is the same in every campaign, so a looked-up record's id is the profile URL followed by `#campaign=<campaignId>`; `leads.get` and the timeline drop that part before asking HeyReach. A known person in no campaign is one record with no campaign and the plain profile URL as its id.
+Each campaign gives one record with that campaign's ref and the lead's status in it. A lead's id is its profile URL, which is the same in every campaign, so a person's records share one ref and differ by `campaignRef`; the SDK core tells looked-up records apart by campaign. A known person in no campaign is one record with no campaign.
 
 ### Not confirmed
 

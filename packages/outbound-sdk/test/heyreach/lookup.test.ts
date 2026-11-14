@@ -59,8 +59,8 @@ test("heyreach: a profile lookup reads the campaigns and the profile, and return
   assert.deepEqual(
     page.items.map((lead) => [lead.campaignRef, lead.status, lead.sourceId]),
     [
-      ["heyreach:client-a:274079", "completed", `${LEAD}#campaign=274079`],
-      ["heyreach:client-a:274080", "active", `${LEAD}#campaign=274080`],
+      ["heyreach:client-a:274079", "completed", LEAD],
+      ["heyreach:client-a:274080", "active", LEAD],
     ]
   );
 
@@ -98,7 +98,11 @@ test("heyreach: a lookup walks the campaign pages, reading the profile once a pa
     ],
     "Excluded has no equivalent"
   );
-  assert.equal(new Set(all.map((lead) => lead.ref)).size, 3);
+  assert.equal(
+    new Set(all.map((lead) => lead.ref)).size,
+    1,
+    "every record is the same lead; the campaign tells them apart"
+  );
   assert.deepEqual(sent(requests).slice(2), [
     [
       "/campaign/GetCampaignsForLead",
@@ -132,7 +136,7 @@ test("heyreach: a profile URL in another form is sent in one form and still matc
   );
   assert.equal(page.items.length, 2);
   assert.equal(page.items[0]?.linkedinUrl, stored);
-  assert.equal(page.items[0]?.sourceId, `${stored}#campaign=274079`);
+  assert.equal(page.items[0]?.sourceId, stored);
 });
 
 test("heyreach: a profile HeyReach answers with that is not the one asked for is dropped", async () => {
@@ -264,7 +268,7 @@ test("heyreach: a lookup can be narrowed to one campaign", async () => {
 
   assert.deepEqual(
     later.map((lead) => lead.sourceId),
-    [`${LEAD}#campaign=274081`],
+    [LEAD],
     "found on the second page of campaigns"
   );
 
@@ -335,23 +339,6 @@ test("heyreach: a known person in no campaign is returned once, with no campaign
 
     assert.deepEqual(inCampaign.items, []);
   }
-});
-
-test("heyreach: a looked-up record's id reads the lead and its timeline by the profile URL alone", async () => {
-  const { outbound, requests, settle } = harness(suite);
-  const id = `${REF}#campaign=274079`;
-  const lead = await settle(outbound.leads.get(id));
-  assert.equal(lead.sourceId, LEAD);
-  await settle(outbound.lead(id).timeline());
-
-  assert.deepEqual(sent(requests).slice(0, 3), [
-    ["/lead/GetLead", { profileUrl: LEAD }],
-    ["/lead/GetTags", { profileUrl: LEAD }],
-    [
-      "/inbox/GetConversationsV3",
-      { filters: { leadProfileUrl: LEAD }, limit: 100 },
-    ],
-  ]);
 });
 
 test("heyreach: a lookup inside a saved list or a date range is refused before any request", async () => {

@@ -108,7 +108,7 @@ export const costs = {
   // One person by profile URL: the campaigns and the profile, two requests.
   // By email it is three (campaigns, the lists the address is in, a name
   // search in one list) and one more per profile read to find the address,
-  // five at most; a later page is two again.
+  // eight at most; a later page is two again.
   "leads.lookup": { pageSize: PAGE_SIZE, perPage: 2 },
   "lists.list": { pageSize: PAGE_SIZE, perPage: 1 },
   // One conversation by thread id is a single request.
@@ -135,7 +135,7 @@ export const caveats: readonly string[] = [
   "A sender's status is derived from two undefined booleans: authIsValid false is disconnected, otherwise isActive true is active and false is paused.",
   "A sender's dailyLimit is null: accountLimits holds several limit pairs and the docs do not say which are daily or what Limit and Max mean. They stay in raw.",
   "A lead's id is its LinkedIn profile URL, the only key GetLead accepts and the only one present in every lead shape. The docs do not say the URL has one canonical form.",
-  "A lead is looked up by profile URL with two requests (GetCampaignsForLead and GetLead) and returned once per campaign it is in. A lead's id is its profile URL in every campaign, so a looked-up record's id is the profile URL followed by #campaign=<campaignId>, and it differs from the id the same lead has in a campaign's lead list; leads.get and the timeline accept both. The timeline is the lead's whole conversation history, the same on each of its records.",
+  "A lead is looked up by profile URL with two requests (GetCampaignsForLead and GetLead) and returned once per campaign it is in. A lead's id is its profile URL in every campaign, so a person's records share one ref and differ by campaignRef. The timeline is the lead's whole conversation history, the same on each of its records.",
   "A looked-up lead's status follows leadStatus and never says replied, because GetCampaignsForLead reports no message status; Excluded and PendingOrExcludedToBeCalculated are unknown. createdAt is null (the creationTime beside a campaign is the campaign's), tags are empty and interest is null. A lookup cannot be combined with a saved list or a date range.",
   "HeyReach matches a profile URL whatever its scheme, www prefix, trailing slash or query, but by exact case: seen live, a slug sent in upper case is not found. The lookup sends the slug lowercased, so a profile HeyReach stores with upper-case letters would not be found. A slug with non-ASCII letters is sent percent-encoded; how HeyReach stores one is not known.",
   "No HeyReach read returns a profile for an email address. An email lookup asks for the campaigns (which names the person), then one saved list the address is in, searches that list for the name (5 rows at most) and reads each match's profile until one carries the address: four requests in the usual case. An address that is in no saved list, or whose profile is not among those rows, gives an empty page although HeyReach knows it. The record's email is the address asked for, which the profile may hold as its enriched or custom address.",

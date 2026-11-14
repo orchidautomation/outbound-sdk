@@ -34,25 +34,12 @@ export const rangeOf = (from: string | null, to: string | null): DayRange => ({
   to: to ?? undefined,
 });
 
-const CUT_OFF = "A listing was cut off at its cap; more records exist.";
-
-/**
- * Reads a listing up to `max` records. One record more is asked for, so a
- * listing that holds more than the cap is always reported as cut off.
- */
-export const readCapped = async <Item>(
+/** Reads a listing up to `max` records; a listing that holds more is reported as cut off. */
+export const readCapped = <Item>(
   context: InsightContext,
   walk: (max: number) => ListAll<Item>,
   max: number
-): Promise<Item[]> => {
-  const items = await context.all(walk(max + 1));
-
-  if (items.length > max) {
-    context.partial(CUT_OFF);
-  }
-
-  return items.slice(0, max);
-};
+): Promise<Item[]> => context.all(walk(max));
 
 /** The campaigns in the given statuses, up to `max` in all. */
 export const campaignsIn = async (
