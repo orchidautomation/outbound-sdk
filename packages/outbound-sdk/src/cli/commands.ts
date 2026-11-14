@@ -73,13 +73,26 @@ export interface CommandSpec {
 }
 
 const COMMAND_TABLE = {
+  blocklist: {
+    help: "blocklist [--limit N]",
+    run: (outbound, input) =>
+      listing(outbound.blocklist.listAll({ max: count(input, "limit", 50) })),
+  },
   campaign: {
-    help: "campaign <id> [--stats] [--sequence] [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--by day]",
+    help: "campaign <id> [--stats] [--sequence] [--subsequences] [--settings] [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--by day]",
     run: async (outbound, input) => {
       const campaign = outbound.campaign(required(input, 0, "a campaign id"));
 
       if (input.flags.sequence === true) {
         return asJson(await campaign.sequence());
+      }
+
+      if (input.flags.subsequences === true) {
+        return await listing(campaign.subsequences.listAll());
+      }
+
+      if (input.flags.settings === true) {
+        return asJson(await campaign.settings());
       }
 
       if (input.flags.stats === true) {
@@ -122,15 +135,26 @@ const COMMAND_TABLE = {
         workspaceId: outbound.workspaceId,
       }),
   },
+  health: {
+    help: "health <sender id>",
+    run: async (outbound, input) =>
+      asJson(await outbound.sender(required(input, 0, "a sender id")).health()),
+  },
   leads: {
-    help: "leads [--campaign ID] [--limit N]",
+    help: "leads [--campaign ID | --list ID] [--limit N]",
     run: (outbound, input) =>
       listing(
         outbound.leads.listAll({
           campaignId: text(input, "campaign"),
+          listId: text(input, "list"),
           max: count(input, "limit", 50),
         })
       ),
+  },
+  lists: {
+    help: "lists [--limit N]",
+    run: (outbound, input) =>
+      listing(outbound.lists.listAll({ max: count(input, "limit", 50) })),
   },
   limits: {
     help: "limits",
@@ -171,6 +195,20 @@ const COMMAND_TABLE = {
         })
       ),
   },
+  tags: {
+    help: "tags [--limit N]",
+    run: (outbound, input) =>
+      listing(outbound.tags.listAll({ max: count(input, "limit", 50) })),
+  },
+  thread: {
+    help: "thread <id> [--bodies]",
+    run: async (outbound, input) =>
+      asJson(
+        await outbound.thread(required(input, 0, "a thread id")).messages({
+          include: input.flags.bodies === true ? ["body"] : undefined,
+        })
+      ),
+  },
   tool: {
     help: "tool <name> [--input JSON]",
     run: async (outbound, input) => {
@@ -198,6 +236,16 @@ const COMMAND_TABLE = {
           description: tool.description,
           name: tool.name,
         }))
+      ),
+  },
+  webhooks: {
+    help: "webhooks [--campaign ID] [--limit N]",
+    run: (outbound, input) =>
+      listing(
+        outbound.webhooks.listAll({
+          campaignId: text(input, "campaign"),
+          max: count(input, "limit", 50),
+        })
       ),
   },
 } satisfies Record<string, CommandSpec>;

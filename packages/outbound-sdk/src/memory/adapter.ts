@@ -1,28 +1,12 @@
 // A complete adapter backed by data in memory. It tests the core without a
 // network and powers demos.
 
-import type {
-  Adapter,
-  LeadQuery,
-  Page,
-  PageQuery,
-  TimeRange,
-} from "../internal/adapter.ts";
+import type { Adapter, LeadQuery, TimeRange } from "../internal/adapter.ts";
 import type { CapabilityDeclaration } from "../internal/capabilities.ts";
-import type { Channel } from "../internal/entities.ts";
-import { makeErrorMapper, OutboundError } from "../internal/errors.ts";
-import { isNumber } from "../internal/json.ts";
+import { makeErrorMapper } from "../internal/errors.ts";
 import { recordBase } from "../internal/record.ts";
-import type { Identity } from "../internal/record.ts";
 import { assertWorkspaceId } from "../internal/ref.ts";
-import {
-  toBlockEntry,
-  toHealth,
-  toList,
-  toSettings,
-  toTag,
-  toWebhook,
-} from "./account.ts";
+import { accountReads } from "./account-reads.ts";
 import {
   toCampaign,
   toLead,
@@ -30,15 +14,11 @@ import {
   toReply,
   toSender,
   toSequence,
-  toSubsequence,
 } from "./data.ts";
-import type {
-  MemoryCampaign,
-  MemoryData,
-  MemoryLead,
-  MemoryMessage,
-} from "./data.ts";
+import type { MemoryData, MemoryLead, MemoryMessage } from "./data.ts";
 import { queryStats } from "./stats.ts";
+import { findCampaign, notFound, paginate } from "./store.ts";
+import type { Store } from "./store.ts";
 
 export interface MemoryOptions {
   readonly data?: MemoryData | undefined;
@@ -88,49 +68,11 @@ const FULL_CAPABILITIES: CapabilityDeclaration = {
   workspaces: true,
 };
 
-const paginate = <Item>(
-  items: readonly Item[],
-  query: PageQuery,
-  pageSize: number
-): Page<Item> => {
-  const offset = isNumber(query.next) ? query.next : 0;
-  const size = Math.min(query.limit ?? pageSize, pageSize);
-  const end = offset + size;
-
-  return end < items.length
-    ? { items: items.slice(offset, end), next: end }
-    : { items: items.slice(offset, end) };
-};
-
 const within = (time: string | undefined, range: TimeRange): boolean =>
   time === undefined
     ? range.since === undefined && range.until === undefined
     : (range.since === undefined || time >= range.since) &&
       (range.until === undefined || time <= range.until);
-
-const notFound = (provider: string, what: string, id: string): OutboundError =>
-  new OutboundError("NotFound", `${what} ${id} was not found`, {
-    provider,
-    status: 404,
-  });
-
-interface Store {
-  readonly identity: Identity;
-  readonly data: MemoryData;
-  readonly pageSize: number;
-  readonly capabilities: CapabilityDeclaration;
-  readonly channelOf: (campaignId: string | undefined) => Channel;
-}
-
-const findCampaign = (store: Store, id: string): MemoryCampaign => {
-  const seed = store.data.campaigns?.find((campaign) => campaign.id === id);
-
-  if (seed === undefined) {
-    throw notFound(store.identity.provider, "Campaign", id);
-  }
-
-  return seed;
-};
 
 // A server-side filter applies only while the adapter declares it as one.
 // Declaring `client` leaves the filtering to the wrapper.
@@ -304,80 +246,6 @@ const listers = (store: Store): Listers => {
       }),
     stats: (query) =>
       Promise.resolve(queryStats(identity, data.stats ?? [], query)),
-  };
-};
-
-type AccountReads = Pick<
-  Adapter,
-  | "getCampaignSettings"
-  | "getSenderHealth"
-  | "listBlocklist"
-  | "listLists"
-  | "listSubsequences"
-  | "listTags"
-  | "listWebhooks"
->;
-
-const accountReads = (store: Store): AccountReads => {
-  const { data, identity, pageSize } = store;
-
-  const page = <Item>(items: readonly Item[], query: PageQuery) =>
-    Promise.resolve(paginate(items, query, pageSize));
-
-  return {
-    getCampaignSettings: (id) =>
-      Promise.resolve(
-        toSettings(identity, id, findCampaign(store, id).settings ?? {})
-      ),
-    getSenderHealth: (id) => {
-      const seed = data.senders?.find((sender) => sender.id === id);
-
-      return seed === undefined
-        ? Promise.reject(notFound(identity.provider, "Sender", id))
-        : Promise.resolve(toHealth(identity, seed, seed.health ?? {}));
-    },
-    listBlocklist: (query) =>
-      page(
-        (data.blocklist ?? []).map((seed) => toBlockEntry(identity, seed)),
-        query
-      ),
-    listLists: (query) =>
-      page(
-        (data.lists ?? []).map((seed) =>
-          toList(
-            identity,
-            seed,
-            (data.leads ?? []).filter((lead) =>
-              (lead.listIds ?? []).includes(seed.id)
-            ).length
-          )
-        ),
-        query
-      ),
-    listSubsequences: (query) => {
-      const campaign = findCampaign(store, query.campaignId);
-
-      return page(
-        (campaign.subsequences ?? []).map((seed) =>
-          toSubsequence(identity, campaign, seed)
-        ),
-        query
-      );
-    },
-    listTags: (query) =>
-      page(
-        (data.tags ?? []).map((seed) => toTag(identity, seed)),
-        query
-      ),
-    listWebhooks: (query) =>
-      page(
-        (data.webhooks ?? []).flatMap((seed) =>
-          query.campaignId === undefined || seed.campaignId === query.campaignId
-            ? [toWebhook(identity, seed)]
-            : []
-        ),
-        query
-      ),
   };
 };
 

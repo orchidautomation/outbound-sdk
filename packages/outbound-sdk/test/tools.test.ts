@@ -60,6 +60,9 @@ test("offers only the tools the instance can serve", () => {
       "sender_health",
       "reply_samples",
       "lead_runway",
+      "campaign_setup",
+      "deliverability_check",
+      "audience_lists",
     ]
   );
   assert.deepEqual(
@@ -415,7 +418,7 @@ test("tools respect a redact plugin: bodies are refused, not leaked", async () =
 
 test("openaiTools gives function definitions and runs a call from its arguments string", async () => {
   const { chatTools, handle, tools } = openaiTools(plain());
-  assert.equal(tools.length, 6);
+  assert.equal(tools.length, 9);
   assert.deepEqual(Object.keys(tools[0] ?? {}).toSorted(), [
     "description",
     "name",

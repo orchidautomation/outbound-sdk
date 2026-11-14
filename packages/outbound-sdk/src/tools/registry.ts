@@ -4,6 +4,11 @@ import { OutboundError } from "../internal/errors.ts";
 import type { Json } from "../internal/json.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
 import {
+  audienceLists,
+  campaignSetup,
+  deliverabilityCheck,
+} from "./account-tools.ts";
+import {
   campaignOverview,
   campaignTrend,
   replySamples,
@@ -83,6 +88,9 @@ export const TOOL_NAMES = [
   "lead_runway",
   "compare_clients",
   "cross_channel_lead",
+  "campaign_setup",
+  "deliverability_check",
+  "audience_lists",
 ] as const;
 
 export type ToolName = (typeof TOOL_NAMES)[number];
@@ -109,6 +117,9 @@ export const createTools = (
     bind(outbound, leadRunway),
     bind(outbound, compareClients),
     bind(outbound, crossChannelLead),
+    bind(outbound, campaignSetup),
+    bind(outbound, deliverabilityCheck),
+    bind(outbound, audienceLists),
   ];
 
   const wanted =

@@ -5,6 +5,25 @@ const campaigns: MemoryData["campaigns"] = [
     createdAt: "2026-10-01T09:00:00.000Z",
     id: "cmp_founders",
     name: "Q4 SaaS founders",
+    settings: {
+      dailyLimit: 80,
+      dailyNewLeads: 30,
+      gapMinutes: 12,
+      schedule: [
+        {
+          days: [1, 2, 3, 4, 5],
+          from: "09:00",
+          name: "Weekdays",
+          timezone: "America/New_York",
+          to: "17:00",
+        },
+      ],
+      startDate: "2026-10-05",
+      stopOnAutoReply: false,
+      stopOnReply: true,
+      trackClicks: false,
+      trackOpens: true,
+    },
     status: "active",
     steps: [
       {
@@ -52,9 +71,18 @@ const leads: MemoryData["leads"] = [
     company: "Example Co",
     createdAt: "2026-10-02T10:00:00.000Z",
     email: "person1@example.com",
+    engagement: {
+      lastContactedAt: "2026-10-05T14:00:00.000Z",
+      lastRepliedAt: "2026-10-06T09:30:00.000Z",
+      opens: 2,
+      replies: 1,
+      stepIndex: 0,
+    },
     firstName: "Alex",
     id: "lead_1",
+    interest: "Interested",
     lastName: "Example",
+    listIds: ["lst_founders"],
     status: "replied",
     title: "Founder",
   },
@@ -65,6 +93,7 @@ const leads: MemoryData["leads"] = [
     email: "person2@example.com",
     firstName: "Sam",
     id: "lead_2",
+    listIds: ["lst_founders"],
     lastName: "Sample",
     status: "active",
     title: "CEO",
@@ -93,6 +122,7 @@ const messages: MemoryData["messages"] = [
     sentAt: "2026-10-05T14:00:00.000Z",
     stepIndex: 0,
     subject: "Quick question",
+    threadId: "thr_1",
     variantKey: "A",
   },
   {
@@ -106,6 +136,7 @@ const messages: MemoryData["messages"] = [
     senderId: "mbx_1",
     sentAt: "2026-10-06T09:30:00.000Z",
     subject: "Re: Quick question",
+    threadId: "thr_1",
   },
   {
     body: "Hi Sam, congrats on the launch.",
@@ -126,6 +157,15 @@ const senders: MemoryData["senders"] = [
     address: "outreach1@example.com",
     campaignIds: ["cmp_founders"],
     dailyLimit: 40,
+    health: {
+      checkedAt: "2026-10-06T00:00:00.000Z",
+      connected: true,
+      dkim: true,
+      dmarc: true,
+      mx: true,
+      spf: true,
+      warmup: { inbox: 96, received: 90, score: 96, sent: 100, spam: 4 },
+    },
     id: "mbx_1",
     name: "Outreach One",
     warmup: { enabled: true, score: 96 },
@@ -134,6 +174,16 @@ const senders: MemoryData["senders"] = [
     address: "outreach2@example.com",
     campaignIds: ["cmp_founders", "cmp_agencies"],
     dailyLimit: 40,
+    health: {
+      checkedAt: "2026-10-06T00:00:00.000Z",
+      connected: true,
+      dkim: false,
+      dmarc: true,
+      issues: ["DKIM selector not found"],
+      mx: true,
+      spf: true,
+      warmup: { inbox: 75, received: 70, score: 88, sent: 100, spam: 25 },
+    },
     id: "mbx_2",
     name: "Outreach Two",
     warmup: { enabled: true, score: 88 },
@@ -184,10 +234,28 @@ const stats: MemoryData["stats"] = [
 
 /**
  * A small made-up dataset for demos and docs: two campaigns, two mailboxes,
- * three leads and two days of stats. No real people or companies.
+ * three leads, two days of stats, and one list, tag, webhook and block list
+ * entry. No real people or companies.
  */
 export const demoData = (): MemoryData => ({
+  blocklist: [{ id: "blk_1", value: "competitor.example" }],
   campaigns,
+  lists: [
+    {
+      createdAt: "2026-09-30T09:00:00.000Z",
+      id: "lst_founders",
+      name: "SaaS founders",
+    },
+  ],
+  tags: [{ description: "Work for client A", id: "tag_a", name: "client-a" }],
+  webhooks: [
+    {
+      events: ["reply_received"],
+      id: "wh_1",
+      name: "Replies",
+      url: "https://hooks.example.com/replies",
+    },
+  ],
   leads,
   messages,
   senders,

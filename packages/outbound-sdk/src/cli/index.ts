@@ -34,11 +34,14 @@ const OPTIONS = {
   help: { short: "h", type: "boolean" },
   input: { type: "string" },
   limit: { type: "string" },
+  list: { type: "string" },
   provider: { type: "string" },
   sequence: { type: "boolean" },
+  settings: { type: "boolean" },
   since: { type: "string" },
   stats: { type: "boolean" },
   status: { type: "string" },
+  subsequences: { type: "boolean" },
   to: { type: "string" },
 } as const;
 
