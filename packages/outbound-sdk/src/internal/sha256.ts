@@ -87,9 +87,9 @@ const compress = (state: number[], words: Uint32Array): void => {
   }
 };
 
-/** The SHA-256 digest of a UTF-8 string, as lowercase hex. */
-export const sha256Hex = (input: string): string => {
-  const padded = pad(new TextEncoder().encode(input));
+/** The SHA-256 digest of `bytes`, as 32 bytes. */
+export const sha256 = (bytes: Uint8Array): Uint8Array => {
+  const padded = pad(bytes);
   const view = new DataView(padded.buffer);
   const state = [...INITIAL];
 
@@ -97,8 +97,21 @@ export const sha256Hex = (input: string): string => {
     compress(state, schedule(view, offset));
   }
 
-  return state.map((word) => word.toString(16).padStart(8, "0")).join("");
+  const digest = new Uint8Array(32);
+  const out = new DataView(digest.buffer);
+
+  for (const [index, word] of state.entries()) {
+    out.setUint32(index * 4, word);
+  }
+
+  return digest;
 };
+
+/** The SHA-256 digest of a UTF-8 string, as lowercase hex. */
+export const sha256Hex = (input: string): string =>
+  Array.from(sha256(new TextEncoder().encode(input)), (byte) =>
+    byte.toString(16).padStart(2, "0")
+  ).join("");
 
 /** A short stable id derived from the parts, for refs, event ids and cache keys. */
 export const stableId = (

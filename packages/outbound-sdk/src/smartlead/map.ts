@@ -31,7 +31,7 @@ import {
 import type { Json, JsonObject } from "../internal/json.ts";
 import { recordBase, refTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
-import { stableId } from "../internal/sha256.ts";
+import { fromOne, toVariant, variantKey } from "../internal/sequence.ts";
 
 /**
  * Several endpoints are documented both bare and wrapped in
@@ -89,21 +89,13 @@ export const toCampaign = (identity: Identity, raw: JsonObject): Campaign => ({
   tags: objects(raw.tags).flatMap((tag) => text(tag.tag_name) ?? []),
 });
 
-/** Variants without a label are positional. 0 is "A". */
-const positionalKey = (index: number): string =>
-  String.fromCodePoint(65 + index);
-
-const toVariant = (raw: JsonObject, index: number): SequenceVariant => {
-  const subject = text(raw.subject);
-  const body = text(raw.email_body);
-
-  return {
-    body,
-    contentHash: stableId(subject, body),
-    subject,
-    variantKey: text(raw.variant_label) ?? positionalKey(index),
-  };
-};
+// A variant without a label is positional.
+const variantOf = (raw: JsonObject, index: number): SequenceVariant =>
+  toVariant(
+    text(raw.subject),
+    text(raw.email_body),
+    text(raw.variant_label) ?? variantKey(index)
+  );
 
 // The response field list says delayInDays and the write payload says
 // delay_in_days; neither documented example shows the field.
@@ -112,8 +104,6 @@ const delayDays = (step: JsonObject): number | null =>
   count(field(step.seq_delay_details, "delayInDays"));
 
 const toStep = (step: JsonObject, position: number): SequenceStep => {
-  const number = count(step.seq_number);
-
   const variants = objects(step.sequence_variants).filter(
     (variant) => flag(variant.is_deleted) !== true
   );
@@ -122,10 +112,10 @@ const toStep = (step: JsonObject, position: number): SequenceStep => {
     action: "email",
     branch: null,
     delayDays: delayDays(step),
-    index: number === null || number < 1 ? position : number - 1,
+    index: fromOne(step.seq_number) ?? position,
     parentIndex: null,
     // With no variants the copy is on the step itself.
-    variants: (variants.length === 0 ? [step] : variants).map(toVariant),
+    variants: (variants.length === 0 ? [step] : variants).map(variantOf),
   };
 };
 

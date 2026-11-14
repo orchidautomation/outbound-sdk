@@ -13,7 +13,6 @@ import type {
 } from "../internal/entities.ts";
 import {
   compactObject,
-  count,
   emailAddress,
   flag,
   isJsonObject,
@@ -21,11 +20,11 @@ import {
   text,
   timestamp,
 } from "../internal/json.ts";
-import type { Json, JsonObject } from "../internal/json.ts";
+import type { JsonObject } from "../internal/json.ts";
 import { refTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
+import { fromOne, variantKey } from "../internal/sequence.ts";
 import { stableId } from "../internal/sha256.ts";
-import { variantKey } from "./map.ts";
 
 const EVENT_TYPES = new Map<string, EventType>([
   ["account_error", "sender.status_changed"],
@@ -58,12 +57,6 @@ const CATEGORIES = new Map<string, ReplyCategory>([
 ]);
 
 // Webhooks number steps and variants from 1.
-const fromOne = (value: Json | undefined): number | null => {
-  const number = count(value);
-
-  return number === null || number < 1 ? null : number - 1;
-};
-
 const eventData = (name: string, body: JsonObject): JsonObject => {
   const variant = fromOne(body.variant);
 

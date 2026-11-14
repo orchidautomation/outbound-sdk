@@ -5,8 +5,7 @@
 // also returns are never read; only counts are. HeyReach reports no opens,
 // bounces, deliveries or unsubscribes, so those stay null.
 
-import { SCHEMA_VERSION } from "../internal/entities.ts";
-import type { MetricRow, MetricScope } from "../internal/entities.ts";
+import type { MetricRow } from "../internal/entities.ts";
 import {
   count,
   field,
@@ -16,15 +15,11 @@ import {
   timestamp,
 } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
-import { emptyCounts } from "../internal/metrics.ts";
-import type { MetricCounts } from "../internal/metrics.ts";
+import { emptyCounts, metricRow } from "../internal/metrics.ts";
+import type { MetricCounts, RowScope } from "../internal/metrics.ts";
 import type { Identity } from "../internal/record.ts";
-import { makeRef } from "../internal/ref.ts";
 
-export interface RowScope extends Identity {
-  readonly scope: MetricScope;
-  readonly scopeId: string;
-}
+export type { RowScope } from "../internal/metrics.ts";
 
 // Replies to messages and replies to InMails are both replies from people.
 const replies = (stats: Json | undefined): number | null => {
@@ -55,21 +50,12 @@ const row = (
   scope: RowScope,
   stats: Json | undefined,
   date: string | null
-): MetricRow => ({
-  ...counts(stats),
-  contentHash: null,
-  date,
-  evidence: "exact",
-  provider: scope.provider,
-  schemaVersion: SCHEMA_VERSION,
-  scope: scope.scope,
-  scopeRef: makeRef(scope.provider, scope.workspaceId, scope.scopeId),
-  stepIndex: null,
+): MetricRow =>
   // Days are keyed by UTC midnight.
-  timezone: date === null ? null : "UTC",
-  variantKey: null,
-  workspaceId: scope.workspaceId,
-});
+  metricRow(scope, counts(stats), {
+    date,
+    timezone: date === null ? null : "UTC",
+  });
 
 export const totalRow = (scope: RowScope, body: Json): MetricRow =>
   row(scope, field(body, "overallStats"), null);

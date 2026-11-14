@@ -21,6 +21,7 @@ import {
 import type { Json, JsonObject } from "../internal/json.ts";
 import { recordBase, refTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
+import { variantKey } from "../internal/sequence.ts";
 import { normalizeBody } from "../internal/text.ts";
 
 // The built-in interest statuses, with the names the reference gives them.
@@ -119,7 +120,7 @@ const stepPosition = (value: Json | undefined): StepPosition => {
     ? { stepIndex: null, variantKey: null }
     : {
         stepIndex: Number(groups.step),
-        variantKey: String.fromCodePoint(65 + Number(groups.variant)),
+        variantKey: variantKey(Number(groups.variant)),
       };
 };
 

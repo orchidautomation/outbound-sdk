@@ -19,7 +19,7 @@ import { count, isJsonObject, list, objects, text } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
 import { recordBase, refTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
-import { stableId } from "../internal/sha256.ts";
+import { toVariant, variantKey } from "../internal/sequence.ts";
 
 const DELAY_DAYS = new Map([
   ["DAY", 1],
@@ -101,13 +101,10 @@ const toStep = (
     delayDays: own === null ? null : own + position.waited,
     index,
     parentIndex: position.parentIndex,
-    variants: variantBodies(node.payload).map((body, variantIndex) => ({
-      body,
-      contentHash: stableId(null, body),
-      subject: null,
-      // Variants are positional: 0 is "A".
-      variantKey: String.fromCodePoint(65 + variantIndex),
-    })),
+    // Variants are positional and have no subject.
+    variants: variantBodies(node.payload).map((body, variantIndex) =>
+      toVariant(null, body, variantKey(variantIndex))
+    ),
   };
 };
 

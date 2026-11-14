@@ -26,6 +26,7 @@ import {
 import type { Json, JsonObject } from "../internal/json.ts";
 import { refTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
+import { fromOne } from "../internal/sequence.ts";
 import { stableId } from "../internal/sha256.ts";
 import { fromBase64, hmacSha256, timingSafeEqual, toBase64 } from "./hmac.ts";
 import { campaignStatus, withoutSecrets } from "./map.ts";
@@ -68,12 +69,8 @@ const categoryOf = (leadData: Json | undefined): ReplyCategory | undefined => {
     : undefined;
 };
 
-const stepIndex = (body: JsonObject): number | null => {
-  const number =
-    count(body.sequence_number) ?? count(body.current_sequence_number);
-
-  return number === null || number < 1 ? null : number - 1;
-};
+const stepIndex = (body: JsonObject): number | null =>
+  fromOne(count(body.sequence_number) ?? count(body.current_sequence_number));
 
 const statusChange = (name: string, body: JsonObject): JsonObject =>
   name === "CAMPAIGN_STATUS_CHANGED"
