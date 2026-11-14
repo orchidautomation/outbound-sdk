@@ -33,7 +33,12 @@ import { numericId, offsetOf, pageSize } from "./paging.ts";
 type AccountReaders = Required<
   Pick<
     Adapter,
-    "getSenderHealth" | "listBlocklist" | "listLists" | "listWebhooks"
+    | "getList"
+    | "getSenderHealth"
+    | "getWebhook"
+    | "listBlocklist"
+    | "listLists"
+    | "listWebhooks"
   >
 >;
 
@@ -87,6 +92,33 @@ export const accountReaders = (client: HeyReachClient): AccountReaders => ({
       client.identity,
       id,
       client.object(await client.get(ctx, path), path)
+    );
+  },
+  getList: async (id, ctx) => {
+    const path = "/list/GetById";
+
+    return toLeadList(
+      client.identity,
+      client.object(
+        await client.get(ctx, path, {
+          listId: numericId(client, id, "list"),
+        }),
+        path
+      )
+    );
+  },
+  getWebhook: async (id, ctx) => {
+    const path = "/webhooks/GetWebhookById";
+
+    // The client asks for this read without the webhook's custom headers.
+    return toWebhook(
+      client.identity,
+      client.object(
+        await client.get(ctx, path, {
+          webhookId: numericId(client, id, "webhook"),
+        }),
+        path
+      )
     );
   },
   listBlocklist: listBlocklist(client),

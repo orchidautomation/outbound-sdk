@@ -1,0 +1,12 @@
+{
+  "stats": {
+    "verified": 31,
+    "invalid": 4,
+    "risky": 3,
+    "catch_all": 2,
+    "job_change": 1,
+    "verification_job_pending_leadfinder": 0,
+    "verification_job_pending_user": 1
+  },
+  "total_leads": 42
+}

@@ -23,9 +23,11 @@ type Readers = Pick<
   Adapter,
   | "getCampaign"
   | "getLead"
+  | "getList"
   | "getSender"
   | "getSenderHealth"
   | "getSequence"
+  | "getWebhook"
   | "listBlocklist"
   | "listCampaigns"
   | "listLeads"

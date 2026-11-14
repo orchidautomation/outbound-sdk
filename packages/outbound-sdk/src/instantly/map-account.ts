@@ -206,8 +206,16 @@ export const toSenderHealth = (
   };
 };
 
-/** `GET /lead-lists`. The list object carries no count of its leads. */
-export const toLeadList = (identity: Identity, raw: JsonObject): LeadList => {
+/**
+ * `GET /lead-lists`. The list object carries no count of its leads, so `size`
+ * is the `total_leads` of the list's verification statistics when the read
+ * fetched them, and `null` on a listing.
+ */
+export const toLeadList = (
+  identity: Identity,
+  raw: JsonObject,
+  size: number | null = null
+): LeadList => {
   const id = text(raw.id) ?? "";
 
   return {
@@ -215,7 +223,7 @@ export const toLeadList = (identity: Identity, raw: JsonObject): LeadList => {
     createdAt: timestamp(raw.timestamp_created),
     kind: "leads",
     name: text(raw.name) ?? id,
-    size: null,
+    size,
   };
 };
 

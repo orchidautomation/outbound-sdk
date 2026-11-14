@@ -41,6 +41,8 @@ export interface Capabilities {
   "leads.engagement": boolean;
   /** List the saved lead lists. */
   "lists.list": boolean;
+  /** One saved lead list by id. */
+  "lists.get": boolean;
   /** List the leads of one saved list. */
   "lists.leads": boolean;
   /** Every message for one lead, in order. */
@@ -70,6 +72,8 @@ export interface Capabilities {
   tags: boolean;
   /** The webhooks registered with the vendor. */
   "webhooks.list": boolean;
+  /** One webhook subscription by id. */
+  "webhooks.get": boolean;
   /** The vendor's own reads are available by name through `outbound.native`. */
   native: boolean;
   /** Webhook payloads can be parsed into `OutboundEvent`s. */
@@ -101,6 +105,7 @@ export const NO_CAPABILITIES: Capabilities = {
   "leads.lookup": false,
   "leads.since": false,
   "leads.timeline": false,
+  "lists.get": false,
   "lists.leads": false,
   "lists.list": false,
   "messages.body": false,
@@ -126,6 +131,7 @@ export const NO_CAPABILITIES: Capabilities = {
   "stats.campaign": false,
   "stats.workspace": false,
   tags: false,
+  "webhooks.get": false,
   "webhooks.list": false,
   workspaces: false,
 };

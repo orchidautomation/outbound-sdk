@@ -59,6 +59,8 @@ export const capabilities: CapabilityDeclaration = {
   // sent and the wrapper filters after fetching.
   "leads.since": "client",
   "leads.timeline": true,
+  // GET /lead-list/{id}.
+  "lists.get": true,
   // GET /lead-list/. lists.leads is left off: no endpoint returns the leads
   // of a lead list.
   "lists.list": true,
@@ -97,6 +99,8 @@ export const capabilities: CapabilityDeclaration = {
   "stats.workspace": "exact",
   // GET /email-accounts/tags: one tag space for mailboxes, leads and campaigns.
   tags: true,
+  // GET /webhook/{webhook_id}.
+  "webhooks.get": true,
   // GET /campaigns/{id}/webhooks; there is no list of every webhook.
   "webhooks.list": true,
   workspaces: true,

@@ -81,7 +81,7 @@ A page of campaigns reads at most 10 pages of 100 tag assignments. A page with m
 - **A listing ends one request late.** Instantly sends a next-page marker on the last page too, and the page after it is empty.
 - **Open counts come back even with open tracking off.** The analytics response does not say whether tracking was on.
 - **`isAuto` is always `null`** on replies, and daily stats rows have a `null` timezone.
-- **A lead list's `size` is `null`.** The count costs one more request per list; the native read `leadListVerificationStats` returns it for one list.
+- **A lead list's `size` is `null` on a listing.** The list object has no count. `outbound.lists.get(id)` reads the list's verification statistics as well, so one list by id has its size and costs two requests.
 - **Webhooks need Instantly's Hyper Growth plan or above**, by Instantly's documentation.
 
 ## Caveats

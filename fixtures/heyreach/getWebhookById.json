@@ -1,0 +1,10 @@
+{
+  "id": 123,
+  "webhookName": "Example Webhook 1",
+  "webhookUrl": "https://hooks.example.com/heyreach/one",
+  "eventType": "CONNECTION_REQUEST_SENT",
+  "campaignIds": [
+    274079
+  ],
+  "isActive": true
+}

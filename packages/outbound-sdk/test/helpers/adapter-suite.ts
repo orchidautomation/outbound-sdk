@@ -57,6 +57,8 @@ export interface AdapterSuite {
     readonly list?: string;
     /** A `threadId` that messages in the fixtures carry. */
     readonly thread?: string;
+    /** A webhook subscription. */
+    readonly webhook?: string;
   };
   /** Records across every fixture page, per listing the adapter supports. */
   readonly totals: Partial<
@@ -199,6 +201,7 @@ const PROBES: Partial<Record<CapabilityKey, Probe>> = {
     outbound.sender(ids.sender ?? "missing").campaigns.list(),
   "campaigns.settings": (outbound, ids) =>
     outbound.campaign(ids.campaign).settings(),
+  "lists.get": (outbound, ids) => outbound.lists.get(ids.list ?? "missing"),
   "lists.leads": (outbound, ids) =>
     outbound.list(ids.list ?? "missing").leads.list(),
   "lists.list": (outbound) => outbound.lists.list(),
@@ -209,6 +212,8 @@ const PROBES: Partial<Record<CapabilityKey, Probe>> = {
   "sequence.subsequences": (outbound, ids) =>
     outbound.campaign(ids.campaign).subsequences.list(),
   tags: (outbound) => outbound.tags.list(),
+  "webhooks.get": (outbound, ids) =>
+    outbound.webhooks.get(ids.webhook ?? "missing"),
   "webhooks.list": (outbound) => outbound.webhooks.list(),
   "campaigns.status": (outbound) =>
     outbound.campaigns.list({ status: "active" }),

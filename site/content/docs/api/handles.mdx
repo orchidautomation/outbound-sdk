@@ -91,6 +91,7 @@ A sequence holds template text, never a rendered message. The text a lead receiv
 
 | Member | Returns | Needs |
 | --- | --- | --- |
+| `get()` | `WithMeta<LeadList>` | `lists.get` |
 | `leads` | `list`, `listAll` of `Lead`. Filters: `email`, `linkedinUrl`, `since`, `until` | `lists.leads` |
 
 `outbound.list(id).leads` is `outbound.leads` with `listId` filled in. The lists themselves come from `outbound.lists.list()`, which needs `lists.list`. The sample above reads one.

@@ -2,7 +2,7 @@
 // mailbox's health, lead lists, the block list, tags and webhooks.
 
 import type { Adapter } from "../internal/adapter.ts";
-import { emailAddress } from "../internal/json.ts";
+import { count, emailAddress, field } from "../internal/json.ts";
 import { mapPage } from "../internal/page.ts";
 import type { InstantlyClient } from "./client.ts";
 import {
@@ -19,7 +19,9 @@ import { listPage } from "./pages.ts";
 type AccountReaders = Pick<
   Adapter,
   | "getCampaignSettings"
+  | "getList"
   | "getSenderHealth"
+  | "getWebhook"
   | "listBlocklist"
   | "listLists"
   | "listSubsequences"
@@ -55,6 +57,20 @@ export const accountReaders = (client: InstantlyClient): AccountReaders => {
 
       return toSenderHealth(identity, id, { account, vitals, warmup });
     },
+    // The list itself carries no count of its leads; its verification
+    // statistics do, so a single list costs two requests and has a size.
+    getList: async (id, ctx) => {
+      const path = `/lead-lists/${encodeURIComponent(id)}`;
+      const list = await client.getObject(ctx, path);
+      const stats = await client.get(ctx, `${path}/verification-stats`);
+
+      return toLeadList(identity, list, count(field(stats, "total_leads")));
+    },
+    getWebhook: async (id, ctx) =>
+      toWebhook(
+        identity,
+        await client.getObject(ctx, `/webhooks/${encodeURIComponent(id)}`)
+      ),
     listBlocklist: async (query, ctx) => {
       const page = await listPage(client, ctx, "/block-lists-entries", query);
 

@@ -48,6 +48,8 @@ export const capabilities: CapabilityDeclaration = {
   // Messages live inside conversations (POST /inbox/GetConversationsV3). A
   // lead's timeline is the conversations filtered to its profile URL.
   "leads.timeline": true,
+  // GET /list/GetById.
+  "lists.get": true,
   // POST /list/GetLeadsFromList.
   "lists.leads": true,
   // POST /list/GetAll.
@@ -91,6 +93,8 @@ export const capabilities: CapabilityDeclaration = {
   tags: false,
   // Every other documented read, by name: see native.ts.
   native: true,
+  // GET /webhooks/GetWebhookById, always asked for without custom headers.
+  "webhooks.get": true,
   // POST /webhooks/GetAllWebhooks.
   "webhooks.list": true,
   // CheckApiKey returns no identity and only an organization key can list workspaces.

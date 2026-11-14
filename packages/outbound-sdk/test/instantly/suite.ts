@@ -25,12 +25,28 @@ export const suite: AdapterSuite = {
     list: LIST,
     sender: SENDER,
     thread: THREAD,
+    webhook: "01a1d77f-5ea4-7b53-a085-00338a94f591",
   },
   isAuthorized: (request) => request.headers.authorization === `Bearer ${KEY}`,
   make: () => instantly({ apiKey: KEY, workspaceId: "client-a" }),
   origin: "https://api.instantly.ai",
   provider: "instantly",
   routes: [
+    {
+      fixture: "getLeadListVerificationStats.json",
+      method: "GET",
+      path: /^\/api\/v2\/lead-lists\/[^/]+\/verification-stats$/u,
+    },
+    {
+      fixture: "getLeadList.json",
+      method: "GET",
+      path: /^\/api\/v2\/lead-lists\/[^/]+$/u,
+    },
+    {
+      fixture: "getWebhook.json",
+      method: "GET",
+      path: /^\/api\/v2\/webhooks\/[^/]+$/u,
+    },
     {
       fixture: "getCampaignsAnalytics.json",
       method: "GET",

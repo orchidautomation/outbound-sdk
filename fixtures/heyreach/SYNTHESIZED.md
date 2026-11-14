@@ -57,3 +57,4 @@ Built by hand. Field names and types were seen live in read-only requests to one
 ## Added 2026-11-14 for stats per campaign
 
 - `getOverallStatsByCampaign.json` (`POST /stats/GetOverallStatsByCampaign`): built from the response schema in `openapi.json`, which has no example. Every count has its own value so a field read from the wrong key shows. The live fields the reference does not list (`uniqueLeadsContacted`, `autoTaggedInterested`) are left out.
+- `getListById.json` (`GET /list/GetById`) and `getWebhookById.json` (`GET /webhooks/GetWebhookById`): the first item of `listLists.json` and of `listWebhooks.json`. The reference gives both reads the fields of a list item.

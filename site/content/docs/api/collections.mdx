@@ -9,7 +9,7 @@ related:
   - /docs/capabilities
 ---
 
-A collection is a kind of record you can list: `outbound.campaigns`, `outbound.leads` and eight more. All ten have `list` and `listAll`. Campaigns, senders and leads also have `get`, `exists` and `getMany`.
+A collection is a kind of record you can list: `outbound.campaigns`, `outbound.leads` and eight more. All ten have `list` and `listAll`. Campaigns, senders, leads, lists and webhooks also have `get`, `exists` and `getMany`.
 
 ## The methods
 
@@ -96,13 +96,13 @@ The date filters compare `sentAt`.
 
 ### The rest
 
-| Collection   | Filter       | Needs           |
-| ------------ | ------------ | --------------- |
-| `lists`      | none         | `lists.list`    |
-| `tags`       | none         | `tags`          |
-| `blocklist`  | none         | `blocklist`     |
-| `webhooks`   | `campaignId` | `webhooks.list` |
-| `workspaces` | none         | `workspaces`    |
+| Collection   | Filter       | Needs                                     |
+| ------------ | ------------ | ----------------------------------------- |
+| `lists`      | none         | `lists.list`; `lists.get` for `get`       |
+| `tags`       | none         | `tags`                                    |
+| `blocklist`  | none         | `blocklist`                               |
+| `webhooks`   | `campaignId` | `webhooks.list`; `webhooks.get` for `get` |
+| `workspaces` | none         | `workspaces`                              |
 
 ### Dates
 

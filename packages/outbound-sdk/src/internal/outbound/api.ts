@@ -247,6 +247,7 @@ export interface SenderHandle {
 
 export interface ListHandle {
   readonly id: string;
+  readonly get: (options?: OperationOptions) => Promise<WithMeta<LeadList>>;
   readonly leads: ReadCollection<
     Lead,
     Scoped<LeadFilters, "campaignId" | "listId">
@@ -368,12 +369,12 @@ export interface OutboundApi {
   readonly replies: ReadCollection<Reply, ReplyFilters>;
   readonly workspaces: ReadCollection<Workspace, Record<never, never>>;
   /** Saved lead lists. */
-  readonly lists: ReadCollection<LeadList, Record<never, never>>;
+  readonly lists: Collection<LeadList, Record<never, never>>;
   /** The addresses, domains and profiles the account never contacts. */
   readonly blocklist: ReadCollection<BlockEntry, Record<never, never>>;
   readonly tags: ReadCollection<Tag, Record<never, never>>;
   /** The webhooks registered with the vendor. */
-  readonly webhooks: ReadCollection<WebhookSubscription, WebhookFilters>;
+  readonly webhooks: Collection<WebhookSubscription, WebhookFilters>;
   readonly raw: RawClient;
   /** The vendor's own reads, by name, for what has no normalized form. */
   readonly native: NativeClient;

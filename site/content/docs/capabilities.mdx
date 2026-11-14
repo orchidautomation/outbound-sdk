@@ -76,6 +76,7 @@ Listing campaigns and reading one need no key. Every adapter can.
 | `leads.timeline` | boolean | `lead(id).timeline()` |
 | `leads.engagement` | boolean | No read on the instance. It says whether leads carry `engagement`: open, click and reply counts. Some [insights](/docs/insights) check it. |
 | `lists.list` | boolean | `lists.list` |
+| `lists.get` | boolean | `lists.get(id)` and `list(id).get()` |
 | `lists.leads` | boolean | `leads.list({ listId })` and `list(id).leads` |
 
 ### Messages and replies
@@ -112,6 +113,7 @@ Listing campaigns and reading one need no key. Every adapter can.
 | `tags` | boolean | `tags.list` |
 | `blocklist` | boolean | `blocklist.list` |
 | `webhooks.list` | boolean | `webhooks.list` and `campaign(id).webhooks` |
+| `webhooks.get` | boolean | `webhooks.get(id)` |
 | `native` | boolean | `outbound.native`: see [native reads](/docs/native) |
 
 ### Webhooks and sync

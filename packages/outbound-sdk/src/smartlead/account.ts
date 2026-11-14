@@ -36,7 +36,9 @@ import {
 type AccountReaders = Pick<
   Adapter,
   | "getCampaignSettings"
+  | "getList"
   | "getSenderHealth"
+  | "getWebhook"
   | "listBlocklist"
   | "listLists"
   | "listSubsequences"
@@ -152,6 +154,25 @@ export const accountReaders = (client: SmartleadClient): AccountReaders => {
 
       return toHealth(identity, account, unwrap(stats));
     },
+    getList: async (id, ctx) =>
+      toList(
+        identity,
+        objectOf(
+          client,
+          await client.get(ctx, `/lead-list/${segment(id)}`),
+          "the lead list"
+        )
+      ),
+    getWebhook: async (id, ctx) =>
+      toWebhook(
+        identity,
+        null,
+        objectOf(
+          client,
+          await client.get(ctx, `/webhook/${segment(id)}`),
+          "the webhook"
+        )
+      ),
     listBlocklist: async (query, ctx) => {
       const page = await offsetPage(
         client,

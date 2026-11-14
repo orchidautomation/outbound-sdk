@@ -238,25 +238,42 @@ export const toTag = (identity: Identity, raw: JsonObject): Tag => ({
   name: text(raw.name) ?? text(raw.id) ?? "",
 });
 
+// The per-campaign list names a webhook's events in an array
+// (`event_types`); the single webhook names them as the keys of a map whose
+// value is true (`event_type_map`).
+const eventNames = (raw: JsonObject): string[] => {
+  const listed = list(raw.event_types).flatMap((event) => text(event) ?? []);
+
+  if (listed.length > 0 || !isJsonObject(raw.event_type_map)) {
+    return listed;
+  }
+
+  return Object.entries(raw.event_type_map).flatMap(([name, on]) =>
+    on === true ? [name] : []
+  );
+};
+
 /**
- * One item of `GET /campaigns/{id}/webhooks`. `campaignId` is the campaign
- * that was asked, used when the item does not name its own.
+ * One item of `GET /campaigns/{id}/webhooks`, or `GET /webhook/{id}`.
+ * `campaignId` is the campaign that was asked, used when the item does not
+ * name its own; a webhook read by its id has none to fall back on.
  */
 export const toWebhook = (
   identity: Identity,
-  campaignId: string,
+  campaignId: string | null,
   raw: JsonObject
-): WebhookSubscription => ({
-  ...recordBase(identity, text(raw.id) ?? "", withoutSecrets(raw)),
-  // Only the newer example carries is_active.
-  active: flag(raw.is_active),
-  campaignRefs: refsTo(identity, [text(raw.email_campaign_id) ?? campaignId]),
-  createdAt: timestamp(raw.created_at),
-  eventTypes: eventTypesOf(
-    list(raw.event_types).flatMap((event) => text(event) ?? []),
-    EVENT_TYPES
-  ),
-  events: list(raw.event_types).flatMap((event) => text(event) ?? []),
-  name: text(raw.name),
-  url: text(raw.webhook_url) ?? "",
-});
+): WebhookSubscription => {
+  const events = eventNames(raw);
+
+  return {
+    ...recordBase(identity, text(raw.id) ?? "", withoutSecrets(raw)),
+    // Only the newer example carries is_active.
+    active: flag(raw.is_active),
+    campaignRefs: refsTo(identity, [text(raw.email_campaign_id) ?? campaignId]),
+    createdAt: timestamp(raw.created_at),
+    eventTypes: eventTypesOf(events, EVENT_TYPES),
+    events,
+    name: text(raw.name),
+    url: text(raw.webhook_url) ?? "",
+  };
+};

@@ -289,3 +289,29 @@ test("heyreach: a webhook says which of the SDK's event types its event becomes"
     "the list names an event in upper case"
   );
 });
+
+test("heyreach: one list and one webhook are read by id, the webhook without its custom headers", async () => {
+  const { outbound, requests, settle } = harness(suite);
+  const list = await settle(outbound.lists.get("3457"));
+  const hook = await settle(outbound.webhooks.get("123"));
+  const [first, second] = requests.map((request) => new URL(request.url));
+
+  assert.equal(first?.pathname, "/api/public/list/GetById");
+  assert.equal(first?.searchParams.get("listId"), "3457");
+  assert.equal(list.name, "Example List 1");
+  assert.equal(list.size, 120, "totalItemsCount");
+
+  assert.equal(second?.pathname, "/api/public/webhooks/GetWebhookById");
+  assert.equal(second?.searchParams.get("webhookId"), "123");
+  assert.equal(
+    second?.searchParams.get("includeCustomHeaders"),
+    "false",
+    "custom headers can hold a secret and are never asked for"
+  );
+  assert.deepEqual(hook.eventTypes, ["linkedin.connection_sent"]);
+
+  await assert.rejects(
+    async () => await settle(outbound.lists.get("my-list")),
+    /list ids are whole numbers/u
+  );
+});

@@ -290,4 +290,4 @@ Of the 268 endpoints, 22 are used by normalized reads, 105 are in the native cat
 - `dfyAccounts` leaves out the documented `with_passwords` parameter, so a mailbox password cannot be asked for.
 - `ids` on `campaignAnalytics`, and `action_status` and `action_type` on `salesAgentActivities`, are arrays that Instantly takes as a repeated query key. The catalog sends one value.
 - `POST /creator-search/search` is listed as a write: Instantly asks for a `create` scope and charges credits for it after the free pages of the day.
-- `GET /lead-lists/{id}/verification-stats` is the only place a lead list's size (`total_leads`) is reported. It is one request per list, so it stays native and a normalized list's `size` stays `null`.
+- `GET /lead-lists/{id}/verification-stats` is the only place a lead list's size (`total_leads`) is reported. `lists.get` reads it beside `GET /lead-lists/{id}`; a listing does not, so a listed list's `size` is `null`. Both reads stay in the native catalog, as does `GET /webhooks/{id}`, which `webhooks.get` reads.

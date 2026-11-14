@@ -272,3 +272,34 @@ test("instantly: a webhook says which of the SDK's event types its event becomes
     "a webhook for a custom lead label has no event type"
   );
 });
+
+test("instantly: one list by id has a size, from its verification statistics", async () => {
+  const { outbound, requests, settle } = harness(suite);
+  const id = "01a1d77f-5e53-7eb1-ad45-7031e944ef51";
+  const list = await settle(outbound.lists.get(id));
+
+  assert.deepEqual(
+    requests.map((request) => new URL(request.url).pathname),
+    [`/api/v2/lead-lists/${id}`, `/api/v2/lead-lists/${id}/verification-stats`]
+  );
+  assert.equal(list.name, "My Lead List");
+  assert.equal(list.size, 42, "total_leads");
+  assert.equal((await settle(outbound.list(id).get())).size, 42);
+
+  const listed = await settle(outbound.lists.list());
+  assert.equal(listed.items[0]?.size, null, "the listing carries no count");
+});
+
+test("instantly: one webhook by id is the same record the list returns, without its headers", async () => {
+  const { outbound, settle } = harness(suite);
+  const id = "01a1d77f-5ea4-7b53-a085-00338a94f591";
+  const hook = await settle(outbound.webhooks.get(id));
+
+  assert.equal(hook.sourceId, id);
+  assert.deepEqual(hook.eventTypes, ["reply.categorized"]);
+  assert.equal(
+    JSON.stringify(hook.raw).includes("headers"),
+    false,
+    "delivery headers can carry a credential and are not kept"
+  );
+});

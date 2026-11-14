@@ -55,6 +55,7 @@ const FULL_CAPABILITIES: CapabilityDeclaration = {
   "leads.lookup": true,
   "leads.since": "server",
   "leads.timeline": true,
+  "lists.get": true,
   "lists.leads": true,
   "lists.list": true,
   "messages.body": "full",
@@ -79,6 +80,7 @@ const FULL_CAPABILITIES: CapabilityDeclaration = {
   "stats.campaign": "exact",
   "stats.workspace": "exact",
   tags: true,
+  "webhooks.get": true,
   "webhooks.list": true,
   workspaces: true,
 };

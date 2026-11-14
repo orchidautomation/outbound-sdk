@@ -18,6 +18,7 @@ export interface CoverageSuite {
     readonly sender?: string;
     readonly list?: string;
     readonly thread?: string;
+    readonly webhook?: string;
   };
   /**
    * Fields the adapter fills that the default fixtures do not show, by record,
@@ -55,7 +56,7 @@ const WINDOW = { from: "2025-01-01", to: "2025-01-31" } as const;
 // Every read that returns the record. One that needs an id the suite does
 // not have is left out.
 const samplers = (ids: Ids): Record<RecordName, Sampler[]> => {
-  const { campaign, lead, list, sender, thread } = ids;
+  const { campaign, lead, list, sender, thread, webhook } = ids;
 
   return {
     blockEntry: [(outbound) => outbound.blocklist.listAll().toArray()],
@@ -79,7 +80,12 @@ const samplers = (ids: Ids): Record<RecordName, Sampler[]> => {
               outbound.list(list).leads.listAll().toArray(),
           ]),
     ],
-    leadList: [(outbound) => outbound.lists.listAll().toArray()],
+    leadList: [
+      (outbound) => outbound.lists.listAll().toArray(),
+      ...(list === undefined
+        ? []
+        : [(outbound: Outbound) => one(outbound.lists.get(list))]),
+    ],
     message: [
       (outbound) => outbound.messages.listAll(BODY).toArray(),
       (outbound) =>
@@ -124,7 +130,12 @@ const samplers = (ids: Ids): Record<RecordName, Sampler[]> => {
         outbound.campaign(campaign).subsequences.listAll().toArray(),
     ],
     tag: [(outbound) => outbound.tags.listAll().toArray()],
-    webhook: [(outbound) => outbound.webhooks.listAll().toArray()],
+    webhook: [
+      (outbound) => outbound.webhooks.listAll().toArray(),
+      ...(webhook === undefined
+        ? []
+        : [(outbound: Outbound) => one(outbound.webhooks.get(webhook))]),
+    ],
     workspace: [(outbound) => outbound.workspaces.listAll().toArray()],
   };
 };

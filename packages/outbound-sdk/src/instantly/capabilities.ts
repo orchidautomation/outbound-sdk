@@ -47,6 +47,8 @@ export const capabilities: CapabilityDeclaration = {
   // POST /leads/list has no date filter, so the wrapper filters after fetching.
   "leads.since": "client",
   "leads.timeline": true,
+  // GET /lead-lists/{id}, then its verification-stats for the size.
+  "lists.get": true,
   "lists.leads": true,
   "lists.list": true,
   // A list response can cut a large body short (`body_fallback_reason`); the
@@ -78,6 +80,8 @@ export const capabilities: CapabilityDeclaration = {
   "stats.campaign": "exact",
   "stats.workspace": "exact",
   tags: true,
+  // GET /webhooks/{id}.
+  "webhooks.get": true,
   "webhooks.list": true,
   workspaces: true,
 };
@@ -91,7 +95,6 @@ export const fields: FieldDeclaration = {
     location: false,
     tags: false,
   },
-  leadList: { size: false },
   metricRow: {
     connectionsAccepted: false,
     connectionsSent: false,
@@ -163,7 +166,7 @@ export const caveats: readonly string[] = [
   "A lead's engagement.stepIndex is the last step sent, read from its status summary; lastOpenedAt is null when open tracking is off. A lead has no tags in Instantly, and the lead object was seen without a job title.",
   "A lead is found by email with the contacts filter of POST /leads/list, documented only as the emails a lead needs to have. Whether it compares whole addresses and ignores case is not documented and was not run live, so the adapter keeps only the records whose address equals the one asked for, and a page can hold fewer records than Instantly returned. One record comes back per campaign or list the address is in. A lead has no LinkedIn profile: a lookup by profile returns nothing and sends no request.",
   "A lead's interest is the documented label for lt_interest_status. A custom label costs one more read (lead-labels, first 100 labels), made only when a page holds a status that is not a built-in one; the same read gives a reply with a custom status its category.",
-  "A lead list's size is null: the list object has no count, and the count costs one more read per list. The native read leadListVerificationStats returns total_leads for one list. kind is always leads.",
+  "A listed lead list's size is null: the list object has no count. lists.get reads GET /lead-lists/{id}/verification-stats as well and takes total_leads from it, so one list by id costs two requests. kind is always leads.",
   "Native reads return what Instantly sends, unmapped. dfyAccounts never asks for passwords. Instantly refuses per-mailbox daily analytics (413) on a large workspace unless a mailbox is named, which the per-sender stats always do.",
   "The daily limits of leadLabelPrediction, localBusinessFilters and localBusinessSearch are counted in this process only; a restart forgets what was used.",
   "A webhook made for a custom lead label has no event_type, so its events are empty; custom_interest_value stays in raw. The headers Instantly sends with a delivery can carry a credential, so they are left out of a webhook record's raw. The native read webhook returns them and is not offered to the vendor_read tool; outbound.raw returns a response as it is.",

@@ -16,7 +16,9 @@ import type { Store } from "./store.ts";
 type AccountReads = Pick<
   Adapter,
   | "getCampaignSettings"
+  | "getList"
   | "getSenderHealth"
+  | "getWebhook"
   | "listBlocklist"
   | "listLists"
   | "listSubsequences"
@@ -30,11 +32,23 @@ export const accountReads = (store: Store): AccountReads => {
   const page = <Item>(items: readonly Item[], query: PageQuery) =>
     Promise.resolve(paginate(items, query, pageSize));
 
+  // A list's size is the number of seeded leads on it.
+  const sizeOf = (listId: string): number =>
+    (data.leads ?? []).filter((lead) => (lead.listIds ?? []).includes(listId))
+      .length;
+
   return {
     getCampaignSettings: (id) =>
       Promise.resolve(
         toSettings(identity, id, findCampaign(store, id).settings ?? {})
       ),
+    getList: (id) => {
+      const seed = data.lists?.find((list) => list.id === id);
+
+      return seed === undefined
+        ? Promise.reject(notFound(identity.provider, "List", id))
+        : Promise.resolve(toList(identity, seed, sizeOf(seed.id)));
+    },
     getSenderHealth: (id) => {
       const seed = data.senders?.find((sender) => sender.id === id);
 
@@ -47,16 +61,17 @@ export const accountReads = (store: Store): AccountReads => {
         (data.blocklist ?? []).map((seed) => toBlockEntry(identity, seed)),
         query
       ),
+    getWebhook: (id) => {
+      const seed = data.webhooks?.find((webhook) => webhook.id === id);
+
+      return seed === undefined
+        ? Promise.reject(notFound(identity.provider, "Webhook", id))
+        : Promise.resolve(toWebhook(identity, seed));
+    },
     listLists: (query) =>
       page(
         (data.lists ?? []).map((seed) =>
-          toList(
-            identity,
-            seed,
-            (data.leads ?? []).filter((lead) =>
-              (lead.listIds ?? []).includes(seed.id)
-            ).length
-          )
+          toList(identity, seed, sizeOf(seed.id))
         ),
         query
       ),

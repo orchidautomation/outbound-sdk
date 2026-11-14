@@ -12,3 +12,4 @@ Say which fields each adapter fills, and normalize more of what the three vendor
 - `leadFields` on each adapter names the custom field that holds a lead's title, company, phone, website, location or LinkedIn profile, for a vendor with no field of its own. Nothing is guessed without it.
 - A campaign, list, tag or workspace the vendor gave no name is named by its id; `name` is never an empty string.
 - A webhook subscription carries `eventTypes`: the SDK's event types its vendor event names become.
+- `outbound.lists.get(id)`, `outbound.list(id).get()` and `outbound.webhooks.get(id)` read one list or one webhook (`lists.get`, `webhooks.get`). On Instantly a list read by id has its `size`.

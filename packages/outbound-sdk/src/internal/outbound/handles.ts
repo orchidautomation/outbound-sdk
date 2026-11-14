@@ -19,6 +19,7 @@ import type { ListSpec } from "./collections.ts";
 import type { Core } from "./core.ts";
 import {
   healthGet,
+  listGet,
   settingsGet,
   subsequenceList,
   webhookList,
@@ -166,7 +167,13 @@ export const makeLeadHandle = (core: Core, id: string): LeadHandle => {
 export const makeListHandle = (core: Core, id: string): ListHandle => {
   const listId = assertId(id, "List");
 
-  return { id: listId, leads: scoped(core, leadList(core), { listId }) };
+  const get = makeGetter(core, listGet(core));
+
+  return {
+    get: (options) => get(listId, options),
+    id: listId,
+    leads: scoped(core, leadList(core), { listId }),
+  };
 };
 
 export const makeThreadHandle = (core: Core, id: string): ThreadHandle => {

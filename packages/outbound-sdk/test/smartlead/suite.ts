@@ -36,7 +36,14 @@ export const urlOf = (request: RecordedRequest | undefined): URL =>
   new URL(request?.url ?? "");
 
 export const suite: AdapterSuite = {
-  ids: { campaign: CAMPAIGN, lead: LEAD, sender: SENDER, thread: THREAD },
+  ids: {
+    campaign: CAMPAIGN,
+    lead: LEAD,
+    list: "500",
+    sender: SENDER,
+    thread: THREAD,
+    webhook: "456",
+  },
   // The key is the `api_key` query parameter and is sent nowhere else.
   isAuthorized: (request) =>
     urlOf(request).searchParams.get("api_key") === KEY &&
@@ -45,6 +52,16 @@ export const suite: AdapterSuite = {
   origin: "https://server.smartlead.ai",
   provider: "smartlead",
   routes: [
+    {
+      fixture: "getLeadList.json",
+      method: "GET",
+      path: /^\/api\/v1\/lead-list\/\d+$/u,
+    },
+    {
+      fixture: "getWebhook.json",
+      method: "GET",
+      path: /^\/api\/v1\/webhook\/\d+$/u,
+    },
     { fixture: "listCampaigns.json", method: "GET", path: `${API}/campaigns/` },
     {
       fixture: paged("listAllLeadsActivities"),

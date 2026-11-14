@@ -33,12 +33,23 @@ export const suite: AdapterSuite = {
     list: LIST,
     sender: SENDER,
     thread: THREAD,
+    webhook: "123",
   },
   isAuthorized: (request) => request.headers["x-api-key"] === KEY,
   make: () => heyreach({ apiKey: KEY, workspaceId: "client-a" }),
   origin: "https://api.heyreach.io",
   provider: "heyreach",
   routes: [
+    {
+      fixture: "getListById.json",
+      method: "GET",
+      path: "/api/public/list/GetById",
+    },
+    {
+      fixture: "getWebhookById.json",
+      method: "GET",
+      path: "/api/public/webhooks/GetWebhookById",
+    },
     {
       fixture: "getBlacklistCompanies.json",
       method: "POST",

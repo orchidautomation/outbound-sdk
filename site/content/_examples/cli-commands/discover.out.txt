@@ -87,6 +87,7 @@ $ outbound capabilities
     "leads.lookup": true,
     "leads.since": "server",
     "leads.timeline": true,
+    "lists.get": true,
     "lists.leads": true,
     "lists.list": true,
     "messages.body": "full",
@@ -112,6 +113,7 @@ $ outbound capabilities
     "stats.campaign": "exact",
     "stats.workspace": "exact",
     "tags": true,
+    "webhooks.get": true,
     "webhooks.list": true,
     "workspaces": true
   },

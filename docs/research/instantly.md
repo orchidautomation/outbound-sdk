@@ -489,3 +489,4 @@ Source: `https://api.instantly.ai/openapi/api_v2.json`, fetched fresh (198 paths
 - **Sender fields.** `provider_code` enum: 1 Custom IMAP/SMTP, 2 Google, 3 Microsoft, 4 AWS, 8 AirMail, 11 Airmail Instant. `GET /accounts` takes `include_tags` and then returns `tags[] { id, label, description }` on each account.
 - **Lead fields.** `phone`, `website` and `company_domain` are on the lead. No location and no LinkedIn field is documented.
 - **A list's size.** `GET /lead-lists/{id}/verification-stats` returns `total_leads`. Not used: it is one request per list.
+- **One list, one webhook (`lists.get`, `webhooks.get`).** `GET /lead-lists/{id}` returns the list item's fields and no count, so `lists.get` also reads `GET /lead-lists/{id}/verification-stats` for `total_leads`: two requests. This reverses the line above for a single list; a listing still has no size. `GET /webhooks/{id}` returns the list item's fields, `headers` included, which the mapper drops.

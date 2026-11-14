@@ -14,19 +14,23 @@ import type { DispatchTarget, OperationOutput } from "./operation-shared.ts";
 export type AccountOperation =
   | { readonly kind: "blocklist.list"; readonly query: PageQuery }
   | { readonly kind: "campaigns.settings"; readonly id: string }
+  | { readonly kind: "lists.get"; readonly id: string }
   | { readonly kind: "lists.list"; readonly query: PageQuery }
   | { readonly kind: "senders.health"; readonly id: string }
   | { readonly kind: "sequence.subsequences"; readonly query: SubsequenceQuery }
   | { readonly kind: "tags.list"; readonly query: PageQuery }
+  | { readonly kind: "webhooks.get"; readonly id: string }
   | { readonly kind: "webhooks.list"; readonly query: WebhookQuery };
 
 const ACCOUNT_KINDS: ReadonlySet<string> = new Set<AccountOperation["kind"]>([
   "blocklist.list",
   "campaigns.settings",
+  "lists.get",
   "lists.list",
   "senders.health",
   "sequence.subsequences",
   "tags.list",
+  "webhooks.get",
   "webhooks.list",
 ]);
 
@@ -41,19 +45,19 @@ const lookup = async (
   const { adapter, ctx } = target;
   const id = idFor(adapter, operation.id);
 
-  if (operation.kind === "campaigns.settings") {
-    if (adapter.getCampaignSettings === undefined) {
-      throw unsupported(adapter, operation.kind);
-    }
+  // The adapter method behind each lookup.
+  const read = {
+    "campaigns.settings": adapter.getCampaignSettings,
+    "lists.get": adapter.getList,
+    "senders.health": adapter.getSenderHealth,
+    "webhooks.get": adapter.getWebhook,
+  }[operation.kind];
 
-    return single(await adapter.getCampaignSettings(id, ctx));
-  }
-
-  if (adapter.getSenderHealth === undefined) {
+  if (read === undefined) {
     throw unsupported(adapter, operation.kind);
   }
 
-  return single(await adapter.getSenderHealth(id, ctx));
+  return single(await read(id, ctx));
 };
 
 const scopedList = async (
@@ -105,7 +109,9 @@ export const dispatchAccount = async (
 
   switch (operation.kind) {
     case "campaigns.settings":
-    case "senders.health": {
+    case "lists.get":
+    case "senders.health":
+    case "webhooks.get": {
       return await lookup(target, operation);
     }
 

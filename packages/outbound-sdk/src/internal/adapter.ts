@@ -291,6 +291,7 @@ export interface Adapter<Native extends NativeCatalog = NoNative> {
     query: PageQuery,
     ctx: AdapterContext
   ) => Promise<Page<LeadList>>;
+  readonly getList?: (id: string, ctx: AdapterContext) => Promise<LeadList>;
   readonly listBlocklist?: (
     query: PageQuery,
     ctx: AdapterContext
@@ -303,4 +304,8 @@ export interface Adapter<Native extends NativeCatalog = NoNative> {
     query: WebhookQuery,
     ctx: AdapterContext
   ) => Promise<Page<WebhookSubscription>>;
+  readonly getWebhook?: (
+    id: string,
+    ctx: AdapterContext
+  ) => Promise<WebhookSubscription>;
 }

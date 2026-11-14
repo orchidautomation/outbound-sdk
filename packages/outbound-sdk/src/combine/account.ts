@@ -8,7 +8,9 @@ import { pageAcross, routeRef } from "./route.ts";
 type AccountReads = Pick<
   Adapter,
   | "getCampaignSettings"
+  | "getList"
   | "getSenderHealth"
+  | "getWebhook"
   | "listBlocklist"
   | "listLists"
   | "listSubsequences"
@@ -43,10 +45,20 @@ export const accountReads = (members: readonly Adapter[]): AccountReads => ({
 
     return need(routed.member, "getCampaignSettings")(routed.id, routed.ctx);
   },
+  getList: (id, ctx) => {
+    const routed = routeRef(members, ctx, id, "List");
+
+    return need(routed.member, "getList")(routed.id, routed.ctx);
+  },
   getSenderHealth: (id, ctx) => {
     const routed = routeRef(members, ctx, id, "Sender");
 
     return need(routed.member, "getSenderHealth")(routed.id, routed.ctx);
+  },
+  getWebhook: (id, ctx) => {
+    const routed = routeRef(members, ctx, id, "Webhook");
+
+    return need(routed.member, "getWebhook")(routed.id, routed.ctx);
   },
   listBlocklist: (query, ctx) =>
     pageAcross(members, ctx, query, (member, memberCtx, next) =>

@@ -91,6 +91,26 @@ export const listList = (core: Core): ListSpec<LeadList, NoFilters> => ({
   toOperation: (_filters, page) => ({ kind: "lists.list", query: page }),
 });
 
+export const listGet = (core: Core): GetSpec<LeadList> => ({
+  action: "lists.get",
+  prepare: () => {
+    requireCapability(core.gate, "lists.get", "Reading a lead list");
+  },
+  schema: leadListSchema,
+  toOperation: (id) => ({ id, kind: "lists.get" }),
+  what: "List",
+});
+
+export const webhookGet = (core: Core): GetSpec<WebhookSubscription> => ({
+  action: "webhooks.get",
+  prepare: () => {
+    requireCapability(core.gate, "webhooks.get", "Reading a webhook");
+  },
+  schema: webhookSubscriptionSchema,
+  toOperation: (id) => ({ id, kind: "webhooks.get" }),
+  what: "Webhook",
+});
+
 export const blocklistList = (core: Core): ListSpec<BlockEntry, NoFilters> => ({
   action: "blocklist.list",
   keyOf: refOf,

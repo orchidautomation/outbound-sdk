@@ -80,3 +80,5 @@ Added on 2026-11-14 for the lookup by email: `listLeadsByEmail*.json`, the respo
 
 - `getCampaignsAnalytics.json` (`GET /campaigns/analytics`): built from the response schema in the OpenAPI specification, which has no example. Every count has its own value.
 - `listAccountCampaignMappings.json`, `listAccountCampaignMappings.page2.json` (`GET /account-campaign-mappings/{email}`): built from the response schema. The campaign ids are those of `listCampaigns.json`.
+- `getLeadList.json` (`GET /lead-lists/{id}`) and `getWebhook.json` (`GET /webhooks/{id}`): the first item of `listLeadLists.json` and of `listWebhooks.json`.
+- `getLeadListVerificationStats.json` (`GET /lead-lists/{id}/verification-stats`): built from the response schema, each count with its own value.

@@ -9,6 +9,9 @@ import { harness } from "../helpers/adapter-suite.ts";
 import { fixture } from "../helpers/fixtures.ts";
 import { CAMPAIGN, KEY, suite } from "./suite.ts";
 
+const urlOfLast = (requests: readonly { url: string }[]): URL =>
+  new URL(requests.at(-1)?.url ?? "");
+
 test("smartlead: a campaign's lead carries phone, website, location and what its category means", async () => {
   const { outbound, settle } = harness(suite);
   const page = await settle(outbound.campaign(CAMPAIGN).leads.list());
@@ -288,4 +291,52 @@ test("smartlead: a webhook says which of the SDK's event types its events become
       ],
     ]
   );
+});
+
+test("smartlead: one list by id is read from its own endpoint", async () => {
+  const { outbound, requests, settle } = harness(suite);
+  const list = await settle(outbound.lists.get("500"));
+
+  assert.equal(urlOfLast(requests).pathname, "/api/v1/lead-list/500");
+  assert.equal(list.name, "Q1 2025 Enterprise Prospects");
+  assert.equal(list.size, 1250, "lead_count");
+});
+
+test("smartlead: one webhook by id names its events as the keys of a map", async () => {
+  const { outbound, requests, settle } = harness(suite);
+  const hook = await settle(outbound.webhooks.get("456"));
+
+  assert.equal(urlOfLast(requests).pathname, "/api/v1/webhook/456");
+  assert.deepEqual(hook.events, [
+    "EMAIL_SENT",
+    "EMAIL_OPEN",
+    "EMAIL_LINK_CLICK",
+    "EMAIL_REPLY",
+  ]);
+  assert.deepEqual(hook.eventTypes, [
+    "message.clicked",
+    "message.opened",
+    "message.sent",
+    "reply.received",
+  ]);
+  assert.deepEqual(hook.campaignRefs, ["smartlead:client-a:123"]);
+});
+
+test("smartlead: an event switched off in a webhook's map is not one of its events", async () => {
+  const { outbound, settle } = harness(suite, (request) =>
+    new URL(request.url).pathname.endsWith("/webhook/456")
+      ? Response.json({
+          data: {
+            event_type_map: { EMAIL_OPEN: false, EMAIL_REPLY: true },
+            id: 456,
+            webhook_url: "https://hooks.example.com/smartlead",
+          },
+          ok: true,
+        })
+      : undefined
+  );
+
+  const hook = await settle(outbound.webhooks.get("456"));
+  assert.deepEqual(hook.events, ["EMAIL_REPLY"]);
+  assert.deepEqual(hook.campaignRefs, [], "it names no campaign");
 });

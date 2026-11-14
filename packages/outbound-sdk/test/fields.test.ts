@@ -193,3 +193,63 @@ test("campaigns: a sender's campaigns, on one adapter and routed through a combi
     /campaigns\.bySender/u
   );
 });
+
+test("lists and webhooks: one record by id, in memory, combined and refused", async () => {
+  const data = {
+    leads: [
+      { id: "l1", listIds: ["list1"] },
+      { id: "l2", listIds: ["list1"] },
+    ],
+    lists: [{ id: "list1", name: "Founders" }],
+    webhooks: [
+      {
+        eventTypes: ["reply.received" as const],
+        events: ["reply"],
+        id: "w1",
+        url: "https://hooks.example.com/a",
+      },
+    ],
+  };
+
+  const outbound = createOutbound({
+    adapter: memory({ data }),
+    fetch: offline,
+  });
+
+  const list = await outbound.lists.get("list1");
+  assert.equal(list.name, "Founders");
+  assert.equal(list.size, 2);
+  assert.equal((await outbound.list("list1").get()).ref, list.ref);
+  assert.equal(await outbound.lists.exists("nope"), false);
+  assert.deepEqual((await outbound.webhooks.get("w1")).eventTypes, [
+    "reply.received",
+  ]);
+
+  const both = createOutbound({
+    adapter: combine([
+      memory({ data, workspaceId: "acme" }),
+      memory({ data: {}, workspaceId: "globex" }),
+    ]),
+    fetch: offline,
+  });
+
+  assert.equal(
+    (await both.webhooks.get("memory:acme:w1")).ref,
+    "memory:acme:w1",
+    "routed to the member that owns it"
+  );
+
+  const off = createOutbound({
+    adapter: memory({
+      capabilities: { "lists.get": false, "webhooks.get": false },
+      data,
+    }),
+    fetch: offline,
+  });
+
+  await assert.rejects(async () => await off.lists.get("list1"), /lists\.get/u);
+  await assert.rejects(
+    async () => await off.webhooks.get("w1"),
+    /webhooks\.get/u
+  );
+});
