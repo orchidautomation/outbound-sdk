@@ -17,6 +17,9 @@
     "url": "git+https://github.com/orchidautomation/outbound-sdk.git",
     "directory": "packages/outbound-sdk"
   },
+  "bin": {
+    "outbound": "./dist/cli/bin.js"
+  },
   "files": [
     "dist"
   ],
@@ -74,6 +77,26 @@
     "./tracing": {
       "types": "./dist/tracing/index.d.ts",
       "import": "./dist/tracing/index.js"
+    },
+    "./webhooks": {
+      "types": "./dist/webhooks/index.d.ts",
+      "import": "./dist/webhooks/index.js"
+    },
+    "./tools": {
+      "types": "./dist/tools/index.d.ts",
+      "import": "./dist/tools/index.js"
+    },
+    "./tools/ai-sdk": {
+      "types": "./dist/tools/ai-sdk.d.ts",
+      "import": "./dist/tools/ai-sdk.js"
+    },
+    "./tools/claude-agent": {
+      "types": "./dist/tools/claude-agent.d.ts",
+      "import": "./dist/tools/claude-agent.js"
+    },
+    "./cli": {
+      "types": "./dist/cli/index.d.ts",
+      "import": "./dist/cli/index.js"
     }
   },
   "publishConfig": {
@@ -85,6 +108,22 @@
   },
   "dependencies": {
     "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@anthropic-ai/claude-agent-sdk": "0.3.325",
+    "ai": "7.0.173"
+  },
+  "peerDependencies": {
+    "@anthropic-ai/claude-agent-sdk": ">=0.3.0 <1.0.0",
+    "ai": "^6.0.0 || ^7.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@anthropic-ai/claude-agent-sdk": {
+      "optional": true
+    },
+    "ai": {
+      "optional": true
+    }
   },
   "engines": {
     "node": ">=22"

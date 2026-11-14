@@ -145,6 +145,26 @@ test("rejects a test that reaches past an entry point", async () => {
   assert.deepEqual(names, ["tests-use-entry-points"]);
 });
 
+test("accepts a test importing a file that package.json publishes as a subpath", async () => {
+  const files = {
+    "package.json": JSON.stringify({
+      exports: { "./tools/extra": { import: "./dist/internal/extra.js" } },
+    }),
+    "src/internal/extra.ts": "export const extra = 1;\n",
+    "test/extra.test.ts":
+      'import { extra } from "../src/internal/extra.ts";\nexport const subject = extra;\n',
+  };
+
+  assert.deepEqual(await violationsFor(files), []);
+  assert.deepEqual(
+    await violationsFor({
+      ...files,
+      "package.json": JSON.stringify({ exports: {} }),
+    }),
+    ["tests-use-entry-points"]
+  );
+});
+
 test("rejects production code importing a test", async () => {
   const names = await violationsFor({
     "src/internal/leak.ts":

@@ -28,7 +28,7 @@ export const checkArchitecture = async (root) => {
       // Keep external edges visible to the rules without parsing them.
       doNotFollow: { path: "(?:^|/)(?:node_modules|dist)/" },
       outputType: "json",
-      ruleSet: architectureRules(),
+      ruleSet: architectureRules(root),
       tsPreCompilationDeps: true,
       validate: true,
     },

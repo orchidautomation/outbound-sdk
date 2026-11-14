@@ -22,8 +22,11 @@ export const readManifest = () =>
 export const sourceFor = (target) =>
   target.replace(/^\.\/dist\//u, "src/").replace(/\.js$/u, ".ts");
 
-export const entryPoints = (manifest) =>
-  Object.values(manifest.exports).map((entry) => sourceFor(entry.import));
+// Every public subpath, plus each executable in `bin`.
+export const entryPoints = (manifest) => [
+  ...Object.values(manifest.exports).map((entry) => sourceFor(entry.import)),
+  ...Object.values(manifest.bin ?? {}).map((target) => sourceFor(target)),
+];
 
 export const buildPackage = async () => {
   const manifest = readManifest();

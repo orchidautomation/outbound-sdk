@@ -14,17 +14,27 @@ after(() => {
   }
 });
 
+const words = (count, salt) =>
+  JSON.stringify(
+    Array.from({ length: count }, (_, index) => `${salt}-${index * 7919}`)
+  );
+
 const fixture = () => {
   const root = mkdtempSync(path.join(tmpdir(), "outbound-size-"));
   roots.push(root);
   mkdirSync(path.join(root, "dist/chunks"), { recursive: true });
   writeFileSync(
     path.join(root, "dist/index.js"),
-    'import { a } from "./chunks/a.js";\nexport { a };\n'
+    'import { used } from "./chunks/shared.js";\nexport const value = used;\nexport const lazy = () => import("./chunks/lazy.js");\n'
+  );
+  // Only `used` is imported, so `unused` must be tree-shaken away.
+  writeFileSync(
+    path.join(root, "dist/chunks/shared.js"),
+    `export const used = ${words(300, "used")};\nexport const unused = ${words(3000, "unused")};\n`
   );
   writeFileSync(
-    path.join(root, "dist/chunks/a.js"),
-    `export const a = ${JSON.stringify(Array.from({ length: 400 }, (_, index) => `value-${index * 7919}`))};\n`
+    path.join(root, "dist/chunks/lazy.js"),
+    `export const lazy = ${words(3000, "lazy")};\n`
   );
 
   return {
@@ -33,18 +43,27 @@ const fixture = () => {
   };
 };
 
-test("accepts an entry within its budget and counts imported chunks", () => {
-  const result = checkSizes({ ...fixture(), budgets: { ".": 100_000 } });
+test("counts the code an entry uses, and leaves out unused exports and dynamic imports", async () => {
+  const result = await checkSizes({ ...fixture(), budgets: { ".": 100_000 } });
   assert.deepEqual(result.errors, []);
-  assert.ok(result.rows[0].bytes > 500, "the chunk's bytes are included");
+  const [{ bytes }] = result.rows;
+  assert.ok(bytes > 800, `the used chunk is counted (${bytes})`);
+  assert.ok(
+    bytes < 4000,
+    `the unused export and the lazy chunk are not (${bytes})`
+  );
 });
 
-test("rejects an entry over its budget", () => {
-  const result = checkSizes({ ...fixture(), budgets: { ".": 200 } });
+test("rejects an entry over its budget", async () => {
+  const result = await checkSizes({ ...fixture(), budgets: { ".": 200 } });
   assert.match(result.errors[0], /exceeds its 200-byte budget/u);
 });
 
-test("rejects a subpath with no budget", () => {
-  const result = checkSizes({ ...fixture(), budgets: {} });
+test("falls back to the default budget, and rejects a subpath with none", async () => {
+  assert.deepEqual(
+    (await checkSizes({ ...fixture(), budgets: { "*": 100_000 } })).errors,
+    []
+  );
+  const result = await checkSizes({ ...fixture(), budgets: {} });
   assert.match(result.errors[0], /no budget/u);
 });
