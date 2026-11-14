@@ -21,7 +21,7 @@ import type {
 import { createClock } from "./clock.ts";
 import { fixture, fixtureText } from "./fixtures.ts";
 import { createFetch, json } from "./http.ts";
-import type { RecordedRequest } from "./http.ts";
+import type { Handler, RecordedRequest } from "./http.ts";
 
 export interface RouteRequest {
   readonly method: string;
@@ -102,36 +102,47 @@ const routeFor = (
     : route.fixture(request);
 };
 
+/** A fake fetch handler that answers each vendor's requests from its own fixtures. */
+export const fixtureHandler =
+  (suites: readonly AdapterSuite[], unrouted: string[] = []): Handler =>
+  (recorded) => {
+    const url = new URL(recorded.url);
+    const suite = suites.find((candidate) => candidate.origin === url.origin);
+
+    const file =
+      suite === undefined
+        ? undefined
+        : routeFor(suite, {
+            body:
+              recorded.body === undefined
+                ? undefined
+                : JSON.parse(recorded.body),
+            method: recorded.method,
+            url,
+          });
+
+    if (suite === undefined || file === undefined) {
+      unrouted.push(
+        `${recorded.method} ${url.origin}${url.pathname}${url.search}`
+      );
+
+      return json({ error: "no fixture for this request" }, 599);
+    }
+
+    return json(fixture(suite.provider, file));
+  };
+
 export const harness = (
   suite: AdapterSuite,
   respond?: (request: RecordedRequest) => Response | undefined
 ): Harness => {
   const unrouted: string[] = [];
   const clock = createClock();
+  const fromFixtures = fixtureHandler([suite], unrouted);
 
-  const http = createFetch((recorded) => {
-    const override = respond?.(recorded);
-
-    if (override !== undefined) {
-      return override;
-    }
-
-    const url = new URL(recorded.url);
-
-    const file = routeFor(suite, {
-      body: recorded.body === undefined ? undefined : JSON.parse(recorded.body),
-      method: recorded.method,
-      url,
-    });
-
-    if (file === undefined) {
-      unrouted.push(`${recorded.method} ${url.pathname}${url.search}`);
-
-      return json({ error: "no fixture for this request" }, 599);
-    }
-
-    return json(fixture(suite.provider, file));
-  });
+  const http = createFetch(
+    (recorded, index) => respond?.(recorded) ?? fromFixtures(recorded, index)
+  );
 
   const adapter = suite.make();
 
@@ -152,6 +163,12 @@ export const harness = (
 
 type Probe = (outbound: Outbound, ids: AdapterSuite["ids"]) => Promise<unknown>;
 
+// A vendor with no list of every lead is read through one campaign.
+const leadsOf = (outbound: Outbound, ids: AdapterSuite["ids"]) =>
+  outbound.capabilities["leads.list"]
+    ? outbound.leads
+    : outbound.campaign(ids.campaign).leads;
+
 const SINCE = "2020-01-01T00:00:00Z";
 
 // One read per capability. A supported one must succeed; an unsupported one
@@ -163,7 +180,8 @@ const PROBES: Partial<Record<CapabilityKey, Probe>> = {
     outbound.campaign(ids.campaign).leads.list(),
   "leads.get": (outbound, ids) => outbound.leads.get(ids.lead ?? "missing"),
   "leads.list": (outbound) => outbound.leads.list(),
-  "leads.since": (outbound) => outbound.leads.list({ since: SINCE }),
+  "leads.since": (outbound, ids) =>
+    leadsOf(outbound, ids).list({ since: SINCE }),
   "leads.timeline": (outbound, ids) =>
     outbound.lead(ids.lead ?? "missing").timeline(),
   "messages.body": (outbound) => outbound.messages.list({ include: ["body"] }),
@@ -195,10 +213,10 @@ type Listed = Record<string, unknown> & { readonly ref: string };
 
 const LISTINGS: Record<
   keyof AdapterSuite["totals"],
-  (outbound: Outbound) => Promise<Listed[]>
+  (outbound: Outbound, ids: AdapterSuite["ids"]) => Promise<Listed[]>
 > = {
   campaigns: (outbound) => outbound.campaigns.listAll().toArray(),
-  leads: (outbound) => outbound.leads.listAll().toArray(),
+  leads: (outbound, ids) => leadsOf(outbound, ids).listAll().toArray(),
   messages: (outbound) => outbound.messages.listAll().toArray(),
   replies: (outbound) => outbound.replies.listAll().toArray(),
   senders: (outbound) => outbound.senders.listAll().toArray(),
@@ -259,7 +277,7 @@ const listingTests = (suite: AdapterSuite): void => {
       const { outbound, settle, unrouted } = harness(suite);
 
       const records = await settle(
-        LISTINGS[name as keyof AdapterSuite["totals"]](outbound)
+        LISTINGS[name as keyof AdapterSuite["totals"]](outbound, suite.ids)
       );
 
       assert.equal(records.length, expected);

@@ -100,6 +100,7 @@ export const costs = {
 } satisfies Record<string, OperationCost>;
 
 export const caveats: readonly string[] = [
+  "outbound.raw returns Smartlead's responses as they are. GET /email-accounts includes SMTP and IMAP passwords; only the normalized senders have them removed.",
   "Nothing has been checked against a live Smartlead account; every mapping follows the public documentation read on 2026-11-14, and Smartlead's three documentation sources disagree with each other.",
   "The API key travels in the URL as api_key, because Smartlead accepts it nowhere else. The SDK removes it from errors, hooks and logs, but a proxy or server log between you and Smartlead can still record it.",
   "Several endpoints are documented both as a bare payload and wrapped in { ok | success, data }. The adapter accepts both; which one the API returns is not confirmed.",

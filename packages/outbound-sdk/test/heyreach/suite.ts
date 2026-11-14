@@ -1,4 +1,4 @@
-import { campaignLeads, heyreach } from "../../src/heyreach/index.ts";
+import { heyreach } from "../../src/heyreach/index.ts";
 import type { AdapterSuite, RouteRequest } from "../helpers/adapter-suite.ts";
 
 export const KEY = "hr_test_key_0123456789abcdef";
@@ -62,20 +62,12 @@ export const suite: AdapterSuite = {
     },
   ],
   secret: KEY,
-  totals: { campaigns: 3, senders: 3 },
+  totals: { campaigns: 3, leads: 3, senders: 3 },
   webhooks: {
     "webhook.message_sent.THIRD_PARTY.json": "linkedin.message_sent",
     "webhook.voice_note_received.json": "linkedin.message_received",
   },
 };
 
-/** The same suite with a campaign's leads turned on. */
-export const withCampaignLeads: AdapterSuite = {
-  ...suite,
-  make: () =>
-    heyreach({
-      apiKey: KEY,
-      capabilities: campaignLeads,
-      workspaceId: "client-a",
-    }),
-};
+/** Kept as its own name for the lead tests: a campaign's leads are on by default. */
+export const withCampaignLeads: AdapterSuite = suite;

@@ -28,26 +28,13 @@ export const PROVIDER = "heyreach";
 /** The environment variables this adapter reads. */
 export const envVars = [API_KEY_ENV, WORKSPACE_ENV] as const;
 
-/**
- * HeyReach lists leads per campaign only, and the wrapper reads a campaign's
- * leads through `leads.list`, which is off because there is no list of every
- * lead. Pass this as `capabilities` to read `outbound.campaign(id).leads`; an
- * un-scoped `outbound.leads.list()` then fails with `Unsupported`.
- */
-export const campaignLeads: CapabilityDeclaration = {
-  "leads.byCampaign": true,
-  "leads.list": true,
-  // GetLeadsFromCampaign filters by creation time.
-  "leads.since": "server",
-};
-
 export interface HeyReachOptions {
   /** Defaults to `HEYREACH_API_KEY`. A workspace API key. */
   readonly apiKey?: string | undefined;
   /** A label for this client or workspace. Defaults to `HEYREACH_WORKSPACE_ID`, then `default`. */
   readonly workspaceId?: string | undefined;
   readonly baseUrl?: string | undefined;
-  /** Overrides what the adapter declares, for example `campaignLeads`. */
+  /** Overrides what the adapter declares. */
   readonly capabilities?: CapabilityDeclaration | undefined;
 }
 

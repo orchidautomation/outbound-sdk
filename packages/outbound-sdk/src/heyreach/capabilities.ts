@@ -20,13 +20,13 @@ export const capabilities: CapabilityDeclaration = {
   "events.parse": true,
   // HeyReach documents no signature. A webhook can carry a static custom header.
   "events.verify": "secret",
-  // Supported by the adapter (GetLeadsFromCampaign), but the wrapper asks for
-  // `leads.list` first and HeyReach has no list of every lead. `campaignLeads`
-  // in index.ts turns the three lead keys on for a caller who always scopes.
-  "leads.byCampaign": false,
+  // POST /campaign/GetLeadsFromCampaign.
+  "leads.byCampaign": true,
   "leads.get": true,
+  // HeyReach has no list of every lead: leads are read per campaign.
   "leads.list": false,
-  "leads.since": false,
+  // GetLeadsFromCampaign filters by creation time.
+  "leads.since": "server",
   // Messages exist only inside conversations: they have no id, the lead's
   // `sender` value is not documented, and the docs do not say whether a
   // conversation carries its whole thread. Guessing would be worse than no.
@@ -80,7 +80,7 @@ export const caveats: readonly string[] = [
   "A sender's status is derived from two undefined booleans: authIsValid false is disconnected, otherwise isActive true is active and false is paused.",
   "A sender's dailyLimit is null: accountLimits holds several limit pairs and the docs do not say which are daily or what Limit and Max mean. They stay in raw.",
   "A lead's id is its LinkedIn profile URL, the only key GetLead accepts and the only one present in every lead shape. The docs do not say the URL has one canonical form.",
-  "HeyReach has no list of every lead. Leads are read per campaign, which the wrapper only allows when leads.list is declared, so both are off by default; pass capabilities: campaignLeads to read a campaign's leads.",
+  "HeyReach has no list of every lead. Leads are read per campaign: outbound.campaign(id).leads works and outbound.leads.list() is refused.",
   "GetLeadsFromCampaign shows only the pending leads that are about to start, so a campaign's lead count can be lower than its list.",
   "A lead's status is replied when leadMessageStatus is MessageReply, otherwise it follows leadCampaignStatus with Pending as active. Failed has no equivalent and is unknown.",
   "A lead's email falls back from emailAddress to enrichedEmailAddress.",

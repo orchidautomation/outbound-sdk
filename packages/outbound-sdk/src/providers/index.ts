@@ -42,6 +42,44 @@ export const providers: readonly ProviderInfo[] = [
     name: "Instantly",
   },
   {
+    channels: ["email"],
+    docsUrl: "https://api.smartlead.ai",
+    envVars: [
+      {
+        description: "API key. It is sent as a query parameter.",
+        name: "SMARTLEAD_API_KEY",
+        required: true,
+      },
+      {
+        description: "A label for this client or workspace.",
+        name: "SMARTLEAD_WORKSPACE_ID",
+        required: false,
+      },
+    ],
+    id: "smartlead",
+    maturity: "unverified",
+    name: "Smartlead",
+  },
+  {
+    channels: ["linkedin"],
+    docsUrl: "https://docs.heyreach.io/hey-reach-api.md",
+    envVars: [
+      {
+        description: "A workspace API key.",
+        name: "HEYREACH_API_KEY",
+        required: true,
+      },
+      {
+        description: "A label for this client or workspace.",
+        name: "HEYREACH_WORKSPACE_ID",
+        required: false,
+      },
+    ],
+    id: "heyreach",
+    maturity: "unverified",
+    name: "HeyReach",
+  },
+  {
     channels: ["email", "linkedin"],
     docsUrl: null,
     envVars: [],

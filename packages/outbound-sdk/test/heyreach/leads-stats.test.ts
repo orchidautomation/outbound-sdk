@@ -69,20 +69,26 @@ test("heyreach: a lead's own emailAddress wins and is lowercased", async () => {
   );
 });
 
-test("heyreach: leads are off by default because there is no list of every lead", async () => {
-  const { outbound, requests } = harness(suite);
+test("heyreach: there is no list of every lead, so only a campaign's leads can be read", async () => {
+  const { outbound, requests, settle } = harness(suite);
+  assert.equal(outbound.capabilities["leads.list"], false);
+  assert.equal(outbound.capabilities["leads.byCampaign"], true);
+  await assert.rejects(
+    async () => await outbound.leads.list(),
+    isCode("Unsupported")
+  );
+  assert.equal(
+    requests.length,
+    0,
+    "the un-scoped list is refused before any request"
+  );
 
-  for (const read of [
-    () => outbound.leads.list(),
-    () => outbound.campaign(CAMPAIGN).leads.list(),
-  ]) {
-    await assert.rejects(read, isCode("Unsupported"));
-  }
-
-  assert.equal(requests.length, 0);
+  const page = await settle(outbound.campaign(CAMPAIGN).leads.list());
+  assert.ok(page.items.length > 0);
+  assert.equal(requests.length, 1);
 });
 
-test("heyreach: with campaignLeads, a campaign's leads are listed with POST by offset", async () => {
+test("heyreach: a campaign's leads are listed with POST by offset", async () => {
   const { outbound, requests, settle } = harness(withCampaignLeads);
 
   const page = await settle(
@@ -154,14 +160,14 @@ test("heyreach: a date range on a campaign's leads filters by creation time on t
   });
 });
 
-test("heyreach: with campaignLeads, an un-scoped lead list and a non-numeric campaign id are refused", async () => {
+test("heyreach: an un-scoped lead list and a non-numeric campaign id are refused", async () => {
   const { outbound, requests, settle } = harness(withCampaignLeads);
 
   await assert.rejects(
     async () => await settle(outbound.leads.list()),
     (error) =>
       isCode("Unsupported")(error) &&
-      /no list of every lead/u.test((error as Error).message)
+      /does not support it \(leads\.list\)/u.test((error as Error).message)
   );
   await assert.rejects(
     async () => await settle(outbound.campaign("spring-launch").leads.list()),

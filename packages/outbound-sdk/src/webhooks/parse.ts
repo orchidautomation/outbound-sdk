@@ -9,6 +9,7 @@
 // Events are hints: a webhook can arrive late, twice or not at all. Treat
 // `event.id` as the idempotency key and reconcile against list calls.
 
+import { heyreachEvents } from "../heyreach/webhooks.ts";
 import { instantlyEvents } from "../instantly/webhooks.ts";
 import type { EventFormat, WebhookRequest } from "../internal/adapter.ts";
 import { SCHEMA_VERSION } from "../internal/entities.ts";
@@ -17,10 +18,15 @@ import { OutboundError } from "../internal/errors.ts";
 import { parseJson } from "../internal/json.ts";
 import type { OutboundPlugin } from "../internal/outbound/plugins.ts";
 import { stableId } from "../internal/sha256.ts";
+import { smartleadEvents } from "../smartlead/webhooks.ts";
 import { carriesSecret } from "./secret.ts";
 
+// Checked in this order when the provider is `auto`. Each format's `detect`
+// is specific enough not to claim another vendor's payload.
 const FORMATS = new Map<string, EventFormat>([
   ["instantly", instantlyEvents("instantly")],
+  ["smartlead", smartleadEvents("smartlead")],
+  ["heyreach", heyreachEvents("heyreach")],
 ]);
 
 /** The providers whose webhooks can be parsed. */
@@ -250,6 +256,14 @@ export const parse = async (
 /** How to point a vendor's webhooks at your endpoint. The SDK is read-only and never registers one. */
 export const setupInstructions = (provider: string): string => {
   const instructions = new Map([
+    [
+      "smartlead",
+      "Smartlead: Settings > Webhooks > Add webhook, per account, client or campaign (only one fires per event; the account-level one wins). Turn on signing for the webhook and pass its whsec_ secret as `secret`: the SDK then checks the Standard Webhooks signature and rejects anything older than five minutes. An unsigned Smartlead webhook fails verification.",
+    ],
+    [
+      "heyreach",
+      "HeyReach: Integrations > Webhooks > Create webhook, one per event type. HeyReach does not sign payloads, so put a secret in the URL (https://your.app/hooks/<secret>) or add it as a custom header named x-webhook-secret, and pass the same value as `secret`.",
+    ],
     [
       "instantly",
       "Instantly: Settings > Integrations > Webhooks > Add webhook (Hyper Growth plan or above). Instantly does not sign payloads, so put a secret in the URL (https://your.app/hooks/<secret>) or add it as a custom header named x-webhook-secret, and pass the same value as `secret`.",

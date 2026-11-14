@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 
+import { envVars as heyreachEnvVars, heyreach } from "../src/heyreach/index.ts";
 import { OutboundError } from "../src/index.ts";
 import {
   envVars as instantlyEnvVars,
@@ -14,6 +15,10 @@ import {
   PROVIDER_ENV,
   providers,
 } from "../src/providers/index.ts";
+import {
+  envVars as smartleadEnvVars,
+  smartlead,
+} from "../src/smartlead/index.ts";
 
 const manifest = JSON.parse(
   readFileSync(path.resolve(import.meta.dirname, "../package.json"), "utf-8")
@@ -24,9 +29,17 @@ const adapters: Record<
   string,
   { envVars: readonly string[]; maturity: string }
 > = {
+  heyreach: {
+    envVars: heyreachEnvVars,
+    maturity: heyreach({ apiKey: "hr_key_for_catalog_test" }).maturity,
+  },
   instantly: {
     envVars: instantlyEnvVars,
     maturity: instantly({ apiKey: "inst_key_for_catalog_test" }).maturity,
+  },
+  smartlead: {
+    envVars: smartleadEnvVars,
+    maturity: smartlead({ apiKey: "sl_key_for_catalog_test" }).maturity,
   },
 };
 

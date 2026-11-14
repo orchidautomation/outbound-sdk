@@ -21,6 +21,22 @@ const LOADERS = new Map<string, () => Promise<Adapter>>([
     },
   ],
   [
+    "smartlead",
+    async () => {
+      const { smartlead } = await import("../smartlead/index.ts");
+
+      return smartlead();
+    },
+  ],
+  [
+    "heyreach",
+    async () => {
+      const { heyreach } = await import("../heyreach/index.ts");
+
+      return heyreach();
+    },
+  ],
+  [
     "memory",
     async () => {
       const { demoData, memory } = await import("../memory/index.ts");

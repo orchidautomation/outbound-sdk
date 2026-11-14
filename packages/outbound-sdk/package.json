@@ -38,6 +38,14 @@
       "types": "./dist/instantly/index.d.ts",
       "import": "./dist/instantly/index.js"
     },
+    "./smartlead": {
+      "types": "./dist/smartlead/index.d.ts",
+      "import": "./dist/smartlead/index.js"
+    },
+    "./heyreach": {
+      "types": "./dist/heyreach/index.d.ts",
+      "import": "./dist/heyreach/index.js"
+    },
     "./providers": {
       "types": "./dist/providers/index.d.ts",
       "import": "./dist/providers/index.js"
