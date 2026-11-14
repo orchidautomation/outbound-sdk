@@ -35,6 +35,7 @@ The output shows what the CLI does with the demo data. It does not show what a v
 | `tools` | The [AI tools](/docs/tools) the instance can serve | `createTools` |
 | `tool <name>` | Runs one AI tool | `tool.call` |
 | `insight [name]` | Lists the [insights](/docs/insights), or runs one | `listInsights`, `runInsightByName` |
+| `person <email or URL>` | Every campaign one person is in, across every tool | `runInsightByName("person_summary")` |
 | `native [name]` | Lists the vendor's [own reads](/docs/native), or runs one | `outbound.native` |
 | `mcp` | Starts the [MCP server](/docs/cli/mcp) on stdio | `createMcpServer` |
 | `help` | The usage text. Also `--help`, `-h`, or no command. |  |

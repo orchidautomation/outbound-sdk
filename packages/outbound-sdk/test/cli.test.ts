@@ -203,9 +203,16 @@ test("a tool that answers ok: false prints its result and exits 1, like an insig
   assert.equal((await cli("insight", "no_such_insight")).code, 1);
 });
 
-test("without an adapter or OUTBOUND_SDK_PROVIDER it says what to set", async () => {
+test("without an adapter, a key or OUTBOUND_SDK_PROVIDER it says what to set", async () => {
   const saved = process.env.OUTBOUND_SDK_PROVIDER;
   delete process.env.OUTBOUND_SDK_PROVIDER;
+  const keys = ["INSTANTLY_API_KEY", "SMARTLEAD_API_KEY", "HEYREACH_API_KEY"];
+  const savedKeys = keys.map((name) => [name, process.env[name]] as const);
+
+  for (const name of keys) {
+    Reflect.deleteProperty(process.env, name);
+  }
+
   const err: string[] = [];
 
   try {
@@ -217,7 +224,8 @@ test("without an adapter or OUTBOUND_SDK_PROVIDER it says what to set", async ()
     });
 
     assert.equal(code, 1);
-    assert.match(err.join(""), /Set OUTBOUND_SDK_PROVIDER/u);
+    assert.match(err.join(""), /No vendor key is set/u);
+    assert.match(err.join(""), /INSTANTLY_API_KEY/u);
     const viaFlag: string[] = [];
     assert.equal(
       await run(["campaigns", "--provider", "memory"], {
@@ -232,6 +240,12 @@ test("without an adapter or OUTBOUND_SDK_PROVIDER it says what to set", async ()
   } finally {
     if (saved !== undefined) {
       process.env.OUTBOUND_SDK_PROVIDER = saved;
+    }
+
+    for (const [name, value] of savedKeys) {
+      if (value !== undefined) {
+        process.env[name] = value;
+      }
     }
   }
 });

@@ -37,17 +37,21 @@ Every command shown in this section went through `run`, the function the `outbou
 
 A command that reads data needs an adapter. The CLI builds one from the environment:
 
-1. `--provider <id>` if given, otherwise the `OUTBOUND_SDK_PROVIDER` environment variable.
-2. The id is one of `instantly`, `smartlead`, `heyreach` or `memory`.
-3. The adapter reads its own key from the environment: `INSTANTLY_API_KEY`, `SMARTLEAD_API_KEY` or `HEYREACH_API_KEY`. `outbound providers` lists the variables each one reads.
+1. `--provider <id>` if given, otherwise the `OUTBOUND_SDK_PROVIDER` environment variable. Either takes one id, or several separated by commas.
+2. An id is one of `instantly`, `smartlead`, `heyreach` or `memory`.
+3. With neither set, every vendor whose key is set is used: `INSTANTLY_API_KEY`, `SMARTLEAD_API_KEY` or `HEYREACH_API_KEY`. One key gives that vendor. Two or more give one [combined](/docs/adapters/combine) instance, where every record keeps its own provider, so `outbound person` looks a person up in all of them. With no key either, the command exits 1 and names the variables.
+4. Each adapter reads its own key from the environment. `outbound providers` lists the variables each one reads.
 
 `memory` needs no key. It runs on a small built-in demo data set, the same one behind `demoData()` in `outbound-sdk/memory`: two campaigns, three leads, a few messages. Use it to try a command before pointing the CLI at a real account.
 
 ```sh
 # a real account
-export OUTBOUND_SDK_PROVIDER=instantly
 export INSTANTLY_API_KEY=...
 outbound campaigns --status active
+
+# two tools: both are read, and one person is found in each
+export HEYREACH_API_KEY=...
+outbound person someone@example.com
 
 # the demo data, for one command
 outbound campaigns --provider memory
@@ -57,7 +61,7 @@ Those shell lines are not run by the test suite. The CLI takes no key on the com
 
 ## Plugins
 
-A command runs on one adapter and, by default, no [plugins](/docs/plugins). `outbound mcp` is the exception: it runs with [`redact()`](/docs/plugins/redact) unless given `--no-redact`, because what it returns goes to a model. Any command takes these options:
+A command runs with one [plugin](/docs/plugins) by default, [identity](/docs/plugins/identity), which links one person's records across tools for `outbound person`. `outbound mcp` is the exception: it runs with [`redact()`](/docs/plugins/redact) unless given `--no-redact`, because what it returns goes to a model. Any command takes these options:
 
 | Option | Adds |
 | --- | --- |

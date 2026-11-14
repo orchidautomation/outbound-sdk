@@ -68,7 +68,7 @@ The client configuration is the same shape in Claude Code (`.mcp.json` in the pr
 }
 ```
 
-`OUTBOUND_SDK_PROVIDER` is `instantly`, `smartlead`, `heyreach` or `memory`. The adapter reads its own key variable: `INSTANTLY_API_KEY`, `SMARTLEAD_API_KEY` or `HEYREACH_API_KEY`. Without `OUTBOUND_SDK_PROVIDER` the command exits with code 1 and says which values it takes.
+`OUTBOUND_SDK_PROVIDER` is `instantly`, `smartlead`, `heyreach` or `memory`, or several separated by commas. The adapter reads its own key variable: `INSTANTLY_API_KEY`, `SMARTLEAD_API_KEY` or `HEYREACH_API_KEY`. Without `OUTBOUND_SDK_PROVIDER`, every vendor whose key is set is served, as one combined instance when there are several; with no key either, the command exits with code 1 and names the variables.
 
 Once the package is published the command will be `npx` with the arguments `outbound-sdk` and `mcp`. Until [installation](/docs/installation) says so, that form fails.
 
@@ -208,7 +208,7 @@ Starting the server and `tools/list` make no vendor request. A tool call spends 
 | A tool that is not in the list | JSON-RPC error `-32602` | The client should call only listed tools. |
 | A method other than `initialize`, `ping`, `tools/list`, `tools/call` | JSON-RPC error `-32601` | Nothing. The server has no resources or prompts. |
 | A line that is not JSON | JSON-RPC error `-32700` with a `null` id | Fix the client. |
-| `OUTBOUND_SDK_PROVIDER` is not set, or the key is missing | The command exits with code 1 and the reason on standard error | Set the variables in the client configuration. |
+| No vendor key is set, or `OUTBOUND_SDK_PROVIDER` names a vendor whose key is missing | The command exits with code 1 and the reason on standard error | Set the variables in the client configuration. |
 
 ## Limits
 

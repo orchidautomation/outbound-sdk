@@ -11,7 +11,7 @@ import type { Json } from "../internal/json.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
 import { providers } from "../providers/index.ts";
 import { createTools } from "../tools/index.ts";
-import type { ToolResult } from "../tools/index.ts";
+import type { OutboundTool, ToolResult } from "../tools/index.ts";
 
 export interface CommandInput {
   readonly positionals: readonly string[];
@@ -110,6 +110,16 @@ const drawn = async (
   const card = cardFor(name, result);
 
   return asJson(input.flags.slack === true ? toSlackMessage(card) : card);
+};
+
+/** The tools `outbound mcp` offers: the built-in ones, then the insights. */
+export const offeredTools = async (
+  outbound: OutboundApi
+): Promise<OutboundTool[]> => {
+  // Loaded on demand, so the other commands do not pay for the insights.
+  const { insightTools } = await import("../insights/index.ts");
+
+  return createTools(outbound, { extra: insightTools(outbound) });
 };
 
 export interface CommandSpec {
@@ -242,6 +252,28 @@ const COMMAND_TABLE = {
       return asJson(await outbound.native.read(name, params));
     },
   },
+  person: {
+    help: "person <email or LinkedIn URL> [--limit N] [--card | --slack]  one person's campaigns across every tool",
+    run: async (outbound, input) => {
+      const { insightTools, runInsightByName } =
+        await import("../insights/index.ts");
+
+      const personInput = {
+        max_campaigns: count(input, "limit", 20),
+        person: required(input, 0, "an email address or a LinkedIn URL"),
+      };
+
+      const [asTool] = wantsCard(input)
+        ? insightTools(outbound, { only: ["person_summary"] })
+        : [];
+
+      return asTool === undefined
+        ? asJson(
+            await runInsightByName(outbound, "person_summary", personInput)
+          )
+        : drawn("person_summary", await asTool.call(personInput), input);
+    },
+  },
   replies: {
     help: "replies [--campaign ID] [--category positive|negative|neutral|ooo|...] [--since ISO] [--limit N] [--bodies]",
     run: (outbound, input) =>
@@ -290,9 +322,8 @@ const COMMAND_TABLE = {
     run: async (outbound, input) => {
       const name = required(input, 0, "a tool name");
 
-      const tool = createTools(outbound).find(
-        (candidate) => candidate.name === name
-      );
+      const offered = await offeredTools(outbound);
+      const tool = offered.find((candidate) => candidate.name === name);
 
       if (tool === undefined) {
         throw new OutboundError(
@@ -310,13 +341,14 @@ const COMMAND_TABLE = {
   },
   tools: {
     help: "tools",
-    run: (outbound) =>
-      Promise.resolve(
-        createTools(outbound).map((tool) => ({
-          description: tool.description,
-          name: tool.name,
-        }))
-      ),
+    run: async (outbound) => {
+      const offered = await offeredTools(outbound);
+
+      return offered.map((tool) => ({
+        description: tool.description,
+        name: tool.name,
+      }));
+    },
   },
   webhooks: {
     help: "webhooks [--campaign ID] [--limit N]",

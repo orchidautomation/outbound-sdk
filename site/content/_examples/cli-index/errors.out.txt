@@ -34,9 +34,9 @@ $ outbound campaigns --provider mailchimp
 Invalid: Unknown provider "mailchimp". Known providers: heyreach, instantly, memory, smartlead
 (exit code 1)
 
-$ unset OUTBOUND_SDK_PROVIDER
+$ unset OUTBOUND_SDK_PROVIDER INSTANTLY_API_KEY SMARTLEAD_API_KEY HEYREACH_API_KEY
 $ outbound campaigns
-Invalid: Set OUTBOUND_SDK_PROVIDER to one of: instantly, smartlead, heyreach, memory
+Invalid: No vendor key is set. Set at least one of INSTANTLY_API_KEY, SMARTLEAD_API_KEY, HEYREACH_API_KEY, or set OUTBOUND_SDK_PROVIDER to one of: instantly, smartlead, heyreach, memory
 (exit code 1)
 
 $ outbound providers --compact

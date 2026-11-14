@@ -2,6 +2,7 @@
 
 import { parseArgs } from "node:util";
 
+import { identity } from "../identity/index.ts";
 import type { Adapter } from "../internal/adapter.ts";
 import { OutboundError } from "../internal/errors.ts";
 import { field } from "../internal/json.ts";
@@ -115,7 +116,15 @@ export const run = async (
       io.adapter ?? (await fromEnv({ provider: values.provider }));
 
     const plugins = await pluginsFor(values, command === undefined);
-    const outbound = createOutbound({ adapter, plugins });
+
+    // identity links one person's records across tools, for `person` and
+    // cross_channel_lead. It sits inside redact, which masks the keys it adds.
+    const outbound = createOutbound({
+      adapter,
+      plugins: plugins.some((plugin) => plugin.name === "identity")
+        ? plugins
+        : [...plugins, identity()],
+    });
 
     if (command === undefined) {
       await serve(outbound, io);
