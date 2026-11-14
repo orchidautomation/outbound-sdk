@@ -67,7 +67,17 @@ export const suite: AdapterSuite = {
       method: "GET",
       path: /^\/api\/v2\/accounts\/[^/]+$/u,
     },
-    { fixture: paged("listLeads"), method: "POST", path: "/api/v2/leads/list" },
+    {
+      // A request with `contacts` is a lookup by email address.
+      fixture: (request) =>
+        paged(
+          (request.body as { contacts?: string[] } | undefined)?.contacts
+            ? "listLeadsByEmail"
+            : "listLeads"
+        )(request),
+      method: "POST",
+      path: "/api/v2/leads/list",
+    },
     {
       fixture: "getLead.json",
       method: "GET",

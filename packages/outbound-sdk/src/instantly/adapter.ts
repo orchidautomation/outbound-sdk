@@ -5,6 +5,7 @@ import type {
   Adapter,
   AdapterContext,
   CampaignQuery,
+  LeadQuery,
   Page,
   SenderQuery,
 } from "../internal/adapter.ts";
@@ -174,6 +175,29 @@ const campaignSenders = async (
   };
 };
 
+/** The body of `POST /leads/list`: every filter and the cursor go in it. */
+const leadListBody = (query: LeadQuery): JsonObject => {
+  const body: JsonObject = { limit: pageSize(query.limit) };
+
+  if (query.campaignId !== undefined) {
+    body.campaign = query.campaignId;
+  }
+
+  if (query.listId !== undefined) {
+    body.list_id = query.listId;
+  }
+
+  if (query.email !== undefined) {
+    body.contacts = [query.email];
+  }
+
+  if (isString(query.next)) {
+    body.starting_after = query.next;
+  }
+
+  return body;
+};
+
 const leadReaders = (
   client: InstantlyClient
 ): Pick<Readers, "getLead" | "listLeads"> => ({
@@ -190,21 +214,14 @@ const leadReaders = (
     );
   },
   listLeads: async (query, ctx) => {
-    const body: JsonObject = { limit: pageSize(query.limit) };
-
-    if (query.campaignId !== undefined) {
-      body.campaign = query.campaignId;
+    if (query.linkedinUrl !== undefined) {
+      // An Instantly lead has no LinkedIn profile, so nothing can match.
+      return { items: [] };
     }
 
-    if (query.listId !== undefined) {
-      body.list_id = query.listId;
-    }
-
-    if (isString(query.next)) {
-      body.starting_after = query.next;
-    }
-
-    const envelope = listEnvelope(await client.post(ctx, "/leads/list", body));
+    const envelope = listEnvelope(
+      await client.post(ctx, "/leads/list", leadListBody(query))
+    );
 
     const labels = await readLabels(
       client,
@@ -212,10 +229,17 @@ const leadReaders = (
       envelope.items.map((item) => item.lt_interest_status)
     );
 
+    const leads = envelope.items.map((item) =>
+      toLead(client.identity, item, labels)
+    );
+
     return {
-      items: envelope.items.map((item) =>
-        toLead(client.identity, item, labels)
-      ),
+      // `contacts` is documented as the emails a lead needs to have, but not
+      // how it compares them, so the match is made exact here.
+      items:
+        query.email === undefined
+          ? leads
+          : leads.filter((lead) => lead.email === query.email),
       next: envelope.next,
     };
   },

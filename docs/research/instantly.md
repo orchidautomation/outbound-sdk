@@ -358,6 +358,18 @@ Re-read on 2026-11-14 from `https://api.instantly.ai/openapi/api_v2.json` (`info
 - In a list, `body_fallback_reason` (`too_large` or `unavailable`) marks a body that is only an excerpt: "Get the full body from `GET /api/v2/emails/{id}`". When bodies are asked for, the adapter reads each such email on its own.
 - Unconfirmed: whether `GET /api/v2/emails/{id}` shares the 20-per-minute limit of the list. The adapter counts it against that limit.
 
+### Lookup by email (`leads.lookup`)
+
+Read on 2026-11-14 from `https://developer.instantly.ai/api-reference/lead/list-leads.md` (the list-leads reference, which embeds the `POST /api/v2/leads/list` schema of `https://api.instantly.ai/openapi/api_v2.json`). No API key was available, so nothing here was observed live.
+
+- `POST /api/v2/leads/list` takes `contacts`: an array of strings with `format: email`, "Array of emails the leads needs to have". The adapter sends the one address asked for, lowercased and trimmed by the core: `{ "contacts": ["person1@example.com"], "limit": 100 }`. It is the only filter on the address alone, so it is the one used.
+- `search` is wider and was not used: "Search term matched against the lead's email and profile fields (first and last name, company, job title, and similar). Matches whole words, and the beginning of a field's value". It also says "Newly created or updated leads can take a few seconds to become searchable"; no such delay is documented for `contacts`.
+- `contacts` goes with `campaign` or `list_id` in the same body, and the listing pages as before: `limit` (1 to 100) and `starting_after`, the `id` of the last lead of the page before.
+- A lead is one record per campaign or list it is in, so one address can return several records.
+- The adapter keeps only the records whose lowercased address equals the one asked for. A page can therefore hold fewer records than Instantly returned; the cursor is still Instantly's.
+- The lead object has no LinkedIn profile field, so a lookup by profile returns an empty page without a request.
+- Unconfirmed: that `contacts` compares whole addresses and not a part of one; whether it ignores case, and whether Instantly stores an address in the case it was uploaded in; whether `contacts` has a maximum length; and how `contacts` behaves with `distinct_contacts`, which the adapter never sends. `GET /api/v2/campaigns/search-by-contact?search=<email>` also finds a person's campaigns, but returns campaigns, not lead records, and documents no cursor, so it is not used here.
+
 ### Not available from the API
 
 - `leads.since` stays `client`: `POST /api/v2/leads/list` has no creation-date filter. Its `queries[]` filter only on how many days ago an activity happened.
