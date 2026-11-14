@@ -1,0 +1,112 @@
+---
+title: Verifying a webhook
+description: How parse checks that a webhook came from your vendor, per vendor, where the secret goes, what a failed check throws, and what happens when you pass no secret.
+sidebar:
+  label: Verification
+related:
+  - /docs/webhooks
+  - /docs/webhooks/events
+  - /docs/capabilities
+---
+
+An endpoint that accepts webhooks is a public URL. Without a check, anyone who finds it can post events to it. `parse` checks a request when you pass `secret`, in one of two ways depending on the vendor.
+
+| Vendor | `events.verify` | What `secret` is | What is checked |
+| --- | --- | --- | --- |
+| Instantly | `secret` | A value you choose | The request carries that value in its URL or a header |
+| HeyReach | `secret` | A value you choose | The request carries that value in its URL or a header |
+| Smartlead | `signature` | The webhook's `whsec_` signing secret from Smartlead | A Standard Webhooks signature over the body, and a timestamp no more than five minutes off |
+
+`events.verify` is the adapter's [capability](/docs/capabilities) that says which one applies:
+
+<include meta='title="capabilities.ts"'>
+  ../../_examples/webhooks-verification/capabilities.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/webhooks-verification/capabilities.out.txt
+</include>
+
+<Callout type="warning" title="No secret, no check">
+  When the `secret` option is `undefined`, `parse` checks nothing and parses
+  whatever it is given. An environment variable that is not set is `undefined`.
+  Read the secret once at start-up and refuse to run without it, as the handler
+  on the [overview](/docs/webhooks#a-route-handler) does.
+</Callout>
+
+Verification is tested on requests the test suite builds itself. No check has been run on a live delivery from a vendor. See [what is verified](/docs/status).
+
+## A shared secret: Instantly and HeyReach
+
+Neither vendor signs its payloads. You choose a long random value, put it where the vendor will send it back with every delivery, and pass the same value as `secret`. `parse` looks for it in:
+
+- any segment of the URL path, for example `https://your.app/hooks/<secret>`
+- the query parameters `secret`, `token` or `key`
+- the headers `x-webhook-secret` or `x-outbound-secret`
+- an `Authorization: Bearer <secret>` header
+
+<include meta='title="shared-secret.ts"'>
+  ../../_examples/webhooks-verification/shared-secret.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/webhooks-verification/shared-secret.out.txt
+</include>
+
+A shared secret proves the sender knows the secret. It does not prove the body was not changed on the way, and a captured request can be sent again. Use HTTPS, and prefer a header to the URL where the vendor lets you set one, because URLs are commonly written to access logs.
+
+## A signature: Smartlead
+
+Smartlead can sign a webhook following the Standard Webhooks specification. Signing is off until you turn it on for the webhook in Smartlead. Pass the webhook's `whsec_` secret as `secret`. `parse` then requires:
+
+- the headers `webhook-id`, `webhook-timestamp` and `webhook-signature`
+- a timestamp within five minutes of now, in either direction
+- a `v1` signature equal to the HMAC-SHA256 of `<id>.<timestamp>.<body>` under the secret. Several signatures may be sent, separated by spaces; one match is enough.
+
+The sample signs Smartlead's documented payload itself, with a made-up secret, the way the specification describes.
+
+<include meta='title="signature.ts"'>
+  ../../_examples/webhooks-verification/signature.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/webhooks-verification/signature.out.txt
+</include>
+
+With `provider: "smartlead"` and a `secret`, an unsigned Smartlead webhook always fails, and so does a shared secret in the URL: only the signature is accepted. If you cannot turn signing on, there is no check for Smartlead through `parse` with the provider named.
+
+The signature covers the exact bytes of the body, which `parse` reads from the `Request` itself. Pass it the original request, not one rebuilt from parsed JSON.
+
+## When the check fails
+
+`parse` throws an `OutboundError` with the code `Unauthorized` and the provider:
+
+| Vendor check  | Message                                        |
+| ------------- | ---------------------------------------------- |
+| Shared secret | `The webhook does not carry the shared secret` |
+| Signature     | `The webhook signature does not match`         |
+
+Answer with a 401 and do not process the body. `Unauthorized` is the same code a rejected API key uses; see [errors](/docs/api/errors).
+
+## verify
+
+`verify(request, { provider, secret })` runs the same check and resolves to `true` or `false`. It does not throw for a failed check, and it reads a copy of the request, so you can still pass the request to `parse` afterwards. It does throw `Invalid` for a provider that has no parser. `secret` is required.
+
+## With provider auto
+
+With `provider: "auto"`, the kind of check follows the vendor detected from the body: a body that looks like Smartlead's is checked by signature, and any other body, including one no parser recognises, is checked for the shared secret. Naming the provider removes that dependence on the body's shape.
+
+## carriesSecret and timingSafeEqual
+
+The two building blocks are exported for use outside `parse`, for example on an endpoint that receives something the SDK does not parse.
+
+<include meta='title="helpers.ts"'>
+  ../../_examples/webhooks-verification/helpers.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/webhooks-verification/helpers.out.txt
+</include>
+
+- `carriesSecret(url, headers, secret)` is the shared-secret check: `true` when any of the places listed above holds the secret.
+- `timingSafeEqual(left, right)` compares two strings without stopping at the first difference, so the time it takes does not reveal how much of a guess was right. Use it for any secret comparison of your own.

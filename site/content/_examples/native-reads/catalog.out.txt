@@ -1,0 +1,36 @@
+heyreach native: true
+25 reads:
+campaignSequenceV2, campaignsForLead, checkApiKey, companiesFromList, conversationsV2, enrichEmailJob, isConnection, listById, listsForLead, myNetworkForSender, proxyCountries, statsByCampaign, webhookById, organizationLinkedInAccounts, organizationUser, organizationUsers, organizationWorkspaces, workspaceUsers, elevenLabsConnection, elevenLabsVoices, senderVoice, staticClip, staticClips, voiceUsage, voices
+{
+  description: "The campaigns one lead is in, each with the campaign's status and the lead's status in it. Name the lead by email, LinkedIn id or profile URL.",
+  docs: 'https://docs.heyreach.io/hey-reach-api/campaigns/get-campaigns-for-lead',
+  method: 'POST',
+  params: {
+    email: {
+      description: "The lead's email address.",
+      in: 'body',
+      type: 'string'
+    },
+    linkedinId: {
+      description: "The lead's LinkedIn id, `linkedin_id` in lead payloads.",
+      in: 'body',
+      type: 'string'
+    },
+    profileUrl: {
+      description: "The lead's LinkedIn profile URL.",
+      in: 'body',
+      type: 'string'
+    },
+    limit: {
+      description: 'How many campaigns to return.',
+      in: 'body',
+      type: 'number'
+    },
+    offset: {
+      description: 'How many campaigns to skip.',
+      in: 'body',
+      type: 'number'
+    }
+  },
+  path: '/campaign/GetCampaignsForLead'
+}

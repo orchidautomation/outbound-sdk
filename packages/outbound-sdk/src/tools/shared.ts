@@ -19,6 +19,12 @@ export interface ToolSuccess {
     readonly provider: string;
     /** Vendor requests the tool made. */
     readonly requests: number;
+    /**
+     * Today's date in UTC, `YYYY-MM-DD`. Set on every result a tool from
+     * `createTools` returns, because a model does not know the date and
+     * otherwise guesses the range it asks for.
+     */
+    readonly today?: string | undefined;
   };
   /** What to ask next. */
   readonly next: string;
@@ -38,7 +44,11 @@ export interface ToolDefinition<Input = never> {
   readonly description: string;
   /** A `z.object()`, so its fields can also be given to SDKs that take them one by one. */
   readonly inputSchema: ZodObject & ZodType<Input>;
-  /** Plugins the tool depends on, by the name of what they add to the instance. */
+  /**
+   * What the tool cannot work without: a capability key, for a read the tool
+   * always makes, or `clients`, `identity` or `native` for what a plugin or
+   * the vendor adds to the instance. A tool whose needs are not met is not offered.
+   */
   readonly needs: readonly string[];
   readonly run: (outbound: OutboundApi, input: Input) => Promise<ToolSuccess>;
 }

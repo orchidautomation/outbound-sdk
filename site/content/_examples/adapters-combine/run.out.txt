@@ -1,0 +1,11 @@
+combined combined
+given up: campaigns.settings, leads.engagement, leads.list, messages.byThread, native, replies.category, senders.warmup, sequence.subsequences, stats.byStep, tags
+instantly:acme:cmp_1 - Acme founders
+instantly:acme:cmp_2 - Acme agencies
+heyreach:acme:cmp_1 - Acme LinkedIn
+instantly:globex:cmp_1 - Globex CFOs
+by ref: Acme LinkedIn
+bare id: Invalid - Campaign "cmp_1" must be a ref (provider:workspace:id) of an adapter on this combined instance
+instantly:acme:acme sent 200 connections null
+heyreach:acme:acme sent null connections 40
+instantly:globex:globex sent 90 connections null

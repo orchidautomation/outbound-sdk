@@ -1,0 +1,152 @@
+---
+title: Answer reads from the last good answer when a vendor is down or rate limiting
+description: An instance that serves repeat reads from a cache, caps what it spends, and returns the last successful answer marked stale when the vendor fails, with the cases where it refuses to.
+sidebar:
+  label: Reads during a vendor outage
+related:
+  - /docs/plugins/failover
+  - /docs/plugins/cache
+  - /docs/plugins/budget
+  - /docs/retries
+  - /docs/rate-limits
+---
+
+A page that shows campaign numbers makes the same reads over and over. When the vendor's API is down, or has started answering 429, those reads fail and the page goes blank. Three plugins change that:
+
+- `cache` serves a repeat read from a store for a few seconds or minutes, so most reads never reach the vendor.
+- `budget` caps how many vendor requests the instance may make, so one busy page cannot spend the whole rate limit.
+- `failover` keeps every successful answer in a store you supply. When a later read fails because the vendor is unavailable or rate limiting, it returns the kept answer with `meta.stale: true` and the time it was fetched.
+
+Failover serves only a read that succeeded before, and only for those two kinds of failure. It never invents an answer, and it never hides a rejected key or a missing record. A stale answer is old data: this guide shows how to tell, so you can say so on the page.
+
+<include>../_snippets/status.mdx</include>
+
+## Before you start
+
+- Node 22 or later.
+- The code below runs on the in-memory adapter, so it needs no vendor key. Each sample on this page is a file in the repository that the test suite runs; the output shown is what it printed.
+- For real data: an Instantly, Smartlead or HeyReach API key. A read-only key is enough. No method of the SDK writes to a vendor.
+
+## What you get
+
+One read, `outbound.campaigns.list()`, repeated over half an hour while the vendor goes down, rate limits and comes back.
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/vendor-outage/run.out.txt
+</include>
+
+Read it line by line:
+
+- **12:00, vendor up.** A fresh answer. One request.
+- **12:00, same read.** Served by `cache`. No request, and `fetchedAt` is still when it was fetched.
+- **12:10, vendor down.** The cached answer has expired, the vendor answers 503, and `failover` serves the last good answer with `stale: true`.
+- **12:10, a read never made before.** There is no last good answer. The error reaches the caller.
+- **12:20, rate limited.** Treated the same as down.
+- **12:30, vendor up.** Fresh again, and the new answer replaces the kept one.
+
+## Build the instance
+
+<include meta='title="instance.ts"'>
+  ../_examples/vendor-outage/instance.ts
+</include>
+
+`plugins[0]` is the outermost layer, and the order here matters:
+
+1. **`failover` first**, so it sees a failure from any layer inside it. It answers only for the vendor's failures: a budget that has run out is your own cap, and that error passes through.
+2. **`cache` inside it.** A cache hit returns before anything further in runs.
+3. **`budget` last of the three**, next to the vendor, so it counts only requests that are really made.
+
+Failover takes a `store` and has no default: where the last good answers are kept is your decision. `memoryCacheStore()` from `outbound-sdk/cache` keeps up to 500 entries in the process and is empty after a restart. A `CacheStore` of your own is three functions (`get`, `set`, `delete`) over Redis, a table or anything else. `maxAge` is how old an answer may be and still be served, in seconds. The default is 7 days.
+
+What counts as "the same read": the provider, the workspace and the whole operation, filters and page included. `campaigns.list()` and `campaigns.list({ status: "paused" })` are two reads, and each page of a `listAll()` walk is kept separately.
+
+## Simulate the outage
+
+The in-memory adapter never fails, so the samples put a small plugin of their own innermost, where the vendor would be. It throws the error a real adapter throws for a 503, 429, 401 or 404. Because the in-memory adapter makes no HTTP request, it also counts one request per operation, so that `budget` and `meta.requests` have something to count.
+
+<include meta='title="outage.ts"'>../_examples/vendor-outage/outage.ts</include>
+
+<include meta='title="seed.ts"'>../_examples/vendor-outage/seed.ts</include>
+
+<include meta='title="run.ts"'>../_examples/vendor-outage/run.ts</include>
+
+That is the script that printed the timeline above.
+
+## Say that the data is old
+
+Every result has `meta.stale` and `meta.fetchedAt`. When `stale` is `true`, show the age: "as of 12:00" is honest, a number with no date is not.
+
+`fetchedAt` is when the vendor was asked, whatever served the answer. In the output above the stale answers say 12:00:00, the time of the one vendor request, although the cache served the same answer again at 12:00:30 and failover saw that hit pass through. With `cache` outside `failover` instead, the age is just as true: the cache never stores an answer marked `stale`.
+
+## When the budget runs out
+
+`budget({ maxRequests, per: "run" })` counts every vendor request the instance makes until you call `requestBudget.reset()`. Once it is spent, the next operation is refused with `RateLimited` before it reaches the vendor. Failover does not answer for that: the cap is yours, not an outage, so the error reaches the caller even for a read that succeeded before. The same goes for `maxRequests` and for a `deadline` that passes while the SDK's own rate budget is full.
+
+<include meta='title="budget.ts"'>../_examples/vendor-outage/budget.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/vendor-outage/budget.out.txt
+</include>
+
+Reset the budget where a "run" starts for you: per incoming request, per cron tick, per minute. With `per: "call"` (the default) the cap applies to each SDK call on its own and nothing needs resetting. Retries count, because each one is a vendor request.
+
+## Point it at your vendor
+
+Swap the adapter and drop the stand-in plugin.
+
+<include meta='title="outbound.ts"'>
+  ../_examples/vendor-outage/production.ts
+</include>
+
+On a real adapter the request engine comes first: a 503 or a 429 is retried, and a 429 is waited out, before the call fails. Failover answers only after that. Without a `deadline`, a page waits through every retry before it gets its stale answer. Set `deadline` to how long a reader should wait.
+
+## What each vendor can serve
+
+The same instance and outage, run on the in-memory adapter limited to what each vendor's adapter declares. This shows which calls a vendor's adapter would refuse. It does not show what that vendor's API returns.
+
+<include meta='title="vendors.ts"'>
+  ../_examples/vendor-outage/vendors.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/vendor-outage/vendors.out.txt
+</include>
+
+No vendor is refused. The three plugins wrap whatever reads an adapter serves and need no capability of their own. A read the adapter does not support is still `Unsupported`, before any plugin runs.
+
+## What it costs in vendor requests
+
+- A cache hit costs none.
+- A stale answer costs the failed attempts that came before it: every retry is a request.
+- A read refused by a spent budget costs none.
+- Failover adds one store write per successful read and one store read per failure. `cache` adds one store read per call and one write per miss.
+
+## When it cannot answer
+
+<include meta='title="failures.ts"'>
+  ../_examples/vendor-outage/failures.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/vendor-outage/failures.out.txt
+</include>
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| The key is rejected | `Unauthorized`, even with a last good answer | Fix the key. Old data would hide a problem only you can fix. |
+| The record no longer exists | `NotFound`, even with a last good answer | Treat it as gone. |
+| A bad request | `Invalid` | Fix the call. |
+| The last good answer is older than `maxAge` | The vendor's error (`Provider` or `RateLimited`) | Show that the data is unavailable, or raise `maxAge`. |
+| This exact read never succeeded | The vendor's error | Nothing to serve. Warm the reads a page needs while the vendor is up. |
+| The call was aborted by your `signal` | The abort error | Nothing is served for a call you cancelled. |
+| Your own request cap stopped the read | `RateLimited`, even with a last good answer | Reset the budget or raise the cap. |
+| The store is empty after a restart | The vendor's error | Use a store that outlives the process. |
+
+## Limits
+
+- Failover works one read at a time. Check `meta.stale` on each result: a page built from several reads can mix fresh and stale answers.
+- "Same read" is exact. A different filter, page size or cursor is a different read.
+- Failover answers for the vendor's failures only. A read stopped by your own cap (`budget`, `maxRequests`, a `deadline` on a full rate budget) fails with `RateLimited`, with or without a last good answer.
+- The stores hold whole answers as the adapter returned them, personal data included. That is also true with `redact` on the instance: it is the outermost plugin and masks on the way out, after the stores have been written. Put the stores where that data is allowed to be.
+- A `run` budget is one counter per instance in one process. It is not shared between processes.
+- Stale numbers are still only as good as the vendor's were when they were fetched.

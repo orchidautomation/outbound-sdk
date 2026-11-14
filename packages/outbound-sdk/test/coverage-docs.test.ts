@@ -1,4 +1,4 @@
-// Checks docs/coverage/<vendor>.md against the adapter: every endpoint a
+// Checks site/content/docs/coverage/<vendor>.mdx against the adapter: every endpoint a
 // vendor documents is normalized, in the native catalog, excluded with a
 // reason, or a write.
 
@@ -13,7 +13,9 @@ import type { Adapter, NativeCatalog } from "../src/index.ts";
 import { instantly } from "../src/instantly/index.ts";
 import { smartlead } from "../src/smartlead/index.ts";
 
-const FOLDER = path.resolve(import.meta.dirname, "../../../docs/coverage");
+const NAME = "site/content/docs/coverage";
+
+const FOLDER = path.resolve(import.meta.dirname, "../../..", NAME);
 
 const ADAPTERS: Readonly<Record<string, () => Adapter<NativeCatalog>>> = {
   heyreach: () => heyreach({ apiKey: "test-key" }),
@@ -75,13 +77,13 @@ const parse = (file: string): Row[] => {
 
 const vendors = existsSync(FOLDER)
   ? readdirSync(FOLDER)
-      .filter((name) => name.endsWith(".md") && name !== "README.md")
-      .map((name) => name.replace(/\.md$/u, ""))
+      .filter((name) => name.endsWith(".mdx") && name !== "index.mdx")
+      .map((name) => name.replace(/\.mdx$/u, ""))
   : [];
 
 test("every vendor that must have a coverage file has one", () => {
   for (const vendor of REQUIRED) {
-    assert.ok(vendors.includes(vendor), `docs/coverage/${vendor}.md exists`);
+    assert.ok(vendors.includes(vendor), `${NAME}/${vendor}.mdx exists`);
   }
 });
 
@@ -114,7 +116,7 @@ for (const vendor of vendors) {
     assert.ok(make, `${vendor} is a known adapter`);
     const adapter = make();
     const catalog: NativeCatalog = adapter.native ?? {};
-    const rows = parse(path.join(FOLDER, `${vendor}.md`));
+    const rows = parse(path.join(FOLDER, `${vendor}.mdx`));
     assert.ok(rows.length >= 20, "the inventory lists the vendor's endpoints");
     const seen = new Set<string>();
 

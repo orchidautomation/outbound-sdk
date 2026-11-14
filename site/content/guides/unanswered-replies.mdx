@@ -1,0 +1,118 @@
+---
+title: List the replies nobody answered, longest waiting first, from a scheduled job
+description: One function that reads recent replies, checks each conversation for a message sent afterwards, and returns the ones still waiting as text, plus what it could not check. It lists replies and sends nothing.
+sidebar:
+  label: Unanswered replies
+related:
+  - /docs/insights/people
+  - /guides/person-across-email-and-linkedin
+  - /guides/hot-leads-call-list
+---
+
+A prospect replies "yes, send me pricing" and nobody answers, because the reply sat in a shared inbox over a weekend. `droppedReplies` finds those. It reads the replies since a date, keeps the categories that need an answer, reads each conversation, and reports a reply as dropped when nothing was sent after it and it has waited longer than a number of hours you choose. The list comes back longest waiting first.
+
+It only lists. It does not answer, assign or mark anything, in the SDK or in the vendor tool. It also does not know about answers given outside the tool: a reply you answered from your own mailbox or by phone still shows as unanswered.
+
+<include>../_snippets/status.mdx</include>
+
+## Before you start
+
+- Node 22 or later.
+- The code below runs on the in-memory adapter, so it needs no vendor key. Each sample on this page is a file in the repository that the test suite runs; the output shown is what it printed.
+- For real data: an Instantly, Smartlead or HeyReach API key. A read-only key is enough. No method of the SDK writes to a vendor.
+- A scheduler you already run. The SDK schedules nothing.
+
+## What you get
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/unanswered-replies/run.out.txt
+</include>
+
+## Write the list
+
+<include meta='title="unanswered.ts"'>
+  ../_examples/unanswered-replies/unanswered.ts
+</include>
+
+How a reply ends up on the list:
+
+1. Replies received since `since` are read, up to `max_replies` (default 50). Without `since`, that is 14 days before now.
+2. Replies in a category that needs no answer are left out. By default `positive`, `neutral` and `unknown` are kept; out-of-office, bounce, unsubscribe and negative replies are not. Replies the vendor marks as automatic are left out too, unless `include_auto` is `true`.
+3. The rest are grouped by conversation. A conversation is read by its thread when the reply has a thread id and the adapter can read one, otherwise by the lead's timeline.
+4. A conversation is dropped when it has replies after the last message sent. The oldest of those is reported, with how many there are in `unansweredReplies`.
+5. It is listed only once it has waited `older_than_hours` (default 24). Younger ones are counted in `totals.tooRecent`.
+
+Three things in the answer are worth copying:
+
+- **`totals.unchecked` is not zero by accident.** A reply with no thread and no lead to read, or no time on it, cannot be checked. It is counted there and never reported as dropped. Print the count, so a short list is not read as a clean one.
+- **A reply names its lead by ref.** The function reads each lead to print an address. That is one more read per listed reply.
+- **`meta.complete` is `false` when `max_replies` stopped the read.** The list then covers the replies that were read, and a note says so.
+
+The categories come from the vendor or from fixed rules. The SDK calls no AI model, so a reply the vendor filed as `neutral` is treated as one, whatever it says.
+
+## Try it without a key
+
+Ten messages on one made-up tool: two people waiting, one answered, one too recent, and two that need no answer.
+
+<include meta='title="seed.ts"'>
+  ../_examples/unanswered-replies/seed.ts
+</include>
+
+<include meta='title="run.ts"'>../_examples/unanswered-replies/run.ts</include>
+
+That is the script that printed the list above.
+
+## Run it on a schedule
+
+Swap the adapter and export a function for your scheduler to call: cron, a GitHub Actions schedule, a Vercel cron route. What you do with the text (post it to a channel, email it to the account owner) is your code.
+
+<include meta='title="job.ts"'>../_examples/unanswered-replies/job.ts</include>
+
+The SDK stores nothing, so each run starts from the vendor's data and lists every reply still waiting, including ones the last run listed. If you want each reply reported once, keep the `reply` refs you already reported in your own store.
+
+## What each vendor can serve
+
+The insight, run on the in-memory adapter limited to what each vendor's adapter declares. This shows which calls a vendor's adapter would refuse. It does not show what that vendor's API returns.
+
+<include meta='title="vendors.ts"'>
+  ../_examples/unanswered-replies/vendors.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/unanswered-replies/vendors.out.txt
+</include>
+
+`droppedReplies` needs only `replies.list`, which all three declare. All three can also read a thread and a lead's timeline, and all three take a date filter on replies, so none adds a note here.
+
+With several tools behind [`combine`](/docs/adapters/combine), a thread id cannot be routed to one tool, so every conversation is checked by the lead's timeline.
+
+## What it costs
+
+One request per page of replies, plus one per conversation checked: at most about `max_replies` requests, so about 50 by default. The function above adds one lead read per listed reply (two requests each on Smartlead and HeyReach). `maxRequests` on the instance caps the whole run; past it the call fails with `RateLimited` instead of spending your vendor quota.
+
+## When it cannot answer
+
+<include meta='title="failures.ts"'>
+  ../_examples/unanswered-replies/failures.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/unanswered-replies/failures.out.txt
+</include>
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| More replies than `max_replies` | `meta.complete` is `false` and a note says where it stopped | Raise `max_replies`, or move `since` later. |
+| The adapter can read neither a thread nor a lead's timeline | Nothing is listed, every reply is in `totals.unchecked`, and a note says so | Do not read the empty list as "all answered". Use an adapter that declares `leads.timeline` or `messages.byThread`. |
+| The adapter cannot filter replies by date | The newest replies are read and filtered in the SDK, with a note | Nothing. Expect the read to reach `max_replies` sooner. |
+| `since` is not an ISO 8601 date or time | `Invalid`, before any request | Pass `2026-11-01` or a full timestamp with an offset. |
+| The adapter cannot list replies | `Unsupported`, before any request | Use an adapter that declares `replies.list`. |
+| A rejected key | `Unauthorized`. It is not retried. | Check the key and its scope. |
+
+## Limits
+
+- "Answered" means a message was sent in the same conversation after the reply, in the vendor tool. An answer from another mailbox, a call or a meeting booking is not seen.
+- An automated follow-up step sent after the reply counts as a message sent. If your tool keeps sending a sequence after a reply, that conversation reads as answered.
+- A reply the vendor files as `negative` or out-of-office is left out by default. Pass `categories` to change which ones count.
+- One entry per conversation: the oldest unanswered reply, with the count of unanswered replies after the last send.
+- On an `unverified` adapter, check a list against the vendor's own inbox before acting on it.

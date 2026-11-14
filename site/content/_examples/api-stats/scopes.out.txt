@@ -1,0 +1,7 @@
+workspace: 350 sent
+2026-11-09 200 sent, 9 replied
+2026-11-10 150 sent, 6 replied
+step 0 300 sent, 11 replied
+step 1 50 sent, 4 replied
+mbx_ben: 140 sent, 5 bounced
+sender memory:default:mbx_ben exact

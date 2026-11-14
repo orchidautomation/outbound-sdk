@@ -1,0 +1,9 @@
+memory acme cmp_founders
+memory:acme:cmp_founders
+true null
+instantly:acme:0193-ab
+{ provider: 'memory', sourceId: 'cmp_founders', workspaceId: 'acme' }
+null
+cmp_founders
+true
+false

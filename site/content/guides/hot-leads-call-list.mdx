@@ -1,0 +1,146 @@
+---
+title: Build a morning list of who to call first, with the reason for each rank
+description: One function that ranks leads by a score built from the vendor's interest label, replies, clicks, opens and how recent the last reply is, and prints each score with its parts. It is a ranking you can check, not a prediction.
+sidebar:
+  label: Who to call first
+related:
+  - /docs/insights/people
+  - /guides/unanswered-replies
+  - /guides/person-across-email-and-linkedin
+---
+
+A rep with an hour to make calls wants the leads in order. `hotLeads` reads the leads and gives each a score from what the vendor reports about them: a positive interest label, replies, clicks, opens, and how recent the last reply is. It returns the leads highest score first.
+
+The score is a weighted sum, and every part of it comes back with the lead. It is not a prediction: no model is trained or called, and nothing says a lead with 95 points is more likely to buy than one with 31. It says the first has a positive label and replied twice, and the second replied once. The weights are inputs, so you can change what "first" means.
+
+<include>../_snippets/status.mdx</include>
+
+## Before you start
+
+- Node 22 or later.
+- The code below runs on the in-memory adapter, so it needs no vendor key. Each sample on this page is a file in the repository that the test suite runs; the output shown is what it printed.
+- For real data: an API key for a tool that reports per-lead counts. Today that is Instantly. Read "What each vendor can serve" below before you plan around Smartlead or HeyReach.
+
+## What you get
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/hot-leads-call-list/run.out.txt
+</include>
+
+## Write the list
+
+<include meta='title="call-list.ts"'>
+  ../_examples/hot-leads-call-list/call-list.ts
+</include>
+
+The score is the sum of five parts, with these defaults:
+
+| Part | Points | Input |
+| --- | --- | --- |
+| The vendor's interest label is a positive one | 50 | `weight_interest`, `positive_labels` |
+| Each reply, up to `count_cap` | 10 | `weight_reply` |
+| Each click, up to `count_cap` | 5 | `weight_click` |
+| Each open, up to `count_cap` | 1 | `weight_open` |
+| A reply received right now, fading evenly to 0 after `recency_days` | 20 | `weight_recency` |
+
+`count_cap` is 5 and `recency_days` is 14. `positive_labels` defaults to `Interested`, `Meeting Booked` and `Meeting Completed`, matched without regard to case.
+
+Read the output above against that table:
+
+- **Ava** scores 95: 50 for the label, 20 for two replies, 15 because her last reply was 3.5 of 14 days ago, 5 for a click and 5 for opens. She has six opens; the cap counts five.
+- **Cara** is third although the vendor labelled her `Not Interested`. A label that is not positive earns 0 points, and her reply and its recency still count. The ranking does not read what a reply says.
+- **Dev** has 40 opens and 5 points. The cap is there so opens cannot outrank a reply.
+- **A part that is `null` is unknown, not zero.** Ben has no label, so `parts.interest` is `null`. The function prints "unknown".
+
+Who is left out:
+
+- A lead with no label and no engagement data is not scored 0. It is left out and counted in `totals.withoutData`.
+- Unsubscribed and bounced leads are left out and counted in `totals.excluded`.
+- A lead whose known parts add up to 0 is not on the list.
+
+## Try it without a key
+
+Eight leads on one made-up tool.
+
+<include meta='title="seed.ts"'>
+  ../_examples/hot-leads-call-list/seed.ts
+</include>
+
+<include meta='title="run.ts"'>../_examples/hot-leads-call-list/run.ts</include>
+
+That is the script that printed the list above.
+
+## Change what "first" means
+
+Every weight is an input. This run makes a recent reply worth most, shortens the recency window to a week and ignores opens.
+
+<include meta='title="weights.ts"'>
+  ../_examples/hot-leads-call-list/weights.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/hot-leads-call-list/weights.out.txt
+</include>
+
+Ben is now seven points behind Ava, and Dev is gone: with opens worth nothing he scores 0.
+
+## Point it at your vendor
+
+Swap the adapter. Nothing else changes.
+
+<include meta='title="outbound.ts"'>
+  ../_examples/hot-leads-call-list/production.ts
+</include>
+
+Call the function from a scheduler you already run and send the text where the reps will see it. The SDK stores nothing and schedules nothing. The list has no phone numbers: a lead record has no phone field.
+
+## What each vendor can serve
+
+The insight, run on the in-memory adapter limited to what each vendor's adapter declares. This shows which calls a vendor's adapter would refuse and which notes it adds. It does not show what that vendor's API returns.
+
+<include meta='title="vendors.ts"'>
+  ../_examples/hot-leads-call-list/vendors.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/hot-leads-call-list/vendors.out.txt
+</include>
+
+The ranking needs per-lead reply, click and open counts (`leads.engagement`). Without them only the interest label and a `replied` status are left to score on.
+
+- **Instantly** declares `leads.engagement` and can list every lead. It serves the full ranking.
+- **Smartlead**'s adapter does not declare `leads.engagement`: the only per-lead counts are in an endpoint whose response is not documented, and in a CSV export. The call succeeds with a note, and scores rest on the label and the status.
+- **HeyReach** reports no per-lead counts at all, and has no list of every lead, so the call without a campaign is refused. With a campaign ref it runs, but the adapter's notes say a campaign's leads carry no interest label either. On HeyReach this ranking has almost nothing to rank on. Do not build a call list on it.
+
+## What it costs
+
+One request per page of leads read. `max_leads` (default 500, at most 20,000) sets the ceiling, and a vendor request returns about 50 to 100 leads. On Smartlead a read without a campaign walks every campaign's leads, so pass `campaign`. `maxRequests` on the instance caps the whole call; past it the call fails with `RateLimited` instead of spending your vendor quota.
+
+## When it cannot answer
+
+<include meta='title="failures.ts"'>
+  ../_examples/hot-leads-call-list/failures.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/hot-leads-call-list/failures.out.txt
+</include>
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| More leads than `max_leads` | `meta.complete` is `false` and a note says where it stopped. The ranking covers the leads read. | Raise `max_leads`, or rank one campaign. |
+| `limit` is smaller than the number of hot leads | A shorter list. `totals.hot` still counts them all and `meta.complete` stays `true`. | Nothing. |
+| No lead has a label or a count | An empty list, with the leads in `totals.withoutData` | Check that the vendor reports per-lead counts. |
+| A negative weight, or another input out of range | `Invalid`, before any request | Fix the value. |
+| The adapter cannot list every lead and no campaign was given | `Unsupported`, naming `leads.list` | Pass `campaign`. |
+| The adapter reports no per-lead counts | An answer with a note. Count parts are `null`. | Treat the list as a list of labelled leads, not a ranking. |
+| A rejected key | `Unauthorized`. It is not retried. | Check the key and its scope. |
+
+## Limits
+
+- The score orders leads. It does not estimate a chance of anything, and two scores are only comparable under the same weights.
+- It reads the label and the counts, never the reply text. A lead who replied "stop emailing me" and was not marked unsubscribed still earns reply points.
+- Ties are broken by the most recent reply, then by lead ref.
+- One entry per lead record. A person in two campaigns appears twice, scored on each record's own counts.
+- Open counts depend on tracking pixels, which mail clients load on their own. Keep `weight_open` low.
+- On an `unverified` adapter, check a list against the vendor's own lead view before calling from it.

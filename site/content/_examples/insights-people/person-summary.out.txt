@@ -1,0 +1,9 @@
+identifiers: email:ana@northwind.example.com, linkedin:ana-ruiz-example
+SaaS founders (email): sent 2, replies 2, replied to steps [1], interest Interested
+Agency owners (email): sent 1, replies 0, replied to steps [], interest null
+LinkedIn founders (linkedin): sent 2, replies 1, replied to steps [], interest null
+by channel: {
+  email: { messagesSent: 3, replies: 2 },
+  linkedin: { messagesSent: 2, replies: 1 }
+}
+replied in 2 of 3 campaigns (rate 0.6667)

@@ -13,7 +13,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "architecture": "node scripts/check-architecture.mjs",
     "shape": "node scripts/check-repo-shape.mjs",
-    "test": "node --test \"scripts/*.test.mjs\" \"packages/*/test/**/*.test.ts\"",
+    "test": "node --test \"scripts/*.test.mjs\" \"packages/*/test/**/*.test.ts\" \"site/test/*.test.ts\"",
     "build": "node scripts/build.mjs && node scripts/smoke-dist.mjs && node scripts/check-size.mjs",
     "check:static": "npm run typecheck && npm run architecture && npm run shape && npm run fixtures && git diff --check",
     "check:fast": "npm run lint && npm run check:static",
@@ -23,7 +23,10 @@
     "version-packages": "changeset version",
     "fixtures": "node scripts/check-fixtures.mjs",
     "coverage": "node scripts/check-coverage.mjs",
-    "test:live": "node --test \"packages/*/test/live/*.live.ts\""
+    "test:live": "node --test \"packages/*/test/live/*.live.ts\"",
+    "site:dev": "npm --prefix site run dev",
+    "site:build": "npm --prefix site run build",
+    "site:live": "EXAMPLES_LIVE=1 node --import ./scripts/examples-loader.mjs --test \"site/test/live/*.live.ts\""
   },
   "devDependencies": {
     "@changesets/cli": "3.0.3",

@@ -1,0 +1,41 @@
+run 1, stopped after one page:
+  page: lead_jane, lead_sam
+  checkpoint saved: {"cursor":"eyJhIjoibGVhZHMubGlzdCIsIm4iOjIsInAiOiJtZW1vcnkiLCJ2IjoxLCJ3IjoiYWdlbmN5In0","startedAt":"2026-11-14T12:00:00.000Z"}
+{
+  collection: 'leads',
+  complete: false,
+  pages: 1,
+  records: 2,
+  resumed: false,
+  since: undefined
+}
+run 2, picks up on the second page:
+  page: lead_priya, lead_omar
+  checkpoint saved: {"startedAt":"2026-11-14T12:00:00.000Z"}
+  checkpoint saved: {"since":"2026-11-14T12:00:00.000Z"}
+{
+  collection: 'leads',
+  complete: true,
+  pages: 1,
+  records: 2,
+  resumed: true,
+  since: undefined
+}
+run 3, asks only for leads created since run 1 began, less 5 minutes:
+  checkpoint saved: {"since":"2026-11-14T12:00:00.000Z"}
+{
+  collection: 'leads',
+  complete: true,
+  pages: 0,
+  records: 0,
+  resumed: false,
+  since: '2026-11-14T11:55:00.000Z'
+}
+after reset, the next run starts over:
+  checkpoint deleted
+  page: lead_jane, lead_sam
+  checkpoint saved: {"cursor":"eyJhIjoibGVhZHMubGlzdCIsIm4iOjIsInAiOiJtZW1vcnkiLCJ2IjoxLCJ3IjoiYWdlbmN5In0","startedAt":"2026-11-14T12:00:00.000Z"}
+  page: lead_priya, lead_omar
+  checkpoint saved: {"startedAt":"2026-11-14T12:00:00.000Z"}
+  checkpoint saved: {"since":"2026-11-14T12:00:00.000Z"}
+4

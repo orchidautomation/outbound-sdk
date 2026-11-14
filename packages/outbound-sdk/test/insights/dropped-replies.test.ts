@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { OutboundError } from "../../src/index.ts";
-import type { MemoryData } from "../../src/memory/index.ts";
+import type { MemoryData, MemoryMessage } from "../../src/memory/index.ts";
 import { agency, NOW, single } from "./helpers.ts";
 
 // NOW is 2026-11-14T12:00:00Z.
@@ -377,4 +377,30 @@ test("dropped_replies works across two tools, where a thread cannot be routed", 
   );
   assert.equal(result.data.totals.answered, 1);
   assert.equal(result.meta.provider, "combined");
+});
+
+const waiting = (id: string): MemoryMessage => ({
+  campaignId: "c1",
+  direction: "in",
+  id,
+  leadId: id,
+  sentAt: "2026-11-10T08:00:00.000Z",
+  threadId: id,
+});
+
+test("dropped_replies writes the article the category takes", async () => {
+  const result = await single({
+    campaigns: [{ id: "c1" }],
+    leads: [
+      { campaignId: "c1", email: "person1@example.com", id: "u1" },
+      { campaignId: "c1", email: "person2@example.com", id: "u2" },
+    ],
+    // u1 carries no category from the vendor: unknown.
+    messages: [waiting("u1"), { ...waiting("u2"), category: "ooo" }],
+  }).insights.droppedReplies({ categories: ["unknown", "ooo"] }, { now: NOW });
+
+  assert.deepEqual(result.data.dropped.map((each) => each.finding).toSorted(), [
+    "An ooo reply has waited 100 hours with nothing sent after it.",
+    "An unknown reply has waited 100 hours with nothing sent after it.",
+  ]);
 });

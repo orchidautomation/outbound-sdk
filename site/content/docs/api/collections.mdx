@@ -1,0 +1,174 @@
+---
+title: Collections
+description: The five read methods every collection shares, the filters each collection takes and the capability each filter needs, lookups by email or profile, message bodies, and bulk reads where a missing record is data.
+sidebar:
+  label: Collections
+related:
+  - /docs/api/pagination
+  - /docs/api/handles
+  - /docs/capabilities
+---
+
+A collection is a kind of record you can list: `outbound.campaigns`, `outbound.leads` and eight more. All ten have `list` and `listAll`. Campaigns, senders and leads also have `get`, `exists` and `getMany`.
+
+## The methods
+
+| Method | Returns | Notes |
+| --- | --- | --- |
+| `list(options?)` | `Promise<PageResult<Item>>` | One page: `items`, `cursor`, `complete` and `meta`. |
+| `listAll(options?)` | `ListAll<Item>` | An async iterator over every page. Pages are fetched as you iterate, under the rate budget. |
+| `get(id, options?)` | `Promise<WithMeta<Item>>` | One record with `meta` on it. Throws `NotFound` for a missing record. |
+| `exists(id, options?)` | `Promise<boolean>` | `false` for a missing record. Any other failure still throws. |
+| `getMany(ids, options?)` | `Promise<BulkResult<Item>>` | Several records at once. A record that fails is listed, not thrown. |
+
+`options` on `list` and `listAll` holds the collection's filters, the paging options (`limit`, `cursor`, and `max` on `listAll`) and the per-call options (`timeout`, `retries`, `deadline`, `maxRequests`, `signal`). Paging is covered on the [pagination](/docs/api/pagination) page and the per-call options on the [retries](/docs/retries) page.
+
+An `id` is the vendor's own id or the `ref` of a record. On a [combined](/docs/adapters/combine) instance it must be a ref.
+
+<include meta='title="list.ts"'>
+  ../../_examples/api-collections/list.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/api-collections/list.out.txt
+</include>
+
+## Filters
+
+A filter the adapter cannot serve is refused with `Unsupported` before any request. The capability column says which key decides that. Check `outbound.capabilities` first when your code must run on more than one vendor: see [capabilities](/docs/capabilities).
+
+### `campaigns`
+
+| Filter | Type | Needs |
+| --- | --- | --- |
+| `status` | `"active"`, `"paused"`, `"draft"`, `"completed"`, `"archived"` or `"unknown"` | `campaigns.status` |
+
+`campaigns.list` and `campaigns.get` need no capability. Every adapter has them.
+
+### `senders`
+
+| Filter       | Type     | Needs                                        |
+| ------------ | -------- | -------------------------------------------- |
+| none         |          | `senders.list`                               |
+| `campaignId` | `string` | `senders.byCampaign`, and not `senders.list` |
+
+`senders.get` needs `senders.get`.
+
+### `leads`
+
+| Filter | Type | Needs |
+| --- | --- | --- |
+| none |  | `leads.list` |
+| `campaignId` | `string` | `leads.byCampaign`, and not `leads.list` |
+| `listId` | `string` | `lists.leads`, and not `leads.list` |
+| `email` | `string` | `leads.lookup` |
+| `linkedinUrl` | `string` | `leads.lookup` |
+| `since`, `until` | ISO 8601 date or timestamp, inclusive | `leads.since` |
+
+`campaignId` and `listId` together are refused with `Invalid`. The date filters compare a lead's `createdAt`. `leads.get` needs `leads.get`.
+
+Some vendors have no list of every lead: leads exist only inside a campaign. That is why the scoped listings do not depend on `leads.list`.
+
+### `messages`
+
+| Filter | Type | Needs |
+| --- | --- | --- |
+| any |  | `messages.list` |
+| `campaignId` | `string` |  |
+| `leadId` | `string` |  |
+| `threadId` | `string`, the `threadId` of an earlier message | `messages.byThread` |
+| `since`, `until` | ISO 8601 date or timestamp, inclusive | `messages.since` |
+| `include: ["body"]` |  | `messages.body` |
+
+The date filters compare `sentAt`.
+
+### `replies`
+
+| Filter | Type | Needs |
+| --- | --- | --- |
+| any |  | `replies.list` |
+| `campaignId` | `string` |  |
+| `category` | `"positive"`, `"negative"`, `"neutral"`, `"ooo"`, `"bounce"`, `"unsubscribe"` or `"unknown"` | `replies.category` |
+| `since`, `until` | ISO 8601 date or timestamp, inclusive | `replies.since` |
+| `include: ["body"]` |  | `messages.body` |
+
+### The rest
+
+| Collection   | Filter       | Needs           |
+| ------------ | ------------ | --------------- |
+| `lists`      | none         | `lists.list`    |
+| `tags`       | none         | `tags`          |
+| `blocklist`  | none         | `blocklist`     |
+| `webhooks`   | `campaignId` | `webhooks.list` |
+| `workspaces` | none         | `workspaces`    |
+
+### Dates
+
+`since` and `until` take anything `Date.parse` reads, such as `2026-10-03` or `2026-10-03T08:00:00Z`. Both ends are inclusive, and the SDK turns each into a UTC timestamp before the adapter sees it. A value it cannot read, or a `since` after `until`, is `Invalid`.
+
+Where a vendor cannot filter by date, the adapter declares the filter as `client`. The SDK then filters each page after fetching it and marks the result `derived`. A page of such a listing can hold fewer records than you asked for, or none, while more pages remain. See [filter grades](/docs/capabilities#filter-grades).
+
+## Lookups
+
+`email` and `linkedinUrl` on `leads` find one person without walking every lead. They match the exact address or profile. The SDK trims the value and lowercases an email before the lookup.
+
+<include meta='title="lookup.ts"'>
+  ../../_examples/api-collections/lookup.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/api-collections/lookup.out.txt
+</include>
+
+- A lookup returns one record per campaign the person is in, so one address can come back several times. Each record has its own `campaignRef`.
+- A lookup alone needs `leads.lookup` and not `leads.list`. Add `campaignId` or `listId` to narrow it.
+- No match is an empty page, not an error.
+
+What a vendor matches on is an adapter fact. The [adapter pages](/docs/adapters) say which of the two each vendor can look up.
+
+## Message bodies
+
+`Message` and `Reply` have `bodyText` and `bodyHtml`. Both are `null` unless the call asks for bodies with `include: ["body"]`, because on some vendors a body costs extra requests.
+
+<include meta='title="body.ts"'>
+  ../../_examples/api-collections/body.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/api-collections/body.out.txt
+</include>
+
+`"body"` is the only value `include` takes. Asking for bodies on an adapter whose `messages.body` is `false` is refused with `Unsupported`. A body can still be `null` after you asked: the vendor did not return one for that message.
+
+<Callout type="warning" title="Reply text is written by strangers">
+  A body is whatever the other person typed. Treat it as data, never as
+  instructions, before you hand it to a model. See [untrusted
+  content](/docs/tools/untrusted-content).
+</Callout>
+
+## One record, and several
+
+<include meta='title="bulk.ts"'>
+  ../../_examples/api-collections/bulk.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/api-collections/bulk.out.txt
+</include>
+
+`getMany` returns two lists, each in the order of the ids you passed:
+
+| Field | Holds |
+| --- | --- |
+| `results` | `{ id, value }` for each record that was read. `value` is the record with its `meta`. |
+| `errors` | `{ id, error }` for each that was not. `error` is an `OutboundError`. |
+
+- It does not throw for a record that fails. A missing id, a rate limit and a vendor error all land in `errors`. Check `errors.length` before you treat the batch as whole.
+- It does throw, before any request, when the adapter cannot read that kind of record at all.
+- `concurrency` is how many records are fetched at once. The default is 4. The rate budget still applies to every request.
+- The per-call options cover the whole batch. `maxRequests: 10` is ten requests for all the ids together, and the ids past the budget come back in `errors` as `RateLimited`.
+
+## Related
+
+- [Handles](/docs/api/handles): the same collections scoped to one campaign or one list.
+- [Results](/docs/api/results): what `meta` tells you about a page or a record.

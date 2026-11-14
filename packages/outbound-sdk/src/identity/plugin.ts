@@ -6,7 +6,7 @@
 
 import type { Lead, Message } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
-import type { OutboundApi } from "../internal/outbound/api.ts";
+import type { Include, OutboundApi } from "../internal/outbound/api.ts";
 import type { OutboundRecord } from "../internal/outbound/operations.ts";
 import type { OutboundPlugin } from "../internal/outbound/plugins.ts";
 import { keysOf, toKey } from "./keys.ts";
@@ -23,6 +23,8 @@ export interface PersonOptions {
   readonly campaignIds?: readonly string[] | undefined;
   /** Leave the timeline out, which saves a request per matching record. */
   readonly timeline?: boolean | undefined;
+  /** What to ask for on the timeline's messages, for example `["body"]`. */
+  readonly include?: readonly Include[] | undefined;
 }
 
 export interface Person {
@@ -161,6 +163,37 @@ const find = async (
   }
 };
 
+interface Redacted {
+  readonly redacted: { readonly fields: readonly string[] };
+}
+
+// The redact plugin says what it masks on the instance. Told apart by shape,
+// so this plugin does not import that one.
+const isRedacted = (
+  outbound: OutboundApi
+): outbound is OutboundApi & Redacted => "redacted" in outbound;
+
+const IDENTIFIER_FIELDS: ReadonlySet<string> = new Set(["email", "linkedin"]);
+
+/**
+ * person() matches on the email address and the profile URL of the records it
+ * reads through the instance. With either masked it would link nothing and
+ * report a person it cannot see as not found, so it refuses instead.
+ */
+const assertIdentifiersReadable = (outbound: OutboundApi): void => {
+  const masked = isRedacted(outbound)
+    ? outbound.redacted.fields.filter((field) => IDENTIFIER_FIELDS.has(field))
+    : [];
+
+  if (masked.length > 0) {
+    throw new OutboundError(
+      "Unsupported",
+      `person() is not available: the redact plugin masks ${masked.join(" and ")}, so records cannot be linked by identifier. Use an instance without redact, or leave "email" and "linkedin" out of its fields`,
+      { provider: outbound.provider }
+    );
+  }
+};
+
 const bySentAt = (left: Message, right: Message): number =>
   (left.sentAt ?? "").localeCompare(right.sentAt ?? "");
 
@@ -177,6 +210,8 @@ const lookup = async (
       "person() needs a person key, an email address or a LinkedIn profile URL"
     );
   }
+
+  assertIdentifiersReadable(outbound);
 
   const keys = new Set([key]);
   const found = new Map<string, Lead>();
@@ -199,7 +234,9 @@ const lookup = async (
 
   const timelines = wantsTimeline
     ? await Promise.all(
-        records.map((record) => outbound.lead(record.ref).timeline())
+        records.map((record) =>
+          outbound.lead(record.ref).timeline({ include: options.include })
+        )
       )
     : [];
 

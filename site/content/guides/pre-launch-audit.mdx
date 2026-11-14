@@ -1,0 +1,113 @@
+---
+title: Audit a campaign's copy, merge variables and settings before it launches
+description: One function that lists what is wrong with a campaign's copy, which leads would get a blank merge variable, and which settings are risky, as a report you read before you press launch.
+sidebar:
+  label: Pre-launch audit
+related:
+  - /docs/insights/copy
+  - /docs/insights/people
+  - /docs/insights/senders
+  - /guides/sender-capacity
+---
+
+Most launch mistakes are visible before the first email goes out: a variable with one brace missing, a lead with no first name, a follow-up with a new subject that starts a second thread, a daily limit the mailboxes cannot carry. Three insights find them. `copyAudit` checks every step and variant of the sequence against fixed text rules. `personalizationGaps` checks every lead against the merge variables the copy uses. `settingsAudit` checks the schedule, limits and tracking.
+
+It is a report. Nothing here blocks, delays or edits a campaign: the SDK is read-only, and the launch button stays in your vendor tool. The rules are fixed and no AI model reads the copy.
+
+<include>../_snippets/status.mdx</include>
+
+## Before you start
+
+- Node 22 or later.
+- The code below runs on the in-memory adapter, so it needs no vendor key. Each sample on this page is a file in the repository that the test suite runs; the output shown is what it printed.
+- For real data: an Instantly, Smartlead or HeyReach API key. A read-only key is enough.
+
+## What you get
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/pre-launch-audit/run.out.txt
+</include>
+
+## Write the audit
+
+<include meta='title="audit.ts"'>
+  ../_examples/pre-launch-audit/audit.ts
+</include>
+
+What each call checks:
+
+- **`copyAudit`** takes one campaign. For each variant it looks for a subject over 60 characters, a body over 150 words, more than one link, a word from a short spam list, a `{{ }}` variable that is empty or has unbalanced braces, more than one word of four or more letters in capitals, more than one exclamation mark, an image or tracking pixel, a first email with no subject, and a follow-up whose subject differs from the first email's. A LinkedIn campaign skips the email-only checks and flags a connection request over 300 characters. Every limit is an input (`max_subject_chars`, `max_body_words`, `max_links`, `spam_words` and so on). Each finding has a severity and the text that triggered it.
+- **`personalizationGaps`** takes one campaign. It finds every `{{variable}}`, `{variable}` and `%variable%` in subjects and bodies and checks each lead for a value: first name, last name, company, title, email, or a custom field of the same name, ignoring case, spaces, underscores and hyphens. A variable with a fallback, such as `{{firstName|there}}`, is not a gap. A variable no lead has, such as a signature the vendor fills in, is listed in `unknownVariables` and not counted against leads.
+- **`settingsAudit`** takes statuses, not a campaign, and audits every campaign in them. Its default is `["active"]`, so a draft is only looked at when you ask for `draft`. It flags no sending window, a window that includes the weekend, is longer than 12 hours or shorter than 2, a window with no timezone, open or click tracking on, a reply that does not stop the sequence, no daily limit, sends less than 5 minutes apart, an end date in the past on an active campaign, and a daily limit over 50 a day for each attached sender. The bars are inputs.
+
+The three use different variable rules on purpose. `copyAudit` flagged `{{firstName}` in step 0 B as broken text. `personalizationGaps` does not see it as a variable at all, so that variant is not what makes a lead "affected".
+
+## Try it without a key
+
+This seed is one draft campaign with five leads and two mailboxes, and one running campaign the audit leaves alone:
+
+<include meta='title="seed.ts"'>../_examples/pre-launch-audit/seed.ts</include>
+
+<include meta='title="run.ts"'>../_examples/pre-launch-audit/run.ts</include>
+
+That is the script that printed the audit above.
+
+## Point it at your vendor
+
+Swap the adapter. Nothing else changes.
+
+<include meta='title="outbound.ts"'>
+  ../_examples/pre-launch-audit/production.ts
+</include>
+
+To make it a gate, call the function from your own launch checklist or CI job and decide there what counts as a failure, for example any `high` finding. The decision and the gate are yours: the SDK reports and never stops a launch.
+
+## What each vendor can serve
+
+Each insight, run on the in-memory adapter limited to what each vendor's adapter declares. This shows which calls a vendor's adapter would refuse. It does not show what that vendor's API returns.
+
+<include meta='title="vendors.ts"'>
+  ../_examples/pre-launch-audit/vendors.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/pre-launch-audit/vendors.out.txt
+</include>
+
+`settingsAudit` needs `campaigns.settings`. The HeyReach adapter declares it `false`: HeyReach's API returns no schedule, start or end date for a campaign, and sending limits belong to the LinkedIn account. On HeyReach, run the other two and check settings in HeyReach itself.
+
+## What it costs in vendor requests
+
+- `copyAudit`: two reads, the campaign and its sequence.
+- `personalizationGaps`: one read for the sequence, then one per page of leads, up to `max_leads` (default 500). When the sequence uses no variables, no lead is read.
+- `settingsAudit`: one listing of campaigns per status, then for each campaign one read for its settings and, when the adapter can list a campaign's senders, one listing of them. It reads up to `max_campaigns` (default 25) campaigns in the statuses you pass, not only yours, so on a workspace with many drafts most of its cost is other campaigns.
+- The function above adds one read of the campaign.
+
+A read can be more than one vendor request. On Instantly, reading a campaign is three requests, and listing a campaign's senders reads every mailbox in the workspace at two requests per page.
+
+## When it cannot answer
+
+<include meta='title="failures.ts"'>
+  ../_examples/pre-launch-audit/failures.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/pre-launch-audit/failures.out.txt
+</include>
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| A campaign that does not exist | `NotFound` | Check the id. |
+| More leads than `max_leads` | `meta.complete` is `false`, the counts cover the leads read, and a note says where it stopped | Raise `max_leads` (up to 20,000). "0 of 2 affected" says nothing about lead 3. |
+| No campaign in the statuses passed | `totals.campaigns` is `0` and no findings | Not a clean result. Pass the campaign's own status, as the function above does. |
+| `settingsAudit` with no input | Only `active` campaigns are audited | Pass `statuses` for a draft or paused campaign. |
+| The adapter cannot read campaign settings | `Unsupported`, before any request | Run the other two audits; check settings in the vendor tool. |
+| A variant whose body the vendor does not return | The variant is counted in `variantsWithoutBody`, its body checks are skipped and a note says so | Read that variant by hand. |
+
+## Limits
+
+- `settingsAudit` cannot be pointed at one campaign. The function above filters its answer; the vendor requests for the other campaigns in that status are still spent.
+- A setting the vendor reports nothing for is skipped, except a missing window, timezone or daily limit, which cannot be told apart from one that is not set and is reported as a finding.
+- `copyAudit` is a fixed list of text rules. It does not judge whether the copy is good, and the default spam list is 14 words and phrases. Pass your own with `spam_words`.
+- `personalizationGaps` checks the leads in the campaign when you run it. Leads added afterwards are not covered: run it again after the last import.
+- A campaign with zero findings has passed these checks, nothing more.

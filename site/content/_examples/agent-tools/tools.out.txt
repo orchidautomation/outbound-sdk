@@ -1,0 +1,45 @@
+no plugins: campaign_overview, campaign_trend, winning_steps, sender_health, reply_samples, lead_runway, campaign_setup, deliverability_check, audience_lists
+
+with identity and three insights: campaign_overview, campaign_trend, winning_steps, sender_health, reply_samples, lead_runway, cross_channel_lead, campaign_setup, deliverability_check, audience_lists, hot_leads, campaign_ranking, client_report
+
+only: campaign_overview, reply_samples
+
+every insight as a tool: 26
+
+campaign_overview: How every campaign is doing right now: sends, replies, positive replies, bounces and reply rate for each campaign with the given status. One vendor request per campaign. Rates are computed from counts; a null means the vendor does not report that count.
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "from": {
+      "description": "First day, YYYY-MM-DD. Leave out for the whole history. Do not guess the date: every result gives today as meta.today",
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "limit": {
+      "default": 10,
+      "description": "How many campaigns to include",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 50
+    },
+    "status": {
+      "default": "active",
+      "description": "Which campaigns to include",
+      "type": "string",
+      "enum": [
+        "active",
+        "archived",
+        "completed",
+        "draft",
+        "paused",
+        "unknown"
+      ]
+    },
+    "to": {
+      "description": "Last day, YYYY-MM-DD. Leave out for up to today",
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    }
+  }
+}

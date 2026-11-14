@@ -1,0 +1,15 @@
+{
+  complete: false,
+  evidence: 'exact',
+  fetchedAt: '2026-11-14T12:00:00.000Z',
+  provider: 'memory',
+  requests: 0,
+  stale: false,
+  throttledMs: 0,
+  workspaceId: 'acme'
+}
+items: 2 | cursor: true
+Q4 SaaS founders exact true
+1 exact true
+before the first page: undefined
+after the last page: true

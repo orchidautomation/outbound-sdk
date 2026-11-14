@@ -144,14 +144,15 @@ export const makeLeadHandle = (core: Core, id: string): LeadHandle => {
   return {
     get: (options) => get(leadId, options),
     id: leadId,
-    timeline: (options): Promise<PageResult<Message>> => {
+    // Async, so a refused read rejects like every other failure of the call.
+    timeline: async (options): Promise<PageResult<Message>> => {
       requireCapability(
         core.gate,
         "leads.timeline",
         "Reading a lead's timeline"
       );
 
-      return collect(
+      return await collect(
         core,
         messages.listAll({ ...options, leadId }),
         "timeline"
@@ -172,7 +173,8 @@ export const makeThreadHandle = (core: Core, id: string): ThreadHandle => {
 
   return {
     id: threadId,
-    messages: (options): Promise<PageResult<Message>> =>
-      collect(core, messages.listAll({ ...options, threadId }), "thread"),
+    // Async, so a refused read rejects like every other failure of the call.
+    messages: async (options): Promise<PageResult<Message>> =>
+      await collect(core, messages.listAll({ ...options, threadId }), "thread"),
   };
 };

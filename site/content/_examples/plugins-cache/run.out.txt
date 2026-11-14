@@ -1,0 +1,4 @@
+first read : 3 campaigns, fetched 2026-11-14T12:00:00.000Z, reads so far 1
+30 s later : 3 campaigns, fetched 2026-11-14T12:00:00.000Z, reads so far 1
+another filter: reads so far 2
+60 s later : 3 campaigns, fetched 2026-11-14T12:01:00.000Z, reads so far 3

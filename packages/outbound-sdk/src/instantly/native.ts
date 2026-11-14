@@ -1,6 +1,6 @@
 // Instantly's own reads that have no normalized form, by name. Every read
 // endpoint in the API V2 reference is either used by a normalized read or
-// listed here; docs/coverage/instantly.md accounts for each one.
+// listed here; site/content/docs/coverage/instantly.mdx accounts for each one.
 
 import { defineNative } from "../internal/native.ts";
 import { SALES_AGENT_READS } from "./native-agents-sales.ts";

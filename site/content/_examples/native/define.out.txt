@@ -1,0 +1,4 @@
+{
+  asked: 'https://api.mytool.example/v1/leads/lead%2042/notes?since=2026-11-01&owners=ana&owners=ben'
+}
+{ asked: 'https://api.mytool.example/v1/inbox/unread-count' } mytool 1

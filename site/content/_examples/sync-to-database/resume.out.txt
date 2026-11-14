@@ -1,0 +1,6 @@
+first run failed: Error: connection lost
+leads written so far: 4
+  page: lead_3, lead_4
+  page: lead_5
+second run: resumed true, 3 records in 2 pages
+leads in the database: 5

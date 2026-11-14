@@ -1,0 +1,9 @@
+memory:acme:cmp_ops Ops leaders active email
+memory:acme:cmp_li cmp_li paused linkedin
+steps: [ 'AB', 'A' ]
+sent: 120 replied: 8
+delivered: null
+mailbox sent: 120
+list size: 2
+reply: positive Yes, send me times.
+requests: 0 evidence: exact

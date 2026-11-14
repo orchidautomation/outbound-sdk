@@ -1,0 +1,7 @@
+ranked: [
+  'Agency owners 0.01',
+  'SaaS founders 0.01',
+  'Ecommerce ops 0.0321',
+  'Pilot test 0'
+]
+unknown: LinkedIn founders. The vendor does not report the count behind this rate.

@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { defineInsight } from "../define.ts";
 import { mean, round, zScore } from "../stats.ts";
-import { lastDays, readDaily, shiftDay } from "./shared.ts";
+import { descending, lastDays, readDaily, shiftDay } from "./shared.ts";
 import type { DayCounts, DayRange } from "./shared.ts";
 
 const metricSchema = z.enum([
@@ -67,7 +67,14 @@ export interface Anomaly {
   readonly baselineMean: number;
   /** Days with data the baseline was built from. */
   readonly baselinePoints: number;
-  readonly zScore: number;
+  /** `null` when the baseline was flat: with no spread there is no z-score. */
+  readonly zScore: number | null;
+  /**
+   * How the day was judged. `z_score`: it is `threshold` standard deviations
+   * or more from the baseline mean. `flat_baseline`: every baseline day had
+   * the same count and this day has another.
+   */
+  readonly judgedBy: "flat_baseline" | "z_score";
   readonly direction: "above" | "below";
   readonly finding: string;
 }
@@ -116,18 +123,51 @@ interface MetricScan {
   readonly coverage: MetricCoverage;
 }
 
-const reasonFor = (
+const reasonFor = (metric: AnomalyMetric, daysWithData: number): string =>
+  daysWithData === 0
+    ? `The vendor reports no ${metric} count for these days.`
+    : "Too few earlier days with data to form a baseline.";
+
+/** Judges one day against its baseline. `null` when the day is not unusual. */
+const judge = (
   metric: AnomalyMetric,
-  daysWithData: number,
-  flat: number
-): string => {
-  if (daysWithData === 0) {
-    return `The vendor reports no ${metric} count for these days.`;
+  point: Point,
+  baseline: readonly number[],
+  threshold: number
+): Anomaly | null => {
+  const center = round(mean(baseline)) ?? 0;
+  const score = zScore(point.value, baseline);
+
+  const shared = {
+    baselineMean: center,
+    baselinePoints: baseline.length,
+    date: point.date,
+    direction: point.value > center ? ("above" as const) : ("below" as const),
+    metric,
+    value: point.value,
+  };
+
+  // A flat baseline has no standard deviation, so z is undefined. A day that
+  // differs from it is still a break, and is said to be judged that way.
+  if (score === null) {
+    return point.value === baseline[0]
+      ? null
+      : {
+          ...shared,
+          finding: `${metric} was ${point.value} on ${point.date}, against ${center} on each of the ${baseline.length} days with data before it (a flat baseline has no z-score: any other count is flagged).`,
+          judgedBy: "flat_baseline",
+          zScore: null,
+        };
   }
 
-  return flat > 0
-    ? "The baseline has no spread: its days all have the same count, so nothing can be called unusual."
-    : "Too few earlier days with data to form a baseline.";
+  return Math.abs(score) < threshold
+    ? null
+    : {
+        ...shared,
+        finding: `${metric} was ${point.value} on ${point.date}, against an average of ${center} over the ${baseline.length} days with data before it (z = ${round(score)}).`,
+        judgedBy: "z_score",
+        zScore: round(score) ?? 0,
+      };
 };
 
 const scanMetric = (
@@ -144,40 +184,21 @@ const scanMetric = (
   const checked = points.filter((point) => point.date >= options.firstDay);
   const anomalies: Anomaly[] = [];
   let tested = 0;
-  let flat = 0;
 
   for (const point of checked) {
     const start = shiftDay(point.date, -options.baselineDays);
 
+    // The days before the day, never the day itself.
     const baseline = points.flatMap((other) =>
       other.date >= start && other.date < point.date ? [other.value] : []
     );
 
-    const score =
-      baseline.length < options.minBaselinePoints
-        ? null
-        : zScore(point.value, baseline);
-
-    flat += Number(
-      baseline.length >= options.minBaselinePoints && score === null
-    );
-
-    if (score !== null) {
+    if (baseline.length >= options.minBaselinePoints) {
       tested += 1;
+      const anomaly = judge(metric, point, baseline, options.threshold);
 
-      if (Math.abs(score) >= options.threshold) {
-        const center = round(mean(baseline)) ?? 0;
-
-        anomalies.push({
-          baselineMean: center,
-          baselinePoints: baseline.length,
-          date: point.date,
-          direction: score > 0 ? "above" : "below",
-          finding: `${metric} was ${point.value} on ${point.date}, against an average of ${center} over the ${baseline.length} days with data before it (z = ${round(score)}).`,
-          metric,
-          value: point.value,
-          zScore: round(score) ?? 0,
-        });
+      if (anomaly !== null) {
+        anomalies.push(anomaly);
       }
     }
   }
@@ -188,11 +209,15 @@ const scanMetric = (
       daysTested: tested,
       daysWithData: checked.length,
       metric,
-      reason: tested > 0 ? null : reasonFor(metric, checked.length, flat),
+      reason: tested > 0 ? null : reasonFor(metric, checked.length),
       testable: tested > 0,
     },
   };
 };
+
+/** How far a day broke, for sorting. A break from a flat baseline has no z-score and sorts first. */
+const sizeOf = (anomaly: Anomaly): number =>
+  anomaly.zScore === null ? Number.POSITIVE_INFINITY : Math.abs(anomaly.zScore);
 
 /** Holds each day's count to the days before it. `series` is oldest first and includes the baseline days. */
 export const findAnomalies = (
@@ -209,7 +234,7 @@ export const findAnomalies = (
       .toSorted(
         (left, right) =>
           right.date.localeCompare(left.date) ||
-          Math.abs(right.zScore) - Math.abs(left.zScore)
+          descending(sizeOf(left), sizeOf(right))
       ),
     metrics: scans.map((scan) => scan.coverage),
   };
@@ -217,11 +242,14 @@ export const findAnomalies = (
 
 export const anomalies = defineInsight({
   description:
-    "Days that broke from trend, for one campaign or the whole workspace: each of the last `days` complete days is held to the `baseline_days` before it, and a daily count more than `threshold` standard deviations from that baseline's mean is returned, newest first, with the metric, the value, the baseline mean, the z-score and the direction. Use it to spot a sending outage, a bounce spike or a reply surge. Days the vendor has no count for are skipped, never read as zero, and a metric whose baseline has no spread is reported as not testable. Costs one stats request.",
+    "Days that broke from trend, for one campaign or the whole workspace: each of the last `days` complete days is held to the `baseline_days` before it, and a daily count `threshold` standard deviations or more from that baseline's mean is returned, newest first, with the metric, the value, the baseline mean, the z-score, the direction and how it was judged. When every baseline day has the same count there is no standard deviation: a day with another count is returned with a null z-score and judgedBy flat_baseline. Use it to spot a sending outage, a bounce spike or a reply surge. Days the vendor has no count for are skipped, never read as zero. With no campaign it reads workspace stats, so it then also needs stats.workspace. Costs one stats request.",
   inputSchema: input,
   key: "anomalies",
   name: "anomalies",
   needs: ["stats.byDay"],
+  // The whole workspace is read from workspace stats, a campaign from its own.
+  needsFor: (options) =>
+    options.campaign === null ? ["stats.workspace"] : ["stats.campaign"],
   next: "Use campaign_diagnosis on the campaign, or bounce_watch when the break is in bounces.",
   run: async (context, options) => {
     const period = lastDays(context.now, options.days);

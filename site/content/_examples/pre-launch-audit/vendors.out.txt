@@ -1,0 +1,12 @@
+instantly
+  copyAudit: ok
+  personalizationGaps: ok
+  settingsAudit: ok
+smartlead
+  copyAudit: ok
+  personalizationGaps: ok
+  settingsAudit: ok
+heyreach
+  copyAudit: ok
+  personalizationGaps: ok
+  settingsAudit: Unsupported: settings_audit is not available: the heyreach adapter does not support campaigns.settings

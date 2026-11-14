@@ -243,21 +243,34 @@ test("audience_lists reports each saved list and its size", async () => {
   });
 });
 
-test("an account tool fails as Unsupported, without throwing, when the adapter cannot answer", async () => {
+test("an account tool is not offered when the adapter cannot answer, and fails as Unsupported for a read only its input asks for", async () => {
   const off = {
     "campaigns.settings": false,
     "lists.list": false,
     "senders.health": false,
   };
 
-  for (const [name, input] of [
-    ["campaign_setup", { campaign: "cmp_founders" }],
-    ["deliverability_check", {}],
-    ["audience_lists", {}],
-  ] as const) {
-    // oxlint-disable-next-line no-await-in-loop -- one assertion at a time keeps the failure readable.
-    const result = await call(name, input, off);
-    assert.ok(!result.ok, name);
-    assert.equal(result.error.code, "Unsupported");
+  const offered = new Set(
+    createTools(createOutbound({ adapter: adapter(off) })).map(
+      (tool) => tool.name
+    )
+  );
+
+  for (const name of [
+    "campaign_setup",
+    "deliverability_check",
+    "audience_lists",
+  ]) {
+    assert.ok(!offered.has(name), `${name} is left out`);
   }
+
+  // The tool's own reads are available; the one the input adds is not.
+  const result = await call(
+    "deliverability_check",
+    { campaign: "cmp_founders" },
+    { "senders.byCampaign": false }
+  );
+
+  assert.ok(!result.ok);
+  assert.equal(result.error.code, "Unsupported");
 });

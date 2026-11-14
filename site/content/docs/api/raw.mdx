@@ -1,0 +1,93 @@
+---
+title: Raw requests
+description: outbound.raw sends a request to the vendor's own API by path, through the same rate budget and retries. It is refused for anything that is not a known read unless you turn writes on.
+sidebar:
+  label: Raw
+related:
+  - /docs/native
+  - /docs/rate-limits
+  - /docs/adapters/combine
+---
+
+`outbound.raw` calls the vendor's API by path and returns the response body as it came. It exists for the endpoint nobody has modelled yet.
+
+<Callout type="note" title="Prefer native reads">
+  [`outbound.native`](/docs/native) is the better way down. It lists each
+  vendor's reads by name with typed parameters, returns `meta`, and holds
+  nothing that changes vendor data. Reach for `raw` only for an endpoint the
+  adapter's native catalog does not have.
+</Callout>
+
+<include meta='title="raw.ts"'>../../_examples/api-raw/raw.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/api-raw/raw.out.txt
+</include>
+
+The vendor in that sample is a stand-in that answers 200 with an empty body, so the sample can show which requests are sent and which are refused. It shows nothing about what Instantly returns.
+
+## Methods
+
+| Member | Returns | Does |
+| --- | --- | --- |
+| `raw.get(path, options?)` | `Promise<Json>` | A `GET`. |
+| `raw.request(method, path, options?)` | `Promise<Json>` | Any of `GET`, `POST`, `PUT`, `PATCH`, `DELETE`. |
+| `raw.provider` | `string` | The adapter's name. |
+
+`path` is a path on the vendor's API, such as `/campaigns`. The adapter puts its base URL in front and adds the credential.
+
+`RawRequestOptions`:
+
+| Option | Type | Holds |
+| --- | --- | --- |
+| `query` | an object of strings, numbers and booleans | Query parameters. An `undefined` value is left out. |
+| `body` | JSON | The request body. |
+| `lane` | `string` | A rate lane the adapter declares, for an endpoint with its own stricter limit. See [rate limits](/docs/rate-limits). |
+| `timeout`, `retries`, `deadline`, `maxRequests`, `signal` |  | The [per-call options](/docs/retries). |
+
+## What you get back
+
+The response body, parsed as JSON. An empty body is `null`, and a body that is not JSON comes back as a string. There is no `meta`, no normalization, no schema check and no pagination: one call is one vendor request, and paging is the vendor's own parameters.
+
+The body is the vendor's data untouched. A raw request does not pass through the plugins that wrap reads, so a cache does not store it and the [redact](/docs/plugins/redact) plugin cannot mask it. For that reason `raw` is refused as `Unsupported` on an instance where a plugin has turned the `native` capability off, as `redact` does, and the message names the plugin.
+
+## What still applies
+
+A raw request goes through the same request engine as every other read:
+
+- The [rate budget](/docs/rate-limits), shared with the normalized reads on the same key.
+- [Retries, timeouts, `deadline` and `maxRequests`](/docs/retries).
+- [Hooks](/docs/api/hooks): `onRequest` per attempt, and `onAction` or `onError` with the action `raw`.
+- [Error mapping](/docs/api/errors): a vendor failure is an `OutboundError` with a `code`.
+
+## Reads only
+
+The SDK is read-only, and `raw` keeps that promise. Each adapter knows which of its vendor's requests are reads. A `GET` is one. So are the `POST` endpoints a vendor uses for listing and searching, such as Instantly's `POST /leads/list` above. Any other request is refused with `Unsupported` before it is sent.
+
+`allowWrites: true` on `createOutbound` turns that check off for the instance.
+
+<Callout type="warning" title="allowWrites leaves the read-only boundary">
+  With `allowWrites: true`, `raw` sends whatever you ask, including requests
+  that pause a campaign or delete a lead. Nothing else in the SDK changes: no
+  method, plugin, tool or insight writes. A request that is not a known read is
+  sent once and not retried, because a write whose response was lost may already
+  have been applied. Pass `retries` on the call to change that.
+</Callout>
+
+The agent tools and the MCP server do not expose `raw`: see [tools](/docs/tools).
+
+## On a combined instance
+
+A [combined](/docs/adapters/combine) instance has several vendors behind it, so there is no one API for a path to mean. `raw` is refused there, and the message lists the members you can pick. Scope to one of them with `outbound.workspace("provider:workspace")`.
+
+<include meta='title="combined.ts"'>
+  ../../_examples/api-raw/combined.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/api-raw/combined.out.txt
+</include>
+
+A workspace label on its own is enough when only one adapter carries it. When a client is on two tools under one label, as above, the label still means both, and `raw` stays refused until you name the provider too.
+
+`outbound.native` follows the same rule.

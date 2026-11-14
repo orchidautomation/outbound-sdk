@@ -14,13 +14,25 @@
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
-    "types": ["node"]
+    "types": ["node"],
+    "paths": {
+      "outbound-sdk": ["./packages/outbound-sdk/src/index.ts"],
+      "outbound-sdk/tools/ai-sdk": [
+        "./packages/outbound-sdk/src/tools/ai-sdk.ts"
+      ],
+      "outbound-sdk/tools/claude-agent": [
+        "./packages/outbound-sdk/src/tools/claude-agent.ts"
+      ],
+      "outbound-sdk/*": ["./packages/outbound-sdk/src/*/index.ts"]
+    }
   },
   "include": [
     "packages/*/src",
     "packages/*/test",
     "oxlint.config.ts",
-    "oxfmt.config.ts"
+    "oxfmt.config.ts",
+    "site/content/_examples",
+    "site/test"
   ],
   "exclude": ["**/node_modules", "**/dist"]
 }

@@ -1,0 +1,4 @@
+wrong extension: Invalid - export() writes .csv or .jsonl files; pass a writer for other formats
+vendor failed: Provider, file left with 2 of 5 rows
+capped: 3 rows, truncated true
+empty: 0 rows, file is "ref,category\n"

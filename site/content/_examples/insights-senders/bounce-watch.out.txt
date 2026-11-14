@@ -1,0 +1,16 @@
+Agency owners: 21 of 280 sends bounced (0.075), over the 0.03 threshold.
+  95% interval: 0.0496 to 0.1119
+  dee@send-two.example.com: 9 of 90 (0.1)
+  cy@send-two.example.com: 12 of 150 (0.08)
+Ecommerce ops: 7 of 70 sends bounced; under 100 sends is too few to judge.
+LinkedIn founders: The vendor does not report a bounce count.
+totals: {
+  bounced: 35,
+  campaigns: 4,
+  clean: 1,
+  over: 1,
+  rate: 0.05,
+  sent: 700,
+  tooFewSends: 1,
+  unknown: 1
+}

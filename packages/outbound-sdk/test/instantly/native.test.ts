@@ -84,7 +84,10 @@ interface TableRow {
 
 const table = (): TableRow[] =>
   readFileSync(
-    path.resolve(import.meta.dirname, "../../../../docs/coverage/instantly.md"),
+    path.resolve(
+      import.meta.dirname,
+      "../../../../site/content/docs/coverage/instantly.mdx"
+    ),
     "utf-8"
   )
     .split("\n")

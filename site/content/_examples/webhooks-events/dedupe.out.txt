@@ -1,0 +1,7 @@
+ab72ea7bb4fd8b9ba91a3a2b3e593a10
+same id on redelivery: true
+no store, second delivery: 1 event
+first delivery: 1
+redelivery: 0
+another event: 1
+custom store: 1 0

@@ -1,0 +1,3 @@
+a name: Invalid - person() needs a person key, an email address or a LinkedIn profile URL
+wrong campaign: false
+no timeline: 1 0

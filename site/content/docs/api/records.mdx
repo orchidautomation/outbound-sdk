@@ -1,0 +1,288 @@
+---
+title: Records
+description: Every record the SDK returns and each of its fields, the six fields all records share, how refs are built and parsed, the exported Zod schemas, and why a missing value is null and never 0.
+sidebar:
+  label: Records
+related:
+  - /docs/api/results
+  - /docs/api/stats
+  - /docs/adapters
+---
+
+Every adapter maps its vendor's data onto the same records. A `Campaign` from Instantly and a `Campaign` from HeyReach have the same fields with the same meaning. Each record type is exported from `outbound-sdk` as a TypeScript type, and most have an exported Zod schema.
+
+Which fields a vendor can fill is an adapter fact: see the [adapter pages](/docs/adapters). A field a vendor cannot fill is `null`.
+
+## Fields every record has
+
+| Field | Type | Holds |
+| --- | --- | --- |
+| `provider` | `string` | The adapter that produced the record, for example `instantly`. |
+| `workspaceId` | `string` | Your label for the credential it came from. |
+| `sourceId` | `string` | The vendor's own id, always a string. |
+| `ref` | `string` | `provider:workspaceId:sourceId`. Unique across vendors and clients. |
+| `schemaVersion` | `1` | `SCHEMA_VERSION`. Bumped only for a breaking change to these shapes. |
+| `raw` | JSON | The vendor's original payload for the record. `null` on the in-memory adapter. |
+
+`MetricRow` is the exception: it has `provider`, `workspaceId` and `schemaVersion`, and a `scopeRef` in place of its own `ref`.
+
+`raw` is the vendor's data unmapped, so it holds whatever personal data the vendor sent. The [redact](/docs/plugins/redact) plugin removes it.
+
+## Refs
+
+<include meta='title="refs.ts"'>../../_examples/api-records/refs.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/api-records/refs.out.txt
+</include>
+
+- **A ref names one record on one credential.** Two clients on the same vendor, or one client on two vendors, can never be confused, because the workspace label and the provider are in the ref.
+- **Wherever the SDK takes an id, it takes a ref.** On an instance with one adapter both work. A ref from another workspace is refused with `Invalid`.
+- **On a combined instance, use the ref.** A bare id cannot say which adapter it belongs to. See [troubleshooting](/docs/troubleshooting#a-bare-id-on-a-combined-instance).
+- **Fields that point at another record hold its ref**, not its id: `campaignRef`, `leadRef`, `senderRef`, `campaignRefs`, `scopeRef`.
+- **Store the ref.** It is the key to use in your own database.
+
+`makeRef(provider, workspaceId, sourceId)` builds one. `parseRef(ref)` returns `{ provider, workspaceId, sourceId }`, or `null` for a string that is not a ref. A vendor id may itself contain colons: everything after the second colon is the `sourceId`. A `workspaceId` cannot be empty or contain a colon, and an adapter constructed with one throws `Invalid`.
+
+## Null is not zero
+
+A value the vendor does not report is `null`. It is never `0`, `""` or `false`.
+
+<include meta='title="nulls.ts"'>../../_examples/api-records/nulls.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/api-records/nulls.out.txt
+</include>
+
+`bounced: 0` means the vendor counted bounces and found none. `opened: null` means the vendor gave no open count: tracking was off, or its API does not report it. A rate built on a missing count is `null` too. Print "not reported", not a zero, and do not add `null` counts up as zeros. `sumCounts` from `outbound-sdk` adds rows and keeps a count `null` unless at least one row reports it.
+
+Arrays are the exception. `tags`, `issues`, `events` and `campaignRefs` are empty arrays when there is nothing to report, and `custom` is an empty object.
+
+## Campaign
+
+| Field | Type | Holds |
+| --- | --- | --- |
+| `name` | `string` |  |
+| `status` | `"active"`, `"paused"`, `"draft"`, `"completed"`, `"archived"`, `"unknown"` | The vendor's status mapped onto these six. |
+| `channel` | `"email"` or `"linkedin"` |  |
+| `createdAt` | ISO timestamp or `null` |  |
+| `tags` | `string[]` | Tag names. |
+
+## Sequence
+
+A campaign's steps. Returned by `campaign(id).sequence()` and `campaign(id).subsequences`.
+
+| Field | Type | Holds |
+| --- | --- | --- |
+| `campaignRef` | `string` | The campaign it belongs to. |
+| `kind` | `"main"` or `"subsequence"` | The campaign's own steps, or a follow-up path. |
+| `name` | `string` or `null` | A subsequence's name. `null` for the main sequence. |
+| `steps` | `SequenceStep[]` |  |
+
+`SequenceStep`:
+
+| Field | Type | Holds |
+| --- | --- | --- |
+| `index` | integer | The step's position, counted from 0. |
+| `action` | `string` | `email`, or a LinkedIn action such as `connection_request`. |
+| `delayDays` | number or `null` |  |
+| `parentIndex` | integer or `null` | The step that runs before this one. `null` for the first step. |
+| `branch` | `string` or `null` | The outcome of the parent's condition that leads here, in the vendor's words, for example `accepted`. `null` on a straight path. |
+| `variants` | `SequenceVariant[]` |  |
+
+`SequenceVariant`:
+
+| Field | Type | Holds |
+| --- | --- | --- |
+| `variantKey` | `string` | Names the variant within its step. |
+| `subject` | `string` or `null` | Template text. |
+| `body` | `string` or `null` | Template text, never a rendered message. |
+| `contentHash` | `string` | A hash of subject and body, so stats can tell old copy from new. |
+
+## Sender
+
+A mailbox or a LinkedIn seat.
+
+| Field | Type | Holds |
+| --- | --- | --- |
+| `kind` | `"mailbox"` or `"linkedin"` |  |
+| `address` | `string` or `null` | The mailbox address, lowercased. `null` for a LinkedIn seat. |
+| `linkedinUrl` | `string` or `null` |  |
+| `name` | `string` or `null` |  |
+| `status` | `"active"`, `"paused"`, `"disconnected"`, `"error"`, `"unknown"` |  |
+| `dailyLimit` | count or `null` |  |
+| `warmup` | `{ enabled, score }` or `null` | `enabled` is a boolean or `null`, `score` a number or `null`. |
+
+## SenderHealth
+
+What the vendor knows about a sender's deliverability. Its `sourceId` is the sender's id.
+
+| Field | Type | Holds |
+| --- | --- | --- |
+| `senderRef` | `string` |  |
+| `domain` | `string` or `null` | The mailbox's domain, lowercased. `null` for a LinkedIn seat. |
+| `connected` | boolean or `null` | `true` when the vendor can sign in to the mailbox or seat. |
+| `dns` | `{ spf, dkim, dmarc, mx }` | Each `true`, `false` or `null`: whether the record is present and valid. |
+| `blacklisted` | boolean or `null` | `true` when the domain or address is on a block list the vendor checks. |
+| `issues` | `string[]` | Problems in the vendor's own words. |
+| `checkedAt` | ISO timestamp or `null` | When the vendor last checked. |
+| `warmup` | `{ sent, received, inbox, spam, score }` or `null` | Warmup traffic over the vendor's reporting window. |
+
+## Lead
+
+| Field | Type | Holds |
+| --- | --- | --- |
+| `email` | `string` or `null` | Lowercased and trimmed. |
+| `linkedinUrl` | `string` or `null` |  |
+| `firstName`, `lastName`, `company`, `title` | `string` or `null` |  |
+| `status` | `"active"`, `"paused"`, `"completed"`, `"replied"`, `"bounced"`, `"unsubscribed"`, `"unknown"` |  |
+| `interest` | `string` or `null` | The vendor's own label for how interested the lead is, for example `Meeting Booked`. |
+| `campaignRef` | `string` or `null` |  |
+| `createdAt` | ISO timestamp or `null` |  |
+| `custom` | `Record<string, string>` | The lead's custom fields as the vendor stores them. |
+| `tags` | `string[]` |  |
+| `engagement` | `LeadEngagement` or `null` | `null` when the vendor reports no per-lead counts on this read. |
+
+`LeadEngagement`, what a lead did with the campaign's messages as the vendor counts it:
+
+| Field | Type | Holds |
+| --- | --- | --- |
+| `opens`, `clicks`, `replies` | count or `null` |  |
+| `lastContactedAt`, `lastOpenedAt`, `lastRepliedAt` | ISO timestamp or `null` |  |
+| `stepIndex` | integer or `null` | The last step sent to the lead, counted from 0. |
+| `repliedStepIndex` | integer or `null` | The step the lead replied to, counted from 0. |
+
+A lead is a person in one campaign. The same person in two campaigns is two `Lead` records. The [identity](/docs/plugins/identity) plugin links them without merging them.
+
+## Message
+
+One message sent or received.
+
+| Field | Type | Holds |
+| --- | --- | --- |
+| `direction` | `"out"` or `"in"` |  |
+| `channel` | `"email"` or `"linkedin"` |  |
+| `sentAt` | ISO timestamp or `null` |  |
+| `subject` | `string` or `null` |  |
+| `bodyText` | `string` or `null` | Plain text with quoted history removed. `null` unless the call asked for bodies and the vendor returned one. |
+| `bodyHtml` | `string` or `null` | The same rule. |
+| `campaignRef`, `leadRef`, `senderRef` | `string` or `null` |  |
+| `threadId` | `string` or `null` | Pass it to `outbound.thread(id)`. |
+| `stepIndex` | integer or `null` | The sequence step that sent it. |
+| `variantKey` | `string` or `null` | The variant that sent it. |
+
+## Reply
+
+A received message with a category. It has every `Message` field, `direction` is always `"in"`, and it adds:
+
+| Field | Type | Holds |
+| --- | --- | --- |
+| `category` | `"positive"`, `"negative"`, `"neutral"`, `"ooo"`, `"bounce"`, `"unsubscribe"`, `"unknown"` |  |
+| `categorySource` | `"vendor"`, `"rule"` or `null` | Who decided the category. `null` when it is `unknown`. Never a model. |
+| `isAuto` | boolean or `null` | `true` for an auto-reply, `null` when the vendor does not say. |
+
+## MetricRow
+
+One row of counts. Every count is a number or `null`. Its fields are listed on the [stats](/docs/api/stats#the-counts) page.
+
+## CampaignSettings
+
+How a campaign is set up to send. Its `sourceId` is the campaign's id.
+
+| Field | Type | Holds |
+| --- | --- | --- |
+| `campaignRef` | `string` |  |
+| `dailyLimit` | count or `null` | The most messages or LinkedIn actions per day. |
+| `dailyNewLeads` | count or `null` | The most new leads contacted per day. |
+| `gapMinutes` | number or `null` | The shortest wait between two sends, in minutes. |
+| `startDate`, `endDate` | `YYYY-MM-DD` or `null` |  |
+| `plainText` | boolean or `null` | `true` when emails are sent without HTML. |
+| `stopOnReply` | boolean or `null` | `true` when a lead who replies gets no more steps. |
+| `stopOnAutoReply` | boolean or `null` | The same for an automatic reply. |
+| `tracking` | `{ opens, clicks }` | Each a boolean or `null`. |
+| `schedule` | `SendingWindow[]` | The windows in which the campaign may send. |
+
+`SendingWindow`:
+
+| Field | Type | Holds |
+| --- | --- | --- |
+| `name` | `string` or `null` |  |
+| `days` | integers 0 to 6 | Days of the week the window is open. 0 is Sunday. |
+| `from`, `to` | `HH:MM` or `null` | In `timezone`. |
+| `timezone` | `string` or `null` | An IANA name where the vendor gives one, otherwise the vendor's own label. |
+
+## LeadList
+
+A saved list that campaigns draw from.
+
+| Field       | Type                       | Holds                            |
+| ----------- | -------------------------- | -------------------------------- |
+| `name`      | `string`                   |                                  |
+| `kind`      | `"leads"` or `"companies"` |                                  |
+| `size`      | count or `null`            | How many records the list holds. |
+| `createdAt` | ISO timestamp or `null`    |                                  |
+
+## Tag
+
+| Field         | Type               | Holds |
+| ------------- | ------------------ | ----- |
+| `name`        | `string`           |       |
+| `description` | `string` or `null` |       |
+
+## BlockEntry
+
+One address, domain or profile the account never contacts.
+
+| Field | Type | Holds |
+| --- | --- | --- |
+| `kind` | `"email"`, `"domain"`, `"linkedin"`, `"company"`, `"other"` |  |
+| `value` | `string` | Lowercased for emails and domains. |
+| `createdAt` | ISO timestamp or `null` |  |
+
+## WebhookSubscription
+
+A webhook registered with the vendor. The SDK lists them. It does not create or change them.
+
+| Field | Type | Holds |
+| --- | --- | --- |
+| `url` | `string` | Where the vendor posts. It can hold a secret in its path or query. |
+| `name` | `string` or `null` |  |
+| `events` | `string[]` | Event names in the vendor's own words. |
+| `active` | boolean or `null` |  |
+| `campaignRefs` | `string[]` | The campaigns the webhook is limited to. Empty for every campaign. |
+| `createdAt` | ISO timestamp or `null` |  |
+
+## Workspace
+
+| Field  | Type     | Holds |
+| ------ | -------- | ----- |
+| `name` | `string` |       |
+
+## Schemas
+
+Each record is defined once as a Zod schema and its TypeScript type is inferred from it. The SDK checks every record against its schema before returning it. A record that does not match fails the call with a `Provider` error naming the field, so a malformed record never reaches your code.
+
+The schemas are exported for checking records that come from somewhere else, such as your own database or a queue:
+
+| Schema | Type |
+| --- | --- |
+| `campaignSchema`, `campaignStatusSchema` | `Campaign`, `CampaignStatus` |
+| `sequenceSchema` | `Sequence` |
+| `senderSchema`, `senderStatusSchema` | `Sender`, `SenderStatus` |
+| `senderHealthSchema` | `SenderHealth` |
+| `leadSchema`, `leadStatusSchema` | `Lead`, `LeadStatus` |
+| `messageSchema` | `Message` |
+| `replySchema`, `replyCategorySchema` | `Reply`, `ReplyCategory` |
+| `metricRowSchema`, `metricScopeSchema` | `MetricRow`, `MetricScope` |
+| `campaignSettingsSchema` | `CampaignSettings` |
+| `leadListSchema` | `LeadList` |
+| `tagSchema` | `Tag` |
+| `blockEntrySchema` | `BlockEntry` |
+| `webhookSubscriptionSchema` | `WebhookSubscription` |
+| `workspaceSchema` | `Workspace` |
+| `channelSchema`, `evidenceSchema` | `Channel`, `Evidence` |
+| `outboundEventSchema`, `eventTypeSchema` | `OutboundEvent`, `EventType`: see [webhook events](/docs/webhooks/events) |
+
+`SequenceStep`, `SequenceVariant`, `LeadEngagement` and `SendingWindow` are exported as types only. `Entity` is the union of every record a list or get call returns.
+
+`SCHEMA_VERSION` is `1`. Every record carries it as `schemaVersion`, so data you stored can say which shape it was written in.

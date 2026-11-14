@@ -13,6 +13,7 @@ import type {
 import type { Sequence } from "../internal/entities.ts";
 import type { OutboundRecord } from "../internal/outbound/operations.ts";
 import { makeRef, parseRef } from "../internal/ref.ts";
+import { profileSlug } from "../internal/url.ts";
 
 export interface Scrubber {
   readonly record: (record: OutboundRecord) => OutboundRecord;
@@ -114,6 +115,34 @@ const accountRecord = (
   };
 };
 
+interface Identifiers {
+  readonly email: string | null;
+  readonly linkedinUrl: string | null;
+}
+
+/**
+ * The identity plugin's `personKey` and `personKeys`, when it sits inside this
+ * plugin: rebuilt from the placeholders, so the keys name nobody and scrubbed
+ * records still link.
+ */
+const withPersonKeys = <Item extends Identifiers>(
+  original: OutboundRecord,
+  scrubbed: Item
+): Item => {
+  if (!("personKeys" in original)) {
+    return scrubbed;
+  }
+
+  const slug = profileSlug(scrubbed.linkedinUrl);
+
+  const personKeys = [
+    scrubbed.email === null ? null : `email:${scrubbed.email}`,
+    slug === null ? null : `linkedin:${slug}`,
+  ].filter((key) => key !== null);
+
+  return { ...scrubbed, personKey: personKeys[0] ?? null, personKeys };
+};
+
 export const createScrubber = (): Scrubber => {
   const seen = new Map<string, string>();
   const counters = new Map<Kind, number>();
@@ -138,9 +167,15 @@ export const createScrubber = (): Scrubber => {
     return made;
   };
 
-  // Some vendors use an email address as the id, so refs can carry one.
-  const scrubId = (id: string): string =>
-    id.includes("@") ? (placeholder("email", id) ?? id) : id;
+  // Some vendors use an email address or a profile URL as the id, so refs
+  // can carry one.
+  const scrubId = (id: string): string => {
+    if (profileSlug(id) !== null) {
+      return placeholder("linkedin", id) ?? id;
+    }
+
+    return id.includes("@") ? (placeholder("email", id) ?? id) : id;
+  };
 
   const scrubRef = (ref: string | null): string | null => {
     const parts = ref === null ? null : parseRef(ref);
@@ -178,7 +213,7 @@ export const createScrubber = (): Scrubber => {
       }
 
       if ("custom" in record) {
-        return {
+        return withPersonKeys(record, {
           ...base(record),
           company: placeholder("company", record.company),
           custom: Object.fromEntries(
@@ -193,7 +228,7 @@ export const createScrubber = (): Scrubber => {
             placeholder("person", record.lastName)?.replace("Person ", "") ??
             null,
           linkedinUrl: placeholder("linkedin", record.linkedinUrl),
-        };
+        });
       }
 
       if (isAccountRecord(record)) {

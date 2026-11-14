@@ -1,0 +1,3 @@
+instantly: Headroom is 10 a day. A campaign of 40 a day does not fit: short by 30.
+smartlead: Headroom is 10 a day. A campaign of 40 a day does not fit: short by 30.
+heyreach: Headroom cannot be stated: capacity is 120 and the campaigns' ask is not reported.

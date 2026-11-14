@@ -1,0 +1,14 @@
+The 4 active senders that report a daily limit can send 130 a day; 1 more reports no limit and is not counted. Active campaigns ask for 280, which is 150 more than that. 115 a day were sent on average over the last 7 days.
+capacity: {
+  activeSenders: 5,
+  daily: 130,
+  inactiveSenders: 1,
+  linkedinDaily: 20,
+  mailboxDaily: 110,
+  withLimit: 4,
+  withoutLimit: 1
+}
+ask: { campaigns: 4, daily: 280, withLimit: 3, withoutLimit: 1 }
+utilization 0.8846, ask ratio 2.1538, sends counted over 7 days
+short by 130: Agency owners asks for 200 a day but its 2 active senders can send 70.
+campaigns not checked: 1

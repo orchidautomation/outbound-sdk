@@ -184,6 +184,10 @@ export const compareRates = (
   };
 };
 
+/** A p-value for a sentence. One that rounds to 0 is written `p < 0.0001`, never `p = 0`. */
+export const pText = (pValue: number): string =>
+  pValue < 1 / PLACES ? `p < ${1 / PLACES}` : `p = ${pValue}`;
+
 /** Counts how often each value occurs, in first-seen order. */
 export const tally = <Value>(values: readonly Value[]): Map<Value, number> => {
   const counts = new Map<Value, number>();

@@ -43,6 +43,7 @@ const groupKey = (row: MemoryStats, query: StatsQuery): string =>
   [
     query.by === "day" ? row.date : "",
     query.scope === "step" ? row.stepIndex : "",
+    query.scope === "step" ? (row.variantKey ?? "") : "",
   ].join("|");
 
 /** Aggregates seeded rows the way a vendor's analytics endpoint would. */
@@ -71,6 +72,8 @@ export const queryStats = (
           scope: query.scope,
           scopeId: query.scopeId ?? identity.workspaceId,
           stepIndex: query.scope === "step" ? (first?.stepIndex ?? null) : null,
+          variantKey:
+            query.scope === "step" ? (first?.variantKey ?? null) : null,
         },
         sumCounts(rows.map((row) => ({ ...emptyCounts(), ...row.counts })))
       );
@@ -78,6 +81,7 @@ export const queryStats = (
     .toSorted(
       (left, right) =>
         (left.date ?? "").localeCompare(right.date ?? "") ||
-        (left.stepIndex ?? 0) - (right.stepIndex ?? 0)
+        (left.stepIndex ?? 0) - (right.stepIndex ?? 0) ||
+        (left.variantKey ?? "").localeCompare(right.variantKey ?? "")
     );
 };

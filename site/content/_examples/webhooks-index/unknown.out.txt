@@ -1,0 +1,25 @@
+auto: [
+  {
+    provider: 'instantly',
+    raw: '(kept)',
+    type: 'reply.received',
+    vendorEvent: 'reply_received'
+  }
+]
+unrecognised: [
+  {
+    provider: 'unknown',
+    raw: '(kept)',
+    type: 'unknown',
+    vendorEvent: undefined
+  }
+]
+no normalized type: [
+  {
+    provider: 'smartlead',
+    raw: '(kept)',
+    type: 'unknown',
+    vendorEvent: 'MANUAL_STEP_REACHED'
+  }
+]
+Invalid - No webhook parser for "mailchimp". Known providers: heyreach, instantly, smartlead

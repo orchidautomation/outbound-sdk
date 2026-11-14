@@ -1,0 +1,3 @@
+instantly: ok, 8 findings, every check run
+smartlead: ok, 8 findings, every check run
+heyreach: ok, 6 findings, some checks not run

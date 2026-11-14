@@ -1,0 +1,16 @@
+{
+  "answer": "There is currently one active campaign:\n\n**Q4 SaaS founders** (`cmp_founders`, email channel)\n- Sends: 90\n- Replies: 7 (7.8% reply rate)\n\nNotes: 52 of the 90 sends were opened, 3 were positive, and 1 bounced. The account has no other campaigns in the active state right now.\n\nWant me to dig into this campaign at all — e.g., what's driving the replies, deliverability, or how many leads it has left?",
+  "model": "deepseek/deepseek-v4-flash",
+  "prompt": "Which campaigns are active, and how many sends and replies has each had?",
+  "ranAt": "2026-11-14",
+  "steps": 2,
+  "toolCalls": [
+    {
+      "input": {
+        "status": "active"
+      },
+      "tool": "campaign_overview"
+    }
+  ],
+  "via": "Vercel AI Gateway"
+}

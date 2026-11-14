@@ -1,0 +1,120 @@
+$ outbound providers
+[
+  {
+    "channels": [
+      "email"
+    ],
+    "envVars": [
+      {
+        "name": "INSTANTLY_API_KEY",
+        "required": true
+      },
+      {
+        "name": "INSTANTLY_WORKSPACE_ID",
+        "required": false
+      }
+    ],
+    "id": "instantly",
+    "maturity": "beta",
+    "name": "Instantly",
+    "note": "Its reads were run, read-only, against one live workspace. Fixtures are built from the documentation."
+  },
+  {
+    "channels": [
+      "email"
+    ],
+    "envVars": [
+      {
+        "name": "SMARTLEAD_API_KEY",
+        "required": true
+      },
+      {
+        "name": "SMARTLEAD_WORKSPACE_ID",
+        "required": false
+      }
+    ],
+    "id": "smartlead",
+    "maturity": "unverified",
+    "name": "Smartlead",
+    "note": "Never run against a live account. Written from the public documentation and tested offline only."
+  },
+  {
+    "channels": [
+      "linkedin"
+    ],
+    "envVars": [
+      {
+        "name": "HEYREACH_API_KEY",
+        "required": true
+      },
+      {
+        "name": "HEYREACH_WORKSPACE_ID",
+        "required": false
+      }
+    ],
+    "id": "heyreach",
+    "maturity": "beta",
+    "name": "HeyReach",
+    "note": "Its reads were run, read-only, against one live workspace. Fixtures are built from the documentation."
+  },
+  {
+    "channels": [
+      "email",
+      "linkedin"
+    ],
+    "envVars": [],
+    "id": "memory",
+    "maturity": "stable",
+    "name": "In-memory (tests and demos)",
+    "note": "Holds data in memory. For tests and demos; there is no vendor behind it."
+  }
+]
+
+$ outbound capabilities
+{
+  "capabilities": {
+    "blocklist": true,
+    "campaigns.settings": true,
+    "campaigns.status": "server",
+    "deletionDetection": false,
+    "events.parse": false,
+    "events.verify": false,
+    "leads.byCampaign": true,
+    "leads.engagement": true,
+    "leads.get": true,
+    "leads.list": true,
+    "leads.lookup": true,
+    "leads.since": "server",
+    "leads.timeline": true,
+    "lists.leads": true,
+    "lists.list": true,
+    "messages.body": "full",
+    "messages.byThread": true,
+    "messages.list": true,
+    "messages.since": "server",
+    "native": false,
+    "replies.category": "vendor",
+    "replies.list": true,
+    "replies.since": "server",
+    "senders.byCampaign": true,
+    "senders.get": true,
+    "senders.health": true,
+    "senders.list": true,
+    "senders.warmup": true,
+    "sequence": true,
+    "sequence.subsequences": true,
+    "stats.byDay": "exact",
+    "stats.bySender": "exact",
+    "stats.byStep": "exact",
+    "stats.campaign": "exact",
+    "stats.workspace": "exact",
+    "tags": true,
+    "webhooks.list": true,
+    "workspaces": true
+  },
+  "caveats": [],
+  "maturity": "stable",
+  "provider": "memory",
+  "workspaceId": "default"
+}
+

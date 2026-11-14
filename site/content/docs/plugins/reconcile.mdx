@@ -1,0 +1,117 @@
+---
+title: reconcile
+description: Compare the webhook events you received and the refs you hold with what the vendor lists, and get a report of what is missing, unmatched, late, deleted or new.
+sidebar:
+  label: reconcile
+related:
+  - /guides/webhooks-and-reconcile
+  - /docs/webhooks
+  - /docs/plugins/sync
+---
+
+`reconcile()` from `outbound-sdk/reconcile` adds two checks. `outbound.reconcile.events()` compares the webhook events your endpoint received in a window with the messages the vendor lists for that window, and reports webhooks that never arrived, events that name no listed message, and late delivery. `outbound.reconcile.deletions()` compares a full listing with the refs you hold and reports what is gone and what is new. Both only report. Nothing is repaired, and nothing is written anywhere.
+
+## Sample
+
+The events are ones an endpoint would have stored after [`parse()`](/docs/webhooks), each with the time it was received. They are made up to match the [shared seed](/docs/plugins#every-plugin), which has three messages.
+
+<include meta='title="received.ts"'>
+  ../../_examples/plugins-reconcile/received.ts
+</include>
+
+<include meta='title="run.ts"'>
+  ../../_examples/plugins-reconcile/run.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/plugins-reconcile/run.out.txt
+</include>
+
+Three of the four events name a message, and two of those messages are listed. `msg_3` was sent and no event announced it. The unsubscribe event names no message, so it cannot be compared.
+
+## Options
+
+`reconcile()` takes no options.
+
+`outbound.reconcile.events(check)`:
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `events` | `(OutboundEvent \| ReceivedEvent)[]` | required | The events your endpoint received in the window. A `ReceivedEvent` is `{ event, receivedAt? }`. |
+| `since` | `string` | required | Start of the window, ISO 8601 UTC. |
+| `until` | `string` | none | End of the window. |
+| `campaignId` | `string` | none | Compare one campaign's messages only. |
+| `lateAfterMinutes` | `number` | `5` | An event received this long after it happened counts as late. |
+| `signal`, `deadline`, `maxRequests` |  | the instance's | Passed to the listing. |
+
+`outbound.reconcile.deletions(check)`:
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `collection` | `"campaigns" \| "leads" \| "senders"` | required | What to list. |
+| `known` | `Iterable<string>` | required | The refs you hold from an earlier sync. |
+| `campaignId` | `string` | none | For `leads` and `senders`: list one campaign's only. |
+| `signal`, `timeout`, `retries`, `deadline`, `maxRequests` |  | the instance's | Passed to the listing. |
+
+## What it adds
+
+`outbound.reconcile.events()` returns an `EventReport`:
+
+| Field | Meaning |
+| --- | --- |
+| `checked` | Events that could be compared: type `message.sent`, `reply.received`, `linkedin.message_sent` or `linkedin.message_received`, with a `messageRef`. |
+| `matched` | Of those, the ones whose message the vendor lists. |
+| `unmatchedEvents` | Events naming a message the vendor does not list in the window. |
+| `missingEvents` | Messages the vendor lists that no compared event named: a webhook never arrived. |
+| `late` | `{ event, delayMs }` for every event, of any type, with a `receivedAt` and an `occurredAt` more than `lateAfterMinutes` apart. |
+| `uncheckable` | Events of another type, or with no `messageRef`. |
+
+`outbound.reconcile.deletions()` returns a `DeletionReport`:
+
+| Field     | Meaning                                        |
+| --------- | ---------------------------------------------- |
+| `deleted` | Refs you hold that the vendor no longer lists. |
+| `added`   | Refs the vendor lists that you do not hold.    |
+| `listed`  | How many distinct refs the vendor listed.      |
+
+## What it costs
+
+`events()` lists every message in the window, with `since` and `until` passed to `outbound.messages.listAll`. `deletions()` lists the whole collection, so it costs as much as a full sync. Neither is cached unless the instance has `cache`.
+
+## What it changes
+
+It changes no capability, no record and nothing in `meta`. It has no layer of its own, so its position in `plugins` does not matter.
+
+## With other plugins
+
+Both checks read through the instance's public API, so every layer applies. Two layers can make a report wrong:
+
+- `cache` can serve an old listing, and then a recent message reads as an unmatched event, or a deleted record as still present. Reconcile on an instance without a cache on list operations.
+- `failover` can serve a stale listing when the vendor is down, with the same effect. The report does not carry `meta`, so it cannot tell you.
+
+Events passed in are compared by `messageRef` only. Events that went through `redact` still carry their refs and compare the same.
+
+## When it cannot answer
+
+<include meta='title="failures.ts"'>
+  ../../_examples/plugins-reconcile/failures.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/plugins-reconcile/failures.out.txt
+</include>
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| The adapter cannot list messages | `events()` throws `Unsupported`, before any request | Use `deletions()` only, or an adapter that declares `messages.list`. |
+| Events were stored without `receivedAt` | They are compared, and `late` is empty | Store the receive time with each event. |
+| The window does not cover the events | Every event is unmatched | Pass the window the events were collected in. Nothing checks that they belong to it. |
+| An event repeats | It is counted each time in `checked` and `matched` | Drop repeats when you store events. `parse()` takes a `dedupe` store for that. |
+| A listing fails part way | The call rejects with the `OutboundError`. No partial report. | Run it again. |
+| A request cap stops the listing | `RateLimited`. No partial report. | Raise `maxRequests`, or narrow the window or the campaign. |
+
+## Limits
+
+- A vendor that does not put a message ref on its webhook events gives events that are all `uncheckable`.
+- An event for a message sent a little outside the window reads as unmatched, and a message with a late webhook reads as missing. Leave a margin at both ends of the window, and re-check what a report flags before acting on it.
+- `deletions()` cannot tell a deleted record from one the listing did not reach. A `campaignId` on the check with `known` refs from the whole account reports every other campaign's refs as deleted.

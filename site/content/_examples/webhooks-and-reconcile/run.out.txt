@@ -1,0 +1,10 @@
+email_sent: 204, kept message.sent
+reply_received: 204, kept reply.received
+reply_received again: 204, kept nothing
+email_opened: 204, kept message.opened
+email_sent, wrong secret: 401, kept nothing
+
+3 events kept:
+  message.sent instantly:acme:01a1d77b-a37a-7316-9165-874e4863045b at 2026-11-14T00:36:06.650Z, received 2026-11-14T00:36:10.000Z
+  reply.received instantly:acme:01a1d77b-a37a-7316-9165-874e4863045c at 2026-11-14T00:36:06.650Z, received 2026-11-14T01:10:06.650Z
+  message.opened (names no message) at 2026-11-14T00:36:06.650Z, received 2026-11-14T01:15:00.000Z

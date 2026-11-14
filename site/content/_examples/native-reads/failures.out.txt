@@ -1,0 +1,13 @@
+pause a campaign: Unsupported: POST /campaign/Pause is not a known read on heyreach. The SDK is read-only; pass allowWrites: true to createOutbound to permit it
+delete a webhook: Unsupported: DELETE /webhooks/DeleteWebhook is not a known read on heyreach. The SDK is read-only; pass allowWrites: true to createOutbound to permit it
+read API keys: Unsupported: GET /management/organizations/api-keys/workspaces/1 returns secrets (keys or passwords) on heyreach, so raw never reads it
+unknown read: Invalid: heyreach has no native read "pauseCampaign". See outbound.native.catalog
+unknown parameter: Invalid: listsForLead has no parameter "page". It takes: email, linkedinId, profileUrl, limit, offset
+missing parameter: Invalid: campaignSequenceV2 needs "campaignId"
+wrong type: Invalid: campaignSequenceV2: "campaignId" must be a number
+with redact: Unsupported: Reading the vendor's own data is not available: the redact plugin turned it off (native)
+memory: 0 reads
+memory native: Unsupported: Reading the vendor's own data is not available: the memory adapter does not support it (native)
+memory raw: Unsupported: GET /anything is not a known read on memory. The SDK is read-only; pass allowWrites: true to createOutbound to permit it
+vendor 404: NotFound: heyreach responded 404: no fixture
+requests made: [ 'GET /api/public/li_account/GetProxyCountries' ]

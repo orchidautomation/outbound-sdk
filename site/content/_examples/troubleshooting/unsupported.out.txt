@@ -1,0 +1,5 @@
+Unsupported - Listing leads is not available: the heyreach adapter does not support it (leads.list)
+Unsupported - Reading a campaign's settings is not available: the heyreach adapter does not support it (campaigns.settings)
+Unsupported - Reading stats for the step scope is not available: the heyreach adapter does not support it (stats.byStep)
+requests sent: 0
+false true

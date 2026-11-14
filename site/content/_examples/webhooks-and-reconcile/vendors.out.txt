@@ -1,0 +1,3 @@
+instantly: email_sent is message.sent, names a message; reconcile compared 1, could not compare 0
+smartlead: EMAIL_SENT is message.sent, names a message; reconcile compared 1, could not compare 0
+heyreach: voice_note_received is linkedin.message_received, names no message; reconcile compared 0, could not compare 1

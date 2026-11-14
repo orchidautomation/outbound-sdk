@@ -1,0 +1,117 @@
+---
+title: Handles
+description: What campaign(id), sender(id), lead(id), list(id) and thread(id) give you, what each method returns, and the capability each one needs.
+sidebar:
+  label: Handles
+related:
+  - /docs/api/collections
+  - /docs/api/stats
+  - /docs/api/records
+---
+
+A handle is one record and everything under it. `outbound.campaign(id)` does not fetch the campaign. It returns an object whose methods each make one read.
+
+| Handle | For |
+| --- | --- |
+| [`outbound.campaign(id)`](#campaign) | A campaign, its sequence, settings, senders, leads, messages, replies and stats |
+| [`outbound.sender(id)`](#sender) | A mailbox or LinkedIn seat, its warmup, health and stats |
+| [`outbound.lead(id)`](#lead) | A lead and every message to and from it |
+| [`outbound.list(id)`](#list) | The leads on a saved list |
+| [`outbound.thread(id)`](#thread) | Every message of one conversation |
+
+The `id` is the vendor's own id or a record's `ref`. On a [combined](/docs/adapters/combine) instance it must be a ref. An empty id throws `Invalid` when the handle is made. Every handle has an `id` property holding what you passed.
+
+Every method takes the per-call options as its last argument: `timeout`, `retries`, `deadline`, `maxRequests` and `signal`. See [retries](/docs/retries).
+
+## Campaign
+
+<include meta='title="campaign.ts"'>
+  ../../_examples/api-handles/campaign.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/api-handles/campaign.out.txt
+</include>
+
+| Member | Returns | Needs |
+| --- | --- | --- |
+| `get()` | `WithMeta<Campaign>` | nothing |
+| `sequence()` | `WithMeta<Sequence>`: the steps and their variants | `sequence` |
+| `settings()` | `WithMeta<CampaignSettings>`: schedule, daily caps, tracking, stop rules | `campaigns.settings` |
+| `stats(options?)` | `StatsResult` | `stats.campaign`, or `stats.byStep` for `scope: "step"`; `stats.byDay` for `by: "day"` |
+| `senders` | `list`, `listAll` of `Sender` | `senders.byCampaign` |
+| `leads` | `list`, `listAll` of `Lead`. Filters: `email`, `linkedinUrl`, `since`, `until` | `leads.byCampaign` |
+| `messages` | `list`, `listAll` of `Message`. Filters: `leadId`, `threadId`, `since`, `until`, `include` | `messages.list` |
+| `replies` | `list`, `listAll` of `Reply`. Filters: `category`, `since`, `until`, `include` | `replies.list` |
+| `subsequences` | `list`, `listAll` of `Sequence`: the follow-up sequences attached to the campaign | `sequence.subsequences` |
+| `webhooks` | `list`, `listAll` of `WebhookSubscription` | `webhooks.list` |
+
+The collections under a campaign are the top-level [collections](/docs/api/collections) with the campaign already filled in. `outbound.campaign(id).leads.list()` and `outbound.leads.list({ campaignId: id })` are the same read. A filter on a scoped collection needs the same capability as it does at the top level.
+
+A sequence holds template text, never a rendered message. The text a lead received is on the `Message`. `stats` is covered on the [stats](/docs/api/stats) page.
+
+## Sender
+
+<include meta='title="sender.ts"'>
+  ../../_examples/api-handles/sender.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/api-handles/sender.out.txt
+</include>
+
+| Member | Returns | Needs |
+| --- | --- | --- |
+| `get()` | `WithMeta<Sender>` | `senders.get` |
+| `warmup()` | `{ enabled, score }` | `senders.warmup` and `senders.get` |
+| `health()` | `WithMeta<SenderHealth>`: DNS records, connection state, warmup traffic | `senders.health` |
+| `stats(options?)` | `StatsResult` for this sender | `stats.bySender`; `stats.byDay` for `by: "day"` |
+
+`warmup()` reads the sender and returns its `warmup` field. It throws `NotFound` when the sender has no warmup data, so you never get `null` from it. It is the one handle method whose result has no `meta`.
+
+`health()` reports what the vendor knows. A DNS flag is `true`, `false`, or `null` when the vendor did not say. The SDK runs no DNS lookups of its own.
+
+## Lead
+
+<include meta='title="lead.ts"'>../../_examples/api-handles/lead.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/api-handles/lead.out.txt
+</include>
+
+| Member | Returns | Needs |
+| --- | --- | --- |
+| `get()` | `WithMeta<Lead>` | `leads.get` |
+| `timeline(options?)` | `PageResult<Message>`: every message to and from the lead, oldest first | `leads.timeline` and `messages.list` |
+
+`timeline` walks every page of the lead's messages for you and sorts them by `sentAt`. The result has `complete: true` and no cursor. Its `meta` is that of the last page fetched, and `meta.requests` counts the whole walk. Pass `include: ["body"]` for the text, which needs `messages.body`.
+
+## List
+
+| Member | Returns | Needs |
+| --- | --- | --- |
+| `leads` | `list`, `listAll` of `Lead`. Filters: `email`, `linkedinUrl`, `since`, `until` | `lists.leads` |
+
+`outbound.list(id).leads` is `outbound.leads` with `listId` filled in. The lists themselves come from `outbound.lists.list()`, which needs `lists.list`. The sample above reads one.
+
+## Thread
+
+| Member | Returns | Needs |
+| --- | --- | --- |
+| `messages(options?)` | `PageResult<Message>`: every message of the conversation, oldest first | `messages.byThread` and `messages.list` |
+
+The id is the `threadId` a `Message` or `Reply` carries, not a ref. `threadId` can be `null`: not every message belongs to a thread the vendor names. Like `timeline`, `messages` collects every page, and takes `include: ["body"]`.
+
+## When a handle method is refused
+
+A method the adapter cannot serve throws `Unsupported` before any request, naming the capability. Ask first when the code runs on more than one vendor:
+
+<include meta='title="branch.ts"'>
+  ../../_examples/capabilities/branch.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/capabilities/branch.out.txt
+</include>
+
+See [capabilities](/docs/capabilities) for every key.

@@ -1,0 +1,3 @@
+ok - instantly: sent 200, positive replies 2
+ok - smartlead: sent 200, positive replies 2
+ok - heyreach: sent 200, positive replies null

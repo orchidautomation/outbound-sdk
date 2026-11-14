@@ -1,0 +1,7 @@
+[ 'lead_1', 'lead_2' ] complete: false
+[ 'lead_3', 'lead_4' ]
+[ 'lead_5' ] complete: true cursor: undefined
+limit 500 returned 2
+limit 1 returned 1
+Invalid - The cursor is not valid for campaigns.list (it belongs to leads.list)
+Invalid - limit must be a positive integer, got 0

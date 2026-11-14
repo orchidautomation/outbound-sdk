@@ -470,7 +470,7 @@ Read again on 2026-11-14 from https://api.smartlead.ai/llms-full.txt, page https
 
 ## Endpoint inventory and native catalog (added 2026-11-14)
 
-Fetched fresh on 2026-11-14: `https://api.smartlead.ai/llms-full.txt` (262 pages, 242 of them endpoint pages) and `https://api.smartlead.ai/llms.txt`. No API call was made. The result is `docs/coverage/smartlead.md` (230 endpoints) and the native catalog in `src/smartlead/native*.ts` (78 reads).
+Fetched fresh on 2026-11-14: `https://api.smartlead.ai/llms-full.txt` (262 pages, 242 of them endpoint pages) and `https://api.smartlead.ai/llms.txt`. No API call was made. The result is `site/content/docs/coverage/smartlead.mdx` (230 endpoints) and the native catalog in `src/smartlead/native*.ts` (78 reads).
 
 - **Sister services.** All four take the same `api_key` query parameter under `/api/v1` on their own host. The SmartDelivery pages document no parameter beyond the path ids, and say "Contact support for access and API details", so those entries declare none. SmartProspect takes its paging numbers as strings.
 - **Secrets, left out of the catalog.** `GET /client/api-key` (client keys), `GET /email-accounts/fetch-email-account-details` (same payload as the mailbox by id, passwords included), `GET /smart-senders/order-details` (a `password` per mailbox), `GET /smart-senders/auth-secret` (a one-time password). `GET /client/{id}` is catalogued without `includeWhitelabel`, which adds `gpt_api_info` and whitelabel credentials, and `GET /campaigns/{id}/mailbox-statistics` without `private_api_key`.

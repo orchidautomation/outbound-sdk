@@ -1,0 +1,4 @@
+memory:acme:agencies 0.075 { high: 0.0948, low: 0.0591 }
+memory:acme:founders 0.06 { high: 0.076, low: 0.0472 }
+test: { pValue: 0.1939, significant: false, z: 1.299 }
+evidence: exact complete: true

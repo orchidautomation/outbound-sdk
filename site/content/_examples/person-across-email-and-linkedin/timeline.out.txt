@@ -1,0 +1,8 @@
+email:dana.whitfield@example.com: 3 records
+2026-10-12T09:00 email    mailtool sent
+2026-11-03T09:00 email    mailtool sent
+2026-11-04T10:00 linkedin lntool   sent
+2026-11-06T09:00 email    mailtool sent
+2026-11-07T14:30 email    mailtool they replied
+2026-11-08T08:15 linkedin lntool   they replied
+2026-11-10T10:00 linkedin lntool   sent

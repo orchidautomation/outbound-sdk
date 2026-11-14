@@ -39,6 +39,8 @@ export interface Store {
   readonly pageSize: number;
   readonly capabilities: CapabilityDeclaration;
   readonly channelOf: (campaignId: string | undefined) => Channel;
+  /** Whether a campaign, a stats row, a lead, a message or a sender names this campaign id. */
+  readonly mentionsCampaign: (campaignId: string | undefined) => boolean;
 }
 
 export const findCampaign = (store: Store, id: string): MemoryCampaign => {

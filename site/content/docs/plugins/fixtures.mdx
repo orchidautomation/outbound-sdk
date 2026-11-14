@@ -1,0 +1,90 @@
+---
+title: fixtures
+description: Record an instance's answers to files in a folder you choose, with personal data replaced by numbered placeholders, and replay them without calling the vendor.
+sidebar:
+  label: fixtures
+related:
+  - /guides/test-without-a-key
+  - /docs/adapters/memory
+  - /docs/plugins/redact
+---
+
+`fixtures({ dir })` from `outbound-sdk/fixtures` saves the answer to each read as a JSON file and serves it from that file afterwards, for tests and demos. Before saving, it replaces personal data with numbered placeholders. In `replay` mode it never calls the adapter. Files are written to the folder you name and nowhere else. It uses `node:fs`, so it needs Node or a runtime with that module.
+
+## Sample
+
+The sample records two reads, then replays them on an adapter that holds no data. It runs on the [shared seed](/docs/plugins#every-plugin).
+
+<include meta='title="run.ts"'>../../_examples/plugins-fixtures/run.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/plugins-fixtures/run.out.txt
+</include>
+
+The seed's Jane Doe at Northwind is "Person 1" at "Company 1" in the file and in what the recording read returned. Campaign names were replaced too.
+
+## Options
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `dir` | `string` | required | The folder to write to and read from. It is created when the first file is written. |
+| `mode` | `"auto" \| "record" \| "replay"` | `"auto"` | `record` always calls inward and overwrites the file. `replay` answers from disk and throws `NotFound` when there is no file. `auto` replays when a file exists and records otherwise. |
+| `scrub` | `boolean` | `true` | Replace personal data with placeholders before saving. |
+
+## Files
+
+One file per operation, named `<provider>.<workspace>.<operation kind>.<hash>.json`, where the hash is taken from the workspace, the operation and all its arguments. In the name, a character of the workspace label that is not a letter, a digit, `.`, `_` or `-` is written as `_`. `fixtureFile(dir, { provider, workspaceId }, operation)` returns the path for one read.
+
+- Another page, filter, date range or id is another file. A test must make exactly the reads that were recorded.
+- A get by bare id and a get by ref are two files.
+- Two workspaces on one provider write two files for the same read, so several workspaces can share a folder.
+
+A file holds the operation's `items`, its `next` continuation and its `evidence`. Replayed records are checked against the SDK's schemas like any others, so a file edited into an invalid shape fails with `Provider`.
+
+## What scrubbing replaces
+
+| Record | Replaced | With |
+| --- | --- | --- |
+| Lead | `email`, `company`, `linkedinUrl`, `lastName`, every `custom` value | `person1@example.com`, `Company 1`, `https://www.linkedin.com/in/example-person-1`, a number, `value-1` |
+| Lead | `firstName` | `Person` |
+| Message, reply | `subject`, `bodyText`, `bodyHtml` | `[subject]`, `[body]`, `null` |
+| Sender | `address`, `linkedinUrl`, `name` | `person1@example.com`, a placeholder profile, `Person 1` |
+| Campaign, workspace | `name` | `Campaign 1`, `Workspace 1` |
+| Block list entry, saved list | `value`, `name` | `value-1` |
+| Sender health | `domain` | `example.com` |
+| Webhook subscription | `url`, `name` | `https://example.com/webhook`, `value-1` |
+| Stats row | Nothing, except an email address or a profile URL inside `scopeRef` | A placeholder address or profile |
+| Lead, with `identity` inside | `personKey`, `personKeys` | Keys rebuilt from the placeholders: `email:person1@example.com`, `linkedin:example-person-1` |
+
+The same value always gets the same placeholder within one plugin object, so records still join after scrubbing: a lead and a sender with the same address get the same `personN@example.com`. Numbering restarts with each `fixtures()` call.
+
+`raw` is set to `null` on every record. An id that is an email address or a LinkedIn profile URL is replaced in `sourceId` and in every ref that carries it.
+
+Scrubbing does not touch a lead's `title`, `tags` or `interest`, custom field names, sequence step text, tag names, or ids that are neither an email address nor a profile URL. Read a recorded file before committing it.
+
+<Callout type="warning" title="scrub: false writes real data to disk">
+  With `scrub: false` the files hold the records as the layers inside returned
+  them, including `raw`, the vendor's whole payload. Do not commit them.
+</Callout>
+
+## What it changes
+
+It changes no capability. A replayed answer has a fresh `meta`: `requests` is `0` and `fetchedAt` is now. The file does not keep when the answer was recorded.
+
+In `record` and `auto` mode, the recording read returns the scrubbed records, the same ones it saved, not the vendor's.
+
+## With other plugins
+
+- **List it last when recording.** What is saved is then the adapter's answer, not another plugin's view of it. Listed before `clients` or `identity`, it saves their added fields too. `identity`'s `personKey` and `personKeys` are rebuilt from the placeholders, so no address or profile is written. `clients`' `client` label is saved as it is.
+- In `replay` mode the layers before it still run on the replayed records: `redact` masks them, `clients` tags them, `cache` caches them.
+- Layers after it are skipped on replay. A `budget` listed after it counts nothing.
+- A plugin that only adds methods (`insights`, `sync`, `exporter`) works on replayed data like any other.
+
+## When it fails
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| `replay`, and the read was never recorded | `NotFound`, naming the operation and the file | Record it, or make the test ask the recorded question. The last two cases in the sample show this. |
+| A file is not valid JSON, or has no `evidence` | `Invalid`: "The fixture ... is not a recorded operation" | Delete the file and record again. |
+| The read fails while recording | The error. No file is written. | Fix the read and record again. |
+| The folder cannot be written | The file system's error, after the vendor was called | Check the path and its permissions. |

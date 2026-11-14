@@ -1,0 +1,26 @@
+import { outbound } from "./outbound.ts";
+
+const { data } = await outbound.insights.bounceWatch({});
+
+for (const campaign of data.over) {
+  console.log(`${campaign.name}: ${campaign.finding}`);
+  console.log(
+    `  95% interval: ${campaign.interval?.low} to ${campaign.interval?.high}`
+  );
+
+  for (const sender of campaign.senders ?? []) {
+    console.log(
+      `  ${sender.address}: ${sender.bounced} of ${sender.sent} (${sender.rate})`
+    );
+  }
+}
+
+for (const campaign of data.tooFewSends) {
+  console.log(`${campaign.name}: ${campaign.finding}`);
+}
+
+for (const campaign of data.unknown) {
+  console.log(`${campaign.name}: ${campaign.reason}`);
+}
+
+console.log("totals:", data.totals);

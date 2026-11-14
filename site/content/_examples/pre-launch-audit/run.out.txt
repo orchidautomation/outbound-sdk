@@ -1,0 +1,25 @@
+Pre-launch audit of Agency owners Q1 (draft)
+
+Copy: 5 findings in 3 variants
+  [high] step 0 B: A variable's braces are not balanced, so it sends as raw text.
+  [medium] step 0 A: The copy uses 1 word(s) or phrase(s) that spam filters weigh.
+  [medium] step 0 A: The body has 2 links; the limit is 1.
+  [medium] step 1 A: This follow-up has a subject that differs from the first email's, so it starts a new thread instead of continuing the first.
+  [low] step 1 A: The copy has 2 exclamation marks; the limit is 1.
+
+Merge variables: 3 of 5 leads would get broken copy
+  company: 2 leads affected
+  firstName: 2 leads affected
+  painPoint: 0 leads affected
+  senderSignature: no lead has it; check it by hand
+  sales@example.com is missing company, firstName
+  info@example.com is missing firstName
+  cara@example.com is missing company
+
+Settings: 6 findings
+  [high] The daily limit of 200 is over 50 a day for each of its 2 senders (100).
+  [high] A lead who replies keeps getting the next steps.
+  [medium] A sending window is 14 hours long, over 12.
+  [medium] Open tracking is on, a deliverability risk.
+  [low] A sending window includes Saturday or Sunday.
+  [low] A sending window has no timezone.

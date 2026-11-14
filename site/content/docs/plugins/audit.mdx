@@ -1,0 +1,94 @@
+---
+title: audit
+description: Hand every operation's duration, request count and throttle time, and optionally every HTTP request, to a sink of your own, with no record data in the entries.
+sidebar:
+  label: audit
+related:
+  - /docs/api/hooks
+  - /docs/plugins/tracing
+  - /docs/rate-limits
+---
+
+`audit({ sink })` from `outbound-sdk/audit` calls your `sink` once for every operation the instance runs, with what was asked, how long it took, how many vendor requests it made and how long it waited for rate budget. With `requests: true` it also calls the sink once per HTTP request. A call entry holds no record data and no query values: only the operation's name, counts and timings. The plugin keeps nothing itself.
+
+## Sample
+
+This sample runs Instantly's adapter on the `fetch` from the [budget page](/docs/plugins/budget#sample), which serves the vendor's documented payloads from the repository. They are not live responses. A one-request `budget` inside the audit layer makes the second call fail on its second page.
+
+<include meta='title="run.ts"'>../../_examples/plugins-audit/run.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/plugins-audit/run.out.txt
+</include>
+
+Each page of a walk is its own operation and its own entry. The last entry is the page the budget refused: no records, no request, and the error code. Durations are `0` because the samples run with a fixed clock.
+
+## Options
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `sink` | `(entry: AuditEntry) => void \| Promise<void>` | required | Receives every entry. It is not awaited, and a sink that throws or rejects is ignored. |
+| `requests` | `boolean` | `false` | Also record each HTTP request. |
+| `now` | `() => number` | `Date.now` | The clock, for tests. |
+
+## Entries
+
+A call entry (`type: "call"`), one per operation:
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `at` | `string` | When the operation started, ISO 8601 UTC. |
+| `operation` | `string` | The operation kind, for example `senders.list`. |
+| `provider`, `workspaceId` | `string` | The adapter's. |
+| `durationMs` | `number` | From start to answer or error, including retries and throttle waits. |
+| `requests` | `number` | Vendor requests this operation made. |
+| `throttledMs` | `number` | Time this operation waited for rate budget. |
+| `records` | `number \| null` | Records returned. `null` when it failed. |
+| `error` | `string \| null` | The error code when it failed. An error that is not an `OutboundError` is recorded as `Provider`. |
+
+A request entry (`type: "request"`), one per HTTP attempt, when `requests` is `true`:
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `at` | `string` | When the request settled, ISO 8601 UTC. |
+| `method` | `string` | The HTTP method. |
+| `url` | `string` | The request URL with secrets removed. The query string is kept. |
+| `status` | `number \| null` | The HTTP status, or `null` when no response arrived. |
+| `durationMs` | `number` | How long the attempt took. |
+| `attempt` | `number` | Which attempt this was, starting at 1. |
+| `lane` | `string` | The rate-limit lane the request was counted in. |
+| `provider` | `string` | The adapter's. |
+
+A request entry has no `workspaceId`. A request URL can carry a vendor id or a filter value in its path or query, so request entries are not free of data the way call entries are.
+
+## On the in-memory adapter
+
+The in-memory adapter makes no HTTP request, so `requests` is `0` and there are no request entries. Call entries still arrive.
+
+<include meta='title="memory.ts"'>
+  ../../_examples/plugins-audit/memory.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/plugins-audit/memory.out.txt
+</include>
+
+## What it changes
+
+It changes no capability, no record and nothing in `meta`. It adds nothing to the instance.
+
+## With other plugins
+
+- List it inside `cache` to record only reads that did real work. Listed before `cache`, it records cache hits too, as operations with `requests: 0`.
+- List it before `budget` to record the calls a budget refuses, as the sample does. An operation stopped by a layer outside the audit layer never reaches it and leaves no entry.
+- A call refused by a capability check (`Unsupported`) or by input validation happens before any plugin runs and leaves no entry.
+- Extra reads other plugins make through the chain, such as the campaign lookup `clients` does, are entries of their own.
+- For the same events without the plugin, see [hooks](/docs/api/hooks). For spans, see [tracing](/docs/plugins/tracing).
+
+## When it fails
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| The sink throws or rejects | Nothing. The read is not affected and the entry is lost. | Make the sink durable yourself if entries must not be lost. |
+| The sink is slow | Nothing. The read does not wait for it. | Entries can arrive after the read returns, and are not guaranteed to have arrived when the process exits. |
+| The operation fails | A call entry with `error` set and `records: null`, then the error reaches the caller unchanged | Nothing. |

@@ -10,10 +10,10 @@ import type { InsightResult, RunOptions } from "./define.ts";
 import { ENTRIES } from "./registry.ts";
 import type { AnyInsight } from "./registry.ts";
 
-type InputOf<Definition> = Definition extends {
-  readonly inputSchema: infer Schema;
-}
-  ? z.input<Schema>
+// What a caller writes: the schema's input type, where a field with a
+// default is optional.
+type InputOf<Definition> = Definition extends { readonly given?: infer Given }
+  ? Given
   : never;
 
 type DataOf<Definition> = Definition extends {
@@ -34,8 +34,8 @@ export interface InsightsExtension {
   readonly insights: Insights;
 }
 
-/** Runs one insight by its tool name or method name, with JSON input. Throws `Invalid` for an unknown name. */
-export const runInsightByName = (
+/** Runs one insight by its tool name or method name, with JSON input. Rejects with `Invalid` for an unknown name. */
+export const runInsightByName = async (
   outbound: OutboundApi,
   name: string,
   input: Json = {},
@@ -53,7 +53,7 @@ export const runInsightByName = (
     );
   }
 
-  return entry.execute(outbound, input, options);
+  return await entry.execute(outbound, input, options);
 };
 
 export interface ListedInsight {

@@ -1,0 +1,4 @@
+instantly: native true, 105 reads, 13 of them sent as POST, vendor_read offered
+smartlead: native true, 78 reads, 16 of them sent as POST, vendor_read offered
+heyreach: native true, 25 reads, 10 of them sent as POST, vendor_read offered
+stand-in: native true, 0 reads

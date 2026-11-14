@@ -1,0 +1,19 @@
+send-two.example.com: high risk
+  - 1 of 2 mailboxes are on a block list
+  - DKIM failing
+  - 30 of 200 warmup emails landed in spam (0.15, over 0.1)
+  - DMARC failing
+  - 1 of 2 mailboxes are disconnected
+send-one.example.com: low risk
+send-three.example.com: unknown risk
+  not reported: spf, dkim, dmarc, mx, connection, blocklist, warmup
+LinkedIn seats: [ 'Fay Lin, connected true' ]
+totals: {
+  domains: 3,
+  high: 1,
+  linkedinSeats: 1,
+  low: 1,
+  medium: 0,
+  senders: 6,
+  unknown: 1
+}

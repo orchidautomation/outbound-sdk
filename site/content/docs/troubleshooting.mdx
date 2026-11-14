@@ -1,0 +1,181 @@
+---
+title: Troubleshooting
+description: The errors a new user hits first, each with the exact message the SDK prints, what caused it and what to change.
+sidebar:
+  label: Troubleshooting
+related:
+  - /docs/api/errors
+  - /docs/capabilities
+  - /docs/installation
+---
+
+Every failure is an `OutboundError` with a `code` and a message. Find the message below. Each one on this page was printed by a sample the test suite runs.
+
+Where a sample needs a vendor to fail, it runs a real adapter with a made-up key against a stand-in server that answers with a status code and an empty body. The stand-in is shown on the [retries](/docs/retries#how-the-samples-fail) page. No message here was copied from a live vendor.
+
+| Message starts with | Code | Section |
+| --- | --- | --- |
+| `instantly needs an API key` | `Unauthorized` | [No API key](#no-api-key) |
+| `instantly responded 401` | `Unauthorized` | [The vendor rejected the key](#the-vendor-rejected-the-key) |
+| `... is not available: the ... adapter does not support it` | `Unsupported` | [The adapter cannot do that](#the-adapter-cannot-do-that) |
+| `... must be`, `... must not be` | `Invalid` | [The input is wrong](#the-input-is-wrong) |
+| `... must be a ref (provider:workspace:id)` | `Invalid` | [A bare id on a combined instance](#a-bare-id-on-a-combined-instance) |
+| `The call used its budget of` | `RateLimited` | [Rate limited](#rate-limited) |
+| `... is not available: the redact plugin turned it off` | `Unsupported` | [Native reads are off with redact](#native-reads-are-off-with-redact) |
+| `No "exports" main defined` | from Node | [require() fails](#require-fails) |
+
+## No API key
+
+<include meta='title="missing-key.ts"'>
+  ../_examples/troubleshooting/missing-key.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/troubleshooting/missing-key.out.txt
+</include>
+
+An adapter takes its key from the `apiKey` option, and otherwise from its environment variable: `INSTANTLY_API_KEY`, `SMARTLEAD_API_KEY` or `HEYREACH_API_KEY`. With neither, constructing the adapter throws. This is the one error that happens before `createOutbound`.
+
+- Check the variable is set in the process that runs your code, not only in your shell profile. A `.env` file is not read for you: load it yourself, for example with `node --env-file=.env`.
+- A variable that is set but empty or blank counts as missing.
+- The message names the variable for the adapter you constructed.
+
+## The vendor rejected the key
+
+<include meta='title="rejected-key.ts"'>
+  ../_examples/troubleshooting/rejected-key.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/troubleshooting/rejected-key.out.txt
+</include>
+
+Constructing an instance sends nothing, so a wrong key is only found on the first read. A vendor's 401 or 403 becomes `Unauthorized`. It is sent once and never retried.
+
+- Check the key was copied whole and belongs to the workspace you mean.
+- Check its scope, where the vendor has scopes. One read can then work while another is `Unauthorized`. A read-only key is enough for everything the SDK does.
+- When the vendor's response has an error text, the message carries it after the status: `instantly responded 401: ...`. The key itself never appears in a message.
+
+## The adapter cannot do that
+
+<include meta='title="unsupported.ts"'>
+  ../_examples/troubleshooting/unsupported.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/troubleshooting/unsupported.out.txt
+</include>
+
+The vendors do not offer the same reads. A read the adapter cannot serve throws `Unsupported` before any request, and the message ends with the capability key in brackets.
+
+- Look the key up on the [capabilities](/docs/capabilities) page. It often names a nearby read that does work: HeyReach has no list of every lead, and does list the leads of one campaign.
+- Check `outbound.capabilities[key]` before the call in code that runs on more than one vendor.
+- The [adapters](/docs/adapters) page has the table of what each vendor declares.
+- If the message says a plugin turned it off, see [below](#native-reads-are-off-with-redact).
+
+## The input is wrong
+
+<include meta='title="invalid.ts"'>
+  ../_examples/troubleshooting/invalid.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/troubleshooting/invalid.out.txt
+</include>
+
+`Invalid` from the SDK means the call was refused before any request. The message says which value and what it must be.
+
+| Message | Cause |
+| --- | --- |
+| `from must be a date in YYYY-MM-DD form` | `from` and `to` on stats are calendar days. A timestamp is refused. |
+| `from must not be after to` | The range is backwards. |
+| `stats for the campaign scope need a scopeId` | `outbound.stats({ scope })` needs `scopeId`. Or use `outbound.campaign(id).stats()`, which fills it in. |
+| `since must be an ISO 8601 date or timestamp` | `since` and `until` on listings take a date or a timestamp, not words. |
+| `limit must be a positive integer` |  |
+| `Campaign id must not be empty` | An empty or blank id, often an `undefined` turned into a string further up. |
+| `Leads can be listed by campaign or by list, not both at once` | Pick `campaignId` or `listId`. |
+| `... belongs to workspace other-client, not default` | A ref from one workspace was passed to an instance for another. |
+| `The cursor is not valid for replies.list (it belongs to leads.list)` | A cursor only continues the listing it came from. See [pagination](/docs/api/pagination#cursors). |
+
+TypeScript catches most of these before you run. They show up at run time when the value comes from user input, a config file or an agent.
+
+A vendor can also answer 400 or 422, which becomes `Invalid` with the message `<vendor> responded 400`. That means the request reached the vendor and it refused it. It is not retried.
+
+## A bare id on a combined instance
+
+<include meta='title="combined-id.ts"'>
+  ../_examples/troubleshooting/combined-id.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/troubleshooting/combined-id.out.txt
+</include>
+
+An instance made with [`combine`](/docs/adapters/combine) has several adapters behind it. A vendor's own id does not say which one it belongs to, and two of them can hold the same id, as the two workspaces above do.
+
+- Pass the `ref` of a record. Every record carries one, and it names the provider and the workspace. See [refs](/docs/api/records#refs).
+- Or scope first with `outbound.workspace(id)`. On the scoped instance a bare id works, as long as the label belongs to one adapter. When two adapters share a label, name one as `provider:workspace`.
+- `Workspace ... is not on this instance` (`NotFound`) means no adapter was given that `workspaceId`. The label is the one you passed when you constructed the adapter, or `default`.
+
+## Rate limited
+
+<include meta='title="rate-limited.ts"'>
+  ../_examples/troubleshooting/rate-limited.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/troubleshooting/rate-limited.out.txt
+</include>
+
+The SDK waits out a vendor's 429 and retries on its own, so `RateLimited` reaches you only when one of three limits stops that. The message and the fields say which.
+
+| What you see | What stopped it | What to do |
+| --- | --- | --- |
+| `<vendor> responded 429`, `timedOut: true` | The wait the vendor asked for would end after the call's `deadline`. | Raise `deadline`, or try again after `retryAfterMs`. |
+| `The call used its budget of N request(s)` | `maxRequests`. The next request was not sent. | Raise `maxRequests`, or ask for less in one call: a smaller `max`, fewer campaigns. |
+| `<vendor> responded 429`, `timedOut: false` | The retries ran out and the vendor was still limiting. | Try again after `retryAfterMs`. Something else may be using the same key. |
+| `<vendor> rate budget is full and the deadline would pass before it frees up` | The SDK's own budget for the key was full, and waiting for room would pass the `deadline`. No request was sent. | Raise `deadline`, or spread the work out. |
+
+The last message is not in the output above. It comes from the SDK's own pacing, which keeps requests under the vendor's published limit before the vendor has to refuse any. If you see 429s often, the key is probably shared with other tools or other processes: see [rate limits](/docs/rate-limits) for `share` and for a budget shared between processes.
+
+`RateLimited` is never `permanent`. The same call can work later.
+
+## Native reads are off with redact
+
+<include meta='title="native-redact.ts"'>
+  ../_examples/troubleshooting/native-redact.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/troubleshooting/native-redact.out.txt
+</include>
+
+A [native read](/docs/native) returns the vendor's payload untouched. The [redact](/docs/plugins/redact) plugin cannot mask a payload whose shape it does not know, so it turns the `native` capability off, and the read is refused before any request. The same happens to `include: ["body"]` when redact is masking message text.
+
+That is on purpose: the plugin refuses what it cannot protect. If you need a native read, make it on a second instance without `redact`, and handle what comes back as unmasked personal data.
+
+[`outbound.raw`](/docs/api/raw) returns the same untouched payload, so it is refused on an instance with `redact` too, with a message that names the plugin.
+
+## `require()` fails
+
+```text
+Error [ERR_PACKAGE_PATH_NOT_EXPORTED]: No "exports" main defined in /your/project/node_modules/outbound-sdk/package.json
+```
+
+The package is ESM only. A CommonJS file that calls `require("outbound-sdk")` gets this error from Node, as does a TypeScript project that compiles to CommonJS. This message was produced on Node 24 by requiring the package from a `.cjs` file. It is not one of the samples the test suite runs.
+
+Either:
+
+- Make the project ESM: `"type": "module"` in `package.json`, and in TypeScript `"module": "NodeNext"`.
+- Or load it with a dynamic import, `await import("outbound-sdk")`, which works from a CommonJS file. That was checked the same way.
+
+The same error for a subpath, `Package subpath './something' is not defined by "exports"`, means that subpath does not exist. The [installation](/docs/installation#subpaths) page lists the ones that do.
+
+## Something else
+
+- **`Cannot find package 'outbound-sdk'`**: the package is not on npm yet. See [installation](/docs/installation).
+- **A number is `null` where you expected 0**: the vendor did not report it. See [null is not zero](/docs/api/records#null-is-not-zero).
+- **A page has fewer records than `limit`**: go by `cursor`. See [pagination](/docs/api/pagination#limit).
+- **A call hangs**: the default `timeout` is 30 seconds per attempt with four retries. Set `deadline`. See [retries](/docs/retries).
+- **A `Provider` error that says `returned an invalid record`**: the vendor sent something the adapter did not expect and the record failed its schema. That is a bug in the adapter, or a change at the vendor. Check [what is verified](/docs/status) for the adapter, and report it with the message.
+- **`outbound.maturity` and `outbound.caveats`** say how far the adapter was checked and what it assumes. Read them when a number looks wrong.

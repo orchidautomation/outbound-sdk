@@ -1,0 +1,157 @@
+---
+title: Retries, timeouts and budgets
+description: What the SDK retries on its own and what it never retries, how long it waits between attempts, and the five options that bound a call - retries, timeout, deadline, maxRequests and signal.
+sidebar:
+  label: Retries and timeouts
+related:
+  - /docs/rate-limits
+  - /docs/api/errors
+  - /docs/api/hooks
+---
+
+Every method of the SDK is a read, and a read is safe to repeat. So retries are on by default: a failure that might pass is tried again, with a growing wait, before you see an error. You do not write a retry loop. The one exception is a [`raw`](/docs/api/raw) request that is not a known read, which is possible only with `allowWrites: true`: it is sent once.
+
+This page covers what happens after a request fails. Keeping requests inside the vendor's limit in the first place is the [rate limits](/docs/rate-limits) page.
+
+## What happens by default
+
+<include meta='title="backoff.ts"'>../_examples/retries/backoff.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/retries/backoff.out.txt
+</include>
+
+Two attempts failed with a 503, the SDK waited 500 ms and then 1,000 ms, and the third attempt answered. The caller saw one successful call.
+
+### How the samples fail
+
+Nothing on this page reaches a vendor. Each sample constructs a real Instantly adapter with a made-up key and passes two things to `createOutbound`:
+
+- **`fetch`**: a stand-in for the vendor's server. It answers with a status code and an empty body, never a vendor payload.
+- **`runtime`**: a clock on which a wait ends at once, with the randomness fixed. The waits shown are the ones the SDK asked for. No real time passed.
+
+<include meta='title="fake-vendor.ts"'>
+  ../_examples/retries/fake-vendor.ts
+</include>
+
+<include meta='title="instant-clock.ts"'>
+  ../_examples/retries/instant-clock.ts
+</include>
+
+The samples call `outbound.raw.get`, which returns the response body untouched, because an empty body is not a campaign. Retries work the same on every read. Both options are also how you test your own code against a failing vendor: see [test without a key](/guides/test-without-a-key).
+
+## What is retried
+
+<include meta='title="gives-up.ts"'>../_examples/retries/gives-up.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/retries/gives-up.out.txt
+</include>
+
+| Failure | Retried | Error when retries run out |
+| --- | --- | --- |
+| HTTP 500, 502, 503, 504 | yes | `Provider` |
+| HTTP 408 | yes | `Provider` |
+| HTTP 429 | yes, after the wait the vendor asks for | `RateLimited` |
+| No connection, or any other network failure | yes | `Provider` |
+| No answer within `timeout` | yes | `Provider`, with `timedOut: true` |
+| HTTP 400, 422 and other 4xx | never | `Invalid` |
+| HTTP 401, 403 | never | `Unauthorized` |
+| HTTP 404 | never | `NotFound` |
+| Your `signal` aborted the call | never | `Provider`, with `aborted: true` |
+| A refusal by the SDK: `Invalid` input, an `Unsupported` read | never: no request was sent |  |
+
+With the default of four retries, a failing call is five requests. A walk with `listAll` retries each page on its own.
+
+## How long it waits
+
+The wait before retry number _n_ is a random time between 0 and the smaller of 60 seconds and 1 second doubled _n - 1_ times. That is exponential backoff with full jitter: the ceiling doubles each time, and the randomness keeps many clients that failed together from retrying together.
+
+| Before retry | Ceiling | In the samples, where the random number is always 0.5 |
+| --- | --- | --- |
+| 1 | 1 s | 500 ms |
+| 2 | 2 s | 1,000 ms |
+| 3 | 4 s | 2,000 ms |
+| 4 | 8 s | 4,000 ms |
+| 7 and later | 60 s | 30,000 ms |
+
+So four retries add at most 15 seconds of waiting, and half that on average.
+
+When the vendor says how long to wait, with a `Retry-After` header or a field in its response body, the SDK waits at least that long. The 429 in the output above asked for 20 seconds and got it each time. A 429 also slows the instance down for a while afterwards: see [rate limits](/docs/rate-limits).
+
+## The five options
+
+`OperationOptions`. Each can be set on `createOutbound` as the default for every call, and again on any one call.
+
+| Option | Type | Default | Bounds |
+| --- | --- | --- | --- |
+| `retries` | `number`, or `{ max, backoff? }` | `4` | How many times a failed request is tried again |
+| `timeout` | milliseconds | `30000` | One attempt |
+| `deadline` | milliseconds | none | The whole call: every attempt, every backoff and every wait for the rate budget |
+| `maxRequests` | `number` | none | How many vendor requests the call may send |
+| `signal` | `AbortSignal` | none | Cancels the call from outside |
+
+<include meta='title="budgets.ts"'>../_examples/retries/budgets.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/retries/budgets.out.txt
+</include>
+
+### `timeout`
+
+How long one attempt may take. An attempt that gets no answer in time is cut off and counts as a failure, which is retried. The clock restarts for each attempt, so `timeout: 5000` with four retries can take 25 seconds plus the backoff. When the last attempt also times out, the error is `Provider` with `timedOut: true`.
+
+### `deadline`
+
+How long the whole call may take. The SDK checks it before each wait: if the next backoff, or the wait for the rate budget, would end after the deadline, it stops there and throws instead of waiting.
+
+- Stopped before a retry, the error is the last failure (`Provider`, or `RateLimited` after a 429) with `timedOut: true`.
+- Stopped while waiting for the rate budget, the error is `RateLimited` with `timedOut: true`.
+
+A deadline does not cut off an attempt already in flight. That is `timeout`. Set both: `deadline` for how long you are willing to wait in all, `timeout` for how long one request may hang. On a walk with `listAll`, the deadline covers the whole walk from its first page.
+
+### `maxRequests`
+
+The most vendor requests one call may send, retries included. When the count is reached the next request is not sent, and the call fails with `RateLimited` and the message shown above. It exists so one question cannot spend a vendor quota: an insight that reads every campaign, or a retry storm.
+
+On a walk with `listAll` and on `getMany`, it covers all the pages or records together. `meta.requests` on a [result](/docs/api/results) is what a call spent, and [`outbound.estimate`](/docs/api#methods) is what it would spend.
+
+### `signal`
+
+An `AbortSignal` stops a call at once: the request in flight is cancelled, a backoff or a rate-budget wait ends, and nothing is retried. The error is `Provider` with `aborted: true` and `permanent: true`. A signal that is already aborted sends no request at all.
+
+Use `AbortSignal.timeout(ms)` for a hard wall-clock limit that does cut off an attempt in flight, which `deadline` does not.
+
+### `retries`
+
+A number is how many retries follow the first attempt. `0` turns retries off. An object is a policy:
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `max` | `number` | Retries after the first attempt. |
+| `backoff` | `(attempt, random) => milliseconds` | The wait before retry number `attempt`, counted from 1. `random` is a number from 0 up to 1. Defaults to `fullJitterBackoff`. |
+
+`fullJitterBackoff` is exported, so a policy can build on it. A vendor's `Retry-After` still wins when it is longer than what your `backoff` returns.
+
+## On the constructor or on one call
+
+<include meta='title="per-call.ts"'>../_examples/retries/per-call.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/retries/per-call.out.txt
+</include>
+
+A value on a call replaces the instance's default for that call. The others keep their defaults. Every method that reads takes these options: on `list` and `listAll` they sit beside the filters, on `get` and the handle methods they are the last argument.
+
+## Watching it happen
+
+A retried call that succeeds looks like any other to the caller. To see retries, use the [hooks](/docs/api/hooks): `onRetry` fires before each wait with the attempt, the delay and the reason, and `onRequest` fires for each attempt with its status. `meta.requests` on the result counts the attempts too.
+
+## What to do when an error reaches you
+
+By then the SDK has retried what could be retried. `error.permanent` says whether trying again later could work:
+
+- **`permanent: false`** (`Provider`, `RateLimited`): the vendor is down, slow or limiting. Try again later, after `error.retryAfterMs` when it is set. The [failover](/docs/plugins/failover) plugin can serve the last good answer meanwhile.
+- **`permanent: true`**: the same call will fail the same way. Fix the key, the id or the input.
+
+See [errors](/docs/api/errors) for every field.

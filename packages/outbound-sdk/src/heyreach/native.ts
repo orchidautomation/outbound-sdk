@@ -1,6 +1,6 @@
 // HeyReach's own reads that have no normalized form, by name. Together with
 // the normalized reads they cover every read in HeyReach's API reference;
-// docs/coverage/heyreach.md accounts for each endpoint.
+// site/content/docs/coverage/heyreach.mdx accounts for each endpoint.
 //
 // Ids are whole numbers. Lists page by `offset` and `limit` and answer
 // `{ totalCount, items }` unless a description says otherwise.

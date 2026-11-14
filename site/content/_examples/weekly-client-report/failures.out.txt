@@ -1,0 +1,4 @@
+unknown input: Invalid - client_report: "tag" is not an input. It takes: alpha, anomaly_threshold, baseline_days, days, max_bounce_rate, max_campaigns, max_leads_per_campaign, min_baseline_points, min_sent, runway_days, statuses, top
+capped: false [ 'A listing was cut off at its cap; more records exist.' ]
+bad input: Invalid
+no stats: Unsupported - client_report is not available: the memory adapter does not support stats.campaign

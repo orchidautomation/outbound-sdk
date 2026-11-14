@@ -1,0 +1,104 @@
+---
+title: Instantly adapter
+description: Construct the Instantly adapter, know which key it needs, what it can and cannot read, what its reads cost in requests, the rate limits it keeps to and the assumptions it has not confirmed.
+sidebar:
+  label: Instantly
+related:
+  - /docs/adapters
+  - /docs/coverage/instantly
+  - /docs/status
+---
+
+`outbound-sdk/instantly` reads Instantly's API V2. It is an email adapter. It is `beta`: see [what is verified](/docs/status).
+
+## Construct it
+
+<include meta='title="instantly.ts"'>
+  ../../_examples/adapters-instantly/adapter.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/adapters-instantly/adapter.out.txt
+</include>
+
+| Option | Default | What it is |
+| --- | --- | --- |
+| `apiKey` | `INSTANTLY_API_KEY` | An API V2 key. |
+| `workspaceId` | `INSTANTLY_WORKSPACE_ID`, then `default` | Your own label for the client or workspace. It is part of every ref and may not contain a colon. |
+| `asWorkspace` | none | For the key of an agency's admin workspace: the id of the sub workspace to act as. Sent as the `x-as-workspace` header on every request. |
+| `baseUrl` | `https://api.instantly.ai/api/v2` | For a proxy or a test server. |
+| `capabilities` | what the adapter declares | Overrides single capabilities. |
+
+The module also exports `envVars` (the two variable names), `PROVIDER` (`"instantly"`) and `NATIVE` (the native catalog).
+
+## Key and scope
+
+- Create the key in Instantly under Settings, Integrations, API Keys. It is shown once. A V1 key does not work on V2.
+- A key with the `all:read` scope is enough for every read in the SDK, including the campaign tag reads.
+- One key belongs to one workspace. The exception is the key of a workspace group's admin workspace, which can act as a sub workspace with `asWorkspace`. Without it, calls read the key's own workspace.
+- Instantly answers `402` when the workspace's plan does not include an endpoint. The adapter maps that to `Unsupported`, not to a failure worth retrying.
+
+## What it can and cannot do
+
+Instantly declares every capability in the [table](/docs/adapters#what-each-adapter-can-do) except `deletionDetection`. Three values are weaker than the best case:
+
+| Capability | Value | Why |
+| --- | --- | --- |
+| `leads.since` | `client` | `POST /leads/list` has no date filter, so the SDK filters after fetching and marks the result `derived`. |
+| `stats.bySender` | `derived` | Per-mailbox numbers exist by day only. A total is summed by the adapter. |
+| `events.verify` | `secret` | Instantly does not sign webhooks. |
+
+`leads.lookup` works by email only. A lead in Instantly has no LinkedIn profile, so a lookup by profile returns nothing and sends no request.
+
+## Rate limits
+
+The adapter declares what Instantly publishes: 100 requests per second and 6,000 per minute per workspace, shared across keys and API versions. `GET /emails` has its own lane at 20 per minute, which bounds how fast messages and replies can be listed: at 100 emails a page, 2,000 emails a minute at the declared limit and half that at the default `share`. Three native reads carry daily or monthly limits of their own (`leadLabelPrediction`, `localBusinessFilters`, `localBusinessSearch`), counted in the process only.
+
+The output above shows the budget after the default `share` of 0.5. See [rate limits](/docs/rate-limits).
+
+## What reads cost
+
+| Read | Vendor requests |
+| --- | --- |
+| One campaign, or one page of campaigns | 3: the campaign or page, its tag assignments, then the tags' names |
+| A campaign's settings, sequence | 1 each |
+| A campaign's senders | 2 per page of mailboxes: every mailbox is read and filtered |
+| Sender health | 3: the account, a live DNS test, its warmup analytics |
+| Find a person by email | 1 per page |
+| Any other listing | 1 per page of 100 |
+| A message body that the list cut short | 1 more for that email, on the 20 per minute lane |
+
+To make a campaign read cost 1 request, turn the tag reads off with `capabilities: { tags: false }`. Campaign `tags` are then empty. `outbound.estimate` reads the declared table and still reports 3.
+
+A page of campaigns reads at most 10 pages of 100 tag assignments. A page with more than that is refused with a `Provider` error, not returned with tags missing.
+
+## Vendor behavior that affects your code
+
+- **Steps count from 0.** An email names its step as `sequence_step_variant`, each counted from 0. This was seen live and is not documented.
+- **A reply has no lead ref.** A received email carries the lead's address but no lead id, so `reply.leadRef` is `null`. Match on the address.
+- **The email list is not every email.** A lead on its sixth step was seen with one sent email and two replies. A timeline or thread can be shorter than the sequence; `lead.engagement.stepIndex` says how far the lead got.
+- **A listing ends one request late.** Instantly sends a next-page marker on the last page too, and the page after it is empty.
+- **Open counts come back even with open tracking off.** The analytics response does not say whether tracking was on.
+- **`isAuto` is always `null`** on replies, and daily stats rows have a `null` timezone.
+- **A lead list's `size` is `null`.** The count costs one more request per list; the native read `leadListVerificationStats` returns it for one list.
+- **Webhooks need Instantly's Hyper Growth plan or above**, by Instantly's documentation.
+
+## Caveats
+
+`outbound.caveats` is the adapter's own list of what it assumes and has not confirmed. Read it before relying on a field.
+
+<include meta='title="caveats.ts"'>
+  ../../_examples/adapters-instantly/caveats.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/adapters-instantly/caveats.out.txt
+</include>
+
+## Webhooks
+
+Verification mode: `secret`. Instantly does not sign payloads, so put a secret in the webhook URL or in an `x-webhook-secret` header and pass the same value as `secret` when parsing. See [webhook verification](/docs/webhooks/verification).
+
+## Coverage
+
+[Instantly coverage](/docs/coverage/instantly) lists all 268 endpoints of the API V2 reference: 22 behind normalized reads, 105 in the [native catalog](/docs/native), 4 excluded and 137 writes. The research note the adapter was written from is in the repository at `docs/research/instantly.md`.

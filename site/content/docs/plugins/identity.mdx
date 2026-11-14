@@ -1,0 +1,111 @@
+---
+title: identity
+description: Tag every lead with person keys built from exact identifiers, and look one person up across tools with every record and one timeline.
+sidebar:
+  label: identity
+related:
+  - /guides/person-across-email-and-linkedin
+  - /docs/adapters/combine
+  - /docs/plugins/redact
+---
+
+`identity()` from `outbound-sdk/identity` links the same person across tools and campaigns. It adds `personKey` and `personKeys` to every lead, and `outbound.person(identifier)`, which returns every record for that person and one timeline of their messages. A key comes from an exact identifier only: a lowercased email address or a cleaned LinkedIn profile URL. There is no matching on names or companies. Records are linked, never merged: each keeps its own `provider`, `workspaceId` and fields.
+
+## Sample
+
+Two tools behind one [combined](/docs/adapters/combine) instance. The email tool knows Jane by address and profile. The LinkedIn tool knows her only by profile, written differently.
+
+<include meta='title="run.ts"'>../../_examples/plugins-identity/run.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/plugins-identity/run.out.txt
+</include>
+
+The lookup started from an email address in mixed case. The email record carried a profile URL, which led to the LinkedIn record. The timeline is the three messages to and from Jane in both tools, oldest first.
+
+## Options
+
+`identity()` takes no options.
+
+`outbound.person(identifier, options?)` takes:
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `campaignIds` | `string[]` | none | Look only in these campaigns (refs). Each campaign's leads are walked in full. |
+| `timeline` | `boolean` | `true` | `false` leaves the timeline out, which saves one read per matching record. |
+| `include` | `("body")[]` | none | `["body"]` asks for message text on the timeline. Without it `bodyText` is `null`. Needs the `messages.body` capability. |
+
+`identifier` is a person key (`email:...` or `linkedin:...`), an email address or a LinkedIn profile URL. Anything else throws `Invalid`.
+
+## How a key is built
+
+| Source | Key | Rule |
+| --- | --- | --- |
+| `email` | `email:jane.doe@example.com` | Trimmed and lowercased. A value with no `@` gives no key. |
+| `linkedinUrl` | `linkedin:jane-doe-example` | The profile slug from the URL, as `profileSlug` from `outbound-sdk` returns it. A URL with no slug gives no key. |
+
+`personKeys` holds every key a lead has, email first. `personKey` is the first of them, or `null` for a lead with neither identifier. The subpath also exports the functions themselves: `emailKey`, `linkedinKey`, `keysOf` and `toKey`.
+
+## What it adds
+
+| Member | Returns |
+| --- | --- |
+| Every lead | `personKey: string \| null` and `personKeys: string[]`, added at run time. The exported `PersonLead` type describes the result, but `Lead` does not declare the fields, so read them with an `in` check. |
+| `outbound.person(identifier, options?)` | A `Person`. |
+
+A `Person` has:
+
+| Field | Meaning |
+| --- | --- |
+| `key` | The key that was looked up. |
+| `keys` | Every key found on the matching records, sorted. |
+| `found` | `false` when no record carries the key. The link is unknown, not proven absent. |
+| `records` | One lead record per tool or campaign the person is in. |
+| `timeline` | Every message to and from the person across those records, oldest first. Empty when `timeline` is `false` or the adapter does not declare `leads.timeline`. |
+
+## How the lookup reads
+
+`person()` picks one of three paths from the instance's capabilities:
+
+1. **The vendor can find a lead by identifier** (`leads.lookup`), and `campaignIds` is not set. It asks for the person by each key. A record that carries a second key is looked up under that one too, so an email can lead to a profile and back. The vendor's own matching is not trusted: only a record whose exact key matches is kept.
+2. **Otherwise, the adapter lists all leads** (`leads.list`), and `campaignIds` is not set. Every lead is walked.
+3. **Otherwise**, every campaign is listed and each campaign's leads are walked. With `campaignIds`, only those campaigns.
+
+On paths 2 and 3, a record that links a new key causes one more full walk, to catch records seen earlier under the other key.
+
+Paths 2 and 3 read every lead they cover. On a large account that is many requests: pass `campaignIds`, or set `maxRequests` on the instance.
+
+The timeline is one `lead(ref).timeline()` read per matching record, all started together.
+
+## What it changes
+
+It changes no capability and nothing in `meta`.
+
+## With other plugins
+
+List it after `redact` and before `cache`.
+
+With [`redact`](/docs/plugins/redact#with-other-plugins) on the same instance:
+
+- `personKey` and `personKeys` are masked with the field they came from. A key keeps its `email:` or `linkedin:` prefix, and with `strategy: "hash"` the same person still gets the same key.
+- `person()` is refused as `Unsupported` while `redact` masks `email` or `linkedin`. It links records by those identifiers, and on masked records it would link nothing. It never answers `found: false` for that reason.
+
+`person()` reads through the instance's public API, so `cache`, `budget`, `audit` and `failover` apply to every read it makes.
+
+## When it fails
+
+<include meta='title="failures.ts"'>
+  ../../_examples/plugins-identity/failures.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/plugins-identity/failures.out.txt
+</include>
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| The identifier is a name or other text | `Invalid`, before any read | Pass an email address, a profile URL or a key. |
+| No record carries the key | `found: false`, empty `records` and `timeline` | Treat it as unknown. The person may exist under an identifier the vendor did not give you. |
+| `redact` on the instance masks `email` or `linkedin` | `Unsupported`, before any read. The message names the plugin. | Use an instance without `redact`, or leave both fields out of its `fields`. |
+| The adapter cannot read a lead's timeline | Records link, `timeline` is empty | Check `outbound.capabilities["leads.timeline"]` before relying on the timeline. |
+| A read fails part way | `person()` throws that error. No partial answer is returned. | Retry, or bound the lookup with `campaignIds`. |

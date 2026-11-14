@@ -1,0 +1,6 @@
+unknown name: Invalid - heyreach has no native read "allLeads". See outbound.native.catalog
+unknown parameter: Invalid - campaignsForLead has no parameter "page". It takes: email, linkedinId, profileUrl, limit, offset
+missing parameter: Invalid - listById needs "listId"
+wrong type: Invalid - listById: "listId" must be a number
+with redact: false
+with redact: Unsupported - Reading the vendor's own data is not available: the redact plugin turned it off (native)

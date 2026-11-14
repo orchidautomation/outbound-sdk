@@ -1,0 +1,116 @@
+13 tools; the first one:
+{"description":"How every campaign is doing right now: sends, replies, positive replies, bounces and reply rate for each campaign with the given status. One vendor request per campaign. Rates are computed from counts; a null means the vendor does not report that count.","name":"campaign_overview","parameters":"(JSON Schema)","strict":false,"type":"function"}
+function, type
+
+winning_steps {"campaign":"cmp_founders"}
+{
+  "data": {
+    "campaign": "cmp_founders",
+    "steps": [
+      {
+        "metrics": {
+          "bounce_rate": null,
+          "bounced": null,
+          "connections_accepted": null,
+          "connections_sent": null,
+          "contacted": null,
+          "opened": null,
+          "positive": null,
+          "positive_reply_rate": null,
+          "replied": 10,
+          "reply_rate": 0.0476,
+          "reply_rate_basis": "sent",
+          "sent": 210
+        },
+        "step": 1,
+        "variant": null
+      },
+      {
+        "metrics": {
+          "bounce_rate": null,
+          "bounced": null,
+          "connections_accepted": null,
+          "connections_sent": null,
+          "contacted": null,
+          "opened": null,
+          "positive": null,
+          "positive_reply_rate": null,
+          "replied": 4,
+          "reply_rate": 0.0286,
+          "reply_rate_basis": "sent",
+          "sent": 140
+        },
+        "step": 0,
+        "variant": null
+      }
+    ]
+  },
+  "meta": {
+    "evidence": "exact",
+    "provider": "memory",
+    "requests": 0,
+    "today": "2026-11-14"
+  },
+  "next": "Use reply_samples to read what people said in reply.",
+  "ok": true
+}
+
+campaign_ranking {"metric":"reply_rate"}
+{
+  "data": {
+    "complete": true,
+    "notes": [],
+    "result": {
+      "gap": {
+        "difference": 0,
+        "median": 0.1,
+        "top": 0.1
+      },
+      "ranked": [
+        {
+          "campaign": "memory:acme:cmp_founders",
+          "channel": "email",
+          "name": "SaaS founders",
+          "provider": "memory",
+          "status": "active",
+          "count": 14,
+          "high": 0.1609,
+          "low": 0.0605,
+          "of": 140,
+          "rate": 0.1,
+          "sent": 350,
+          "rank": 1
+        },
+        {
+          "campaign": "memory:acme:cmp_agencies",
+          "channel": "email",
+          "name": "Agency owners",
+          "provider": "memory",
+          "status": "active",
+          "count": 7,
+          "high": 0.1923,
+          "low": 0.0493,
+          "of": 70,
+          "rate": 0.1,
+          "sent": 210,
+          "rank": 2
+        }
+      ],
+      "tooFewSends": [],
+      "unknown": [],
+      "better": "higher",
+      "metric": "reply_rate",
+      "period": {
+        "from": null,
+        "to": null
+      }
+    }
+  },
+  "meta": {
+    "evidence": "exact",
+    "provider": "memory",
+    "requests": 0
+  },
+  "next": "Use campaign_diagnosis on the campaign ranked last to see why it is behind.",
+  "ok": true
+}

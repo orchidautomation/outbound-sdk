@@ -1,0 +1,135 @@
+---
+title: Hooks
+description: Five functions that observe every call, HTTP request, retry, throttle wait and failure, with the fields each one receives. A hook can watch a call but cannot fail it.
+sidebar:
+  label: Hooks
+related:
+  - /docs/plugins/tracing
+  - /docs/plugins/audit
+  - /docs/retries
+---
+
+Hooks are functions the SDK calls as it works. Use them to log, count and trace. Pass them as `hooks` to `createOutbound`.
+
+| Hook | Fires | Once per |
+| --- | --- | --- |
+| `onAction` | When a call succeeds | SDK call |
+| `onError` | When a call fails | SDK call |
+| `onRequest` | After an HTTP request settles, whatever its outcome | HTTP attempt |
+| `onRetry` | Before the wait that precedes a retry | retry |
+| `onThrottle` | Before a wait for the rate budget | wait |
+
+<include meta='title="hooks.ts"'>../../_examples/api-hooks/hooks.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/api-hooks/hooks.out.txt
+</include>
+
+That sample runs a real Instantly adapter against a stand-in for the vendor that answers with a status code and an empty body, on a clock where waits take no real time. Both are on the [retries](/docs/retries#how-the-samples-fail) page. `durationMs` is 0 on each request for that reason.
+
+## A call and a request are different things
+
+One SDK call can send several HTTP requests: a retry, a read that needs two vendor endpoints, a page of campaigns plus their tags. `onAction` and `onError` describe the call. `onRequest` describes each request. The second call above is one action made of two requests.
+
+A walk with `listAll` is one action per page, not one for the whole walk.
+
+## `onAction`
+
+`ActionEvent`:
+
+| Field | Type | Holds |
+| --- | --- | --- |
+| `action` | `string` | The operation: `campaigns.list`, `leads.get`, `stats`, `raw`, `native.<name>`. |
+| `provider` | `string` |  |
+| `workspaceId` | `string` |  |
+| `durationMs` | `number` | Wall time for the call, waits included. |
+| `requests` | `number` | Vendor requests the call has sent. |
+| `throttledMs` | `number` | Milliseconds spent waiting for the rate budget. |
+
+The action names are the operation names: `campaigns.list`, `campaigns.get`, `campaigns.settings`, `sequence.get`, `sequence.subsequences`, `senders.list`, `senders.get`, `senders.health`, `leads.list`, `leads.get`, `messages.list`, `replies.list`, `lists.list`, `tags.list`, `blocklist.list`, `webhooks.list`, `workspaces.list` and `stats`. A handle method reports the operation it runs, so `lead(id).timeline()` reports `messages.list` and `sender(id).warmup()` reports `senders.get`.
+
+## `onError`
+
+`ErrorEvent`:
+
+| Field | Type | Holds |
+| --- | --- | --- |
+| `action` | `string` | As above. |
+| `provider` | `string` |  |
+| `workspaceId` | `string` |  |
+| `error` | `Error` | The `OutboundError` the caller is about to receive. |
+
+It fires after the retries have run out, once per failed call.
+
+A missing record is an answer for `exists(id)` and `getMany`, which do not throw for one. So they do not fire `onError` for it either: the lookup is reported to `onAction` like any finished call. Any other failure of those two reaches `onError`, and so does a `NotFound` from `get`.
+
+A refusal that happens before the call starts does not reach `onError`: a capability refusal, and an input check on filters, `limit` or dates.
+
+## `onRequest`
+
+`RequestEvent`:
+
+| Field | Type | Holds |
+| --- | --- | --- |
+| `method` | `string` | `GET`, `POST`. |
+| `url` | `string` | The request URL with the API key and any email address removed. |
+| `status` | `number` or `null` | The HTTP status. `null` when no response arrived: a timeout, a network failure, an abort. |
+| `durationMs` | `number` | For this attempt alone. |
+| `attempt` | `number` | Which attempt this was, starting at 1. |
+| `lane` | `string` | The rate lane the request was counted in. `default` unless the endpoint has its own limit. |
+| `provider` | `string` |  |
+
+It fires for every attempt, so a call that is retried twice fires it three times.
+
+## `onRetry`
+
+`RetryEvent`:
+
+| Field      | Type     | Holds                                               |
+| ---------- | -------- | --------------------------------------------------- |
+| `attempt`  | `number` | The attempt that failed, starting at 1.             |
+| `delayMs`  | `number` | How long the SDK will wait before the next attempt. |
+| `reason`   | `string` | The message of the error that caused the retry.     |
+| `url`      | `string` | The request URL, cleaned as above.                  |
+| `provider` | `string` |                                                     |
+
+It does not fire for the last failure, when no retry follows.
+
+## `onThrottle`
+
+`ThrottleEvent`:
+
+| Field      | Type     | Holds                       |
+| ---------- | -------- | --------------------------- |
+| `lane`     | `string` | The rate lane that is full. |
+| `waitMs`   | `number` | How long the SDK will wait. |
+| `provider` | `string` |                             |
+
+It fires when a request has to wait for the [rate budget](/docs/rate-limits). One request can wait more than once. The total for a call is `throttledMs` on `onAction` and on [`meta`](/docs/api/results).
+
+## A hook cannot fail a call
+
+A hook that throws, or returns a promise that rejects, is ignored. The call it was watching carries on.
+
+<include meta='title="throwing.ts"'>
+  ../../_examples/api-hooks/throwing.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/api-hooks/throwing.out.txt
+</include>
+
+That has three consequences:
+
+- **A hook's own failure is silent.** Nothing reports it. Catch and report inside the hook if you need to know.
+- **A hook is not awaited.** A hook may return a promise, and the SDK does not wait for it. A slow hook does not slow a call, and a hook that has not finished when your process exits is lost.
+- **A hook cannot change anything.** It gets a copy of what happened. To change a read, block one, or add to the result, write a [plugin](/docs/plugins/writing-a-plugin).
+
+## Hooks from plugins
+
+A plugin can bring hooks of its own. They run alongside yours, yours first, then each plugin's in the order of `plugins`. The [tracing](/docs/plugins/tracing) and [audit](/docs/plugins/audit) plugins are built this way.
+
+## What a hook never sees
+
+- The API key: URLs and messages are cleaned first. See [what is removed from messages](/docs/api/errors#what-is-removed-from-messages).
+- Records and request bodies. The one payload a hook can reach is a failed response's body, on `onError` as `error.cause`: see [`cause`](/docs/api/errors#cause).

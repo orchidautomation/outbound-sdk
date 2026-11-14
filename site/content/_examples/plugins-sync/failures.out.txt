@@ -1,0 +1,5 @@
+run 1 failed: database is down
+run 2 resumed: true pages: 1
+delivered: [ 'lead_jane, lead_sam', 'lead_priya, lead_omar' ]
+no date filter: undefined 3
+no replies: Unsupported - Listing replies is not available: the memory adapter does not support it (replies.list)

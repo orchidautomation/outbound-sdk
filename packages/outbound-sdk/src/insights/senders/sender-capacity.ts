@@ -287,8 +287,13 @@ const findingOf = (
     return "No active sender reports a daily limit, so capacity is unknown.";
   }
 
+  const senders = `active ${capacity.withLimit === 1 ? "sender" : "senders"}`;
+
+  // The sentence counts what the number counts: only senders with a reported limit.
   const parts = [
-    `${capacity.withLimit} active ${capacity.withLimit === 1 ? "sender" : "senders"} can send ${capacity.daily} a day.`,
+    capacity.withoutLimit === 0
+      ? `${capacity.withLimit} ${senders} can send ${capacity.daily} a day.`
+      : `The ${capacity.withLimit} ${senders} that ${capacity.withLimit === 1 ? "reports" : "report"} a daily limit can send ${capacity.daily} a day; ${capacity.withoutLimit} more ${capacity.withoutLimit === 1 ? "reports" : "report"} no limit and ${capacity.withoutLimit === 1 ? "is" : "are"} not counted.`,
   ];
 
   if (ask !== null && ask.daily !== null) {

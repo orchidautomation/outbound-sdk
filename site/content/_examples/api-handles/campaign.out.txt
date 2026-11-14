@@ -1,0 +1,7 @@
+Q4 SaaS founders active
+step 0: email, day +0, [ 'Quick question', 'Congrats' ]
+step 1: email, day +3, [ 'Re: Quick question' ]
+daily limit: 80 | stops on reply: true | plain text: null
+2 senders, 2 leads, 3 messages, 1 reply, 0 webhooks, 0 subsequences
+2026-10-05 sent 50 replied 4
+2026-10-06 sent 40 replied 3

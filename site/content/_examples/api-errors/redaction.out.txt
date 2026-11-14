@@ -1,0 +1,5 @@
+Unauthorized - smartlead responded 401
+https://server.smartlead.ai/api/v1/campaigns?api_key=[redacted-key]
+No lead for [redacted-email] with key [redacted-key]
+reply from [redacted-email]
+[redacted-key] [redacted-email]

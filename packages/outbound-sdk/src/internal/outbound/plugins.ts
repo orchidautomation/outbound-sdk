@@ -123,3 +123,29 @@ export const assertUniquePluginNames = (
     seen.add(plugin.name);
   }
 };
+
+const isExtension = (value: unknown): value is object =>
+  typeof value === "object" && value !== null;
+
+/** Defines on the instance what each plugin's `extend` returns. */
+export const installExtensions = (
+  outbound: OutboundApi,
+  plugins: readonly OutboundPlugin[]
+): void => {
+  for (const plugin of plugins) {
+    const extension = plugin.extend?.(outbound);
+
+    for (const [name, value] of Object.entries(
+      isExtension(extension) ? extension : {}
+    )) {
+      if (name in outbound) {
+        throw new OutboundError(
+          "Invalid",
+          `The ${plugin.name} plugin adds "${name}", which already exists on the instance`
+        );
+      }
+
+      Object.defineProperty(outbound, name, { enumerable: true, value });
+    }
+  }
+};

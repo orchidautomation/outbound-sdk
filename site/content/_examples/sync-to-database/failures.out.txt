@@ -1,0 +1,5 @@
+capped: complete false, 2 records
+next run: resumed true, 3 records
+no replies: Unsupported - Listing replies is not available: the memory adapter does not support it (replies.list)
+bad key: Unauthorized permanent true
+after reset: 5 records, lower bound none

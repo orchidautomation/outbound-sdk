@@ -1,0 +1,12 @@
+First run
+  campaigns: 2 record(s) in 1 page(s), lower bound none
+  leads: 5 record(s) in 1 page(s), lower bound none
+  replies: 2 record(s) in 1 page(s), lower bound none
+  rows: 2 campaigns, 5 leads, 2 replies
+
+Second run
+  campaigns: 2 record(s) in 1 page(s), lower bound none
+  leads: 1 record(s) in 1 page(s), lower bound 2026-11-14T11:55:00.000Z
+  replies: 1 record(s) in 1 page(s), lower bound 2026-11-14T11:55:00.000Z
+  rows: 2 campaigns, 6 leads, 3 replies
+

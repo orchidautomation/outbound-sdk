@@ -1,0 +1,90 @@
+---
+title: Rate limits
+description: How outbound-sdk keeps every request inside each vendor's published limits, what it does on a 429, what was measured on live accounts, and how several processes share one budget.
+related:
+  - /docs/retries
+  - /guides/shared-rate-budget
+  - /docs/status
+---
+
+You do not write a sleep or a retry loop. Every HTTP request from every adapter goes through one request engine, which keeps it inside every limit the vendor publishes, waits out a 429 and slows down after one.
+
+## What each adapter declares
+
+An adapter declares its vendor's limits as windows: so many requests per so many milliseconds. A request must fit every window at once. An endpoint with its own stricter cap has a lane, with windows of its own on top of the default ones.
+
+| Adapter | Declared limit | Stricter lanes |
+| --- | --- | --- |
+| Instantly | 100 per second and 6,000 per minute, per workspace | `GET /emails`: 20 per minute, and three metered endpoints with daily or monthly caps (AI reply labelling and local business search) |
+| Smartlead | 60 per minute (safe for a client key; an admin key is documented at 200) | three endpoints at 10 per minute |
+| HeyReach | 15 per 2 seconds and 300 per minute | the organization API: 300 per minute |
+
+HeyReach's documentation gives only 300 per minute. The 15 per 2 seconds was read from the live API's own 429 response on 2026-11-14 and is declared since.
+
+## The share
+
+The SDK uses half of each declared number by default, because the vendor's limit is shared with everything else that uses the same key: the vendor's own app, your other tools. `outbound.limits()` reports the budget this process is keeping. It makes no request.
+
+<include meta='title="limits.ts"'>../_examples/rate-limits/limits.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/rate-limits/limits.out.txt
+</include>
+
+Set `share` on the constructor to use more or less: `1` is the whole published limit, `0.25` a quarter. It must be greater than 0 and at most 1.
+
+## What happens to a request
+
+1. **It waits for a slot.** At most 8 requests are in flight per credential unless the adapter declares another number.
+2. **It waits for room in every window** of its lane and of the default lane. The wait is reported in `meta.throttledMs` and to the [`onThrottle` hook](/docs/api/hooks).
+3. **On a 429** the lane pauses for the vendor's `Retry-After`, the rate halves, and the request is [retried](/docs/retries). Each later success raises the rate by 5% of the declared number until it is back.
+4. **When the vendor sends rate-limit headers** saying the window is spent, the credential pauses until the reset. Instantly, Smartlead and HeyReach do not document such headers, so no adapter declares any today.
+
+One budget is kept per credential, not per instance: ten instances on one key in one process draw from one budget, and two keys never share one.
+
+## When the budget is full
+
+A call waits as long as it must. To bound that, give it a `deadline` (milliseconds across waits and retries) or a `maxRequests`. A call that would have to wait past its deadline fails at once with `RateLimited`, without making the request.
+
+<include meta='title="full-budget.ts"'>
+  ../_examples/rate-limits/full-budget.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/rate-limits/full-budget.out.txt
+</include>
+
+The fetch in that sample answers with HeyReach's documented campaign list; it is not a live response. The clock in the sample is fixed (see [how the samples are run](/docs/samples)), which is why the wait is exactly the two-second window.
+
+## What was measured
+
+On live workspaces, on 2026-11-14:
+
+- **Instantly:** 300 reads fired at once all succeeded, with no 429 and no retry: 1,505 HTTP requests in 30 seconds.
+- **HeyReach:** 100 reads fired at once all succeeded, with no 429, in 33 seconds. Before the burst limit was declared, the same run drew 35 responses of 429, every one recovered by a retry, and took 187 seconds.
+- **Smartlead:** not load-tested. Its limits are as documented and unconfirmed.
+
+One workspace each, once. See [what is verified](/docs/status).
+
+## Several processes on one key
+
+The default store counts requests in the process. Three workers, or three serverless invocations, on one key each keep their own budget and together can send three times the share. `outbound-sdk/redis` keeps the count in Redis so they spend one budget between them.
+
+<include meta='title="worker.ts"'>
+  ../_examples/shared-rate-budget/redis.ts
+</include>
+
+The [shared budget guide](/guides/shared-rate-budget) walks through it, including what was and was not verified against a real Redis.
+
+For another store (Cloudflare KV, a Durable Object, a database), implement the three methods of `RateLimitStore`: `reserve`, `pause` and `usage`. `reserve` must be atomic, or two processes can both take the last slot.
+
+## What a client-side budget cannot do
+
+- **It spaces when requests are reserved, not when they arrive.** Network delay can bunch two requests closer at the vendor than they were sent. The default share of one half is the room for that.
+- **It does not know about your other tools.** If something else spends the same key's limit, the vendor can still answer 429. That is waited out and retried.
+- **The slowdown after a 429 is kept per process**, even with a shared store. The pause the vendor asked for is shared.
+- **Request times come from each machine's clock.** Keep the machines' clocks in step; NTP does.
+
+## Costs worth knowing
+
+`meta.requests` on every result is the number of vendor requests the call made, and `outbound.estimate({ action, records })` gives the expected number before a listing is read, where the adapter declares its costs. One campaign read on Instantly is 3 requests, because campaign tags are a separate lookup. The [cache plugin](/docs/plugins/cache) removes repeat reads, and the [budget plugin](/docs/plugins/budget) caps what a call or a run may spend.

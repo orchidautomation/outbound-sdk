@@ -213,6 +213,43 @@ test("sync covers senders, leads and replies, and skips the date filter a vendor
   }
 });
 
+const refused = (error: unknown): boolean =>
+  OutboundError.is(error) &&
+  error.code === "Invalid" &&
+  error.message ===
+    'sync: "reply" is not a collection. Use one of campaigns, leads, messages, replies, senders.';
+
+test("sync refuses a name that is not a collection, where it used to read replies", async () => {
+  const store = memoryCheckpointStore();
+  let pages = 0;
+
+  const outbound = createOutbound({
+    adapter: memory({
+      data: { messages: [message("r1", "2026-10-01T00:00:00.000Z", "in")] },
+    }),
+    plugins: [sync({ checkpoints: store })],
+  });
+
+  // A caller without types, or with a cast, can pass any string.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the wrong name is the point of the test.
+  const wrong = "reply" as "replies";
+
+  await assert.rejects(
+    outbound.sync.run(wrong, {
+      onPage: () => {
+        pages += 1;
+      },
+    }),
+    refused
+  );
+  await assert.rejects(outbound.sync.reset(wrong), refused);
+  assert.equal(pages, 0, "nothing was read");
+
+  const real = await outbound.sync.run("replies", { onPage: () => {} });
+
+  assert.equal(real.records, 1);
+});
+
 const event = (
   id: string,
   messageRef: string | null,

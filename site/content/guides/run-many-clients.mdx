@@ -1,0 +1,157 @@
+---
+title: Read every client's outbound data through one instance
+description: One instance over every client key, scoped to a single client when you need it, with per-client totals, separate rate budgets and rules for a workspace that holds several clients.
+sidebar:
+  label: Run many clients
+related:
+  - /docs/adapters/combine
+  - /docs/plugins/clients
+  - /docs/rate-limits
+  - /guides/weekly-client-report
+  - /guides/shared-rate-budget
+---
+
+An agency holds one API key per client, sometimes two when a client is on an email tool and a LinkedIn tool, and sometimes one key whose workspace holds several clients' campaigns. `combine` puts any number of adapters behind one instance. The `clients` plugin tags every record with the client it belongs to and adds totals per client.
+
+Every record keeps its own provider and workspace, so two clients' data cannot be confused, and nothing is added together across clients unless you ask for it. The combined instance reads each tool live on each call and keeps nothing.
+
+<include>../_snippets/status.mdx</include>
+
+## Before you start
+
+- Node 22 or later.
+- The code below runs on the in-memory adapter, so it needs no vendor key. Each sample on this page is a file in the repository that the test suite runs; the output shown is what it printed.
+- For real data: one API key per client and tool. Read-only keys are enough. No method of the SDK writes to a vendor.
+
+## What you get
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/run-many-clients/run.out.txt
+</include>
+
+## One adapter per client key
+
+Give each key its own adapter, and give each adapter a `workspaceId`. That is your label for the client, not anything the vendor knows. It ends up in every ref: `provider:workspace:id`.
+
+<include meta='title="instance.ts"'>
+  ../_examples/run-many-clients/instance.ts
+</include>
+
+- **A client on two tools carries one label on both adapters.** Two adapters may share a label as long as their providers differ.
+- **Two adapters with the same provider and the same label are refused.** Their records would have the same refs.
+- **Plugins are listed once**, on the combined instance, and apply to every member.
+
+The samples name the in-memory adapters `emailtool` and `linkedintool` so the refs are readable. A real adapter sets its own provider name.
+
+## Try it without a key
+
+<include meta='title="seed.ts"'>../_examples/run-many-clients/seed.ts</include>
+
+<include meta='title="run.ts"'>../_examples/run-many-clients/run.ts</include>
+
+That is the script that printed the output above. Taking it in order:
+
+**One listing covers every member.** The first member is read to its end, then the second, and so on. A cursor records which member the walk is in, so it resumes in the right one.
+
+**`outbound.workspace(id)` is one client.** It is the same instance scoped to the adapters that carry that label. For `acme` that is two adapters, so the scope is itself a combined instance and covers both tools. For `globex` it is one adapter, the scope is that adapter, and a bare id works again.
+
+**The scope keeps the plugins.** `acme.clients.stats()` works because `clients` came along, and the same holds for any plugin's methods, such as `insights`. Code written for one client runs unchanged on a scope: [the weekly report](/guides/weekly-client-report) loops over `outbound.workspaces` this way.
+
+**Workspace stats are one row per member, never added together.** `outbound.stats()` asks each member for its own workspace totals and returns the rows side by side, each with its `provider` and `workspaceId`. The LinkedIn tool's row has `sent: null`, not `0`: it does not count emails.
+
+**`outbound.clients.stats()` adds up, per client.** It lists every campaign, reads each campaign's stats, and sums them by client. For `acme` that is the two email campaigns and the LinkedIn one. A count that only some campaigns report is the sum of those that do.
+
+## A lookup needs a ref
+
+Three members above have a campaign with the id `cmp_1`. On a combined instance a bare id cannot say which, so every lookup takes a ref: `outbound.campaigns.get("emailtool:globex:cmp_1")`, and the same for `outbound.campaign(ref)`, `outbound.lead(ref)`, `outbound.sender(ref)` and a `campaignId` filter. Every record a listing returns has its `ref`, so pass that along and never rebuild it.
+
+## One workspace that holds several clients
+
+When one key covers several clients, the workspace cannot tell them apart. Pass `rules` to `clients`. A rule can match on `provider`, `workspaceId`, `campaignTag`, `campaignName` (a regular expression) or `campaignIds` (refs). The first rule that matches decides. A record that matches no rule is `unassigned`: nothing is guessed.
+
+<include meta='title="rules.ts"'>
+  ../_examples/run-many-clients/rules.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/run-many-clients/rules.out.txt
+</include>
+
+- **Every record gets a `client`**, not only campaigns. A lead, a message or a reply is assigned through its campaign. A sender belongs to no campaign, so a tag or name rule cannot place it and it is `unassigned`.
+- **The tag is added at run time.** It is not on the `Lead` or `Campaign` type, so read it with an `in` check, as the sample does.
+- **Check `unassigned` first.** It is where a campaign that someone forgot to tag ends up, and its numbers are missing from every client.
+- Rules and members combine: a rule with `workspaceId: "acme"` assigns a whole member, and tag rules split another.
+
+## Each member keeps its own rate budget
+
+Each adapter's requests are counted against that adapter's own credential. A heavy read for one client does not slow another client's reads. The in-memory adapter makes no HTTP request, so this sample uses two real Instantly adapters with made-up keys and a `fetch` that answers from Instantly's documented payloads in the repository's `fixtures/instantly/` folder. Those are documented payloads, not live responses, and nothing leaves the process.
+
+<include meta='title="budgets.ts"'>
+  ../_examples/run-many-clients/budgets.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/run-many-clients/budgets.out.txt
+</include>
+
+`outbound.limits()` returns one snapshot per member. `acme` was read twice and `globex` once, at three requests a read (Instantly's campaign list also reads tag assignments and tag names). The allowances shown are half of what Instantly publishes, because an instance uses a `share` of 0.5 of each limit unless you set another.
+
+Budgets are counted in this process. Several processes on the same keys need a shared store: see [sharing a rate budget](/guides/shared-rate-budget).
+
+## Point it at your vendor
+
+<include meta='title="outbound.ts"'>
+  ../_examples/run-many-clients/production.ts
+</include>
+
+Pass `apiKey` to every adapter. An adapter given none reads its vendor's own environment variable (`INSTANTLY_API_KEY`, `HEYREACH_API_KEY`), so a client whose variable is missing would be read with whatever key that holds. The sample refuses to build the instance instead.
+
+## What each vendor can serve
+
+A combined instance promises only what every member can do. This is the in-memory adapter limited to what the Instantly and HeyReach adapters declare, alone and combined. It shows which calls would be refused. It does not show what either API returns.
+
+<include meta='title="vendors.ts"'>
+  ../_examples/run-many-clients/vendors.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/run-many-clients/vendors.out.txt
+</include>
+
+Combining an email tool with HeyReach turns off what HeyReach lacks, for every member: reply categories, per-step stats, the list of every lead. Two capabilities are off on every combined instance whatever the members: `messages.byThread`, because a thread id is the vendor's own and names no member, and `native`, because a native read belongs to one vendor.
+
+To get a capability back, scope to one member. A label that is on one adapter does that. For a client on two tools, `outbound.workspace("acme")` still covers both and is still limited to what both can do; name the member as `provider:label`, for example `outbound.workspace("emailtool:acme")`.
+
+## What it costs in vendor requests
+
+- A listing across members costs each member's listing, on that member's budget.
+- `outbound.stats()` at workspace scope is one stats read per member.
+- `outbound.clients.stats()` is one campaign listing per member plus one stats read per campaign. Pass `from` and `to` to bound the dates, and `maxRequests` to cap the call.
+- A tag or name rule needs the campaign of each record. It is fetched once per campaign and remembered for the life of the instance.
+- `outbound.workspaces.list()` on a combined instance makes no request: the workspaces are its members.
+
+## When it cannot answer
+
+<include meta='title="failures.ts"'>
+  ../_examples/run-many-clients/failures.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/run-many-clients/failures.out.txt
+</include>
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| A bare id on a combined instance | `Invalid`, asking for a ref | Pass the record's `ref`, or scope to the workspace first. |
+| A label no adapter carries | `NotFound`, from `workspace(id)` itself | Check the label against `outbound.workspaces`. |
+| Two adapters with the same provider and label | `Invalid`, when `combine` is called | Give each its own `workspaceId`. |
+| A capability one member lacks | `Unsupported`, before any request | Scope to a member that has it. |
+| One member's key is rejected | The whole combined read fails with that member's error. No partial answer is returned. | Read per workspace and catch per client, so one bad key costs one client. |
+
+## Limits
+
+- A combined instance cannot be nested inside another.
+- Rows from different members are never merged. The same person in two tools is two leads; the `identity` plugin links them without merging.
+- `clients.stats()` reads every campaign's stats one at a time. On many clients it is the most expensive call on this page.
+- One failing member fails a combined read. There is no partial result.
+- The numbers are only as good as each vendor's. The combined instance's maturity is that of its least verified member.

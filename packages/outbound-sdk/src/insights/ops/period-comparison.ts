@@ -7,21 +7,23 @@ import { sumCounts } from "../../internal/metrics.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
-import { compareRates, round } from "../stats.ts";
+import { compareRates, pText, round } from "../stats.ts";
 import type { ProportionTest } from "../stats.ts";
 import {
   descending,
   labelOf,
   lastDays,
   listFields,
+  partialNote,
   percent,
+  ratesAcross,
   ratesOf,
   readCampaigns,
   readTotals,
   totalsOf,
   volumeOf,
 } from "./shared.ts";
-import type { CampaignLabel, DayRange, Totals } from "./shared.ts";
+import type { CampaignLabel, DayRange, Rates, Totals } from "./shared.ts";
 
 const input = z.object({
   ...listFields("two stats requests"),
@@ -87,16 +89,12 @@ export interface PeriodComparison {
   readonly workspace: Comparison | null;
 }
 
-const numbersOf = (counts: Totals): PeriodNumbers => {
-  const rates = ratesOf(counts);
-
-  return {
-    ...totalsOf(counts),
-    bounceRate: rates.bounceRate.rate,
-    positiveRate: rates.positiveRate.rate,
-    replyRate: rates.replyRate.rate,
-  };
-};
+const numbersOf = (counts: Totals, rates: Rates): PeriodNumbers => ({
+  ...totalsOf(counts),
+  bounceRate: rates.bounceRate.rate,
+  positiveRate: rates.positiveRate.rate,
+  replyRate: rates.replyRate.rate,
+});
 
 const minus = (current: number | null, previous: number | null) =>
   current === null || previous === null ? null : round(current - previous);
@@ -127,14 +125,13 @@ const verdictOf = (test: ProportionTest | null): Comparison["verdict"] => {
   return test.z > 0 ? "up" : "down";
 };
 
-/** Compares two periods of counts: both sides, the change, and whether the reply rate really moved. */
-export const comparePeriods = (
-  current: Totals,
-  previous: Totals,
+const compare = (
+  current: { readonly counts: Totals; readonly rates: Rates },
+  previous: { readonly counts: Totals; readonly rates: Rates },
   alpha: number
 ): Comparison => {
-  const now = ratesOf(current).replyRate;
-  const before = ratesOf(previous).replyRate;
+  const now = current.rates.replyRate;
+  const before = previous.rates.replyRate;
 
   const test = compareRates(
     { successes: now.count, trials: now.of },
@@ -143,10 +140,12 @@ export const comparePeriods = (
   );
 
   const moved = `Reply rate went from ${percent(before.rate)} to ${percent(now.rate)}`;
+  const numbers = numbersOf(current.counts, current.rates);
+  const earlier = numbersOf(previous.counts, previous.rates);
 
   return {
-    change: changeOf(numbersOf(current), numbersOf(previous)),
-    current: numbersOf(current),
+    change: changeOf(numbers, earlier),
+    current: numbers,
     finding:
       test === null
         ? "Reply rate cannot be compared: a period has no reply or volume counts, or neither has a reply."
@@ -154,10 +153,54 @@ export const comparePeriods = (
             test.significant
               ? "more than chance"
               : "within what chance would give"
-          } (p = ${test.pValue}).`,
-    previous: numbersOf(previous),
+          } (${pText(test.pValue)}).`,
+    previous: earlier,
     replyRateTest: test,
     verdict: verdictOf(test),
+  };
+};
+
+/** Compares two periods of counts: both sides, the change, and whether the reply rate really moved. */
+export const comparePeriods = (
+  current: Totals,
+  previous: Totals,
+  alpha: number
+): Comparison =>
+  compare(
+    { counts: current, rates: ratesOf(current) },
+    { counts: previous, rates: ratesOf(previous) },
+    alpha
+  );
+
+export interface ComparedAcross {
+  readonly comparison: Comparison;
+  /** The rates that leave rows out, by period. Empty when every row is in every rate. */
+  readonly partial: readonly string[];
+}
+
+/**
+ * Compares two periods that are each several rows added up (campaigns, or
+ * the tools of a combined instance). Counts are every row's; each rate is
+ * over the rows that report both sides of it.
+ */
+export const compareAcross = (
+  current: readonly MetricCounts[],
+  previous: readonly MetricCounts[],
+  alpha: number
+): ComparedAcross => {
+  const now = ratesAcross(current);
+  const before = ratesAcross(previous);
+
+  return {
+    comparison: compare(
+      { counts: sumCounts(current), rates: now.rates },
+      { counts: sumCounts(previous), rates: before.rates },
+      alpha
+    ),
+    partial: [
+      ...now.partial.map((each) => `this period's ${each}`),
+      ...before.partial.map((each) => `the earlier period's ${each}`),
+    ],
   };
 };
 
@@ -209,12 +252,26 @@ export const readPeriods = async (
 export const totalOf = (
   campaigns: readonly CampaignPeriods[],
   alpha: number
-): Comparison =>
-  comparePeriods(
-    sumCounts(campaigns.map((entry) => entry.current)),
-    sumCounts(campaigns.map((entry) => entry.previous)),
+): ComparedAcross =>
+  compareAcross(
+    campaigns.map((entry) => entry.current),
+    campaigns.map((entry) => entry.previous),
     alpha
   );
+
+/** Says in a note which rates of a total leave rows out. Returns the comparison. */
+export const noted = (
+  context: InsightContext,
+  where: string,
+  across: ComparedAcross,
+  rows?: string
+): Comparison => {
+  if (across.partial.length > 0) {
+    context.note(partialNote(where, across.partial, rows));
+  }
+
+  return across.comparison;
+};
 
 const workspaceOf = async (
   context: InsightContext,
@@ -234,12 +291,18 @@ const workspaceOf = async (
   const current = context.rows(await outbound.stats(periods.current));
   const previous = context.rows(await outbound.stats(periods.previous));
 
-  return comparePeriods(sumCounts(current), sumCounts(previous), alpha);
+  // A combined instance returns one row per tool, and the tools need not report the same counts.
+  return noted(
+    context,
+    "Workspace totals",
+    compareAcross(current, previous, alpha),
+    "tools"
+  );
 };
 
 export const periodComparison = defineInsight({
   description:
-    "This period against the last: for each campaign, counts and rates for the last `days` complete days and for the `days` before, the change in each, and whether the change in reply rate is more than chance (a two-proportion test), with the campaigns sorted by the size of that change. Also the same for every campaign added together and, where the adapter has them, for the vendor's workspace totals. Use it for a weekly review. Campaigns under min_sent sends in either period are listed apart; a null is a count the vendor does not report. Costs two stats requests per campaign plus two for the workspace.",
+    "This period against the last: for each campaign, counts and rates for the last `days` complete days and for the `days` before, the change in each, and whether the change in reply rate is more than chance (a two-proportion test), with the campaigns sorted by the size of that change. Also the same for every campaign added together and, where the adapter has them, for the vendor's workspace totals. Use it for a weekly review. Campaigns under min_sent sends in either period are listed apart; a null is a count the vendor does not report, and a rate of a total counts only the campaigns that report both its count and what it divides by (a note says when some are left out). Costs two stats requests per campaign plus two for the workspace.",
   inputSchema: input,
   key: "periodComparison",
   name: "period_comparison",
@@ -283,7 +346,11 @@ export const periodComparison = defineInsight({
       days: options.days,
       previous: periods.previous,
       tooFewSends,
-      total: totalOf(periods.campaigns, options.alpha),
+      total: noted(
+        context,
+        "Every campaign added together",
+        totalOf(periods.campaigns, options.alpha)
+      ),
       workspace: await workspaceOf(context, periods, options.alpha),
     };
 

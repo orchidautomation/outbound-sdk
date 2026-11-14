@@ -1,0 +1,114 @@
+$ outbound senders --limit 1
+[
+  {
+    "provider": "memory",
+    "raw": null,
+    "ref": "memory:default:mbx_1",
+    "schemaVersion": 1,
+    "sourceId": "mbx_1",
+    "workspaceId": "default",
+    "address": "outreach1@example.com",
+    "dailyLimit": 40,
+    "kind": "mailbox",
+    "linkedinUrl": null,
+    "name": "Outreach One",
+    "status": "active",
+    "warmup": {
+      "enabled": true,
+      "score": 96
+    }
+  }
+]
+
+$ outbound health mbx_1
+{
+  "provider": "memory",
+  "raw": null,
+  "ref": "memory:default:mbx_1",
+  "schemaVersion": 1,
+  "sourceId": "mbx_1",
+  "workspaceId": "default",
+  "blacklisted": null,
+  "checkedAt": "2026-10-06T00:00:00.000Z",
+  "connected": true,
+  "dns": {
+    "dkim": true,
+    "dmarc": true,
+    "mx": true,
+    "spf": true
+  },
+  "domain": "example.com",
+  "issues": [],
+  "senderRef": "memory:default:mbx_1",
+  "warmup": {
+    "inbox": 96,
+    "received": 90,
+    "score": 96,
+    "sent": 100,
+    "spam": 4
+  },
+  "meta": {
+    "complete": true,
+    "evidence": "exact",
+    "fetchedAt": "2026-11-14T12:00:00.000Z",
+    "provider": "memory",
+    "requests": 0,
+    "stale": false,
+    "throttledMs": 0,
+    "workspaceId": "default"
+  }
+}
+
+$ outbound leads --campaign cmp_founders --limit 1
+[
+  {
+    "provider": "memory",
+    "raw": null,
+    "ref": "memory:default:lead_1",
+    "schemaVersion": 1,
+    "sourceId": "lead_1",
+    "workspaceId": "default",
+    "campaignRef": "memory:default:cmp_founders",
+    "company": "Example Co",
+    "createdAt": "2026-10-02T10:00:00.000Z",
+    "custom": {},
+    "email": "person1@example.com",
+    "engagement": {
+      "clicks": null,
+      "lastContactedAt": "2026-10-05T14:00:00.000Z",
+      "lastOpenedAt": null,
+      "lastRepliedAt": "2026-10-06T09:30:00.000Z",
+      "opens": 2,
+      "repliedStepIndex": null,
+      "replies": 1,
+      "stepIndex": 0
+    },
+    "firstName": "Alex",
+    "interest": "Interested",
+    "tags": [],
+    "lastName": "Example",
+    "linkedinUrl": null,
+    "status": "replied",
+    "title": "Founder"
+  }
+]
+
+$ outbound leads --list lst_founders --compact
+[{"provider":"memory","raw":null,"ref":"memory:default:lead_1","schemaVersion":1,"sourceId":"lead_1","workspaceId":"default","campaignRef":"memory:default:cmp_founders","company":"Example Co","createdAt":"2026-10-02T10:00:00.000Z","custom":{},"email":"person1@example.com","engagement":{"clicks":null,"lastContactedAt":"2026-10-05T14:00:00.000Z","lastOpenedAt":null,"lastRepliedAt":"2026-10-06T09:30:00.000Z","opens":2,"repliedStepIndex":null,"replies":1,"stepIndex":0},"firstName":"Alex","interest":"Interested","tags":[],"lastName":"Example","linkedinUrl":null,"status":"replied","title":"Founder"},{"provider":"memory","raw":null,"ref":"memory:default:lead_2","schemaVersion":1,"sourceId":"lead_2","workspaceId":"default","campaignRef":"memory:default:cmp_founders","company":"Sample Ltd","createdAt":"2026-10-03T10:00:00.000Z","custom":{},"email":"person2@example.com","engagement":null,"firstName":"Sam","interest":null,"tags":[],"lastName":"Sample","linkedinUrl":null,"status":"active","title":"CEO"}]
+
+$ outbound lists
+[
+  {
+    "provider": "memory",
+    "raw": null,
+    "ref": "memory:default:lst_founders",
+    "schemaVersion": 1,
+    "sourceId": "lst_founders",
+    "workspaceId": "default",
+    "createdAt": "2026-09-30T09:00:00.000Z",
+    "kind": "leads",
+    "name": "SaaS founders",
+    "size": 2
+  }
+]
+

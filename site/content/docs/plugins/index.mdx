@@ -1,0 +1,121 @@
+---
+title: Plugins
+description: What a plugin is, how plugins stack around a read, the order to list them in and why, and a table of every plugin the package ships.
+sidebar:
+  label: Overview
+related:
+  - /docs/plugins/writing-a-plugin
+  - /docs/adapters/combine
+  - /docs/insights
+  - /docs/api/hooks
+---
+
+A plugin is an object you pass to `createOutbound` in `plugins`. It can do five things: wrap every read, turn capabilities off, add methods to the instance, observe calls and HTTP requests, and rewrite webhook events. Each plugin is its own subpath (`outbound-sdk/<name>`), so you import only the ones you use.
+
+Plugins follow the same boundary as the rest of the SDK. None writes to a vendor, none calls an AI model, and none stores anything on our side. A plugin that keeps state (`cache`, `sync`, `failover`) takes a store you supply.
+
+Two things that look like plugins are documented elsewhere:
+
+- `combine([...])` is an adapter, not a plugin. It goes in `adapter`, not in `plugins`. See [combine adapters](/docs/adapters/combine).
+- `insights()` is a plugin, and has [its own section](/docs/insights).
+
+## How plugins compose
+
+Every read the SDK makes is an operation, such as `campaigns.list` or `stats`. Each plugin with a `wrap` function is a layer around the adapter. `plugins[0]` is the outermost layer: it sees the operation first and the answer last.
+
+<include meta='title="compose.ts"'>
+  ../../_examples/plugins-index/compose.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/plugins-index/compose.out.txt
+</include>
+
+Four more rules:
+
+- **A plugin name may appear once.** Listing the same plugin twice throws `Invalid` when the instance is built.
+- **Capabilities only narrow.** A plugin can turn a capability off or lower its grade. Anything it tries to widen is ignored. A call that needs a capability a plugin turned off throws `Unsupported` before any request, and the message names the plugin.
+- **Methods a plugin adds are typed.** `createOutbound` returns the instance with every plugin's additions, so `outbound.clients` exists in the type only when `clients()` is in the list. A plugin that adds a name the instance already has throws `Invalid`.
+- **`outbound.workspace(id)` keeps the plugins.** The scoped instance has the same plugin objects and the methods they add.
+
+`outbound.plugins` lists the plugins on an instance, outermost first.
+
+## The order that matters
+
+List plugins in this order. Each line says why.
+
+1. `redact` first. It masks what every layer inside it returns, so nothing inside can hand back an unmasked record.
+2. `clients` and `identity` next. They add fields to records as they pass. Outside the cache they run on every read, so a cached record is tagged by the rules you have now.
+3. `cache` after them, so a repeat read stops there and skips everything inside it.
+4. `audit` and `tracing` inside the cache. They then record only reads that did real work.
+5. `budget` last, next to the request engine, so only requests that reach the vendor count.
+
+<include meta='title="order.ts"'>
+  ../../_examples/plugins-index/order.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/plugins-index/order.out.txt
+</include>
+
+The first read was audited as two operations: the lead, and the lead's campaign, which `clients` fetched to check its tag. The second read was served by the cache and never reached the audit layer.
+
+Other positions that matter:
+
+| Plugin | Where | Why |
+| --- | --- | --- |
+| `failover` | Outside the layers whose failures it should cover | It stores each successful answer from inside it and catches the vendor's failures from inside it: `Provider` errors and a vendor's 429. A stop by `budget` or `maxRequests` is your own cap and is not covered. |
+| `fixtures` | Last when recording | What is saved is then the adapter's answer, not another plugin's view of it. |
+| `alerts` | Inside `cache` | Rules then run once per real read, not on every cache hit. Outside the cache they run on every read. |
+
+Plugins that only add methods (`sync`, `reconcile`, `benchmarks`, `exporter`) have no layer, so their position does not matter. Their methods call the instance's public API, so every layer applies to what they read.
+
+<Callout type="warning" title="redact masks the fields it knows">
+  A field another plugin adds passes through as it is, with one exception:
+  `identity`'s `personKey` and `personKeys` are masked, because they hold the
+  email address and the LinkedIn profile slug. `outbound.person()` is refused
+  while those identifiers are masked. See
+  [redact](/docs/plugins/redact#with-other-plugins).
+</Callout>
+
+## Every plugin
+
+The samples on these pages read one seed on the [in-memory adapter](/docs/adapters/memory): an agency workspace with three campaigns, four leads, three messages, two senders and two days of results. The in-memory adapter makes no HTTP request, so the pages for `budget`, `audit` and `tracing` also run Instantly's adapter on a `fetch` that serves the vendor's documented payloads from the repository.
+
+<include meta='title="seed.ts"'>../../_examples/plugins-index/seed.ts</include>
+
+### Several tools, several clients
+
+| Plugin | What it does | Adds |
+| --- | --- | --- |
+| [`clients`](/docs/plugins/clients) | Tags every record with the client it belongs to, by workspace or by rules. | `outbound.clients` |
+| [`identity`](/docs/plugins/identity) | Tags every lead with exact person keys and links one person across tools. | `outbound.person()` |
+| [`redact`](/docs/plugins/redact) | Masks personal fields and drops the vendor's raw payload. | `outbound.redacted`, which says what is masked. Turns `native` off, and `messages.body` when bodies are masked. |
+
+### Cost and visibility
+
+| Plugin | What it does | Adds |
+| --- | --- | --- |
+| [`cache`](/docs/plugins/cache) | Serves a repeat read from a store for a set time. | Nothing |
+| [`budget`](/docs/plugins/budget) | Caps vendor requests per call or per run. | `outbound.requestBudget` |
+| [`audit`](/docs/plugins/audit) | Hands each operation's duration and request count to a sink. | Nothing |
+| [`tracing`](/docs/plugins/tracing) | Emits an OpenTelemetry span per operation and per HTTP request. | Nothing |
+
+### Keeping a copy in step
+
+| Plugin | What it does | Adds |
+| --- | --- | --- |
+| [`sync`](/docs/plugins/sync) | Resumable, incremental walks of a collection, with checkpoints in your store. | `outbound.sync` |
+| [`reconcile`](/docs/plugins/reconcile) | Compares the webhooks and refs you hold with what the vendor lists. | `outbound.reconcile` |
+| [`alerts`](/docs/plugins/alerts) | Checks fixed rules on each read and calls your notifier. | `outbound.alerts` |
+
+### Context, files and bad days
+
+| Plugin | What it does | Adds |
+| --- | --- | --- |
+| [`benchmarks`](/docs/plugins/benchmarks) | A campaign's rates beside its own workspace's. | `outbound.benchmarks` |
+| [`fixtures`](/docs/plugins/fixtures) | Records answers to disk, scrubbed, and replays them. | Nothing |
+| [`exporter`](/docs/plugins/exporter) | Streams a listing to a CSV or JSON Lines file, or to your writer. | `outbound.export()` |
+| [`failover`](/docs/plugins/failover) | Serves the last good answer, marked stale, when the vendor is down. | Nothing |
+
+To write your own, see [writing a plugin](/docs/plugins/writing-a-plugin).

@@ -1,0 +1,14 @@
+{
+  "answer": "Here are the campaigns ranked by reply rate:\n\n| Rank | Campaign | Reply rate | Replies | Sends | Lower bound |\n|------|----------|-----------|---------|-------|-------------|\n| 1 | **SaaS founders** | **10%** | 14 | 350 | 6.05% |\n| 2 | Agency owners | 10% | 7 | 210 | 4.93% |\n\n**Best campaign: \"SaaS founders\"** with a **reply rate of 10%** (14 replies from 350 sends).\n\nA note on the tie: both campaigns nominally show a 10% reply rate, but the ranking uses the low end of the 95% Wilson confidence interval to be fair. \"SaaS founders\" ranks #1 because it has far more sends (350 vs 210), so its 10% is more statistically reliable (lower bound ≈ 6.1%) than \"Agency owners\" (lower bound ≈ 4.9%, from a smaller sample).\n\nWant me to dig into what's driving the replies on \"SaaS founders\" (e.g., which step or variant converts best)?",
+  "model": "deepseek/deepseek-v4-flash",
+  "prompt": "Rank the campaigns by reply rate. Which one is best, and what is its rate?",
+  "ranAt": "2026-11-14",
+  "steps": 2,
+  "toolCalls": [
+    {
+      "input": {},
+      "tool": "campaign_ranking"
+    }
+  ],
+  "via": "Vercel AI Gateway"
+}

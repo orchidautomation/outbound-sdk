@@ -1,0 +1,9 @@
+capped: 3 false [ 'Stopped at 3 replies; more exist.' ]
+cannot check: 0 5 [
+  "This tool can read neither a conversation nor a lead's timeline, so no reply could be checked."
+]
+no date filter: [
+  'This tool cannot filter replies by date, so the newest replies were read and filtered here.'
+]
+bad date: Invalid
+no replies: Unsupported - dropped_replies is not available: the memory adapter does not support replies.list

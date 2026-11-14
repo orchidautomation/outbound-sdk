@@ -139,12 +139,16 @@ export const makeReadCollection = <Item, Filters>(
   },
 });
 
+const isMissing = (error: OutboundError): boolean => error.code === "NotFound";
+
 const getOne = <Item>(
   core: Core,
   spec: GetSpec<Item>,
   id: string,
   options: OperationOptions | undefined,
-  shared?: CallState
+  shared?: CallState,
+  /** `true` where a missing record is an answer (`exists`, `getMany`), so `onError` is not told of it. */
+  missingIsAnswer = false
 ): Promise<WithMeta<Item>> =>
   perform(
     core,
@@ -178,15 +182,17 @@ const getOne = <Item>(
         }),
       };
     },
-    shared
+    shared,
+    missingIsAnswer ? isMissing : undefined
   );
 
+// Async, so a refused lookup rejects like every other failure of the call.
 export const makeGetter =
   <Item>(core: Core, spec: GetSpec<Item>) =>
-  (id: string, options?: OperationOptions): Promise<WithMeta<Item>> => {
+  async (id: string, options?: OperationOptions): Promise<WithMeta<Item>> => {
     spec.prepare();
 
-    return getOne(core, spec, id, options);
+    return await getOne(core, spec, id, options);
   };
 
 const getMany = async <Item>(
@@ -205,7 +211,7 @@ const getMany = async <Item>(
     for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
       try {
         // oxlint-disable-next-line no-await-in-loop -- each worker takes one id at a time.
-        const value = await getOne(core, spec, id, options, state);
+        const value = await getOne(core, spec, id, options, state, true);
         results.push({ id, value });
       } catch (error) {
         errors.push({ error: toOutboundError(core, error), id });
@@ -234,27 +240,25 @@ export const makeCollection = <Item, Filters>(
   core: Core,
   listSpec: ListSpec<Item, Filters>,
   getSpec: GetSpec<Item>
-): Collection<Item, Filters> => {
-  const get = makeGetter(core, getSpec);
+): Collection<Item, Filters> => ({
+  ...makeReadCollection(core, listSpec),
+  exists: async (id, options) => {
+    getSpec.prepare();
 
-  return {
-    ...makeReadCollection(core, listSpec),
-    exists: async (id, options) => {
-      try {
-        await get(id, options);
+    try {
+      await getOne(core, getSpec, id, options, undefined, true);
 
-        return true;
-      } catch (error) {
-        if (OutboundError.is(error) && error.code === "NotFound") {
-          return false;
-        }
-
-        throw error;
+      return true;
+    } catch (error) {
+      if (OutboundError.is(error) && isMissing(error)) {
+        return false;
       }
-    },
-    get,
-    getMany: (ids, options) => getMany(core, getSpec, ids, options),
-  };
-};
+
+      throw error;
+    }
+  },
+  get: makeGetter(core, getSpec),
+  getMany: (ids, options) => getMany(core, getSpec, ids, options),
+});
 
 export type { ListOptions };

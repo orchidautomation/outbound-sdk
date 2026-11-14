@@ -1,0 +1,6 @@
+instantly, every lead: ok
+smartlead, every lead: ok
+  note: This tool reports no per-lead open, click or reply counts, so scores rest on the interest label and the lead's status.
+heyreach, every lead: Unsupported: hot_leads needs a campaign here: the heyreach adapter cannot list every lead (leads.list)
+heyreach, one campaign: ok
+  note: This tool reports no per-lead open, click or reply counts, so scores rest on the interest label and the lead's status.

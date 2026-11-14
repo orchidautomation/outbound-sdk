@@ -1,0 +1,84 @@
+---
+title: budget
+description: Cap the vendor requests one call or one whole run may spend, read what is left, and see what a call looks like when it hits the cap.
+sidebar:
+  label: budget
+related:
+  - /docs/rate-limits
+  - /docs/retries
+  - /guides/shared-rate-budget
+---
+
+`budget({ maxRequests })` from `outbound-sdk/budget` caps vendor requests, so one question from an agent or one runaway loop cannot spend a vendor's whole rate limit. The cap is enforced inside the request engine, request by request. A call that reaches it stops with `RateLimited`. Retries count, because each one is a vendor request. List it last, so it sits next to the engine and counts only requests that reach the vendor.
+
+## Sample
+
+The [in-memory adapter](/docs/adapters/memory) makes no vendor request, so a budget has nothing to count on it. These samples run Instantly's adapter on a `fetch` that serves two pages of mailboxes from `fixtures/instantly/` in the repository. Those files are the vendor's documented payloads, built from its published schema. They are not live responses.
+
+<include meta='title="documented-fetch.ts"'>
+  ../../_examples/plugins-budget/documented-fetch.ts
+</include>
+
+A budget for the whole run:
+
+<include meta='title="run.ts"'>../../_examples/plugins-budget/run.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/plugins-budget/run.out.txt
+</include>
+
+The first walk spent two requests. The second walk got its first page with the third, then stopped before the fourth. The last call was refused without a request: three requests reached the `fetch` in total.
+
+## Options
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `maxRequests` | `number` | required | The most vendor requests allowed. A positive integer. |
+| `per` | `"call" \| "run"` | `"call"` | `call` allows `maxRequests` for each SDK call. `run` allows it in total across every call on the instance, until `reset()`. |
+
+One SDK call is one `list`, one `get`, one `stats`, or one whole `listAll` walk. A walk over ten pages is one call.
+
+<include meta='title="per-call.ts"'>
+  ../../_examples/plugins-budget/per-call.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/plugins-budget/per-call.out.txt
+</include>
+
+## What it adds
+
+| Member | Returns |
+| --- | --- |
+| `outbound.requestBudget.used()` | Requests counted so far. |
+| `outbound.requestBudget.remaining()` | `maxRequests` minus `used()`, never below zero. |
+| `outbound.requestBudget.reset()` | Sets the count to zero, starting a new run. |
+
+The counter runs in both modes, but it limits anything only with `per: "run"`. With `per: "call"`, `used()` is a running total that nothing compares with the cap.
+
+The count lives in the plugin object, in this process. `outbound.workspace(id)` shares it with the instance it came from. Two processes each have their own.
+
+## What it changes
+
+It changes no capability and nothing in `meta`. It lowers the request cap of each call it sees. A tighter `maxRequests` passed to the call itself, or set on the instance, still applies: the lower of the two wins.
+
+`per: "call"` has the same effect as `maxRequests` on `createOutbound`. The plugin is the way to get a run-wide cap and a counter.
+
+## With other plugins
+
+- Inside `cache`, a cache hit never reaches the budget, so a run with nothing left can still be served from the cache. Listed before `cache`, a spent run budget refuses a read the cache could have answered.
+- `clients` and other plugins that make their own reads through the chain spend from the same call's allowance.
+- **`failover` does not cover a budget stop.** The cap is yours, not a vendor failure, so a call stopped by it fails with `RateLimited` even when failover's store holds an answer for that read. See [failover](/docs/plugins/failover#what-counts-as-down).
+- A per-run budget is not the vendor's rate limit. The [rate limiter](/docs/rate-limits) still paces every request.
+
+## When it fails
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| `maxRequests` is not a positive integer | `Invalid`, when `budget()` is called | Pass a whole number of 1 or more. |
+| A call reaches a per-call cap | `RateLimited`: "The call used its budget of N request(s)". Requests already made are spent. | Raise the cap, narrow the read, or page by hand with `list`. |
+| A run has nothing left | `RateLimited`: "The run used its budget of N request(s)", before any request | Call `reset()` when a new run starts, or raise the cap. |
+| A run's cap is reached in the middle of one operation | `RateLimited` from the engine: "The call used its budget of N request(s)", where N is what that call was allowed, not `maxRequests` | The same. |
+| A walk stops part way | The error. With `for await`, the records already yielded stay with you. `toArray()` rejects and returns none. | Iterate with `for await` and keep the walk's `cursor` to resume later. See [pagination](/docs/api/pagination). |
+
+The error has no `retryAfterMs`: no vendor asked for a wait. `error.permanent` is `false`, as for any `RateLimited`.

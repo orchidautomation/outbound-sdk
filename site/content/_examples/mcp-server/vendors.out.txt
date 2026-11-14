@@ -1,0 +1,4 @@
+instantly: 10 built-in tools, 26 insight tools, vendor_read offered
+smartlead: 10 built-in tools, 26 insight tools, vendor_read offered
+heyreach: 8 built-in tools, 22 insight tools, vendor_read offered
+  not offered: winning_steps, campaign_setup

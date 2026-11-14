@@ -1,0 +1,13 @@
+leads.csv: 5 rows
+ref,campaignRef,email,firstName,lastName,company,status
+memory:acme:lead_1,memory:acme:cmp_founders,ana@example.com,Ana,Ruiz,"Northwind, Inc.",active
+memory:acme:lead_2,memory:acme:cmp_founders,ben@example.com,Ben,Okafor,"The ""Good"" Company",replied
+memory:acme:lead_3,memory:acme:cmp_founders,caro@example.com,Caro,,,active
+memory:acme:lead_4,memory:acme:cmp_agencies,dev@example.com,Dev,Shah,Lumen Studio,active
+memory:acme:lead_5,memory:acme:cmp_agencies,eli@example.com,Eli,Brandt,Lumen Studio,bounced
+
+replies.jsonl: 2 rows
+columns: provider, ref, schemaVersion, sourceId, workspaceId, bodyHtml, bodyText, campaignRef, channel, leadRef, senderRef, sentAt, stepIndex, subject, threadId, variantKey, category, categorySource, direction, isAuto
+{"provider":"memory","ref":"memory:acme:msg_1","schemaVersion":1,"sourceId":"msg_1","workspaceId":"acme","bodyHtml":null,"bodyText":null,"campaignRef":"memory:acme:cmp_founders","channel":"email","leadRef":"memory:acme:lead_2","senderRef":null,"sentAt":"2026-11-12T10:30:00Z","stepIndex":null,"subject":"Re: Quick question","threadId":null,"variantKey":null,"category":"positive","categorySource":"vendor","direction":"in","isAuto":null}
+{"provider":"memory","ref":"memory:acme:msg_2","schemaVersion":1,"sourceId":"msg_2","workspaceId":"acme","bodyHtml":null,"bodyText":null,"campaignRef":"memory:acme:cmp_agencies","channel":"email","leadRef":"memory:acme:lead_4","senderRef":null,"sentAt":"2026-11-13T07:15:00Z","stepIndex":null,"subject":"Out of office","threadId":null,"variantKey":null,"category":"ooo","categorySource":"vendor","direction":"in","isAuto":null}
+

@@ -1,0 +1,17 @@
+unknown campaign: NotFound - Campaign cmp_missing was not found
+one day: [
+  'inactive_sender',
+  'falling_sends',
+  'too_little_volume',
+  'short_sequence',
+  'schedule_limits_volume',
+  'tracking_off'
+]
+flat baseline: true - 0 unusual days
+no stats: NotFound - No stats were returned for campaign cmp_new
+nothing reported: [ 'no_recent_sends', 'too_little_volume' ] [
+  'Reply rate: the vendor reports no reply or volume count.',
+  'Bounce rate: the vendor reports no bounce or send count.',
+  'Positive replies: the vendor reports no positive reply count.'
+]
+no campaign stats: Unsupported - campaign_diagnosis is not available: the memory adapter does not support stats.campaign

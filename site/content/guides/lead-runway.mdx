@@ -1,0 +1,122 @@
+---
+title: Find the campaigns about to run out of leads
+description: One function that forecasts every active campaign, sorts them by days of leads left and flags the ones under your threshold, with what the loop costs in vendor requests and what the estimate assumes.
+sidebar:
+  label: Lead runway
+related:
+  - /docs/insights/operations
+  - /docs/rate-limits
+  - /guides/weekly-client-report
+  - /guides/diagnose-campaign
+---
+
+A campaign that runs out of leads stops sending without an error. `pipelineForecast` counts one campaign's leads by status, takes the ones still active as "remaining", divides by the number of new leads contacted per day over the last week, and projects the replies still to come at the campaign's reply rate so far.
+
+It answers for one campaign per call, and it reads that campaign's leads to count them, up to a cap. This guide puts it in a loop over the active campaigns and shows what that loop costs. Everything after the lead counts is an estimate, and the answer lists its own assumptions. Nothing is added, paused or changed.
+
+<include>../_snippets/status.mdx</include>
+
+## Before you start
+
+- Node 22 or later.
+- The code below runs on the in-memory adapter, so it needs no vendor key. Each sample on this page is a file in the repository that the test suite runs; the output shown is what it printed.
+- For real data: an Instantly, Smartlead or HeyReach API key. A read-only key is enough.
+
+## What you get
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/lead-runway/run.out.txt
+</include>
+
+"Vendor requests spent" is 0 here because the in-memory adapter makes no request. On a real adapter it is the sum of `meta.requests` over the loop.
+
+## Write the loop
+
+<include meta='title="runway.ts"'>../_examples/lead-runway/runway.ts</include>
+
+What the forecast holds, and what it assumes:
+
+- **`remaining` is a count.** It is the leads whose status is `active`: not replied, bounced, unsubscribed, paused or completed. It is exact when `leadsComplete` is `true`, and a minimum when `max_leads` stopped the read.
+- **`dailyContactRate` is new leads contacted over the last `days` complete days (default 7, ending yesterday), divided by `days`.** A day with no report counts as no sends, so a campaign that paused for half the week has half the pace.
+- **`daysLeft` is `remaining` divided by that pace.** It is `null` when the vendor reports no daily contacted count or the pace is 0. It is calendar days at last week's pace, weekends included.
+- **`expectedReplies` is `remaining` times the campaign's reply rate over its whole history**, with `low` and `high` from the 95% Wilson interval of that rate. `expectedPositive` does the same for positive replies.
+- **`assumptions` says what this takes for granted:** every remaining lead is contacted; remaining leads reply at the rate so far, though leads already partway through the sequence may reply less; and the pace stays what it was.
+
+The function sorts by `daysLeft` and puts campaigns with no pace last. A `null` there is "unknown", and sorting it as 0 would flag a campaign that has not started.
+
+## Try it without a key
+
+This seed has four active campaigns and one paused one. The leads are generated so each campaign has a different number left:
+
+<include meta='title="seed.ts"'>../_examples/lead-runway/seed.ts</include>
+
+<include meta='title="run.ts"'>../_examples/lead-runway/run.ts</include>
+
+That is the script that printed the runway above. SaaS founders has 40 active leads and contacted 20 a day last week, so about 2 days. Its 63 replies over 420 leads contacted is 15%, so about 6 more replies. Fintech CFOs has leads and no sends yet, so there is no pace and no rate to project.
+
+## What it costs in vendor requests
+
+One forecast is one read of the campaign, one request per page of its leads up to `max_leads` (default 2,000), and two stats reads. The leads are the part that grows. This sample asks each real adapter what it declares for a listing of leads, without calling it:
+
+<include meta='title="cost.ts"'>../_examples/lead-runway/cost.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/lead-runway/cost.out.txt
+</include>
+
+So the loop costs, at most, one listing of campaigns plus, for each active campaign, the pages of its leads and three more reads. Reading a campaign is three vendor requests on Instantly, which makes it five. For 25 campaigns of 2,000 leads or more that is about 600 requests. Smartlead's adapter allows 60 requests a minute, so that run takes about ten minutes: the SDK waits out the vendor's limit for you and does not fail, unless you set `maxRequests` or a `deadline`. See [rate limits](/docs/rate-limits).
+
+Three ways to spend less:
+
+- Lower `maxLeads`. A campaign with more leads than the cap reports "at least" that many remaining, which is enough to know it is not about to run out.
+- Lower `maxCampaigns`, or run the loop for the campaigns you are worried about.
+- Use `clientReport`, which runs this same forecast for every active campaign inside one call, reads at most 500 leads per campaign by default, and lists the campaigns under `runway_days`. See the [weekly client report](/guides/weekly-client-report).
+
+## Point it at your vendor
+
+Swap the adapter. Nothing else changes.
+
+<include meta='title="outbound.ts"'>
+  ../_examples/lead-runway/production.ts
+</include>
+
+`maxRequests` caps what one run may spend. If the cap is reached the call fails with `RateLimited` instead of spending your vendor quota.
+
+## What each vendor can serve
+
+The same function, run on the in-memory adapter limited to what each vendor's adapter declares. This shows which calls a vendor's adapter would refuse. It does not show what that vendor's API returns.
+
+<include meta='title="vendors.ts"'>../_examples/lead-runway/vendors.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/lead-runway/vendors.out.txt
+</include>
+
+`pipelineForecast` needs `leads.byCampaign` and `stats.campaign`, which all three declare. `daysLeft` also needs `stats.byDay` and a daily contacted count; without them it is `null`.
+
+## When it cannot answer
+
+<include meta='title="failures.ts"'>
+  ../_examples/lead-runway/failures.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/lead-runway/failures.out.txt
+</include>
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| More leads than `max_leads` | `leadsComplete` and `meta.complete` are `false`; `remaining` is a minimum and the finding says "at least" | Raise `max_leads` (up to 50,000) if you need the exact count. |
+| Nothing sent yet | `daysLeft` and `expectedReplies.expected` are `null` | Nothing to project from. It is not 0 days. |
+| The adapter has no stats by day | Leads are counted; `daysLeft` is `null` and a note says why | Divide `remaining` by your own daily volume. |
+| A campaign that does not exist | `NotFound` | Check the id. |
+| The adapter cannot list a campaign's leads | `Unsupported`, before any request | The forecast cannot run on that adapter. |
+| More active campaigns than `maxCampaigns` | The loop forecasts the first ones and adds a note | Raise it, or page through the campaigns yourself. |
+
+## Limits
+
+- It is an estimate. The reply projection assumes untouched leads reply like the ones before them, and the days assume last week's pace.
+- "Remaining" is by lead status. A lead the vendor still marks `active` but that has received every step counts as remaining until the vendor marks it completed.
+- With the cap reached, `remaining` counts only the active leads among the leads read, in the vendor's order. It can be far under the real number.
+- The reply rate is over the campaign's whole history, not the recent days.
+- The loop is sequential on purpose, so the vendor's rate budget is spent one campaign at a time.

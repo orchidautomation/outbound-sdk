@@ -1,0 +1,5 @@
+full: 80
+limited: null
+Unsupported - Reading a campaign's settings is not available: the memory adapter does not support it (campaigns.settings)
+Unsupported - Reading a campaign's settings is not available: the heyreach adapter does not support it (campaigns.settings)
+requests sent: 0

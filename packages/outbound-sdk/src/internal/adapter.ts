@@ -188,7 +188,11 @@ export interface Adapter<Native extends NativeCatalog = NoNative> {
   readonly name: string;
   /** A label for this credential's client or workspace. Part of every ref. */
   readonly workspaceId: string;
-  /** Checked against live credentials (`stable`), fixtures only (`beta`), or neither. */
+  /**
+   * `unverified`: written from documentation and tested offline. `beta`: its
+   * reads were run against a live account. `stable`: its fixtures are captured
+   * responses and the live checks pass on a schedule.
+   */
   readonly maturity: Maturity;
   /** Secrets the request engine must keep out of errors, hooks and logs. */
   readonly secrets: readonly string[];
@@ -209,6 +213,13 @@ export interface Adapter<Native extends NativeCatalog = NoNative> {
   readonly native?: Native | undefined;
   /** Set by `combine()`: the adapters behind this one. */
   readonly members?: readonly Adapter[] | undefined;
+  /**
+   * Set by `combine()`: the adapter for one workspace label, or for one
+   * member named as `provider:workspace`. When several members carry the
+   * label, as a client on two tools does, it is those members combined.
+   * `undefined` when no member matches.
+   */
+  readonly scope?: ((workspaceId: string) => Adapter | undefined) | undefined;
 
   // One page per call. The wrapper loops, throttles and retries.
   readonly listCampaigns: (

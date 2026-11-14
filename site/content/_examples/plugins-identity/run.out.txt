@@ -1,0 +1,14 @@
+memory:agency:lead_jane email:jane.doe@example.com [ 'email:jane.doe@example.com', 'linkedin:jane-doe-example' ]
+memory:agency:lead_sam email:sam.lee@example.com [ 'email:sam.lee@example.com' ]
+memory:agency:lead_priya email:priya.patel@example.com [ 'email:priya.patel@example.com' ]
+memory:agency:lead_omar email:omar.haddad@example.com [ 'email:omar.haddad@example.com' ]
+linkedintool:agency:li_jane linkedin:jane-doe-example [ 'linkedin:jane-doe-example' ]
+
+found: true
+keys: [ 'email:jane.doe@example.com', 'linkedin:jane-doe-example' ]
+records: [ 'memory:agency:lead_jane', 'linkedintool:agency:li_jane' ]
+2026-11-10T10:00:00.000Z memory out
+2026-11-10T15:00:00.000Z linkedintool out
+2026-11-11T08:30:00.000Z memory in
+
+nobody: false 0

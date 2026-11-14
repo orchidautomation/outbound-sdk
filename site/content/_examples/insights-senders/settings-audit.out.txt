@@ -1,0 +1,14 @@
+Agency owners:
+  high limit_over_senders: The daily limit of 200 is over 50 a day for each of its 3 senders (150).
+  high end_date_passed: The campaign is active but its end date 2026-10-31 has passed.
+  high reply_does_not_stop: A lead who replies keeps getting the next steps.
+  medium window_long: A sending window is 16 hours long, over 12.
+  medium gap_short: Sends are 2 minutes apart, under 5.
+  medium open_tracking: Open tracking is on, a deliverability risk.
+  medium click_tracking: Click tracking is on; it rewrites links, a deliverability risk.
+  low weekend: A sending window includes Saturday or Sunday.
+  low no_timezone: A sending window has no timezone.
+Ecommerce ops:
+  medium no_window: No sending window is set or reported, so it can send at any hour.
+  medium no_daily_limit: No daily limit is set or reported.
+totals: { campaigns: 4, clean: 2, high: 3, low: 2, medium: 6, withFindings: 2 }

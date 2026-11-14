@@ -1,0 +1,69 @@
+---
+title: Installation
+description: outbound-sdk is not published to npm yet. How to build and install it from the repository today, what it needs at run time, and what will change at the first release.
+---
+
+<Callout type="warning" title="There is no npm package yet">
+  `npm install outbound-sdk` does not install this project today: the package
+  has not been published and its GitHub repository is private. This page
+  describes what works now, for people with access to the repository, and what
+  the install will be once the first release is out.
+</Callout>
+
+## Today: from the repository
+
+The repository is private, so this works only for people who already have access to it. If you do not, there is nothing to install yet: the package will be published to npm, and this page will say so when it is. With access, build the package, pack it, and install the tarball in your project. The repository itself needs Node 24.15 or later to build; the built package runs on Node 22.
+
+```sh
+# in a clone of the repository
+npm ci
+npm run build
+cd packages/outbound-sdk && npm pack   # writes outbound-sdk-0.0.0.tgz
+
+# in your project
+npm install /path/to/outbound-sdk-0.0.0.tgz
+```
+
+This was done by hand, once, on 2026-11-14: the tarball installed into an empty project, the sample on the [introduction](/docs) ran from it, and the `outbound` binary answered `outbound providers`.
+
+## After the first release
+
+The install will be the package name and nothing else. Until this page says the package is published, treat any `npm install outbound-sdk` you see elsewhere as not yet true.
+
+## What it needs
+
+- **Runtime:** Node 22 or later, Bun, or any runtime with `fetch`. The built package is loaded on Node 22 and on Bun in CI. No CI job runs it on Cloudflare Workers yet.
+- **Modules:** ESM only. From a CommonJS file, use a dynamic `import()`.
+- **Dependencies:** `zod` is the only one.
+- **Optional peers:** `ai` (version 6 or 7) for `outbound-sdk/tools/ai-sdk`, and `@anthropic-ai/claude-agent-sdk` for `outbound-sdk/tools/claude-agent`. Install them only if you import those subpaths.
+- **Types:** included. There is no `@types` package.
+
+## Subpaths
+
+Each adapter and plugin is its own subpath, so what you do not import is not bundled.
+
+| Import | Holds |
+| --- | --- |
+| `outbound-sdk` | `createOutbound`, the types, `OutboundError` |
+| `outbound-sdk/instantly`, `/smartlead`, `/heyreach` | One [adapter](/docs/adapters) each |
+| `outbound-sdk/memory` | The [in-memory adapter](/docs/adapters/memory), for tests and demos |
+| `outbound-sdk/combine` | [Several adapters behind one instance](/docs/adapters/combine) |
+| `outbound-sdk/insights` | The 26 [insights](/docs/insights) |
+| `outbound-sdk/<plugin>` | One [plugin](/docs/plugins) each |
+| `outbound-sdk/redis` | A [rate budget shared between processes](/docs/rate-limits) |
+| `outbound-sdk/tools`, `/tools/ai-sdk`, `/tools/claude-agent` | [AI tools](/docs/tools) |
+| `outbound-sdk/cli` | The [CLI](/docs/cli) and [MCP server](/docs/cli/mcp), as functions |
+| `outbound-sdk/webhooks` | [Webhook](/docs/webhooks) parsing and verification |
+| `outbound-sdk/providers`, `/loader` | The provider catalog, and an adapter chosen from the environment |
+
+## Keys
+
+Each adapter reads its key from the environment, or takes it as `apiKey`.
+
+| Adapter | Variable | Notes |
+| --- | --- | --- |
+| Instantly | `INSTANTLY_API_KEY` | An API V2 key. The `all:read` scope is enough. |
+| Smartlead | `SMARTLEAD_API_KEY` | Sent as a query parameter, as Smartlead requires. It is removed from every error and log line. |
+| HeyReach | `HEYREACH_API_KEY` | A workspace API key. |
+
+A read-only key is the right key to give it. No method of the SDK writes, and a key that cannot write makes that true of the credential too.

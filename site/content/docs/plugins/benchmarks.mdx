@@ -1,0 +1,89 @@
+---
+title: benchmarks
+description: Put a campaign's reply, bounce, open and other rates beside its own workspace's over the same dates, as a value, a baseline and a ratio.
+sidebar:
+  label: benchmarks
+related:
+  - /docs/api/stats
+  - /docs/insights
+  - /guides/diagnose-campaign
+---
+
+`benchmarks()` from `outbound-sdk/benchmarks` adds `outbound.benchmarks.campaign(id)`, which returns a campaign's rates beside the rates of the whole workspace it belongs to, over the same dates. A 6% reply rate means more next to the workspace's 2.8%. No outside benchmark is used: every number comes from what this credential can read.
+
+## Sample
+
+Runs on the [shared seed](/docs/plugins#every-plugin): three campaigns, 800 sends and 22 replies in the two days.
+
+<include meta='title="run.ts"'>
+  ../../_examples/plugins-benchmarks/run.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/plugins-benchmarks/run.out.txt
+</include>
+
+The workspace's reply rate is 22 of 800, which is 2.75% and prints as 2.8%. The first campaign's is 12 of 200, so its ratio is 6 divided by 2.75. The baseline includes the campaign itself.
+
+## Options
+
+`benchmarks()` takes no options.
+
+`outbound.benchmarks.campaign(id, options?)`:
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `id` | `string` | required | The campaign's id or ref. On a [combined](/docs/adapters/combine) instance, its ref. |
+| `from`, `to` | `string` | none | Inclusive `YYYY-MM-DD`. The same dates are used for both reads. Without them, both use the range a [stats](/docs/api/stats) read uses when given no dates. |
+| `signal`, `timeout`, `retries`, `deadline`, `maxRequests` |  | the instance's | Passed to both reads. |
+
+## What it adds
+
+`outbound.benchmarks.campaign()` returns a `CampaignBenchmark`:
+
+| Field | Meaning |
+| --- | --- |
+| `campaign` | The campaign's ref. |
+| `comparisons` | One `Comparison` for each of `replyRate`, `positiveReplyRate`, `bounceRate`, `openRate`, `unsubscribeRate` and `acceptanceRate`. |
+| `requests` | Vendor requests the two reads made. |
+
+A `Comparison` is:
+
+| Field | Meaning |
+| --- | --- |
+| `value` | The campaign's rate, 0 to 1, or `null` when it cannot be computed. |
+| `baseline` | The workspace's rate over the same dates, or `null`. |
+| `ratio` | `value / baseline`. 1.2 means 20% above the workspace. `null` when either side is `null` or the baseline is `0`. |
+
+The rates are the SDK's own definitions, the same ones [stats](/docs/api/stats) uses, computed from each row's counts. A rate the vendor's counts cannot support is `null`, never `0`.
+
+## What it costs
+
+Two stats reads, started together: the campaign's totals and the workspace's totals. On the in-memory adapter that is no request. On a vendor it is what those two reads cost there.
+
+## What it changes
+
+It changes no capability, no record and nothing in `meta`. It has no layer of its own, so its position in `plugins` does not matter.
+
+## With other plugins
+
+- Both reads go through the instance, so `cache` can serve them and `budget` counts them.
+- On a combined instance, workspace stats come back one row per member. The baseline is the row of the campaign's own provider and workspace.
+- The result has no `meta`. If `failover` served either read stale, the benchmark does not say so.
+
+## When it cannot answer
+
+The last two cases in the sample:
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| The campaign does not exist and the adapter says so, as the in-memory adapter does | `NotFound` from the stats read: "Campaign ... was not found" | Check the id. |
+| The campaign's stats read returns no row, or there is no workspace row for the campaign's member | `NotFound`: "No stats were returned for campaign ..." | Check the id. The campaign may not have sent yet. |
+| The adapter cannot read workspace-wide stats | `Unsupported`. The two reads start together, so the campaign's read may already have run. | Check `outbound.capabilities["stats.workspace"]` first. Without it there is no baseline. |
+| The adapter cannot read campaign stats | `Unsupported` | Use an adapter that declares `stats.campaign`. |
+| A count is not reported | That rate's `value`, `baseline` or both are `null`, and so is `ratio` | Print "not reported". Do not treat it as zero. |
+
+## Limits
+
+- The comparison is a ratio of two rates. It carries no test of whether the difference is more than chance, and a campaign with a handful of sends can show a large ratio. For a tested comparison, see [insights](/docs/insights).
+- The baseline is the whole workspace, including the campaign being compared and campaigns on other channels.

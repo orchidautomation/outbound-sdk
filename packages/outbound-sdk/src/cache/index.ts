@@ -2,7 +2,8 @@
 //
 // The store is supplied by the caller; the default keeps entries in this
 // process's memory. Nothing is stored on our side. A cached answer carries
-// the time it was originally fetched in `meta.fetchedAt`.
+// the time it was originally fetched in `meta.fetchedAt`. An answer a layer
+// inside marked stale is passed on but never stored.
 
 import type {
   Operation,
@@ -99,7 +100,16 @@ export const cache = (options: CacheOptions): OutboundPlugin => {
       }
 
       const output = await next(operation);
-      await store.set(key, { output, storedAt: now() }, ttlMs);
+
+      // A stale answer is the failover plugin's stand-in for a failed read.
+      if (output.stale !== true) {
+        // A layer inside that served the answer from a store says when the
+        // vendor was asked; that time is kept, not the time of this write.
+        const storedAt =
+          output.fetchedAt === undefined ? now() : Date.parse(output.fetchedAt);
+
+        await store.set(key, { output, storedAt }, ttlMs);
+      }
 
       return output;
     },

@@ -1,0 +1,134 @@
+---
+title: Check domain health and bounces on a schedule, and call your notifier
+description: One function that reads sender health and bounce rates and returns a summary, wired to the alerts plugin so your own notifier is called when a read crosses a rule. You schedule it; nothing runs in between.
+sidebar:
+  label: Deliverability check
+related:
+  - /docs/insights/senders
+  - /docs/plugins/alerts
+  - /guides/sender-capacity
+  - /guides/diagnose-campaign
+---
+
+A failing DKIM record or a list that bounces at 6% costs more every day it goes unseen. `domainHealth` groups your mailboxes by sending domain and gives each a risk level with the reasons: failing DNS records, mailboxes on a block list or disconnected, warmup emails landing in spam. `bounceWatch` lists the campaigns whose bounce rate is over a threshold, with the senders behind them. The `alerts` plugin checks fixed rules against every record a read returns and calls a function you supply.
+
+Nothing here watches anything on its own. The SDK has no background process and stores nothing. A check happens when your scheduler runs this function, and an alert can only fire after a read that the function made. Between two runs, nobody is looking.
+
+<include>../_snippets/status.mdx</include>
+
+## Before you start
+
+- Node 22 or later.
+- The code below runs on the in-memory adapter, so it needs no vendor key. Each sample on this page is a file in the repository that the test suite runs; the output shown is what it printed.
+- For real data: an Instantly, Smartlead or HeyReach API key. A read-only key is enough.
+- A scheduler you already run (cron, a GitHub Actions schedule, a Vercel cron route) and somewhere to send a message.
+
+## What you get
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/deliverability-check/run.out.txt
+</include>
+
+The first part is the function's return value. The last part is what the notifier was handed while the function ran.
+
+## Write the check
+
+<include meta='title="check.ts"'>
+  ../_examples/deliverability-check/check.ts
+</include>
+
+How the two insights judge:
+
+- **A domain is `high` risk** when a mailbox is on a block list, when SPF, DKIM or MX fails, or when warmup emails land in spam more often than `spam_rate_threshold` (default 0.1), pooled over the domain's mailboxes. It is `medium` when DMARC fails or a mailbox is disconnected. It is `unknown`, not `low`, when the vendor reports none of the seven checks. `notReported` lists the checks the vendor reported for no mailbox of the domain.
+- **A campaign is "over"** when bounced divided by sent is above `threshold` (default 0.03) and it has at least `min_sent` sends (default 100). A campaign with fewer sends goes in `tooFewSends`, and one with no sent or bounce count goes in `unknown`. Neither is counted as clean.
+- **Senders under a campaign** are counted over everything each sender sent in the period, not that campaign alone. A sender shared by two campaigns shows the same numbers under both.
+- **Rates carry an interval.** Each bounce rate and each pooled warmup spam rate has a 95% Wilson interval, wide on few sends.
+
+`from` and `to` on `bounceWatch` limit the days counted. Left out, it counts the vendor's whole history, which is slow to react: on a schedule, pass the last few days.
+
+## Add the notifier
+
+`alerts({ rules, notify })` wraps every read on the instance. After a read returns, each record is checked against each rule, and `notify` is called once with whatever fired. A rule is arithmetic on one record. The built-in rules are `bounceRateAbove`, `replyRateBelow`, `senderNotActive` and `noSends`.
+
+<include meta='title="run.ts"'>
+  ../_examples/deliverability-check/run.ts
+</include>
+
+Three things to know before you wire `notify` to a pager:
+
+- **It is called per read, so the same alert can arrive twice in one run.** Above, the disconnected mailbox fired once when `domainHealth` listed the senders and again when `bounceWatch` listed the senders of the campaign over the threshold. Deduplicate by `rule` and `subject`, or pass `dedupe: memoryAlertDedupe()` to `alerts`, which does that for as long as the instance lives.
+- **The SDK stores nothing, so it does not remember yesterday.** A sender that stays disconnected alerts on every run. If you want "only when it changes", keep the last set of alerts in your own store and compare.
+- **The rules are separate from the insights' thresholds.** `bounceRateAbove(0.03, { minSent: 100 })` looks at any stats row a read returns, for a campaign or a sender. `bounceWatch({ threshold })` decides what the summary lists. Set both.
+
+## Try it without a key
+
+This seed has two sending domains, four mailboxes and three campaigns:
+
+<include meta='title="seed.ts"'>
+  ../_examples/deliverability-check/seed.ts
+</include>
+
+`run.ts` above is the script that printed the output at the top. In it, `go.example.com` is high risk for two reasons and medium for a third. One campaign is over the threshold at 54 of 900, and of its two senders only one is itself over 3%. The campaign with 3 bounces in 40 sends is 7.5%, and is reported as too small to judge.
+
+## Point it at your vendor
+
+Swap the adapter, and replace the notifier with your own.
+
+<include meta='title="outbound.ts"'>
+  ../_examples/deliverability-check/production.ts
+</include>
+
+Then call `deliverabilityCheck(outbound)` from your scheduler. A crontab line for every morning at 07:00 looks like this (not run by the test suite):
+
+```sh
+0 7 * * * cd /srv/outbound && node deliverability-check.js
+```
+
+## What each vendor can serve
+
+The same function, run on the in-memory adapter limited to what each vendor's adapter declares. This shows which calls a vendor's adapter would refuse. It does not show what that vendor's API returns.
+
+<include meta='title="vendors.ts"'>
+  ../_examples/deliverability-check/vendors.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/deliverability-check/vendors.out.txt
+</include>
+
+All three declare what the function needs. What each vendor reports inside a health record differs, and the adapters say so in their caveats: Instantly reports no block list state, Smartlead reports no DNS records or block list state, and HeyReach's health is a LinkedIn account's connection state only. Those checks show up in `notReported`.
+
+## What it costs in vendor requests
+
+- `domainHealth`: one listing of senders, then one health read per sender, up to `max_senders` (default 50). A health read is three vendor requests on Instantly, two on Smartlead and one on HeyReach.
+- `bounceWatch`: one listing of campaigns, then one stats read per campaign, up to `max_campaigns` (default 50). For each campaign over the threshold: one listing of its senders and one stats read per sender, up to `max_senders_per_campaign` (default 10). A sender shared by several campaigns is read once. Pass `include_senders: false` to skip that part.
+
+`maxRequests` on the instance caps what one run may spend. Past it a call fails with `RateLimited` instead of spending your vendor quota.
+
+## When it cannot answer
+
+<include meta='title="failures.ts"'>
+  ../_examples/deliverability-check/failures.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/deliverability-check/failures.out.txt
+</include>
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| The notifier throws or rejects | The read succeeds. The failure is swallowed and reported nowhere. | Catch and log inside your notifier. A check that returns no alerts is not proof the notifier works. |
+| More senders than `max_senders` | `meta.complete` is `false` and a note says where it stopped | Raise the cap (up to 500), or accept a check of the first senders. |
+| The vendor reports nothing for a domain | Risk `unknown`, with every check in `notReported` | Check the domain's DNS with another tool. |
+| The adapter has no stats per sender, or cannot list a campaign's senders | Campaigns are still checked; `senders` is `null` and a note says why | Find the sender in the vendor tool. |
+| The adapter cannot read sender health | `Unsupported` for `domainHealth`, before any request | Run `bounceWatch` alone. |
+| The scheduler did not run | Nothing. No read, no alert, no error. | Monitor the scheduled job itself. |
+
+## Limits
+
+- On Instantly, each sender's health read costs three requests and makes Instantly run a live DNS test for that mailbox. Do not schedule the check more often than you need the answer.
+- No background watching. An alert fires only after a read your code made, and only for the records that read returned.
+- The alert rules see one record at a time. They cannot express "three days in a row" or "up 50% on last week". For trends, use `anomalies` or `periodComparison` from [insights](/docs/insights/operations).
+- `bounceRateAbove` and `replyRateBelow` skip rows with fewer than `minSent` sends (default 50).
+- DNS and block list results are the vendor's own tests. The SDK makes no DNS lookup.
+- `domainHealth` reads the first `max_senders` senders the vendor lists, in the vendor's order.

@@ -124,6 +124,8 @@ export interface MemoryStats {
   readonly senderId?: string;
   /** Set for a per-step row. */
   readonly stepIndex?: number;
+  /** Set, with `stepIndex`, for one variant of a step, the way a vendor that splits step stats by variant reports it. */
+  readonly variantKey?: string;
   readonly counts: Partial<MetricCounts>;
 }
 
@@ -288,6 +290,7 @@ export interface MetricIdentity extends Identity {
   readonly scopeId: string;
   readonly date: string | null;
   readonly stepIndex: number | null;
+  readonly variantKey: string | null;
 }
 
 export const toMetricRow = (
@@ -304,6 +307,6 @@ export const toMetricRow = (
   scopeRef: makeRef(identity.provider, identity.workspaceId, identity.scopeId),
   stepIndex: identity.stepIndex,
   timezone: identity.date === null ? null : "UTC",
-  variantKey: null,
+  variantKey: identity.variantKey,
   workspaceId: identity.workspaceId,
 });

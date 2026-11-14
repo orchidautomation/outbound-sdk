@@ -1,0 +1,96 @@
+---
+title: Writing a plugin
+description: The plugin contract (wrap, capabilities, extend, hooks and event), a small working plugin with typed methods, and the rules a plugin has to follow.
+sidebar:
+  label: Writing a plugin
+related:
+  - /docs/plugins
+  - /docs/api/hooks
+  - /docs/capabilities
+  - /docs/webhooks
+---
+
+A plugin is a plain object with a `name` and any of five optional members. There is no base class and nothing to register. The type is `OutboundPlugin` from `outbound-sdk`.
+
+## The contract
+
+| Member | Signature | What it is for |
+| --- | --- | --- |
+| `name` | `string` | Required. Names the plugin in errors. It must be unique on an instance. |
+| `wrap` | `(operation, next, info) => Promise<OperationOutput>` | Intercept every read. Call `next(operation)` to continue inward, toward the adapter. |
+| `capabilities` | `(capabilities) => Capabilities` | Return what the instance should advertise. It can only take away. |
+| `extend` | `(outbound) => Extension` | Return properties to add to the instance. |
+| `hooks` | `OutboundHooks` | Observe calls, errors, HTTP requests, retries and throttle waits. |
+| `event` | `(event) => OutboundEvent \| null` | Rewrite a webhook event, or return `null` to drop it. |
+
+### wrap
+
+Every read the SDK makes is one operation: an object with a `kind` (`campaigns.list`, `leads.get`, `stats` and so on) and either a `query` or an `id`. `wrap` receives it before the adapter does.
+
+- `next(operation)` runs the layers inside this one and then the adapter. Pass the operation on unchanged, pass a changed one, call `next` more than once, or do not call it and answer yourself.
+- The result is an `OperationOutput`: `items` (the records), `next` (the adapter's continuation to the following page, when there is one), `evidence` (`exact`, `sampled` or `derived`), and optionally `stale` and `fetchedAt`, which become `meta.stale` and `meta.fetchedAt`.
+- `info` has `provider`, `workspaceId`, the `adapter`, and `state`: what the SDK call has used so far (`requests`, `throttledMs`) and its limits. A plugin may lower `state.maxRequests`, as `budget` does.
+
+One SDK call can be several operations. A `listAll` walk is one operation per page, and all of them share one `info.state`.
+
+What `wrap` returns is checked. Each record must match the schema for the read, or the call fails with `Provider`. Extra fields on a record are kept, which is how `clients` adds `client`.
+
+A capability check and input validation happen before any `wrap` runs. A call refused there never reaches a plugin.
+
+### capabilities
+
+The function receives the capabilities as the plugins before it left them and returns the set to advertise. The SDK intersects the result with what came in, so turning something off or lowering a grade works, and anything widened is ignored. A call that needs a capability a plugin turned off throws `Unsupported`, and the message names the plugin.
+
+Turning a capability off is how a plugin refuses a whole kind of read up front. The adapter itself still sees its own declared capabilities, so a plugin's own reads through `next` are not blocked by another plugin's narrowing.
+
+### extend
+
+`extend` runs once when the instance is built, and once more for each scoped instance `outbound.workspace(id)` creates, with that instance as its argument. Each property of the object it returns is defined on the instance. Declare the shape as the type argument, `OutboundPlugin<MyExtension>`, and `createOutbound` adds it to the instance's type.
+
+Reads made inside `extend`'s methods through `outbound` go through the public API, so every layer applies to them, your own `wrap` included.
+
+Keep state in the closure of the factory function, not in `extend`, so the instance and its scoped copies share it.
+
+### hooks
+
+The same hooks as the `hooks` option on `createOutbound`: `onAction`, `onError`, `onRequest`, `onRetry` and `onThrottle`. See [hooks](/docs/api/hooks). A hook is fire and forget. It cannot change a result, and a hook that throws is ignored. Hooks do not depend on the plugin's position.
+
+### event
+
+`event` is not called by the instance. It runs when you pass plugins to `parse()` from `outbound-sdk/webhooks`, usually as `plugins: outbound.plugins`. Hooks run innermost first, so `plugins[0]` sees an event last, the same way it sees a read's answer last. Returning `null` drops the event, and the remaining plugins are not called.
+
+## A working plugin
+
+This plugin counts what an instance read. It uses `wrap`, `extend` and `hooks`.
+
+<include meta='title="usage.ts"'>
+  ../../_examples/plugins-writing-a-plugin/usage.ts
+</include>
+
+<include meta='title="run.ts"'>
+  ../../_examples/plugins-writing-a-plugin/run.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/plugins-writing-a-plugin/run.out.txt
+</include>
+
+Four leads at two per page are two `leads.list` operations. The second walk was served by the cache and never reached the plugin. The in-memory adapter makes no HTTP request, so the hook never fired.
+
+## The rules
+
+<include meta='title="rules.ts"'>
+  ../../_examples/plugins-writing-a-plugin/rules.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/plugins-writing-a-plugin/rules.out.txt
+</include>
+
+1. **Fail closed.** A plugin that protects data must refuse what it does not understand. Throw an `OutboundError` with code `Unsupported` rather than pass a record through untouched. `redact` does this for a record it does not recognise: see [its failures](/docs/plugins/redact#when-it-fails). A read that would defeat the plugin should be turned off in `capabilities`, so it is refused before any request.
+2. **Narrow, never widen.** A plugin cannot add a capability the adapter did not declare. The sample tries to turn `replies.category` on and it stays `false`.
+3. **Name clashes are errors.** A property from `extend` that already exists on the instance, built in or from an earlier plugin, throws `Invalid` when the instance is built. So does the same `name` twice. Pick one namespace for what you add, such as `outbound.usage`, instead of several top-level names.
+4. **Stay read-only and store nothing on your own.** A plugin that keeps state should take a store from the caller, as `cache`, `sync` and `failover` do. It should not call an AI model.
+5. **Throw `OutboundError`.** An error of another class thrown from `wrap` is passed to the adapter's error mapper and reaches the caller as an `OutboundError` whose code the mapper chose.
+6. **Do not fail a read for a side effect.** A sink, a notifier or a logger should be fire and forget, as `audit` and `alerts` do it. An awaited store is different: `cache` and `failover` let a store error fail the read.
+7. **Test on the in-memory adapter**, with `memory({ capabilities })` to exercise an adapter that declares less, and in each plugin order that matters to yours.

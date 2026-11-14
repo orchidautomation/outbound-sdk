@@ -1,5 +1,5 @@
 // Mailboxes and deliverability: tracking domains, done-for-you orders and inbox placement tests.
-// Each entry is one read Instantly documents; docs/coverage/instantly.md lists them all.
+// Each entry is one read Instantly documents; site/content/docs/coverage/instantly.mdx lists them all.
 
 import { defineNative } from "../internal/native.ts";
 import {

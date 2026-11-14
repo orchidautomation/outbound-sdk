@@ -1,0 +1,18 @@
+Invalid: since must be an ISO 8601 date or timestamp, got "last tuesday"
+  status undefined, provider undefined, permanent true, retryAfterMs undefined
+Unsupported: Reading a sender's health is not available: the memory adapter does not support it (senders.health)
+  status undefined, provider memory, permanent true, retryAfterMs undefined
+NotFound: Campaign cmp_gone was not found
+  status 404, provider memory, permanent true, retryAfterMs undefined
+Unauthorized: instantly responded 401
+  status 401, provider instantly, permanent true, retryAfterMs undefined
+NotFound: instantly responded 404
+  status 404, provider instantly, permanent true, retryAfterMs undefined
+Invalid: instantly responded 422
+  status 422, provider instantly, permanent true, retryAfterMs undefined
+RateLimited: instantly responded 429
+  status 429, provider instantly, permanent false, retryAfterMs 30000
+Provider: instantly responded 502
+  status 502, provider instantly, permanent false, retryAfterMs undefined
+Unsupported: instantly responded 402
+  status 402, provider instantly, permanent true, retryAfterMs undefined

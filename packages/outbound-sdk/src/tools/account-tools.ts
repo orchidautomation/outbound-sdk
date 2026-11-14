@@ -20,7 +20,7 @@ export const campaignSetup: ToolDefinition<z.infer<typeof setupInput>> = {
     "How one campaign is set up to send: its sending windows and timezone, daily caps, the gap between sends, open and click tracking, and whether a reply stops the sequence. Use it to explain low volume or missing open data. A null means the vendor does not report that setting.",
   inputSchema: setupInput,
   name: "campaign_setup",
-  needs: [],
+  needs: ["campaigns.settings"],
   run: async (outbound, input) => {
     const settings = await outbound.campaign(input.campaign).settings();
 
@@ -100,7 +100,7 @@ export const deliverabilityCheck: ToolDefinition<
     "Whether each sender can deliver: its DNS records (SPF, DKIM, DMARC, MX), whether the vendor can still sign in, block list status, and how much warmup mail landed in spam. Senders with a problem are listed first. Use it when bounces rise or replies drop. A null means the vendor does not report that check.",
   inputSchema: deliverabilityInput,
   name: "deliverability_check",
-  needs: [],
+  needs: ["senders.health"],
   run: async (outbound, input) => {
     const senders = await outbound.senders
       .listAll({ campaignId: input.campaign, max: input.limit })
@@ -215,7 +215,7 @@ export const audienceLists: ToolDefinition<z.infer<typeof listsInput>> = {
     "The saved lead lists on the account with how many records each holds. Use it to see what audiences exist before asking about one campaign's leads.",
   inputSchema: listsInput,
   name: "audience_lists",
-  needs: [],
+  needs: ["lists.list"],
   run: async (outbound, input) => {
     const walk = outbound.lists.listAll({ max: input.limit });
     const lists = await walk.toArray();

@@ -1,0 +1,7 @@
+notifier threw: 4 senders still read
+capped: false [ 'Stopped at 2 senders; more exist.' ]
+nothing reported: unknown [ 'spf', 'dkim', 'dmarc', 'mx', 'connection', 'blocklist', 'warmup' ]
+no sender stats: [ null ] [
+  "Senders were not checked: the adapter needs stats per sender and the list of a campaign's senders."
+]
+no health: Unsupported - domain_health is not available: the memory adapter does not support senders.health
