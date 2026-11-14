@@ -15,6 +15,13 @@ export const WORKSPACE_ENV = "INSTANTLY_WORKSPACE_ID";
 export const EMAILS_LANE = "emails";
 export const PAGE_SIZE = 100;
 
+/** Three native reads have a limit of their own; each is a lane. */
+export const LABEL_PREDICTION_LANE = "labelPrediction";
+export const LOCAL_FILTERS_LANE = "localBusinessFilters";
+export const LOCAL_SEARCH_LANE = "localBusinessSearch";
+
+const DAY_MS = 86_400_000;
+
 /** How many pages of tag assignments are read for one page of campaigns. */
 export const TAG_PAGES = 10;
 
@@ -42,6 +49,8 @@ export const capabilities: CapabilityDeclaration = {
   "messages.byThread": true,
   "messages.list": true,
   "messages.since": "server",
+  // Every read endpoint with no normalized form is in the native catalog.
+  native: true,
   "replies.category": "vendor",
   "replies.list": true,
   "replies.since": "server",
@@ -64,9 +73,14 @@ export const capabilities: CapabilityDeclaration = {
 };
 
 export const limits: LimitDeclaration = {
-  lanes: { [EMAILS_LANE]: [{ perMs: 60_000, requests: 20 }] },
+  lanes: {
+    [EMAILS_LANE]: [{ perMs: 60_000, requests: 20 }],
+    [LABEL_PREDICTION_LANE]: [{ perMs: 30 * DAY_MS, requests: 500 }],
+    [LOCAL_FILTERS_LANE]: [{ perMs: DAY_MS, requests: 100 }],
+    [LOCAL_SEARCH_LANE]: [{ perMs: DAY_MS, requests: 200 }],
+  },
   source:
-    "https://developer.instantly.ai/getting-started/rate-limit.md (100/s and 6,000/min per workspace, shared across keys and API versions) and the list-email reference (20/min); read 2026-11-14, not confirmed live",
+    "https://developer.instantly.ai/getting-started/rate-limit.md (100/s and 6,000/min per workspace, shared across keys and API versions), the list-email reference (20/min) and the references of POST /lead-labels/ai-reply-label (500 per 30 days), /local-business-search/ai-filters (100 a day) and /local-business-search/search (200 pages a day); read 2026-11-14, not confirmed live",
   windows: [
     { perMs: 1000, requests: 100 },
     { perMs: 60_000, requests: 6000 },
@@ -116,7 +130,9 @@ export const caveats: readonly string[] = [
   "connected is true for an Active account and false for a Connection Error; every other account status is null.",
   "A lead's engagement has no stepIndex: Instantly names the last step by an id, not a position. A lead has no tags in Instantly.",
   "A lead's interest is the documented label for lt_interest_status. A custom label costs one more read (lead-labels, first 100 labels), made only when a page holds a status that is not a built-in one; the same read gives a reply with a custom status its category.",
-  "A lead list's size is null: the list object has no count. kind is always leads.",
+  "A lead list's size is null: the list object has no count, and the count costs one more read per list. The native read leadListVerificationStats returns total_leads for one list. kind is always leads.",
+  "Native reads return what Instantly sends, unmapped. Three query parameters Instantly takes as a repeated key (ids on campaignAnalytics, action_status and action_type on salesAgentActivities) are sent once, with one value. dfyAccounts never asks for passwords.",
+  "The daily limits of leadLabelPrediction, localBusinessFilters and localBusinessSearch are counted in this process only; a restart forgets what was used.",
   "A webhook made for a custom lead label has no event_type, so its events are empty; custom_interest_value stays in raw. raw also holds the headers Instantly sends, which can carry a secret.",
   "A truncated message body costs one more read of that email (GET /emails/{id}) when bodies are asked for. That read is assumed to share the 20-per-minute limit of the email list.",
   "Messages of a thread are found with the documented search value thread:<id>.",

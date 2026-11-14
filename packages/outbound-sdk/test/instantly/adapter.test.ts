@@ -227,6 +227,10 @@ test("instantly: emails use the 20-per-minute lane", async () => {
       ["default", 100, 1000, 1],
       ["default", 6000, 60_000, 1],
       ["emails", 20, 60_000, 1],
+      // The lanes of three native reads, untouched by a normalized read.
+      ["labelPrediction", 500, 2_592_000_000, 0],
+      ["localBusinessFilters", 100, 86_400_000, 0],
+      ["localBusinessSearch", 200, 86_400_000, 0],
     ]
   );
 });

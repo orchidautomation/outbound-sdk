@@ -10,10 +10,12 @@ import type {
 import { OutboundError } from "../internal/errors.ts";
 import { isJsonObject } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
+import type { NativeRead } from "../internal/native.ts";
 import type { Identity } from "../internal/record.ts";
 import { buildUrl } from "../internal/url.ts";
 import type { QueryValue } from "../internal/url.ts";
 import { BASE_URL } from "./capabilities.ts";
+import { NATIVE } from "./native.ts";
 
 export interface ClientOptions {
   readonly apiKey: string;
@@ -52,14 +54,14 @@ export interface InstantlyClient {
   ) => Promise<JsonObject>;
 }
 
-// Instantly lists leads, reads warmup analytics, tests a mailbox's DNS records
-// and looks up the tags of resources with POST. None of them changes data.
-const READ_POSTS = new Set([
+// Instantly lists leads, reads warmup analytics and tests a mailbox's DNS
+// records with POST. None of them changes data. Instantly lets a key with a
+// read scope call each one, and each POST in the native catalog.
+const READ_POSTS = [
   "/accounts/test/vitals",
   "/accounts/warmup-analytics",
-  "/custom-tags/search",
   "/leads/list",
-]);
+];
 
 const normalizePath = (path: string): string =>
   `/${path.replace(/^\/+/u, "").replace(/\/+$/u, "")}`.replace(
@@ -67,9 +69,34 @@ const normalizePath = (path: string): string =>
     ""
   );
 
-export const isRead = (method: HttpMethod, path: string): boolean =>
-  method === "GET" ||
-  (method === "POST" && READ_POSTS.has(normalizePath(path)));
+/** Matches a catalog path, where `{name}` stands for one path segment. */
+const pattern = (path: string): RegExp =>
+  new RegExp(
+    `^${path
+      .split("/")
+      .map((part) =>
+        part.startsWith("{") ? "[^/]+" : part.replaceAll(".", String.raw`\.`)
+      )
+      .join("/")}$`,
+    "u"
+  );
+
+const READ_POST_PATTERNS = [
+  ...READ_POSTS,
+  ...Object.values<NativeRead>(NATIVE).flatMap((read) =>
+    read.method === "POST" ? [read.path] : []
+  ),
+].map((path) => pattern(path));
+
+export const isRead = (method: HttpMethod, path: string): boolean => {
+  if (method !== "POST") {
+    return method === "GET";
+  }
+
+  const normalized = normalizePath(path);
+
+  return READ_POST_PATTERNS.some((expression) => expression.test(normalized));
+};
 
 export const createClient = (options: ClientOptions): InstantlyClient => {
   const baseUrl = options.baseUrl ?? BASE_URL;

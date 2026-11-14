@@ -393,6 +393,19 @@ Re-read on 2026-11-14 from `https://api.instantly.ai/openapi/api_v2.json` (`info
 20. The copy of the spec served at `https://developer.instantly.ai/api-reference/openapi.json` is smaller (167 operations) than `https://api.instantly.ai/openapi/api_v2.json` (268). All endpoints used here are in both.
 21. **One lead row per campaign membership** (section 4) is my reading of the schema, not a documented statement.
 
+## Endpoint inventory and native catalog (2026-11-14)
+
+The whole reference was inventoried from the OpenAPI specification, fetched again on 2026-11-14 from `https://api.instantly.ai/openapi/api_v2.json`: 268 operations (115 `GET`, 99 `POST`, 24 `PATCH`, 1 `PUT`, 29 `DELETE`), the same 268 endpoint pages that `https://developer.instantly.ai/llms.txt` lists. `docs/coverage/instantly.md` has one row for each.
+
+- **What counts as a read.** Every `GET`, and a `POST` only when its reference page lets a key with a `read` scope call it ("Requires one of the following scopes: `campaigns:read`, ..."). That rule gives 16 `POST` reads: the three the normalized reads use (`/leads/list`, `/accounts/test/vitals`, `/accounts/warmup-analytics`) and 13 in the native catalog. `POST /creator-search/search` and `POST /supersearch-enrichment/integrations/run` look like searches but need a `create` scope and can charge credits, so they are writes.
+- **Excluded.** `GET /api-keys` returns each key in `key`. `GET /workspace-billing/plan-details`, `GET /workspace-billing/subscription-details` and `GET /oauth/session/status/{sessionId}` report nothing about campaigns, leads, senders or results.
+- **Passwords.** `GET /dfy-email-account-orders/accounts` documents `with_passwords` ("Whether to include passwords in the response"). The catalog entry leaves that parameter out, so it cannot be sent.
+- **Array query parameters.** `ids` on `GET /campaigns/analytics` ("You can specify multiple IDs by adding the same parameter multiple times") and `action_status` and `action_type` on `GET /ai-agents/sales/{id}/activities` are arrays sent as a repeated key. The native client writes a query value once, so the catalog declares them as one string value.
+- **Limits of their own.** `POST /lead-labels/ai-reply-label`: "500 requests per 30 days per workspace". `POST /local-business-search/ai-filters`: "Up to 100 calls a day per workspace". `POST /local-business-search/search`: "a workspace may read 200 pages a day". Each is a lane. `POST /ai-agents/lead-finder/suggest-audience` is "Rate limited per workspace" with no number.
+- **Lead list size.** The list object has no count. `GET /lead-lists/{id}/verification-stats` returns `total_leads` beside the verification counts, at one request per list, so `size` stays `null` and the read is native (`leadListVerificationStats`).
+- **Not JSON.** `GET /block-lists-entries/download` answers with CSV text.
+- No sister service on another host is documented: the specification has one server, `https://api.instantly.ai`.
+
 ## Sources
 
 All fetched 2026-11-14. The file in `sources/` holding each download is given in parentheses.
