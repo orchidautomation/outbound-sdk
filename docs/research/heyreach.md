@@ -403,3 +403,48 @@ HeyReach publishes no API changelog. Inferred from differences between the two d
 - https://api.heyreach.io/api/public/auth/CheckApiKey — one request with no key (401 shape)
 - https://api.heyreach.io/swagger, /swagger/v1/swagger.json, /openapi.json, /api-docs — no public Swagger (redirect loops / 404)
 - Third party (not authoritative): https://outreachmagic.io/docs/heyreach-integration (sample `message_sent` payload), https://www.scalekit.com/blog/heyreach-mcp-vs-api (rate-limit scope claim), https://attio.com/apps/hey-reach (search excerpt)
+
+## Inventory and native catalog (2026-11-14)
+
+Fetched fresh for the inventory in `docs/coverage/heyreach.md`:
+
+- https://docs.heyreach.io/llms.txt (the page index: 106 endpoint pages)
+- https://docs.heyreach.io/openapi.json (106 operations on 105 paths; byte-identical to the copy read earlier the same day)
+- https://docs.heyreach.io/hey-reach-api.md and https://docs.heyreach.io/hey-reach-api/organization.md
+- https://documenter.getpostman.com/api/collections/23808049/2sA2xb5F75?segregateAuth=true&versionTag=latest (publishDate 2026-09-16; 88 requests, all of them also in the OpenAPI file, which has 18 more)
+
+HeyReach documents no sister service on another host. The Organization Management API is on the same host under `/management/organizations`, takes the organization API key in the same `X-API-KEY` header, and has "a separate rate limit of 300 requests per minute" (organization.md).
+
+Read-only requests to one live workspace on 2026-11-14, with a workspace key. Nothing from a response is recorded here beyond counts, key names and status codes.
+
+| Read | Answer |
+| --- | --- |
+| `GET /auth/CheckApiKey` | 200, empty body |
+| `GET /list/GetById` | 200. Keys: `id`, `name`, `listType`, `totalItemsCount`, `creationTime`, `campaignIds` |
+| `POST /campaign/GetCampaignsForLead` | 200 `{ leadFullName, totalCount, items }`. `offset` and `limit` may be left out |
+| `POST /list/GetListsForLead` | 404 for a lead that is in no list |
+| `POST /MyNetwork/GetMyNetworkForSender` | 200 `{ totalCount, items }`. `pageNumber` and `pageSize` may be left out (20 rows came back); `pageSize` 1000 is refused with 400 |
+| `POST /MyNetwork/IsConnection` | 200 `{ isConnection }`, with `leadProfileUrl` or with `leadLinkedInId` |
+| `GET /campaign/GetCampaignSequenceV2` | 200, a node tree |
+| `POST /stats/GetOverallStatsByCampaign` | 200 `{ byDayStats, overallStats }`, `overallStats` an array. An empty body is refused with 400: `accountIds` and `campaignIds` must be sent, as empty arrays if need be |
+| `GET /li_account/GetProxyCountries` | 200, an array of objects |
+| `GET /voice/GetVoices`, `GetStaticClips`, `GetElevenLabsConnection`, `GetElevenLabsVoices`, `GetVoiceUsage/{id}` | 200 |
+| `GET /voice/GetSenderVoice/{accountId}` | 404 `SENDER_VOICE_NOT_ASSIGNED` |
+| `GET /voice/GetStaticClip/{clipId}` | 404 `STATIC_CLIP_NOT_FOUND` |
+| `GET /webhooks/GetWebhookById`, `GET /enrichment/enrich-email/check-job/{jobId}` | 404 for an id that does not exist (the workspace has no webhooks or enrichment jobs) |
+| `POST /list/GetCompaniesFromList` | 400 for a lead list (the workspace has no company list) |
+| `/management/organizations/workspaces`, `/users`, `/linkedin-accounts` | 401 with a workspace key |
+
+Not requested: `GET /li_account/GetAccountProxy/{accountId}` and `GET /management/organizations/api-keys/workspaces/{workspaceId}` (both return secrets), and `GET /inbox/GetVoiceMessageAudio/...` (a binary file).
+
+### `POST /inbox/GetConversationsV3`, now the listing the adapter reads
+
+- Envelope: `{ items, totalCount, hasNextPage, nextCursor }`. `nextCursor` is a string and is `null` on the last page. Items are ordered newest `lastMessageAt` first. 257 conversations were read in three pages of 100, matching `totalCount` and the V2 `totalCount`.
+- An item has the same keys as a V2 item. `correspondentProfile` lacks `emailAddress`, `enrichedEmailAddress`, `customEmailAddress` and `customFields`, as documented.
+- A message has `body`, `createdAt`, `sender`, `subject`, `isInMail`, `postLink`, `messageId`, `type`, `isVoiceNote`, `transcript`, `transcriptStatus`, `audioDurationMs`.
+- `from` and `to` bound `lastMessageAt` exactly: for bounds 1, 7 and 30 days before the newest conversation the rows returned were exactly the conversations at or after `from`, and `to` returned exactly those at or before it.
+- In all 257 conversations `lastMessageAt` equalled the newest message's `createdAt`, and `messages.length` equalled `totalMessages` (the longest thread had 40).
+- `filters.leadProfileUrl` returned only that lead's conversation. `limit` defaults to 10. A body with no `filters` key is accepted.
+- Through the adapter: 827 messages with 827 distinct ids; a `since` at the 90th percentile and an `until` at the 10th each returned exactly the messages the unfiltered listing has in that range, and replies matched the inbound messages (302).
+
+This closes open question 4 for V3 (cursor paging has no deep-paging ceiling, and list items carry the whole thread up to at least 40 messages) and question 5 (`type`, `messageId` and the voice fields are returned).

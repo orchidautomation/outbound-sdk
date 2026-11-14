@@ -248,7 +248,7 @@ test("heyreach: documented error bodies give the error its message", async () =>
   }
 });
 
-test("heyreach: the one documented limit is 300 a minute, with no lanes or headers", async () => {
+test("heyreach: the documented limit is 300 a minute, with a lane for the Organization API and no headers", async () => {
   const { adapter, outbound, settle } = harness(suite);
   await settle(outbound.campaigns.list());
   const [snapshot] = await outbound.limits();
@@ -259,9 +259,11 @@ test("heyreach: the one documented limit is 300 a minute, with no lanes or heade
       window.perMs,
       window.used,
     ]),
-    [["default", 300, 60_000, 1]]
+    [
+      ["default", 300, 60_000, 1],
+      ["organization", 300, 60_000, 0],
+    ]
   );
-  assert.equal(adapter.limits.lanes, undefined);
   assert.equal(adapter.limits.headers, undefined);
   assert.match(adapter.limits.source, /do not say whether the limit is per/u);
 });
@@ -288,6 +290,7 @@ test("heyreach: raw allows exactly the documented reads", () => {
     "/blacklist/GetLeads",
     "/blacklist/GetCompanies",
     "/MyNetwork/GetMyNetworkForSender",
+    "/MyNetwork/IsConnection",
     "/management/organizations/users",
     "/management/organizations/users/workspaces/12",
     "/management/organizations/linkedin-accounts",
@@ -337,6 +340,11 @@ test("heyreach: raw allows exactly the documented reads", () => {
     raw.isRead("GET", "/management/organizations/api-keys/workspaces/12"),
     false,
     "the read that returns API keys is refused"
+  );
+  assert.equal(
+    raw.isRead("GET", "/li_account/GetAccountProxy/1101"),
+    false,
+    "the read that returns a proxy password is refused"
   );
   assert.equal(raw.isRead("DELETE", "/webhooks/DeleteWebhook"), false);
   assert.equal(raw.isRead("PATCH", "/webhooks/UpdateWebhook"), false);

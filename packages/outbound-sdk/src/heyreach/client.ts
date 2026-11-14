@@ -41,6 +41,7 @@ export interface HeyReachClient {
 // Every documented POST that only reads. Anything else sent with POST writes.
 const READ_POSTS = new Set([
   "/MyNetwork/GetMyNetworkForSender",
+  "/MyNetwork/IsConnection",
   "/blacklist/GetCompanies",
   "/blacklist/GetLeads",
   "/campaign/GetAll",
@@ -66,9 +67,28 @@ const READ_POSTS = new Set([
 const READ_POST_PATTERN =
   /^\/management\/organizations\/users\/workspaces\/[^/]+$/u;
 
-// GET .../api-keys/workspaces/{workspaceId} returns every key of a workspace.
-// A raw response is handed back as it is, so this read is refused.
-const SECRET_GET_PATTERN = /^\/management\/organizations\/api-keys\//u;
+// GET .../api-keys/workspaces/{workspaceId} returns every key of a workspace,
+// and GET /li_account/GetAccountProxy/{accountId} returns a custom proxy's
+// password. A raw response is handed back as it is, so both reads are refused.
+const SECRET_GET_PATTERN =
+  /^\/(?:management\/organizations\/api-keys|li_account\/GetAccountProxy)\//iu;
+
+// A webhook's custom headers can hold a shared secret. GET
+// /webhooks/GetWebhookById returns them only when asked, so every request to
+// it, normalized, native or raw, asks for them to be left out.
+const WEBHOOK_BY_ID = /\/webhooks\/GetWebhookById\/?$/iu;
+
+const withoutWebhookHeaders = (spec: RequestSpec): RequestSpec => {
+  const url = new URL(spec.url);
+
+  if (!WEBHOOK_BY_ID.test(url.pathname)) {
+    return spec;
+  }
+
+  url.searchParams.set("includeCustomHeaders", "false");
+
+  return { ...spec, url: url.toString() };
+};
 
 const normalizePath = (path: string): string =>
   `/${path
@@ -93,7 +113,7 @@ export const createClient = (options: ClientOptions): HeyReachClient => {
   const baseUrl = options.baseUrl ?? BASE_URL;
 
   const authorize = (spec: RequestSpec): RequestSpec => ({
-    ...spec,
+    ...withoutWebhookHeaders(spec),
     headers: { ...spec.headers, "X-API-KEY": options.apiKey },
   });
 

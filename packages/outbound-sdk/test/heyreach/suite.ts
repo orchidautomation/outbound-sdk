@@ -17,6 +17,15 @@ const paged = (name: string) => (request: RouteRequest) => {
   return (body?.offset ?? 0) > 0 ? `${name}.page2.json` : `${name}.json`;
 };
 
+// Conversations page by cursor; a request that carries one gets the last page.
+const conversations = (request: RouteRequest): string => {
+  const body = request.body as { cursor?: string } | undefined;
+
+  return body?.cursor === undefined
+    ? "getConversations.json"
+    : "getConversations.page2.json";
+};
+
 export const suite: AdapterSuite = {
   ids: {
     campaign: CAMPAIGN,
@@ -91,9 +100,9 @@ export const suite: AdapterSuite = {
       path: "/api/public/campaign/GetLeadsFromCampaign",
     },
     {
-      fixture: paged("getConversations"),
+      fixture: conversations,
       method: "POST",
-      path: "/api/public/inbox/GetConversationsV2",
+      path: "/api/public/inbox/GetConversationsV3",
     },
     {
       fixture: "getLead.json",

@@ -38,7 +38,7 @@ export const capabilities: CapabilityDeclaration = {
   "leads.list": false,
   // GetLeadsFromCampaign and GetLeadsFromList both filter by creation time.
   "leads.since": "server",
-  // Messages live inside conversations (POST /inbox/GetConversationsV2). A
+  // Messages live inside conversations (POST /inbox/GetConversationsV3). A
   // lead's timeline is the conversations filtered to its profile URL.
   "leads.timeline": true,
   // POST /list/GetLeadsFromList.
@@ -49,12 +49,13 @@ export const capabilities: CapabilityDeclaration = {
   // GET /inbox/GetChatroom/{accountId}/{conversationId}.
   "messages.byThread": true,
   "messages.list": true,
-  // The inbox has no date filter, so the wrapper filters after fetching.
-  "messages.since": "client",
+  // GetConversationsV3 bounds conversations by the time of their newest
+  // message (`from`); the adapter then drops the older messages inside them.
+  "messages.since": "server",
   // Auto-tags describe the lead, not a message, so replies carry no category.
   "replies.category": false,
   "replies.list": true,
-  "replies.since": "client",
+  "replies.since": "server",
   // GET /campaign/GetById names the campaign's account ids; the account list
   // is narrowed to them.
   "senders.byCampaign": true,
@@ -76,6 +77,8 @@ export const capabilities: CapabilityDeclaration = {
   // Tags can be created (POST /lead_tags/CreateTags) and read per lead
   // (POST /lead/GetTags), but no endpoint lists the workspace's tags.
   tags: false,
+  // Every other documented read, by name: see native.ts.
+  native: true,
   // POST /webhooks/GetAllWebhooks.
   "webhooks.list": true,
   // CheckApiKey returns no identity and only an organization key can list workspaces.
@@ -85,6 +88,9 @@ export const capabilities: CapabilityDeclaration = {
 export const limits: LimitDeclaration = {
   source:
     "https://docs.heyreach.io/hey-reach-api.md (300 requests per minute, all requests on one limit); read 2026-11-14, not confirmed live. The docs do not say whether the limit is per key, per workspace or per organization, and document no rate-limit headers or Retry-After",
+  // The Organization Management API has a separate limit of 300 requests a
+  // minute (https://docs.heyreach.io/hey-reach-api/organization.md).
+  lanes: { organization: [{ perMs: 60_000, requests: 300 }] },
   windows: [{ perMs: 60_000, requests: 300 }],
 };
 
@@ -122,7 +128,7 @@ export const caveats: readonly string[] = [
   "A sender's dailyLimit is null: accountLimits holds several limit pairs and the docs do not say which are daily or what Limit and Max mean. They stay in raw.",
   "A lead's id is its LinkedIn profile URL, the only key GetLead accepts and the only one present in every lead shape. The docs do not say the URL has one canonical form.",
   "HeyReach has no list of every lead. Leads are read per campaign or per saved list: outbound.campaign(id).leads and outbound.list(id).leads work, and outbound.leads.list() is refused. Walking every list would repeat a lead that sits in several lists, drop its campaign and status, and miss leads whose list was deleted, so it is not offered as a complete list.",
-  "A saved list's leads carry tags, custom fields and the auto-tag but no status, campaign or creation time, although the list can be filtered by when a lead was added. A company list's rows are companies, not leads, and are not mapped: read them with raw POST /list/GetCompaniesFromList.",
+  "A saved list's leads carry tags, custom fields and the auto-tag but no status, campaign or creation time, although the list can be filtered by when a lead was added. A company list's rows are companies, not leads, and are not mapped: read them with outbound.native.reads.companiesFromList.",
   "A lead's interest is the name of its newest auto-tag (Interested, Not interested and Generic were seen live; the API reference does not list the names). It is present on a list's leads and absent from a campaign's leads and from lead lookup, where it is null.",
   "A lead's tags come from the list row, or from a second request (POST /lead/GetTags) on lead lookup. A campaign's leads carry no tags, so theirs are empty.",
   "No lead shape carries open, click or reply counts, so engagement is always null. lastActionTime, leadConnectionStatus and leadMessageStatus stay in raw.",
@@ -135,13 +141,16 @@ export const caveats: readonly string[] = [
   "Sequence variants come from payload.messages (or messageVersions), which the docs describe as A/B variants for MESSAGE nodes only; INMAIL and LIKE_POST payloads are not documented.",
   "Stats: replied is totalMessageReplies plus totalInmailReplies. contacted is uniqueLeadsContacted and positive is autoTaggedInterested; the live API returns both but the API reference lists neither, so they are null when absent. totalMessageStarted and totalInmailStarted are not defined in the docs and are not read.",
   "Daily stats are keyed by UTC midnight; the docs do not say which timezone buckets a day or whether endDate is inclusive. Stats need both from and to, or neither.",
-  "Messages and replies are read from conversations. Checked against one live workspace on 2026-11-14: sender is ME or CORRESPONDENT, and each conversation carried its whole thread (longest read: 11 messages). Whether a very long thread is cut short is not known.",
+  "Messages and replies are read from conversations. Checked against one live workspace on 2026-11-14: sender is ME or CORRESPONDENT, and each of 257 conversations carried its whole thread (longest read: 40 messages). Whether a longer thread is cut short is not known.",
+  "Conversations are listed with GetConversationsV3, which pages by cursor and bounds a conversation by the time of its newest message. A since filter is sent as that lower bound and the older messages inside each conversation are then dropped, so a page can hold fewer messages than its conversations do. An until filter cannot be sent, because a conversation that continued past it still holds earlier messages; it is applied after fetching. A page marker saved from before the move to V3 (a number) is not valid and starts from the first page.",
   "A message's id is built from the conversation, the time, the side and the text, so an edited message gets a new id. The live API now returns a messageId the API reference does not list; it stays in raw so that existing ids do not change.",
   "A message's threadId is the LinkedIn account id and the conversation id joined by a colon, because one conversation can only be read back with both. A thread read returns the whole conversation in one page and does not know its campaign, so campaignRef is null.",
   "A message's campaign is known only when the listing is filtered to one campaign; otherwise campaignRef is null. A page is a page of conversations, so it can hold more messages than the limit asked for.",
-  "Replies carry no category: HeyReach's auto-tag is made from a lead's first campaign reply but is stored on the lead, with no link to a message. It is read as the lead's interest and counted in stats as positive. The docs mention a deep-paging ceiling on conversations without stating it.",
+  "Replies carry no category: HeyReach's auto-tag is made from a lead's first campaign reply but is stored on the lead, with no link to a message. It is read as the lead's interest and counted in stats as positive.",
   "The blacklist is two lists read one after the other, leads then companies. An entry's id is prefixed lead- or company- because the two are numbered separately. A blacklisted lead's value is its profile URL, else its email, else its name (kind other); a company's is its name, else its LinkedIn page. matchingStatus and resolutionStage stay in raw.",
-  "A webhook subscription lists one event type. Filtering webhooks by campaign is done after fetching and keeps webhooks that cover every campaign. Custom headers are never requested, because they can hold a secret. HeyReach gives a webhook no creation time.",
+  "A webhook subscription lists one event type. Filtering webhooks by campaign is done after fetching and keeps webhooks that cover every campaign. Custom headers are never requested, because they can hold a secret; a request for one webhook by id (native webhookById, or raw) is always sent with includeCustomHeaders=false. HeyReach gives a webhook no creation time.",
+  "Native reads return HeyReach's own payloads. Checked read-only against the same live workspace on 2026-11-14: checkApiKey, listById, campaignsForLead, myNetworkForSender, isConnection, campaignSequenceV2, statsByCampaign, proxyCountries, conversationsV2, voices, staticClips, elevenLabsConnection, elevenLabsVoices and voiceUsage answered 200; listsForLead, staticClip, senderVoice, webhookById and enrichEmailJob answered a documented 404 because the workspace had nothing to return; companiesFromList answered 400 for a lead list, the workspace having no company list. The five organization reads answer 401 with a workspace key and were not seen with an organization key.",
+  "Three documented reads are not offered: the workspace API keys and a LinkedIn account's proxy (both return secrets, and raw refuses them), and a voice message's audio file, which is not JSON and would not survive the request engine, which reads every body as text. A voice message's transcript and duration are in its conversation.",
   "The workspace's tags cannot be listed: the API creates tags and reads one lead's tags, nothing more. A tag has a name and a colour and no id.",
   "Only the voice_note_received webhook payload is documented. Other events are assumed to share its skeleton, and the lowercase event_type names are inferred from two examples.",
   "Webhooks are not signed; correlation_id is the only identifier and is assumed to be stable across redelivery.",

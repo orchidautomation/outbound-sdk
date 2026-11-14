@@ -1,5 +1,5 @@
 // HeyReach messages. The API has no message endpoint: messages live inside
-// conversations (POST /inbox/GetConversationsV2), so one page of
+// conversations (POST /inbox/GetConversationsV3), so one page of
 // conversations is flattened into its messages. One conversation is read
 // whole from GET /inbox/GetChatroom/{accountId}/{conversationId}, which needs
 // the LinkedIn account as well as the conversation, so a message's `threadId`
@@ -7,18 +7,20 @@
 //
 // Checked against a live workspace on 2026-11-14: `sender` is "ME" for the
 // account's side and "CORRESPONDENT" for the lead's, messages come oldest
-// first, and each conversation carried its whole thread (`messages.length`
-// matched `totalMessages` in every conversation read; the longest had 11).
+// first, each conversation carried its whole thread (`messages.length`
+// matched `totalMessages` in all 257 conversations; the longest had 40), and
+// a conversation's `lastMessageAt` was the time of its newest message.
 
 import type {
   Adapter,
   AdapterContext,
   MessageQuery,
   ReplyQuery,
+  TimeRange,
 } from "../internal/adapter.ts";
 import type { Message, Reply } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
-import { field, isNumber, objects, text, timestamp } from "../internal/json.ts";
+import { field, isString, objects, text, timestamp } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
 import { recordBase, refTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
@@ -26,9 +28,8 @@ import { stableId } from "../internal/sha256.ts";
 import { normalizeBody } from "../internal/text.ts";
 import { PAGE_SIZE } from "./capabilities.ts";
 import type { HeyReachClient } from "./client.ts";
-import { listEnvelope } from "./map.ts";
 
-export const CONVERSATIONS_PATH = "/inbox/GetConversationsV2";
+export const CONVERSATIONS_PATH = "/inbox/GetConversationsV3";
 
 /** The lead's side of a thread. The account's own side is "ME". */
 const FROM_LEAD = "CORRESPONDENT";
@@ -108,12 +109,15 @@ interface ConversationPage {
 const numeric = (id: string): number | null =>
   /^\d+$/u.test(id) ? Number(id) : null;
 
+// The listing bounds conversations by the time of their newest message. Every
+// message at or after `since` sits in a conversation whose newest message is
+// too, so `since` is sent as `from`. `until` cannot be sent: a conversation
+// that went on past it still holds the earlier messages.
 const readConversations = async (
   client: HeyReachClient,
   ctx: AdapterContext,
   query: MessageQuery | ReplyQuery
 ): Promise<ConversationPage> => {
-  const offset = isNumber(query.next) ? query.next : 0;
   const filters: JsonObject = {};
 
   const campaign =
@@ -127,16 +131,47 @@ const readConversations = async (
     filters.leadProfileUrl = query.leadId;
   }
 
-  const envelope = listEnvelope(
-    await client.post(ctx, CONVERSATIONS_PATH, {
-      filters,
-      limit: Math.min(query.limit ?? PAGE_SIZE, PAGE_SIZE),
-      offset,
-    }),
-    offset
-  );
+  const request: JsonObject = {
+    filters,
+    limit: Math.min(query.limit ?? PAGE_SIZE, PAGE_SIZE),
+  };
 
-  return { conversations: envelope.items, next: envelope.next };
+  // The page marker is the `nextCursor` of the page before.
+  if (isString(query.next) && query.next !== "") {
+    request.cursor = query.next;
+  }
+
+  if (query.since !== undefined) {
+    request.from = query.since;
+  }
+
+  const body = await client.post(ctx, CONVERSATIONS_PATH, request);
+  const next = text(field(body, "nextCursor"));
+
+  return {
+    conversations: objects(field(body, "items")),
+    next:
+      field(body, "hasNextPage") === true && next !== null ? next : undefined,
+  };
+};
+
+// A conversation is returned whole, so the messages outside the range asked
+// for are dropped here. A message with no time is outside every range.
+const inRange = (sentAt: string | null, range: TimeRange): boolean => {
+  if (range.since === undefined && range.until === undefined) {
+    return true;
+  }
+
+  if (sentAt === null) {
+    return false;
+  }
+
+  const time = Date.parse(sentAt);
+
+  return (
+    (range.since === undefined || time >= Date.parse(range.since)) &&
+    (range.until === undefined || time <= Date.parse(range.until))
+  );
 };
 
 // A thread id is `<accountId>:<conversationId>`. Conversation ids hold
@@ -178,9 +213,9 @@ export const inboxReaders = (client: HeyReachClient): InboxReaders => ({
       };
 
       return {
-        items: objects(conversation.messages).map((raw) =>
-          toMessage(scope, conversation, raw)
-        ),
+        items: objects(conversation.messages)
+          .map((raw) => toMessage(scope, conversation, raw))
+          .filter((message) => inRange(message.sentAt, query)),
       };
     }
 
@@ -193,11 +228,13 @@ export const inboxReaders = (client: HeyReachClient): InboxReaders => ({
     };
 
     return {
-      items: page.conversations.flatMap((conversation) =>
-        objects(conversation.messages).map((raw) =>
-          toMessage(scope, conversation, raw)
+      items: page.conversations
+        .flatMap((conversation) =>
+          objects(conversation.messages).map((raw) =>
+            toMessage(scope, conversation, raw)
+          )
         )
-      ),
+        .filter((message) => inRange(message.sentAt, query)),
       next: page.next,
     };
   },
@@ -211,11 +248,13 @@ export const inboxReaders = (client: HeyReachClient): InboxReaders => ({
     };
 
     return {
-      items: page.conversations.flatMap((conversation) =>
-        objects(conversation.messages).flatMap((raw) =>
-          isFromLead(raw) ? [toReply(scope, conversation, raw)] : []
+      items: page.conversations
+        .flatMap((conversation) =>
+          objects(conversation.messages).flatMap((raw) =>
+            isFromLead(raw) ? [toReply(scope, conversation, raw)] : []
+          )
         )
-      ),
+        .filter((reply) => inRange(reply.sentAt, query)),
       next: page.next,
     };
   },

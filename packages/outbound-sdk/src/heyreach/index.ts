@@ -21,7 +21,12 @@ import {
   WORKSPACE_ENV,
 } from "./capabilities.ts";
 import { createClient } from "./client.ts";
+import { NATIVE } from "./native.ts";
 import { heyreachEvents } from "./webhooks.ts";
+
+export { NATIVE } from "./native.ts";
+
+export type { HeyReachNative } from "./native.ts";
 
 export const PROVIDER = "heyreach";
 
@@ -54,7 +59,9 @@ const errorMapper = (apiKey: string): ErrorMapper => {
       : byStatus(cause);
 };
 
-export const heyreach = (options: HeyReachOptions = {}): Adapter => {
+export const heyreach = (
+  options: HeyReachOptions = {}
+): Adapter<typeof NATIVE> => {
   const apiKey = requireCredential(options.apiKey, API_KEY_ENV, PROVIDER);
 
   const workspaceId = assertWorkspaceId(
@@ -79,6 +86,7 @@ export const heyreach = (options: HeyReachOptions = {}): Adapter => {
     // Read-only checks passed against one live workspace on 2026-11-14.
     maturity: "beta",
     name: PROVIDER,
+    native: NATIVE,
     raw: client.raw,
     secrets: [apiKey],
     workspaceId,
