@@ -28,7 +28,7 @@ Every HTTP call goes through `RequestEngine`.
 - **Adaptive.** After a 429 the lane pauses for `Retry-After` and the rate halves, then climbs back 5% per successful request. Rate-limit headers, when a vendor sends them, pause the credential until the reset.
 - **Retries are on by default** (4), because every call is a read. 408, 429, 5xx, network errors and per-attempt timeouts retry with exponential backoff and full jitter (1 s base, 60 s cap). 400, 401, 403, 404 and 422 never retry. A caller's abort stops at once.
 - **Budgets a caller sets:** `timeout` per attempt, `deadline` across retries and throttle waits, and `maxRequests` per call.
-- **Pluggable store.** `RateLimitStore` is in memory by default. Implement it on Redis, Cloudflare KV or a Durable Object to share a budget between workers.
+- **Pluggable store.** `RateLimitStore` is in memory by default. `outbound-sdk/redis` shares one budget between processes; implement the same three methods for Cloudflare KV, a Durable Object or a database.
 
 ## Capabilities
 

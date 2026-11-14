@@ -367,6 +367,8 @@ test("heyreach: the organization reads draw on their own lane", async () => {
   assert.deepEqual(
     snapshot?.windows.map((window) => [window.lane, window.used]),
     [
+      // The default budget has two windows: the burst and the minute.
+      ["default", 2],
       ["default", 2],
       ["organization", 2],
     ]

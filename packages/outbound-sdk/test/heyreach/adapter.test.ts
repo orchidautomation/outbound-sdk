@@ -248,7 +248,7 @@ test("heyreach: documented error bodies give the error its message", async () =>
   }
 });
 
-test("heyreach: the documented limit is 300 a minute, with a lane for the Organization API and no headers", async () => {
+test("heyreach: the limits are 15 per 2 seconds and 300 a minute, with a lane for the Organization API and no headers", async () => {
   const { adapter, outbound, settle } = harness(suite);
   await settle(outbound.campaigns.list());
   const [snapshot] = await outbound.limits();
@@ -260,6 +260,7 @@ test("heyreach: the documented limit is 300 a minute, with a lane for the Organi
       window.used,
     ]),
     [
+      ["default", 15, 2000, 1],
       ["default", 300, 60_000, 1],
       ["organization", 300, 60_000, 0],
     ]
@@ -432,4 +433,11 @@ test("heyreach: an adapter lists what it has not confirmed against the live API"
   assert.equal(outbound.capabilities["replies.category"], false);
   assert.equal(outbound.capabilities.workspaces, false);
   assert.equal(outbound.capabilities["events.verify"], "secret");
+});
+
+test("heyreach: the burst limit the live API enforces is declared beside the documented one", () => {
+  assert.deepEqual(heyreach({ apiKey: KEY }).limits.windows, [
+    { perMs: 2000, requests: 15 },
+    { perMs: 60_000, requests: 300 },
+  ]);
 });

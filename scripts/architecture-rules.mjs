@@ -31,6 +31,7 @@ export const layers = {
   providers: [],
   reconcile: ["internal", "sync"],
   redact: ["internal"],
+  redis: ["internal"],
   sync: ["internal"],
   tools: ["internal"],
   tracing: ["internal"],

@@ -103,13 +103,34 @@ A read is excluded only when it returns secrets (API keys, mailbox passwords, pr
 
 ## Rate limits each adapter declares
 
-The SDK uses `share` (default 0.5) of these published numbers, because the limit is shared with the customer's other tools.
+The SDK uses `share` (default 0.5) of these numbers, because the limit is shared with the customer's other tools. You never write a sleep or a retry loop: requests queue under every window, a 429 is waited out and the rate halves for a while, and reads are retried with backoff.
+
+Measured on live workspaces on 2026-11-14: 300 reads fired at once at Instantly all succeeded with no 429 (1,505 requests in 30 seconds), and 100 fired at once at HeyReach all succeeded with no 429 (33 seconds). Smartlead has not been load-tested.
+
+### One budget across processes
+
+The default store counts requests in the process, so three workers on one key each spend their own share. `outbound-sdk/redis` keeps the count in Redis, so they spend one share between them:
+
+```ts
+import { redisRateLimitStore } from "outbound-sdk/redis";
+
+const outbound = createOutbound({
+  adapter: instantly(),
+  rateLimitStore: redisRateLimitStore({
+    // ioredis; node-redis, Upstash and Valkey work the same way.
+    evaluate: (script, keys, args) =>
+      redis.eval(script, keys.length, ...keys, ...args),
+  }),
+});
+```
+
+The package ships no Redis client: you pass a function that runs a script on yours. The check is one atomic script, so two processes can never both take the last slot. If Redis cannot be reached, requests are counted in the process and `onError` is told, so an outage never stops reads and never removes the limit. For another store (Cloudflare KV, a Durable Object, a database), implement the three methods of `RateLimitStore`.
 
 | Adapter | Published limit | Stricter lanes |
 | --- | --- | --- |
 | Instantly | 100 per second and 6,000 per minute, per workspace | `GET /emails`: 20 per minute |
 | Smartlead | 60 per minute (safe for a client key; an admin key is documented at 200) | three endpoints at 10 per minute |
-| HeyReach | 300 per minute; the scope is not documented | none |
+| HeyReach | 15 per 2 seconds (seen live, not documented) and 300 per minute | the organization API: 300 per minute |
 
 ## Confirming an adapter against a live account
 

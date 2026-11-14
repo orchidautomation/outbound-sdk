@@ -90,11 +90,17 @@ export const capabilities: CapabilityDeclaration = {
 
 export const limits: LimitDeclaration = {
   source:
-    "https://docs.heyreach.io/hey-reach-api.md (300 requests per minute, all requests on one limit); read 2026-11-14, not confirmed live. The docs do not say whether the limit is per key, per workspace or per organization, and document no rate-limit headers or Retry-After",
+    "https://docs.heyreach.io/hey-reach-api.md (300 requests per minute, all requests on one limit); read 2026-11-14. Seen live the same day: a burst limit of 15 requests per 2 seconds, which the docs do not mention. The docs do not say whether the limit is per key, per workspace or per organization, and document no rate-limit headers or Retry-After",
   // The Organization Management API has a separate limit of 300 requests a
   // minute (https://docs.heyreach.io/hey-reach-api/organization.md).
   lanes: { organization: [{ perMs: 60_000, requests: 300 }] },
-  windows: [{ perMs: 60_000, requests: 300 }],
+  // The burst limit is not documented. The live API answers 429 with "Limit
+  // is 15 requests per 2 second(s)" (seen 2026-11-14), well before the
+  // documented 300 a minute is reached.
+  windows: [
+    { perMs: 2000, requests: 15 },
+    { perMs: 60_000, requests: 300 },
+  ],
 };
 
 export const costs = {

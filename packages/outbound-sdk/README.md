@@ -105,7 +105,7 @@ There is one error class, `OutboundError`, with a `code`: `NotFound`, `Unauthori
 
 ## Rate limits, retries and resuming
 
-You never write a sleep or a retry loop. Every request stays inside every limit the vendor publishes, one budget is shared by every instance on the same key, a 429 is waited out, and reads are retried with backoff. `listAll` exposes a `cursor`, so a job that dies on page 40 restarts on page 40. Set `timeout`, `retries`, `deadline` and `maxRequests` on the constructor or on any call.
+You never write a sleep or a retry loop, and you can fire hundreds of reads at once. Every request stays inside every limit the vendor publishes, one budget is shared by every instance on the same key, a 429 is waited out, and reads are retried with backoff. `listAll` exposes a `cursor`, so a job that dies on page 40 restarts on page 40. Set `timeout`, `retries`, `deadline` and `maxRequests` on the constructor or on any call. With several workers on one key, `outbound-sdk/redis` shares one budget between them.
 
 ## More
 
