@@ -20,34 +20,45 @@ Each factory also takes `workspaceId` (a label for the client or workspace, part
 
 Generated from the adapters' own declarations. A filter is `server` (the vendor filters), `client` (the SDK filters after fetching and marks the result `derived`) or `no`. A stat is `exact`, `derived` or `no`. A call that needs a `no` is refused as `Unsupported` before any request leaves.
 
-| Capability           | Instantly | Smartlead | HeyReach |
-| -------------------- | --------- | --------- | -------- |
-| `campaigns.status`   | server    | client    | server   |
-| `sequence`           | yes       | yes       | yes      |
-| `senders.list`       | yes       | yes       | yes      |
-| `senders.get`        | yes       | yes       | yes      |
-| `senders.byCampaign` | no        | yes       | no       |
-| `senders.warmup`     | yes       | yes       | no       |
-| `leads.list`         | yes       | yes       | no       |
-| `leads.byCampaign`   | yes       | yes       | yes      |
-| `leads.get`          | yes       | yes       | yes      |
-| `leads.since`        | client    | client    | server   |
-| `leads.timeline`     | yes       | yes       | yes      |
-| `messages.list`      | yes       | yes       | yes      |
-| `messages.body`      | sampled   | full      | full     |
-| `messages.since`     | server    | client    | client   |
-| `replies.list`       | yes       | yes       | yes      |
-| `replies.category`   | vendor    | vendor    | no       |
-| `replies.since`      | server    | client    | client   |
-| `stats.workspace`    | exact     | exact     | exact    |
-| `stats.campaign`     | exact     | exact     | exact    |
-| `stats.byDay`        | exact     | exact     | exact    |
-| `stats.byStep`       | exact     | exact     | no       |
-| `stats.bySender`     | derived   | no        | exact    |
-| `workspaces`         | yes       | yes       | no       |
-| `events.parse`       | yes       | yes       | yes      |
-| `events.verify`      | secret    | signature | secret   |
-| `deletionDetection`  | no        | no        | no       |
+| Capability              | Instantly | Smartlead | HeyReach |
+| ----------------------- | --------- | --------- | -------- |
+| `blocklist`             | yes       | yes       | yes      |
+| `campaigns.settings`    | yes       | yes       | no       |
+| `campaigns.status`      | server    | client    | server   |
+| `deletionDetection`     | no        | no        | no       |
+| `events.parse`          | yes       | yes       | yes      |
+| `events.verify`         | secret    | signature | secret   |
+| `leads.byCampaign`      | yes       | yes       | yes      |
+| `leads.engagement`      | yes       | no        | no       |
+| `leads.get`             | yes       | yes       | yes      |
+| `leads.list`            | yes       | yes       | no       |
+| `leads.since`           | client    | client    | server   |
+| `leads.timeline`        | yes       | yes       | yes      |
+| `lists.leads`           | yes       | no        | yes      |
+| `lists.list`            | yes       | yes       | yes      |
+| `messages.body`         | full      | full      | full     |
+| `messages.byThread`     | yes       | yes       | yes      |
+| `messages.list`         | yes       | yes       | yes      |
+| `messages.since`        | server    | client    | client   |
+| `native`                | no        | no        | no       |
+| `replies.category`      | vendor    | vendor    | no       |
+| `replies.list`          | yes       | yes       | yes      |
+| `replies.since`         | server    | client    | client   |
+| `senders.byCampaign`    | yes       | yes       | yes      |
+| `senders.get`           | yes       | yes       | yes      |
+| `senders.health`        | yes       | yes       | yes      |
+| `senders.list`          | yes       | yes       | yes      |
+| `senders.warmup`        | yes       | yes       | no       |
+| `sequence`              | yes       | yes       | yes      |
+| `sequence.subsequences` | yes       | yes       | no       |
+| `stats.byDay`           | exact     | exact     | exact    |
+| `stats.bySender`        | derived   | exact     | exact    |
+| `stats.byStep`          | exact     | exact     | no       |
+| `stats.campaign`        | exact     | exact     | exact    |
+| `stats.workspace`       | exact     | exact     | exact    |
+| `tags`                  | yes       | yes       | no       |
+| `webhooks.list`         | yes       | yes       | yes      |
+| `workspaces`            | yes       | yes       | no       |
 
 The gaps that matter most:
 

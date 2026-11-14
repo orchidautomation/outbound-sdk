@@ -10,19 +10,22 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { heyreach } from "../../src/heyreach/index.ts";
-import { createOutbound } from "../../src/index.ts";
-import type { Adapter } from "../../src/index.ts";
+import { createOutbound, OutboundError } from "../../src/index.ts";
+import type { Adapter, NativeCatalog } from "../../src/index.ts";
 import { instantly } from "../../src/instantly/index.ts";
 import { smartlead } from "../../src/smartlead/index.ts";
 
 const enabled = process.env.LIVE_TESTS === "1";
 
-const providers: readonly { env: string; make: () => Adapter; name: string }[] =
-  [
-    { env: "INSTANTLY_API_KEY", make: () => instantly(), name: "instantly" },
-    { env: "SMARTLEAD_API_KEY", make: () => smartlead(), name: "smartlead" },
-    { env: "HEYREACH_API_KEY", make: () => heyreach(), name: "heyreach" },
-  ];
+const providers: readonly {
+  env: string;
+  make: () => Adapter<NativeCatalog>;
+  name: string;
+}[] = [
+  { env: "INSTANTLY_API_KEY", make: () => instantly(), name: "instantly" },
+  { env: "SMARTLEAD_API_KEY", make: () => smartlead(), name: "smartlead" },
+  { env: "HEYREACH_API_KEY", make: () => heyreach(), name: "heyreach" },
+];
 
 for (const provider of providers) {
   const skip = !enabled || !process.env[provider.env];
@@ -90,6 +93,124 @@ for (const provider of providers) {
       if (capabilities["replies.list"]) {
         await outbound.replies.list({ limit: 5 });
       }
+    }
+  );
+
+  test(
+    `${provider.name}: every declared account-level read answers`,
+    { skip },
+    async () => {
+      const outbound = createOutbound({
+        adapter: provider.make(),
+        maxRequests: 60,
+      });
+
+      const { capabilities } = outbound;
+      const [campaign] = (await outbound.campaigns.list({ limit: 1 })).items;
+
+      const [sender] = capabilities["senders.list"]
+        ? (await outbound.senders.list({ limit: 1 })).items
+        : [];
+
+      if (campaign !== undefined && capabilities["campaigns.settings"]) {
+        const settings = await outbound.campaign(campaign.ref).settings();
+        assert.equal(settings.campaignRef, campaign.ref);
+      }
+
+      if (campaign !== undefined && capabilities["sequence.subsequences"]) {
+        await outbound.campaign(campaign.ref).subsequences.list({ limit: 5 });
+      }
+
+      if (campaign !== undefined && capabilities["senders.byCampaign"]) {
+        await outbound.campaign(campaign.ref).senders.list({ limit: 5 });
+      }
+
+      if (sender !== undefined && capabilities["senders.health"]) {
+        const health = await outbound.sender(sender.ref).health();
+        assert.equal(health.senderRef, sender.ref);
+      }
+    }
+  );
+
+  test(
+    `${provider.name}: lists, the block list, tags, webhooks and a thread answer`,
+    { skip },
+    async () => {
+      const outbound = createOutbound({
+        adapter: provider.make(),
+        maxRequests: 60,
+      });
+
+      const { capabilities } = outbound;
+
+      if (capabilities["lists.list"]) {
+        const [list] = (await outbound.lists.list({ limit: 1 })).items;
+
+        if (list !== undefined && capabilities["lists.leads"]) {
+          await outbound.list(list.ref).leads.list({ limit: 5 });
+        }
+      }
+
+      if (capabilities.blocklist) {
+        await outbound.blocklist.list({ limit: 5 });
+      }
+
+      if (capabilities.tags) {
+        await outbound.tags.list({ limit: 5 });
+      }
+
+      if (capabilities["webhooks.list"]) {
+        await outbound.webhooks.list({ limit: 5 });
+      }
+
+      if (capabilities["messages.list"] && capabilities["messages.byThread"]) {
+        const messages = (await outbound.messages.list({ limit: 5 })).items;
+
+        const threadId = messages.find(
+          (message) => message.threadId !== null
+        )?.threadId;
+
+        if (threadId !== null && threadId !== undefined) {
+          const thread = await outbound.thread(threadId).messages();
+          assert.ok(thread.items.length > 0, "a thread holds its own message");
+        }
+      }
+    }
+  );
+
+  test(
+    `${provider.name}: every native read without required parameters answers`,
+    { skip },
+    async () => {
+      const outbound = createOutbound({
+        adapter: provider.make(),
+        maxRequests: 200,
+        retries: 1,
+      });
+
+      const failures: string[] = [];
+
+      for (const [name, read] of Object.entries(outbound.native.catalog)) {
+        const needsInput = Object.values(read.params ?? {}).some(
+          (param) => param.required === true || param.in === "path"
+        );
+
+        if (needsInput || read.baseUrl !== undefined) {
+          continue;
+        }
+
+        try {
+          // oxlint-disable-next-line no-await-in-loop -- one read at a time stays inside the rate limit.
+          await outbound.native.read(name);
+        } catch (error) {
+          // A plan that lacks a feature answers Unauthorized; that is not a wrong path.
+          if (!OutboundError.is(error) || error.code !== "Unauthorized") {
+            failures.push(`${name}: ${String(error)}`);
+          }
+        }
+      }
+
+      assert.deepEqual(failures, []);
     }
   );
 
