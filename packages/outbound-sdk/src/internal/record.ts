@@ -30,3 +30,9 @@ export const refTo = (
   sourceId === null || sourceId === undefined || sourceId === ""
     ? null
     : makeRef(identity.provider, identity.workspaceId, sourceId);
+
+/** Refs to other records of the same provider and workspace, skipping empty ids. */
+export const refsTo = (
+  identity: Identity,
+  sourceIds: readonly (string | number | null | undefined)[]
+): string[] => sourceIds.flatMap((sourceId) => refTo(identity, sourceId) ?? []);

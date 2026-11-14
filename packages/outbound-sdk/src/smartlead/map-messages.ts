@@ -138,6 +138,8 @@ const activityMessages = (
     campaignId: text(row.campaign_id),
     leadId: text(row.lead_id),
     stepIndex: stepIndex(activity.email_seq_number),
+    // The lead-in-campaign mapping id is the master inbox's thread id.
+    threadId: text(row.email_lead_map_id),
   };
 
   const sent: Message = {
@@ -226,41 +228,95 @@ export const toHistoryMessage = (
   };
 };
 
+// A thread's messages are documented in two shapes: `direction` with
+// `sent_at` / `received_at` (the newer examples) and `type` SENT / REPLY with
+// `time` (the older message history).
+const isInbound = (item: JsonObject): boolean =>
+  text(item.direction) === "inbound" || text(item.type) === "REPLY";
+
+const threadParts = (
+  threadId: string | null,
+  item: JsonObject
+): MessageParts => {
+  const inbound = isInbound(item);
+  const time = item.sent_at ?? item.received_at ?? item.time;
+
+  return {
+    body: text(item.body) ?? text(item.email_body),
+    raw: item,
+    sentAt: time,
+    sourceId:
+      text(item.id) ??
+      text(inbound ? item.message_id : item.stats_id) ??
+      stableId(threadId, text(item.direction), text(time), text(item.subject)),
+    subject: text(item.subject),
+  };
+};
+
+// The thread names its campaign and mailbox by id. Its lead comes with an
+// address only in the documented examples, so the id is read when present.
+const threadPlace = (thread: JsonObject): MessagePlace => ({
+  campaignId: text(field(thread.campaign, "id")),
+  leadId: text(field(thread.lead, "id")) ?? text(thread.lead_id),
+  senderId: text(field(thread.email_account, "id")),
+  threadId: text(thread.campaign_lead_map_id),
+});
+
+/** `GET /master-inbox/{id}` -> every message of the thread, in order. */
+export const toThreadMessages = (
+  identity: Identity,
+  thread: JsonObject,
+  includeBody: boolean
+): Message[] => {
+  const place = threadPlace(thread);
+
+  return objects(thread.message_history).map((item) => ({
+    ...messageFields(
+      identity,
+      place,
+      threadParts(place.threadId ?? null, item),
+      includeBody
+    ),
+    direction: isInbound(item) ? "in" : "out",
+  }));
+};
+
 /**
- * One thread of `POST /master-inbox/inbox-replies` -> its latest reply. The
- * item names the lead by address and campaign-lead mapping only.
+ * One thread of `POST /master-inbox/inbox-replies` -> its replies: every
+ * inbound message of `message_history` when the thread carries one, otherwise
+ * the latest reply. The category is the lead's, so every reply of the thread
+ * gets the same one.
  */
-export const toInboxReply = (
+export const toInboxReplies = (
   identity: Identity,
   item: JsonObject,
   categories: CategoryMap,
   includeBody: boolean
-): Reply => {
+): Reply[] => {
   const last = item.last_message;
   const category = categories.get(text(field(item.category, "id")) ?? "");
+  const place = threadPlace(item);
+  const history = objects(item.message_history).filter(isInbound);
 
-  return {
-    ...messageFields(
-      identity,
-      {
-        campaignId: text(field(item.campaign, "id")),
-        leadId: null,
-        senderId: text(field(item.email_account, "id")),
-        threadId: text(item.campaign_lead_map_id),
-      },
-      {
-        body: text(field(last, "body")),
-        raw: item,
-        sentAt: field(last, "received_at"),
-        sourceId: text(field(last, "id")) ?? text(item.id) ?? "",
-        subject: text(field(last, "subject")),
-      },
-      includeBody
-    ),
+  const parts: MessageParts[] =
+    history.length > 0
+      ? history.map((message) => threadParts(place.threadId ?? null, message))
+      : [
+          {
+            body: text(field(last, "body")),
+            raw: item,
+            sentAt: field(last, "received_at"),
+            sourceId: text(field(last, "id")) ?? text(item.id) ?? "",
+            subject: text(field(last, "subject")),
+          },
+        ];
+
+  return parts.map((part) => ({
+    ...messageFields(identity, place, part, includeBody),
     category: category ?? "unknown",
     categorySource: category === undefined ? null : "vendor",
     direction: "in",
     // Smartlead's only automatic-reply signal is the Out Of Office category.
     isAuto: category === "ooo" ? true : null,
-  };
+  }));
 };

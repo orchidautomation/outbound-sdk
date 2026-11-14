@@ -15,6 +15,8 @@ import {
   WORKSPACE_ENV,
 } from "./capabilities.ts";
 import { createClient } from "./client.ts";
+import { NATIVE } from "./native.ts";
+import type { SmartleadNative } from "./native.ts";
 import { smartleadEvents } from "./webhooks.ts";
 
 export const PROVIDER = "smartlead";
@@ -32,7 +34,11 @@ export interface SmartleadOptions {
   readonly capabilities?: CapabilityDeclaration | undefined;
 }
 
-export const smartlead = (options: SmartleadOptions = {}): Adapter => {
+export type { SmartleadNative } from "./native.ts";
+
+export const smartlead = (
+  options: SmartleadOptions = {}
+): Adapter<SmartleadNative> => {
   const apiKey = requireCredential(options.apiKey, API_KEY_ENV, PROVIDER);
 
   const workspaceId = assertWorkspaceId(
@@ -56,6 +62,7 @@ export const smartlead = (options: SmartleadOptions = {}): Adapter => {
     mapError: makeErrorMapper(PROVIDER, { secrets: [apiKey] }),
     maturity: "unverified",
     name: PROVIDER,
+    native: NATIVE,
     raw: client.raw,
     // The key is in every URL, so the engine must redact it everywhere.
     secrets: [apiKey],

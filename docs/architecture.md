@@ -28,11 +28,20 @@ Every HTTP call goes through `RequestEngine`.
 - **Adaptive.** After a 429 the lane pauses for `Retry-After` and the rate halves, then climbs back 5% per successful request. Rate-limit headers, when a vendor sends them, pause the credential until the reset.
 - **Retries are on by default** (4), because every call is a read. 408, 429, 5xx, network errors and per-attempt timeouts retry with exponential backoff and full jitter (1 s base, 60 s cap). 400, 401, 403, 404 and 422 never retry. A caller's abort stops at once.
 - **Budgets a caller sets:** `timeout` per attempt, `deadline` across retries and throttle waits, and `maxRequests` per call.
-- **Pluggable store.** `RateLimitStore` is in memory by default. Implement it on Redis, Cloudflare KV or a Durable Object to share a budget between workers.
+- **Pluggable store.** `RateLimitStore` is in memory by default. `outbound-sdk/redis` shares one budget between processes; implement the same three methods for Cloudflare KV, a Durable Object or a database.
 
 ## Capabilities
 
 An adapter declares what it can do as a flat map (`Capabilities`). Anything it does not declare is unsupported. Values are graded: a filter is `server`, `client` or `false`; a stat is `exact`, `derived` or `false`. The wrapper checks the map before any request and before any plugin. When a filter is `client`, the wrapper filters after fetching and marks the result `derived`.
+
+## Two layers of reads
+
+Modelled on Files SDK: a small unified surface, and a typed way down to the vendor for everything else.
+
+- **Normalized reads** are what every vendor shares: campaigns and their settings, sequences, senders and their health, leads, lists, messages, replies, stats, tags, the block list and webhooks. They return the SDK's own records and mean the same thing on every adapter.
+- **Native reads** are the rest. No outbound vendor publishes a client of its own, so each adapter declares a catalog (`defineNative`) and the instance exposes it as `outbound.native`, typed from the adapter that was passed in. A native read is one vendor request through the same engine, and returns the vendor's payload untouched.
+
+`docs/coverage/<vendor>.md` accounts for every endpoint a vendor documents, and a test holds each table to the adapter. An adapter may not drop a read: it normalizes it, catalogues it, or excludes it for one of the reasons in `docs/coverage/README.md`.
 
 ## Results
 

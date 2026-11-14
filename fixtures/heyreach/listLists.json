@@ -1,0 +1,23 @@
+{
+  "totalCount": 3,
+  "items": [
+    {
+      "id": 3457,
+      "name": "Example List 1",
+      "totalItemsCount": 120,
+      "listType": "USER_LIST",
+      "creationTime": "2024-08-29T09:34:56.5417789Z",
+      "campaignIds": [
+        274079
+      ]
+    },
+    {
+      "id": 3458,
+      "name": "Example Company List",
+      "totalItemsCount": 45,
+      "listType": "COMPANY_LIST",
+      "creationTime": "2024-09-02T11:00:00.25Z",
+      "campaignIds": []
+    }
+  ]
+}

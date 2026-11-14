@@ -1,0 +1,9 @@
+[
+  {
+    "id": 228361169,
+    "email_or_domain": "blocked.example.net",
+    "created_at": "2025-11-27T16:02:10.000Z",
+    "source": "manual",
+    "client_id": null
+  }
+]

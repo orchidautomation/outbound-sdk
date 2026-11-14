@@ -5,7 +5,8 @@
   "linkedInUserListName": "Example Lead List 1",
   "linkedInUserListId": 123456,
   "campaignAccountIds": [
-    113298
+    1101,
+    1103
   ],
   "status": "IN_PROGRESS",
   "progressStats": {
@@ -21,5 +22,8 @@
   "excludeHasOtherAccConversations": false,
   "excludeContactedFromSenderInOtherCampaign": false,
   "excludeListId": null,
-  "organizationUnitId": 12345
+  "organizationUnitId": 12345,
+  "excludeFromLeadBlacklist": false,
+  "excludeFromCompanyBlacklist": false,
+  "startedAt": "2025-12-02T09:00:00Z"
 }

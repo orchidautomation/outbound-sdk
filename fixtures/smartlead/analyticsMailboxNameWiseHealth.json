@@ -1,0 +1,21 @@
+{
+  "ok": true,
+  "data": {
+    "email_health_metrics": [
+      {
+        "email_account": "person2@example.com",
+        "sent": 320,
+        "opened": 140,
+        "replied": 12,
+        "bounced": 3
+      },
+      {
+        "email_account": "Person1@example.com",
+        "sent": 500,
+        "opened": 250,
+        "replied": 30,
+        "bounced": 5
+      }
+    ]
+  }
+}

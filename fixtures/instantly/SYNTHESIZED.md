@@ -17,57 +17,48 @@ NOT synthesized:
 
 ## Files
 
-- countUnreadEmails.json
-- createWebhook.json
+Only the files in this folder are listed. Values are fake: reserved domains and placeholder names.
+
+Added on 2026-11-14 for the account-level reads, with values chosen so that no two mapped fields share one: `getAccountWarmupAnalytics.json`, `getEmail.json`, `listBlockListEntries*.json`, `listCustomTagMappings.json`, `listCustomTags*.json`, `listLeadLabels.json`, `listLeadLists*.json`, `listSubsequences*.json`, `listWebhooks*.json`, `testAccountVitals.json`. `getCampaign.json`, `listCampaigns*.json`, `getLead.json`, `listLeads*.json`, `listAccounts*.json`, `listEmails*.json` and `listReplies*.json` were edited the same day for the same reason (distinct settings, engagement counts, tags, and one truncated body per list). These were written by hand from the same schema, not by `gen.py`.
+
+Added on 2026-11-14 for the lookup by email: `listLeadsByEmail*.json`, the response of `POST /leads/list` with `contacts` set, written by hand from the same schema. One address is in two campaigns and one list, and one record spells it with capitals, which is an assumption about what Instantly can return, not something documented.
+
 - getAccount.json
 - getAccountDailyAnalytics.json
-- getAdminWorkspace.json
+- getAccountWarmupAnalytics.json
 - getCampaign.json
-- getCampaignAnalytics.json
 - getCampaignAnalyticsDaily.json
 - getCampaignAnalyticsOverview.json
 - getCampaignAnalyticsSteps.json
-- getCampaignSendingStatus.json
-- getCampaignSequence.json
 - getCurrentWorkspace.json
 - getEmail.json
 - getLead.json
-- getSubsequence.json
-- getSubsequenceAnalytics.json
-- getWebhook.json
-- getWorkspacePlanDetails.json
-- listAccountCampaignMappings.json
-- listAccountCampaignMappings.page2.json
 - listAccounts.json
 - listAccounts.page2.json
-- listApiKeys.json
-- listApiKeys.page2.json
+- listBlockListEntries.json
+- listBlockListEntries.page2.json
 - listCampaigns.json
 - listCampaigns.page2.json
+- listCustomTagMappings.json
+- listCustomTags.byIds.json
 - listCustomTags.json
 - listCustomTags.page2.json
 - listEmails.json
 - listEmails.page2.json
 - listLeadLabels.json
-- listLeadLabels.page2.json
 - listLeadLists.json
 - listLeadLists.page2.json
 - listLeads.json
 - listLeads.page2.json
+- listLeadsByEmail.json
+- listLeadsByEmail.page2.json
 - listReplies.json
 - listReplies.page2.json
 - listSubsequences.json
 - listSubsequences.page2.json
-- listWebhookEventTypes.json
-- listWebhookEvents.json
-- listWebhookEvents.page2.json
 - listWebhooks.json
 - listWebhooks.page2.json
-- listWorkspaceGroupMembers.json
-- listWorkspaceGroupMembers.page2.json
-- listWorkspaceMembers.json
-- listWorkspaceMembers.page2.json
-- searchCampaignsByLeadEmail.json
+- testAccountVitals.json
 - webhook.account_error.json
 - webhook.campaign_completed.json
 - webhook.email_bounced.json

@@ -328,7 +328,7 @@ test("the weakest member decides maturity, and caveats name their member", () =>
     ]),
   });
 
-  assert.equal(outbound.maturity, "unverified");
+  assert.equal(outbound.maturity, "beta");
   assert.match(outbound.caveats[0] ?? "", /^instantly \(client-a\): /u);
 });
 

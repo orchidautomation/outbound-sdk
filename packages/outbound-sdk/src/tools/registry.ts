@@ -4,6 +4,12 @@ import { OutboundError } from "../internal/errors.ts";
 import type { Json } from "../internal/json.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
 import {
+  audienceLists,
+  campaignSetup,
+  deliverabilityCheck,
+  vendorRead,
+} from "./account-tools.ts";
+import {
   campaignOverview,
   campaignTrend,
   replySamples,
@@ -83,6 +89,10 @@ export const TOOL_NAMES = [
   "lead_runway",
   "compare_clients",
   "cross_channel_lead",
+  "campaign_setup",
+  "deliverability_check",
+  "audience_lists",
+  "vendor_read",
 ] as const;
 
 export type ToolName = (typeof TOOL_NAMES)[number];
@@ -90,6 +100,8 @@ export type ToolName = (typeof TOOL_NAMES)[number];
 export interface ToolsOptions {
   /** Offer only these tools. Defaults to every tool the instance can serve. */
   readonly only?: readonly ToolName[] | undefined;
+  /** More tools to offer after the built-in ones, for example `insightTools(outbound)`. */
+  readonly extra?: readonly OutboundTool[] | undefined;
 }
 
 /**
@@ -109,6 +121,10 @@ export const createTools = (
     bind(outbound, leadRunway),
     bind(outbound, compareClients),
     bind(outbound, crossChannelLead),
+    bind(outbound, campaignSetup),
+    bind(outbound, deliverabilityCheck),
+    bind(outbound, audienceLists),
+    bind(outbound, vendorRead),
   ];
 
   const wanted =
@@ -118,11 +134,19 @@ export const createTools = (
   const available = new Map([
     ["clients", "clients" in outbound],
     ["identity", "person" in outbound],
+    // Offered only when the vendor has reads of its own and no plugin turned them off.
+    [
+      "native",
+      outbound.capabilities.native &&
+        Object.keys(outbound.native.catalog).length > 0,
+    ],
   ]);
 
-  return all.filter(
+  const offered = all.filter(
     (tool) =>
       (wanted === undefined || wanted.has(tool.name)) &&
       tool.needs.every((need) => available.get(need) ?? false)
   );
+
+  return [...offered, ...(options.extra ?? [])];
 };

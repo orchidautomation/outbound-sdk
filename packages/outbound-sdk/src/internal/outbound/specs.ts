@@ -20,6 +20,7 @@ import type {
   Sequence,
   Workspace,
 } from "../entities.ts";
+import { OutboundError } from "../errors.ts";
 import type {
   CampaignFilters,
   Include,
@@ -122,24 +123,57 @@ export const senderGet = (core: Core): GetSpec<Sender> => ({
 
 export const leadList = (core: Core): ListSpec<Lead, LeadFilters> => ({
   action: "leads.list",
-  keyOf: refOf,
+  // A lookup returns one record per campaign the person is in. On a vendor
+  // whose lead id is the same in every campaign those records share a ref,
+  // so the campaign is part of what tells them apart.
+  keyOf: (lead, filters) =>
+    filters.email === undefined && filters.linkedinUrl === undefined
+      ? lead.ref
+      : `${lead.ref} ${lead.campaignRef ?? ""}`,
   prepare: (filters) => {
+    if (filters.campaignId !== undefined && filters.listId !== undefined) {
+      throw new OutboundError(
+        "Invalid",
+        "Leads can be listed by campaign or by list, not both at once"
+      );
+    }
+
+    const lookup =
+      filters.email !== undefined || filters.linkedinUrl !== undefined;
+
+    if (lookup) {
+      requireCapability(
+        core.gate,
+        "leads.lookup",
+        "Finding a lead by email or LinkedIn profile"
+      );
+    }
+
     // Some vendors have no global lead list: leads exist only per campaign.
-    if (filters.campaignId === undefined) {
-      requireCapability(core.gate, "leads.list", "Listing leads");
-    } else {
+    if (filters.listId !== undefined) {
+      requireCapability(core.gate, "lists.leads", "Listing a list's leads");
+    } else if (filters.campaignId !== undefined) {
       requireCapability(
         core.gate,
         "leads.byCampaign",
         "Listing a campaign's leads"
       );
+    } else if (!lookup) {
+      // A lookup by identifier does not need the list of every lead.
+      requireCapability(core.gate, "leads.list", "Listing leads");
     }
 
     if (hasRange(filters)) {
       requireCapability(core.gate, "leads.since", "Filtering leads by date");
     }
 
-    return { campaignId: filters.campaignId, ...normalizeRange(filters) };
+    return {
+      campaignId: filters.campaignId,
+      email: filters.email?.trim().toLowerCase(),
+      linkedinUrl: filters.linkedinUrl?.trim(),
+      listId: filters.listId,
+      ...normalizeRange(filters),
+    };
   },
   schema: leadSchema,
   toOperation: (filters, page) => ({
@@ -164,6 +198,14 @@ export const messageList = (core: Core): ListSpec<Message, MessageFilters> => ({
   prepare: (filters) => {
     requireCapability(core.gate, "messages.list", "Listing messages");
 
+    if (filters.threadId !== undefined) {
+      requireCapability(
+        core.gate,
+        "messages.byThread",
+        "Reading one conversation"
+      );
+    }
+
     if (wantsBody(filters.include)) {
       requireCapability(core.gate, "messages.body", "Reading message bodies");
     }
@@ -180,6 +222,7 @@ export const messageList = (core: Core): ListSpec<Message, MessageFilters> => ({
       campaignId: filters.campaignId,
       include: filters.include,
       leadId: filters.leadId,
+      threadId: filters.threadId,
       ...normalizeRange(filters),
     };
   },
@@ -191,6 +234,7 @@ export const messageList = (core: Core): ListSpec<Message, MessageFilters> => ({
       includeBody: wantsBody(filters.include),
       leadId: filters.leadId,
       since: filters.since,
+      threadId: filters.threadId,
       until: filters.until,
       ...page,
     },

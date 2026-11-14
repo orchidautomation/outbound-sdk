@@ -20,6 +20,7 @@ export class PageWalker<Item> implements ListAll<Item> {
   readonly #options: WalkerOptions<Item>;
   #cursor: string | undefined;
   #meta: ResultMeta | undefined;
+  #truncated = false;
 
   constructor(options: WalkerOptions<Item>) {
     this.#options = options;
@@ -32,6 +33,10 @@ export class PageWalker<Item> implements ListAll<Item> {
 
   get meta(): ResultMeta | undefined {
     return this.#meta;
+  }
+
+  get truncated(): boolean {
+    return this.#truncated;
   }
 
   async *[Symbol.asyncIterator](): AsyncGenerator<Item, void, undefined> {
@@ -55,6 +60,9 @@ export class PageWalker<Item> implements ListAll<Item> {
           }
 
           if (max !== undefined && yielded >= max) {
+            // Another record exists past the cap.
+            this.#truncated = true;
+
             return;
           }
 
@@ -68,6 +76,13 @@ export class PageWalker<Item> implements ListAll<Item> {
       this.#cursor = fetched.page.cursor;
 
       if (this.#cursor === undefined) {
+        return;
+      }
+
+      if (max !== undefined && yielded >= max) {
+        // The cap fell on the end of a page and the vendor has more pages.
+        this.#truncated = true;
+
         return;
       }
     }

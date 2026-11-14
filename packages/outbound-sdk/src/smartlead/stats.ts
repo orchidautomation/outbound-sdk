@@ -7,12 +7,18 @@
 import type { AdapterContext, StatsQuery } from "../internal/adapter.ts";
 import type { MetricRow } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
-import { field, isJsonObject, objects } from "../internal/json.ts";
+import {
+  emailAddress,
+  field,
+  isJsonObject,
+  objects,
+} from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
 import type { SmartleadClient } from "./client.ts";
 import {
   dayRow,
   lifetimeRow,
+  mailboxRow,
   overallRow,
   stepRows,
   TIMEZONE,
@@ -182,6 +188,45 @@ const stepTotals = async (
   );
 };
 
+// The per-mailbox list is keyed by address and has no filter for one mailbox,
+// so the mailbox is read first for its address and its row is picked here.
+const senderTotal = async (
+  client: SmartleadClient,
+  ctx: AdapterContext,
+  scope: RowScope,
+  query: StatsQuery
+): Promise<MetricRow[]> => {
+  const account = dataOf(
+    client,
+    await client.get(
+      ctx,
+      `/email-accounts/${encodeURIComponent(scope.scopeId)}/`
+    ),
+    "the email account"
+  );
+
+  const address = emailAddress(account.from_email);
+  const range = resolveRange(query, false);
+
+  const body = await client.get(
+    ctx,
+    "/analytics/mailbox/name-wise-health-metrics",
+    {
+      query: { end_date: range.to, start_date: range.from, timezone: TIMEZONE },
+    }
+  );
+
+  return [
+    mailboxRow(
+      scope,
+      objects(field(unwrap(body), "email_health_metrics")).find(
+        (metrics) =>
+          address !== null && emailAddress(metrics.email_account) === address
+      )
+    ),
+  ];
+};
+
 /** Reads the analytics endpoint that matches the scope and grouping. */
 export const readStats = async (
   client: SmartleadClient,
@@ -194,19 +239,17 @@ export const readStats = async (
     scopeId: query.scopeId ?? client.identity.workspaceId,
   };
 
-  if (query.scope === "sender") {
-    throw unsupported(client, "Smartlead has no documented per-sender totals");
-  }
-
-  if (query.scope === "step") {
+  if (query.scope === "sender" || query.scope === "step") {
     if (query.by === "day") {
       throw unsupported(
         client,
-        "Smartlead reports step analytics as totals only"
+        "Smartlead reports step and mailbox analytics as totals only"
       );
     }
 
-    return await stepTotals(client, ctx, scope, query);
+    return query.scope === "step"
+      ? await stepTotals(client, ctx, scope, query)
+      : await senderTotal(client, ctx, scope, query);
   }
 
   if (query.by === "day") {

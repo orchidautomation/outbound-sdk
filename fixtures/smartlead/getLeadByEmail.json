@@ -1,0 +1,37 @@
+{
+  "id": 2995276770,
+  "first_name": "Alex",
+  "last_name": "Example",
+  "email": "person1@example.com",
+  "phone_number": "+15550100",
+  "company_name": "Example Co",
+  "website": "https://example.com",
+  "location": "Example City",
+  "linkedin_profile": "https://www.linkedin.com/in/example-person-1",
+  "company_url": "https://example.com",
+  "custom_fields": {
+    "job_title": "CEO",
+    "industry": "Technology"
+  },
+  "is_unsubscribed": false,
+  "unsubscribed_client_id_map": null,
+  "created_at": "2025-11-25T12:54:54.000Z",
+  "lead_campaign_data": [
+    {
+      "campaign_lead_map_id": 2433664091,
+      "campaign_id": 2710262,
+      "campaign_name": "Example Co - High Intent Leads guide",
+      "client_id": 456,
+      "client_email": "client1@example.com",
+      "lead_category_id": 1
+    },
+    {
+      "campaign_lead_map_id": 2433664092,
+      "campaign_id": 2710100,
+      "campaign_name": "Example Co - Follow up",
+      "client_id": 456,
+      "client_email": "client1@example.com",
+      "lead_category_id": null
+    }
+  ]
+}

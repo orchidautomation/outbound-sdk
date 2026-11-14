@@ -5,6 +5,14 @@ import type { TimeRange } from "../adapter.ts";
 import type { Capabilities } from "../capabilities.ts";
 import type { LimitsSnapshot, OperationOptions } from "../engine/engine.ts";
 import type {
+  BlockEntry,
+  CampaignSettings,
+  LeadList,
+  SenderHealth,
+  Tag,
+  WebhookSubscription,
+} from "../entities-account.ts";
+import type {
   Campaign,
   CampaignStatus,
   Evidence,
@@ -20,6 +28,12 @@ import type {
 } from "../entities.ts";
 import type { OutboundError } from "../errors.ts";
 import type { Json } from "../json.ts";
+import type {
+  NativeCatalog,
+  NativeParamsOf,
+  NeedsParams,
+  NoNative,
+} from "../native.ts";
 
 export interface ResultMeta {
   /** `exact` from the vendor, `sampled` when partial, `derived` when we computed or filtered it. */
@@ -66,6 +80,8 @@ export interface ListAll<Item> extends AsyncIterable<Item> {
   readonly cursor: string | undefined;
   /** The meta of the last page fetched. */
   readonly meta: ResultMeta | undefined;
+  /** `true` once `max` stopped the walk while more records existed. */
+  readonly truncated: boolean;
   /** Collects every record into an array. */
   readonly toArray: () => Promise<Item[]>;
 }
@@ -124,11 +140,23 @@ export interface SenderFilters {
 
 export interface LeadFilters extends TimeRange {
   readonly campaignId?: string | undefined;
+  /** A saved lead list. Not together with `campaignId`. */
+  readonly listId?: string | undefined;
+  /** Only the records of the person with exactly this email address. */
+  readonly email?: string | undefined;
+  /** Only the records of the person with exactly this LinkedIn profile. */
+  readonly linkedinUrl?: string | undefined;
+}
+
+export interface WebhookFilters {
+  readonly campaignId?: string | undefined;
 }
 
 export interface MessageFilters extends TimeRange {
   readonly campaignId?: string | undefined;
   readonly leadId?: string | undefined;
+  /** A `threadId` from an earlier message. */
+  readonly threadId?: string | undefined;
   readonly include?: readonly Include[] | undefined;
 }
 
@@ -166,8 +194,18 @@ export interface CampaignHandle {
   readonly sequence: (
     options?: OperationOptions
   ) => Promise<WithMeta<Sequence>>;
+  /** The schedule, daily caps, tracking and stop rules. */
+  readonly settings: (
+    options?: OperationOptions
+  ) => Promise<WithMeta<CampaignSettings>>;
+  /** The follow-up sequences attached to the campaign. */
+  readonly subsequences: ReadCollection<Sequence, Record<never, never>>;
+  readonly webhooks: ReadCollection<WebhookSubscription, Record<never, never>>;
   readonly senders: ReadCollection<Sender, Scoped<SenderFilters, "campaignId">>;
-  readonly leads: ReadCollection<Lead, Scoped<LeadFilters, "campaignId">>;
+  readonly leads: ReadCollection<
+    Lead,
+    Scoped<LeadFilters, "campaignId" | "listId">
+  >;
   readonly messages: ReadCollection<
     Message,
     Scoped<MessageFilters, "campaignId">
@@ -188,6 +226,28 @@ export interface SenderHandle {
   readonly warmup: (
     options?: OperationOptions
   ) => Promise<NonNullable<Sender["warmup"]>>;
+  /** DNS records, connection state and warmup traffic. */
+  readonly health: (
+    options?: OperationOptions
+  ) => Promise<WithMeta<SenderHealth>>;
+}
+
+export interface ListHandle {
+  readonly id: string;
+  readonly leads: ReadCollection<
+    Lead,
+    Scoped<LeadFilters, "campaignId" | "listId">
+  >;
+}
+
+export interface ThreadHandle {
+  readonly id: string;
+  /** Every message of the conversation, oldest first. */
+  readonly messages: (
+    options?: OperationOptions & {
+      readonly include?: readonly Include[] | undefined;
+    }
+  ) => Promise<PageResult<Message>>;
 }
 
 export interface LeadHandle {
@@ -220,6 +280,45 @@ export interface RawClient {
   ) => Promise<Json>;
 }
 
+export type NativeParams = Readonly<Record<string, Json | undefined>>;
+
+export interface NativeResult {
+  /** The vendor's response, as it was sent. Not normalized and not redacted. */
+  readonly data: Json;
+  readonly meta: ResultMeta;
+}
+
+type NativeArguments<Read> =
+  NeedsParams<Read> extends true
+    ? [params: NativeParamsOf<Read>, options?: OperationOptions]
+    : [params?: NativeParamsOf<Read>, options?: OperationOptions];
+
+/** One function per catalogued read, typed from the adapter's catalog. */
+export type NativeReads<Native> = {
+  readonly [Name in keyof Native]: (
+    ...args: NativeArguments<Native[Name]>
+  ) => Promise<NativeResult>;
+};
+
+/**
+ * The vendor's own reads that have no normalized form. Every one is a read:
+ * the catalog holds nothing that changes vendor data. Each call is one vendor
+ * request; pass the vendor's own paging parameters to page.
+ */
+export interface NativeClient<Native extends NativeCatalog = NoNative> {
+  readonly provider: string;
+  /** What this vendor offers beyond the normalized reads, with each read's parameters. */
+  readonly catalog: Native;
+  /** The reads as typed functions: `outbound.native.reads.inboxUnread({ limit: 20 })`. */
+  readonly reads: NativeReads<Native>;
+  /** A read by name, for callers that learn the name at run time. */
+  readonly read: (
+    name: string,
+    params?: NativeParams,
+    options?: OperationOptions
+  ) => Promise<NativeResult>;
+}
+
 export interface EstimateQuery {
   /** The listing or lookup to estimate, for example `leads.list`. */
   readonly action: string;
@@ -249,10 +348,23 @@ export interface OutboundApi {
   readonly messages: ReadCollection<Message, MessageFilters>;
   readonly replies: ReadCollection<Reply, ReplyFilters>;
   readonly workspaces: ReadCollection<Workspace, Record<never, never>>;
+  /** Saved lead lists. */
+  readonly lists: ReadCollection<LeadList, Record<never, never>>;
+  /** The addresses, domains and profiles the account never contacts. */
+  readonly blocklist: ReadCollection<BlockEntry, Record<never, never>>;
+  readonly tags: ReadCollection<Tag, Record<never, never>>;
+  /** The webhooks registered with the vendor. */
+  readonly webhooks: ReadCollection<WebhookSubscription, WebhookFilters>;
   readonly raw: RawClient;
+  /** The vendor's own reads, by name, for what has no normalized form. */
+  readonly native: NativeClient;
   readonly campaign: (id: string) => CampaignHandle;
   readonly sender: (id: string) => SenderHandle;
   readonly lead: (id: string) => LeadHandle;
+  /** One saved lead list. */
+  readonly list: (id: string) => ListHandle;
+  /** One conversation, by the `threadId` a message carries. */
+  readonly thread: (id: string) => ThreadHandle;
   /** The same API scoped to one client or workspace. */
   readonly workspace: (id: string) => OutboundApi;
   readonly stats: (options?: TopLevelStatsOptions) => Promise<StatsResult>;

@@ -262,7 +262,7 @@ test("the MCP server lists read-only tools and runs one", async () => {
     }[];
   }>(list);
 
-  assert.equal(tools.length, 6);
+  assert.equal(tools.length, 9);
   assert.ok(
     tools.every(
       (tool) =>

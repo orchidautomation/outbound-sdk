@@ -2,7 +2,7 @@
 
 # outbound-sdk
 
-One small, typed, read-only TypeScript API over outbound sending tools: Instantly, Smartlead and HeyReach. It never writes to a vendor tool, stores nothing and calls no AI model.
+One small, typed, read-only TypeScript API over outbound sending tools: Instantly, Smartlead and HeyReach. What the three share is normalized; everything else each one can report is still there through a typed native catalog, so nothing readable is dropped. It never writes to a vendor tool, stores nothing and calls no AI model.
 
 ```ts
 import { createOutbound } from "outbound-sdk";
@@ -14,10 +14,11 @@ for await (const campaign of outbound.campaigns.listAll({ status: "active" })) {
 }
 ```
 
-> Status: not published to npm yet. HeyReach is `beta` (its reads were run once against a live workspace). Instantly and Smartlead are `unverified`: written from public documentation and tested offline.
+> Status: not published to npm yet. HeyReach and Instantly are `beta` (their reads were run against a live workspace each). Smartlead is `unverified`: written from public documentation and tested offline.
 
 - [Using the package](packages/outbound-sdk/README.md)
-- [Adapters and what each can do](docs/adapters.md)
+- [Adapters and what each can do](docs/adapters.md), with [every endpoint accounted for](docs/coverage/README.md)
+- [Insights](docs/insights.md): 26 computed answers, from one person across email and LinkedIn to a weekly client report
 - [Plugins](docs/plugins.md)
 - [AI tools, the MCP server, the CLI and webhooks](docs/tools-and-webhooks.md)
 - [Architecture](docs/architecture.md) and [engineering guardrails](docs/engineering-guardrails.md)

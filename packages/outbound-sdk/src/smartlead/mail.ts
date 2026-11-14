@@ -2,6 +2,7 @@
 // - `GET /campaigns/all-leads-activities`: every sent email and its reply,
 //   across campaigns, with its own 10 per 60 seconds limit;
 // - `GET /campaigns/{id}/leads/{lead}/message-history`: one lead's thread;
+// - `GET /master-inbox/{id}`: one thread by its lead-in-campaign mapping id;
 // - `POST /master-inbox/inbox-replies`: replies with their category.
 
 import type {
@@ -18,7 +19,6 @@ import {
   flag,
   isJsonArray,
   isJsonObject,
-  list,
   objects,
   text,
 } from "../internal/json.ts";
@@ -37,20 +37,18 @@ import {
   toActivityMessages,
   toCategoryMap,
   toHistoryMessage,
-  toInboxReply,
+  toInboxReplies,
+  toThreadMessages,
 } from "./map-messages.ts";
 import type { CategoryMap } from "./map-messages.ts";
 import { unwrap } from "./map.ts";
+import { idList, objectOf, segment } from "./shared.ts";
 
 const DAY_MS = 86_400_000;
 
 /** `filters.leadCategories.categoryIdsIn` takes at most ten ids. */
 const MAX_CATEGORY_IDS = 10;
 const EPOCH = "1970-01-01T00:00:00.000Z";
-
-/** The ids in a cursor or a vendor list, as strings. */
-export const idList = (value: Json | undefined): string[] =>
-  list(value).flatMap((id) => text(id) ?? []);
 
 const listActivities = async (
   client: SmartleadClient,
@@ -158,14 +156,41 @@ const listHistory = async (
   };
 };
 
+// One request returns the whole thread; there are no pages.
+const listThread = async (
+  client: SmartleadClient,
+  ctx: AdapterContext,
+  query: MessageQuery,
+  threadId: string
+): Promise<Page<Message>> => ({
+  items: toThreadMessages(
+    client.identity,
+    {
+      ...objectOf(
+        client,
+        await client.get(ctx, `/master-inbox/${segment(threadId)}`),
+        "the inbox thread"
+      ),
+      // The path id is the thread id, whatever the body says.
+      campaign_lead_map_id: threadId,
+    },
+    query.includeBody
+  ),
+});
+
 export const listMessages = (
   client: SmartleadClient,
   ctx: AdapterContext,
   query: MessageQuery
-): Promise<Page<Message>> =>
-  query.leadId === undefined
+): Promise<Page<Message>> => {
+  if (query.threadId !== undefined) {
+    return listThread(client, ctx, query, query.threadId);
+  }
+
+  return query.leadId === undefined
     ? listActivities(client, ctx, query)
     : listHistory(client, ctx, query, query.leadId);
+};
 
 // The category list is read once per walk and then travels in the cursor.
 const readCategories = async (
@@ -220,11 +245,13 @@ export const listReplies = async (
   const offset = count(field(query.next, "offset")) ?? 0;
   const limit = Math.min(query.limit ?? INBOX_PAGE_SIZE, INBOX_PAGE_SIZE);
 
-  const body = await client.post(ctx, "/master-inbox/inbox-replies", {
-    filters: inboxFilters(query, wanted),
-    limit,
-    offset,
-  });
+  const body = await client.post(
+    ctx,
+    "/master-inbox/inbox-replies",
+    { filters: inboxFilters(query, wanted), limit, offset },
+    // Without it a thread carries only its latest reply.
+    { query: { fetch_message_history: true } }
+  );
 
   const threads = objects(field(unwrap(body), "messages"));
   const total = count(field(unwrap(body), "total_count"));
@@ -234,8 +261,8 @@ export const listReplies = async (
     threads.length > 0 &&
     (total === null ? threads.length === limit : end < total);
 
-  const replies = threads.map((thread) =>
-    toInboxReply(client.identity, thread, categories, query.includeBody)
+  const replies = threads.flatMap((thread) =>
+    toInboxReplies(client.identity, thread, categories, query.includeBody)
   );
 
   return {

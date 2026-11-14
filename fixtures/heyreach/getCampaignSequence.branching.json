@@ -1,0 +1,136 @@
+{
+  "nodeType": "CHECK_IS_CONNECTION",
+  "actionDelay": 2,
+  "actionDelayUnit": "DAY",
+  "conditionalNode": {
+    "nodeType": "MESSAGE",
+    "actionDelay": 0,
+    "actionDelayUnit": "HOUR",
+    "payload": {
+      "messages": [
+        "Already connected: first note"
+      ],
+      "fallbackMessage": "Hello there",
+      "hasVoiceNotes": false
+    },
+    "conditionalNode": {
+      "nodeType": "END",
+      "actionDelay": 0,
+      "actionDelayUnit": "HOUR"
+    },
+    "unconditionalNode": {
+      "nodeType": "MESSAGE",
+      "actionDelay": 4,
+      "actionDelayUnit": "DAY",
+      "payload": {
+        "messages": [
+          "Already connected: follow-up"
+        ],
+        "fallbackMessage": "Hello there",
+        "hasVoiceNotes": false
+      },
+      "conditionalNode": {
+        "nodeType": "END",
+        "actionDelay": 0,
+        "actionDelayUnit": "HOUR"
+      },
+      "unconditionalNode": {
+        "nodeType": "END",
+        "actionDelay": 0,
+        "actionDelayUnit": "HOUR"
+      }
+    }
+  },
+  "unconditionalNode": {
+    "nodeType": "CONNECTION_REQUEST",
+    "actionDelay": 3,
+    "actionDelayUnit": "HOUR",
+    "payload": {
+      "messages": [],
+      "fallbackMessage": null,
+      "toBeWithdrawnAfterDays": null
+    },
+    "conditionalNode": {
+      "nodeType": "MESSAGE",
+      "actionDelay": 1,
+      "actionDelayUnit": "DAY",
+      "payload": {
+        "messages": [
+          "Thanks for accepting"
+        ],
+        "fallbackMessage": "Hello there",
+        "hasVoiceNotes": false
+      },
+      "conditionalNode": {
+        "nodeType": "END",
+        "actionDelay": 0,
+        "actionDelayUnit": "HOUR"
+      },
+      "unconditionalNode": {
+        "nodeType": "MESSAGE",
+        "actionDelay": 5,
+        "actionDelayUnit": "DAY",
+        "payload": {
+          "messages": [
+            "Accepted: follow-up"
+          ],
+          "fallbackMessage": "Hello there",
+          "hasVoiceNotes": false
+        },
+        "conditionalNode": {
+          "nodeType": "END",
+          "actionDelay": 0,
+          "actionDelayUnit": "HOUR"
+        },
+        "unconditionalNode": {
+          "nodeType": "END",
+          "actionDelay": 0,
+          "actionDelayUnit": "HOUR"
+        }
+      }
+    },
+    "unconditionalNode": {
+      "nodeType": "VIEW_PROFILE",
+      "actionDelay": 10,
+      "actionDelayUnit": "DAY",
+      "conditionalNode": null,
+      "unconditionalNode": {
+        "nodeType": "CHECK_IS_OPEN_PROFILE",
+        "actionDelay": 1,
+        "actionDelayUnit": "DAY",
+        "conditionalNode": {
+          "nodeType": "INMAIL",
+          "actionDelay": 6,
+          "actionDelayUnit": "HOUR",
+          "payload": {
+            "messages": [
+              "An InMail for an open profile"
+            ],
+            "fallbackMessage": null
+          },
+          "conditionalNode": {
+            "nodeType": "END",
+            "actionDelay": 0,
+            "actionDelayUnit": "HOUR"
+          },
+          "unconditionalNode": {
+            "nodeType": "END",
+            "actionDelay": 0,
+            "actionDelayUnit": "HOUR"
+          }
+        },
+        "unconditionalNode": {
+          "nodeType": "FOLLOW",
+          "actionDelay": 7,
+          "actionDelayUnit": "DAY",
+          "conditionalNode": null,
+          "unconditionalNode": {
+            "nodeType": "END",
+            "actionDelay": 0,
+            "actionDelayUnit": "HOUR"
+          }
+        }
+      }
+    }
+  }
+}

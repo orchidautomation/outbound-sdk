@@ -10,10 +10,12 @@ import type {
 import { OutboundError } from "../internal/errors.ts";
 import { isJsonObject } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
+import type { NativeRead } from "../internal/native.ts";
 import type { Identity } from "../internal/record.ts";
 import { buildUrl } from "../internal/url.ts";
 import type { QueryValue } from "../internal/url.ts";
 import { BASE_URL } from "./capabilities.ts";
+import { NATIVE } from "./native.ts";
 
 export interface ClientOptions {
   readonly apiKey: string;
@@ -21,6 +23,7 @@ export interface ClientOptions {
   /** A sub workspace to act as, for an agency's admin workspace key. */
   readonly asWorkspace: string | undefined;
   readonly identity: Identity;
+  readonly readTags: boolean;
 }
 
 export interface GetOptions {
@@ -41,6 +44,8 @@ export interface InstantlyClient {
     path: string,
     body: JsonObject
   ) => Promise<Json>;
+  /** `false` when the caller turned the `tags` capability off. */
+  readonly readTags: boolean;
   /** `get`, for an endpoint that returns one object. */
   readonly getObject: (
     ctx: AdapterContext,
@@ -49,8 +54,14 @@ export interface InstantlyClient {
   ) => Promise<JsonObject>;
 }
 
-// Instantly lists leads and reads warmup analytics with POST.
-const READ_POSTS = new Set(["/leads/list", "/accounts/warmup-analytics"]);
+// Instantly lists leads, reads warmup analytics and tests a mailbox's DNS
+// records with POST. None of them changes data. Instantly lets a key with a
+// read scope call each one, and each POST in the native catalog.
+const READ_POSTS = [
+  "/accounts/test/vitals",
+  "/accounts/warmup-analytics",
+  "/leads/list",
+];
 
 const normalizePath = (path: string): string =>
   `/${path.replace(/^\/+/u, "").replace(/\/+$/u, "")}`.replace(
@@ -58,9 +69,34 @@ const normalizePath = (path: string): string =>
     ""
   );
 
-export const isRead = (method: HttpMethod, path: string): boolean =>
-  method === "GET" ||
-  (method === "POST" && READ_POSTS.has(normalizePath(path)));
+/** Matches a catalog path, where `{name}` stands for one path segment. */
+const pattern = (path: string): RegExp =>
+  new RegExp(
+    `^${path
+      .split("/")
+      .map((part) =>
+        part.startsWith("{") ? "[^/]+" : part.replaceAll(".", String.raw`\.`)
+      )
+      .join("/")}$`,
+    "u"
+  );
+
+const READ_POST_PATTERNS = [
+  ...READ_POSTS,
+  ...Object.values<NativeRead>(NATIVE).flatMap((read) =>
+    read.method === "POST" ? [read.path] : []
+  ),
+].map((path) => pattern(path));
+
+export const isRead = (method: HttpMethod, path: string): boolean => {
+  if (method !== "POST") {
+    return method === "GET";
+  }
+
+  const normalized = normalizePath(path);
+
+  return READ_POST_PATTERNS.some((expression) => expression.test(normalized));
+};
 
 export const createClient = (options: ClientOptions): InstantlyClient => {
   const baseUrl = options.baseUrl ?? BASE_URL;
@@ -118,5 +154,6 @@ export const createClient = (options: ClientOptions): InstantlyClient => {
       return response.body;
     },
     raw: { authorize, baseUrl, isRead },
+    readTags: options.readTags,
   };
 };

@@ -9,10 +9,6 @@
         "companyName": "Example Co",
         "companyUrl": "https://www.linkedin.com/company/example-co",
         "connections": 500,
-        "customEmailAddress": null,
-        "customFields": [],
-        "emailAddress": null,
-        "enrichedEmailAddress": null,
         "firstName": "Alex",
         "followers": 120,
         "headline": "Founder at Example Co",
@@ -71,10 +67,6 @@
         "companyName": "Example Co",
         "companyUrl": "https://www.linkedin.com/company/example-co",
         "connections": 500,
-        "customEmailAddress": null,
-        "customFields": [],
-        "emailAddress": null,
-        "enrichedEmailAddress": null,
         "firstName": "Alex",
         "followers": 120,
         "headline": "Founder at Example Co",
@@ -133,5 +125,7 @@
       "totalMessages": 3
     }
   ],
-  "totalCount": 3
+  "totalCount": 3,
+  "hasNextPage": true,
+  "nextCursor": "ExampleCursorPage2"
 }

@@ -110,6 +110,27 @@ export const dayRow = (scope: RowScope, raw: JsonObject): MetricRow =>
     { date: text(raw.date), timezone: TIMEZONE }
   );
 
+/**
+ * One mailbox's row of `GET /analytics/mailbox/name-wise-health-metrics`, or
+ * `undefined` when the response has none for it: every count is then `null`.
+ * `opened` is not said to be unique, so it is the total.
+ */
+export const mailboxRow = (
+  scope: RowScope,
+  raw: JsonObject | undefined
+): MetricRow =>
+  row(
+    scope,
+    {
+      ...emptyCounts(),
+      bounced: count(raw?.bounced),
+      openedTotal: count(raw?.opened),
+      replied: count(raw?.replied),
+      sent: count(raw?.sent),
+    },
+    { timezone: TIMEZONE }
+  );
+
 const stepCounts = (stats: Json | undefined): MetricCounts => ({
   ...emptyCounts(),
   bounced: count(field(stats, "bounce_count")),

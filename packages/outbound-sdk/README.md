@@ -7,7 +7,7 @@ One small, typed, read-only TypeScript API over outbound sending tools: Instantl
 - **Calls no AI model.** Your agent does the reasoning; the SDK supplies the numbers.
 - **Swap the adapter, keep the code.**
 
-> HeyReach is `beta`: its reads were run once against a live workspace. Instantly and Smartlead are `unverified`: written from public documentation and tested offline. `outbound.caveats` lists what each adapter assumes.
+> HeyReach and Instantly are `beta`: their reads were run against a live workspace each. Smartlead is `unverified`: written from public documentation and tested offline.
 
 ## Install
 
@@ -66,7 +66,32 @@ Every record carries `provider`, `workspaceId` and a `ref` (`provider:workspace:
 page.meta; // { evidence: "exact" | "sampled" | "derived", fetchedAt, complete, requests, throttledMs, stale, ... }
 ```
 
-Collections: `campaigns`, `senders`, `leads`, `messages`, `replies`, `workspaces`, each with `list` and `listAll`, and `get`, `exists` and `getMany` where a record can be looked up. Handles: `campaign(id)`, `sender(id)`, `lead(id)`. Also `stats()`, `limits()`, `estimate()`, `capabilities`, `caveats` and `raw` (the vendor's own API, reads only unless `allowWrites: true`).
+Collections: `campaigns`, `senders`, `leads`, `messages`, `replies`, `lists`, `tags`, `blocklist`, `webhooks` and `workspaces`, each with `list` and `listAll`, and `get`, `exists` and `getMany` where a record can be looked up. Handles: `campaign(id)` (with `settings()`, `sequence()`, `subsequences`, `stats()`), `sender(id)` (with `health()`, `warmup()`, `stats()`), `lead(id)`, `list(id)` and `thread(id)`. Also `stats()`, `limits()`, `estimate()`, `capabilities` and `caveats`.
+
+## Nothing a vendor reports is dropped
+
+The collections above are what every vendor shares. Everything else a vendor can report is in `outbound.native`, a catalog typed from the adapter you passed:
+
+```ts
+const outbound = createOutbound({ adapter: smartlead() });
+const unread = await outbound.native.reads.inboxUnread({ limit: 20 });
+unread.data; // Smartlead's own response
+```
+
+Native reads are rate limited and retried like the rest, can only read, and return the vendor's payload as sent. `outbound.raw` remains for a request the catalog does not name (reads only unless `allowWrites: true`).
+
+## Answers, not only records
+
+`outbound-sdk/insights` adds 26 computed answers on top of the reads: one person across email and LinkedIn, replies nobody answered, where a sequence's replies come from, whether an A/B winner is real, deliverability per domain, why a campaign is underperforming, a weekly client report. Each is a typed method, an agent tool and a CLI command, and none calls a model.
+
+```ts
+const outbound = createOutbound({ adapter, plugins: [insights()] });
+const person = await outbound.insights.personSummary({
+  person: "jane@example.com",
+});
+```
+
+See [the insights](https://github.com/orchidautomation/outbound-sdk/blob/main/docs/insights.md).
 
 ## It tells you what it cannot do
 
@@ -80,7 +105,7 @@ There is one error class, `OutboundError`, with a `code`: `NotFound`, `Unauthori
 
 ## Rate limits, retries and resuming
 
-You never write a sleep or a retry loop. Every request stays inside every limit the vendor publishes, one budget is shared by every instance on the same key, a 429 is waited out, and reads are retried with backoff. `listAll` exposes a `cursor`, so a job that dies on page 40 restarts on page 40. Set `timeout`, `retries`, `deadline` and `maxRequests` on the constructor or on any call.
+You never write a sleep or a retry loop, and you can fire hundreds of reads at once. Every request stays inside every limit the vendor publishes, one budget is shared by every instance on the same key, a 429 is waited out, and reads are retried with backoff. `listAll` exposes a `cursor`, so a job that dies on page 40 restarts on page 40. Set `timeout`, `retries`, `deadline` and `maxRequests` on the constructor or on any call. With several workers on one key, `outbound-sdk/redis` shares one budget between them.
 
 ## More
 

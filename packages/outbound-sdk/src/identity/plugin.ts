@@ -19,7 +19,7 @@ export interface PersonLead extends Lead {
 }
 
 export interface PersonOptions {
-  /** Look only in these campaigns (refs). Without it, every lead is scanned. */
+  /** Look only in these campaigns (refs). Without it, the vendor is asked for the person when it can find one by identifier, and every lead is scanned otherwise. */
   readonly campaignIds?: readonly string[] | undefined;
   /** Leave the timeline out, which saves a request per matching record. */
   readonly timeline?: boolean | undefined;
@@ -116,6 +116,51 @@ const collect = async (
   return grew;
 };
 
+const filterFor = (key: string): { email: string } | { linkedinUrl: string } =>
+  key.startsWith("email:")
+    ? { email: key.slice("email:".length) }
+    : {
+        linkedinUrl: `https://www.linkedin.com/in/${key.slice("linkedin:".length)}`,
+      };
+
+/**
+ * Asks the vendor for the person by each identifier, instead of walking every
+ * lead. A record that carries a second identifier is looked up under that one
+ * too, so an email can lead to a LinkedIn record and back.
+ */
+const find = async (
+  outbound: OutboundApi,
+  keys: Set<string>,
+  found: Map<string, Lead>
+): Promise<void> => {
+  const asked = new Set<string>();
+
+  for (
+    let next = [...keys].find((key) => !asked.has(key));
+    next !== undefined;
+    next = [...keys].find((key) => !asked.has(key))
+  ) {
+    asked.add(next);
+
+    // oxlint-disable-next-line no-await-in-loop -- each answer can add the next identifier to ask for.
+    const leads = await outbound.leads.listAll(filterFor(next)).toArray();
+
+    for (const lead of leads) {
+      const leadKeys = keysOf(lead);
+
+      // The vendor's own matching is not trusted: only an exact key links.
+      if (leadKeys.includes(next)) {
+        // One record per campaign: a vendor can use one lead id in all of them.
+        found.set(`${lead.ref} ${lead.campaignRef ?? ""}`, lead);
+
+        for (const key of leadKeys) {
+          keys.add(key);
+        }
+      }
+    }
+  }
+};
+
 const bySentAt = (left: Message, right: Message): number =>
   (left.sentAt ?? "").localeCompare(right.sentAt ?? "");
 
@@ -136,9 +181,14 @@ const lookup = async (
   const keys = new Set([key]);
   const found = new Map<string, Lead>();
 
-  // A record that links two identifiers (an email and a profile) can reveal
-  // records seen earlier under the other one, so scan again when that happens.
-  if (await collect(outbound, options, keys, found)) {
+  if (
+    outbound.capabilities["leads.lookup"] &&
+    options.campaignIds === undefined
+  ) {
+    await find(outbound, keys, found);
+  } else if (await collect(outbound, options, keys, found)) {
+    // A record that links two identifiers (an email and a profile) can reveal
+    // records seen earlier under the other one, so scan again when that happens.
     await collect(outbound, options, keys, found);
   }
 

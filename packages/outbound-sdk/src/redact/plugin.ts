@@ -85,6 +85,11 @@ const maskCustom = (
       )
     : { ...custom };
 
+const BLOCK_FIELDS = new Map<string, RedactField>([
+  ["email", "email"],
+  ["linkedin", "linkedin"],
+]);
+
 // Records are told apart by a field only that kind has.
 const redactRecord = (masks: Masks, record: OutboundRecord): OutboundRecord => {
   if ("scope" in record) {
@@ -115,6 +120,33 @@ const redactRecord = (masks: Masks, record: OutboundRecord): OutboundRecord => {
     };
   }
 
+  if ("value" in record) {
+    // A block list entry names a person only when it is an address or a profile.
+    const blocked: RedactField | undefined = BLOCK_FIELDS.get(record.kind);
+
+    return {
+      ...record,
+      raw: null,
+      value:
+        blocked === undefined
+          ? record.value
+          : (maskIf(masks, blocked, record.value) ?? MASK),
+    };
+  }
+
+  if (
+    "steps" in record ||
+    "schedule" in record ||
+    "dns" in record ||
+    "size" in record ||
+    "url" in record ||
+    "description" in record
+  ) {
+    // Sequences hold template text; settings, health, lists, webhooks and
+    // tags hold no person.
+    return { ...record, raw: null };
+  }
+
   if ("kind" in record) {
     return {
       ...record,
@@ -125,8 +157,8 @@ const redactRecord = (masks: Masks, record: OutboundRecord): OutboundRecord => {
     };
   }
 
-  if ("steps" in record || "tags" in record || "name" in record) {
-    // Sequences hold template text, campaigns and workspaces hold no person.
+  if ("tags" in record || "name" in record) {
+    // Campaigns and workspaces hold no person.
     return { ...record, raw: null };
   }
 
@@ -176,10 +208,11 @@ export const redact = (options: RedactOptions = {}): OutboundPlugin => {
   return {
     // Asking for bodies while they are being removed is a contradiction, so
     // the capability is turned off and the request is refused up front.
+    // A native read returns the vendor's payload untouched, so it is turned off.
     capabilities: (capabilities) =>
       fields.has("body")
-        ? { ...capabilities, "messages.body": false }
-        : capabilities,
+        ? { ...capabilities, "messages.body": false, native: false }
+        : { ...capabilities, native: false },
     event: (event): OutboundEvent => ({
       ...event,
       data: redactEventData(masks, event.data),

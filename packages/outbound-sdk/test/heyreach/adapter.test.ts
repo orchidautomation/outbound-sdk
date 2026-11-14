@@ -193,148 +193,6 @@ test("heyreach: senders are listed with POST by offset", async () => {
   );
 });
 
-test("heyreach: a sequence tree is flattened along its one path of steps", async () => {
-  const { outbound, requests, settle } = harness(suite);
-  const sequence = await settle(outbound.campaign(CAMPAIGN).sequence());
-  const url = new URL(requests[0]?.url ?? "");
-  assert.equal(url.pathname, "/api/public/campaign/GetCampaignSequence");
-  assert.equal(url.searchParams.get("campaignId"), CAMPAIGN);
-  assert.equal(sequence.campaignRef, "heyreach:client-a:274079");
-  assert.equal(sequence.sourceId, "274079");
-  assert.deepEqual(
-    sequence.steps.map((step) => [step.index, step.action, step.delayDays]),
-    [
-      [0, "connection_request", 0],
-      [1, "message", 2],
-    ],
-    "the END nodes are not steps"
-  );
-  const [variant] = sequence.steps[0]?.variants ?? [];
-  assert.equal(variant?.variantKey, "A");
-  assert.equal(variant?.body, "Hi {FIRST_NAME}, I'd love to connect!");
-  assert.equal(variant?.subject, null);
-  assert.equal(variant?.contentHash.length, 32);
-  assert.equal(
-    sequence.steps[1]?.variants[0]?.body,
-    "Thanks for connecting, {FIRST_NAME}!"
-  );
-});
-
-test("heyreach: a sequence reads V2 message versions, hour delays and several variants", async () => {
-  const v2 = fixture("heyreach", "getCampaignSequenceV2.json") as {
-    conditionalNode: { payload: { messageVersions: object[] } };
-  };
-
-  v2.conditionalNode.payload.messageVersions.push({ message: "Second copy" });
-
-  const { outbound, settle } = harness(suite, () =>
-    Response.json({
-      ...v2,
-      conditionalNode: {
-        ...v2.conditionalNode,
-        actionDelay: 12,
-        actionDelayUnit: "HOUR",
-        unconditionalNode: {
-          actionDelayUnit: "WEEK",
-          nodeType: "VIEW_PROFILE",
-        },
-      },
-    })
-  );
-
-  const { steps } = await settle(outbound.campaign(CAMPAIGN).sequence());
-  assert.deepEqual(
-    steps.map((step) => [step.action, step.delayDays]),
-    [
-      ["connection_request", 0],
-      ["message", 0.5],
-      ["view_profile", null],
-    ]
-  );
-  assert.deepEqual(
-    steps[1]?.variants.map((variant) => [variant.variantKey, variant.body]),
-    [
-      ["A", "Thanks for connecting, {FIRST_NAME}!"],
-      ["B", "Second copy"],
-    ]
-  );
-  assert.deepEqual(steps[2]?.variants, [], "a node without a payload");
-});
-
-test("heyreach: an empty sequence response is a campaign with no steps", async () => {
-  const { outbound, settle } = harness(
-    suite,
-    () => new Response("", { status: 200 })
-  );
-
-  const sequence = await settle(outbound.campaign(CAMPAIGN).sequence());
-  assert.deepEqual(sequence.steps, []);
-  assert.equal(sequence.raw, null);
-});
-
-test("heyreach: a sequence whose two branches hold different steps is refused, not guessed", async () => {
-  const { outbound, settle } = harness(suite, () =>
-    Response.json({
-      conditionalNode: { nodeType: "MESSAGE" },
-      nodeType: "CONNECTION_REQUEST",
-      unconditionalNode: { nodeType: "INMAIL" },
-    })
-  );
-
-  await assert.rejects(
-    async () => await settle(outbound.campaign(CAMPAIGN).sequence()),
-    (error) =>
-      isCode("Unsupported")(error) &&
-      /branches at a CONNECTION_REQUEST into two paths that hold different steps/u.test(
-        (error as Error).message
-      )
-  );
-});
-
-test("heyreach: the usual connection check flattens to request, then the messages both branches share", async () => {
-  const { outbound, settle } = harness(suite, () =>
-    Response.json(
-      fixture("heyreach", "getCampaignSequence.connectionCheck.json")
-    )
-  );
-
-  const { steps } = await settle(outbound.campaign(CAMPAIGN).sequence());
-  assert.deepEqual(
-    steps.map((step) => [
-      step.index,
-      step.action,
-      step.delayDays,
-      step.variants[0]?.body ?? null,
-    ]),
-    [
-      [0, "connection_request", 0, null],
-      [1, "message", 1, "Hi {FIRST_NAME}, thanks for connecting."],
-      [2, "message", 3, "Following up on my note."],
-    ],
-    "the check itself is a condition, not a step"
-  );
-});
-
-test("heyreach: a connection check whose branches send different messages is refused", async () => {
-  const tree = fixture(
-    "heyreach",
-    "getCampaignSequence.connectionCheck.json"
-  ) as {
-    conditionalNode: { payload: { messages: string[] } };
-  };
-
-  tree.conditionalNode.payload.messages = [
-    "A different opener for people already connected.",
-  ];
-  const { outbound, settle } = harness(suite, () => Response.json(tree));
-  await assert.rejects(
-    async () => await settle(outbound.campaign(CAMPAIGN).sequence()),
-    (error) =>
-      isCode("Unsupported")(error) &&
-      /branches at a CHECK_IS_CONNECTION/u.test((error as Error).message)
-  );
-});
-
 test("heyreach: CAMPAIGN_API_NOT_ENABLED is Unsupported, and a missing campaign stays NotFound", async () => {
   const cases = [
     ["CAMPAIGN_API_NOT_ENABLED", "Unsupported"],
@@ -390,7 +248,7 @@ test("heyreach: documented error bodies give the error its message", async () =>
   }
 });
 
-test("heyreach: the one documented limit is 300 a minute, with no lanes or headers", async () => {
+test("heyreach: the limits are 15 per 2 seconds and 300 a minute, with a lane for the Organization API and no headers", async () => {
   const { adapter, outbound, settle } = harness(suite);
   await settle(outbound.campaigns.list());
   const [snapshot] = await outbound.limits();
@@ -401,9 +259,12 @@ test("heyreach: the one documented limit is 300 a minute, with no lanes or heade
       window.perMs,
       window.used,
     ]),
-    [["default", 300, 60_000, 1]]
+    [
+      ["default", 15, 2000, 1],
+      ["default", 300, 60_000, 1],
+      ["organization", 300, 60_000, 0],
+    ]
   );
-  assert.equal(adapter.limits.lanes, undefined);
   assert.equal(adapter.limits.headers, undefined);
   assert.match(adapter.limits.source, /do not say whether the limit is per/u);
 });
@@ -430,6 +291,7 @@ test("heyreach: raw allows exactly the documented reads", () => {
     "/blacklist/GetLeads",
     "/blacklist/GetCompanies",
     "/MyNetwork/GetMyNetworkForSender",
+    "/MyNetwork/IsConnection",
     "/management/organizations/users",
     "/management/organizations/users/workspaces/12",
     "/management/organizations/linkedin-accounts",
@@ -479,6 +341,11 @@ test("heyreach: raw allows exactly the documented reads", () => {
     raw.isRead("GET", "/management/organizations/api-keys/workspaces/12"),
     false,
     "the read that returns API keys is refused"
+  );
+  assert.equal(
+    raw.isRead("GET", "/li_account/GetAccountProxy/1101"),
+    false,
+    "the read that returns a proxy password is refused"
   );
   assert.equal(raw.isRead("DELETE", "/webhooks/DeleteWebhook"), false);
   assert.equal(raw.isRead("PATCH", "/webhooks/UpdateWebhook"), false);
@@ -566,4 +433,11 @@ test("heyreach: an adapter lists what it has not confirmed against the live API"
   assert.equal(outbound.capabilities["replies.category"], false);
   assert.equal(outbound.capabilities.workspaces, false);
   assert.equal(outbound.capabilities["events.verify"], "secret");
+});
+
+test("heyreach: the burst limit the live API enforces is declared beside the documented one", () => {
+  assert.deepEqual(heyreach({ apiKey: KEY }).limits.windows, [
+    { perMs: 2000, requests: 15 },
+    { perMs: 60_000, requests: 300 },
+  ]);
 });

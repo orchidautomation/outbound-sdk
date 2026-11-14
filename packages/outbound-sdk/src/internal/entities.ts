@@ -12,7 +12,8 @@ import { z } from "zod";
 /** Bumped only for a breaking change to the shapes below. */
 export const SCHEMA_VERSION = 1 as const;
 
-const base = {
+/** The fields every entity carries. */
+export const baseFields = {
   provider: z.string().min(1),
   raw: z.json(),
   ref: z.string().min(1),
@@ -21,8 +22,10 @@ const base = {
   workspaceId: z.string().min(1),
 };
 
-const count = z.number().nonnegative().nullable();
-const isoDateTime = z.iso.datetime({ offset: true }).nullable();
+const base = baseFields;
+
+export const count = z.number().nonnegative().nullable();
+export const isoDateTime = z.iso.datetime({ offset: true }).nullable();
 
 export const channelSchema = z.enum(["email", "linkedin"]);
 
@@ -64,8 +67,15 @@ export type SequenceVariant = z.infer<typeof sequenceVariantSchema>;
 export const sequenceStepSchema = z.object({
   /** What the step does: `email`, or a LinkedIn action such as `connection_request`. */
   action: z.string(),
+  /**
+   * The outcome of the parent step's condition that leads here, in the
+   * vendor's words, for example `accepted`. `null` on a straight path.
+   */
+  branch: z.string().nullable(),
   delayDays: z.number().nonnegative().nullable(),
   index: z.number().int().nonnegative(),
+  /** The step that runs before this one. `null` for the first step. */
+  parentIndex: z.number().int().nonnegative().nullable(),
   variants: z.array(sequenceVariantSchema),
 });
 
@@ -74,6 +84,10 @@ export type SequenceStep = z.infer<typeof sequenceStepSchema>;
 export const sequenceSchema = z.object({
   ...base,
   campaignRef: z.string(),
+  /** `main` for the campaign's own steps, `subsequence` for a follow-up path. */
+  kind: z.enum(["main", "subsequence"]),
+  /** A subsequence's name. `null` for the main sequence. */
+  name: z.string().nullable(),
   steps: z.array(sequenceStepSchema),
 });
 
@@ -120,6 +134,22 @@ export const leadStatusSchema = z.enum([
 
 export type LeadStatus = z.infer<typeof leadStatusSchema>;
 
+/** What a lead did with the campaign's messages, as the vendor counts it. */
+export const leadEngagementSchema = z.object({
+  clicks: count,
+  lastContactedAt: isoDateTime,
+  lastOpenedAt: isoDateTime,
+  lastRepliedAt: isoDateTime,
+  opens: count,
+  replies: count,
+  /** The step the lead replied to, counted from 0. `null` when the vendor does not say. */
+  repliedStepIndex: z.number().int().nonnegative().nullable(),
+  /** The last step sent to the lead, counted from 0. */
+  stepIndex: z.number().int().nonnegative().nullable(),
+});
+
+export type LeadEngagement = z.infer<typeof leadEngagementSchema>;
+
 export const leadSchema = z.object({
   ...base,
   campaignRef: z.string().nullable(),
@@ -129,10 +159,15 @@ export const leadSchema = z.object({
   custom: z.record(z.string(), z.string()),
   /** Lowercased and trimmed. */
   email: z.string().nullable(),
+  /** `null` when the vendor reports no per-lead counts on this read. */
+  engagement: leadEngagementSchema.nullable(),
   firstName: z.string().nullable(),
+  /** The vendor's own label for how interested the lead is, for example `Meeting Booked`. */
+  interest: z.string().nullable(),
   lastName: z.string().nullable(),
   linkedinUrl: z.string().nullable(),
   status: leadStatusSchema,
+  tags: z.array(z.string()),
   title: z.string().nullable(),
 });
 
@@ -291,13 +326,3 @@ export const outboundEventSchema = z.object({
 });
 
 export type OutboundEvent = z.infer<typeof outboundEventSchema>;
-
-/** Any record a list or get call returns. */
-export type Entity =
-  | Campaign
-  | Lead
-  | Message
-  | Reply
-  | Sender
-  | Sequence
-  | Workspace;

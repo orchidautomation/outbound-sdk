@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { mock, test } from "node:test";
 
-import { smartlead } from "../../src/smartlead/index.ts";
 import { harness } from "../helpers/adapter-suite.ts";
 import { API, CAMPAIGN, KEY, SENDER, suite, urlOf } from "./suite.ts";
 
@@ -425,20 +424,100 @@ test("smartlead: a step without variants returns its total, and steps have no da
   }
 });
 
-test("smartlead: per-sender stats are refused, even when the capability is forced on", async () => {
-  const forced = harness({
-    ...suite,
-    make: () =>
-      smartlead({
-        apiKey: KEY,
-        capabilities: { "stats.bySender": "exact" },
-        workspaceId: "client-a",
-      }),
-  });
+test("smartlead: a mailbox's totals are its row of the per-mailbox list, found by address", async () => {
+  freeze("2026-03-10T12:00:00Z");
+
+  try {
+    const { outbound, requests, settle } = harness(suite);
+    const stats = await settle(outbound.sender(SENDER).stats());
+
+    assert.deepEqual(
+      requests.map((request) => urlOf(request).pathname),
+      [
+        `${API}/email-accounts/123/`,
+        `${API}/analytics/mailbox/name-wise-health-metrics`,
+      ],
+      "the mailbox is read for its address, then the list"
+    );
+    assert.deepEqual(query(urlOf(requests[1])), {
+      api_key: KEY,
+      end_date: "2026-03-10",
+      start_date: "2000-01-01",
+      timezone: "UTC",
+    });
+    assert.equal(stats.rows.length, 1);
+    const [row] = stats.rows;
+    assert.equal(row?.scope, "sender");
+    assert.equal(row?.scopeRef, "smartlead:client-a:123");
+    assert.equal(row?.evidence, "exact");
+    assert.equal(row?.date, null);
+    assert.deepEqual(counts(row), {
+      bounced: 5,
+      clicked: null,
+      contacted: null,
+      delivered: null,
+      opened: null,
+      openedTotal: 250,
+      positive: null,
+      replied: 30,
+      repliedAuto: null,
+      sent: 500,
+      unsubscribed: null,
+    });
+
+    const dated = harness(suite);
+    await dated.settle(
+      dated.outbound
+        .sender(SENDER)
+        .stats({ from: "2026-02-01", to: "2026-02-28" })
+    );
+    assert.equal(
+      urlOf(dated.requests[1]).searchParams.get("start_date"),
+      "2026-02-01"
+    );
+    assert.equal(
+      urlOf(dated.requests[1]).searchParams.get("end_date"),
+      "2026-02-28"
+    );
+  } finally {
+    mock.timers.reset();
+  }
+});
+
+test("smartlead: a mailbox the list leaves out has unknown counts, never zeros", async () => {
+  const absent = harness(suite, (request) =>
+    urlOf(request).pathname.endsWith("/name-wise-health-metrics")
+      ? Response.json({ data: { email_health_metrics: [] }, ok: true })
+      : undefined
+  );
+
+  const stats = await absent.settle(absent.outbound.sender(SENDER).stats());
+  assert.equal(stats.rows.length, 1);
+  assert.deepEqual(
+    Object.values(counts(stats.rows[0])),
+    Object.values(counts(stats.rows[0])).map(() => null)
+  );
+
+  // A mailbox without an address matches no row either.
+  const nameless = harness(suite, (request) =>
+    urlOf(request).pathname.endsWith("/email-accounts/123/")
+      ? Response.json({ id: 123 })
+      : undefined
+  );
+
+  const unknown = await nameless.settle(
+    nameless.outbound.sender(SENDER).stats()
+  );
+
+  assert.equal(unknown.rows[0]?.sent, null);
+});
+
+test("smartlead: a mailbox's stats are totals only", async () => {
+  const { outbound, requests, settle } = harness(suite);
 
   await assert.rejects(
-    forced.settle(forced.outbound.sender(SENDER).stats({ retries: 0 })),
+    settle(outbound.sender(SENDER).stats({ by: "day", retries: 0 })),
     { code: "Unsupported" }
   );
-  assert.equal(forced.requests.length, 0);
+  assert.equal(requests.length, 0);
 });

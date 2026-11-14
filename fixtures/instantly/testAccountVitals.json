@@ -1,0 +1,17 @@
+{
+  "status": "success",
+  "success_list": [],
+  "failure_list": [
+    {
+      "domain": "example.com",
+      "allPass": false,
+      "mx": true,
+      "spf": true,
+      "dkim": false,
+      "dmarc": false,
+      "indeterminate": [
+        "dkim"
+      ]
+    }
+  ]
+}

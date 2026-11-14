@@ -50,23 +50,62 @@ test("instantly: every documented campaign status number maps to a status", asyn
   }
 });
 
-test("instantly: the status filter is sent as Instantly's number", async () => {
+test("instantly: draft and completed are filtered by Instantly's own status number", async () => {
   const { outbound, requests, settle } = harness(suite);
-  await settle(outbound.campaigns.list({ limit: 25, status: "paused" }));
+  await settle(outbound.campaigns.list({ limit: 25, status: "completed" }));
   const url = new URL(requests[0]?.url ?? "");
-  assert.equal(url.searchParams.get("status"), "2");
+  assert.equal(url.searchParams.get("status"), "3");
   assert.equal(url.searchParams.get("limit"), "25");
+
+  const before = requests.length;
+  await settle(outbound.campaigns.list({ status: "draft" }));
+  assert.equal(
+    new URL(requests[before]?.url ?? "").searchParams.get("status"),
+    "0"
+  );
+});
+
+test("instantly: active and paused cover several Instantly statuses, so the adapter matches them", async () => {
+  const { outbound, requests, settle } = harness(suite);
+
+  const active = await settle(
+    outbound.campaigns.listAll({ status: "active" }).toArray()
+  );
+
+  assert.deepEqual(
+    active.map((campaign) => campaign.name),
+    ["My First Campaign", "Second Campaign"],
+    "status 1 and status 4 (running subsequences) are both active"
+  );
+
+  const listed = requests.filter(
+    (request) => new URL(request.url).pathname === "/api/v2/campaigns"
+  );
+
+  for (const request of listed) {
+    assert.equal(new URL(request.url).searchParams.get("status"), null);
+  }
+
+  const paused = await settle(
+    outbound.campaigns.listAll({ status: "paused" }).toArray()
+  );
+
+  assert.deepEqual(
+    paused.map((campaign) => campaign.name),
+    ["Third Campaign"],
+    "status -1 is Instantly pausing the campaign"
+  );
+});
+
+test("instantly: a status Instantly does not have makes no request", async () => {
+  const { outbound, requests, settle } = harness(suite);
 
   const archived = await settle(
     outbound.campaigns.list({ status: "archived" })
   );
 
   assert.deepEqual(archived.items, [], "Instantly has no archived campaigns");
-  assert.equal(
-    requests.length,
-    1,
-    "no request is made for a status Instantly does not have"
-  );
+  assert.equal(requests.length, 0);
 });
 
 test("instantly: the page size is clamped to the documented maximum of 100", async () => {
@@ -86,10 +125,27 @@ test("instantly: a sequence comes from the campaign object, with positional vari
     `/api/v2/campaigns/${CAMPAIGN}`
   );
   assert.equal(sequence.campaignRef, `instantly:client-a:${CAMPAIGN}`);
-  const [step] = sequence.steps;
-  assert.equal(step?.index, 0);
+  assert.equal(sequence.kind, "main");
+  assert.equal(sequence.name, null);
+  assert.deepEqual(
+    sequence.steps.map((each) => [
+      each.index,
+      each.parentIndex,
+      each.delayDays,
+      each.variants.length,
+    ]),
+    [
+      // A campaign's first step goes out at once.
+      [0, null, 0, 2],
+      // `delay` is the wait before the NEXT email: step 0's 2 days.
+      [1, 0, 2, 1],
+      // Step 1's delay of 12 hours.
+      [2, 1, 0.5, 1],
+    ]
+  );
+  const [step, second] = sequence.steps;
   assert.equal(step?.action, "email");
-  assert.equal(step?.delayDays, 2, "delay 2 with delay_unit days");
+  assert.equal(second?.variants[0]?.subject, "Following up, {{firstName}}");
   assert.equal(step?.variants[0]?.variantKey, "A");
   assert.equal(step?.variants[0]?.subject, "Hello {{firstName}}");
   assert.equal(
@@ -143,7 +199,7 @@ test("instantly: leads are listed with POST, scoped by campaign in the body", as
 
   await settle(outbound.campaign(CAMPAIGN).leads.list({ cursor: page.cursor }));
   assert.equal(
-    (JSON.parse(requests[1]?.body ?? "{}") as { starting_after: string })
+    (JSON.parse(requests.at(-1)?.body ?? "{}") as { starting_after: string })
       .starting_after,
     "01a1d77f-97f1-710e-940f-6e091b8ab90b"
   );
@@ -171,6 +227,10 @@ test("instantly: emails use the 20-per-minute lane", async () => {
       ["default", 100, 1000, 1],
       ["default", 6000, 60_000, 1],
       ["emails", 20, 60_000, 1],
+      // The lanes of three native reads, untouched by a normalized read.
+      ["labelPrediction", 500, 2_592_000_000, 0],
+      ["localBusinessFilters", 100, 86_400_000, 0],
+      ["localBusinessSearch", 200, 86_400_000, 0],
     ]
   );
 });
@@ -206,16 +266,17 @@ test("instantly: a message maps direction, sender, lead and thread", async () =>
     "instantly:client-a:01a1d77f-5e65-78a7-8eb0-0216d691e16c"
   );
   assert.equal(message?.threadId, "01a1d77f-5e65-78a7-8eb0-021717740220");
+  const [, second] = page.items;
+  assert.equal(second?.bodyHtml, "This is a test email.<br/><br/>Second line.");
+  assert.equal(second?.bodyText, "This is a test email.\n\nSecond line.");
+  assert.equal(message?.stepIndex, 2, "0_2_1 is the third step");
+  assert.equal(message?.variantKey, "B", "0_2_1 is the second variant");
   assert.equal(
-    message?.bodyHtml,
-    "This is a test email.<br/><br/>Second line."
-  );
-  assert.equal(message?.bodyText, "This is a test email.\n\nSecond line.");
-  assert.equal(
-    message?.stepIndex,
+    second?.stepIndex,
     null,
-    "a step that is not a whole number is not guessed"
+    "a step in any other form is not guessed"
   );
+  assert.equal(second?.variantKey, null);
 });
 
 test("instantly: a lead's timeline looks up the lead's address once and carries it in the cursor", async () => {
@@ -464,7 +525,7 @@ test("instantly: a response that is not an object is a Provider error, not a cra
 
 test("instantly: an adapter lists what it has not confirmed against the live API", () => {
   const { outbound } = harness(suite);
-  assert.equal(outbound.maturity, "unverified");
+  assert.equal(outbound.maturity, "beta");
   assert.ok(outbound.caveats.length > 0);
-  assert.match(outbound.caveats[0] ?? "", /live Instantly workspace/u);
+  assert.match(outbound.caveats[0] ?? "", /one live workspace/u);
 });

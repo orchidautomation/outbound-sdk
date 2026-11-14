@@ -4,15 +4,18 @@
 import type {
   Adapter,
   AdapterContext,
+  LeadQuery,
   StatsQuery,
 } from "../internal/adapter.ts";
 import type { MetricRow } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
-import { isNumber } from "../internal/json.ts";
-import type { Json, JsonObject } from "../internal/json.ts";
-import { PAGE_SIZE } from "./capabilities.ts";
+import { field } from "../internal/json.ts";
+import type { JsonObject } from "../internal/json.ts";
+import { accountReaders, campaignSenders } from "./account.ts";
+import { LIST_LEADS_PAGE_SIZE } from "./capabilities.ts";
 import type { HeyReachClient } from "./client.ts";
 import { inboxReaders } from "./inbox.ts";
+import { lookupLeads } from "./lookup.ts";
 import { toSequence } from "./map-sequence.ts";
 import { dailyRows, totalRow } from "./map-stats.ts";
 import {
@@ -23,43 +26,25 @@ import {
   toSender,
   vendorStatuses,
 } from "./map.ts";
+import { numericId, offsetOf, pageSize } from "./paging.ts";
 
 type Readers = Pick<
   Adapter,
   | "getCampaign"
   | "getLead"
   | "getSender"
+  | "getSenderHealth"
   | "getSequence"
+  | "listBlocklist"
   | "listCampaigns"
   | "listLeads"
+  | "listLists"
   | "listMessages"
   | "listReplies"
   | "listSenders"
+  | "listWebhooks"
   | "stats"
 >;
-
-const pageSize = (limit: number | undefined): number =>
-  Math.min(limit ?? PAGE_SIZE, PAGE_SIZE);
-
-const offsetOf = (next: Json | undefined): number =>
-  isNumber(next) ? next : 0;
-
-// Campaign and account ids are integers, and JSON bodies need them as numbers.
-const numericId = (
-  client: HeyReachClient,
-  id: string,
-  what: string
-): number => {
-  if (!/^\d+$/u.test(id)) {
-    throw new OutboundError(
-      "Invalid",
-      `HeyReach ${what} ids are whole numbers, got "${id}"`,
-      { provider: client.identity.provider }
-    );
-  }
-
-  return Number(id);
-};
 
 const statsBody = (client: HeyReachClient, query: StatsQuery): JsonObject => {
   const { provider } = client.identity;
@@ -116,51 +101,115 @@ const readStats = async (
   return query.by === "day" ? dailyRows(scope, body) : [totalRow(scope, body)];
 };
 
+// `POST /list/GetLeadsFromList`: up to 1000 leads a page, filtered by the
+// time the lead was added.
+const listLeadsBody = (
+  client: HeyReachClient,
+  query: LeadQuery & { readonly listId: string },
+  offset: number
+): JsonObject => {
+  const body: JsonObject = {
+    limit: pageSize(query.limit, LIST_LEADS_PAGE_SIZE),
+    listId: numericId(client, query.listId, "list"),
+    offset,
+  };
+
+  if (query.since !== undefined) {
+    body.createdFrom = query.since;
+  }
+
+  if (query.until !== undefined) {
+    body.createdTo = query.until;
+  }
+
+  return body;
+};
+
+const campaignLeadsBody = (
+  client: HeyReachClient,
+  query: LeadQuery & { readonly campaignId: string },
+  offset: number
+): JsonObject => {
+  const body: JsonObject = {
+    campaignId: numericId(client, query.campaignId, "campaign"),
+    limit: pageSize(query.limit),
+    offset,
+  };
+
+  if (query.since !== undefined || query.until !== undefined) {
+    body.timeFilter = "CreationTime";
+  }
+
+  if (query.since !== undefined) {
+    body.timeFrom = query.since;
+  }
+
+  if (query.until !== undefined) {
+    body.timeTo = query.until;
+  }
+
+  return body;
+};
+
 const leadReaders = (
   client: HeyReachClient
 ): Pick<Readers, "getLead" | "listLeads"> => ({
   // The lead's id is its LinkedIn profile URL, the only key GetLead takes.
+  // GetLead carries no tags, so they are read beside it. A looked-up lead's
+  // id also names its campaign, which is dropped here.
   getLead: async (id, ctx) => {
     const path = "/lead/GetLead";
+    const profileUrl = id;
+
+    const [lead, tags] = await Promise.all([
+      client.post(ctx, path, { profileUrl }),
+      client.post(ctx, "/lead/GetTags", { profileUrl }),
+    ]);
 
     return toLead(
       client.identity,
-      client.object(await client.post(ctx, path, { profileUrl: id }), path)
+      client.object(lead, path),
+      field(tags, "tags") ?? []
     );
   },
   listLeads: async (query, ctx) => {
-    if (query.campaignId === undefined) {
+    if (query.email !== undefined || query.linkedinUrl !== undefined) {
+      return await lookupLeads(client, ctx, query);
+    }
+
+    const offset = offsetOf(query.next);
+    const { campaignId, listId } = query;
+
+    if (listId !== undefined) {
+      const envelope = listEnvelope(
+        await client.post(
+          ctx,
+          "/list/GetLeadsFromList",
+          listLeadsBody(client, { ...query, listId }, offset)
+        ),
+        offset
+      );
+
+      return {
+        items: envelope.items.map((item) => toLead(client.identity, item)),
+        next: envelope.next,
+      };
+    }
+
+    if (campaignId === undefined) {
       throw new OutboundError(
         "Unsupported",
-        "HeyReach has no list of every lead. List a campaign's leads: outbound.campaign(id).leads.list()",
+        "HeyReach has no list of every lead. List a campaign's leads, outbound.campaign(id).leads.list(), or a saved list's, outbound.list(id).leads.list()",
         { provider: client.identity.provider }
       );
     }
 
-    const offset = offsetOf(query.next);
-
-    const body: JsonObject = {
-      campaignId: numericId(client, query.campaignId, "campaign"),
-      limit: pageSize(query.limit),
-      offset,
-    };
-
-    if (query.since !== undefined || query.until !== undefined) {
-      body.timeFilter = "CreationTime";
-    }
-
-    if (query.since !== undefined) {
-      body.timeFrom = query.since;
-    }
-
-    if (query.until !== undefined) {
-      body.timeTo = query.until;
-    }
-
-    const { campaignId } = query;
-
     const envelope = listEnvelope(
-      await client.post(ctx, "/campaign/GetLeadsFromCampaign", body),
+      await client.post(
+        ctx,
+        "/campaign/GetLeadsFromCampaign",
+        campaignLeadsBody(client, { ...query, campaignId }, offset)
+      ),
       offset
     );
 
@@ -177,6 +226,7 @@ export const readers = (client: HeyReachClient): Readers => {
   const { identity } = client;
 
   return {
+    ...accountReaders(client),
     ...inboxReaders(client),
     ...leadReaders(client),
     getCampaign: async (id, ctx) => {
@@ -229,6 +279,12 @@ export const readers = (client: HeyReachClient): Readers => {
       };
     },
     listSenders: async (query, ctx) => {
+      const { campaignId } = query;
+
+      if (campaignId !== undefined) {
+        return await campaignSenders(client, ctx, { ...query, campaignId });
+      }
+
       const offset = offsetOf(query.next);
 
       const envelope = listEnvelope(

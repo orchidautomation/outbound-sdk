@@ -21,11 +21,19 @@ test("smartlead: leads of a campaign page by offset and map the documented field
       urlOf(request).searchParams.get("limit"),
     ]),
     [
+      [`${API}/leads/fetch-categories`, null, null],
       [`${API}/campaigns/372/leads`, "0", "100"],
       [`${API}/campaigns/372/leads`, "2", "100"],
     ],
-    "limit is clamped to 100 and total_leads decides the next offset"
+    "the category names are read once, limit is clamped to 100 and total_leads decides the next offset"
   );
+  assert.deepEqual(
+    leads.map((lead) => lead.interest),
+    [null, "Interested", null],
+    "lead_category_id 1 is named by the category list"
+  );
+  assert.deepEqual(leads[1]?.tags, [], "a listing carries no lead tags");
+  assert.equal(leads[1]?.engagement, null);
   assert.deepEqual(
     leads.map((lead) => [lead.sourceId, lead.email, lead.status]),
     [
@@ -111,7 +119,7 @@ test("smartlead: without a total, a full page of leads means there may be more",
     leads.map((lead) => lead.sourceId),
     ["1", "2", "3"]
   );
-  assert.equal(requests.length, 2);
+  assert.equal(requests.length, 3, "the category list and two pages");
 });
 
 test("smartlead: leads without a campaign walk every campaign in turn", async () => {
@@ -143,11 +151,12 @@ test("smartlead: leads without a campaign walk every campaign in turn", async ()
     ]),
     [
       [`${API}/campaigns/`, null],
+      [`${API}/leads/fetch-categories`, null],
       [`${API}/campaigns/2710262/leads`, "0"],
       [`${API}/campaigns/2710262/leads`, "2"],
       [`${API}/campaigns/2710100/leads`, "0"],
     ],
-    "the campaign list is read once and carried in the cursor"
+    "the campaign list and the category names are read once and carried in the cursor"
   );
   assert.deepEqual(
     leads.map((lead) => [lead.sourceId, lead.campaignRef, lead.status]),
@@ -175,7 +184,7 @@ test("smartlead: leads have no usable date filter, so the wrapper filters and sa
 
   assert.deepEqual(page.items, []);
   assert.equal(page.meta.evidence, "derived");
-  assert.equal(urlOf(requests[0]).searchParams.get("created_at_gt"), null);
+  assert.equal(urlOf(requests[1]).searchParams.get("created_at_gt"), null);
 });
 
 test("smartlead: one lead is read by id, and an empty answer is not found", async () => {
@@ -188,6 +197,13 @@ test("smartlead: one lead is read by id, and an empty answer is not found", asyn
   assert.equal(lead.status, "active", "INPROGRESS");
   assert.equal(lead.campaignRef, null);
   assert.deepEqual(lead.custom, { job_title: "CEO" });
+  assert.equal(lead.interest, "Interested", "category_name");
+  assert.deepEqual(lead.tags, ["VIP", "Enterprise"]);
+  assert.equal(lead.engagement, null);
+  const tags = urlOf(requests[1]);
+  assert.equal(tags.pathname, `${API}/crm/leads/tags`);
+  assert.equal(tags.searchParams.get("leadId"), "789");
+  assert.equal(requests.length, 2);
 
   const missing = harness(suite, () => Response.json({}));
   assert.equal(

@@ -14,8 +14,14 @@
 | `lead_runway` | Days until a campaign runs out of leads (an estimate) | `leads.byCampaign`, `stats.byDay` |
 | `compare_clients` | The same counts across clients | the `clients` plugin |
 | `cross_channel_lead` | Every record and message for one person | the `identity` plugin |
+| `campaign_setup` | How one campaign is set up to send: windows, caps, tracking, stop rules | `campaigns.settings` |
+| `deliverability_check` | Each sender's DNS records, sign-in state and warmup spam rate, problems first | `senders.health` |
+| `audience_lists` | The saved lead lists and their sizes | `lists.list` |
+| `vendor_read` | Anything else the vendor can report: lists its own reads, then runs one | a native catalog |
 
-A tool that needs a plugin the instance does not have is left out of the set.
+The 26 insights in [insights.md](insights.md) are tools too: pass `insightTools(outbound)` as `extra` to any wrapper, and `outbound mcp` serves them already.
+
+A tool that needs a plugin the instance does not have is left out of the set. `vendor_read` is left out when the adapter has no native reads or the `redact` plugin is on; what it returns is the vendor's own response, wrapped as untrusted content.
 
 ```ts
 import { createTools, openaiTools } from "outbound-sdk/tools"; // no extra package
@@ -50,7 +56,7 @@ A prospect's reply can contain instructions. Reply and message text is left out 
 
 The server implements `initialize`, `ping`, `tools/list` and `tools/call` directly on JSON-RPC, so the package gains no dependency.
 
-The CLI prints JSON: `outbound providers`, `capabilities`, `campaigns`, `campaign <id>`, `senders`, `leads`, `replies`, `stats`, `limits`, `tools` and `tool <name> --input '{}'`. `OUTBOUND_SDK_PROVIDER` or `--provider` picks the adapter.
+The CLI prints JSON: `outbound providers`, `capabilities`, `campaigns`, `campaign <id>` (with `--stats`, `--sequence`, `--subsequences` or `--settings`), `senders`, `health <sender id>`, `leads` (with `--campaign` or `--list`), `lists`, `replies`, `thread <id>`, `tags`, `blocklist`, `webhooks`, `stats`, `limits`, `tools` and `tool <name> --input '{}'`. `outbound native` lists the vendor's own reads and `outbound native <name> --input '{}'` runs one. `OUTBOUND_SDK_PROVIDER` or `--provider` picks the adapter.
 
 ## Webhooks
 

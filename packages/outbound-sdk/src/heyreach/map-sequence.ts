@@ -1,32 +1,25 @@
-// HeyReach's sequence tree -> ordered steps. Pure functions, no I/O.
+// HeyReach's sequence tree -> steps. Pure functions, no I/O.
 //
-// GetCampaignSequence returns one node. Each node has `unconditionalNode` (the
-// next node, or the "no" branch) and `conditionalNode` (the "yes" branch: a
-// connection request accepted, a check that passed, a reply to a message).
+// GetCampaignSequence returns one node. Each node has `conditionalNode` (the
+// "yes" branch: a connection request accepted, a check that passed, a reply
+// to a message) and `unconditionalNode` (the next node, or the "no" branch).
 // `END` closes a path and the `START` node is never returned.
 //
-// The flattening rule: a node that acts on the lead becomes a step; a `CHECK_*`
-// node is a condition, not a step. When only one branch of a node holds
-// further steps, the walk follows it. When both do, they are compared: a real
-// HeyReach campaign starts with CHECK_IS_CONNECTION, whose "already connected"
-// branch is the same messages as the tail of the "send a connection request"
-// branch. If one branch is the tail of the other, the longer one is the
-// sequence. If they hold different steps there is no single order, and the
-// sequence is refused with a clear error. A step after a branching node runs
-// only for the leads who took that branch.
+// The whole tree is kept. A node that acts on the lead becomes a step; a
+// `CHECK_*` node is a condition, not a step. Steps are numbered in the order
+// the tree is walked: a node, then everything under its "yes" branch, then
+// everything under its "no" branch. `parentIndex` is the step that ran before
+// and `branch` is the outcome that leads to the step, so a campaign that
+// starts with CHECK_IS_CONNECTION has two first steps, one per outcome.
 //
-// The CHECK_IS_CONNECTION layout was read from live campaigns on 2026-11-14.
+// The layouts were read from live campaigns on 2026-11-14.
 
 import type { Sequence, SequenceStep } from "../internal/entities.ts";
-import { OutboundError } from "../internal/errors.ts";
 import { count, isJsonObject, list, objects, text } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
 import { recordBase, refTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
 import { stableId } from "../internal/sha256.ts";
-
-const isStep = (node: Json | undefined): node is JsonObject =>
-  isJsonObject(node) && text(node.nodeType) !== "END";
 
 const DELAY_DAYS = new Map([
   ["DAY", 1],
@@ -55,56 +48,107 @@ const variantBodies = (payload: Json | undefined): (string | null)[] => {
     : list(payload.messages).map((message) => text(message));
 };
 
-const toStep = (node: JsonObject, index: number): SequenceStep => ({
-  action: (text(node.nodeType) ?? "unknown").toLowerCase(),
-  delayDays: delayDays(node),
-  index,
-  variants: variantBodies(node.payload).map((body, variantIndex) => ({
-    body,
-    contentHash: stableId(null, body),
-    subject: null,
-    // Variants are positional: 0 is "A".
-    variantKey: String.fromCodePoint(65 + variantIndex),
-  })),
-});
+const typeOf = (node: JsonObject): string => text(node.nodeType) ?? "unknown";
 
 const isCondition = (node: JsonObject): boolean =>
-  (text(node.nodeType) ?? "").startsWith("CHECK_");
+  typeOf(node).startsWith("CHECK_");
 
-// Two nodes are the same step when they do the same thing with the same text.
-const signature = (node: JsonObject): string =>
-  stableId(text(node.nodeType), ...variantBodies(node.payload));
+// What each outcome of a node is called: [conditionalNode, unconditionalNode].
+// The docs name the conditions; a node they do not describe keeps HeyReach's
+// own two words.
+const OUTCOMES = new Map<string, readonly [string, string]>([
+  ["CHECK_IS_CONNECTION", ["connected", "not_connected"]],
+  ["CHECK_IS_OPEN_PROFILE", ["open_profile", "not_open_profile"]],
+  ["CONNECTION_REQUEST", ["accepted", "not_accepted"]],
+  ["FIND_EMAIL", ["email_found", "email_not_found"]],
+  ["INMAIL", ["replied", "not_replied"]],
+  ["MESSAGE", ["replied", "not_replied"]],
+]);
 
-const endsWith = (
-  longer: readonly JsonObject[],
-  shorter: readonly JsonObject[]
-): boolean => {
-  const tail = longer.slice(longer.length - shorter.length);
+const UNNAMED: readonly [string, string] = ["conditional", "unconditional"];
 
-  return shorter.every(
-    (node, index) => signature(node) === signature(tail[index] ?? {})
-  );
+// The docs list these as the nodes that split the path. A MESSAGE or INMAIL
+// also has a "yes" branch (the lead replied), but it only ever ends the
+// sequence, so the node after a message is on the straight path.
+const SPLITS = new Set(["CONNECTION_REQUEST", "FIND_EMAIL"]);
+
+const hasSteps = (node: Json | undefined): boolean =>
+  isJsonObject(node) &&
+  typeOf(node) !== "END" &&
+  (!isCondition(node) ||
+    hasSteps(node.conditionalNode) ||
+    hasSteps(node.unconditionalNode));
+
+/** Where a node sits: the step before it, and how the lead got here. */
+interface Position {
+  readonly parentIndex: number | null;
+  /** Outcomes since the parent step, outermost first. */
+  readonly outcomes: readonly string[];
+  /** Days waited at the conditions between the parent step and this node. */
+  readonly waited: number;
+}
+
+const toStep = (
+  node: JsonObject,
+  index: number,
+  position: Position
+): SequenceStep => {
+  const own = delayDays(node);
+
+  return {
+    action: typeOf(node).toLowerCase(),
+    branch: position.outcomes.length === 0 ? null : position.outcomes.join("+"),
+    delayDays: own === null ? null : own + position.waited,
+    index,
+    parentIndex: position.parentIndex,
+    variants: variantBodies(node.payload).map((body, variantIndex) => ({
+      body,
+      contentHash: stableId(null, body),
+      subject: null,
+      // Variants are positional: 0 is "A".
+      variantKey: String.fromCodePoint(65 + variantIndex),
+    })),
+  };
 };
 
-const walk = (identity: Identity, node: Json | undefined): JsonObject[] => {
-  if (!isStep(node)) {
-    return [];
+const walk = (
+  node: Json | undefined,
+  position: Position,
+  steps: SequenceStep[]
+): void => {
+  if (!isJsonObject(node) || typeOf(node) === "END") {
+    return;
   }
 
-  const own = isCondition(node) ? [] : [node];
-  const yes = walk(identity, node.conditionalNode);
-  const no = walk(identity, node.unconditionalNode);
-  const [longer, shorter] = yes.length >= no.length ? [yes, no] : [no, yes];
+  const [yes, no] = OUTCOMES.get(typeOf(node)) ?? UNNAMED;
 
-  if (!endsWith(longer, shorter)) {
-    throw new OutboundError(
-      "Unsupported",
-      `This HeyReach sequence branches at a ${text(node.nodeType) ?? "node"} into two paths that hold different steps, so it has no single step order. Read the node tree with raw.get("/campaign/GetCampaignSequence")`,
-      { provider: identity.provider }
-    );
+  if (isCondition(node)) {
+    const waited = position.waited + (delayDays(node) ?? 0);
+
+    const under = (outcome: string): Position => ({
+      outcomes: [...position.outcomes, outcome],
+      parentIndex: position.parentIndex,
+      waited,
+    });
+
+    walk(node.conditionalNode, under(yes), steps);
+    walk(node.unconditionalNode, under(no), steps);
+
+    return;
   }
 
-  return [...own, ...longer];
+  const index = steps.length;
+  steps.push(toStep(node, index, position));
+
+  const splits = SPLITS.has(typeOf(node)) || hasSteps(node.conditionalNode);
+  const after = { parentIndex: index, waited: 0 };
+
+  walk(node.conditionalNode, { ...after, outcomes: [yes] }, steps);
+  walk(
+    node.unconditionalNode,
+    { ...after, outcomes: splits ? [no] : [] },
+    steps
+  );
 };
 
 /** An empty response (`null`) is a campaign with no sequence. */
@@ -112,8 +156,15 @@ export const toSequence = (
   identity: Identity,
   campaignId: string,
   raw: Json
-): Sequence => ({
-  ...recordBase(identity, campaignId, raw),
-  campaignRef: refTo(identity, campaignId) ?? "",
-  steps: walk(identity, raw).map(toStep),
-});
+): Sequence => {
+  const steps: SequenceStep[] = [];
+  walk(raw, { outcomes: [], parentIndex: null, waited: 0 }, steps);
+
+  return {
+    ...recordBase(identity, campaignId, raw),
+    campaignRef: refTo(identity, campaignId) ?? "",
+    kind: "main",
+    name: null,
+    steps,
+  };
+};

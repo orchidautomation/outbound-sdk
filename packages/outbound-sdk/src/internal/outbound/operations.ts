@@ -2,8 +2,6 @@
 // them; the innermost step hands each one to the adapter.
 
 import type {
-  Adapter,
-  AdapterContext,
   CampaignQuery,
   LeadQuery,
   MessageQuery,
@@ -15,12 +13,24 @@ import type {
   TimeRange,
 } from "../adapter.ts";
 import type { Capabilities } from "../capabilities.ts";
-import type { Entity, Evidence, MetricRow } from "../entities.ts";
-import { OutboundError } from "../errors.ts";
-import type { Json } from "../json.ts";
-import { sourceIdFor } from "../ref.ts";
+import {
+  idFor,
+  optionalId,
+  output,
+  single,
+  unsupported,
+} from "./operation-shared.ts";
+import type { DispatchTarget, OperationOutput } from "./operation-shared.ts";
+import { dispatchAccount, isAccountOperation } from "./operations-account.ts";
+import type { AccountOperation } from "./operations-account.ts";
 
-export type Operation =
+export type {
+  DispatchTarget,
+  OperationOutput,
+  OutboundRecord,
+} from "./operation-shared.ts";
+
+type CoreOperation =
   | { readonly kind: "campaigns.get"; readonly id: string }
   | { readonly kind: "campaigns.list"; readonly query: CampaignQuery }
   | { readonly kind: "leads.get"; readonly id: string }
@@ -33,41 +43,9 @@ export type Operation =
   | { readonly kind: "stats"; readonly query: StatsQuery }
   | { readonly kind: "workspaces.list"; readonly query: PageQuery };
 
+export type Operation = AccountOperation | CoreOperation;
+
 export type OperationKind = Operation["kind"];
-
-/** A record an operation returns. */
-export type OutboundRecord = Entity | MetricRow;
-
-export interface OperationOutput {
-  readonly items: readonly OutboundRecord[];
-  /** The adapter's continuation value, when there is another page. */
-  readonly next?: Json | undefined;
-  readonly evidence: Evidence;
-  /** `true` when a plugin served an older answer because the vendor was down. */
-  readonly stale?: boolean | undefined;
-  /** When the answer was fetched, if a plugin served it from a store. ISO 8601 UTC. */
-  readonly fetchedAt?: string | undefined;
-}
-
-const unsupported = (adapter: Adapter, kind: OperationKind): OutboundError =>
-  new OutboundError(
-    "Unsupported",
-    `The ${adapter.name} adapter does not implement ${kind}`,
-    {
-      provider: adapter.name,
-    }
-  );
-
-const idFor = (adapter: Adapter, id: string): string =>
-  // A combined adapter routes by ref, so it needs the id untouched.
-  adapter.members === undefined
-    ? sourceIdFor(id, adapter.name, adapter.workspaceId)
-    : id;
-
-const optionalId = (
-  adapter: Adapter,
-  id: string | undefined
-): string | undefined => (id === undefined ? undefined : idFor(adapter, id));
 
 const inRange = (value: string | null, range: TimeRange): boolean => {
   if (range.since === undefined && range.until === undefined) {
@@ -115,26 +93,6 @@ const filterByTime = <Item>(
   };
 };
 
-const output = (
-  page: Page<OutboundRecord>,
-  derived = false
-): OperationOutput => ({
-  evidence: derived ? "derived" : "exact",
-  items: page.items,
-  next: page.next,
-});
-
-const single = (item: OutboundRecord): OperationOutput => ({
-  evidence: "exact",
-  items: [item],
-});
-
-export interface DispatchTarget {
-  readonly adapter: Adapter;
-  readonly capabilities: Capabilities;
-  readonly ctx: AdapterContext;
-}
-
 const listCampaigns = async (
   target: DispatchTarget,
   query: CampaignQuery
@@ -168,7 +126,11 @@ const listLeads = async (
   }
 
   const page = await adapter.listLeads(
-    { ...query, campaignId: optionalId(adapter, query.campaignId) },
+    {
+      ...query,
+      campaignId: optionalId(adapter, query.campaignId),
+      listId: optionalId(adapter, query.listId),
+    },
     ctx
   );
 
@@ -276,7 +238,7 @@ const stats = async (
 
 const getOne = async (
   target: DispatchTarget,
-  operation: Extract<Operation, { readonly id: string }>
+  operation: Extract<CoreOperation, { readonly id: string }>
 ): Promise<OperationOutput> => {
   const { adapter, ctx } = target;
   const id = idFor(adapter, operation.id);
@@ -323,6 +285,10 @@ export const dispatch = async (
   target: DispatchTarget,
   operation: Operation
 ): Promise<OperationOutput> => {
+  if (isAccountOperation(operation)) {
+    return await dispatchAccount(target, operation);
+  }
+
   switch (operation.kind) {
     case "campaigns.list": {
       return await listCampaigns(target, operation.query);

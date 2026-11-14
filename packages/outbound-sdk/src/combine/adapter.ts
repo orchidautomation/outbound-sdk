@@ -14,6 +14,7 @@ import type { MetricRow } from "../internal/entities.ts";
 import { makeErrorMapper, OutboundError } from "../internal/errors.ts";
 import type { Json } from "../internal/json.ts";
 import { recordBase } from "../internal/record.ts";
+import { accountReads } from "./account.ts";
 import { COMBINED, pageAcross, routeRef } from "./route.ts";
 
 const MATURITY_ORDER = ["unverified", "beta", "stable"] as const;
@@ -109,14 +110,29 @@ const lists = (members: readonly Adapter[]): Lists => ({
     pageAcross(members, ctx, query, (member, memberCtx, next) =>
       member.listCampaigns({ ...query, next }, memberCtx)
     ),
-  listLeads: (query, ctx) =>
-    scopedOrAcross(members, ctx, query, (member, memberCtx, scoped) => {
+  listLeads: (query, ctx) => {
+    if (query.listId !== undefined) {
+      // A saved list lives in exactly one member.
+      const routed = routeRef(members, ctx, query.listId, "List");
+
+      if (routed.member.listLeads === undefined) {
+        throw missing(routed.member, "listLeads");
+      }
+
+      return routed.member.listLeads(
+        { ...query, listId: routed.id },
+        routed.ctx
+      );
+    }
+
+    return scopedOrAcross(members, ctx, query, (member, memberCtx, scoped) => {
       if (member.listLeads === undefined) {
         throw missing(member, "listLeads");
       }
 
       return member.listLeads(scoped, memberCtx);
-    }),
+    });
+  },
   listMessages: (query, ctx) => {
     const lead =
       query.leadId === undefined
@@ -251,8 +267,13 @@ export const combine = (members: readonly Adapter[]): Adapter => {
   return {
     ...lists(members),
     ...lookups(members),
+    ...accountReads(members),
     capabilities: {
       ...intersectCapabilities(first ?? resolveCapabilities(), ...rest),
+      // A thread id is the vendor's own and names no member, so it cannot be routed.
+      "messages.byThread": false,
+      // A native read belongs to one vendor; reach it through workspace(id).
+      native: false,
       // A combined instance always knows its workspaces: they are its members.
       workspaces: true,
     },

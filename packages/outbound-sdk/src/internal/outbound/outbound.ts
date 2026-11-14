@@ -9,6 +9,12 @@ import type { LimitsSnapshot, OperationOptions } from "../engine/engine.ts";
 import type { RateLimitStore } from "../engine/rate-store.ts";
 import type { Runtime } from "../engine/runtime.ts";
 import type {
+  BlockEntry,
+  LeadList,
+  Tag,
+  WebhookSubscription,
+} from "../entities-account.ts";
+import type {
   Campaign,
   Lead,
   Message,
@@ -19,6 +25,7 @@ import type {
 import { OutboundError } from "../errors.ts";
 import { mergeHooks } from "../hooks.ts";
 import type { OutboundHooks } from "../hooks.ts";
+import type { NativeCatalog, NoNative } from "../native.ts";
 import type {
   CampaignFilters,
   CampaignHandle,
@@ -27,7 +34,9 @@ import type {
   EstimateQuery,
   LeadFilters,
   LeadHandle,
+  ListHandle,
   MessageFilters,
+  NativeClient,
   OutboundApi,
   RawClient,
   ReadCollection,
@@ -35,15 +44,20 @@ import type {
   SenderFilters,
   SenderHandle,
   StatsResult,
+  ThreadHandle,
   TopLevelStatsOptions,
+  WebhookFilters,
 } from "./api.ts";
 import { makeCollection, makeReadCollection } from "./collections.ts";
 import type { Core } from "./core.ts";
 import {
   makeCampaignHandle,
   makeLeadHandle,
+  makeListHandle,
   makeSenderHandle,
+  makeThreadHandle,
 } from "./handles.ts";
+import { makeNativeClient } from "./native.ts";
 import { dispatch } from "./operations.ts";
 import {
   assertUniquePluginNames,
@@ -52,6 +66,12 @@ import {
 } from "./plugins.ts";
 import type { OutboundPlugin } from "./plugins.ts";
 import { makeRawClient } from "./raw.ts";
+import {
+  blocklistList,
+  listList,
+  tagList,
+  webhookList,
+} from "./specs-account.ts";
 import {
   campaignGet,
   campaignList,
@@ -65,8 +85,10 @@ import {
 } from "./specs.ts";
 import { readStats } from "./stats.ts";
 
-export interface OutboundOptions extends OperationOptions {
-  readonly adapter: Adapter;
+export interface OutboundOptions<
+  Native extends NativeCatalog = NoNative,
+> extends OperationOptions {
+  readonly adapter: Adapter<Native>;
   /** `plugins[0]` is the outermost layer. */
   readonly plugins?: readonly OutboundPlugin[] | undefined;
   readonly hooks?: OutboundHooks | undefined;
@@ -103,7 +125,9 @@ const engineFor = (options: OutboundOptions): RequestEngine =>
     store: options.rateLimitStore,
   });
 
-export class Outbound implements OutboundApi {
+export class Outbound<
+  Native extends NativeCatalog = NoNative,
+> implements OutboundApi {
   readonly #core: Core;
   readonly #options: OutboundOptions;
   readonly #plugins: readonly OutboundPlugin[];
@@ -113,10 +137,15 @@ export class Outbound implements OutboundApi {
   readonly messages: ReadCollection<Message, MessageFilters>;
   readonly replies: ReadCollection<Reply, ReplyFilters>;
   readonly workspaces: ReadCollection<Workspace, Record<never, never>>;
+  readonly lists: ReadCollection<LeadList, Record<never, never>>;
+  readonly blocklist: ReadCollection<BlockEntry, Record<never, never>>;
+  readonly tags: ReadCollection<Tag, Record<never, never>>;
+  readonly webhooks: ReadCollection<WebhookSubscription, WebhookFilters>;
   readonly raw: RawClient;
+  readonly native: NativeClient<Native>;
 
   constructor(
-    options: OutboundOptions,
+    options: OutboundOptions<Native>,
     engine: RequestEngine = engineFor(options)
   ) {
     const { adapter } = options;
@@ -163,7 +192,12 @@ export class Outbound implements OutboundApi {
     this.messages = makeReadCollection(this.#core, messageList(this.#core));
     this.replies = makeReadCollection(this.#core, replyList(this.#core));
     this.workspaces = makeReadCollection(this.#core, workspaceList(this.#core));
+    this.lists = makeReadCollection(this.#core, listList(this.#core));
+    this.blocklist = makeReadCollection(this.#core, blocklistList(this.#core));
+    this.tags = makeReadCollection(this.#core, tagList(this.#core));
+    this.webhooks = makeReadCollection(this.#core, webhookList(this.#core));
     this.raw = makeRawClient(this.#core);
+    this.native = makeNativeClient<Native>(this.#core);
   }
 
   get provider(): string {
@@ -201,6 +235,14 @@ export class Outbound implements OutboundApi {
 
   lead(id: string): LeadHandle {
     return makeLeadHandle(this.#core, id);
+  }
+
+  list(id: string): ListHandle {
+    return makeListHandle(this.#core, id);
+  }
+
+  thread(id: string): ThreadHandle {
+    return makeThreadHandle(this.#core, id);
   }
 
   workspace(id: string): Outbound {

@@ -1,0 +1,96 @@
+{
+  "items": [
+    {
+      "id": "01a1d77f-5e80-7e44-bbfc-1c968e7cfe01",
+      "timestamp_created": "2026-11-06T12:00:00.000Z",
+      "parent_campaign": "01a1d77f-5e23-7a9a-9112-a6f7089f329f",
+      "workspace": "01a1d77f-5e23-7a9a-9112-a6f7089f3200",
+      "status": 1,
+      "timestamp_leads_updated": "2026-11-07T12:00:00.000Z",
+      "name": "Interested follow-up",
+      "conditions": {
+        "crm_status": [
+          1
+        ],
+        "lead_activity": [
+          2
+        ],
+        "reply_contains": "yes"
+      },
+      "sequences": [
+        {
+          "steps": [
+            {
+              "type": "email",
+              "delay": 3,
+              "delay_unit": "days",
+              "variants": [
+                {
+                  "subject": "Great to hear, {{firstName}}",
+                  "body": "Here is a link to book a time."
+                }
+              ],
+              "pre_delay": 90,
+              "pre_delay_unit": "minutes"
+            },
+            {
+              "type": "email",
+              "delay": 1,
+              "delay_unit": "days",
+              "variants": [
+                {
+                  "subject": "Did the times work?",
+                  "body": "Happy to send more options."
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "auto_variant_select": null,
+      "daily_limit_mode": "inherit",
+      "daily_limit": null,
+      "ignore_account_daily_limit": false
+    },
+    {
+      "id": "01a1d77f-5e80-7e44-bbfc-1c968e7cfe02",
+      "timestamp_created": "2026-11-06T12:00:00.000Z",
+      "parent_campaign": "01a1d77f-5e23-7a9a-9112-a6f7089f329f",
+      "workspace": "01a1d77f-5e23-7a9a-9112-a6f7089f3200",
+      "status": 1,
+      "timestamp_leads_updated": "2026-11-07T12:00:00.000Z",
+      "name": "Out of office follow-up",
+      "conditions": {
+        "crm_status": [
+          1
+        ],
+        "lead_activity": [
+          2
+        ],
+        "reply_contains": "yes"
+      },
+      "sequences": [
+        {
+          "steps": [
+            {
+              "type": "email",
+              "delay": 0,
+              "delay_unit": "days",
+              "variants": [
+                {
+                  "subject": "Welcome back",
+                  "body": "Picking this up now that you are back."
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "auto_variant_select": null,
+      "daily_limit_mode": "inherit",
+      "daily_limit": null,
+      "ignore_account_daily_limit": false
+    }
+  ],
+  "next_starting_after": "01a1d77f-5e80-7e44-bbfc-1c968e7cfe02"
+}

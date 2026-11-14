@@ -15,9 +15,15 @@ import {
   WORKSPACE_ENV,
 } from "./capabilities.ts";
 import { createClient } from "./client.ts";
+import { NATIVE } from "./native.ts";
+import type { InstantlyNative } from "./native.ts";
 import { instantlyEvents } from "./webhooks.ts";
 
 export const PROVIDER = "instantly";
+
+export { NATIVE } from "./native.ts";
+
+export type { InstantlyNative } from "./native.ts";
 
 /** The environment variables this adapter reads. */
 export const envVars = [API_KEY_ENV, WORKSPACE_ENV] as const;
@@ -34,7 +40,9 @@ export interface InstantlyOptions {
   readonly capabilities?: CapabilityDeclaration | undefined;
 }
 
-export const instantly = (options: InstantlyOptions = {}): Adapter => {
+export const instantly = (
+  options: InstantlyOptions = {}
+): Adapter<InstantlyNative> => {
   const apiKey = requireCredential(options.apiKey, API_KEY_ENV, PROVIDER);
 
   const workspaceId = assertWorkspaceId(
@@ -42,16 +50,19 @@ export const instantly = (options: InstantlyOptions = {}): Adapter => {
     PROVIDER
   );
 
+  const declared = { ...capabilities, ...options.capabilities };
+
   const client = createClient({
     apiKey,
     asWorkspace: options.asWorkspace,
     baseUrl: options.baseUrl,
     identity: { provider: PROVIDER, workspaceId },
+    readTags: declared.tags === true,
   });
 
   return {
     ...readers(client),
-    capabilities: { ...capabilities, ...options.capabilities },
+    capabilities: declared,
     caveats,
     costs,
     events: instantlyEvents(PROVIDER),
@@ -61,8 +72,9 @@ export const instantly = (options: InstantlyOptions = {}): Adapter => {
       secrets: [apiKey],
       statusCodes: { 402: "Unsupported" },
     }),
-    maturity: "unverified",
+    maturity: "beta",
     name: PROVIDER,
+    native: NATIVE,
     raw: client.raw,
     secrets: [apiKey],
     workspaceId,

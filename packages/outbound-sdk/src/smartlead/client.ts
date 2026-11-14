@@ -13,6 +13,7 @@ import type { Identity } from "../internal/record.ts";
 import { buildUrl } from "../internal/url.ts";
 import type { QueryValue } from "../internal/url.ts";
 import { BASE_URL } from "./capabilities.ts";
+import { NATIVE_READ_POSTS } from "./native.ts";
 
 export interface ClientOptions {
   readonly apiKey: string;
@@ -42,13 +43,11 @@ export interface SmartleadClient {
   ) => Promise<Json>;
 }
 
-// The reads Smartlead serves over POST: the master inbox folders, the lead
-// search, and the bulk message history (the suffix is part of its path).
-const READ_POSTS = [
-  /^\/master-inbox\/(?:inbox-replies|unread-replies|sent|important|assigned-me|archived|snoozed|reminders|scheduled|views)$/u,
-  /^\/campaigns\/\d+\/leads\/filter$/u,
-  /^\/campaigns\/\d+\/message-history-for-leads\/bbfbdsFGHlBr76ruhjvh6fhHL$/u,
-];
+// The reads Smartlead serves over POST: the master inbox replies, which
+// `replies.list` reads, and every POST in the native catalog (the other inbox
+// views, the lead search, the bulk message history, the tags of a set of
+// mailboxes and the sister services' reports).
+const READ_POSTS = [/^\/master-inbox\/inbox-replies$/u, ...NATIVE_READ_POSTS];
 
 const normalizePath = (path: string): string => {
   const [withoutQuery = ""] = path.split("?");

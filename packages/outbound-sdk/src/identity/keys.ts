@@ -3,7 +3,7 @@
 // companies, so two records are linked only when a vendor gave both the same
 // address or the same profile.
 
-const LINKEDIN = /linkedin\.com\/(?:in|pub)\/(?<slug>[^/?#\s]+)/iu;
+import { profileSlug } from "../internal/url.ts";
 
 export const emailKey = (email: string | null): string | null => {
   const cleaned = email?.trim().toLowerCase() ?? "";
@@ -12,11 +12,9 @@ export const emailKey = (email: string | null): string | null => {
 };
 
 export const linkedinKey = (url: string | null): string | null => {
-  const slug = url === null ? undefined : LINKEDIN.exec(url)?.groups?.slug;
+  const slug = profileSlug(url);
 
-  return slug === undefined
-    ? null
-    : `linkedin:${decodeURIComponent(slug).toLowerCase()}`;
+  return slug === null ? null : `linkedin:${slug}`;
 };
 
 /** Every exact identifier a record carries. The first is its primary key. */

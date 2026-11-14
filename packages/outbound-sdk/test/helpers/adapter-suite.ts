@@ -51,10 +51,26 @@ export interface AdapterSuite {
     readonly campaign: string;
     readonly lead?: string;
     readonly sender?: string;
+    /** A saved lead list. */
+    readonly list?: string;
+    /** A `threadId` that messages in the fixtures carry. */
+    readonly thread?: string;
   };
   /** Records across every fixture page, per listing the adapter supports. */
   readonly totals: Partial<
-    Record<"campaigns" | "leads" | "messages" | "replies" | "senders", number>
+    Record<
+      | "blocklist"
+      | "campaigns"
+      | "leads"
+      | "lists"
+      | "messages"
+      | "replies"
+      | "senders"
+      | "subsequences"
+      | "tags"
+      | "webhooks",
+      number
+    >
   >;
   /** Webhook fixture file -> the event type it must become. */
   readonly webhooks: Readonly<Record<string, EventType>>;
@@ -174,6 +190,20 @@ const SINCE = "2020-01-01T00:00:00Z";
 // One read per capability. A supported one must succeed; an unsupported one
 // must throw Unsupported before any request leaves.
 const PROBES: Partial<Record<CapabilityKey, Probe>> = {
+  blocklist: (outbound) => outbound.blocklist.list(),
+  "campaigns.settings": (outbound, ids) =>
+    outbound.campaign(ids.campaign).settings(),
+  "lists.leads": (outbound, ids) =>
+    outbound.list(ids.list ?? "missing").leads.list(),
+  "lists.list": (outbound) => outbound.lists.list(),
+  "messages.byThread": (outbound, ids) =>
+    outbound.thread(ids.thread ?? "missing").messages(),
+  "senders.health": (outbound, ids) =>
+    outbound.sender(ids.sender ?? "missing").health(),
+  "sequence.subsequences": (outbound, ids) =>
+    outbound.campaign(ids.campaign).subsequences.list(),
+  tags: (outbound) => outbound.tags.list(),
+  "webhooks.list": (outbound) => outbound.webhooks.list(),
   "campaigns.status": (outbound) =>
     outbound.campaigns.list({ status: "active" }),
   "leads.byCampaign": (outbound, ids) =>
@@ -215,6 +245,12 @@ const LISTINGS: Record<
   keyof AdapterSuite["totals"],
   (outbound: Outbound, ids: AdapterSuite["ids"]) => Promise<Listed[]>
 > = {
+  blocklist: (outbound) => outbound.blocklist.listAll().toArray(),
+  lists: (outbound) => outbound.lists.listAll().toArray(),
+  subsequences: (outbound, ids) =>
+    outbound.campaign(ids.campaign).subsequences.listAll().toArray(),
+  tags: (outbound) => outbound.tags.listAll().toArray(),
+  webhooks: (outbound) => outbound.webhooks.listAll().toArray(),
   campaigns: (outbound) => outbound.campaigns.listAll().toArray(),
   leads: (outbound, ids) => leadsOf(outbound, ids).listAll().toArray(),
   messages: (outbound) => outbound.messages.listAll().toArray(),

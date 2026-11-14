@@ -4,28 +4,35 @@
 import type {
   Adapter,
   AdapterContext,
-  MessageQuery,
+  CampaignQuery,
+  LeadQuery,
   Page,
-  ReplyQuery,
+  SenderQuery,
 } from "../internal/adapter.ts";
-import type { Message, Reply } from "../internal/entities.ts";
-import { OutboundError } from "../internal/errors.ts";
-import { field, isJsonObject, isString, text } from "../internal/json.ts";
-import type { Json, JsonObject } from "../internal/json.ts";
-import { EMAILS_LANE, PAGE_SIZE } from "./capabilities.ts";
+import type { Campaign, Sender } from "../internal/entities.ts";
+import {
+  emailAddress,
+  isJsonObject,
+  isString,
+  list,
+  objects,
+  text,
+} from "../internal/json.ts";
+import type { JsonObject } from "../internal/json.ts";
+import { accountReaders } from "./adapter-account.ts";
+import { mailReaders } from "./adapter-mail.ts";
+import { TAG_PAGES } from "./capabilities.ts";
 import type { InstantlyClient } from "./client.ts";
+import { toLead } from "./map-lead.ts";
 import {
   campaignStatusCode,
-  isScheduled,
   listEnvelope,
   toCampaign,
-  toLead,
-  toMessage,
-  toReply,
   toSender,
   toSequence,
   toWorkspace,
 } from "./map.ts";
+import { listPage, pageSize, readLabels, readLookup } from "./pages.ts";
 import { readStats } from "./stats.ts";
 
 type Readers = Pick<
@@ -36,143 +43,229 @@ type Readers = Pick<
   | "getSequence"
   | "listCampaigns"
   | "listLeads"
-  | "listMessages"
-  | "listReplies"
   | "listSenders"
   | "listWorkspaces"
   | "stats"
 >;
 
-const pageSize = (limit: number | undefined): number =>
-  Math.min(limit ?? PAGE_SIZE, PAGE_SIZE);
+const texts = (items: readonly JsonObject[], key: string): string[] =>
+  items.flatMap((item) => text(item[key]) ?? []);
 
-const after = (next: Json | undefined): string | undefined =>
-  isString(next) ? next : undefined;
-
-interface EmailCursor {
-  readonly after: string | undefined;
-  /** The lead's address, resolved once and carried in the cursor. */
-  readonly lead: string | undefined;
-}
-
-const emailCursor = (next: Json | undefined): EmailCursor => ({
-  after: text(field(next, "after")) ?? undefined,
-  lead: text(field(next, "lead")) ?? undefined,
-});
-
-// GET /emails filters by the lead's address, not its id.
-const leadAddress = async (
+/**
+ * The tag names of each campaign, by campaign id. A tag is tied to a campaign
+ * by a mapping record, and the mapping holds the tag's id, not its name.
+ */
+const campaignTags = async (
   client: InstantlyClient,
   ctx: AdapterContext,
-  leadId: string | undefined,
-  cursor: EmailCursor
-): Promise<string | undefined> => {
-  if (leadId === undefined || cursor.lead !== undefined) {
-    return cursor.lead;
+  ids: readonly string[]
+): Promise<Map<string, string[]>> => {
+  const tags = new Map<string, string[]>();
+
+  if (!client.readTags || ids.length === 0) {
+    return tags;
   }
 
-  const lead = await client.getObject(
-    ctx,
-    `/leads/${encodeURIComponent(leadId)}`
-  );
+  const mappings = await readLookup(client, ctx, {
+    filters: { resource_ids: ids.join(",") },
+    pages: TAG_PAGES,
+    path: "/custom-tag-mappings",
+  });
 
-  const address = text(lead.email);
-
-  if (address === null) {
-    throw new OutboundError("NotFound", `Lead ${leadId} has no email address`, {
-      provider: client.identity.provider,
-    });
+  if (mappings.length === 0) {
+    return tags;
   }
 
-  return address;
+  const found = await readLookup(client, ctx, {
+    filters: { tag_ids: [...new Set(texts(mappings, "tag_id"))].join(",") },
+    pages: TAG_PAGES,
+    path: "/custom-tags",
+  });
+
+  const names = new Map(found.map((tag) => [text(tag.id), text(tag.label)]));
+
+  for (const mapping of mappings) {
+    const campaign = text(mapping.resource_id) ?? "";
+    const name = names.get(text(mapping.tag_id));
+
+    if (name !== null && name !== undefined) {
+      tags.set(campaign, [...(tags.get(campaign) ?? []), name]);
+    }
+  }
+
+  return tags;
 };
 
-interface EmailPage {
-  readonly items: JsonObject[];
-  readonly next: Json | undefined;
-}
-
-const listEmails = async (
+const listCampaigns = async (
   client: InstantlyClient,
   ctx: AdapterContext,
-  query: MessageQuery | ReplyQuery,
-  received: boolean
-): Promise<EmailPage> => {
-  const cursor = emailCursor(query.next);
-  const leadId = "leadId" in query ? query.leadId : undefined;
-  const lead = await leadAddress(client, ctx, leadId, cursor);
+  query: CampaignQuery
+): Promise<Page<Campaign>> => {
+  if (query.status === "archived" || query.status === "unknown") {
+    // Instantly has no archived or unknown campaigns.
+    return { items: [] };
+  }
 
-  const envelope = listEnvelope(
-    await client.get(ctx, "/emails", {
-      lane: EMAILS_LANE,
-      query: {
-        campaign_id: query.campaignId,
-        email_type: received ? "received" : undefined,
-        lead,
-        limit: pageSize(query.limit),
-        max_timestamp_created: query.until,
-        min_timestamp_created: query.since,
-        starting_after: cursor.after,
-      },
-    })
+  const page = await listPage(client, ctx, "/campaigns", query, {
+    status:
+      query.status === undefined ? undefined : campaignStatusCode(query.status),
+  });
+
+  const tags = await campaignTags(client, ctx, texts(page.items, "id"));
+
+  const campaigns = page.items.map((item) =>
+    toCampaign(client.identity, item, tags.get(text(item.id) ?? ""))
   );
 
   return {
-    items: envelope.items.filter((item) => !isScheduled(item)),
-    next:
-      envelope.next === undefined
-        ? undefined
-        : { after: envelope.next, lead: lead ?? null },
+    // Active and paused each cover several Instantly statuses, so they are
+    // matched here on the mapped value.
+    items:
+      query.status === undefined
+        ? campaigns
+        : campaigns.filter((campaign) => campaign.status === query.status),
+    next: page.next,
   };
 };
 
-const mailReaders = (
+/**
+ * A campaign names its mailboxes by address (`email_list`) and by tag
+ * (`email_tag_list`). The accounts list is read and matched against both;
+ * when only tags are named, Instantly filters by them itself.
+ */
+const campaignSenders = async (
+  client: InstantlyClient,
+  ctx: AdapterContext,
+  query: SenderQuery & { readonly campaignId: string }
+): Promise<Page<Sender>> => {
+  const campaign = await client.getObject(
+    ctx,
+    `/campaigns/${encodeURIComponent(query.campaignId)}`
+  );
+
+  const addresses = new Set(
+    list(campaign.email_list).flatMap((value) => emailAddress(value) ?? [])
+  );
+
+  const tagIds = new Set(
+    list(campaign.email_tag_list).flatMap((value) => text(value) ?? [])
+  );
+
+  if (addresses.size === 0 && tagIds.size === 0) {
+    return { items: [] };
+  }
+
+  const byTagOnly = addresses.size === 0;
+
+  const page = await listPage(client, ctx, "/accounts", query, {
+    include_tags: byTagOnly || tagIds.size === 0 ? undefined : true,
+    tag_ids: byTagOnly ? [...tagIds].join(",") : undefined,
+  });
+
+  const attached = (account: JsonObject): boolean =>
+    byTagOnly ||
+    addresses.has(emailAddress(account.email) ?? "") ||
+    texts(objects(account.tags), "id").some((id) => tagIds.has(id));
+
+  return {
+    items: page.items
+      .filter((account) => attached(account))
+      .map((account) => toSender(client.identity, account)),
+    next: page.next,
+  };
+};
+
+/** The body of `POST /leads/list`: every filter and the cursor go in it. */
+const leadListBody = (query: LeadQuery): JsonObject => {
+  const body: JsonObject = { limit: pageSize(query.limit) };
+
+  if (query.campaignId !== undefined) {
+    body.campaign = query.campaignId;
+  }
+
+  if (query.listId !== undefined) {
+    body.list_id = query.listId;
+  }
+
+  if (query.email !== undefined) {
+    body.contacts = [query.email];
+  }
+
+  if (isString(query.next)) {
+    body.starting_after = query.next;
+  }
+
+  return body;
+};
+
+const leadReaders = (
   client: InstantlyClient
-): Pick<Readers, "listMessages" | "listReplies"> => ({
-  listMessages: async (query, ctx): Promise<Page<Message>> => {
-    const page = await listEmails(client, ctx, query, false);
+): Pick<Readers, "getLead" | "listLeads"> => ({
+  getLead: async (id, ctx) => {
+    const lead = await client.getObject(
+      ctx,
+      `/leads/${encodeURIComponent(id)}`
+    );
 
-    return {
-      items: page.items.map((item) =>
-        toMessage(client.identity, item, query.includeBody)
-      ),
-      next: page.next,
-    };
+    return toLead(
+      client.identity,
+      lead,
+      await readLabels(client, ctx, [lead.lt_interest_status])
+    );
   },
-  listReplies: async (query, ctx): Promise<Page<Reply>> => {
-    const page = await listEmails(client, ctx, query, true);
+  listLeads: async (query, ctx) => {
+    if (query.linkedinUrl !== undefined) {
+      // An Instantly lead has no LinkedIn profile, so nothing can match.
+      return { items: [] };
+    }
 
-    const replies = page.items.map((item) =>
-      toReply(client.identity, item, query.includeBody)
+    const envelope = listEnvelope(
+      await client.post(ctx, "/leads/list", leadListBody(query))
+    );
+
+    const labels = await readLabels(
+      client,
+      ctx,
+      envelope.items.map((item) => item.lt_interest_status)
+    );
+
+    const leads = envelope.items.map((item) =>
+      toLead(client.identity, item, labels)
     );
 
     return {
-      // One i_status value fits in the query but a category maps to several, so
-      // the category is matched here on the mapped value.
+      // `contacts` is documented as the emails a lead needs to have, but not
+      // how it compares them, so the match is made exact here.
       items:
-        query.category === undefined
-          ? replies
-          : replies.filter((reply) => reply.category === query.category),
-      next: page.next,
+        query.email === undefined
+          ? leads
+          : leads.filter((lead) => lead.email === query.email),
+      next: envelope.next,
     };
   },
 });
 
-export const readers = (client: InstantlyClient): Readers => {
+export const readers = (
+  client: InstantlyClient
+): Readers &
+  ReturnType<typeof accountReaders> &
+  ReturnType<typeof mailReaders> => {
   const { identity } = client;
 
   return {
+    ...accountReaders(client),
+    ...leadReaders(client),
     ...mailReaders(client),
-    getCampaign: async (id, ctx) =>
-      toCampaign(
-        identity,
-        await client.getObject(ctx, `/campaigns/${encodeURIComponent(id)}`)
-      ),
-    getLead: async (id, ctx) =>
-      toLead(
-        identity,
-        await client.getObject(ctx, `/leads/${encodeURIComponent(id)}`)
-      ),
+    getCampaign: async (id, ctx) => {
+      const campaign = await client.getObject(
+        ctx,
+        `/campaigns/${encodeURIComponent(id)}`
+      );
+
+      const tags = await campaignTags(client, ctx, texts([campaign], "id"));
+
+      return toCampaign(identity, campaign, tags.get(text(campaign.id) ?? ""));
+    },
     getSender: async (id, ctx) =>
       toSender(
         identity,
@@ -183,65 +276,21 @@ export const readers = (client: InstantlyClient): Readers => {
         identity,
         await client.getObject(ctx, `/campaigns/${encodeURIComponent(id)}`)
       ),
-    listCampaigns: async (query, ctx) => {
-      const status =
-        query.status === undefined
-          ? undefined
-          : campaignStatusCode(query.status);
-
-      if (query.status !== undefined && status === undefined) {
-        // Instantly has no archived or unknown campaigns.
-        return { items: [] };
-      }
-
-      const envelope = listEnvelope(
-        await client.get(ctx, "/campaigns", {
-          query: {
-            limit: pageSize(query.limit),
-            starting_after: after(query.next),
-            status,
-          },
-        })
-      );
-
-      return {
-        items: envelope.items.map((item) => toCampaign(identity, item)),
-        next: envelope.next,
-      };
-    },
-    listLeads: async (query, ctx) => {
-      const body: JsonObject = { limit: pageSize(query.limit) };
-
-      if (query.campaignId !== undefined) {
-        body.campaign = query.campaignId;
-      }
-
-      if (isString(query.next)) {
-        body.starting_after = query.next;
-      }
-
-      const envelope = listEnvelope(
-        await client.post(ctx, "/leads/list", body)
-      );
-
-      return {
-        items: envelope.items.map((item) => toLead(identity, item)),
-        next: envelope.next,
-      };
-    },
+    listCampaigns: async (query, ctx) =>
+      await listCampaigns(client, ctx, query),
     listSenders: async (query, ctx) => {
-      const envelope = listEnvelope(
-        await client.get(ctx, "/accounts", {
-          query: {
-            limit: pageSize(query.limit),
-            starting_after: after(query.next),
-          },
-        })
-      );
+      if (query.campaignId !== undefined) {
+        return await campaignSenders(client, ctx, {
+          ...query,
+          campaignId: query.campaignId,
+        });
+      }
+
+      const page = await listPage(client, ctx, "/accounts", query);
 
       return {
-        items: envelope.items.map((item) => toSender(identity, item)),
-        next: envelope.next,
+        items: page.items.map((item) => toSender(identity, item)),
+        next: page.next,
       };
     },
     listWorkspaces: async (_query, ctx) => {

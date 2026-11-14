@@ -1,0 +1,16 @@
+[
+  {
+    "id": 228361167,
+    "email_or_domain": "Blocked.Example.com",
+    "created_at": "2025-11-25T12:38:45.193Z",
+    "source": "Smartlead.ai Bounce Detection",
+    "client_id": null
+  },
+  {
+    "id": 228361168,
+    "email_or_domain": "Person7@Example.org",
+    "created_at": "2025-11-26T08:15:00.000Z",
+    "source": "manual",
+    "client_id": 23
+  }
+]

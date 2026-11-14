@@ -2,7 +2,7 @@
 
 > This is the research record the HeyReach adapter was written from. The companion files it mentions (`endpoints.json`, `limits.json`, `sources/`) were working files and are not in this repository; the fixtures used by the tests are in `fixtures/heyreach/`.
 
-Fetched 2026-11-14 from public documentation only. No credentials were used. One unauthenticated request was made to `GET /api/public/auth/CheckApiKey` (no key) to see the 401 shape; everything else is from docs.
+Sections 0 to 10 were fetched 2026-11-14 from public documentation only. No credentials were used for them. The section "Account-level reads" near the end was added the same day from a fresh fetch of the docs plus read-only requests to one live workspace. One unauthenticated request was made to `GET /api/public/auth/CheckApiKey` (no key) to see the 401 shape; everything else is from docs.
 
 Terms used below:
 
@@ -56,7 +56,7 @@ The `exclude*` names in the list schema look stale (they match no current write 
 
 `DRAFT`, `IN_PROGRESS`, `PAUSED`, `FINISHED`, `CANCELED`, `FAILED`, `STARTING`, `SCHEDULED`. Meanings are not documented beyond the names. What the docs do say: `Create` makes a `DRAFT`; `StartCampaign` activates it; `UpdateSequence` is allowed only in `DRAFT`, `SCHEDULED`, `PAUSED`; a `SCHEDULED` campaign whose sequence is updated reverts to `DRAFT`. `GetCampaignsForLead` lists the same enum without `SCHEDULED`. Webhook payloads carry `campaign.status` as an **integer**; the number-to-name mapping is not documented.
 
-There is no campaign type field, no schedule read endpoint (schedule is write-only via `UpdateSchedule`), and no "deleted" flag except `isCampaignDeleted` in per-campaign stats.
+There is no campaign type field, no schedule read endpoint (schedule is write-only via `UpdateSchedule`; confirmed again on 2026-11-14), and no "deleted" flag except `isCampaignDeleted` in per-campaign stats.
 
 ## 2. Sequence / steps
 
@@ -264,6 +264,71 @@ Plan gating: none documented for webhooks. Elsewhere: MCP needs "a plan that inc
 
 `GET /auth/CheckApiKey` → `200` with an empty body when the key is valid. It returns **no identity** (no workspace id or name, no organization). There is no whoami. With a workspace key, the workspace cannot be named through the API; `organizationUnitId` on a campaign is the only hint.
 
+## Account-level reads (added 2026-11-14)
+
+Sources for this section: `https://docs.heyreach.io/openapi.json` and `https://docs.heyreach.io/llms.txt` fetched again on 2026-11-14 (both unchanged from the copies used above), the pages `https://docs.heyreach.io/hey-reach-api/stats/get-overall-stats.md` and `https://docs.heyreach.io/hey-reach-api/linked-in-accounts/get-by-id.md`, the help article `https://help.heyreach.io/en/articles/14997865-unified-email-column-how-email-is-managed-on-leads.md`, and read-only requests to one live workspace with a workspace API key. "Seen live" below means a field name or type observed in those requests. No response was saved and no value was copied into this repository.
+
+### Lead lists: `lists.list`
+
+`POST /list/GetAll` with `{ offset, limit }` (limit up to 100; 101 is refused on the endpoints tried). Returns `{ totalCount, items }`. Fields used: `id`, `name`, `totalItemsCount` (size), `listType` (`COMPANY_LIST` is `companies`, anything else `leads`), `creationTime`. `campaignIds` stays in raw. Seen live for `USER_LIST`. Unconfirmed: the `COMPANY_LIST` value (documented, no company list existed live).
+
+### A list's leads: `lists.leads`
+
+`POST /list/GetLeadsFromList` with `{ listId, offset, limit, createdFrom, createdTo }`, up to 1000 rows a page (1000 returned 256 of 256 live). Fields used: `profileUrl` (the lead's id, as in the other lead reads), `firstName`, `lastName`, `companyName`, `position`, `emailAddress`, `enrichedEmailAddress`, `customEmailAddress`, `tags` (array of names), `customFields` (`[{ name, value }]`), `autoTags[{ name, creationTime, campaignId, ... }]`. The newest auto-tag's `name` is the lead's `interest`; the names seen live were `Interested`, `Not interested` and `Generic`. `createdFrom` in the future returned no rows, so the date filter works on the server. A missing list is a 404. Unconfirmed: a row has no status, no campaign and no creation time; whether `GetLeadsFromList` answers for a company list (companies are read with `POST /list/GetCompaniesFromList`, which the adapter does not map because a company is not a lead); which of the three email fields is the newest (the help center says the app shows "the most recent", the API does not say).
+
+### One lead's tags (fills `Lead.tags` on `leads.get`)
+
+`POST /lead/GetTags` with `{ profileUrl }` returns `{ tags: string[] }`, sorted. `POST /lead/GetLead` carries no tags, so `leads.get` sends both requests. Seen live with an empty array.
+
+### Block list: `blocklist`
+
+`POST /blacklist/GetLeads` then `POST /blacklist/GetCompanies`, each with `{ offset, limit }` (1 to 100), newest first, `{ totalCount, items }`. Lead fields used: `id`, `profileUrl`, `email`, `fullName`, `creationTime`. Company fields used: `id`, `companyName`, `linkedInUrl`, `creationTime`. The two lists are numbered separately (both had an id 1 in the documented examples), so the record id is `lead-<id>` or `company-<id>`. `matchingStatus` (`Matching`, `Matched`, `NotFound`, `BroadMatch`) and `resolutionStage` stay in raw. The company shape was seen live; the lead shape is from the API reference only (no blacklisted lead existed live).
+
+### Webhook subscriptions: `webhooks.list`
+
+`POST /webhooks/GetAllWebhooks` with `{ offset, limit, includeCustomHeaders: false }` (limit up to 100). Fields used: `id`, `webhookName`, `webhookUrl`, `eventType` (one per webhook), `isActive`, `campaignIds` (empty means every campaign). Custom headers are never requested: they are where a shared secret lives. There is no creation time. The endpoint has no campaign filter, so a campaign filter is applied after fetching. Unconfirmed: the whole item shape (API reference only; the live workspace had no webhook and returned `{ totalCount: 0, items: [] }`).
+
+### Sender health: `senders.health`
+
+`GET /li_account/GetAccountStatus/{accountId}` returns `{ accountId, status, failureReason, profile, salesNavigator, recruiter }`, cached for 10 seconds. Fields used: `status` (`Connected` seen live, `Disconnected` documented; any other value maps to `connected: null`) and `failureReason` (the one issue). A LinkedIn seat has no domain, DNS, block list or warmup, so those are null, and no check time is given. Unconfirmed: the full `status` enum.
+
+### A campaign's senders: `senders.byCampaign`
+
+`GET /campaign/GetById` returns `campaignAccountIds` (seen live, also on `POST /campaign/GetAll` items). There is no account-by-campaign endpoint, and `POST /li_account/GetAll` ignored a `campaignIds` filter when tried, so the adapter reads the campaign once and narrows `POST /li_account/GetAll` pages to those ids. Cost: one request for the campaign, then one per page of 100 workspace accounts.
+
+### One conversation: `messages.byThread`
+
+`GET /inbox/GetChatroom/{accountId}/{conversationId}` returns one conversation in the same shape as a `GetConversationsV2` item, with every message, oldest first (13 of 13 live). It needs the LinkedIn account id as well as the conversation id, so a message's `threadId` is now `<accountId>:<conversationId>`. Conversation ids seen live hold letters, digits, `-` and `=`. An unknown conversation is a 404 with `{ errorMessage }`. A chatroom does not name its campaign.
+
+### Sequences as a tree
+
+Nine layouts were read from 18 live campaigns: `CHECK_IS_CONNECTION` at the root with messages on the connected branch and either `END` or a `CONNECTION_REQUEST` path on the other; `CONNECTION_REQUEST` at the root with messages on the accepted branch and `END` or a `VIEW_PROFILE` on the not-accepted branch; a plain run of messages; an empty sequence. A `MESSAGE` node's `conditionalNode` was always `END`. A `VIEW_PROFILE` node had a null `conditionalNode`. A `CHECK_IS_CONNECTION` node carried its own `actionDelay` (7 days in one campaign). `MESSAGE` payloads also carry `hasVoiceNotes`. Unconfirmed: `FIND_EMAIL` and `CHECK_IS_OPEN_PROFILE` branches (documented, not seen), `INMAIL` and `LIKE_POST` payloads.
+
+### Stats fields the API reference does not list
+
+Seen live on `POST /stats/GetOverallStats` and `GetOverallStatsByCampaign`: `uniqueLeadsContacted`, `autoTaggedInterested`, `totalAutoTagged`, `autoTaggedInterestedRate`, `voiceNotesSent`, `voiceNoteConversations`, `repliedToVoiceNotes`, `voiceNoteReplyRate`. The adapter reads `uniqueLeadsContacted` as `contacted` and `autoTaggedInterested` as `positive`. The help center says auto-tag data was added to the stats endpoints; the API reference has not caught up.
+
+### Other fields seen live that the API reference does not list
+
+- Campaign: `excludeFromLeadBlacklist`, `excludeFromCompanyBlacklist`, `startedAt`. The list item has the same fields as `GetById`, so the "stale `exclude*` names" in section 1 are a documentation error.
+- Campaign lead: `finishedTime`, and `enrichedEmailAddress` and `customEmailAddress` on the profile.
+- Message: `messageId`, `type`, `isVoiceNote`, `transcript`, `transcriptStatus`, `audioDurationMs`. The adapter still builds a message's id from the conversation, time, side and text, so ids already handed out do not change; switching to `messageId` is a breaking change left for later.
+- Conversation profile: `tags`, `autoTags`, `customFields`.
+
+### Not available from the API
+
+- **Campaign settings (`campaigns.settings`).** `GET /campaign/GetById` returns no schedule, start or end date, daily limit or stop rule. The schedule exists only as a write (`POST /campaign/UpdateSchedule`: `dailyStartTime`, `dailyEndTime`, `timeZoneId`, `enabledMonday` to `enabledSunday`, `startDate`, `endDate`). Sending limits belong to the LinkedIn account (`accountLimits`). `startedAt` is when the campaign was started, not a scheduled start date, so it is not mapped.
+- **Subsequences (`sequence.subsequences`).** A campaign has one sequence tree and nothing else.
+- **Tags (`tags`).** `POST /lead_tags/CreateTags` creates tags (`displayName`, `color`) and `POST /lead/GetTags` reads one lead's tags. No endpoint lists the workspace's tags, and a tag has no id.
+- **Every lead (`leads.list`).** No endpoint lists all leads. Walking every list is not a correct substitute: a lead in several lists repeats, list rows carry no campaign or status, and nothing says a lead always stays in a list.
+- **Lead engagement (`leads.engagement`).** No lead shape has open, click or reply counts. A campaign lead has `lastActionTime`, `leadConnectionStatus` and `leadMessageStatus`, which stay in raw.
+- **Reply categories (`replies.category`).** The auto-tag is stored on the lead (`autoTags`), with a campaign and a time but no link to a message.
+- **Step stats (`stats.byStep`).** Stats are by workspace, campaign, account and day only.
+- **Warmup (`senders.warmup`).** LinkedIn accounts have none.
+- **Workspaces (`workspaces`).** `GET /management/organizations/workspaces` answered 401 to a workspace key; it needs an organization key, which the normal endpoints are not documented to accept.
+- **A sender's daily limit.** `accountLimits` holds six `Limit`/`Max` pairs and the docs still do not say which are daily or what the two numbers mean.
+- **Campaign tags.** A campaign has none.
+
 ## Rate limits
 
 - "HeyReach allows a maximum of `300` requests per minute. All requests are attributed to the same limit."
@@ -338,3 +403,86 @@ HeyReach publishes no API changelog. Inferred from differences between the two d
 - https://api.heyreach.io/api/public/auth/CheckApiKey — one request with no key (401 shape)
 - https://api.heyreach.io/swagger, /swagger/v1/swagger.json, /openapi.json, /api-docs — no public Swagger (redirect loops / 404)
 - Third party (not authoritative): https://outreachmagic.io/docs/heyreach-integration (sample `message_sent` payload), https://www.scalekit.com/blog/heyreach-mcp-vs-api (rate-limit scope claim), https://attio.com/apps/hey-reach (search excerpt)
+
+## Inventory and native catalog (2026-11-14)
+
+Fetched fresh for the inventory in `docs/coverage/heyreach.md`:
+
+- https://docs.heyreach.io/llms.txt (the page index: 106 endpoint pages)
+- https://docs.heyreach.io/openapi.json (106 operations on 105 paths; byte-identical to the copy read earlier the same day)
+- https://docs.heyreach.io/hey-reach-api.md and https://docs.heyreach.io/hey-reach-api/organization.md
+- https://documenter.getpostman.com/api/collections/23808049/2sA2xb5F75?segregateAuth=true&versionTag=latest (publishDate 2026-09-16; 88 requests, all of them also in the OpenAPI file, which has 18 more)
+
+HeyReach documents no sister service on another host. The Organization Management API is on the same host under `/management/organizations`, takes the organization API key in the same `X-API-KEY` header, and has "a separate rate limit of 300 requests per minute" (organization.md).
+
+Read-only requests to one live workspace on 2026-11-14, with a workspace key. Nothing from a response is recorded here beyond counts, key names and status codes.
+
+| Read | Answer |
+| --- | --- |
+| `GET /auth/CheckApiKey` | 200, empty body |
+| `GET /list/GetById` | 200. Keys: `id`, `name`, `listType`, `totalItemsCount`, `creationTime`, `campaignIds` |
+| `POST /campaign/GetCampaignsForLead` | 200 `{ leadFullName, totalCount, items }`. `offset` and `limit` may be left out |
+| `POST /list/GetListsForLead` | 404 for a lead that is in no list |
+| `POST /MyNetwork/GetMyNetworkForSender` | 200 `{ totalCount, items }`. `pageNumber` and `pageSize` may be left out (20 rows came back); `pageSize` 1000 is refused with 400 |
+| `POST /MyNetwork/IsConnection` | 200 `{ isConnection }`, with `leadProfileUrl` or with `leadLinkedInId` |
+| `GET /campaign/GetCampaignSequenceV2` | 200, a node tree |
+| `POST /stats/GetOverallStatsByCampaign` | 200 `{ byDayStats, overallStats }`, `overallStats` an array. An empty body is refused with 400: `accountIds` and `campaignIds` must be sent, as empty arrays if need be |
+| `GET /li_account/GetProxyCountries` | 200, an array of objects |
+| `GET /voice/GetVoices`, `GetStaticClips`, `GetElevenLabsConnection`, `GetElevenLabsVoices`, `GetVoiceUsage/{id}` | 200 |
+| `GET /voice/GetSenderVoice/{accountId}` | 404 `SENDER_VOICE_NOT_ASSIGNED` |
+| `GET /voice/GetStaticClip/{clipId}` | 404 `STATIC_CLIP_NOT_FOUND` |
+| `GET /webhooks/GetWebhookById`, `GET /enrichment/enrich-email/check-job/{jobId}` | 404 for an id that does not exist (the workspace has no webhooks or enrichment jobs) |
+| `POST /list/GetCompaniesFromList` | 400 for a lead list (the workspace has no company list) |
+| `/management/organizations/workspaces`, `/users`, `/linkedin-accounts` | 401 with a workspace key |
+
+Not requested: `GET /li_account/GetAccountProxy/{accountId}` and `GET /management/organizations/api-keys/workspaces/{workspaceId}` (both return secrets), and `GET /inbox/GetVoiceMessageAudio/...` (a binary file).
+
+### `POST /inbox/GetConversationsV3`, now the listing the adapter reads
+
+- Envelope: `{ items, totalCount, hasNextPage, nextCursor }`. `nextCursor` is a string and is `null` on the last page. Items are ordered newest `lastMessageAt` first. 257 conversations were read in three pages of 100, matching `totalCount` and the V2 `totalCount`.
+- An item has the same keys as a V2 item. `correspondentProfile` lacks `emailAddress`, `enrichedEmailAddress`, `customEmailAddress` and `customFields`, as documented.
+- A message has `body`, `createdAt`, `sender`, `subject`, `isInMail`, `postLink`, `messageId`, `type`, `isVoiceNote`, `transcript`, `transcriptStatus`, `audioDurationMs`.
+- `from` and `to` bound `lastMessageAt` exactly: for bounds 1, 7 and 30 days before the newest conversation the rows returned were exactly the conversations at or after `from`, and `to` returned exactly those at or before it.
+- In all 257 conversations `lastMessageAt` equalled the newest message's `createdAt`, and `messages.length` equalled `totalMessages` (the longest thread had 40).
+- `filters.leadProfileUrl` returned only that lead's conversation. `limit` defaults to 10. A body with no `filters` key is accepted.
+- Through the adapter: 827 messages with 827 distinct ids; a `since` at the 90th percentile and an `until` at the 10th each returned exactly the messages the unfiltered listing has in that range, and replies matched the inbound messages (302).
+
+This closes open question 4 for V3 (cursor paging has no deep-paging ceiling, and list items carry the whole thread up to at least 40 messages) and question 5 (`type`, `messageId` and the voice fields are returned).
+
+## Lookup by profile and by email: `leads.lookup` (2026-11-14)
+
+Sources: `https://docs.heyreach.io/openapi.json` fetched again on 2026-11-14 (operations `campaigns_GetCampaignsForLead`, `leads_GetLead`, `lists_GetListsForLead`, `lists_GetLeadsFromList`), and read-only requests to one live workspace with a workspace API key. Nothing from a response is recorded here beyond counts, key names, enum values and status codes.
+
+### What the reference documents
+
+- `POST /campaign/GetCampaignsForLead` takes `email`, `linkedinId`, `profileUrl` (each optional), `offset` and `limit`, and returns `{ leadFullName, totalCount, items[{ campaignId, campaignName, campaignStatus, creationTime, leadStatus }] }`. `leadStatus` is `Pending`, `InSequence`, `Finished`, `Paused`, `Failed`, `Excluded` or `PendingOrExcludedToBeCalculated`. Only a 200 answer is documented.
+- `POST /lead/GetLead` takes `profileUrl`, which is required, and returns the profile. No read returns a profile for an email address.
+- `POST /list/GetListsForLead` takes the same three keys and returns `{ totalCount, items[{ listId, listName }] }`.
+- `POST /list/GetLeadsFromList` takes `keyword` ("a search term to filter leads by name or other relevant fields") and `leadProfileUrl`.
+
+### Seen live
+
+- `GetCampaignsForLead` answered 200 with exactly the documented keys for a profile URL, for an email address and for a `linkedinId`. `campaignId` is an integer. An item's `creationTime` equalled the campaign's own `creationTime` from `POST /campaign/GetAll` and not the lead's row in that campaign, so it is not when the lead was added.
+- With none of the three keys it answered 400 `Email, Linkedin Id or ProfileUrl must be specified.`
+- A person HeyReach does not know: 404 `{ errorMessage: "There is no lead matching your search criteria" }`, from `GetCampaignsForLead` (by profile URL and by email), from `GetLead` and from `GetListsForLead`.
+- `limit` must be between 1 and 100 (1000 is refused with 400). An `offset` past the end answered 200 with no items and the same `totalCount`. The lead was in one campaign, so a second page was not seen.
+- Both `GetCampaignsForLead` and `GetLead` matched the stored profile for `http://`, no `www.`, a trailing slash and a query string, and answered 404 when the slug was sent in upper case. The stored slug was lowercase. An email address matched in either case.
+- `GetLead` accepts nothing but `profileUrl`: with `email` or `linkedinId` alone it answered 400 `The ProfileUrl field is required.`
+- `GetLead` returned `customEmailAddress`, which the reference does not list, and held the lead's address in `emailAddress` while the same lead's rows in `GetLeadsFromCampaign` and `GetLeadsFromList` had all three email keys null. No campaign or list row in the workspace (692 list rows and 159 campaign rows read) carried an address.
+- `GetLeadsFromCampaign` ignores `keyword`, `leadProfileUrl`, `profileUrl`, `email`, `leadLinkedInId` and `searchString`: each returned the whole campaign. A campaign cannot be searched for one person.
+- `GetLeadsFromList` with `keyword` set to the lead's full name, first name or last name returned that lead; with the email address it returned nothing; with `leadProfileUrl` it returned that lead alone.
+
+### How the adapter looks a person up
+
+By profile URL, two requests in parallel: `GetCampaignsForLead` and `GetLead`, both with `https://www.linkedin.com/in/<slug>`, the slug lowercased. The profile is kept only when its own URL has the same slug.
+
+By email, four requests in the usual case: `GetCampaignsForLead` (which names the person), `GetListsForLead` for one list the address is in, `GetLeadsFromList` with the name as `keyword` (5 rows at most), then `GetLead` for each row until one profile carries the address in `emailAddress`, `enrichedEmailAddress`, `customEmailAddress` or `emailEnrichments`. A later page of campaigns carries the profile URL in its page marker and costs two requests.
+
+Each campaign gives one record with that campaign's ref and the lead's status in it. A lead's id is its profile URL, which is the same in every campaign, so a person's records share one ref and differ by `campaignRef`; the SDK core tells looked-up records apart by campaign. A known person in no campaign is one record with no campaign.
+
+### Not confirmed
+
+- A person in more than one campaign, and so a second page, was not seen live.
+- A known person in no campaign was not seen: whether `GetCampaignsForLead` then answers 200 with no items or 404 is not known, and both are read as no campaigns.
+- Which of the email fields `GetCampaignsForLead` and `GetListsForLead` match on is not documented.
+- How HeyReach stores a slug with upper-case or non-ASCII letters is not known.

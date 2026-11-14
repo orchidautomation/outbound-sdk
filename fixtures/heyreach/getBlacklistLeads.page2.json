@@ -1,0 +1,19 @@
+{
+  "totalCount": 3,
+  "items": [
+    {
+      "id": 3,
+      "profileUrl": null,
+      "email": null,
+      "fullName": "Blocked Three",
+      "imageUrl": null,
+      "companyName": null,
+      "position": null,
+      "linkedInProfileId": null,
+      "matchingStatus": "BroadMatch",
+      "resolutionStage": "NotResolvable",
+      "resolutionError": null,
+      "creationTime": "2026-09-16T12:00:03Z"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "totalCount": 3,
+  "items": [
+    {
+      "id": 3459,
+      "name": "Example List 3",
+      "totalItemsCount": 0,
+      "listType": "USER_LIST",
+      "creationTime": "2024-09-05T08:15:30Z",
+      "campaignIds": [
+        274079,
+        274080
+      ]
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "totalCount": 3,
+  "items": [
+    {
+      "id": 123,
+      "webhookName": "Example Webhook 1",
+      "webhookUrl": "https://hooks.example.com/heyreach/one",
+      "eventType": "CONNECTION_REQUEST_SENT",
+      "campaignIds": [
+        274079
+      ],
+      "isActive": true
+    },
+    {
+      "id": 124,
+      "webhookName": "Example Webhook 2",
+      "webhookUrl": "https://hooks.example.com/heyreach/two",
+      "eventType": "EVERY_MESSAGE_REPLY_RECEIVED",
+      "campaignIds": [],
+      "isActive": false
+    }
+  ]
+}

@@ -5,6 +5,15 @@ export { memory } from "./adapter.ts";
 export type { MemoryOptions } from "./adapter.ts";
 
 export type {
+  MemoryBlockEntry,
+  MemoryHealth,
+  MemoryList,
+  MemorySettings,
+  MemoryTag,
+  MemoryWebhook,
+} from "./account.ts";
+
+export type {
   MemoryCampaign,
   MemoryData,
   MemoryLead,
@@ -12,6 +21,7 @@ export type {
   MemorySender,
   MemoryStats,
   MemoryStep,
+  MemorySubsequence,
   MemoryVariant,
 } from "./data.ts";
 

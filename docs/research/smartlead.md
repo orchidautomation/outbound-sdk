@@ -27,7 +27,7 @@ Everything below marks which source a claim rests on. **Envelope shapes for seve
   - Client keys: scoped to one client (sub-account), own rate limit. Some endpoints reject client keys with `401` (lead search, lead campaign overview, sequence details, get client by id, assign client). `GET /campaigns/{id}` "additionally filters by client_id" for client keys.
 - **Plan gating:** API access is "available on the Pro plan and higher. On Base and Popular plans, API Key Management is hidden." Wrong plan returns the text `API Key access denied`. Client workspaces are plan-gated too (listed under "not included" on lower plans; "3 client workspaces included" on Unlimited Prime).
 - **Versioning:** only `v1`. No version header, no dated versions.
-- **Sister services on other hosts** (out of scope): `smartdelivery.smartlead.ai`, `prospect-api.smartlead.ai`, `smart-senders.smartlead.ai`, `smartservers.smartlead.ai`.
+- **Sister services on other hosts**: `smartdelivery.smartlead.ai`, `prospect-api.smartlead.ai`, `smart-senders.smartlead.ai`, `smartservers.smartlead.ai`. Their reads are in the native catalog; see "Endpoint inventory" below.
 - **IDs:** three different ids matter. `lead.id` (global lead), `campaign_lead_map_id` (a lead inside one campaign; also called `email_lead_map_id`, `sl_email_lead_map_id`, "lead map id", `lastSeenEclmId`), and `stats_id` (one sent email).
 - **Timestamps:** ISO 8601, shown as UTC (`Z` or `+00:00`) in every example.
 
@@ -378,6 +378,110 @@ Smartlead publishes no API changelog (`/changelog` returns 404). Dated or clearl
 16. Whether `api_key` in a request body works.
 17. Body parameters of the secondary master-inbox folders (`important`, `assigned-me`, `archived`, `snoozed`, `reminders`, `scheduled`, `views`): assumed to match `inbox-replies`; those pages were not read in detail.
 
+## Read parity (added 2026-11-14)
+
+Written for the account-level reads the core gained. Fetched fresh on 2026-11-14: `https://api.smartlead.ai/llms-full.txt` (every reference page in one file), `https://api.smartlead.ai/llms.txt`, `https://helpcenter.smartlead.ai/llms.txt` and help-center articles 122, 184 and 185. No API call was made; there is no key.
+
+Which source was followed: the **reference pages on `api.smartlead.ai`** for URLs, methods and parameters. For a response shape, the page's example when it looks captured (block list, tags, lead lists, campaign list), and the older Notion shape when the newer example is illustrative or a placeholder (campaign webhooks, warmup statistics, message history). Where both shapes are plausible the adapter reads both.
+
+### Campaign settings: `GET /campaigns/{campaign_id}`
+
+- Fields used: `scheduler_cron_value { tz, days, startHour, endHour }` (one window; days are 0 Sunday to 6 Saturday), `min_time_btwn_emails` (minutes), `max_leads_per_day`, `track_settings`, `stop_lead_settings`, `send_as_plain_text`, `schedule_start_time`, `sending_limit`, `out_of_office_detection_settings.ignoreOOOasReply`.
+- `track_settings` lists what is not tracked: `DONT_EMAIL_OPEN`, `DONT_LINK_CLICK` on a read; the settings update spells them `DONT_TRACK_EMAIL_OPEN`, `DONT_TRACK_LINK_CLICK`. Both are read.
+- `stop_lead_settings`: `REPLY_TO_AN_EMAIL` is stop-on-reply, `NEVER` is not. `OPENED_EMAIL` / `CLICKED_LINK` (also `OPEN_AN_EMAIL` / `CLICK_ON_A_LINK`) do not say what a reply does, so `stopOnReply` is `null` for them.
+- Unconfirmed: the envelope (bare or `{ success, data }`); whether the legacy string form of `scheduler_cron_value` / `track_settings` still occurs (a JSON string is parsed); `sending_limit` appears only in the newer example and the settings guide ("Daily cap across all email accounts"); `out_of_office_detection_settings` is documented on `POST /campaigns/{id}/settings` only, so `stopOnAutoReply` is `null` unless a read returns it. There is no campaign end date.
+
+### Subsequences: `GET /campaigns/` then `GET /campaigns/{child_id}/sequences`
+
+- A subsequence is a child campaign: `parent_campaign_id` on a campaign row "references the parent campaign ID". The adapter filters the campaign list by it and reads each child's steps with the ordinary sequence endpoint.
+- Unconfirmed: that `GET /campaigns/` returns child campaigns (implied by the field, stated nowhere). The trigger conditions (`conditionEvents`: `OPEN_AN_EMAIL`, `CLICK_ON_AN_EMAIL_LINK`, `REPLY_AN_EMAIL`, `REPLY_MESSAGE_BODY_TEXT`, `CATEGORY`) are write-only: no read returns them, so a step's `branch` is `null`.
+
+### Sender health: `GET /email-accounts/{id}/` and `GET /email-accounts/{id}/warmup-stats`
+
+- Mailbox fields: `is_smtp_success`, `is_imap_success`, `smtp_failure_error`, `imap_failure_error`, `from_email` (for the domain), `warmup_details.blocked_reason`, `warmup_details.warmup_reputation`.
+- Warmup statistics cover the last 7 days. Older shape: `sent_count`, `spam_count`, `inbox_count`, `warmup_email_received_count` (strings). Newer shape: `total_sent`, `spam_count`, `reputation_score`. Both are read.
+- Unconfirmed: which of the two warmup shapes is live. Not reported by this API: SPF, DKIM, DMARC, MX, block list checks, a check time. Those exist only in SmartDelivery (`smartdelivery.smartlead.ai`, another host and product, per spam test rather than per mailbox).
+
+### Per-mailbox statistics: `GET /analytics/mailbox/name-wise-health-metrics`
+
+- Params `start_date`, `end_date` (required), `timezone`; response `{ ok, data: { email_health_metrics: [ { email_account, sent, opened, replied, bounced } ] } }`. The mailbox is read first (`GET /email-accounts/{id}/`) for its address, and its row is picked by address.
+- Unconfirmed: the list has `limit` / `offset` with no documented default or maximum and no filter for one mailbox, so a mailbox beyond the first page cannot be told from one with nothing sent; both give `null` counts. `opened` is not said to be unique. `GET /campaigns/{id}/mailbox-statistics` documents only the placeholder `{ "ok": true, "data": [] }` and is not used.
+
+### Lead lists: `GET /lead-list/`
+
+- Params `limit` (1 to 1000, default 10), `offset`, `listName`, `tagIds`. Response `{ ok, data: [ { id, name, lead_count, created_at } ] }`. No total: a full page means there may be more.
+- Unconfirmed: the example looks hand-written.
+
+### Block list: `GET /leads/get-domain-block-list`
+
+- Params `offset`, `limit` (default 100, max 1000), `filter_client_id`, `filter_email_or_domain`, `filter_email_with_domain`. Response: a bare array of `{ id, email_or_domain, created_at, source, client_id }`. An entry with an `@` is an address, any other a domain.
+- Unconfirmed: whether a client-level key sees only its own entries.
+
+### Tags: `GET /email-accounts/tags`
+
+- Bare array of `{ id, name, color }`: "all tags created by the user". The lead-tag page says tags "are created at the account level and can be used to organize both email accounts and leads".
+- A lead's tags: `GET /crm/leads/tags?leadId=` returns `{ ok, data: [ { id, tag_mapping_id, name, color } ] }`. It is one request per lead, so only `leads.get` reads it.
+- Unconfirmed: whether campaign tags (`tags[] { tag_id, tag_name, tag_color }` with `include_tags=true`) share this list. There is no tag description.
+
+### Webhook subscriptions: `GET /campaigns/{campaign_id}/webhooks`
+
+- Older shape (followed): bare array of `{ id, name, created_at, updated_at, webhook_url, email_campaign_id, event_types[], categories[] }`. Newer example: `{ success, data: [ { id, name, webhook_url, event_types, is_active } ] }` with event names that are not real ones. Both are read.
+- There is no list of every webhook, so a listing without a campaign reads the campaign list and then one campaign per request.
+- Unconfirmed: whether a user-level or client-level webhook is listed under a campaign (article 185: a user-level webhook "will be applied to all unmapped campaigns"); the adapter returns a webhook id once per walk in case it is listed under several.
+
+### Messages by thread: `GET /master-inbox/{id}`
+
+- `id` is the `campaign_lead_map_id`, which the activity feed calls `email_lead_map_id`; that is the `threadId` on messages and replies.
+- Fields used: `message_history[]` (`direction` `outbound` / `inbound`, `sent_at` / `received_at`, `subject`, and `id`, `body` when present), `campaign.id`, `email_account.id`, `lead.id`.
+- Unconfirmed: the whole item shape; the example is illustrative and shows history items without ids or bodies. The adapter also accepts the older history items (`type` `SENT` / `REPLY`, `stats_id`, `message_id`, `time`, `email_body`). An item without an id gets a hash of thread, direction, time and subject.
+
+### Replies: every reply of a thread
+
+- `POST /master-inbox/inbox-replies?fetch_message_history=true` adds `message_history` to each thread. Every inbound item is returned as a reply; without a history the thread gives its `last_message` as before.
+- Unconfirmed: the history item shape (same as above), and whether `last_message.id` and the matching history `id` agree (the example shows different ids).
+
+### Lead interest and tags
+
+- `interest` is the lead category's name. `GET /campaigns/{id}/leads` gives `lead_category_id`; the name comes from `GET /leads/fetch-categories`, read once per walk. `GET /leads/{id}` shows `category_name` in its illustrative example only.
+
+### Lead lookup by address: `GET /leads/?email=` (added 2026-11-14)
+
+Read again on 2026-11-14 from https://api.smartlead.ai/llms-full.txt, page https://api.smartlead.ai/api-reference/leads/get-by-email.
+
+- `leads.list({ email })` sends one `GET /leads/?email=<address>`. The response is the bare lead (`id`, `email`, names, `company_name`, `linkedin_profile`, `custom_fields`, `is_unsubscribed`, `created_at`) with `lead_campaign_data[]`: `campaign_lead_map_id`, `campaign_id`, `campaign_name`, `client_id`, `client_email`, `lead_category_id`. The adapter returns one record per item, with that campaign's ref. With a `campaignId` it keeps that campaign's item only.
+- An unknown address is `{}` with HTTP 200 (also 401 and 422 `{"error": "email is required"}`); `{}` gives an empty page.
+- `lead_campaign_data` has no lead status and no per-campaign creation time. The status is `unknown` (or `unsubscribed` from `is_unsubscribed`) and `createdAt` is the lead's own `created_at`. The status per campaign is only in `GET /leads/{leadId}/campaign-overview`, which refuses client-level keys, so it is not read.
+- `interest` needs the category names: one more request (`GET /leads/fetch-categories`) when a returned item has a `lead_category_id`. A lookup is therefore 1 or 2 requests.
+- Fallback, not documented as needed: if the lead comes without `lead_campaign_data`, the campaigns are read from the legacy `GET /leads/{lead_id}/campaigns` (`{ id, status, name }`, where `status` is the campaign's, not the lead's).
+- Unconfirmed: whether the address match is exact or case-sensitive (the adapter sends the lowercased address and drops a lead whose `email` differs), whether the response is ever wrapped in `{ ok, data }` (accepted), and whether inactive campaign memberships are listed.
+- No endpoint looks a lead up by LinkedIn profile: `linkedin_profile` is only a field on lead payloads. `leads.list({ linkedinUrl })` returns an empty page without a request.
+- Every record of one person carries the same lead id, so the refs are equal: `list` returns one record per campaign and `listAll`, which keeps each ref once, returns one.
+
+### Not available from the API
+
+- **`leads.engagement`** (per-lead open, click and reply counts): the endpoint for it, `GET /campaigns/{id}/leads-statistics`, documents only the placeholder `{ "ok": true, "data": [] }` in every source, so nothing can be mapped without guessing. `GET /campaigns/{id}/leads-export` has `open_count`, `click_count`, `reply_count` but returns CSV. `POST /campaigns/{id}/leads/filter` (`fieldSet: "active_table"`) has `last_sent_time`, `latest_reply_time` and `current_seq_num`, but no counts, no creation time, a different order from the lead list, and it refuses client keys.
+- **`lists.leads`**: no endpoint returns the leads of a lead list (only import, push to a campaign and push between lists).
+- **`campaigns.status` server-side**: `GET /campaigns/` has no status parameter ("Use the campaign status filter in your application logic after fetching").
+- **`leads.since` server-side**: `created_at_gt` is "leads created after", exclusive, with no upper bound, and it is not said whether it compares the lead's creation or the time it joined the campaign (the row's `created_at`, which the SDK reports). Left to the wrapper.
+- **`messages.since` / `replies.since` server-side**: `event_time_from` narrows the feed to leads with activity and `replyTimeBetween` narrows the inbox to threads; both are sent, and the wrapper still filters each message on its own time.
+- **`senderRef` on messages** from the activity feed and a lead's history: they name the mailbox by address (`from_email`, `from`) only.
+- **`leadRef` on replies**, unless the thread carries `lead.id` or `lead_id`: every documented example names the lead by address.
+- **Sender DNS records, block list state and check time**, **a campaign end date**, **a tag description**, **subsequence trigger conditions on read**, **a list of every webhook**, **daily rows per mailbox or per step**.
+
+## Endpoint inventory and native catalog (added 2026-11-14)
+
+Fetched fresh on 2026-11-14: `https://api.smartlead.ai/llms-full.txt` (262 pages, 242 of them endpoint pages) and `https://api.smartlead.ai/llms.txt`. No API call was made. The result is `docs/coverage/smartlead.md` (230 endpoints) and the native catalog in `src/smartlead/native*.ts` (78 reads).
+
+- **Sister services.** All four take the same `api_key` query parameter under `/api/v1` on their own host. The SmartDelivery pages document no parameter beyond the path ids, and say "Contact support for access and API details", so those entries declare none. SmartProspect takes its paging numbers as strings.
+- **Secrets, left out of the catalog.** `GET /client/api-key` (client keys), `GET /email-accounts/fetch-email-account-details` (same payload as the mailbox by id, passwords included), `GET /smart-senders/order-details` (a `password` per mailbox), `GET /smart-senders/auth-secret` (a one-time password). `GET /client/{id}` is catalogued without `includeWhitelabel`, which adds `gpt_api_info` and whitelabel credentials, and `GET /campaigns/{id}/mailbox-statistics` without `private_api_key`.
+- **POSTs that are not reads.** `POST /search-email-leads/search-contacts` answers with a `filter_id`, so it records the search; `fetch-contacts` and `search-contacts/find-emails` spend credits (`402 Payment Required` is documented). All three are listed as writes.
+- **Rate lanes.** `GET /campaigns/{id}/leads-statistics` and `GET /analytics/mailbox/domain-wise-health-metrics` are native reads on their own 10 per 60 seconds lanes; the third laned endpoint, the activity feed, is the normalized `messages.list`.
+- **Considered for normalizing, and left native.**
+  - `GET /analytics/day-wise-overall-stats-by-sent-time` has a daily `bounced`, which `stats.byDay` leaves `null`. It counts every metric on the day the email was sent, while the normalized daily rows count each on the day it happened, so mixing the two would put a different meaning in one row.
+  - `GET /campaigns/{id}/leads-export` has `open_count`, `click_count` and `reply_count` per lead, which would fill `leads.engagement`. It is one CSV of the whole campaign with no paging and no documented quoting rules.
+  - `GET /campaigns/{id}/leads-statistics` and `/mailbox-statistics` still document only a placeholder response.
+- **Paths without a reference page.** `llms.txt` and the quickstart name `GET /webhooks`, `GET /leads/by-email`, `GET /analytics/overview`, `PATCH /campaigns/{id}/status` and `POST /campaigns/new`; the reference pages give different paths for each, and these are not inventoried.
+
 ## Sources
 
 Fetched 2026-11-14.
@@ -414,6 +518,7 @@ Fetched 2026-11-14.
 - https://helpcenter.smartlead.ai/en/articles/122-how-to-replicate-the-ui-campaign-analytics-using-the-api.md
 - https://helpcenter.smartlead.ai/en/articles/439-smartlead-pricing-plans.md
 - Downloaded but not relied on: articles 86, 184, 210, 417
+- Read again on 2026-11-14 for the parity work: https://api.smartlead.ai/llms-full.txt (pages api-reference/campaigns/ get-by-id, get-all, create-subsequence, update-settings, update-schedule, get-webhooks, search-leads, get-lead-by-id, get-lead-history, all-leads-activities; api-reference/campaign-statistics/ mailbox-statistics, lead-statistics; api-reference/email-accounts/ get-by-id, warmup-stats, tags; api-reference/email-account-tags/ get-all, create-new; api-reference/lead-tags/ get-all, create, add-to-lead; api-reference/lead-lists/ get-all, get-by-id; api-reference/analytics/ email-wise-health, domain-wise-health, mailbox-health; api-reference/inbox/ get-messages, get-by-id; api-reference/leads/ get-by-campaign, get-by-email, campaign-overview, categories; api-reference/utilities/domain-block-list), https://helpcenter.smartlead.ai/llms.txt, and help-center articles 122, 184 and 185
 - https://help.smartlead.ai/API-Documentation-a0d223bdd3154a77b3735497aad9419f (Notion, titled "API Documentation [DEPRECATED]")
 - https://help.smartlead.ai/smartleadai/Webhook-Guide-Updated-4d0ae6b2fa6a4db1b4c1ead824a86866 and its child pages: Email-Sent, Email-Opened, Link-Clicked, Email-Replied, Threaded-Replies, Email-Bounce, Lead-Unsubscribed, Lead-Category-Updated, Campaign-Status-Change, Untracked-replies, Manual-Step-Reached
 

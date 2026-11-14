@@ -1,19 +1,13 @@
 // A complete adapter backed by data in memory. It tests the core without a
 // network and powers demos.
 
-import type {
-  Adapter,
-  Page,
-  PageQuery,
-  TimeRange,
-} from "../internal/adapter.ts";
+import type { Adapter, LeadQuery, TimeRange } from "../internal/adapter.ts";
 import type { CapabilityDeclaration } from "../internal/capabilities.ts";
-import type { Channel } from "../internal/entities.ts";
-import { makeErrorMapper, OutboundError } from "../internal/errors.ts";
-import { isNumber } from "../internal/json.ts";
+import { makeErrorMapper } from "../internal/errors.ts";
 import { recordBase } from "../internal/record.ts";
-import type { Identity } from "../internal/record.ts";
 import { assertWorkspaceId } from "../internal/ref.ts";
+import { profileSlug } from "../internal/url.ts";
+import { accountReads } from "./account-reads.ts";
 import {
   toCampaign,
   toLead,
@@ -22,8 +16,10 @@ import {
   toSender,
   toSequence,
 } from "./data.ts";
-import type { MemoryCampaign, MemoryData, MemoryMessage } from "./data.ts";
+import type { MemoryData, MemoryLead, MemoryMessage } from "./data.ts";
 import { queryStats } from "./stats.ts";
+import { findCampaign, notFound, paginate } from "./store.ts";
+import type { Store } from "./store.ts";
 
 export interface MemoryOptions {
   readonly data?: MemoryData | undefined;
@@ -38,13 +34,20 @@ export interface MemoryOptions {
 }
 
 const FULL_CAPABILITIES: CapabilityDeclaration = {
+  blocklist: true,
+  "campaigns.settings": true,
   "campaigns.status": "server",
   "leads.byCampaign": true,
+  "leads.engagement": true,
   "leads.get": true,
   "leads.list": true,
+  "leads.lookup": true,
   "leads.since": "server",
   "leads.timeline": true,
+  "lists.leads": true,
+  "lists.list": true,
   "messages.body": "full",
+  "messages.byThread": true,
   "messages.list": true,
   "messages.since": "server",
   "replies.category": "vendor",
@@ -52,29 +55,19 @@ const FULL_CAPABILITIES: CapabilityDeclaration = {
   "replies.since": "server",
   "senders.byCampaign": true,
   "senders.get": true,
+  "senders.health": true,
   "senders.list": true,
   "senders.warmup": true,
   sequence: true,
+  "sequence.subsequences": true,
   "stats.byDay": "exact",
   "stats.bySender": "exact",
   "stats.byStep": "exact",
   "stats.campaign": "exact",
   "stats.workspace": "exact",
+  tags: true,
+  "webhooks.list": true,
   workspaces: true,
-};
-
-const paginate = <Item>(
-  items: readonly Item[],
-  query: PageQuery,
-  pageSize: number
-): Page<Item> => {
-  const offset = isNumber(query.next) ? query.next : 0;
-  const size = Math.min(query.limit ?? pageSize, pageSize);
-  const end = offset + size;
-
-  return end < items.length
-    ? { items: items.slice(offset, end), next: end }
-    : { items: items.slice(offset, end) };
 };
 
 const within = (time: string | undefined, range: TimeRange): boolean =>
@@ -82,30 +75,6 @@ const within = (time: string | undefined, range: TimeRange): boolean =>
     ? range.since === undefined && range.until === undefined
     : (range.since === undefined || time >= range.since) &&
       (range.until === undefined || time <= range.until);
-
-const notFound = (provider: string, what: string, id: string): OutboundError =>
-  new OutboundError("NotFound", `${what} ${id} was not found`, {
-    provider,
-    status: 404,
-  });
-
-interface Store {
-  readonly identity: Identity;
-  readonly data: MemoryData;
-  readonly pageSize: number;
-  readonly capabilities: CapabilityDeclaration;
-  readonly channelOf: (campaignId: string | undefined) => Channel;
-}
-
-const findCampaign = (store: Store, id: string): MemoryCampaign => {
-  const seed = store.data.campaigns?.find((campaign) => campaign.id === id);
-
-  if (seed === undefined) {
-    throw notFound(store.identity.provider, "Campaign", id);
-  }
-
-  return seed;
-};
 
 // A server-side filter applies only while the adapter declares it as one.
 // Declaring `client` leaves the filtering to the wrapper.
@@ -119,6 +88,7 @@ const selectMessages = (
   query: TimeRange & {
     readonly campaignId?: string | undefined;
     readonly leadId?: string | undefined;
+    readonly threadId?: string | undefined;
   },
   key: "messages.since" | "replies.since"
 ): MemoryMessage[] =>
@@ -127,7 +97,23 @@ const selectMessages = (
       (query.campaignId === undefined ||
         message.campaignId === query.campaignId) &&
       (query.leadId === undefined || message.leadId === query.leadId) &&
+      (query.threadId === undefined || message.threadId === query.threadId) &&
       (!filtersByTime(store, key) || within(message.sentAt, query))
+  );
+
+const selectLeads = (store: Store, query: LeadQuery): MemoryLead[] =>
+  (store.data.leads ?? []).filter(
+    (lead) =>
+      (query.campaignId === undefined ||
+        lead.campaignId === query.campaignId) &&
+      (query.listId === undefined ||
+        (lead.listIds ?? []).includes(query.listId)) &&
+      (query.email === undefined ||
+        lead.email?.trim().toLowerCase() === query.email) &&
+      (query.linkedinUrl === undefined ||
+        (profileSlug(lead.linkedinUrl) !== null &&
+          profileSlug(lead.linkedinUrl) === profileSlug(query.linkedinUrl))) &&
+      (!filtersByTime(store, "leads.since") || within(lead.createdAt, query))
   );
 
 type Getters = Pick<
@@ -194,13 +180,7 @@ const listers = (store: Store): Listers => {
       );
     },
     listLeads: (query) => {
-      const seeds = (data.leads ?? []).filter(
-        (lead) =>
-          (query.campaignId === undefined ||
-            lead.campaignId === query.campaignId) &&
-          (!filtersByTime(store, "leads.since") ||
-            within(lead.createdAt, query))
-      );
+      const seeds = selectLeads(store, query);
 
       return Promise.resolve(
         paginate(
@@ -305,6 +285,7 @@ export const memory = (options: MemoryOptions = {}): Adapter => {
   return {
     ...getters(store),
     ...listers(store),
+    ...accountReads(store),
     capabilities,
     costs: {},
     // Nothing is rate limited in memory; the numbers only keep the engine's math defined.

@@ -2,6 +2,15 @@
 // value always gets the same placeholder, so records still join after
 // scrubbing. The vendor's raw payload is dropped.
 
+import type {
+  BlockEntry,
+  CampaignSettings,
+  LeadList,
+  SenderHealth,
+  Tag,
+  WebhookSubscription,
+} from "../internal/entities-account.ts";
+import type { Sequence } from "../internal/entities.ts";
 import type { OutboundRecord } from "../internal/outbound/operations.ts";
 import { makeRef, parseRef } from "../internal/ref.ts";
 
@@ -26,6 +35,83 @@ const FORMAT: Readonly<Record<Kind, (index: number) => string>> = {
   person: (index) => `Person ${index}`,
   value: (index) => `value-${index}`,
   workspace: (index) => `Workspace ${index}`,
+};
+
+type Identified = OutboundRecord & {
+  readonly ref: string;
+  readonly sourceId: string;
+};
+
+interface Tools {
+  readonly placeholder: (kind: Kind, value: string | null) => string | null;
+  readonly scrubRef: (ref: string | null) => string | null;
+  readonly base: <Item extends Identified>(
+    item: Item
+  ) => Item & { raw: null; ref: string; sourceId: string };
+}
+
+// The account-level records, told apart by a field only that kind has.
+type AccountRecord =
+  | BlockEntry
+  | CampaignSettings
+  | LeadList
+  | SenderHealth
+  | Sequence
+  | Tag
+  | WebhookSubscription;
+
+const isAccountRecord = (record: OutboundRecord): record is AccountRecord =>
+  "steps" in record ||
+  "description" in record ||
+  "schedule" in record ||
+  "dns" in record ||
+  "value" in record ||
+  "size" in record ||
+  "url" in record;
+
+const accountRecord = (
+  { base, placeholder, scrubRef }: Tools,
+  record: AccountRecord
+): OutboundRecord => {
+  if ("steps" in record || "description" in record) {
+    return base(record);
+  }
+
+  if ("schedule" in record) {
+    return {
+      ...base(record),
+      campaignRef: scrubRef(record.campaignRef) ?? record.campaignRef,
+    };
+  }
+
+  if ("dns" in record) {
+    return {
+      ...base(record),
+      domain: record.domain === null ? null : "example.com",
+      senderRef: scrubRef(record.senderRef) ?? record.senderRef,
+    };
+  }
+
+  if ("value" in record) {
+    return {
+      ...base(record),
+      value: placeholder("value", record.value) ?? record.value,
+    };
+  }
+
+  if ("size" in record) {
+    return {
+      ...base(record),
+      name: placeholder("value", record.name) ?? record.name,
+    };
+  }
+
+  return {
+    ...base(record),
+    campaignRefs: record.campaignRefs.map((ref) => scrubRef(ref) ?? ref),
+    name: placeholder("value", record.name),
+    url: "https://example.com/webhook",
+  };
 };
 
 export const createScrubber = (): Scrubber => {
@@ -64,14 +150,7 @@ export const createScrubber = (): Scrubber => {
       : makeRef(parts.provider, parts.workspaceId, scrubId(parts.sourceId));
   };
 
-  const base = <
-    Item extends OutboundRecord & {
-      readonly ref: string;
-      readonly sourceId: string;
-    },
-  >(
-    item: Item
-  ) => ({
+  const base = <Item extends Identified>(item: Item) => ({
     ...item,
     raw: null,
     ref: scrubRef(item.ref) ?? item.ref,
@@ -117,6 +196,10 @@ export const createScrubber = (): Scrubber => {
         };
       }
 
+      if (isAccountRecord(record)) {
+        return accountRecord({ base, placeholder, scrubRef }, record);
+      }
+
       if ("kind" in record) {
         return {
           ...base(record),
@@ -124,10 +207,6 @@ export const createScrubber = (): Scrubber => {
           linkedinUrl: placeholder("linkedin", record.linkedinUrl),
           name: placeholder("person", record.name),
         };
-      }
-
-      if ("steps" in record) {
-        return base(record);
       }
 
       if ("tags" in record) {

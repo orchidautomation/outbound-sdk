@@ -1,0 +1,29 @@
+[
+  {
+    "id": 44,
+    "name": "Example lead category webhook",
+    "created_at": "2022-09-14T05:08:55.018Z",
+    "updated_at": "2022-10-31T11:44:35.812Z",
+    "webhook_url": "https://hooks.example.com/smartlead",
+    "email_campaign_id": 2180,
+    "event_types": [
+      "LEAD_CATEGORY_UPDATED"
+    ],
+    "categories": [
+      "Interested"
+    ]
+  },
+  {
+    "id": 45,
+    "name": "Example reply webhook",
+    "created_at": "2022-09-15T05:08:55.018Z",
+    "updated_at": "2022-10-31T11:44:35.812Z",
+    "webhook_url": "https://hooks.example.com/smartlead-replies",
+    "email_campaign_id": 2180,
+    "event_types": [
+      "EMAIL_REPLY",
+      "EMAIL_BOUNCE"
+    ],
+    "categories": []
+  }
+]

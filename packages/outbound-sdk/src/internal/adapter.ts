@@ -4,6 +4,14 @@
 
 import type { CapabilityDeclaration } from "./capabilities.ts";
 import type {
+  BlockEntry,
+  CampaignSettings,
+  LeadList,
+  SenderHealth,
+  Tag,
+  WebhookSubscription,
+} from "./entities-account.ts";
+import type {
   Campaign,
   CampaignStatus,
   Lead,
@@ -20,6 +28,7 @@ import type {
 import type { ErrorMapper } from "./errors.ts";
 import type { Json } from "./json.ts";
 import type { LimitDeclaration } from "./limits.ts";
+import type { NativeCatalog, NoNative } from "./native.ts";
 
 export type HttpMethod = "DELETE" | "GET" | "PATCH" | "POST" | "PUT";
 
@@ -75,11 +84,19 @@ export interface TimeRange {
 
 export interface LeadQuery extends PageQuery, TimeRange {
   readonly campaignId?: string | undefined;
+  /** A saved lead list. Never set together with `campaignId`. */
+  readonly listId?: string | undefined;
+  /** Only the lead records with exactly this address, lowercased. One per campaign the person is in. */
+  readonly email?: string | undefined;
+  /** Only the lead records with exactly this LinkedIn profile URL. */
+  readonly linkedinUrl?: string | undefined;
 }
 
 export interface MessageQuery extends PageQuery, TimeRange {
   readonly campaignId?: string | undefined;
   readonly leadId?: string | undefined;
+  /** A `threadId` from an earlier message. */
+  readonly threadId?: string | undefined;
   /** Bodies are expensive on some vendors, so they are fetched only on request. */
   readonly includeBody: boolean;
 }
@@ -88,6 +105,14 @@ export interface ReplyQuery extends PageQuery, TimeRange {
   readonly campaignId?: string | undefined;
   readonly category?: ReplyCategory | undefined;
   readonly includeBody: boolean;
+}
+
+export interface SubsequenceQuery extends PageQuery {
+  readonly campaignId: string;
+}
+
+export interface WebhookQuery extends PageQuery {
+  readonly campaignId?: string | undefined;
 }
 
 export interface StatsQuery {
@@ -149,7 +174,7 @@ export interface OperationCost {
   readonly perRecord?: number | undefined;
 }
 
-export interface Adapter {
+export interface Adapter<Native extends NativeCatalog = NoNative> {
   readonly name: string;
   /** A label for this credential's client or workspace. Part of every ref. */
   readonly workspaceId: string;
@@ -167,6 +192,11 @@ export interface Adapter {
   readonly caveats?: readonly string[] | undefined;
   /** Request costs by operation kind, for `outbound.estimate()`. */
   readonly costs?: Readonly<Record<string, OperationCost>> | undefined;
+  /**
+   * The vendor's reads that have no normalized form, by name. With the
+   * normalized reads they cover everything the vendor's API can report.
+   */
+  readonly native?: Native | undefined;
   /** Set by `combine()`: the adapters behind this one. */
   readonly members?: readonly Adapter[] | undefined;
 
@@ -206,4 +236,32 @@ export interface Adapter {
     query: PageQuery,
     ctx: AdapterContext
   ) => Promise<Page<Workspace>>;
+  readonly getCampaignSettings?: (
+    campaignId: string,
+    ctx: AdapterContext
+  ) => Promise<CampaignSettings>;
+  readonly listSubsequences?: (
+    query: SubsequenceQuery,
+    ctx: AdapterContext
+  ) => Promise<Page<Sequence>>;
+  readonly getSenderHealth?: (
+    senderId: string,
+    ctx: AdapterContext
+  ) => Promise<SenderHealth>;
+  readonly listLists?: (
+    query: PageQuery,
+    ctx: AdapterContext
+  ) => Promise<Page<LeadList>>;
+  readonly listBlocklist?: (
+    query: PageQuery,
+    ctx: AdapterContext
+  ) => Promise<Page<BlockEntry>>;
+  readonly listTags?: (
+    query: PageQuery,
+    ctx: AdapterContext
+  ) => Promise<Page<Tag>>;
+  readonly listWebhooks?: (
+    query: WebhookQuery,
+    ctx: AdapterContext
+  ) => Promise<Page<WebhookSubscription>>;
 }
