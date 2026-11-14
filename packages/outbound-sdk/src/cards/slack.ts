@@ -1,7 +1,7 @@
-// A card as Slack Block Kit, with no package. It writes the same blocks Chat
-// SDK's Slack adapter writes for the same card, so a card looks the same
-// whether it is posted through Chat SDK or straight to `chat.postMessage` or
-// an incoming webhook. The test suite holds the two to each other.
+// A card as Slack Block Kit, with no package. In the `plain` style it writes
+// the same blocks Chat SDK's Slack adapter writes for the same card, and the
+// test suite holds the two to each other. The default `rich` style swaps in
+// the blocks from slack-rich.ts.
 
 import {
   compactObject,
@@ -11,7 +11,22 @@ import {
   objects,
   text,
 } from "../internal/json.ts";
-import type { Json, JsonObject } from "../internal/json.ts";
+import type { JsonObject } from "../internal/json.ts";
+import {
+  richActions,
+  richFields,
+  richPeople,
+  richTable,
+} from "./slack-rich.ts";
+import {
+  bold,
+  cells,
+  cut,
+  filled,
+  mrkdwn,
+  plainText,
+  prop,
+} from "./slack-text.ts";
 import type { CardElement, CardSpec } from "./spec.ts";
 
 // Slack's own limits.
@@ -28,33 +43,9 @@ const MAX_CHARTS = 2;
 interface State {
   usedTable: boolean;
   charts: number;
+  /** Draw with Slack's layout, card and typed table cells. */
+  readonly rich: boolean;
 }
-
-const cut = (value: string, max: number): string =>
-  value.length > max ? value.slice(0, max) : value;
-
-const filled = (value: string): string => (value.length > 0 ? value : " ");
-
-/** The card format's `**bold**` is `*bold*` in Slack. */
-const bold = (value: string): string =>
-  value.replaceAll(/\*\*(?<inner>.+?)\*\*/gu, "*$<inner>*");
-
-const mrkdwn = (value: string, max: number): JsonObject => ({
-  text: filled(cut(value, max)),
-  type: "mrkdwn",
-});
-
-const plainText = (value: string, max: number): JsonObject => ({
-  emoji: true,
-  text: filled(cut(value, max)),
-  type: "plain_text",
-});
-
-const prop = (element: CardElement, key: string): string =>
-  text(element.props[key]) ?? "";
-
-const cells = (row: Json): string[] =>
-  list(row).map((cell) => text(cell) ?? "");
 
 /** A table as aligned text, for a second table or a chart Slack will not draw. */
 const asciiTable = (headers: string[], rows: string[][]): string => {
@@ -107,11 +98,25 @@ const MAX_TABLE_ROWS = 100;
 const MAX_TABLE_COLUMNS = 20;
 const MAX_TABLE_CHARS = 10_000;
 
-const tableBlock = (element: CardElement, state: State): JsonObject => {
+const plainTable = (element: CardElement, all: string[][]): JsonObject => ({
+  caption: prop(element, "caption") || "Table",
+  rows: all.map((row) => row.map((cell) => raw(cell))),
+  type: "data_table",
+});
+
+const tableBlocks = (element: CardElement, state: State): JsonObject[] => {
   const headers = cells(element.props.headers ?? []);
   const rows = list(element.props.rows).map((row) => cells(row));
   const all = [headers, ...rows];
   const chars = all.flat().reduce((total, cell) => total + cell.length, 0);
+
+  const people = state.rich
+    ? richPeople(element, headers, rows, fenced(asciiTable(headers, rows)))
+    : null;
+
+  if (people !== null) {
+    return people;
+  }
 
   if (
     state.usedTable ||
@@ -119,16 +124,16 @@ const tableBlock = (element: CardElement, state: State): JsonObject => {
     headers.length > MAX_TABLE_COLUMNS ||
     chars > MAX_TABLE_CHARS
   ) {
-    return fenced(asciiTable(headers, rows));
+    return [fenced(asciiTable(headers, rows))];
   }
 
   state.usedTable = true;
 
-  return {
-    caption: prop(element, "caption") || "Table",
-    rows: all.map((row) => row.map((cell) => raw(cell))),
-    type: "data_table",
-  };
+  return [
+    state.rich && rows.length > 0
+      ? richTable(prop(element, "caption") || "Table", headers, rows)
+      : plainTable(element, all),
+  ];
 };
 
 const seriesRows = (chart: JsonObject, categories: string[]): string[][] =>
@@ -237,19 +242,49 @@ const actionsBlock = (element: CardElement, find: Lookup): JsonObject => ({
   type: "actions",
 });
 
-const blocksFor = (key: string, find: Lookup, state: State): JsonObject[] => {
-  const element = find(key);
+/**
+ * The elements under a card. A card with more than ten numbers holds them in
+ * several `Fields`; the rich style draws those as one grid.
+ */
+const elementsOf = (
+  keys: readonly string[],
+  find: Lookup,
+  rich: boolean
+): CardElement[] => {
+  const found: CardElement[] = [];
 
-  if (element === undefined) {
-    return [];
+  for (const key of keys) {
+    const element = find(key);
+    const last = found.at(-1);
+
+    if (rich && element?.type === "Fields" && last?.type === "Fields") {
+      found[found.length - 1] = {
+        ...last,
+        children: [...last.children, ...element.children],
+      };
+    } else if (element !== undefined) {
+      found.push(element);
+    }
   }
 
+  return found;
+};
+
+const blocksFor = (
+  element: CardElement,
+  find: Lookup,
+  state: State
+): JsonObject[] => {
   const inner = (): JsonObject[] =>
-    element.children.flatMap((childKey) => blocksFor(childKey, find, state));
+    elementsOf(element.children, find, state.rich).flatMap((child) =>
+      blocksFor(child, find, state)
+    );
 
   switch (element.type) {
     case "Actions": {
-      return [actionsBlock(element, find)];
+      return [
+        state.rich ? richActions(element, find) : actionsBlock(element, find),
+      ];
     }
 
     case "Card": {
@@ -272,11 +307,13 @@ const blocksFor = (key: string, find: Lookup, state: State): JsonObject[] => {
     }
 
     case "Fields": {
-      return [fieldsBlock(element, find)];
+      return state.rich
+        ? richFields(element, find, fieldsBlock(element, find))
+        : [fieldsBlock(element, find)];
     }
 
     case "Table": {
-      return [tableBlock(element, state)];
+      return tableBlocks(element, state);
     }
 
     case "Text": {
@@ -289,12 +326,23 @@ const blocksFor = (key: string, find: Lookup, state: State): JsonObject[] => {
   }
 };
 
+export interface SlackOptions {
+  /**
+   * `rich` (the default) uses Slack's layout, card and typed table cells.
+   * `plain` writes exactly what Chat SDK's Slack adapter writes for the card.
+   */
+  readonly style?: "plain" | "rich" | undefined;
+}
+
 /**
  * The card as Slack blocks, for `chat.postMessage({ blocks })` or an incoming
  * webhook. Slack draws one table and two charts per message; a card with more
  * shows the rest as aligned text.
  */
-export const toSlackBlocks = (spec: CardSpec): JsonObject[] => {
+export const toSlackBlocks = (
+  spec: CardSpec,
+  options: SlackOptions = {}
+): JsonObject[] => {
   const root = spec.elements[spec.root];
 
   if (root === undefined) {
@@ -302,7 +350,13 @@ export const toSlackBlocks = (spec: CardSpec): JsonObject[] => {
   }
 
   const find: Lookup = (key) => spec.elements[key];
-  const state: State = { charts: 0, usedTable: false };
+
+  const state: State = {
+    charts: 0,
+    rich: options.style !== "plain",
+    usedTable: false,
+  };
+
   const subtitle = prop(root, "subtitle");
 
   return [
@@ -310,7 +364,9 @@ export const toSlackBlocks = (spec: CardSpec): JsonObject[] => {
     ...(subtitle === ""
       ? []
       : [{ elements: [mrkdwn(subtitle, MAX_TEXT)], type: "context" }]),
-    ...root.children.flatMap((key) => blocksFor(key, find, state)),
+    ...elementsOf(root.children, find, state.rich).flatMap((element) =>
+      blocksFor(element, find, state)
+    ),
   ].slice(0, MAX_BLOCKS);
 };
 
@@ -348,7 +404,10 @@ export interface SlackMessage {
 }
 
 /** A whole Slack message: spread it into `chat.postMessage` or post it to a webhook. */
-export const toSlackMessage = (spec: CardSpec): SlackMessage => ({
-  blocks: toSlackBlocks(spec),
+export const toSlackMessage = (
+  spec: CardSpec,
+  options: SlackOptions = {}
+): SlackMessage => ({
+  blocks: toSlackBlocks(spec, options),
   text: cut(fallback(spec), MAX_TEXT),
 });

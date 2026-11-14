@@ -317,13 +317,16 @@ test("a spec with no root, or an element it does not know, draws nothing for it"
     d: element("Chart", { title: "No data" }),
   });
 
-  const blocks = toSlackBlocks({
-    ...odd,
-    elements: {
-      ...odd.elements,
-      card: { ...odd.elements.card, children: ["a", "b", "c", "d", "gone"] },
-    },
-  } as never);
+  const blocks = toSlackBlocks(
+    {
+      ...odd,
+      elements: {
+        ...odd.elements,
+        card: { ...odd.elements.card, children: ["a", "b", "c", "d", "gone"] },
+      },
+    } as never,
+    { style: "plain" }
+  );
 
   assert.deepEqual(
     blocks.map((block) => block.type),
@@ -525,8 +528,8 @@ test("alertCard shows what was measured against its limit", () => {
     "🚨 Bounce rate above",
     "Founders Q4 bounces at 8% ‹!channel›",
     "About: instantly:acme:c1",
-    "Measured: 0.08",
-    "Limit: 0.03"
+    "Measured: 8.0%",
+    "Limit: 3.0%"
   );
   includes(
     read(

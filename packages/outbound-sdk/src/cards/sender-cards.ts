@@ -35,7 +35,6 @@ const bounceWatch: CardBuilder = (data) => {
   const threshold = pct(num(data, "threshold"));
 
   return {
-    bullets: over.map((campaign) => `🔴 ${show(campaign, "finding")}`),
     finding: verdict(
       (num(totals, "over") ?? 0) + (num(totals, "clean") ?? 0),
       over.length === 0

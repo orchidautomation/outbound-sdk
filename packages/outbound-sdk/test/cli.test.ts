@@ -515,7 +515,11 @@ test("--slack draws an insight too, and an unknown insight is still an error", a
   };
 
   assert.equal(slack.text, "Hot leads: 1 lead to call first.");
-  assert.ok(slack.blocks.some((block) => block.type === "data_table"));
+  // One hot lead is drawn as a card inside a layout, beside the grid of numbers.
+  assert.equal(
+    slack.blocks.filter((block) => block.type === "layout").length,
+    2
+  );
 
   const plain = (await cli("insight", "hot_leads")).json() as { data: object };
   assert.ok("data" in plain, "without a flag the answer is unchanged");

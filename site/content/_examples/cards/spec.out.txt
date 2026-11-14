@@ -20,7 +20,7 @@
       "children": [],
       "props": {
         "label": "Measured",
-        "value": "0.08"
+        "value": "8.1%"
       },
       "type": "Field"
     },
@@ -28,7 +28,7 @@
       "children": [],
       "props": {
         "label": "Limit",
-        "value": "0.03"
+        "value": "3.0%"
       },
       "type": "Field"
     },

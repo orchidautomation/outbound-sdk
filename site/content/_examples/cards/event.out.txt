@@ -9,29 +9,91 @@
     "type": "header"
   },
   {
-    "fields": [
+    "fallback": [
       {
-        "text": "*Campaign*\nMy First Campaign",
-        "type": "mrkdwn"
-      },
-      {
-        "text": "*Lead*\nperson1@example.com",
-        "type": "mrkdwn"
-      },
-      {
-        "text": "*Step*\n1",
-        "type": "mrkdwn"
-      },
-      {
-        "text": "*Subject*\nRe: Hello Alex",
-        "type": "mrkdwn"
-      },
-      {
-        "text": "*When*\n2026-11-14 00:36",
-        "type": "mrkdwn"
+        "fields": [
+          {
+            "text": "*Campaign*\nMy First Campaign",
+            "type": "mrkdwn"
+          },
+          {
+            "text": "*Lead*\nperson1@example.com",
+            "type": "mrkdwn"
+          },
+          {
+            "text": "*Step*\n1",
+            "type": "mrkdwn"
+          },
+          {
+            "text": "*Subject*\nRe: Hello Alex",
+            "type": "mrkdwn"
+          },
+          {
+            "text": "*When*\n2026-11-14 00:36",
+            "type": "mrkdwn"
+          }
+        ],
+        "type": "section"
       }
     ],
-    "type": "section"
+    "grid_lines": "outer",
+    "label": "Numbers",
+    "rows": [
+      {
+        "items": [
+          {
+            "block": {
+              "text": {
+                "text": "Campaign\n*My First Campaign*",
+                "type": "mrkdwn"
+              },
+              "type": "section"
+            }
+          },
+          {
+            "block": {
+              "text": {
+                "text": "Lead\n*person1@example.com*",
+                "type": "mrkdwn"
+              },
+              "type": "section"
+            }
+          },
+          {
+            "block": {
+              "text": {
+                "text": "Step\n*1*",
+                "type": "mrkdwn"
+              },
+              "type": "section"
+            }
+          }
+        ]
+      },
+      {
+        "items": [
+          {
+            "block": {
+              "text": {
+                "text": "Subject\n*Re: Hello Alex*",
+                "type": "mrkdwn"
+              },
+              "type": "section"
+            }
+          },
+          {
+            "block": {
+              "text": {
+                "text": "When\n*2026-11-14 00:36*",
+                "type": "mrkdwn"
+              },
+              "type": "section"
+            }
+          }
+        ]
+      }
+    ],
+    "type": "layout"
   },
   {
     "text": {

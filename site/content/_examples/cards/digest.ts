@@ -27,9 +27,10 @@ const message = toSlackMessage(
   })
 );
 
-// What each block says, one line per block.
+// What each block holds, one line per block: its text, the rows of a grid,
+// or its kind.
 for (const block of message.blocks) {
   console.log(
-    JSON.stringify(block.text ?? block.fields ?? block.elements ?? block.type)
+    JSON.stringify(block.text ?? block.rows ?? block.elements ?? block.type)
   );
 }

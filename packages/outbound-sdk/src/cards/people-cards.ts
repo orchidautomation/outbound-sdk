@@ -173,6 +173,7 @@ const droppedReplies: CardBuilder = (data) => {
     ],
     table: {
       align: [LEFT, LEFT, LEFT, RIGHT],
+      cards: { subtitle: [1, 2, 3], title: 0 },
       headers: ["Lead", "Campaign", "Category", "Waiting"],
       rows: dropped.map((reply) => [
         show(reply, "lead"),
@@ -201,6 +202,7 @@ const hotLeads: CardBuilder = (data) => {
     ],
     table: {
       align: [LEFT, LEFT, RIGHT, LEFT],
+      cards: { body: 3, subtitle: [1, 2], title: 0 },
       headers: ["Lead", "Company", "Score", "Why"],
       rows: leads.map((lead) => [
         str(lead, "name") ??
