@@ -20,6 +20,7 @@ export default defineMeta({
     "cli",
     "webhooks",
     "troubleshooting",
+    "guides",
   ],
   title: "Docs",
 });

@@ -1,0 +1,50 @@
+---
+title: Guides
+description: Complete tasks with outbound-sdk, end to end. Each guide has one outcome, code that the test suite runs, the output it printed and the failure cases.
+---
+
+Each guide is one task with a specific outcome. The code in it is run by the test suite on the in-memory adapter, and the output shown is what it printed. See [how the samples are run](/docs/samples) for what that does and does not prove.
+
+<include>../../_snippets/status.mdx</include>
+
+## Reporting and diagnosis
+
+- [Build a weekly client report an agency can send, from one call](/docs/guides/weekly-client-report): One function that turns a client's campaigns into a plain-text weekly report with the change from last week, the best campaigns and a to-do list, plus what it does when a vendor cannot answer.
+- [Find why one campaign is underperforming](/docs/guides/diagnose-campaign): One function that runs a fixed list of checks on a campaign and returns the findings most serious first, with the days that broke from its own trend and its rates beside the rest of the workspace.
+- [Find the campaigns about to run out of leads](/docs/guides/lead-runway): One function that forecasts every active campaign, sorts them by days of leads left and flags the ones under your threshold, with what the loop costs in vendor requests and what the estimate assumes.
+- [Tell whether an A/B variant is ahead by more than chance](/docs/guides/ab-test-winner): One function that reads a campaign's step stats and says, for each step with two or more variants, whether the leader's gap is larger than chance would give, plus which step the replies come from.
+
+## People and replies
+
+- [See every campaign one person is in, across an email tool and a LinkedIn tool](/docs/guides/person-across-email-and-linkedin): One function that takes an email address or a LinkedIn profile URL and returns each campaign the person is in on every tool, with messages sent and replies per channel. Records are linked by exact identifier only.
+- [See everyone you have contacted at one company before a call, from its domain](/docs/guides/account-brief): One function that takes a company domain and returns each person at it across campaigns and tools, with who replied, who the vendor marked interested and who replied last. People are matched by exact email domain only.
+- [List the replies nobody answered, longest waiting first, from a scheduled job](/docs/guides/unanswered-replies): One function that reads recent replies, checks each conversation for a message sent afterwards, and returns the ones still waiting as text, plus what it could not check. It lists replies and sends nothing.
+- [Build a morning list of who to call first, with the reason for each rank](/docs/guides/hot-leads-call-list): One function that ranks leads by a score built from the vendor's interest label, replies, clicks, opens and how recent the last reply is, and prints each score with its parts. It is a ranking you can check, not a prediction.
+- [Find people in two campaigns at once, and leads that are on a block list](/docs/guides/double-contacted-leads): Two functions, one that lists each person who is in two or more campaigns inside a tool or across tools, and one that lists leads sitting in campaigns although a block list holds their address, domain or profile. Both report; neither removes anyone.
+
+## Copy, senders and deliverability
+
+- [Audit a campaign's copy, merge variables and settings before it launches](/docs/guides/pre-launch-audit): One function that lists what is wrong with a campaign's copy, which leads would get a blank merge variable, and which settings are risky, as a report you read before you press launch.
+- [Check domain health and bounces on a schedule, and call your notifier](/docs/guides/deliverability-check): One function that reads sender health and bounce rates and returns a summary, wired to the alerts plugin so your own notifier is called when a read crosses a rule. You schedule it; nothing runs in between.
+- [Decide whether your senders can carry another campaign](/docs/guides/sender-capacity): One function that adds up what your active senders can send a day, subtracts what the running campaigns already ask for, and lists the senders and campaigns that make the headline number too generous.
+
+## Agents
+
+- [Let an MCP client such as Claude Code or Cursor read your campaigns over a local MCP server](/docs/guides/mcp-server): A local, read-only MCP server that an agent client starts as a command, the exact messages it exchanges, and what to decide about keys and reply text before you connect it.
+- [Give your agent tools that answer questions about campaigns](/docs/guides/agent-tools): A set of read-only tools your own agent can call, in the shapes the OpenAI SDK, the AI SDK and the Claude Agent SDK take, with recorded tool calls and the failures a model will see.
+- [Hand reply text to a model with people's details masked and the text marked untrusted](/docs/guides/reply-text-for-llm): Replies read with the sender's name, address and company masked or hashed, and the reply text cut short and wrapped as untrusted content. Plus exactly what that does and does not protect against.
+
+## Data pipelines
+
+- [Keep a copy of campaigns, leads and replies in your database](/docs/guides/sync-to-database): A scheduled job that upserts campaigns, leads and replies into your own tables, asks only for what is new where the vendor can filter by date, and restarts on the page it was writing after a crash.
+- [Export every lead or reply to CSV, JSON Lines or your own format](/docs/guides/export-leads): A function that streams every lead to a CSV file, replies to JSON Lines, and any listing to a writer of your own, plus a walk you can resume when a long export dies part-way.
+- [Receive vendor webhooks once each, and list the ones that never arrived](/docs/guides/webhooks-and-reconcile): A webhook endpoint that rejects forged requests and drops redeliveries, with a dedupe store in your own database, and a scheduled check that reports messages the vendor lists but no webhook announced.
+
+## Architecture and operations
+
+- [Read every client's outbound data through one instance](/docs/guides/run-many-clients): One instance over every client key, scoped to a single client when you need it, with per-client totals, separate rate budgets and rules for a workspace that holds several clients.
+- [Write one function that runs on Instantly, Smartlead and HeyReach](/docs/guides/portable-code): A function that reads outbound.capabilities before each call, says what a vendor cannot serve, and reports how each answer was produced, run as each vendor with the output recorded.
+- [Read data only one vendor has, through the native catalog](/docs/guides/native-reads): List a vendor's own reads, call one with typed parameters or by a name learned at run time, reach it on a combined instance, and see what is refused, with requests and responses recorded offline.
+- [Share one rate budget between workers with Redis](/docs/guides/shared-rate-budget): Several processes on one vendor key spend one rate budget instead of one each, using the Redis store that ships with outbound-sdk and the Redis client you already have.
+- [Answer reads from the last good answer when a vendor is down or rate limiting](/docs/guides/vendor-outage): An instance that serves repeat reads from a cache, caps what it spends, and returns the last successful answer marked stale when the vendor fails, with the cases where it refuses to.
+- [Test code that reads outbound data without a vendor key](/docs/guides/test-without-a-key): Tests for your own code that run on the in-memory adapter with a seed you write, covering unsupported calls, vendor failures, paging and recorded answers, plus what the in-memory adapter does not tell you.

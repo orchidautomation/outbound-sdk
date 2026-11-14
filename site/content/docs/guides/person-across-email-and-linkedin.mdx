@@ -7,14 +7,14 @@ related:
   - /docs/insights/people
   - /docs/adapters/combine
   - /docs/plugins/identity
-  - /guides/account-brief
+  - /docs/guides/account-brief
 ---
 
 Before you answer a reply, you want to know what else this person was sent: which campaigns, on which channel, and whether they already replied somewhere else. `personSummary` takes an email address or a LinkedIn profile URL and returns one entry per campaign the person is in, on every tool behind the instance, with messages sent, replies, the steps replied to, the vendor's interest label and totals by channel.
 
 It links records by exact identifier only: the same lowercased email address, or the same LinkedIn profile. It never matches on a name or a company. So an email address reaches a LinkedIn record only when some tool holds both the address and the profile for that person. When no record holds both, you get the email side only, and nothing tells you a LinkedIn side exists.
 
-<include>../_snippets/status.mdx</include>
+<include>../../_snippets/status.mdx</include>
 
 ## Before you start
 
@@ -27,7 +27,7 @@ It links records by exact identifier only: the same lowercased email address, or
 Three lookups against two tools. Dana's address finds her LinkedIn campaign too. Omar's address does not find his, and his profile does not find his email campaign.
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/person-across-email-and-linkedin/run.out.txt
+  ../../_examples/person-across-email-and-linkedin/run.out.txt
 </include>
 
 ## Put two tools behind one instance
@@ -35,13 +35,13 @@ Three lookups against two tools. Dana's address finds her LinkedIn campaign too.
 `combine` takes one adapter per tool. Every record keeps its own `provider`, so the email tool's campaigns and the LinkedIn tool's campaigns are never confused.
 
 <include meta='title="agency.ts"'>
-  ../_examples/person-across-email-and-linkedin/agency.ts
+  ../../_examples/person-across-email-and-linkedin/agency.ts
 </include>
 
 ## Write the lookup
 
 <include meta='title="person.ts"'>
-  ../_examples/person-across-email-and-linkedin/person.ts
+  ../../_examples/person-across-email-and-linkedin/person.ts
 </include>
 
 What the insight does with the identifier:
@@ -62,11 +62,11 @@ Three things in the answer are worth knowing:
 Two made-up tools. The LinkedIn tool has one record that carries both of Dana's identifiers, which is the only way an Instantly and HeyReach pairing can link a person, because an Instantly lead carries no profile. Nothing carries both of Omar's.
 
 <include meta='title="seed.ts"'>
-  ../_examples/person-across-email-and-linkedin/seed.ts
+  ../../_examples/person-across-email-and-linkedin/seed.ts
 </include>
 
 <include meta='title="run.ts"'>
-  ../_examples/person-across-email-and-linkedin/run.ts
+  ../../_examples/person-across-email-and-linkedin/run.ts
 </include>
 
 That is the script that printed the output above.
@@ -76,11 +76,11 @@ That is the script that printed the output above.
 `personSummary` returns counts. The `identity` plugin adds `outbound.person(key)`, which returns the lead records themselves and every message to and from the person across tools, oldest first. It uses the same exact-identifier rule.
 
 <include meta='title="timeline.ts"'>
-  ../_examples/person-across-email-and-linkedin/timeline.ts
+  ../../_examples/person-across-email-and-linkedin/timeline.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/person-across-email-and-linkedin/timeline.out.txt
+  ../../_examples/person-across-email-and-linkedin/timeline.out.txt
 </include>
 
 `bodyText` is `null` on the timeline unless you ask for it: `outbound.person(identifier, { include: ["body"] })` reads message text for every record, where the adapter declares `messages.body`. For one record, `outbound.lead(ref).timeline({ include: ["body"] })` does the same, which is covered in [handles](/docs/api/handles).
@@ -90,7 +90,7 @@ That is the script that printed the output above.
 Swap the adapters. Nothing else changes.
 
 <include meta='title="outbound.ts"'>
-  ../_examples/person-across-email-and-linkedin/production.ts
+  ../../_examples/person-across-email-and-linkedin/production.ts
 </include>
 
 Whether an address reaches the LinkedIn side depends on what each tool stores. These come from the adapters' own notes, not from this guide's data:
@@ -104,11 +104,11 @@ Whether an address reaches the LinkedIn side depends on what each tool stores. T
 The same function, run on the in-memory adapter limited to what each vendor's adapter declares. This shows which calls a vendor's adapter would refuse. It does not show what that vendor's API returns.
 
 <include meta='title="vendors.ts"'>
-  ../_examples/person-across-email-and-linkedin/vendors.ts
+  ../../_examples/person-across-email-and-linkedin/vendors.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/person-across-email-and-linkedin/vendors.out.txt
+  ../../_examples/person-across-email-and-linkedin/vendors.out.txt
 </include>
 
 `personSummary` needs `leads.lookup` and `leads.timeline`. All three adapters declare both, so none refuses it.
@@ -120,11 +120,11 @@ One lookup per identifier, on each tool, then up to two requests per campaign th
 ## When it cannot answer
 
 <include meta='title="failures.ts"'>
-  ../_examples/person-across-email-and-linkedin/failures.ts
+  ../../_examples/person-across-email-and-linkedin/failures.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/person-across-email-and-linkedin/failures.out.txt
+  ../../_examples/person-across-email-and-linkedin/failures.out.txt
 </include>
 
 | What happened | What you get | What to do |

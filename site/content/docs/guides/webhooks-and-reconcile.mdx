@@ -8,7 +8,7 @@ related:
   - /docs/webhooks/verification
   - /docs/webhooks/events
   - /docs/plugins/reconcile
-  - /guides/sync-to-database
+  - /docs/guides/sync-to-database
 ---
 
 A webhook can arrive twice, late or not at all. Code that counts replies from webhooks alone drifts from what the vendor shows. This guide builds the two halves that keep it honest:
@@ -18,7 +18,7 @@ A webhook can arrive twice, late or not at all. Code that counts replies from we
 
 The SDK receives and compares. It does not register a webhook with a vendor, and `reconcile` reports a mismatch without repairing anything.
 
-<include>../_snippets/status.mdx</include>
+<include>../../_snippets/status.mdx</include>
 
 <Callout type="warning" title="No parser has received a real delivery">
   The webhook parsers were written from each vendor's documentation. Every
@@ -40,19 +40,19 @@ The SDK receives and compares. It does not register a webhook with a vendor, and
 Five requests arrive at the endpoint: a sent email, a reply, the same reply again, an open, and a sent email with the wrong secret.
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/webhooks-and-reconcile/run.out.txt
+  ../../_examples/webhooks-and-reconcile/run.out.txt
 </include>
 
 Later, the check against what the vendor lists for the same morning:
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/webhooks-and-reconcile/reconcile.out.txt
+  ../../_examples/webhooks-and-reconcile/reconcile.out.txt
 </include>
 
 ## The endpoint
 
 <include meta='title="handler.ts"'>
-  ../_examples/webhooks-and-reconcile/handler.ts
+  ../../_examples/webhooks-and-reconcile/handler.ts
 </include>
 
 - **`verify`** answers `true` or `false` and never throws for a bad secret. It reads a copy of the request, so the body is still there for `parse`. Passing `secret` to `parse` does the same check and throws `Unauthorized` instead.
@@ -64,11 +64,11 @@ Later, the check against what the vendor lists for the same morning:
 How each vendor authenticates is different. This is `setupInstructions(provider)` for each one, printed by a script:
 
 <include meta='title="setup.ts"'>
-  ../_examples/webhooks-and-reconcile/setup.ts
+  ../../_examples/webhooks-and-reconcile/setup.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/webhooks-and-reconcile/setup.out.txt
+  ../../_examples/webhooks-and-reconcile/setup.out.txt
 </include>
 
 For a vendor that does not sign, the shared secret is looked for in a path segment of the URL, in a `secret`, `token` or `key` query parameter, in an `x-webhook-secret` or `x-outbound-secret` header, and in `Authorization: Bearer`.
@@ -78,7 +78,7 @@ For a vendor that does not sign, the shared secret is looked for in a path segme
 `parse` asks the store to claim each event's id. A claim that succeeds means the event is new. `memoryDedupeStore()` ships with the package: it lives in one process and forgets its oldest ids after 10,000. Behind a load balancer, or on a platform that starts a process per request, every process must share one store. It is one function:
 
 <include meta='title="dedupe-store.ts"'>
-  ../_examples/webhooks-and-reconcile/dedupe-store.ts
+  ../../_examples/webhooks-and-reconcile/dedupe-store.ts
 </include>
 
 The claim has to be atomic: two requests carrying the same event at the same moment must not both win. An insert on a primary key gives you that. The same claim in Postgres, which the test suite does not run:
@@ -105,15 +105,15 @@ A row back means the claim succeeded.
 The request bodies come from the repository's fixtures:
 
 <include meta='title="payloads.ts"'>
-  ../_examples/webhooks-and-reconcile/payloads.ts
+  ../../_examples/webhooks-and-reconcile/payloads.ts
 </include>
 
 <include meta='title="inbox.ts"'>
-  ../_examples/webhooks-and-reconcile/inbox.ts
+  ../../_examples/webhooks-and-reconcile/inbox.ts
 </include>
 
 <include meta='title="run.ts"'>
-  ../_examples/webhooks-and-reconcile/run.ts
+  ../../_examples/webhooks-and-reconcile/run.ts
 </include>
 
 That is the script that printed the five deliveries above. The redelivered reply was answered `204` and kept nothing. The documented payload for an open carries no message id, so its event names no message.
@@ -123,11 +123,11 @@ That is the script that printed the five deliveries above. The redelivered reply
 `outbound.reconcile.events()` lists the vendor's messages in a window and compares them with the events you kept.
 
 <include meta='title="seed.ts"'>
-  ../_examples/webhooks-and-reconcile/seed.ts
+  ../../_examples/webhooks-and-reconcile/seed.ts
 </include>
 
 <include meta='title="reconcile.ts"'>
-  ../_examples/webhooks-and-reconcile/reconcile.ts
+  ../../_examples/webhooks-and-reconcile/reconcile.ts
 </include>
 
 That is the script that printed the report above. What each field means:
@@ -154,14 +154,14 @@ Three more things to know before trusting the report:
 
 - **It lists every message in the window**, sent and received. If you subscribe to replies only, every sent message appears in `missingEvents`. Filter the list by `direction` for the kind you subscribe to.
 - **It does not filter your events by the window.** Pass the events from the same window you ask the vendor for. An event from before `since` is reported as unmatched.
-- **It reports and stops.** Fetching a missed reply is a call you make: `outbound.replies.list({ since })`, or the sync in [the database guide](/guides/sync-to-database).
+- **It reports and stops.** Fetching a missed reply is a call you make: `outbound.replies.list({ since })`, or the sync in [the database guide](/docs/guides/sync-to-database).
 
 ## Point it at your vendor
 
 Export the handler from whatever serves your routes, and open your real database where the sample opens one in memory.
 
 <include meta='title="route.ts"'>
-  ../_examples/webhooks-and-reconcile/production.ts
+  ../../_examples/webhooks-and-reconcile/production.ts
 </include>
 
 For the check, use the adapter for the same account with the same `workspaceId`, add `reconcile()` to its plugins, read the saved events for the window back from your table, and call `outbound.reconcile.events()` from your scheduler.
@@ -171,11 +171,11 @@ For the check, use the adapter for the same account with the same `workspaceId`,
 One documented payload per vendor, parsed with no provider named, then handed to reconcile on the in-memory adapter limited to what that vendor's adapter declares. This shows what the parser makes of the documented payload. It does not show what the vendor sends.
 
 <include meta='title="vendors.ts"'>
-  ../_examples/webhooks-and-reconcile/vendors.ts
+  ../../_examples/webhooks-and-reconcile/vendors.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/webhooks-and-reconcile/vendors.out.txt
+  ../../_examples/webhooks-and-reconcile/vendors.out.txt
 </include>
 
 HeyReach's payloads carry no message id, so its events never name a message and reconcile cannot compare them: every HeyReach event is `uncheckable`. Deduplication still works, because `event.id` is built from HeyReach's `correlation_id`.
@@ -187,11 +187,11 @@ Receiving a webhook costs no vendor request. `reconcile.events()` costs one list
 ## When it cannot answer
 
 <include meta='title="failures.ts"'>
-  ../_examples/webhooks-and-reconcile/failures.ts
+  ../../_examples/webhooks-and-reconcile/failures.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/webhooks-and-reconcile/failures.out.txt
+  ../../_examples/webhooks-and-reconcile/failures.out.txt
 </include>
 
 | What happened | What you get | What to do |

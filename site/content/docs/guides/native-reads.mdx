@@ -14,7 +14,7 @@ The normalized reads cover what Instantly, Smartlead and HeyReach have in common
 
 What comes back is the vendor's own response. It is not normalized, not comparable across vendors and not masked. Every catalog entry is a read. Nothing here sends, pauses or edits, and a write through `outbound.raw` is refused.
 
-<include>../_snippets/status.mdx</include>
+<include>../../_snippets/status.mdx</include>
 
 ## Before you start
 
@@ -37,7 +37,7 @@ What comes back is the vendor's own response. It is not normalized, not comparab
 Three reads: a typed native read, a native read by name, and a raw `GET`. The last block is every request the SDK made.
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/native-reads/read.out.txt
+  ../../_examples/native-reads/read.out.txt
 </include>
 
 - **`data` is the vendor's payload**, with the vendor's field names: `leadFullName`, `totalCount`, `campaignStatus`.
@@ -50,18 +50,18 @@ Three reads: a typed native read, a native read by name, and a raw `GET`. The la
 `outbound.native.catalog` is static. Reading it makes no request, so you can print it before you have a working key.
 
 <include meta='title="catalog.ts"'>
-  ../_examples/native-reads/catalog.ts
+  ../../_examples/native-reads/catalog.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/native-reads/catalog.out.txt
+  ../../_examples/native-reads/catalog.out.txt
 </include>
 
 Each entry says what the read answers, the vendor's method and path, each parameter with its type and where it goes (`path`, `query` or `body`), and the vendor's documentation page. HeyReach reads some data with `POST`. The method is the vendor's; the call is still a read.
 
 ## Call a read
 
-<include meta='title="read.ts"'>../_examples/native-reads/read.ts</include>
+<include meta='title="read.ts"'>../../_examples/native-reads/read.ts</include>
 
 There are three ways in, from most to least checked:
 
@@ -72,7 +72,7 @@ There are three ways in, from most to least checked:
 The sample injects `fetch` so it can run offline. Leave that option out in your own code.
 
 <include meta='title="fixture-fetch.ts"'>
-  ../_examples/native-reads/fixture-fetch.ts
+  ../../_examples/native-reads/fixture-fetch.ts
 </include>
 
 ## On a combined instance
@@ -80,11 +80,11 @@ The sample injects `fetch` so it can run offline. Leave that option out in your 
 With several adapters behind one instance, `outbound.native` has no catalog: two vendors have two sets of names. Go through `outbound.workspace(id)`, which is the same instance scoped to one adapter. It is typed as the general API, so use `read(name)` there, not `reads`.
 
 <include meta='title="combined.ts"'>
-  ../_examples/native-reads/combined.ts
+  ../../_examples/native-reads/combined.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/native-reads/combined.out.txt
+  ../../_examples/native-reads/combined.out.txt
 </include>
 
 ## Point it at your vendor
@@ -96,11 +96,11 @@ Remove the `fetch` option. `heyreach()` reads `HEYREACH_API_KEY`. For Instantly 
 Read from each real adapter's declaration, with no request made.
 
 <include meta='title="vendors.ts"'>
-  ../_examples/native-reads/vendors.ts
+  ../../_examples/native-reads/vendors.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/native-reads/vendors.out.txt
+  ../../_examples/native-reads/vendors.out.txt
 </include>
 
 All three adapters declare a catalog. The last line is the in-memory stand-in the other guides run on: it copies a vendor's declared capabilities but has no vendor API behind it, so it has no catalog and cannot stand in for native reads. That is why this guide runs on fixtures. The [coverage](/docs/coverage) pages account for every endpoint of each vendor.
@@ -112,11 +112,11 @@ One native or raw call is one vendor request, counted against the same rate budg
 ## When it cannot answer
 
 <include meta='title="failures.ts"'>
-  ../_examples/native-reads/failures.ts
+  ../../_examples/native-reads/failures.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/native-reads/failures.out.txt
+  ../../_examples/native-reads/failures.out.txt
 </include>
 
 Only the last case reached the fixture `fetch`. Every refusal above it happened before a request.

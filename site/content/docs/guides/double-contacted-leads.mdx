@@ -6,8 +6,8 @@ sidebar:
 related:
   - /docs/insights/people
   - /docs/adapters/combine
-  - /guides/person-across-email-and-linkedin
-  - /guides/pre-launch-audit
+  - /docs/guides/person-across-email-and-linkedin
+  - /docs/guides/pre-launch-audit
 ---
 
 Two mistakes cost an agency a client: the same person getting two sequences in the same week, and someone who asked not to be contacted getting another email. Both are visible in the data before they happen again.
@@ -17,7 +17,7 @@ Two mistakes cost an agency a client: the same person getting two sequences in t
 
 Both only report. Neither removes a lead, pauses a campaign or edits a block list. People are matched by exact email address or LinkedIn profile, never by name.
 
-<include>../_snippets/status.mdx</include>
+<include>../../_snippets/status.mdx</include>
 
 ## Before you start
 
@@ -28,7 +28,7 @@ Both only report. Neither removes a lead, pauses a campaign or edits a block lis
 ## What you get
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/double-contacted-leads/run.out.txt
+  ../../_examples/double-contacted-leads/run.out.txt
 </include>
 
 ## Put the tools behind one instance
@@ -36,13 +36,13 @@ Both only report. Neither removes a lead, pauses a campaign or edits a block lis
 One adapter works: every collision is then inside that tool. With two, `combine` puts them behind one instance and the same calls also find people who are in both.
 
 <include meta='title="agency.ts"'>
-  ../_examples/double-contacted-leads/agency.ts
+  ../../_examples/double-contacted-leads/agency.ts
 </include>
 
 ## Write the two reports
 
 <include meta='title="overlap.ts"'>
-  ../_examples/double-contacted-leads/overlap.ts
+  ../../_examples/double-contacted-leads/overlap.ts
 </include>
 
 How a collision is found:
@@ -64,11 +64,11 @@ How a block list match is found:
 ## Try it without a key
 
 <include meta='title="seed.ts"'>
-  ../_examples/double-contacted-leads/seed.ts
+  ../../_examples/double-contacted-leads/seed.ts
 </include>
 
 <include meta='title="run.ts"'>
-  ../_examples/double-contacted-leads/run.ts
+  ../../_examples/double-contacted-leads/run.ts
 </include>
 
 That is the script that printed the output above.
@@ -78,11 +78,11 @@ That is the script that printed the output above.
 A paused campaign that will be resumed is worth checking before it is. Pass the statuses to read.
 
 <include meta='title="paused.ts"'>
-  ../_examples/double-contacted-leads/paused.ts
+  ../../_examples/double-contacted-leads/paused.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/double-contacted-leads/paused.out.txt
+  ../../_examples/double-contacted-leads/paused.out.txt
 </include>
 
 Zoe appears now. `stillActive` is about the lead's status in each campaign, not the campaign's: her record in the paused campaign is still `active`.
@@ -92,7 +92,7 @@ Zoe appears now. `stillActive` is about the lead's status in each campaign, not 
 Swap the adapters. Nothing else changes.
 
 <include meta='title="outbound.ts"'>
-  ../_examples/double-contacted-leads/production.ts
+  ../../_examples/double-contacted-leads/production.ts
 </include>
 
 A collision across tools needs a record that carries both an address and a profile. Instantly leads carry no LinkedIn profile, so between Instantly and HeyReach the link can only come from a HeyReach lead that has an email address.
@@ -102,11 +102,11 @@ A collision across tools needs a record that carries both an address and a profi
 Both reports, run on the in-memory adapter limited to what each vendor's adapter declares. This shows which calls a vendor's adapter would refuse. It does not show what that vendor's API returns.
 
 <include meta='title="vendors.ts"'>
-  ../_examples/double-contacted-leads/vendors.ts
+  ../../_examples/double-contacted-leads/vendors.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/double-contacted-leads/vendors.out.txt
+  ../../_examples/double-contacted-leads/vendors.out.txt
 </include>
 
 `leadCollisions` needs `leads.byCampaign`. `suppressionCheck` needs that and `blocklist`. All three adapters declare both, so none refuses either call.
@@ -121,11 +121,11 @@ The defaults read up to 20 campaigns (`max_campaigns`, at most 200), 500 leads f
 ## When it cannot answer
 
 <include meta='title="failures.ts"'>
-  ../_examples/double-contacted-leads/failures.ts
+  ../../_examples/double-contacted-leads/failures.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/double-contacted-leads/failures.out.txt
+  ../../_examples/double-contacted-leads/failures.out.txt
 </include>
 
 | What happened | What you get | What to do |

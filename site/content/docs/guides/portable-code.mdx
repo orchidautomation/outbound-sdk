@@ -16,7 +16,7 @@ The SDK gives you three things to write against instead of a vendor: `outbound.c
 
 The SDK does not fill a gap with a guess. A read the vendor lacks is refused, and a count the vendor does not report is `null`.
 
-<include>../_snippets/status.mdx</include>
+<include>../../_snippets/status.mdx</include>
 
 ## Before you start
 
@@ -29,7 +29,7 @@ The SDK does not fill a gap with a guess. A read the vendor lacks is refused, an
 The same function on seeded data, limited in turn to what each vendor's adapter declares.
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/portable-code/vendors.out.txt
+  ../../_examples/portable-code/vendors.out.txt
 </include>
 
 The numbers are the seed's, so they match across vendors. What differs is what each vendor's adapter can serve and how:
@@ -43,7 +43,7 @@ This run shows which calls a vendor's adapter would refuse. It does not show wha
 ## The function
 
 <include meta='title="portable.ts"'>
-  ../_examples/portable-code/portable.ts
+  ../../_examples/portable-code/portable.ts
 </include>
 
 It uses four kinds of capability value:
@@ -65,12 +65,12 @@ Three habits in the function carry over to any portable code:
 
 ## Try it without a key
 
-<include meta='title="seed.ts"'>../_examples/portable-code/seed.ts</include>
+<include meta='title="seed.ts"'>../../_examples/portable-code/seed.ts</include>
 
-<include meta='title="run.ts"'>../_examples/portable-code/run.ts</include>
+<include meta='title="run.ts"'>../../_examples/portable-code/run.ts</include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/portable-code/run.out.txt
+  ../../_examples/portable-code/run.out.txt
 </include>
 
 The in-memory adapter declares every capability, so every branch takes the supported path. Step 0 has 2 replies a day from 20 sends, so 10.0%; step 1 has 1 from 40, so 2.5%. No `contacted` count is seeded per step, so the rate is on `sent` and the line says so.
@@ -80,7 +80,7 @@ The in-memory adapter declares every capability, so every branch takes the suppo
 The in-memory adapter takes a `capabilities` option. Pass it what a real adapter declares and it refuses what that adapter would refuse. That is all the shared helper does.
 
 <include meta='title="vendors.ts"'>
-  ../_examples/portable-code/vendors.ts
+  ../../_examples/portable-code/vendors.ts
 </include>
 
 Use the same option in your own tests to reach the unsupported branch of your code without a second vendor account: `memory({ capabilities: { "stats.byStep": false }, data })`.
@@ -96,11 +96,11 @@ Pass an instance built on `instantly()`, `smartlead()` or `heyreach()`. The func
 A `client` filter costs the whole listing, because the vendor is asked for everything. `outbound.estimate` says what a listing would cost before you make it. It is arithmetic on the costs each adapter declares, and makes no request.
 
 <include meta='title="estimate.ts"'>
-  ../_examples/portable-code/estimate.ts
+  ../../_examples/portable-code/estimate.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/portable-code/estimate.out.txt
+  ../../_examples/portable-code/estimate.out.txt
 </include>
 
 - Listing 1,000 campaigns on Instantly is 30 requests, not 10: each page also reads tag assignments and tag names.
@@ -113,11 +113,11 @@ A `client` filter costs the whole listing, because the vendor is asked for every
 A call the instance does not declare is refused before any request. The sample proves it with a real HeyReach adapter and a `fetch` that counts.
 
 <include meta='title="failures.ts"'>
-  ../_examples/portable-code/failures.ts
+  ../../_examples/portable-code/failures.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/portable-code/failures.out.txt
+  ../../_examples/portable-code/failures.out.txt
 </include>
 
 | What happened | What you get | What to do |

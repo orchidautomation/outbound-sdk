@@ -6,14 +6,14 @@ sidebar:
 related:
   - /docs/insights
   - /docs/adapters/combine
-  - /guides/run-many-clients
+  - /docs/guides/run-many-clients
 ---
 
 Every Monday an agency writes the same email for each client: what went out, what came back, what changed, what needs doing. `clientReport` computes all of it in one call: this week against the week before, with a test for whether the change is more than chance; the best campaigns; campaigns over a bounce threshold; campaigns about to run out of leads; days that broke from trend; and a list of actions. It calls no AI model. Every number is a count, a rate or a textbook test.
 
 This guide wraps that call in one function that returns the report as text, runs it for every client behind one instance, and shows what happens when it cannot answer.
 
-<include>../_snippets/status.mdx</include>
+<include>../../_snippets/status.mdx</include>
 
 ## Before you start
 
@@ -24,7 +24,7 @@ This guide wraps that call in one function that returns the report as text, runs
 ## What you get
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/weekly-client-report/run.out.txt
+  ../../_examples/weekly-client-report/run.out.txt
 </include>
 
 ## Write the report
@@ -32,7 +32,7 @@ This guide wraps that call in one function that returns the report as text, runs
 `outbound.insights.clientReport` takes the length of the period in days and returns `data` and `meta`. The function below formats `data` and passes on anything `meta` says about the answer.
 
 <include meta='title="report.ts"'>
-  ../_examples/weekly-client-report/report.ts
+  ../../_examples/weekly-client-report/report.ts
 </include>
 
 Three things in it are worth copying:
@@ -48,11 +48,11 @@ Three things in it are worth copying:
 The in-memory adapter takes plain data. This seed is three weeks of results for one client, with one campaign whose bounces jumped last week:
 
 <include meta='title="seed.ts"'>
-  ../_examples/weekly-client-report/seed.ts
+  ../../_examples/weekly-client-report/seed.ts
 </include>
 
 <include meta='title="run.ts"'>
-  ../_examples/weekly-client-report/run.ts
+  ../../_examples/weekly-client-report/run.ts
 </include>
 
 That is the script that printed the report above.
@@ -62,7 +62,7 @@ That is the script that printed the report above.
 Swap the adapter. Nothing else changes.
 
 <include meta='title="outbound.ts"'>
-  ../_examples/weekly-client-report/production.ts
+  ../../_examples/weekly-client-report/production.ts
 </include>
 
 `maxRequests` caps what one call may spend. On a real vendor the report costs two stats requests per campaign, and for each active campaign three more plus a read of its leads (up to `max_leads_per_campaign`, default 500). The default `max_campaigns` is 25. If the cap is reached the call fails with `RateLimited` instead of spending your vendor quota; raise `maxRequests` or lower `max_campaigns`.
@@ -72,11 +72,11 @@ Swap the adapter. Nothing else changes.
 Give each client's key its own adapter and a `workspaceId` that is your label for the client. `outbound.workspace(id)` is the same instance scoped to that client, with the same plugins, so the function above runs unchanged. A client on two tools keeps one label on both adapters, and its scope covers both.
 
 <include meta='title="per-client.ts"'>
-  ../_examples/weekly-client-report/per-client.ts
+  ../../_examples/weekly-client-report/per-client.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/weekly-client-report/per-client.out.txt
+  ../../_examples/weekly-client-report/per-client.out.txt
 </include>
 
 The second client has no campaigns, so its counts are "not reported" and not zero.
@@ -88,11 +88,11 @@ To send it weekly, call the function from whatever scheduler you already run (cr
 The same function, run on the in-memory adapter limited to what each vendor's adapter declares. This shows which calls a vendor's adapter would refuse. It does not show what that vendor's API returns.
 
 <include meta='title="vendors.ts"'>
-  ../_examples/weekly-client-report/vendors.ts
+  ../../_examples/weekly-client-report/vendors.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/weekly-client-report/vendors.out.txt
+  ../../_examples/weekly-client-report/vendors.out.txt
 </include>
 
 `clientReport` needs only `stats.campaign`, which all three declare. Parts of the report that need more (`stats.byDay` for unusual days, `leads.byCampaign` for leads left) come back `null` with a note when an adapter cannot read them.
@@ -100,11 +100,11 @@ The same function, run on the in-memory adapter limited to what each vendor's ad
 ## When it cannot answer
 
 <include meta='title="failures.ts"'>
-  ../_examples/weekly-client-report/failures.ts
+  ../../_examples/weekly-client-report/failures.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/weekly-client-report/failures.out.txt
+  ../../_examples/weekly-client-report/failures.out.txt
 </include>
 
 | What happened | What you get | What to do |

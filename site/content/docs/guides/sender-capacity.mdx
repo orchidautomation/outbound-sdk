@@ -5,15 +5,15 @@ sidebar:
   label: Sender capacity
 related:
   - /docs/insights/senders
-  - /guides/deliverability-check
-  - /guides/pre-launch-audit
+  - /docs/guides/deliverability-check
+  - /docs/guides/pre-launch-audit
 ---
 
 Before you launch another campaign you need one number: how many more sends a day the mailboxes can take. `senderCapacity` gives the two sides of it: the daily limits of your active senders added up, and the daily limits of your active campaigns added up, with what was really sent over the last days. `warmupReadiness` lists the senders that are not ready to send, and `senderLoad` lists senders spread over too many campaigns, senders attached to none, and campaigns resting on one sender.
 
 The subtraction, and the decision, are yours. The SDK returns the counts and says which ones the vendor did not report. It moves no sender and changes no limit.
 
-<include>../_snippets/status.mdx</include>
+<include>../../_snippets/status.mdx</include>
 
 ## Before you start
 
@@ -25,12 +25,14 @@ The subtraction, and the decision, are yours. The SDK returns the counts and say
 ## What you get
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/sender-capacity/run.out.txt
+  ../../_examples/sender-capacity/run.out.txt
 </include>
 
 ## Write the plan
 
-<include meta='title="plan.ts"'>../_examples/sender-capacity/plan.ts</include>
+<include meta='title="plan.ts"'>
+  ../../_examples/sender-capacity/plan.ts
+</include>
 
 What the numbers mean:
 
@@ -47,9 +49,11 @@ In the output above, headroom is 120 minus 110. But one of the four senders behi
 
 This seed has five mailboxes of 30 sends a day each and two running campaigns:
 
-<include meta='title="seed.ts"'>../_examples/sender-capacity/seed.ts</include>
+<include meta='title="seed.ts"'>
+  ../../_examples/sender-capacity/seed.ts
+</include>
 
-<include meta='title="run.ts"'>../_examples/sender-capacity/run.ts</include>
+<include meta='title="run.ts"'>../../_examples/sender-capacity/run.ts</include>
 
 That is the script that printed the plan above.
 
@@ -58,7 +62,7 @@ That is the script that printed the plan above.
 Swap the adapter. Nothing else changes.
 
 <include meta='title="outbound.ts"'>
-  ../_examples/sender-capacity/production.ts
+  ../../_examples/sender-capacity/production.ts
 </include>
 
 ## What each vendor can serve
@@ -66,11 +70,11 @@ Swap the adapter. Nothing else changes.
 The same function, run on the in-memory adapter limited to what each vendor's adapter declares. This shows which calls a vendor's adapter would refuse. It does not show what that vendor's API returns.
 
 <include meta='title="vendors.ts"'>
-  ../_examples/sender-capacity/vendors.ts
+  ../../_examples/sender-capacity/vendors.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/sender-capacity/vendors.out.txt
+  ../../_examples/sender-capacity/vendors.out.txt
 </include>
 
 The HeyReach adapter cannot read campaign settings, because HeyReach puts sending limits on the LinkedIn account and not on the campaign. `senderCapacity` still returns capacity and sends; `ask`, `askRatio`, `shortCampaigns` and `uncheckedCampaigns` are `null`, and a note says why. The function prints that instead of a headroom it cannot compute.
@@ -86,11 +90,11 @@ The function above reads the senders three times and each campaign's senders twi
 ## When it cannot answer
 
 <include meta='title="failures.ts"'>
-  ../_examples/sender-capacity/failures.ts
+  ../../_examples/sender-capacity/failures.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/sender-capacity/failures.out.txt
+  ../../_examples/sender-capacity/failures.out.txt
 </include>
 
 | What happened | What you get | What to do |

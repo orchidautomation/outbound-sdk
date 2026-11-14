@@ -6,7 +6,7 @@ sidebar:
 related:
   - /docs/tools
   - /docs/plugins/redact
-  - /guides/reply-text-for-llm
+  - /docs/guides/reply-text-for-llm
 ---
 
 A reply is text written by someone outside your company. It can say anything, including "ignore your previous instructions". When a model reads replies through a [tool](/docs/tools), that text enters the model's context. The tools handle it in four ways.
@@ -43,7 +43,7 @@ The seed below holds one reply that tries to give the model orders:
 
 The instruction in the reply is still there in `untrusted_content`. Nothing removed it. The wrapper tells the model what the text is; what the model does with it is up to the model and to your own prompt.
 
-`DEFAULT_BODY_CHARS` is a constant, not an option. There is no setting that returns longer text through a tool. To read a whole reply in your own code, use `outbound.replies` with `include: ["body"]`, as in the guide to [reply text for a model](/guides/reply-text-for-llm).
+`DEFAULT_BODY_CHARS` is a constant, not an option. There is no setting that returns longer text through a tool. To read a whole reply in your own code, use `outbound.replies` with `include: ["body"]`, as in the guide to [reply text for a model](/docs/guides/reply-text-for-llm).
 
 ## With the redact plugin, bodies are refused
 
