@@ -16,6 +16,8 @@ export interface ProviderInfo {
   readonly channels: readonly ("email" | "linkedin")[];
   /** `stable` once checked against live credentials. */
   readonly maturity: "beta" | "stable" | "unverified";
+  /** What that maturity rests on, in one plain sentence. */
+  readonly note: string;
   readonly envVars: readonly ProviderEnvVar[];
   /** The vendor's API documentation. */
   readonly docsUrl: string | null;
@@ -40,6 +42,7 @@ export const providers: readonly ProviderInfo[] = [
     id: "instantly",
     maturity: "beta",
     name: "Instantly",
+    note: "Its reads were run, read-only, against one live workspace. Fixtures are built from the documentation.",
   },
   {
     channels: ["email"],
@@ -59,6 +62,7 @@ export const providers: readonly ProviderInfo[] = [
     id: "smartlead",
     maturity: "unverified",
     name: "Smartlead",
+    note: "Never run against a live account. Written from the public documentation and tested offline only.",
   },
   {
     channels: ["linkedin"],
@@ -78,6 +82,7 @@ export const providers: readonly ProviderInfo[] = [
     id: "heyreach",
     maturity: "beta",
     name: "HeyReach",
+    note: "Its reads were run, read-only, against one live workspace. Fixtures are built from the documentation.",
   },
   {
     channels: ["email", "linkedin"],
@@ -86,6 +91,7 @@ export const providers: readonly ProviderInfo[] = [
     id: "memory",
     maturity: "stable",
     name: "In-memory (tests and demos)",
+    note: "Holds data in memory. For tests and demos; there is no vendor behind it.",
   },
 ];
 

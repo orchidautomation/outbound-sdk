@@ -153,3 +153,45 @@ test("vendor_read is not offered when the vendor has no native reads or a plugin
     ).includes("vendor_read")
   );
 });
+
+test("vendor_read neither lists nor runs a read whose response can hold a credential", async () => {
+  const http = createFetch(() => json({ headers: { authorization: "x" } }));
+
+  const catalog = defineNative({
+    ...NATIVE,
+    webhook: {
+      description: "One webhook. Its headers can carry a secret.",
+      method: "GET",
+      path: "/webhooks/1",
+      sensitive: true,
+    },
+  });
+
+  const outbound = createOutbound({
+    adapter: {
+      ...testAdapter({ capabilities: { native: true } }),
+      native: catalog,
+    },
+    fetch: http.fetch,
+  });
+
+  const tool = createTools(outbound).find(
+    (candidate) => candidate.name === "vendor_read"
+  );
+
+  assert.ok(tool);
+  const listed = await tool.call({});
+  assert.ok(listed.ok);
+  assert.deepEqual(Object.keys((listed.data as { reads: object }).reads), [
+    "inboxUnread",
+  ]);
+
+  const refused = await tool.call({ name: "webhook" });
+  assert.ok(!refused.ok);
+  assert.equal(refused.error.code, "Invalid");
+  assert.equal(http.requests.length, 0, "nothing was sent");
+
+  // Code can still call it.
+  await outbound.native.reads.webhook();
+  assert.equal(http.requests.length, 1);
+});

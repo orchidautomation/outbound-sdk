@@ -58,6 +58,27 @@ const normalizePath = (path: string): string => {
   );
 };
 
+// Reads whose response holds secrets: client API keys, a mailbox looked up by
+// address (SMTP and IMAP passwords), a SmartSenders one-time password and the
+// mailbox passwords of a SmartSenders order.
+const SECRET_PATH =
+  /^\/(?:client\/api-key|email-accounts\/fetch-email-account-details|smart-senders\/(?:auth-secret|order-details))(?:\/|$)/iu;
+
+// GET /client/{id} returns whitelabel credentials when asked to.
+const CLIENT = /^\/client\/[^/]+$/iu;
+
+export const isSecret = (path: string, query: URLSearchParams): boolean => {
+  const normalized = normalizePath(path);
+  const whitelabel = query.get("includeWhitelabel");
+
+  return (
+    SECRET_PATH.test(normalized) ||
+    (CLIENT.test(normalized) &&
+      whitelabel !== null &&
+      whitelabel.toLowerCase() !== "false")
+  );
+};
+
 export const isRead = (method: HttpMethod, path: string): boolean => {
   if (method === "GET") {
     return true;
@@ -105,6 +126,6 @@ export const createClient = (options: ClientOptions): SmartleadClient => {
 
       return response.body;
     },
-    raw: { authorize, baseUrl, isRead },
+    raw: { authorize, baseUrl, isRead, isSecret },
   };
 };

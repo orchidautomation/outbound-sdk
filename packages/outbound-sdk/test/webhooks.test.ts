@@ -121,6 +121,28 @@ test("verify answers true or false without consuming the request", async () => {
     "the body is still readable"
   );
   assert.equal(await verify(post(reply), { secret: SECRET }), false);
+
+  // Anyone can send a URL; a broken percent sequence must not throw.
+  for (const url of [
+    "https://app.example.com/hook/%E0%A4%A",
+    "https://app.example.com/%/x",
+    `https://app.example.com/%ZZ/${SECRET}x`,
+  ]) {
+    // oxlint-disable-next-line no-await-in-loop -- one URL at a time keeps the failure readable.
+    assert.equal(
+      await verify(post(reply, url), { secret: SECRET }),
+      false,
+      url
+    );
+  }
+
+  assert.equal(
+    await verify(post(reply, `https://app.example.com/%E0%A4%A/${SECRET}`), {
+      secret: SECRET,
+    }),
+    true,
+    "a broken segment elsewhere does not hide a good secret"
+  );
   await assert.rejects(
     verify(post(reply), { provider: "mailchimp", secret: SECRET }),
     OutboundError

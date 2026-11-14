@@ -241,6 +241,10 @@ test("instantly: webhooks map url, event, campaign and whether they are active",
   assert.deepEqual(first?.campaignRefs, [`instantly:client-a:${CAMPAIGN}`]);
   assert.equal(first?.active, true, "status 1");
   assert.equal(first?.createdAt, "2026-08-01T06:00:00.000Z");
+  assert.ok(
+    !JSON.stringify(first).includes("hook-credential"),
+    "the headers Instantly sends, which can carry a credential, are not kept"
+  );
 
   assert.equal(second?.name, null);
   assert.deepEqual(second?.events, ["all_events"]);

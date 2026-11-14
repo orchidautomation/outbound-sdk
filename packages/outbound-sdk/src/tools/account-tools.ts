@@ -4,8 +4,10 @@
 import { z } from "zod";
 
 import type { SenderHealth } from "../internal/entities-account.ts";
+import { OutboundError } from "../internal/errors.ts";
 import { toJson } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
+import type { NativeRead } from "../internal/native.ts";
 import { UNTRUSTED_NOTE } from "./shared.ts";
 import type { ToolDefinition } from "./shared.ts";
 
@@ -165,13 +167,28 @@ export const vendorRead: ToolDefinition<z.infer<typeof nativeInput>> = {
   name: "vendor_read",
   needs: ["native"],
   run: async (outbound, input) => {
+    // A read whose response can hold a credential is for code, not for a model.
+    const offered = Object.fromEntries(
+      Object.entries<NativeRead>(outbound.native.catalog).filter(
+        ([, read]) => read.sensitive !== true
+      )
+    );
+
     if (input.name === undefined) {
       return {
-        data: toJson({ reads: outbound.native.catalog }),
+        data: toJson({ reads: offered }),
         meta: { evidence: "exact", provider: outbound.provider, requests: 0 },
         next: "Call vendor_read again with one of these names and its params.",
         ok: true,
       };
+    }
+
+    if (!Object.hasOwn(offered, input.name)) {
+      throw new OutboundError(
+        "Invalid",
+        `vendor_read has no read "${input.name}". Call it with no name to list the reads on offer`,
+        { provider: outbound.provider }
+      );
     }
 
     const result = await outbound.native.read(input.name, input.params);

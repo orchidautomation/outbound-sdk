@@ -303,6 +303,7 @@ export const listProviders = (): Json =>
     id: provider.id,
     maturity: provider.maturity,
     name: provider.name,
+    note: provider.note,
   }));
 
 export const helpText = (): string =>

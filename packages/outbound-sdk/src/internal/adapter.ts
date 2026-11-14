@@ -157,9 +157,19 @@ export interface RawDescriptor {
   readonly authorize: (spec: RequestSpec) => RequestSpec;
   /**
    * `true` for a request that only reads. Some vendors list with POST, so the
-   * method alone does not decide it.
+   * method alone does not decide it. `path` is the path that will be sent,
+   * relative to `baseUrl`: dot segments are resolved, repeated slashes are
+   * collapsed and it has no query.
    */
   readonly isRead: (method: HttpMethod, path: string) => boolean;
+  /**
+   * `true` for a read whose response holds secrets: API keys, mailbox
+   * passwords, proxy credentials. `raw` returns a response as it is, so these
+   * are refused whatever the method and even when writes are allowed.
+   */
+  readonly isSecret?:
+    | ((path: string, query: URLSearchParams) => boolean)
+    | undefined;
 }
 
 export type Maturity = "beta" | "stable" | "unverified";

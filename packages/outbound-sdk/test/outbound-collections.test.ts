@@ -358,5 +358,10 @@ test("an unexpected adapter exception becomes an OutboundError with the cause ke
 
   const error = await failure(() => outbound.campaigns.list());
   assert.equal(error.code, "Provider");
-  assert.equal(error.cause, cause);
+
+  // The cause is a redacted copy: same name and message, never the original.
+  assert.ok(error.cause instanceof Error);
+  assert.equal(error.cause.name, "TypeError");
+  assert.equal(error.cause.message, "cannot read properties of undefined");
+  assert.notEqual(error.cause, cause);
 });

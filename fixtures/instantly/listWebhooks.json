@@ -8,7 +8,7 @@
       "target_hook_url": "https://hooks.example.com/instantly/replies",
       "event_type": "lead_interested",
       "custom_interest_value": null,
-      "headers": null,
+      "headers": { "Authorization": "Bearer hook-credential-000" },
       "timestamp_created": "2026-08-01T06:00:00.000Z",
       "status": 1,
       "timestamp_error": null

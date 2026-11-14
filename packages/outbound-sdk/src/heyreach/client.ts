@@ -71,7 +71,7 @@ const READ_POST_PATTERN =
 // and GET /li_account/GetAccountProxy/{accountId} returns a custom proxy's
 // password. A raw response is handed back as it is, so both reads are refused.
 const SECRET_GET_PATTERN =
-  /^\/(?:management\/organizations\/api-keys|li_account\/GetAccountProxy)\//iu;
+  /^\/(?:management\/organizations\/api-keys|li_account\/GetAccountProxy)(?:\/|$)/iu;
 
 // A webhook's custom headers can hold a shared secret. GET
 // /webhooks/GetWebhookById returns them only when asked, so every request to
@@ -96,11 +96,14 @@ const normalizePath = (path: string): string =>
     .replace(/^\/+/u, "")
     .replace(/\/+$/u, "")}`.replace(/^\/api\/public/u, "");
 
+export const isSecret = (path: string): boolean =>
+  SECRET_GET_PATTERN.test(normalizePath(path));
+
 export const isRead = (method: HttpMethod, path: string): boolean => {
   const normalized = normalizePath(path);
 
   if (method === "GET") {
-    return !SECRET_GET_PATTERN.test(normalized);
+    return !isSecret(normalized);
   }
 
   return (
@@ -144,6 +147,6 @@ export const createClient = (options: ClientOptions): HeyReachClient => {
 
       return response.body;
     },
-    raw: { authorize, baseUrl, isRead },
+    raw: { authorize, baseUrl, isRead, isSecret },
   };
 };
