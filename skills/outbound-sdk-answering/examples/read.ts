@@ -17,6 +17,27 @@ const outbound = createOutbound({
 const isObject = (value: Json | undefined): value is JsonObject =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
+/**
+ * The words in one Slack table cell. A `raw_text` or `raw_number` cell holds
+ * them in `text`; a `rich_text` cell, which the card uses for the first
+ * column, holds them in nested `elements`.
+ */
+const cellText = (cell: Json | undefined): string => {
+  if (!isObject(cell)) {
+    return "";
+  }
+
+  const { elements, text } = cell;
+
+  if (text !== undefined) {
+    return String(text);
+  }
+
+  return Array.isArray(elements)
+    ? elements.map((part) => cellText(part)).join("")
+    : "";
+};
+
 const tools = createTools(outbound, { extra: insightTools(outbound) });
 
 const tool = (name: string) => {
@@ -46,9 +67,7 @@ for (const block of message.blocks) {
   for (const row of Array.isArray(rows) ? rows : []) {
     const cells = Array.isArray(row) ? row : [];
 
-    console.log(
-      cells.map((cell) => (isObject(cell) ? cell["text"] : "")).join(" | ")
-    );
+    console.log(cells.map((cell) => cellText(cell)).join(" | "));
   }
 }
 
