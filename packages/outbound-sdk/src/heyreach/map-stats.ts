@@ -30,12 +30,16 @@ const replies = (stats: Json | undefined): number | null => {
 };
 
 // `totalMessageStarted` and `totalInmailStarted` are not defined in the docs,
-// so they are not read as `contacted`.
+// so they are not read as `contacted`. `uniqueLeadsContacted` and
+// `autoTaggedInterested` are returned by the live API (seen 2026-11-14) but
+// are not in the API reference; when they are absent the counts stay null.
 const counts = (stats: Json | undefined): MetricCounts => ({
   ...emptyCounts(),
   connectionsAccepted: count(field(stats, "connectionsAccepted")),
   connectionsSent: count(field(stats, "connectionsSent")),
+  contacted: count(field(stats, "uniqueLeadsContacted")),
   inmailsSent: count(field(stats, "inmailMessagesSent")),
+  positive: count(field(stats, "autoTaggedInterested")),
   replied: replies(stats),
   sent: count(field(stats, "messagesSent")),
 });

@@ -1,6 +1,9 @@
 // HeyReach messages. The API has no message endpoint: messages live inside
 // conversations (POST /inbox/GetConversationsV2), so one page of
-// conversations is flattened into its messages.
+// conversations is flattened into its messages. One conversation is read
+// whole from GET /inbox/GetChatroom/{accountId}/{conversationId}, which needs
+// the LinkedIn account as well as the conversation, so a message's `threadId`
+// is both: `<accountId>:<conversationId>`.
 //
 // Checked against a live workspace on 2026-11-14: `sender` is "ME" for the
 // account's side and "CORRESPONDENT" for the lead's, messages come oldest
@@ -14,14 +17,8 @@ import type {
   ReplyQuery,
 } from "../internal/adapter.ts";
 import type { Message, Reply } from "../internal/entities.ts";
-import {
-  count,
-  field,
-  isNumber,
-  objects,
-  text,
-  timestamp,
-} from "../internal/json.ts";
+import { OutboundError } from "../internal/errors.ts";
+import { field, isNumber, objects, text, timestamp } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
 import { recordBase, refTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
@@ -49,6 +46,7 @@ const messageFields = (
   raw: JsonObject
 ) => {
   const conversationId = text(conversation.id) ?? "";
+  const accountId = text(conversation.linkedInAccountId);
   const sentAt = timestamp(raw.createdAt);
   // Messages have no id. The conversation, the time, the side and the text
   // identify one, and stay the same every time the thread is read.
@@ -64,12 +62,16 @@ const messageFields = (
       scope.identity,
       text(field(conversation.correspondentProfile, "profileUrl"))
     ),
-    senderRef: refTo(scope.identity, count(conversation.linkedInAccountId)),
+    senderRef: refTo(scope.identity, accountId),
     sentAt,
     stepIndex: null,
     // Only InMails have a subject.
     subject: text(raw.subject),
-    threadId: conversationId === "" ? null : conversationId,
+    // Without the account the conversation cannot be read back, so no thread.
+    threadId:
+      conversationId === "" || accountId === null
+        ? null
+        : `${accountId}:${conversationId}`,
     variantKey: null,
   };
 };
@@ -137,11 +139,51 @@ const readConversations = async (
   return { conversations: envelope.items, next: envelope.next };
 };
 
+// A thread id is `<accountId>:<conversationId>`. Conversation ids hold
+// letters, digits, "-" and "=", never a colon.
+const readThread = async (
+  client: HeyReachClient,
+  ctx: AdapterContext,
+  threadId: string
+): Promise<JsonObject> => {
+  const [, accountId, conversationId] =
+    /^(?<account>\d+):(?<conversation>.+)$/u.exec(threadId) ?? [];
+
+  if (accountId === undefined || conversationId === undefined) {
+    throw new OutboundError(
+      "Invalid",
+      `A HeyReach thread id is "<accountId>:<conversationId>", as a message's threadId gives it, got "${threadId}"`,
+      { provider: client.identity.provider }
+    );
+  }
+
+  const path = `/inbox/GetChatroom/${accountId}/${encodeURIComponent(conversationId)}`;
+
+  return client.object(await client.get(ctx, path), path);
+};
+
 type InboxReaders = Pick<Adapter, "listMessages" | "listReplies">;
 
 /** Messages and replies, read from one page of conversations at a time. */
 export const inboxReaders = (client: HeyReachClient): InboxReaders => ({
   listMessages: async (query, ctx) => {
+    if (query.threadId !== undefined) {
+      const conversation = await readThread(client, ctx, query.threadId);
+
+      // A chatroom does not say which campaign it belongs to.
+      const scope = {
+        campaignId: undefined,
+        identity: client.identity,
+        includeBody: query.includeBody,
+      };
+
+      return {
+        items: objects(conversation.messages).map((raw) =>
+          toMessage(scope, conversation, raw)
+        ),
+      };
+    }
+
     const page = await readConversations(client, ctx, query);
 
     const scope = {

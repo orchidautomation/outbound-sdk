@@ -1,0 +1,23 @@
+{
+  "totalCount": 2,
+  "items": [
+    {
+      "companyName": "Example Blocked Co",
+      "linkedInUrl": "https://www.linkedin.com/company/example-blocked-co",
+      "imageUrl": "https://media.example.com/logo1.png",
+      "industry": "Software",
+      "matchingStatus": "Matched",
+      "creationTime": "2026-09-17T08:00:00Z",
+      "id": 1
+    },
+    {
+      "companyName": null,
+      "linkedInUrl": "https://www.linkedin.com/company/example-pending-co",
+      "imageUrl": null,
+      "industry": null,
+      "matchingStatus": "Matching",
+      "creationTime": "2026-09-18T09:30:00Z",
+      "id": 2
+    }
+  ]
+}

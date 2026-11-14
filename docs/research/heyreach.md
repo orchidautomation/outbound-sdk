@@ -2,7 +2,7 @@
 
 > This is the research record the HeyReach adapter was written from. The companion files it mentions (`endpoints.json`, `limits.json`, `sources/`) were working files and are not in this repository; the fixtures used by the tests are in `fixtures/heyreach/`.
 
-Fetched 2026-11-14 from public documentation only. No credentials were used. One unauthenticated request was made to `GET /api/public/auth/CheckApiKey` (no key) to see the 401 shape; everything else is from docs.
+Sections 0 to 10 were fetched 2026-11-14 from public documentation only. No credentials were used for them. The section "Account-level reads" near the end was added the same day from a fresh fetch of the docs plus read-only requests to one live workspace. One unauthenticated request was made to `GET /api/public/auth/CheckApiKey` (no key) to see the 401 shape; everything else is from docs.
 
 Terms used below:
 
@@ -56,7 +56,7 @@ The `exclude*` names in the list schema look stale (they match no current write 
 
 `DRAFT`, `IN_PROGRESS`, `PAUSED`, `FINISHED`, `CANCELED`, `FAILED`, `STARTING`, `SCHEDULED`. Meanings are not documented beyond the names. What the docs do say: `Create` makes a `DRAFT`; `StartCampaign` activates it; `UpdateSequence` is allowed only in `DRAFT`, `SCHEDULED`, `PAUSED`; a `SCHEDULED` campaign whose sequence is updated reverts to `DRAFT`. `GetCampaignsForLead` lists the same enum without `SCHEDULED`. Webhook payloads carry `campaign.status` as an **integer**; the number-to-name mapping is not documented.
 
-There is no campaign type field, no schedule read endpoint (schedule is write-only via `UpdateSchedule`), and no "deleted" flag except `isCampaignDeleted` in per-campaign stats.
+There is no campaign type field, no schedule read endpoint (schedule is write-only via `UpdateSchedule`; confirmed again on 2026-11-14), and no "deleted" flag except `isCampaignDeleted` in per-campaign stats.
 
 ## 2. Sequence / steps
 
@@ -263,6 +263,71 @@ Plan gating: none documented for webhooks. Elsewhere: MCP needs "a plan that inc
 ## 10. Whoami / key check
 
 `GET /auth/CheckApiKey` → `200` with an empty body when the key is valid. It returns **no identity** (no workspace id or name, no organization). There is no whoami. With a workspace key, the workspace cannot be named through the API; `organizationUnitId` on a campaign is the only hint.
+
+## Account-level reads (added 2026-11-14)
+
+Sources for this section: `https://docs.heyreach.io/openapi.json` and `https://docs.heyreach.io/llms.txt` fetched again on 2026-11-14 (both unchanged from the copies used above), the pages `https://docs.heyreach.io/hey-reach-api/stats/get-overall-stats.md` and `https://docs.heyreach.io/hey-reach-api/linked-in-accounts/get-by-id.md`, the help article `https://help.heyreach.io/en/articles/14997865-unified-email-column-how-email-is-managed-on-leads.md`, and read-only requests to one live workspace with a workspace API key. "Seen live" below means a field name or type observed in those requests. No response was saved and no value was copied into this repository.
+
+### Lead lists: `lists.list`
+
+`POST /list/GetAll` with `{ offset, limit }` (limit up to 100; 101 is refused on the endpoints tried). Returns `{ totalCount, items }`. Fields used: `id`, `name`, `totalItemsCount` (size), `listType` (`COMPANY_LIST` is `companies`, anything else `leads`), `creationTime`. `campaignIds` stays in raw. Seen live for `USER_LIST`. Unconfirmed: the `COMPANY_LIST` value (documented, no company list existed live).
+
+### A list's leads: `lists.leads`
+
+`POST /list/GetLeadsFromList` with `{ listId, offset, limit, createdFrom, createdTo }`, up to 1000 rows a page (1000 returned 256 of 256 live). Fields used: `profileUrl` (the lead's id, as in the other lead reads), `firstName`, `lastName`, `companyName`, `position`, `emailAddress`, `enrichedEmailAddress`, `customEmailAddress`, `tags` (array of names), `customFields` (`[{ name, value }]`), `autoTags[{ name, creationTime, campaignId, ... }]`. The newest auto-tag's `name` is the lead's `interest`; the names seen live were `Interested`, `Not interested` and `Generic`. `createdFrom` in the future returned no rows, so the date filter works on the server. A missing list is a 404. Unconfirmed: a row has no status, no campaign and no creation time; whether `GetLeadsFromList` answers for a company list (companies are read with `POST /list/GetCompaniesFromList`, which the adapter does not map because a company is not a lead); which of the three email fields is the newest (the help center says the app shows "the most recent", the API does not say).
+
+### One lead's tags (fills `Lead.tags` on `leads.get`)
+
+`POST /lead/GetTags` with `{ profileUrl }` returns `{ tags: string[] }`, sorted. `POST /lead/GetLead` carries no tags, so `leads.get` sends both requests. Seen live with an empty array.
+
+### Block list: `blocklist`
+
+`POST /blacklist/GetLeads` then `POST /blacklist/GetCompanies`, each with `{ offset, limit }` (1 to 100), newest first, `{ totalCount, items }`. Lead fields used: `id`, `profileUrl`, `email`, `fullName`, `creationTime`. Company fields used: `id`, `companyName`, `linkedInUrl`, `creationTime`. The two lists are numbered separately (both had an id 1 in the documented examples), so the record id is `lead-<id>` or `company-<id>`. `matchingStatus` (`Matching`, `Matched`, `NotFound`, `BroadMatch`) and `resolutionStage` stay in raw. The company shape was seen live; the lead shape is from the API reference only (no blacklisted lead existed live).
+
+### Webhook subscriptions: `webhooks.list`
+
+`POST /webhooks/GetAllWebhooks` with `{ offset, limit, includeCustomHeaders: false }` (limit up to 100). Fields used: `id`, `webhookName`, `webhookUrl`, `eventType` (one per webhook), `isActive`, `campaignIds` (empty means every campaign). Custom headers are never requested: they are where a shared secret lives. There is no creation time. The endpoint has no campaign filter, so a campaign filter is applied after fetching. Unconfirmed: the whole item shape (API reference only; the live workspace had no webhook and returned `{ totalCount: 0, items: [] }`).
+
+### Sender health: `senders.health`
+
+`GET /li_account/GetAccountStatus/{accountId}` returns `{ accountId, status, failureReason, profile, salesNavigator, recruiter }`, cached for 10 seconds. Fields used: `status` (`Connected` seen live, `Disconnected` documented; any other value maps to `connected: null`) and `failureReason` (the one issue). A LinkedIn seat has no domain, DNS, block list or warmup, so those are null, and no check time is given. Unconfirmed: the full `status` enum.
+
+### A campaign's senders: `senders.byCampaign`
+
+`GET /campaign/GetById` returns `campaignAccountIds` (seen live, also on `POST /campaign/GetAll` items). There is no account-by-campaign endpoint, and `POST /li_account/GetAll` ignored a `campaignIds` filter when tried, so the adapter reads the campaign once and narrows `POST /li_account/GetAll` pages to those ids. Cost: one request for the campaign, then one per page of 100 workspace accounts.
+
+### One conversation: `messages.byThread`
+
+`GET /inbox/GetChatroom/{accountId}/{conversationId}` returns one conversation in the same shape as a `GetConversationsV2` item, with every message, oldest first (13 of 13 live). It needs the LinkedIn account id as well as the conversation id, so a message's `threadId` is now `<accountId>:<conversationId>`. Conversation ids seen live hold letters, digits, `-` and `=`. An unknown conversation is a 404 with `{ errorMessage }`. A chatroom does not name its campaign.
+
+### Sequences as a tree
+
+Nine layouts were read from 18 live campaigns: `CHECK_IS_CONNECTION` at the root with messages on the connected branch and either `END` or a `CONNECTION_REQUEST` path on the other; `CONNECTION_REQUEST` at the root with messages on the accepted branch and `END` or a `VIEW_PROFILE` on the not-accepted branch; a plain run of messages; an empty sequence. A `MESSAGE` node's `conditionalNode` was always `END`. A `VIEW_PROFILE` node had a null `conditionalNode`. A `CHECK_IS_CONNECTION` node carried its own `actionDelay` (7 days in one campaign). `MESSAGE` payloads also carry `hasVoiceNotes`. Unconfirmed: `FIND_EMAIL` and `CHECK_IS_OPEN_PROFILE` branches (documented, not seen), `INMAIL` and `LIKE_POST` payloads.
+
+### Stats fields the API reference does not list
+
+Seen live on `POST /stats/GetOverallStats` and `GetOverallStatsByCampaign`: `uniqueLeadsContacted`, `autoTaggedInterested`, `totalAutoTagged`, `autoTaggedInterestedRate`, `voiceNotesSent`, `voiceNoteConversations`, `repliedToVoiceNotes`, `voiceNoteReplyRate`. The adapter reads `uniqueLeadsContacted` as `contacted` and `autoTaggedInterested` as `positive`. The help center says auto-tag data was added to the stats endpoints; the API reference has not caught up.
+
+### Other fields seen live that the API reference does not list
+
+- Campaign: `excludeFromLeadBlacklist`, `excludeFromCompanyBlacklist`, `startedAt`. The list item has the same fields as `GetById`, so the "stale `exclude*` names" in section 1 are a documentation error.
+- Campaign lead: `finishedTime`, and `enrichedEmailAddress` and `customEmailAddress` on the profile.
+- Message: `messageId`, `type`, `isVoiceNote`, `transcript`, `transcriptStatus`, `audioDurationMs`. The adapter still builds a message's id from the conversation, time, side and text, so ids already handed out do not change; switching to `messageId` is a breaking change left for later.
+- Conversation profile: `tags`, `autoTags`, `customFields`.
+
+### Not available from the API
+
+- **Campaign settings (`campaigns.settings`).** `GET /campaign/GetById` returns no schedule, start or end date, daily limit or stop rule. The schedule exists only as a write (`POST /campaign/UpdateSchedule`: `dailyStartTime`, `dailyEndTime`, `timeZoneId`, `enabledMonday` to `enabledSunday`, `startDate`, `endDate`). Sending limits belong to the LinkedIn account (`accountLimits`). `startedAt` is when the campaign was started, not a scheduled start date, so it is not mapped.
+- **Subsequences (`sequence.subsequences`).** A campaign has one sequence tree and nothing else.
+- **Tags (`tags`).** `POST /lead_tags/CreateTags` creates tags (`displayName`, `color`) and `POST /lead/GetTags` reads one lead's tags. No endpoint lists the workspace's tags, and a tag has no id.
+- **Every lead (`leads.list`).** No endpoint lists all leads. Walking every list is not a correct substitute: a lead in several lists repeats, list rows carry no campaign or status, and nothing says a lead always stays in a list.
+- **Lead engagement (`leads.engagement`).** No lead shape has open, click or reply counts. A campaign lead has `lastActionTime`, `leadConnectionStatus` and `leadMessageStatus`, which stay in raw.
+- **Reply categories (`replies.category`).** The auto-tag is stored on the lead (`autoTags`), with a campaign and a time but no link to a message.
+- **Step stats (`stats.byStep`).** Stats are by workspace, campaign, account and day only.
+- **Warmup (`senders.warmup`).** LinkedIn accounts have none.
+- **Workspaces (`workspaces`).** `GET /management/organizations/workspaces` answered 401 to a workspace key; it needs an organization key, which the normal endpoints are not documented to accept.
+- **A sender's daily limit.** `accountLimits` holds six `Limit`/`Max` pairs and the docs still do not say which are daily or what the two numbers mean.
+- **Campaign tags.** A campaign has none.
 
 ## Rate limits
 

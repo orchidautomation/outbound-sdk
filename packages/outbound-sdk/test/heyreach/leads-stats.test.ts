@@ -47,12 +47,38 @@ test("heyreach: one lead is looked up by its LinkedIn profile URL, which is its 
   assert.equal(lead.campaignRef, null);
   assert.equal(lead.createdAt, null);
 
+  assert.equal(lead.interest, null, "GetLead carries no auto-tag");
+  assert.equal(lead.engagement, null);
+  assert.deepEqual(lead.custom, {});
+
   await settle(outbound.leads.get(lead.ref));
   assert.deepEqual(
-    bodyOf(requests[1]),
+    bodyOf(requests[2]),
     { profileUrl: LEAD },
     "a ref works too"
   );
+});
+
+test("heyreach: a looked-up lead's tags come from a second request, GetTags", async () => {
+  const { adapter, outbound, requests, settle } = harness(suite);
+  const lead = await settle(outbound.leads.get(LEAD));
+  assert.deepEqual(
+    requests.map((request) => [new URL(request.url).pathname, bodyOf(request)]),
+    [
+      ["/api/public/lead/GetLead", { profileUrl: LEAD }],
+      ["/api/public/lead/GetTags", { profileUrl: LEAD }],
+    ]
+  );
+  assert.deepEqual(lead.tags, ["atag1", "btag2", "ctag3"]);
+  assert.equal(adapter.costs?.["leads.get"]?.perPage, 2);
+});
+
+test("heyreach: a tags response without a tags array leaves the lead untagged", async () => {
+  const { outbound, settle } = harness(suite, (request) =>
+    request.url.endsWith("/lead/GetTags") ? Response.json({}) : undefined
+  );
+
+  assert.deepEqual((await settle(outbound.leads.get(LEAD))).tags, []);
 });
 
 test("heyreach: a lead's own emailAddress wins and is lowercased", async () => {
@@ -258,7 +284,11 @@ test("heyreach: each stats field maps to exactly one count, and rates are never 
   assert.equal(row?.connectionsSent, 17);
   assert.equal(row?.connectionsAccepted, 18);
   assert.equal(row?.replied, 29, "totalMessageReplies + totalInmailReplies");
-  assert.equal(row?.contacted, null, "totalMessageStarted is not defined");
+  assert.equal(
+    row?.contacted,
+    null,
+    "totalMessageStarted is not defined, and is not read as contacted"
+  );
 
   for (const key of [
     "bounced",
@@ -278,6 +308,26 @@ test("heyreach: each stats field maps to exactly one count, and rates are never 
   assert.equal(row?.timezone, null);
   assert.equal(row?.scope, "workspace");
   assert.equal(row?.scopeRef, "heyreach:client-a:client-a");
+});
+
+test("heyreach: unique leads contacted and interested auto-tags are read when the API returns them", async () => {
+  const { outbound, settle } = harness(suite, () =>
+    Response.json({
+      byDayStats: {},
+      overallStats: {
+        ...DISTINCT,
+        autoTaggedInterested: 21,
+        autoTaggedInterestedRate: 0.5,
+        totalAutoTagged: 22,
+        uniqueLeadsContacted: 23,
+      },
+    })
+  );
+
+  const [row] = (await settle(outbound.stats())).rows;
+  assert.equal(row?.contacted, 23, "uniqueLeadsContacted");
+  assert.equal(row?.positive, 21, "autoTaggedInterested, not totalAutoTagged");
+  assert.equal(row?.sent, 11);
 });
 
 test("heyreach: a count the response leaves out stays null", async () => {

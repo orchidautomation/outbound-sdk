@@ -15,6 +15,7 @@ import {
   field,
   flag,
   isJsonObject,
+  list,
   objects,
   text,
   timestamp,
@@ -101,6 +102,38 @@ const leadStatus = (raw: JsonObject): LeadStatus =>
     ? "replied"
     : (LEAD_STATUS.get(text(raw.leadCampaignStatus) ?? "") ?? "unknown");
 
+/** A lead's manual tags: `tags` is an array of names. */
+export const tagNames = (value: Json | undefined): string[] =>
+  list(value).flatMap((tag) => {
+    const name = text(tag);
+
+    return name === null ? [] : [name];
+  });
+
+// `autoTags` is HeyReach's classification of the lead's first campaign reply
+// (Interested, Not Interested, Generic). A lead keeps one per campaign, so the
+// newest is the lead's current label.
+const interest = (profile: Json | undefined): string | null => {
+  const [newest] = objects(field(profile, "autoTags")).toSorted((left, right) =>
+    (timestamp(right.creationTime) ?? "").localeCompare(
+      timestamp(left.creationTime) ?? ""
+    )
+  );
+
+  return text(newest?.name);
+};
+
+// `customFields` is an array of `{ name, value }` pairs.
+const customFields = (profile: Json | undefined): Record<string, string> =>
+  Object.fromEntries(
+    objects(field(profile, "customFields")).flatMap((pair) => {
+      const name = text(pair.name);
+      const value = text(pair.value);
+
+      return name === null || value === null ? [] : [[name, value] as const];
+    })
+  );
+
 // The profile URL is the id: GetLead looks a lead up by it, and it is the one
 // key every lead shape carries. The member id (`linkedin_id`) stays in raw.
 const profileFields = (
@@ -116,26 +149,41 @@ const profileFields = (
     raw
   ),
   company: text(field(profile, "companyName")),
-  custom: {},
+  custom: customFields(profile),
   email:
     emailAddress(field(profile, "emailAddress")) ??
-    emailAddress(field(profile, "enrichedEmailAddress")),
+    emailAddress(field(profile, "enrichedEmailAddress")) ??
+    emailAddress(field(profile, "customEmailAddress")),
+  // HeyReach reports no per-lead open, click or reply counts.
   engagement: null,
   firstName: text(field(profile, "firstName")),
-  interest: null,
-  tags: [],
+  interest: interest(profile),
   lastName: text(field(profile, "lastName")),
+  tags: tagNames(field(profile, "tags")),
   linkedinUrl: text(field(profile, "profileUrl")),
   title: text(field(profile, "position")),
 });
 
-/** `POST /lead/GetLead`: a profile with no campaign and no status. */
-export const toLead = (identity: Identity, raw: JsonObject): Lead => ({
-  ...profileFields(identity, raw, raw),
-  campaignRef: null,
-  createdAt: null,
-  status: "unknown",
-});
+/**
+ * `POST /lead/GetLead` and a row of `POST /list/GetLeadsFromList`: a profile
+ * with no campaign and no status. GetLead carries no tags, so they are read
+ * from `POST /lead/GetTags` and passed in.
+ */
+export const toLead = (
+  identity: Identity,
+  raw: JsonObject,
+  tags?: Json | undefined
+): Lead => {
+  const lead = profileFields(identity, raw, raw);
+
+  return {
+    ...lead,
+    campaignRef: null,
+    createdAt: null,
+    status: "unknown",
+    tags: tags === undefined ? lead.tags : tagNames(tags),
+  };
+};
 
 /** `POST /campaign/GetLeadsFromCampaign`: the profile is nested in the row. */
 export const toCampaignLead = (

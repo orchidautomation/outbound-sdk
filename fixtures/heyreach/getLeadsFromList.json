@@ -1,0 +1,78 @@
+{
+  "totalCount": 3,
+  "items": [
+    {
+      "id": "lead-row-11",
+      "linkedin_id": "ACoAAExampleList11",
+      "profileUrl": "https://www.linkedin.com/in/example-person-11",
+      "firstName": "Alex",
+      "lastName": "Listed",
+      "headline": "Headline 11",
+      "imageUrl": "https://media.example.com/list11.jpg",
+      "location": "Example City 11",
+      "companyName": "Example Co 11",
+      "companyUrl": "https://www.linkedin.com/company/example-co-11",
+      "position": "Position 11",
+      "about": "Example bio 11",
+      "connections": 111,
+      "followers": 211,
+      "tags": [
+        "priority",
+        "warm"
+      ],
+      "autoTags": [
+        {
+          "name": "Generic",
+          "campaignId": 274079,
+          "campaignName": "Example Campaign 274079",
+          "linkedInAccountId": "1101",
+          "linkedInAccountFullName": "Alex Example",
+          "creationTime": "2026-09-01T10:00:00Z"
+        },
+        {
+          "name": "Interested",
+          "campaignId": 274080,
+          "campaignName": "Example Campaign 274080",
+          "linkedInAccountId": "1101",
+          "linkedInAccountFullName": "Alex Example",
+          "creationTime": "2026-10-03T12:30:00Z"
+        }
+      ],
+      "emailAddress": " Listed11@Example.com ",
+      "enrichedEmailAddress": "enriched11@example.com",
+      "customEmailAddress": "custom11@example.com",
+      "customFields": [
+        {
+          "name": "favorite_color",
+          "value": "blue"
+        },
+        {
+          "name": "plan",
+          "value": "growth"
+        }
+      ]
+    },
+    {
+      "id": "lead-row-12",
+      "linkedin_id": "ACoAAExampleList12",
+      "profileUrl": "https://www.linkedin.com/in/example-person-12",
+      "firstName": "Sam",
+      "lastName": "Listed",
+      "headline": "Headline 12",
+      "imageUrl": "https://media.example.com/list12.jpg",
+      "location": "Example City 12",
+      "companyName": "Example Co 12",
+      "companyUrl": null,
+      "position": "Position 12",
+      "about": null,
+      "connections": 112,
+      "followers": 212,
+      "tags": [],
+      "autoTags": [],
+      "emailAddress": null,
+      "enrichedEmailAddress": null,
+      "customEmailAddress": "custom12@example.com",
+      "customFields": []
+    }
+  ]
+}

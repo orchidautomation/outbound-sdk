@@ -6,7 +6,7 @@ All personal data is replaced with fakes (Alex/Sam Example, person1@example.com,
 
 ## Documented example copied (structure verbatim, names faked)
 
-- getCampaign.json: docs example for campaign GetById
+- getCampaign.json: docs example for campaign GetById. `campaignAccountIds` was changed to two ids from the account fixtures (1101, 1103), and `excludeFromLeadBlacklist`, `excludeFromCompanyBlacklist` and `startedAt` were added because the live API returns them (2026-11-14).
 - getCampaignSequence.json: docs example for GetCampaignSequence
 - getLead.json: docs example for GetLead
 - getOverallStats.json: docs example (numbers verbatim)
@@ -32,3 +32,17 @@ All personal data is replaced with fakes (Alex/Sam Example, person1@example.com,
 
 - `getConversations.json`, `getConversations.page2.json`: built by hand on 2026-11-14 to match the structure of live `POST /inbox/GetConversationsV2` responses (field names, types and the `ME` / `CORRESPONDENT` sender values were read from a real workspace). Every value is made up; no real conversation is included.
 - `getCampaignSequence.connectionCheck.json`: built by hand on 2026-11-14 to match the node layout of live campaigns (CHECK_IS_CONNECTION with the same messages on both branches). The message text is made up.
+
+## Added 2026-11-14 for the account-level reads
+
+Every file below was built by hand. Field names and types come from the API reference (docs.heyreach.io) and, where marked "seen live", from read-only requests to one real workspace on 2026-11-14. No value was copied from a response: names, URLs, companies, text, ids and times are all made up.
+
+- `listLists.json`, `listLists.page2.json` (`POST /list/GetAll`): shape seen live. The `COMPANY_LIST` item is from the documented enum; the live workspace had no company list.
+- `getLeadsFromList.json`, `getLeadsFromList.page2.json` (`POST /list/GetLeadsFromList`): shape seen live, including `id`, `linkedin_id`, `autoTags`, `enrichedEmailAddress` and `customEmailAddress`, which the API reference does not list. No live lead had a manual tag, so `tags` as an array of names is from the API reference.
+- `getBlacklistLeads.json`, `getBlacklistLeads.page2.json` (`POST /blacklist/GetLeads`): from the API reference only; the live workspace had no blacklisted lead. The three items are the three ways an entry is made: a profile URL, an email, a name.
+- `getBlacklistCompanies.json` (`POST /blacklist/GetCompanies`): shape seen live.
+- `listWebhooks.json`, `listWebhooks.page2.json` (`POST /webhooks/GetAllWebhooks`): from the API reference only; the live workspace had no webhook. `customHeaders` is left out because the adapter asks for the list without them.
+- `getAccountStatus.json` (`GET /li_account/GetAccountStatus/{accountId}`): shape seen live (`avatarUrl` is not in the API reference). `Disconnected` and a failure reason are from the docs; the live account was `Connected` with a null reason.
+- `getLeadTags.json` (`POST /lead/GetTags`): the documented shape; live it returned an empty `tags` array.
+- `getChatroom.json` (`GET /inbox/GetChatroom/{accountId}/{conversationId}`): the first conversation of `getConversations.json` with one more message. Live, a chatroom has the same shape as a conversation in the list.
+- `getCampaignSequence.branching.json`: a made-up tree that uses every branching node at once. The `CHECK_IS_CONNECTION` and `CONNECTION_REQUEST` layouts, a `VIEW_PROFILE` on the not-accepted branch and a null `conditionalNode` were seen live; `CHECK_IS_OPEN_PROFILE`, `INMAIL` and `FOLLOW` are from the documented node types.
