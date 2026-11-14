@@ -1,4 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>outbound-sdk</title>
   <rect width="64" height="64" rx="14" fill="#e11d48"/>
-  <text x="32" y="32" dy="0.35em" text-anchor="middle" font-family="ui-sans-serif, system-ui, -apple-system, sans-serif" font-size="26" font-weight="600" fill="#ffffff">OS</text>
+  <g fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M13 20 H23 C29.5 20 29.5 32 36 32"/>
+    <path d="M13 32 H36"/>
+    <path d="M13 44 H23 C29.5 44 29.5 32 36 32"/>
+    <path d="M36 32 H51"/>
+    <path d="M43.5 24.5 L51 32 L43.5 39.5"/>
+  </g>
 </svg>
