@@ -1,0 +1,27 @@
+schema: orchid.agent/v2
+linear:
+  team: OUT
+  githubIssues:
+    repository: orchidautomation/outbound-sdk
+    mode: disabled
+quality:
+  setup: [npm, ci]
+  fast: [npm, run, "check:fast"]
+  verify: [npm, run, check]
+  lint: [npm, run, lint]
+risk:
+  critical:
+    [
+      ".github/workflows/publish.yml",
+      "packages/outbound-sdk/src/internal/redact*.ts",
+    ]
+sharedFiles:
+  - AGENTS.md
+  - agent.yaml
+  - package.json
+  - package-lock.json
+  - size-budget.json
+  - oxlint.config.ts
+  - scripts/architecture-rules.mjs
+  - packages/outbound-sdk/package.json
+  - packages/outbound-sdk/src/providers/index.ts

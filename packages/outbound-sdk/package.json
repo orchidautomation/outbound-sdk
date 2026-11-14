@@ -1,0 +1,44 @@
+{
+  "name": "outbound-sdk",
+  "version": "0.0.0",
+  "description": "One small, typed, read-only API over outbound sending tools.",
+  "keywords": [
+    "cold-email",
+    "heyreach",
+    "instantly",
+    "linkedin",
+    "outbound",
+    "sdk",
+    "smartlead"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/orchidautomation/outbound-sdk.git",
+    "directory": "packages/outbound-sdk"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "node ../../scripts/build.mjs"
+  },
+  "dependencies": {
+    "zod": "4.6.7"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
