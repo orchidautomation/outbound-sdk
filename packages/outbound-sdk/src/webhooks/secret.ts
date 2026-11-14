@@ -23,15 +23,23 @@ const HEADERS = ["x-webhook-secret", "x-outbound-secret"];
 const isPresent = (value: string | null | undefined): value is string =>
   value !== undefined && value !== null && value !== "";
 
+// A path segment with a broken percent sequence cannot be the secret, and
+// must not turn a verification into an exception: anyone can send the URL.
+const decoded = (segment: string): string | null => {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return null;
+  }
+};
+
 /** Every place a caller may have put the shared secret. */
 const candidates = (url: string, headers: Headers): string[] => {
   const parsed = URL.canParse(url) ? new URL(url) : undefined;
   const bearer = headers.get("authorization")?.replace(/^Bearer\s+/iu, "");
 
   return [
-    ...(parsed?.pathname
-      .split("/")
-      .map((segment) => decodeURIComponent(segment)) ?? []),
+    ...(parsed?.pathname.split("/").map((segment) => decoded(segment)) ?? []),
     ...QUERY_KEYS.map((key) => parsed?.searchParams.get(key)),
     ...HEADERS.map((name) => headers.get(name)),
     bearer,

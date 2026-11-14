@@ -7,7 +7,7 @@ One small, typed, read-only TypeScript API over outbound sending tools: Instantl
 - **Calls no AI model.** Your agent does the reasoning; the SDK supplies the numbers.
 - **Swap the adapter, keep the code.**
 
-> HeyReach and Instantly are `beta`: their reads were run against a live workspace each. Smartlead is `unverified`: written from public documentation and tested offline.
+> HeyReach and Instantly are `beta`: their reads were run against a live workspace each. Smartlead ships untested: it has never been run against a live account, and is written from public documentation and tested offline only.
 
 ## Install
 
@@ -101,7 +101,7 @@ An adapter declares what it supports. A call that needs something unsupported th
 outbound.capabilities["replies.category"]; // "vendor" or false
 ```
 
-There is one error class, `OutboundError`, with a `code`: `NotFound`, `Unauthorized`, `RateLimited`, `Provider`, `Invalid` or `Unsupported`. API keys and email addresses are removed from every message.
+There is one error class, `OutboundError`, with a `code`: `NotFound`, `Unauthorized`, `RateLimited`, `Provider`, `Invalid` or `Unsupported`. API keys and email addresses are removed from every message, and from the `cause` an error keeps (a redacted copy of the vendor response or the original error).
 
 ## Rate limits, retries and resuming
 

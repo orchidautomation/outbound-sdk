@@ -3,7 +3,7 @@
 Three adapters ship today. Each was written from the vendor's public API documentation read on 2026-11-14 and tested offline against documented payloads. Each has two layers: normalized reads that mean the same thing on every vendor, and a typed catalog of the vendor's own reads for everything else.
 
 - **HeyReach and Instantly are `beta`:** their reads were run, read-only, against one live workspace each on 2026-11-14. Both runs fixed things the documentation got wrong or left out: HeyReach's sequence layout, and Instantly's step numbering (steps count from 0 and an email names its step as `0_6_0`).
-- **Smartlead is `unverified`:** it has not been run against a live account.
+- **Smartlead is `unverified`, which means untested:** it has never been run against a live account. It is written from the public documentation, which contradicts itself in places, and tested offline only. Expect mappings to be wrong until someone runs `npm run test:live` with a Smartlead key.
 
 `outbound.caveats` lists what each adapter assumes, and `npm run test:live` (see below) is how an adapter is confirmed.
 
@@ -87,7 +87,7 @@ await outbound.native.read("inboxUnread", { limit: 20 });
 
 A native read goes through the same request engine as a normalized one: it is rate limited, retried and normalized on failure, and keys never reach an error. It can only be a read. Each call is one vendor request; pass the vendor's own paging parameters to page. The response is not normalized and not redacted, so `outbound.native` is turned off when the `redact` plugin is on. On a combined instance, use `outbound.workspace(id).native`.
 
-`outbound.raw` is still there for a request the catalog does not name.
+`outbound.raw` is still there for a request the catalog does not name. It judges the URL that will be sent, not the path as typed, and never reads an endpoint whose response holds secrets (API keys, mailbox passwords, proxy credentials), even with `allowWrites: true`. It returns everything else as the vendor sent it, so treat a raw response as you would the vendor's own API.
 
 ### Coverage
 
@@ -125,6 +125,8 @@ const outbound = createOutbound({
 ```
 
 The package ships no Redis client: you pass a function that runs a script on yours. The check is one atomic script, so two processes can never both take the last slot. If Redis cannot be reached, requests are counted in the process and `onError` is told, so an outage never stops reads and never removes the limit. For another store (Cloudflare KV, a Durable Object, a database), implement the three methods of `RateLimitStore`.
+
+The budget spaces when requests are reserved. When each one reaches the vendor also depends on the network, so arrivals can bunch by a few milliseconds of jitter; `share` (default 0.5) is the headroom for that.
 
 | Adapter | Published limit | Stricter lanes |
 | --- | --- | --- |

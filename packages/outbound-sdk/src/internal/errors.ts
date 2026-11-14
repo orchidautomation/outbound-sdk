@@ -1,6 +1,6 @@
 import { isJsonObject, isString } from "./json.ts";
 import type { Json } from "./json.ts";
-import { redactText } from "./redact.ts";
+import { redactCause, redactText } from "./redact.ts";
 
 export type OutboundErrorCode =
   | "Invalid"
@@ -11,7 +11,11 @@ export type OutboundErrorCode =
   | "Unsupported";
 
 export interface OutboundErrorOptions {
-  /** The original error, kept for debugging. */
+  /**
+   * The original error or vendor response, for debugging. It is kept as a
+   * copy with secrets and email addresses removed, because loggers print the
+   * cause chain.
+   */
   readonly cause?: unknown;
   readonly provider?: string | undefined;
   /** The HTTP status that produced this error, when there was one. */
@@ -53,7 +57,9 @@ export class OutboundError extends Error {
     message: string,
     options: OutboundErrorOptions = {}
   ) {
-    super(redactText(message, options.secrets), { cause: options.cause });
+    super(redactText(message, options.secrets), {
+      cause: redactCause(options.cause, options.secrets),
+    });
     this.code = code;
     this.provider = options.provider;
     this.status = options.status;

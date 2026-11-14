@@ -88,6 +88,23 @@ const READ_POST_PATTERNS = [
   ),
 ].map((path) => pattern(path));
 
+// GET /api-keys returns the keys themselves, and the done-for-you mailbox
+// list returns each mailbox's password when asked to.
+const SECRET_PATH = /^\/api-keys(?:\/|$)/iu;
+const DFY_ACCOUNTS = /^\/dfy-email-account-orders\/accounts$/iu;
+
+export const isSecret = (path: string, query: URLSearchParams): boolean => {
+  const normalized = normalizePath(path);
+  const passwords = query.get("with_passwords");
+
+  return (
+    SECRET_PATH.test(normalized) ||
+    (DFY_ACCOUNTS.test(normalized) &&
+      passwords !== null &&
+      passwords.toLowerCase() !== "false")
+  );
+};
+
 export const isRead = (method: HttpMethod, path: string): boolean => {
   if (method !== "POST") {
     return method === "GET";
@@ -153,7 +170,7 @@ export const createClient = (options: ClientOptions): InstantlyClient => {
 
       return response.body;
     },
-    raw: { authorize, baseUrl, isRead },
+    raw: { authorize, baseUrl, isRead, isSecret },
     readTags: options.readTags,
   };
 };

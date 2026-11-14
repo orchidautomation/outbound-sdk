@@ -57,4 +57,4 @@ Each adapter maps its own style to a `next` value. Callers see one opaque cursor
 
 ## Errors
 
-One class, `OutboundError`, with a `code`: `NotFound`, `Unauthorized`, `RateLimited`, `Provider`, `Invalid`, `Unsupported`. It also carries `status`, `provider`, `retryAfterMs`, `aborted`, `timedOut`, `permanent` and the original error in `cause`. API keys and email addresses are removed from every message.
+One class, `OutboundError`, with a `code`: `NotFound`, `Unauthorized`, `RateLimited`, `Provider`, `Invalid`, `Unsupported`. It also carries `status`, `provider`, `retryAfterMs`, `aborted`, `timedOut`, `permanent` and the original error in `cause`. API keys and email addresses are removed from every message and from `cause`, which is a redacted copy: a vendor response becomes plain data, and another error becomes a new error with the same name, message and stack.

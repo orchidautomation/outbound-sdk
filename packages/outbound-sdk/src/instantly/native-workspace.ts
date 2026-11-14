@@ -98,6 +98,7 @@ export const WORKSPACE_READS = defineNative({
       id: inPath("The webhook."),
     },
     path: "/webhooks/{id}",
+    sensitive: true,
   },
   webhookEvent: {
     description: "One webhook delivery with its payload and response.",

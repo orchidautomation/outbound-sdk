@@ -261,12 +261,19 @@ const webhookActive = (raw: JsonObject): boolean | null => {
   return status === -1 ? false : null;
 };
 
+// The headers Instantly sends with each delivery can carry a credential, so
+// they are left out of the payload kept on the record.
+const withoutHeaders = (raw: JsonObject): JsonObject =>
+  Object.fromEntries(
+    Object.entries(raw).filter(([key]) => key.toLowerCase() !== "headers")
+  );
+
 /** `GET /webhooks`: one webhook listens for one event type, or `all_events`. */
 export const toWebhook = (
   identity: Identity,
   raw: JsonObject
 ): WebhookSubscription => ({
-  ...recordBase(identity, text(raw.id) ?? "", raw),
+  ...recordBase(identity, text(raw.id) ?? "", withoutHeaders(raw)),
   active: webhookActive(raw),
   campaignRefs: refsTo(identity, [text(raw.campaign)]),
   createdAt: timestamp(raw.timestamp_created),

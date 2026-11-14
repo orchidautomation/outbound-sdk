@@ -28,6 +28,12 @@ export interface NativeRead {
   readonly baseUrl?: string | undefined;
   /** The vendor's documentation page for the read. */
   readonly docs?: string | undefined;
+  /**
+   * `true` when the response can hold a credential, for example the headers a
+   * webhook sends. The read stays available to code, and is left out of what
+   * the `vendor_read` agent tool lists and runs.
+   */
+  readonly sensitive?: boolean | undefined;
 }
 
 /** The reads by name. Names are camelCase, for example `inboxUnread`. */

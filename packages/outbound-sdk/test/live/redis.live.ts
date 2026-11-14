@@ -189,11 +189,25 @@ test(
     assert.ok(redis);
     const { evaluate } = redis;
     const prefix = unique();
-    const sent: number[] = [];
+    let sent = 0;
+    // The time each granted reservation was made at. The budget spaces
+    // reservations; when a request then reaches the vendor also depends on
+    // the round trip to Redis, so send times are not what is being limited.
+    const reserved: number[] = [];
+
+    const recording: RedisEvaluate = async (script, keys, args) => {
+      const reply = await evaluate(script, keys, args);
+
+      if (script.includes("ZADD") && reply === 0) {
+        reserved.push(Number(args[0]));
+      }
+
+      return reply;
+    };
 
     const worker = () => {
       const http = createFetch(() => {
-        sent.push(Date.now());
+        sent += 1;
 
         return json({ id: "c1", name: "One" });
       });
@@ -204,7 +218,7 @@ test(
         }),
         fetch: http.fetch,
         // Each worker has its own store object, as two processes would.
-        rateLimitStore: redisRateLimitStore({ evaluate, prefix }),
+        rateLimitStore: redisRateLimitStore({ evaluate: recording, prefix }),
         share: 1,
       });
     };
@@ -217,21 +231,24 @@ test(
       )
     );
 
-    assert.equal(sent.length, 12, "every read went through");
+    assert.equal(sent, 12, "every read went through");
+    assert.equal(reserved.length, 12, "one granted reservation per read");
 
-    // No sliding second may hold more than the 5 the two share.
-    for (const start of sent) {
-      const inWindow = sent.filter((at) => at >= start && at < start + 1000);
+    // No sliding second may hold more than the 5 the two workers share.
+    for (const start of reserved) {
+      const inWindow = reserved.filter(
+        (at) => at >= start && at < start + 1000
+      );
 
       assert.ok(
         inWindow.length <= 5,
-        `${inWindow.length} requests in one second`
+        `${inWindow.length} reservations in one second`
       );
     }
 
     assert.ok(
-      (sent.at(-1) ?? 0) - (sent[0] ?? 0) >= 2000,
-      "12 requests at 5 a second take at least two seconds"
+      Math.max(...reserved) - Math.min(...reserved) >= 2000,
+      "12 reservations at 5 a second span at least two seconds"
     );
   }
 );
