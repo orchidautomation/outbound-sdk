@@ -48,11 +48,20 @@ export default defineConfig({
         "anti-slop/require-safety-comment-for-type-assertion": "off",
         "max-classes-per-file": "off",
         "max-lines-per-function": "off",
+        // Tests step through calls one at a time and read results inline.
+        "no-await-in-loop": "off",
+        "promise/avoid-new": "off",
+        "promise/prefer-await-to-callbacks": "off",
+        "promise/prefer-await-to-then": "off",
+        "unicorn/no-await-expression-member": "off",
       },
     },
   ],
   rules: {
     "complexity/complexity": ["error", { cognitive: 25 }],
+    // Plugins are middleware: `next` is a continuation that is awaited and
+    // whose result is transformed, not a Node-style error-first callback.
+    "node/callback-return": "off",
     "max-lines-per-function": [
       "error",
       { max: 100, skipBlankLines: true, skipComments: true },

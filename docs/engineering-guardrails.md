@@ -50,7 +50,7 @@ Ultracite on Oxlint and Oxfmt, with the `core` and `anti-slop` presets (`oxlint.
 
 ## Build and size
 
-`scripts/build.mjs` builds one ESM file per public subpath with esbuild and type declarations with `tsc`. The package's `exports` map is the only list of public subpaths. `scripts/smoke-dist.mjs` loads every subpath; CI runs it on Node 22 and Bun. `scripts/check-size.mjs` checks the gzipped size of each subpath against `size-budget.json`.
+`scripts/build.mjs` builds one ESM file per public subpath with esbuild and type declarations with `tsc`. The package's `exports` map is the only list of public subpaths. `scripts/smoke-dist.mjs` loads every subpath; CI runs it on Node 22 and Bun. `scripts/check-size.mjs` checks the minified, gzipped size of each subpath (its entry file plus the chunks it imports) against `size-budget.json`. `dist/` itself is not minified.
 
 ## Differences from the plan
 

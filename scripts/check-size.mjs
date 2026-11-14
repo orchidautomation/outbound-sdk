@@ -1,11 +1,15 @@
 #!/usr/bin/env node
 
-// Size budget per public subpath: the gzipped size of the entry file plus
-// every chunk it statically imports. Budgets live in size-budget.json.
+// Size budget per public subpath: the minified, gzipped size of the entry
+// file plus every chunk it statically imports, which is what a consumer's
+// bundler ships. dist/ itself stays unminified so it is readable in a
+// debugger. Budgets live in size-budget.json.
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { gzipSync } from "node:zlib";
+
+import { transformSync } from "esbuild";
 
 const repositoryRoot = path.resolve(import.meta.dirname, "..");
 
@@ -35,6 +39,9 @@ export const closureOf = (entry) => {
   return [...seen];
 };
 
+const shippedBytes = (source) =>
+  gzipSync(transformSync(source, { format: "esm", minify: true }).code).length;
+
 export const checkSizes = ({ budgets, exportsMap, packageRoot }) => {
   const rows = [];
   const errors = [];
@@ -43,7 +50,7 @@ export const checkSizes = ({ budgets, exportsMap, packageRoot }) => {
     const files = closureOf(path.join(packageRoot, entry.import));
 
     const bytes = files.reduce(
-      (total, file) => total + gzipSync(read(file)).length,
+      (total, file) => total + shippedBytes(read(file)),
       0
     );
 
@@ -54,7 +61,7 @@ export const checkSizes = ({ budgets, exportsMap, packageRoot }) => {
       errors.push(`${subpath}: no budget in size-budget.json`);
     } else if (bytes > limit) {
       errors.push(
-        `${subpath}: ${bytes} bytes gzipped exceeds its ${limit}-byte budget`
+        `${subpath}: ${bytes} bytes minified and gzipped exceeds its ${limit}-byte budget`
       );
     }
   }
