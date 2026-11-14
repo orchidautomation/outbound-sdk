@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { mapConcurrent } from "../internal/concurrency.ts";
 import {
   campaignStatusSchema,
   replyCategorySchema,
@@ -47,12 +48,14 @@ export const campaignOverview: ToolDefinition<z.infer<typeof overviewInput>> = {
     const evidence: Evidence[] = [];
     let requests = 1;
 
-    for (const campaign of campaigns) {
-      // oxlint-disable-next-line no-await-in-loop -- one campaign at a time keeps the rate budget predictable.
-      const stats = await outbound
+    const read = await mapConcurrent(campaigns, async (campaign) => ({
+      campaign,
+      stats: await outbound
         .campaign(campaign.ref)
-        .stats({ from: input.from, to: input.to });
+        .stats({ from: input.from, to: input.to }),
+    }));
 
+    for (const { campaign, stats } of read) {
       const [total] = stats.rows;
       evidence.push(stats.meta.evidence);
       requests += stats.meta.requests;

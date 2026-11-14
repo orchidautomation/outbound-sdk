@@ -3,6 +3,7 @@
 
 import { z } from "zod";
 
+import { mapConcurrent } from "../../internal/concurrency.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { findAnomalies } from "./anomalies.ts";
@@ -209,30 +210,32 @@ const readRunways = async (
     return null;
   }
 
-  const runways: LeadRunway[] = [];
+  const active = campaigns.flatMap(({ campaign }) =>
+    campaign.status === "active" ? [campaign] : []
+  );
 
-  for (const { campaign } of campaigns) {
-    if (campaign.status === "active") {
-      // oxlint-disable-next-line no-await-in-loop -- one campaign at a time keeps the rate budget predictable.
-      const forecast = await forecastCampaign(context, campaign, {
-        days: options.days,
-        maxLeads: options.max_leads_per_campaign,
-      });
+  const forecasts = await mapConcurrent(active, async (campaign) => ({
+    campaign,
+    forecast: await forecastCampaign(context, campaign, {
+      days: options.days,
+      maxLeads: options.max_leads_per_campaign,
+    }),
+  }));
 
-      if (
-        forecast.leadsComplete &&
-        forecast.daysLeft !== null &&
-        forecast.daysLeft <= options.runway_days
-      ) {
-        runways.push({
-          ...labelOf(campaign),
-          dailyContactRate: forecast.dailyContactRate,
-          daysLeft: forecast.daysLeft,
-          remaining: forecast.remaining,
-        });
-      }
-    }
-  }
+  const runways: LeadRunway[] = forecasts.flatMap(({ campaign, forecast }) =>
+    forecast.leadsComplete &&
+    forecast.daysLeft !== null &&
+    forecast.daysLeft <= options.runway_days
+      ? [
+          {
+            ...labelOf(campaign),
+            dailyContactRate: forecast.dailyContactRate,
+            daysLeft: forecast.daysLeft,
+            remaining: forecast.remaining,
+          },
+        ]
+      : []
+  );
 
   return runways.toSorted((left, right) => left.daysLeft - right.daysLeft);
 };

@@ -128,6 +128,7 @@ export class RequestEngine {
     const merged = { ...this.#defaults, ...options };
 
     return {
+      beforeRequest: undefined,
       deadlineAt:
         merged.deadline === undefined
           ? undefined

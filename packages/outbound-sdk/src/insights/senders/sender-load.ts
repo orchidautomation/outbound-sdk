@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 
+import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Campaign, Sender } from "../../internal/entities.ts";
 import { defineInsight } from "../define.ts";
 import {
@@ -154,14 +155,12 @@ export const senderLoad = defineInsight({
     const attached = new Map<string, string[]>();
     const risks: CampaignSenderRisk[] = [];
 
-    for (const campaign of campaigns) {
-      // oxlint-disable-next-line no-await-in-loop -- one campaign at a time keeps the rate budget predictable.
-      const own = await readCampaignSenders(
-        context,
-        campaign,
-        options.max_senders
-      );
+    const read = await mapConcurrent(campaigns, async (campaign) => ({
+      campaign,
+      own: await readCampaignSenders(context, campaign, options.max_senders),
+    }));
 
+    for (const { campaign, own } of read) {
       const risk = riskOf(campaign, own);
 
       if (risk !== null) {

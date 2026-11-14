@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 
+import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Campaign, Lead } from "../../internal/entities.ts";
 import { defineInsight } from "../define.ts";
 import { keysOfLead } from "./find.ts";
@@ -164,18 +165,17 @@ export const leadCollisions = defineInsight({
       values.max_campaigns
     );
 
-    const entries: Entry[] = [];
-
-    for (const campaign of campaigns) {
-      // oxlint-disable-next-line no-await-in-loop -- one campaign at a time keeps the rate budget predictable.
+    const perCampaign = await mapConcurrent(campaigns, async (campaign) => {
       const leads = await leadsOf(
         context,
         campaign.ref,
         values.max_leads_per_campaign
       );
 
-      entries.push(...leads.map((lead) => ({ campaign, lead })));
-    }
+      return leads.map((lead): Entry => ({ campaign, lead }));
+    });
+
+    const entries = perCampaign.flat();
 
     const collisions = groupPeople(entries)
       .flatMap(toCollision)

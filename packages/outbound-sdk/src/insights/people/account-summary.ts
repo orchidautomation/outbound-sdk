@@ -193,7 +193,7 @@ const readLeads = async (
       break;
     }
 
-    // oxlint-disable-next-line no-await-in-loop -- one campaign at a time keeps the rate budget predictable.
+    // oxlint-disable-next-line no-await-in-loop -- each campaign reads only the leads left under max_leads.
     const found = await leadsOf(context, campaign.ref, maxLeads - leads.length);
 
     leads.push(...found);

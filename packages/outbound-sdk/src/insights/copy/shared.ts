@@ -65,7 +65,7 @@ export const campaignsIn = async (
   // A status read after the cap is reached still asks for one record, so
   // campaigns left out are reported instead of silently dropped.
   for (const status of new Set(statuses)) {
-    // oxlint-disable-next-line no-await-in-loop -- one status at a time keeps the rate budget predictable.
+    // oxlint-disable-next-line no-await-in-loop -- each status reads only the room the earlier ones left under the cap.
     const page = await readCapped(
       context,
       (cap) => outbound.campaigns.listAll({ max: cap, status }),

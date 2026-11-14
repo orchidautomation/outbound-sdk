@@ -29,6 +29,13 @@ export interface CallState {
   readonly deadlineAt: number | undefined;
   /** Stop after this many vendor requests. A plugin may lower it. */
   maxRequests: number | undefined;
+  /**
+   * Runs as each vendor request is about to be sent, after any wait, with no
+   * other request able to slip in between. A plugin that caps requests across
+   * calls counts the request here, or throws to stop it. A plugin chains onto
+   * the one already set.
+   */
+  beforeRequest: (() => void) | undefined;
 }
 
 export interface RequestEnvironment {
@@ -174,6 +181,17 @@ const attempt = async (
     runtime,
     signal: state.signal,
   });
+
+  // Checked again after the wait: requests of the same call, or of the same
+  // run, may have used the allowance while this one waited.
+  try {
+    assertRequestBudget(environment);
+    state.beforeRequest?.();
+  } catch (error) {
+    budget.release();
+    throw error;
+  }
+
   state.requests += 1;
   const startedAt = runtime.now();
   let status: number | null = null;
