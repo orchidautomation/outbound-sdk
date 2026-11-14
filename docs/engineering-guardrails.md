@@ -50,7 +50,7 @@ Ultracite on Oxlint and Oxfmt, with the `core` and `anti-slop` presets (`oxlint.
 
 ## Build and size
 
-`scripts/build.mjs` builds one ESM file per public subpath with esbuild and type declarations with `tsc`. The package's `exports` map is the only list of public subpaths. `scripts/smoke-dist.mjs` loads every subpath; CI runs it on Node 22 and Bun. `scripts/check-size.mjs` checks what a consumer's bundler ships for each subpath: the built entry is bundled on its own with tree-shaking and minification, then gzipped. Code behind a dynamic `import()` is left out. Budgets are in `size-budget.json`; the core is held to 18 kB, the CLI, which carries the MCP server and the tools, to 22 kB, each vendor adapter with its native catalog to 30 kB, and the insights to 40 kB. `dist/` itself is not minified.
+`scripts/build.mjs` builds one ESM file per public subpath with esbuild and type declarations with `tsc`. The package's `exports` map is the only list of public subpaths. `scripts/smoke-dist.mjs` loads every subpath; CI runs it on Node 22 and Bun. `scripts/check-size.mjs` checks what a consumer's bundler ships for each subpath: the built entry is bundled on its own with tree-shaking and minification, then gzipped. Code behind a dynamic `import()` is left out. Budgets are in `size-budget.json`; the core is held to 18 kB, the CLI, which carries the MCP server and the tools, to 22 kB, each vendor adapter with its native catalog to 30 kB, and the insights to 45 kB. `dist/` itself is not minified.
 
 ## Differences from the plan
 

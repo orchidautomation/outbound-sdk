@@ -38,4 +38,5 @@ export {
 
 export type { Interval, ProportionTest, Sample } from "./stats.ts";
 
-export type { PersonCampaign, PersonSummary } from "./people/person-summary.ts";
+// oxlint-disable-next-line oxc/no-barrel-file -- types only: nothing is loaded at run time, and the list of 108 answer types lives in types.ts.
+export type * from "./types.ts";

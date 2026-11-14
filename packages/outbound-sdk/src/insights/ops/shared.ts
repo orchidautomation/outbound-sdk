@@ -177,23 +177,16 @@ export interface Capped<Item> {
   readonly complete: boolean;
 }
 
-/**
- * Reads a listing up to `max` records. It asks for one record more than the
- * cap, so a listing that holds exactly `max` is not mistaken for a cut one,
- * and marks the answer incomplete when the extra record exists.
- */
+/** Reads a listing up to `max` records, and says whether `max` cut it short. */
 export const readUpTo = async <Item>(
   context: InsightContext,
   list: (max: number) => ListAll<Item>,
   max: number
 ): Promise<Capped<Item>> => {
-  const items = await context.all(list(max + 1));
+  const walk = list(max);
+  const items = await context.all(walk);
 
-  if (items.length > max) {
-    context.partial("A listing was cut off at its cap; more records exist.");
-  }
-
-  return { complete: items.length <= max, items: items.slice(0, max) };
+  return { complete: !walk.truncated, items };
 };
 
 /**
