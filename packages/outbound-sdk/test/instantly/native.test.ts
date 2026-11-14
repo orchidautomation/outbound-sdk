@@ -22,6 +22,7 @@ const ENTRIES: [string, NativeRead][] = Object.entries(NATIVE);
 const SAMPLES: Record<NativeParam["type"], unknown> = {
   boolean: true,
   json: { any: [1, "two"] },
+  list: ["first", "second"],
   number: 7,
   string: "a b/c@d",
 };
@@ -143,7 +144,7 @@ test("instantly native: every read builds the documented request and returns wha
     assert.equal(result.meta.provider, "instantly");
 
     assert.deepEqual(
-      [...url.searchParams.keys()].toSorted(),
+      [...new Set(url.searchParams.keys())].toSorted(),
       placed(read, "query").toSorted(),
       `${name} query`
     );
@@ -151,11 +152,12 @@ test("instantly native: every read builds the documented request and returns wha
     for (const key of placed(read, "query")) {
       const sample = SAMPLES[read.params?.[key]?.type ?? "string"];
 
-      assert.equal(
-        url.searchParams.get(key),
-        Object(sample) === sample ? JSON.stringify(sample) : String(sample),
-        `${name} ${key}`
-      );
+      // A list is sent as one key per value; anything else is sent once.
+      const sent = Array.isArray(sample)
+        ? sample.map(String)
+        : [Object(sample) === sample ? JSON.stringify(sample) : String(sample)];
+
+      assert.deepEqual(url.searchParams.getAll(key), sent, `${name} ${key}`);
     }
 
     if (read.method === "GET") {

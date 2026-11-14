@@ -23,10 +23,7 @@ export const CAMPAIGN_READS = defineNative({
         "Leave out the lead count, which makes the answer much faster."
       ),
       id: inQuery("string", "One campaign. Leave out for every campaign."),
-      ids: inQuery(
-        "string",
-        "One campaign id. Instantly also takes the key repeated; the catalog sends it once."
-      ),
+      ids: inQuery("list", "Only these campaigns, by id."),
       start_date: inQuery(
         "string",
         "First day, YYYY-MM-DD or an ISO 8601 time."

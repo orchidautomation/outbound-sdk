@@ -40,7 +40,7 @@ Generated from the adapters' own declarations. A filter is `server` (the vendor 
 | `messages.byThread`     | yes       | yes       | yes      |
 | `messages.list`         | yes       | yes       | yes      |
 | `messages.since`        | server    | client    | client   |
-| `native`                | no        | no        | no       |
+| `native`                | yes       | no        | no       |
 | `replies.category`      | vendor    | vendor    | no       |
 | `replies.list`          | yes       | yes       | yes      |
 | `replies.since`         | server    | client    | client   |

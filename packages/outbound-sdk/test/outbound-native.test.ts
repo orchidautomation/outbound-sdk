@@ -15,6 +15,7 @@ const NATIVE = defineNative({
     method: "POST",
     params: {
       filters: { description: "Vendor filters.", in: "body", type: "json" },
+      labels: { description: "Only these labels.", in: "body", type: "list" },
       limit: { description: "Page size.", in: "body", type: "number" },
       verbose: { description: "More fields.", in: "query", type: "boolean" },
     },
@@ -31,6 +32,7 @@ const NATIVE = defineNative({
         required: true,
         type: "string",
       },
+      owners: { description: "Only these owners.", in: "query", type: "list" },
       tags: { description: "Only these tags.", in: "query", type: "json" },
     },
     path: "/leads/{leadId}/notes",
@@ -99,6 +101,7 @@ test("a typed native read places each parameter in the path, query or body and r
 
   const notes = await outbound.native.reads.leadNotes({
     leadId: "a b/c",
+    owners: ["ann", 7, true],
     since: "2026-11-01",
     tags: ["x", "y"],
   });
@@ -112,11 +115,17 @@ test("a typed native read places each parameter in the path, query or body and r
   assert.equal(get.origin + get.pathname, `${API}/leads/a%20b%2Fc/notes`);
   assert.equal(get.searchParams.get("since"), "2026-11-01");
   assert.equal(get.searchParams.get("tags"), '["x","y"]');
+  assert.deepEqual(
+    get.searchParams.getAll("owners"),
+    ["ann", "7", "true"],
+    "a list is one query key per value"
+  );
   assert.equal(requests[0]?.body, undefined);
   assert.equal(requests[0]?.headers.authorization, `Bearer ${KEY}`);
 
   await outbound.native.reads.inboxUnread({
     filters: { campaign: 7 },
+    labels: ["hot", "warm"],
     limit: 20,
     verbose: true,
   });
@@ -127,6 +136,7 @@ test("a typed native read places each parameter in the path, query or body and r
   assert.equal(post.searchParams.get("verbose"), "true");
   assert.deepEqual(JSON.parse(requests[1]?.body ?? ""), {
     filters: { campaign: 7 },
+    labels: ["hot", "warm"],
     limit: 20,
   });
 });
@@ -164,7 +174,7 @@ test("a bad native call is refused as Invalid before any request", async () => {
     [() => read("toString"), /no native read "toString"/u],
     [
       () => read("inboxUnread", { page: 2 }),
-      /no parameter "page"\. It takes: filters, limit, verbose/u,
+      /no parameter "page"\. It takes: filters, labels, limit, verbose/u,
     ],
     [
       () => read("placementTests", { page: 2 }),
@@ -177,6 +187,11 @@ test("a bad native call is refused as Invalid before any request", async () => {
     [
       () => read("inboxUnread", { verbose: "yes" }),
       /"verbose" must be a boolean/u,
+    ],
+    [() => read("inboxUnread", { labels: "hot" }), /"labels" must be a list/u],
+    [
+      () => read("inboxUnread", { labels: [{ nested: 1 }] }),
+      /"labels" must be a list/u,
     ],
     [
       () => read("leadNotes", { leadId: 7, since: "x" }),

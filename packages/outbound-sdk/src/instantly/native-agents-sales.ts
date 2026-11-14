@@ -87,12 +87,12 @@ export const SALES_AGENT_READS = defineNative({
     params: {
       ...PAGE,
       action_status: inQuery(
-        "string",
-        "One status, for example pending. Instantly also takes the key repeated; the catalog sends it once."
+        "list",
+        "Only these statuses, for example pending."
       ),
       action_type: inQuery(
-        "string",
-        "One action type, for example create_campaign. Sent once, like action_status."
+        "list",
+        "Only these action types, for example create_campaign."
       ),
       exclude_live_feed_hidden: inQuery(
         "boolean",

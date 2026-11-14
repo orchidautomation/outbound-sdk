@@ -27,6 +27,9 @@ const TYPE_CHECKS: Readonly<
 > = {
   boolean: (value) => value === true || value === false,
   json: () => true,
+  list: (value) =>
+    Array.isArray(value) &&
+    value.every((item) => !isJsonObject(item) && !Array.isArray(item)),
   number: (value) => Number.isFinite(value),
   string: (value) => String(value) === value,
 };
@@ -34,6 +37,8 @@ const TYPE_CHECKS: Readonly<
 interface Built {
   readonly path: string;
   readonly query: Record<string, QueryValue>;
+  /** Query keys sent once per value, in order. */
+  readonly repeated: readonly (readonly [string, string])[];
   readonly body: JsonObject | undefined;
 }
 
@@ -53,6 +58,16 @@ const place = (
     };
   }
 
+  if (param.in === "query" && param.type === "list" && Array.isArray(value)) {
+    return {
+      ...built,
+      repeated: [
+        ...built.repeated,
+        ...value.map((item) => [name, String(item)] as const),
+      ],
+    };
+  }
+
   return param.in === "query"
     ? { ...built, query: { ...built.query, [name]: scalar(value) } }
     : { ...built, body: { ...built.body, [name]: value } };
@@ -62,6 +77,20 @@ type Bound = (
   params?: NativeParams,
   options?: OperationOptions
 ) => Promise<NativeResult>;
+
+const withRepeated = (url: string, repeated: Built["repeated"]): string => {
+  if (repeated.length === 0) {
+    return url;
+  }
+
+  const parsed = new URL(url);
+
+  for (const [name, value] of repeated) {
+    parsed.searchParams.append(name, value);
+  }
+
+  return parsed.toString();
+};
 
 interface Named {
   readonly name: string;
@@ -89,6 +118,7 @@ const build = (
     body: read.method === "POST" ? {} : undefined,
     path: read.path,
     query: {},
+    repeated: [],
   };
 
   for (const [param, spec] of declared) {
@@ -149,10 +179,13 @@ export const makeNativeClient = <Native extends NativeCatalog>(
         body: built.body,
         lane: entry.lane,
         method: entry.method,
-        url: buildUrl(
-          entry.baseUrl ?? adapter.raw.baseUrl,
-          built.path,
-          built.query
+        url: withRepeated(
+          buildUrl(
+            entry.baseUrl ?? adapter.raw.baseUrl,
+            built.path,
+            built.query
+          ),
+          built.repeated
         ),
       });
 

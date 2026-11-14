@@ -8,7 +8,8 @@ import type { Json } from "./json.ts";
 export interface NativeParam {
   /** Where the value goes in the request. */
   readonly in: "body" | "path" | "query";
-  readonly type: "boolean" | "json" | "number" | "string";
+  /** `list` is several plain values: a repeated key in the query, an array in the body. */
+  readonly type: "boolean" | "json" | "list" | "number" | "string";
   /** Path parameters are always required. */
   readonly required?: boolean | undefined;
   readonly description: string;
@@ -43,6 +44,7 @@ export const defineNative = <const Catalog extends NativeCatalog>(
 interface ValueTypes {
   readonly boolean: boolean;
   readonly json: Json;
+  readonly list: readonly (boolean | number | string)[];
   readonly number: number;
   readonly string: string;
 }
