@@ -1,0 +1,486 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+
+import type { MemoryData, MemoryLead } from "../../src/memory/index.ts";
+import { NOW, single } from "./helpers.ts";
+import { pair, row, unsupported } from "./ops-helpers.ts";
+
+const leads = (campaignId: string, active: number): MemoryLead[] =>
+  Array.from({ length: active }, (_, index) => ({
+    campaignId,
+    email: `${campaignId}${index}@example.com`,
+    id: `${campaignId}-${index}`,
+  }));
+
+// NOW is 2026-11-14: the period is 11-07 to 11-13 and the one before is
+// 10-31 to 11-06. Each campaign has one row in each.
+const DATA: MemoryData = {
+  campaigns: [
+    { id: "a", name: "Winner" },
+    { id: "b", name: "Middling" },
+    { id: "c", name: "Bouncy" },
+    { id: "d", name: "Small", status: "paused" },
+  ],
+  leads: [
+    ...leads("a", 100),
+    ...leads("b", 40),
+    ...leads("c", 5),
+    {
+      campaignId: "c",
+      email: "done1@example.com",
+      id: "c-r1",
+      status: "replied",
+    },
+    {
+      campaignId: "c",
+      email: "done2@example.com",
+      id: "c-r2",
+      status: "replied",
+    },
+    ...leads("d", 1),
+  ],
+  stats: [
+    row("b", "2026-11-02", { contacted: 140, replied: 14, sent: 300 }),
+    row("a", "2026-11-03", { contacted: 70, replied: 12, sent: 400 }),
+    row("c", "2026-11-04", {
+      bounced: 2,
+      contacted: 70,
+      replied: 9,
+      sent: 200,
+    }),
+    row("b", "2026-11-09", {
+      bounced: 3,
+      contacted: 140,
+      replied: 14,
+      sent: 300,
+    }),
+    row("d", "2026-11-09", { contacted: 20, replied: 1, sent: 20 }),
+    row("a", "2026-11-10", {
+      bounced: 4,
+      contacted: 70,
+      replied: 14,
+      sent: 400,
+    }),
+    row("c", "2026-11-11", {
+      bounced: 20,
+      contacted: 70,
+      replied: 2,
+      sent: 200,
+    }),
+  ],
+};
+
+test("client_report composes totals, best and worst campaigns, bounce problems, unusual days, leads left and actions", async () => {
+  const result = await single(DATA).insights.clientReport(
+    { top: 1 },
+    { now: NOW }
+  );
+
+  assert.equal(result.insight, "client_report");
+  assert.equal(result.data.days, 7);
+  assert.equal(result.data.campaigns, 4);
+  assert.deepEqual(result.data.period, {
+    from: "2026-11-07",
+    to: "2026-11-13",
+  });
+  assert.deepEqual(result.data.previousPeriod, {
+    from: "2026-10-31",
+    to: "2026-11-06",
+  });
+  // Current: 400 + 300 + 200 + 20 sends, 70 + 140 + 70 + 20 contacted,
+  // 14 + 14 + 2 + 1 replies, 4 + 3 + 20 bounces. Previous: 900 sends,
+  // 280 contacted, 12 + 14 + 9 replies, 2 bounces.
+  assert.deepEqual(result.data.totals.current, {
+    bounceRate: 0.0293,
+    bounced: 27,
+    contacted: 300,
+    positive: null,
+    positiveRate: null,
+    replied: 31,
+    replyRate: 0.1033,
+    sent: 920,
+  });
+  assert.deepEqual(result.data.totals.previous, {
+    bounceRate: 0.0022,
+    bounced: 2,
+    contacted: 280,
+    positive: null,
+    positiveRate: null,
+    replied: 35,
+    replyRate: 0.125,
+    sent: 900,
+  });
+  assert.equal(result.data.totals.change.replyRate, -0.0217);
+  assert.equal(result.data.totals.change.sent, 20);
+  // 31 of 300 against 35 of 280: z = -0.82, p = 0.41.
+  assert.equal(result.data.totals.verdict, "no_real_change");
+  assert.equal(result.data.totals.replyRateTest?.pValue, 0.4116);
+  // 14 of 70 has a low end of 12.3%, 14 of 140 has 6.05%, 2 of 70 has 0.79%.
+  assert.deepEqual(result.data.top, [
+    {
+      campaign: "memory:agency:a",
+      channel: "email",
+      count: 14,
+      high: 0.3082,
+      low: 0.123,
+      name: "Winner",
+      of: 70,
+      provider: "memory",
+      rank: 1,
+      rate: 0.2,
+      sent: 400,
+      status: "active",
+    },
+  ]);
+  assert.deepEqual(
+    result.data.bottom.map((each) => [
+      each.name,
+      each.rank,
+      each.count,
+      each.of,
+      each.rate,
+      each.low,
+    ]),
+    [["Bouncy", 3, 2, 70, 0.0286, 0.0079]]
+  );
+  assert.deepEqual(result.data.bounceProblems, [
+    {
+      bounced: 20,
+      campaign: "memory:agency:c",
+      channel: "email",
+      high: 0.1494,
+      low: 0.0657,
+      name: "Bouncy",
+      provider: "memory",
+      rate: 0.1,
+      sent: 200,
+      status: "active",
+    },
+  ]);
+  // The workspace's replies per day before 11-11 were 14, 12, 9, 15 and 14:
+  // mean 12.8, deviation sqrt(22.8 / 4) = 2.3875; 2 replies is z = -4.52.
+  assert.deepEqual(
+    result.data.anomalies?.map((each) => [
+      each.date,
+      each.metric,
+      each.value,
+      each.baselineMean,
+      each.zScore,
+      each.direction,
+    ]),
+    [["2026-11-11", "replied", 2, 12.8, -4.5236, "below"]]
+  );
+  // Leads contacted per day: Winner 70 / 7 = 10 with 100 leads (10 days, not
+  // flagged), Middling 140 / 7 = 20 with 40, Bouncy 10 with 5.
+  assert.deepEqual(result.data.runningOutOfLeads, [
+    {
+      campaign: "memory:agency:c",
+      channel: "email",
+      dailyContactRate: 10,
+      daysLeft: 0.5,
+      name: "Bouncy",
+      provider: "memory",
+      remaining: 5,
+      status: "active",
+    },
+    {
+      campaign: "memory:agency:b",
+      channel: "email",
+      dailyContactRate: 20,
+      daysLeft: 2,
+      name: "Middling",
+      provider: "memory",
+      remaining: 40,
+      status: "active",
+    },
+  ]);
+  assert.deepEqual(result.data.actions, [
+    {
+      action:
+        "Fix the bounces of Bouncy: its bounce rate is 10% (20 of 200 sends).",
+      campaign: "memory:agency:c",
+      campaignName: "Bouncy",
+      kind: "fix_bounces",
+      number: 0.1,
+    },
+    {
+      action: "Add leads to Bouncy: 5 leads remain, about 0.5 days of sending.",
+      campaign: "memory:agency:c",
+      campaignName: "Bouncy",
+      kind: "add_leads",
+      number: 0.5,
+    },
+    {
+      action:
+        "Add leads to Middling: 40 leads remain, about 2 days of sending.",
+      campaign: "memory:agency:b",
+      campaignName: "Middling",
+      kind: "add_leads",
+      number: 2,
+    },
+    {
+      action:
+        "Review the copy and the audience of Bouncy: it has the weakest reply rate, 2.9% (2 of 70).",
+      campaign: "memory:agency:c",
+      campaignName: "Bouncy",
+      kind: "review_campaign",
+      number: 0.0286,
+    },
+    {
+      action:
+        "Check what happened on 2026-11-11: replied was 2 on 2026-11-11, against an average of 12.8 over the 5 days with data before it (z = -4.5236).",
+      campaign: null,
+      campaignName: null,
+      kind: "check_anomaly",
+      number: 2,
+    },
+  ]);
+  assert.deepEqual(result.data.leftOut, []);
+  assert.equal(result.meta.complete, true);
+  assert.deepEqual(result.meta.notes, []);
+});
+
+test("client_report moves with top, the bounce limit, min_sent and the runway", async () => {
+  const outbound = single(DATA);
+  const wide = await outbound.insights.clientReport({}, { now: NOW });
+
+  // Three campaigns are ranked and the default top is 3: none is left for the bottom.
+  assert.deepEqual(
+    wide.data.top.map((each) => each.name),
+    ["Winner", "Middling", "Bouncy"]
+  );
+  assert.deepEqual(wide.data.bottom, []);
+  assert.ok(!wide.data.actions.some((each) => each.kind === "review_campaign"));
+
+  const tolerant = await outbound.insights.clientReport(
+    { max_bounce_rate: 0.2 },
+    { now: NOW }
+  );
+
+  assert.deepEqual(tolerant.data.bounceProblems, []);
+  assert.ok(!tolerant.data.actions.some((each) => each.kind === "fix_bounces"));
+
+  const strict = await outbound.insights.clientReport(
+    { min_sent: 250 },
+    { now: NOW }
+  );
+
+  // Bouncy's 200 sends are now too few to rank or to call a bounce problem.
+  assert.deepEqual(
+    strict.data.top.map((each) => each.name),
+    ["Winner", "Middling"]
+  );
+  assert.deepEqual(strict.data.bounceProblems, []);
+
+  const short = await outbound.insights.clientReport(
+    { runway_days: 1 },
+    { now: NOW }
+  );
+
+  assert.deepEqual(
+    short.data.runningOutOfLeads?.map((each) => each.name),
+    ["Bouncy"]
+  );
+
+  const long = await outbound.insights.clientReport(
+    { runway_days: 10 },
+    { now: NOW }
+  );
+
+  assert.deepEqual(
+    long.data.runningOutOfLeads?.map((each) => [each.name, each.daysLeft]),
+    [
+      ["Bouncy", 0.5],
+      ["Middling", 2],
+      ["Winner", 10],
+    ]
+  );
+});
+
+test("client_report moves with the anomaly settings, alpha and the days", async () => {
+  const outbound = single(DATA);
+
+  const sensitive = await outbound.insights.clientReport(
+    { anomaly_threshold: 1.3 },
+    { now: NOW }
+  );
+
+  // Sends before 11-11 were 300, 400, 200, 320 and 400: mean 324, deviation
+  // sqrt(27520 / 4) = 82.95; 200 sends is z = -1.495.
+  assert.deepEqual(
+    sensitive.data.anomalies?.map((each) => [
+      each.metric,
+      each.value,
+      each.baselineMean,
+      each.zScore,
+    ]),
+    [
+      ["replied", 2, 12.8, -4.5236],
+      ["sent", 200, 324, -1.495],
+    ]
+  );
+
+  const demanding = await outbound.insights.clientReport(
+    { min_baseline_points: 6 },
+    { now: NOW }
+  );
+
+  assert.deepEqual(demanding.data.anomalies, []);
+
+  // Only 11-04 falls in a 5-day baseline before 11-07, so no day can be tested.
+  const brief = await outbound.insights.clientReport(
+    { baseline_days: 5 },
+    { now: NOW }
+  );
+
+  assert.deepEqual(brief.data.anomalies, []);
+
+  const credulous = await outbound.insights.clientReport(
+    { alpha: 0.5 },
+    { now: NOW }
+  );
+
+  assert.equal(credulous.data.totals.verdict, "down");
+  assert.deepEqual(
+    credulous.data.actions.find((each) => each.kind === "reply_rate_fell"),
+    {
+      action:
+        "Find out what changed: the reply rate fell from 12.5% to 10.3%, more than chance would give.",
+      campaign: null,
+      campaignName: null,
+      kind: "reply_rate_fell",
+      number: -0.0217,
+    }
+  );
+
+  // Three days: 11-11 to 11-13 against 11-08 to 11-10.
+  const three = await outbound.insights.clientReport({ days: 3 }, { now: NOW });
+
+  assert.deepEqual(three.data.period, { from: "2026-11-11", to: "2026-11-13" });
+  assert.deepEqual(
+    [three.data.totals.current.sent, three.data.totals.previous.sent],
+    [200, 720]
+  );
+});
+
+test("client_report leaves out the sections the adapter cannot serve, and names them", async () => {
+  const unusual = "Unusual days: the adapter has no workspace stats by day.";
+
+  const runway =
+    "Campaigns running out of leads: the adapter cannot list a campaign's leads or has no stats by day.";
+
+  const noDays = await single(DATA, {
+    "stats.byDay": false,
+  }).insights.clientReport({ top: 1 }, { now: NOW });
+
+  assert.equal(noDays.data.anomalies, null);
+  assert.equal(noDays.data.runningOutOfLeads, null);
+  assert.deepEqual(noDays.data.leftOut, [unusual, runway]);
+  assert.deepEqual(noDays.meta.notes, [
+    `Left out. ${unusual}`,
+    `Left out. ${runway}`,
+  ]);
+  // The rest of the report is still there.
+  assert.equal(noDays.data.totals.current.sent, 920);
+  assert.deepEqual(
+    noDays.data.actions.map((each) => each.kind),
+    ["fix_bounces", "review_campaign"]
+  );
+
+  const noLeads = await single(DATA, {
+    "leads.byCampaign": false,
+  }).insights.clientReport({}, { now: NOW });
+
+  assert.equal(noLeads.data.runningOutOfLeads, null);
+  assert.equal(noLeads.data.anomalies?.length, 1);
+  assert.deepEqual(noLeads.data.leftOut, [runway]);
+
+  const noWorkspace = await single(DATA, {
+    "stats.workspace": false,
+  }).insights.clientReport({}, { now: NOW });
+
+  assert.equal(noWorkspace.data.anomalies, null);
+  assert.equal(noWorkspace.data.runningOutOfLeads?.length, 2);
+  assert.deepEqual(noWorkspace.data.leftOut, [unusual]);
+
+  await assert.rejects(
+    async () =>
+      await single(DATA, { "stats.campaign": false }).insights.clientReport({}),
+    unsupported("stats.campaign")
+  );
+});
+
+test("client_report is empty without campaigns, and says when a cap cut what it read", async () => {
+  const empty = await single({}).insights.clientReport({}, { now: NOW });
+
+  assert.equal(empty.data.campaigns, 0);
+  assert.equal(empty.data.totals.current.sent, null);
+  assert.equal(empty.data.totals.current.replyRate, null);
+  assert.equal(empty.data.totals.verdict, "unknown");
+  assert.deepEqual(empty.data.top, []);
+  assert.deepEqual(empty.data.bottom, []);
+  assert.deepEqual(empty.data.bounceProblems, []);
+  assert.deepEqual(empty.data.anomalies, []);
+  assert.deepEqual(empty.data.runningOutOfLeads, []);
+  assert.deepEqual(empty.data.actions, []);
+  assert.equal(empty.meta.complete, true);
+
+  const capped = await single(DATA).insights.clientReport(
+    { max_campaigns: 1 },
+    { now: NOW }
+  );
+
+  assert.equal(capped.data.campaigns, 1);
+  assert.equal(capped.meta.complete, false);
+
+  // Winner has 100 leads: with 50 read its runway is a minimum, so it is not
+  // flagged even with a runway that would catch it, and the answer says it is partial.
+  const fewLeads = await single(DATA).insights.clientReport(
+    { max_leads_per_campaign: 50, runway_days: 10 },
+    { now: NOW }
+  );
+
+  assert.deepEqual(
+    fewLeads.data.runningOutOfLeads?.map((each) => each.name),
+    ["Bouncy", "Middling"]
+  );
+  assert.equal(fewLeads.meta.complete, false);
+});
+
+test("client_report covers the campaigns of two tools in one report", async () => {
+  const result = await pair(DATA, {
+    campaigns: [{ channel: "linkedin", id: "k1", name: "Seats" }],
+    leads: [
+      {
+        campaignId: "k1",
+        id: "p1",
+        linkedinUrl: "https://www.linkedin.com/in/example-person-1",
+      },
+    ],
+    stats: [
+      row("k1", "2026-11-05", { contacted: 100, replied: 20, sent: 100 }),
+      row("k1", "2026-11-12", { contacted: 100, replied: 25, sent: 100 }),
+    ],
+  }).insights.clientReport({ top: 1 }, { now: NOW });
+
+  assert.equal(result.data.campaigns, 5);
+  // 25 of 100 has a low end of 17.55%, above Winner's 12.3%.
+  assert.deepEqual(
+    result.data.top.map((each) => [each.campaign, each.provider, each.low]),
+    [["lntool:agency:k1", "lntool", 0.1755]]
+  );
+  assert.deepEqual(
+    [result.data.totals.current.sent, result.data.totals.current.replied],
+    [1020, 56]
+  );
+  // One lead left at 100 / 7 = 14.29 a day.
+  assert.deepEqual(
+    result.data.runningOutOfLeads?.map((each) => [each.name, each.daysLeft]),
+    [
+      ["Seats", 0.07],
+      ["Bouncy", 0.5],
+      ["Middling", 2],
+    ]
+  );
+  assert.equal(result.meta.provider, "combined");
+});

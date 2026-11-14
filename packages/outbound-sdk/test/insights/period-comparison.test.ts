@@ -1,0 +1,322 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+
+import type { MemoryData } from "../../src/memory/index.ts";
+import { NOW, single } from "./helpers.ts";
+import { pair, row, unsupported } from "./ops-helpers.ts";
+
+// NOW is 2026-11-14, so the last 7 complete days are 11-07 to 11-13 and the
+// 7 before are 10-31 to 11-06.
+const DATA: MemoryData = {
+  campaigns: [
+    { id: "c1", name: "Rising" },
+    { id: "c2", name: "Flat" },
+    { id: "c3", name: "New", status: "paused" },
+    { id: "c4", name: "Archived", status: "archived" },
+  ],
+  stats: [
+    row("c1", "2026-10-20", { contacted: 999, replied: 999, sent: 999 }),
+    row("c1", "2026-11-01", {
+      bounced: 10,
+      contacted: 500,
+      replied: 30,
+      sent: 500,
+    }),
+    row("c1", "2026-11-08", { contacted: 200, replied: 20, sent: 200 }),
+    row("c1", "2026-11-12", {
+      bounced: 5,
+      contacted: 300,
+      replied: 40,
+      sent: 300,
+    }),
+    // Today is not over, so it is in neither period.
+    row("c1", "2026-11-14", { contacted: 77, replied: 77, sent: 77 }),
+    row("c2", "2026-11-03", { contacted: 400, replied: 18, sent: 400 }),
+    row("c2", "2026-11-10", { contacted: 400, replied: 20, sent: 400 }),
+    row("c3", "2026-11-09", { contacted: 100, replied: 5, sent: 100 }),
+    row("c4", "2026-11-09", { contacted: 800, replied: 8, sent: 800 }),
+  ],
+};
+
+const CURRENT = { from: "2026-11-07", to: "2026-11-13" };
+const PREVIOUS = { from: "2026-10-31", to: "2026-11-06" };
+
+test("period_comparison sets the last days against the days before, per campaign and in total", async () => {
+  const result = await single(DATA).insights.periodComparison({}, { now: NOW });
+
+  assert.equal(result.insight, "period_comparison");
+  assert.equal(result.data.days, 7);
+  assert.deepEqual(result.data.current, CURRENT);
+  assert.deepEqual(result.data.previous, PREVIOUS);
+  // Rising moved 6 points, Flat half a point: largest change first.
+  assert.deepEqual(
+    result.data.campaigns.map((each) => each.name),
+    ["Rising", "Flat"]
+  );
+
+  const [rising, flat] = result.data.campaigns;
+
+  assert.deepEqual(rising, {
+    campaign: "memory:agency:c1",
+    // 500 sends both periods; 60 replies against 30; 5 bounces against 10.
+    change: {
+      bounceRate: -0.01,
+      bounced: -5,
+      contacted: 0,
+      positive: null,
+      positiveRate: null,
+      replied: 30,
+      replyRate: 0.06,
+      sent: 0,
+    },
+    channel: "email",
+    current: {
+      bounceRate: 0.01,
+      bounced: 5,
+      contacted: 500,
+      positive: null,
+      positiveRate: null,
+      replied: 60,
+      replyRate: 0.12,
+      sent: 500,
+    },
+    finding: "Reply rate went from 6% to 12%; more than chance (p = 0.0009).",
+    name: "Rising",
+    previous: {
+      bounceRate: 0.02,
+      bounced: 10,
+      contacted: 500,
+      positive: null,
+      positiveRate: null,
+      replied: 30,
+      replyRate: 0.06,
+      sent: 500,
+    },
+    provider: "memory",
+    // Pooled 90 of 1,000 = 0.09; error = sqrt(0.09 x 0.91 x 2/500) = 0.0181;
+    // z = 0.06 / 0.0181 = 3.31.
+    replyRateTest: { pValue: 0.0009, significant: true, z: 3.315 },
+    status: "active",
+    verdict: "up",
+  });
+  // 20 of 400 against 18 of 400: z = 0.33, well within chance.
+  assert.deepEqual(
+    [
+      flat?.current.replyRate,
+      flat?.previous.replyRate,
+      flat?.change.replyRate,
+      flat?.change.bounced,
+      flat?.verdict,
+      flat?.replyRateTest?.significant,
+    ],
+    [0.05, 0.045, 0.005, null, "no_real_change", false]
+  );
+  assert.match(
+    flat?.finding ?? "",
+    /^Reply rate went from 4\.5% to 5%; within what chance would give/u
+  );
+  // New has no sends in the earlier period: unknown, not zero.
+  assert.deepEqual(result.data.tooFewSends, [
+    {
+      campaign: "memory:agency:c3",
+      channel: "email",
+      currentSent: 100,
+      name: "New",
+      previousSent: null,
+      provider: "memory",
+      status: "paused",
+    },
+  ]);
+  // Current: 500 + 400 + 100 sends and 60 + 20 + 5 replies. Previous: 500 + 400 and 30 + 18.
+  assert.deepEqual(
+    [
+      result.data.total.current.sent,
+      result.data.total.current.replied,
+      result.data.total.current.replyRate,
+      result.data.total.previous.sent,
+      result.data.total.previous.replied,
+      result.data.total.previous.replyRate,
+      result.data.total.change.replyRate,
+      result.data.total.verdict,
+    ],
+    [1000, 85, 0.085, 900, 48, 0.0533, 0.0317, "up"]
+  );
+  // The vendor's workspace totals also hold the archived campaign's 800 sends and 8 replies.
+  assert.deepEqual(
+    [
+      result.data.workspace?.current.sent,
+      result.data.workspace?.current.replied,
+      result.data.workspace?.current.replyRate,
+      result.data.workspace?.previous.sent,
+      result.data.workspace?.verdict,
+    ],
+    [1800, 93, 0.0517, 900, "no_real_change"]
+  );
+  assert.equal(result.meta.complete, true);
+  assert.deepEqual(result.meta.notes, []);
+});
+
+test("period_comparison follows days, min_sent, alpha and the statuses", async () => {
+  const outbound = single(DATA);
+
+  // One day: 11-13 against 11-12. Only c1 sent on 11-12, and nothing on 11-13.
+  const day = await outbound.insights.periodComparison(
+    { days: 1, min_sent: 0 },
+    { now: NOW }
+  );
+
+  assert.deepEqual(day.data.current, { from: "2026-11-13", to: "2026-11-13" });
+  assert.deepEqual(day.data.previous, { from: "2026-11-12", to: "2026-11-12" });
+  assert.deepEqual(day.data.campaigns, []);
+  assert.deepEqual(
+    day.data.tooFewSends.map((each) => [
+      each.name,
+      each.currentSent,
+      each.previousSent,
+    ]),
+    [
+      ["Rising", null, 300],
+      ["Flat", null, null],
+      ["New", null, null],
+    ]
+  );
+
+  const strict = await outbound.insights.periodComparison(
+    { min_sent: 450 },
+    { now: NOW }
+  );
+
+  assert.deepEqual(
+    strict.data.campaigns.map((each) => each.name),
+    ["Rising"]
+  );
+  assert.deepEqual(
+    strict.data.tooFewSends.map((each) => each.name),
+    ["Flat", "New"]
+  );
+
+  const doubtful = await outbound.insights.periodComparison(
+    { alpha: 0.0001 },
+    { now: NOW }
+  );
+
+  assert.equal(doubtful.data.campaigns[0]?.verdict, "no_real_change");
+  assert.equal(doubtful.data.campaigns[0]?.replyRateTest?.pValue, 0.0009);
+
+  const archived = await outbound.insights.periodComparison(
+    { min_sent: 0, statuses: ["archived"] },
+    { now: NOW }
+  );
+
+  assert.deepEqual(
+    archived.data.tooFewSends.map((each) => [each.name, each.currentSent]),
+    [["Archived", 800]]
+  );
+});
+
+test("period_comparison reports a fall, and an unknown when a period has no counts", async () => {
+  const result = await single({
+    campaigns: [
+      { id: "f", name: "Falling" },
+      { id: "u", name: "Unknown" },
+    ],
+    stats: [
+      row("f", "2026-11-02", { contacted: 500, replied: 60, sent: 500 }),
+      row("f", "2026-11-09", { contacted: 500, replied: 30, sent: 500 }),
+      // Sends without a reply count in either period.
+      row("u", "2026-11-02", { sent: 300 }),
+      row("u", "2026-11-09", { sent: 300 }),
+    ],
+  }).insights.periodComparison({}, { now: NOW });
+
+  const [falling, unknown] = result.data.campaigns;
+
+  assert.deepEqual(
+    [falling?.verdict, falling?.change.replyRate, falling?.replyRateTest?.z],
+    ["down", -0.06, -3.315]
+  );
+  assert.deepEqual(
+    [
+      unknown?.name,
+      unknown?.verdict,
+      unknown?.change.replyRate,
+      unknown?.current.replied,
+      unknown?.replyRateTest,
+    ],
+    ["Unknown", "unknown", null, null, null]
+  );
+  assert.match(unknown?.finding ?? "", /cannot be compared/u);
+});
+
+test("period_comparison has nothing to compare without campaigns, and says when the cap cut the list", async () => {
+  const empty = await single({}).insights.periodComparison({}, { now: NOW });
+
+  assert.deepEqual(empty.data.campaigns, []);
+  assert.deepEqual(empty.data.tooFewSends, []);
+  assert.equal(empty.data.total.current.sent, null);
+  assert.equal(empty.data.total.verdict, "unknown");
+  assert.equal(empty.data.workspace?.current.sent, null);
+
+  const capped = await single(DATA).insights.periodComparison(
+    { max_campaigns: 1 },
+    { now: NOW }
+  );
+
+  assert.deepEqual(
+    capped.data.campaigns.map((each) => each.name),
+    ["Rising"]
+  );
+  assert.equal(capped.meta.complete, false);
+});
+
+test("period_comparison leaves workspace totals out when the adapter has none, and needs campaign stats", async () => {
+  const result = await single(DATA, {
+    "stats.workspace": false,
+  }).insights.periodComparison({}, { now: NOW });
+
+  assert.equal(result.data.workspace, null);
+  assert.equal(result.data.total.current.sent, 1000);
+  assert.deepEqual(result.meta.notes, [
+    "Workspace totals were left out: the adapter has no workspace stats. `total` adds up the campaigns read.",
+  ]);
+
+  await assert.rejects(
+    async () =>
+      await single(DATA, {
+        "stats.campaign": false,
+      }).insights.periodComparison({}),
+    unsupported("stats.campaign")
+  );
+});
+
+test("period_comparison compares campaigns of two tools and adds their workspaces together", async () => {
+  const result = await pair(DATA, {
+    campaigns: [{ channel: "linkedin", id: "k1", name: "Seats" }],
+    stats: [
+      row("k1", "2026-11-02", { contacted: 200, replied: 10, sent: 200 }),
+      row("k1", "2026-11-11", { contacted: 200, replied: 30, sent: 200 }),
+    ],
+  }).insights.periodComparison({}, { now: NOW });
+
+  // Seats went from 5% to 15%, the largest move.
+  assert.deepEqual(
+    result.data.campaigns.map((each) => [
+      each.campaign,
+      each.provider,
+      each.change.replyRate,
+    ]),
+    [
+      ["lntool:agency:k1", "lntool", 0.1],
+      ["mailtool:agency:c1", "mailtool", 0.06],
+      ["mailtool:agency:c2", "mailtool", 0.005],
+    ]
+  );
+  // Email 1,000 sends and 85 replies plus LinkedIn 200 and 30.
+  assert.deepEqual(
+    [result.data.total.current.sent, result.data.total.current.replied],
+    [1200, 115]
+  );
+  // Both workspaces, the archived email campaign included: 1,800 + 200.
+  assert.equal(result.data.workspace?.current.sent, 2000);
+  assert.equal(result.meta.provider, "combined");
+});
