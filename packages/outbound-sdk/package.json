@@ -30,6 +30,18 @@
     "./memory": {
       "types": "./dist/memory/index.d.ts",
       "import": "./dist/memory/index.js"
+    },
+    "./instantly": {
+      "types": "./dist/instantly/index.d.ts",
+      "import": "./dist/instantly/index.js"
+    },
+    "./providers": {
+      "types": "./dist/providers/index.d.ts",
+      "import": "./dist/providers/index.js"
+    },
+    "./loader": {
+      "types": "./dist/loader/index.d.ts",
+      "import": "./dist/loader/index.js"
     }
   },
   "publishConfig": {

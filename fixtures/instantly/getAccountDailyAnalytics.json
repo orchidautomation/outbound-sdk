@@ -1,0 +1,34 @@
+[
+  {
+    "date": "2024-01-15",
+    "email_account": "person1@example.com",
+    "sent": 150,
+    "bounced": 3,
+    "contacted": 120,
+    "new_leads_contacted": 50,
+    "opened": 99,
+    "unique_opened": 60,
+    "replies": 8,
+    "unique_replies": 7,
+    "replies_automatic": 2,
+    "unique_replies_automatic": 1,
+    "clicks": 30,
+    "unique_clicks": 20
+  },
+  {
+    "date": "2024-01-15",
+    "email_account": "person11@example.com",
+    "sent": 150,
+    "bounced": 3,
+    "contacted": 120,
+    "new_leads_contacted": 50,
+    "opened": 99,
+    "unique_opened": 60,
+    "replies": 8,
+    "unique_replies": 7,
+    "replies_automatic": 2,
+    "unique_replies_automatic": 1,
+    "clicks": 30,
+    "unique_clicks": 20
+  }
+]

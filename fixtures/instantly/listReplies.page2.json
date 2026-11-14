@@ -1,0 +1,61 @@
+{
+  "items": [
+    {
+      "id": "01a1d77f-5e65-78a7-8eb0-021174eeab67",
+      "timestamp_created": "2026-11-14T00:40:11.109Z",
+      "timestamp_email": "2026-11-14T00:40:11.109Z",
+      "message_id": "<example-message-1@mail.example.com>",
+      "subject": "Re: Your inquiry",
+      "from_address_email": "person21@example.com",
+      "to_address_email_list": "person22@example.com",
+      "cc_address_email_list": "person23@example.com",
+      "bcc_address_email_list": "person24@example.com",
+      "reply_to": "person25@example.com",
+      "body": {
+        "text": "This is a test email",
+        "html": "This is a test email.<br/><br/>Second line."
+      },
+      "organization_id": "01a1d77f-5e65-78a7-8eb0-0212308950a8",
+      "campaign_id": "01a1d77f-5e65-78a7-8eb0-0213c3e7d6de",
+      "subsequence_id": "01a1d77f-5e65-78a7-8eb0-021476570111",
+      "list_id": "01a1d77f-5e65-78a7-8eb0-021556b3b1b1",
+      "lead": "person26@example.com",
+      "lead_id": "01a1d77f-5e65-78a7-8eb0-0216d691e16e",
+      "eaccount": "eaccount-123",
+      "ue_type": 2,
+      "step": "step-123",
+      "is_unread": 1,
+      "is_auto_reply": 0,
+      "reminder_ts": "2026-11-14T00:40:11.109Z",
+      "ai_interest_value": 0.75,
+      "ai_assisted": 1,
+      "is_focused": 1,
+      "i_status": 0,
+      "thread_id": "01a1d77f-5e65-78a7-8eb0-021717740222",
+      "content_preview": "This is a preview of the email content.",
+      "body_fallback_reason": "too_large",
+      "attachment_json": {
+        "files": [
+          {
+            "filename": "attachment.pdf",
+            "size": 1927,
+            "type": "application/pdf",
+            "url": "https://cdn.instantly.ai/example-attachment/file.pdf",
+            "error": "Upload failed"
+          },
+          {
+            "filename": "attachment.pdf",
+            "size": 1927,
+            "type": "application/pdf",
+            "url": "https://cdn.instantly.ai/example-attachment/file.pdf",
+            "error": "Upload failed"
+          }
+        ]
+      },
+      "from_address_json": [],
+      "to_address_json": [],
+      "cc_address_json": [],
+      "ai_agent_id": "01a1d77f-5e65-78a7-8eb0-0218a5ac4471"
+    }
+  ]
+}

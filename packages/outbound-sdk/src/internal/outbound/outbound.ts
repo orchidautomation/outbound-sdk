@@ -178,6 +178,10 @@ export class Outbound implements OutboundApi {
     return this.#core.adapter.maturity;
   }
 
+  get caveats(): readonly string[] {
+    return this.#core.adapter.caveats ?? [];
+  }
+
   /** The plugins on this instance, outermost first. */
   get plugins(): readonly OutboundPlugin[] {
     return this.#plugins;

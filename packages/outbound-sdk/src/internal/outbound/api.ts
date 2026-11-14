@@ -241,6 +241,8 @@ export interface OutboundApi {
   readonly capabilities: Capabilities;
   /** How far the adapter has been verified. */
   readonly maturity: "beta" | "stable" | "unverified";
+  /** What the adapter assumes and has not confirmed against the live API. */
+  readonly caveats: readonly string[];
   readonly campaigns: Collection<Campaign, CampaignFilters>;
   readonly senders: Collection<Sender, SenderFilters>;
   readonly leads: Collection<Lead, LeadFilters>;

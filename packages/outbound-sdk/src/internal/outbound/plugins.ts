@@ -104,24 +104,6 @@ export const composeOperations = (
   };
 };
 
-/** Runs every plugin's `event` hook, innermost first. `null` drops the event. */
-export const applyEventHooks = (
-  plugins: readonly OutboundPlugin[],
-  event: OutboundEvent
-): OutboundEvent | null => {
-  let current: OutboundEvent | null = event;
-
-  for (const plugin of plugins.toReversed()) {
-    if (current === null) {
-      return null;
-    }
-
-    current = plugin.event === undefined ? current : plugin.event(current);
-  }
-
-  return current;
-};
-
 export const assertUniquePluginNames = (
   plugins: readonly OutboundPlugin[]
 ): void => {

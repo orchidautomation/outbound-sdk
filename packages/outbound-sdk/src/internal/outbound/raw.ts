@@ -5,27 +5,10 @@
 import type { HttpMethod } from "../adapter.ts";
 import { OutboundError } from "../errors.ts";
 import type { Json } from "../json.ts";
+import { buildUrl } from "../url.ts";
 import type { RawClient, RawRequestOptions } from "./api.ts";
 import { perform } from "./core.ts";
 import type { Core } from "./core.ts";
-
-const buildUrl = (
-  baseUrl: string,
-  path: string,
-  query: RawRequestOptions["query"]
-): string => {
-  const url = new URL(
-    `${baseUrl.replace(/\/+$/u, "")}/${path.replace(/^\/+/u, "")}`
-  );
-
-  for (const [key, value] of Object.entries(query ?? {})) {
-    if (value !== undefined) {
-      url.searchParams.set(key, String(value));
-    }
-  }
-
-  return url.toString();
-};
 
 export const makeRawClient = (core: Core): RawClient => {
   const { adapter } = core;

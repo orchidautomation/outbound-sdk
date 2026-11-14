@@ -1,0 +1,210 @@
+{
+  "items": [
+    {
+      "id": "01a1d77f-5e23-7a9a-9112-a6f7089f3291",
+      "name": "My First Campaign",
+      "pl_value": 100,
+      "status": 1,
+      "is_evergreen": false,
+      "campaign_schedule": {
+        "start_date": "2025-09-25",
+        "end_date": "2025-09-25",
+        "schedules": [
+          {
+            "name": "My Schedule",
+            "timing": {
+              "from": "09:00",
+              "to": "17:00"
+            },
+            "days": {
+              "0": true,
+              "1": true,
+              "2": true,
+              "3": true,
+              "4": true,
+              "5": false,
+              "6": false
+            },
+            "timezone": "Etc/GMT+12"
+          },
+          {
+            "name": "My Schedule",
+            "timing": {
+              "from": "09:00",
+              "to": "17:00"
+            },
+            "days": {
+              "0": true,
+              "1": true,
+              "2": true,
+              "3": true,
+              "4": true,
+              "5": false,
+              "6": false
+            },
+            "timezone": "Etc/GMT+12"
+          }
+        ]
+      },
+      "sequences": [
+        {
+          "steps": [
+            {
+              "type": "email",
+              "delay": 2,
+              "delay_unit": "days",
+              "pre_delay": 2,
+              "pre_delay_unit": "days",
+              "variants": [
+                {
+                  "subject": "Hello {{firstName}}",
+                  "body": "Hey {{firstName}},<br/><br/>I hope you are doing well.",
+                  "v_disabled": true
+                },
+                {
+                  "subject": "Hello {{firstName}}",
+                  "body": "Hey {{firstName}},<br/><br/>I hope you are doing well.",
+                  "v_disabled": true
+                }
+              ]
+            },
+            {
+              "type": "email",
+              "delay": 2,
+              "delay_unit": "days",
+              "pre_delay": 2,
+              "pre_delay_unit": "days",
+              "variants": [
+                {
+                  "subject": "Hello {{firstName}}",
+                  "body": "Hey {{firstName}},<br/><br/>I hope you are doing well.",
+                  "v_disabled": true
+                },
+                {
+                  "subject": "Hello {{firstName}}",
+                  "body": "Hey {{firstName}},<br/><br/>I hope you are doing well.",
+                  "v_disabled": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "steps": [
+            {
+              "type": "email",
+              "delay": 2,
+              "delay_unit": "days",
+              "pre_delay": 2,
+              "pre_delay_unit": "days",
+              "variants": [
+                {
+                  "subject": "Hello {{firstName}}",
+                  "body": "Hey {{firstName}},<br/><br/>I hope you are doing well.",
+                  "v_disabled": true
+                },
+                {
+                  "subject": "Hello {{firstName}}",
+                  "body": "Hey {{firstName}},<br/><br/>I hope you are doing well.",
+                  "v_disabled": true
+                }
+              ]
+            },
+            {
+              "type": "email",
+              "delay": 2,
+              "delay_unit": "days",
+              "pre_delay": 2,
+              "pre_delay_unit": "days",
+              "variants": [
+                {
+                  "subject": "Hello {{firstName}}",
+                  "body": "Hey {{firstName}},<br/><br/>I hope you are doing well.",
+                  "v_disabled": true
+                },
+                {
+                  "subject": "Hello {{firstName}}",
+                  "body": "Hey {{firstName}},<br/><br/>I hope you are doing well.",
+                  "v_disabled": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "timestamp_created": "2026-11-14T00:40:11.043Z",
+      "timestamp_updated": "2026-11-14T00:40:11.043Z",
+      "email_gap": 10,
+      "random_wait_max": 10,
+      "text_only": false,
+      "first_email_text_only": false,
+      "email_list": [
+        "person21@example.com",
+        "person21@example.com"
+      ],
+      "daily_limit": 100,
+      "stop_on_reply": false,
+      "email_tag_list": [
+        "01a1d77f-5e23-7a9a-9112-a6f85488b00e",
+        "01a1d77f-5e23-7a9a-9112-a6f85488b00e"
+      ],
+      "link_tracking": true,
+      "open_tracking": true,
+      "stop_on_auto_reply": false,
+      "daily_max_leads": 100,
+      "prioritize_new_leads": false,
+      "auto_variant_select": {
+        "trigger": "click_rate"
+      },
+      "match_lead_esp": false,
+      "not_sending_status": 2,
+      "stop_for_company": false,
+      "core_variables": {},
+      "custom_variables": {},
+      "insert_unsubscribe_header": false,
+      "allow_risky_contacts": false,
+      "disable_bounce_protect": false,
+      "limit_emails_per_company_override": {
+        "mode": "custom",
+        "daily_limit": 3,
+        "scope": "per_campaign"
+      },
+      "cc_list": [
+        "person21@example.com",
+        "person21@example.com"
+      ],
+      "bcc_list": [
+        "person21@example.com",
+        "person21@example.com"
+      ],
+      "organization": "01a1d77f-5e23-7a9a-9112-a6f9d66a1ee5",
+      "owned_by": "01a1d77f-5e23-7a9a-9112-a6fa8b3f6849",
+      "created_by": "01a1d77f-5e23-7a9a-9112-a6fb5d671cf6",
+      "ai_sdr_id": "01a1d77f-5e23-7a9a-9112-a6fc10064b8a",
+      "provider_routing_rules": [
+        {
+          "action": "send",
+          "recipient_esp": [
+            "all",
+            "all"
+          ],
+          "sender_esp": [
+            "all",
+            "all"
+          ]
+        },
+        {
+          "action": "send",
+          "recipient_esp": [
+            "all",
+            "all"
+          ],
+          "sender_esp": [
+            "all",
+            "all"
+          ]
+        }
+      ]
+    }
+  ]
+}

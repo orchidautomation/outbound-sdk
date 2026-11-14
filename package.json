@@ -15,12 +15,14 @@
     "shape": "node scripts/check-repo-shape.mjs",
     "test": "node --test \"scripts/*.test.mjs\" \"packages/*/test/**/*.test.ts\"",
     "build": "node scripts/build.mjs && node scripts/smoke-dist.mjs && node scripts/check-size.mjs",
-    "check:static": "npm run typecheck && npm run architecture && npm run shape && git diff --check",
+    "check:static": "npm run typecheck && npm run architecture && npm run shape && npm run fixtures && git diff --check",
     "check:fast": "npm run lint && npm run check:static",
-    "check": "npm run check:fast && npm test && npm run build",
+    "check": "npm run check:fast && npm test && npm run coverage && npm run build",
     "check:changed": "node scripts/check-changed.mjs",
     "changeset": "changeset",
-    "version-packages": "changeset version"
+    "version-packages": "changeset version",
+    "fixtures": "node scripts/check-fixtures.mjs",
+    "coverage": "node scripts/check-coverage.mjs"
   },
   "devDependencies": {
     "@changesets/cli": "3.0.3",

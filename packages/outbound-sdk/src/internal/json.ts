@@ -96,3 +96,29 @@ export const parseJson = (source: string): Json | undefined => {
     return undefined;
   }
 };
+
+const isScalar = (value: Json): value is string | number | boolean =>
+  isString(value) || isNumber(value) || isBoolean(value);
+
+/** An object's scalar values as strings, for a lead's custom fields. */
+export const stringMap = (value: Json | undefined) =>
+  Object.fromEntries(
+    Object.entries(isJsonObject(value) ? value : {}).flatMap(([key, entry]) =>
+      isScalar(entry) ? [[key, String(entry)] as const] : []
+    )
+  );
+
+/** A JSON object without the keys whose value is `null` or `undefined`. */
+export const compactObject = (
+  entries: Readonly<Record<string, Json | undefined>>
+): JsonObject => {
+  const result: JsonObject = {};
+
+  for (const [key, value] of Object.entries(entries)) {
+    if (value !== null && value !== undefined) {
+      result[key] = value;
+    }
+  }
+
+  return result;
+};

@@ -163,6 +163,8 @@ export interface Adapter {
   readonly raw: RawDescriptor;
   readonly mapError: ErrorMapper;
   readonly events?: EventFormat | undefined;
+  /** What is assumed and not yet confirmed against the live API. */
+  readonly caveats?: readonly string[] | undefined;
   /** Request costs by operation kind, for `outbound.estimate()`. */
   readonly costs?: Readonly<Record<string, OperationCost>> | undefined;
   /** Set by `combine()`: the adapters behind this one. */
