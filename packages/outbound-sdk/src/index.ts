@@ -139,6 +139,8 @@ export { resolveFields } from "./internal/fields.ts";
 
 export type { FieldCoverage, FieldDeclaration } from "./internal/fields.ts";
 
+export type { LeadFieldMap } from "./internal/lead-fields.ts";
+
 export { defineNative } from "./internal/native.ts";
 
 export type {

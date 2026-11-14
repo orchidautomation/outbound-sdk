@@ -145,7 +145,7 @@ What the vendor knows about a sender's deliverability. Its `sourceId` is the sen
 | `interestCategory` | a reply category or `null` | What `interest` means, in the categories a reply uses. `null` when the lead has no label or the vendor does not say what the label means. |
 | `campaignRef` | `string` or `null` |  |
 | `createdAt` | ISO timestamp or `null` |  |
-| `custom` | `Record<string, string>` | The lead's custom fields as the vendor stores them. |
+| `custom` | `Record<string, string>` | The lead's custom fields as the vendor stores them. An adapter's `leadFields` option can name the one that holds a title, phone or profile. |
 | `tags` | `string[]` |  |
 | `engagement` | `LeadEngagement` or `null` | `null` when the vendor reports no per-lead counts on this read. |
 

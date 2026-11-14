@@ -211,7 +211,7 @@ export const toList = (identity: Identity, raw: JsonObject): LeadList => ({
   ...recordBase(identity, text(raw.id) ?? "", raw),
   createdAt: timestamp(raw.created_at),
   kind: "leads",
-  name: text(raw.name) ?? "",
+  name: text(raw.name) ?? text(raw.id) ?? "",
   size: count(raw.lead_count),
 });
 
@@ -234,7 +234,7 @@ export const toBlockEntry = (
 export const toTag = (identity: Identity, raw: JsonObject): Tag => ({
   ...recordBase(identity, text(raw.id) ?? "", raw),
   description: null,
-  name: text(raw.name) ?? "",
+  name: text(raw.name) ?? text(raw.id) ?? "",
 });
 
 /**

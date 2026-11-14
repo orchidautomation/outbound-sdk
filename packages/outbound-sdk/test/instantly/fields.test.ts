@@ -237,3 +237,16 @@ test("instantly: a mailbox's campaigns come from its campaign mappings, page by 
     "the status filter is applied to the mapped status"
   );
 });
+
+test("instantly: a campaign with no name is named by its id, never empty", async () => {
+  const { outbound, settle } = harness(suite, (request) =>
+    new URL(request.url).pathname.endsWith("/campaigns")
+      ? Response.json({ items: [{ id: "c-77", status: 1 }] })
+      : undefined
+  );
+
+  assert.equal(
+    (await settle(outbound.campaigns.list())).items[0]?.name,
+    "c-77"
+  );
+});

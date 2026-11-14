@@ -27,6 +27,7 @@ related:
 | `workspaceId` | `INSTANTLY_WORKSPACE_ID`, then `default` | Your own label for the client or workspace. It is part of every ref and may not contain a colon. |
 | `asWorkspace` | none | For the key of an agency's admin workspace: the id of the sub workspace to act as. Sent as the `x-as-workspace` header on every request. |
 | `baseUrl` | `https://api.instantly.ai/api/v2` | For a proxy or a test server. |
+| `leadFields` | none | Which of a lead's custom fields holds a value the vendor has no field for, such as `{ title: "job_title" }`. Read only where the vendor's own field is empty. See [field grades](/docs/capabilities#field-grades). |
 | `capabilities` | what the adapter declares | Overrides single capabilities. |
 
 The module also exports `envVars` (the two variable names), `PROVIDER` (`"instantly"`) and `NATIVE` (the native catalog).

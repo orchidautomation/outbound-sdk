@@ -60,7 +60,7 @@ export const toCampaign = (
   ...recordBase(identity, text(raw.id) ?? "", raw),
   channel: "email",
   createdAt: timestamp(raw.timestamp_created),
-  name: text(raw.name) ?? "",
+  name: text(raw.name) ?? text(raw.id) ?? "",
   status: CAMPAIGN_STATUS.get(count(raw.status) ?? Number.NaN) ?? "unknown",
   tags: [...tags],
 });

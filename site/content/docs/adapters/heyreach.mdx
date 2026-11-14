@@ -26,6 +26,7 @@ related:
 | `apiKey` | `HEYREACH_API_KEY` | A workspace API key. |
 | `workspaceId` | `HEYREACH_WORKSPACE_ID`, then `default` | Your own label for the client or workspace. It is part of every ref and may not contain a colon. |
 | `baseUrl` | `https://api.heyreach.io/api/public` | For a proxy or a test server. |
+| `leadFields` | none | Which of a lead's custom fields holds a value the vendor has no field for, such as `{ title: "job_title" }`. Read only where the vendor's own field is empty. See [field grades](/docs/capabilities#field-grades). |
 | `capabilities` | what the adapter declares | Overrides single capabilities. |
 
 The module also exports `envVars` (the two variable names), `PROVIDER` (`"heyreach"`) and `NATIVE` (the native catalog).

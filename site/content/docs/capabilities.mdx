@@ -168,6 +168,8 @@ A capability says whether a read exists. `outbound.fields` says what the read ca
   ../_examples/capabilities/fields.out.txt
 </include>
 
+A vendor with no field for a job title or a LinkedIn profile often still holds one in a custom field the account named itself. The SDK never guesses which. Pass `leadFields` to the adapter, naming the custom field for `title`, `company`, `phone`, `website`, `location`, `linkedinUrl` or `companyLinkedinUrl`, and the adapter reads it wherever the vendor's own field is empty. A field that was `false` then reports `derived`.
+
 A record the adapter never returns has every field `false`. On a [combined](/docs/adapters/combine) instance a field is filled when any adapter behind it fills it. The repository's test suite holds each adapter to its declaration both ways: a field declared `false` is empty in every record its fixtures produce, and every other field is filled in at least one.
 
 ## Change what an adapter declares

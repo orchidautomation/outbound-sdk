@@ -50,7 +50,7 @@ export const toCampaign = (identity: Identity, raw: JsonObject): Campaign => ({
   ...recordBase(identity, text(raw.id) ?? "", raw),
   channel: "linkedin",
   createdAt: timestamp(raw.creationTime),
-  name: text(raw.name) ?? "",
+  name: text(raw.name) ?? text(raw.id) ?? "",
   status: CAMPAIGN_STATUS.get(text(raw.status) ?? "") ?? "unknown",
   tags: [],
 });

@@ -83,7 +83,7 @@ export const toCampaign = (identity: Identity, raw: JsonObject): Campaign => ({
   ...recordBase(identity, text(raw.id) ?? "", raw),
   channel: "email",
   createdAt: timestamp(raw.created_at),
-  name: text(raw.name) ?? "",
+  name: text(raw.name) ?? text(raw.id) ?? "",
   status: campaignStatus(raw.status),
   // Present only when the request asked for include_tags.
   tags: objects(raw.tags).flatMap((tag) => text(tag.tag_name) ?? []),
@@ -386,5 +386,5 @@ export const toWorkspace = (
   raw: JsonObject
 ): Workspace => ({
   ...recordBase(identity, text(raw.id) ?? "", raw),
-  name: text(raw.name) ?? "",
+  name: text(raw.name) ?? text(raw.id) ?? "",
 });

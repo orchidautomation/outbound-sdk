@@ -25,7 +25,7 @@ export const toLeadList = (identity: Identity, raw: JsonObject): LeadList => ({
   ...recordBase(identity, text(raw.id) ?? "", raw),
   createdAt: timestamp(raw.creationTime),
   kind: text(raw.listType) === "COMPANY_LIST" ? "companies" : "leads",
-  name: text(raw.name) ?? "",
+  name: text(raw.name) ?? text(raw.id) ?? "",
   size: count(raw.totalItemsCount),
 });
 

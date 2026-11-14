@@ -33,6 +33,7 @@ related:
 | `apiKey` | `SMARTLEAD_API_KEY` | An admin key or a client-level key. |
 | `workspaceId` | `SMARTLEAD_WORKSPACE_ID`, then `default` | Your own label for the client or workspace. It is part of every ref and may not contain a colon. |
 | `baseUrl` | `https://server.smartlead.ai/api/v1` | For a proxy or a test server. |
+| `leadFields` | none | Which of a lead's custom fields holds a value the vendor has no field for, such as `{ title: "job_title" }`. Read only where the vendor's own field is empty. See [field grades](/docs/capabilities#field-grades). |
 | `capabilities` | what the adapter declares | Overrides single capabilities, for example on a key some endpoints refuse. |
 
 The module also exports `envVars` (the two variable names) and `PROVIDER` (`"smartlead"`).

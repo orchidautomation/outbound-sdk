@@ -4,6 +4,8 @@ import type { Adapter } from "../internal/adapter.ts";
 import type { CapabilityDeclaration } from "../internal/capabilities.ts";
 import { readEnv, requireCredential } from "../internal/env.ts";
 import { makeErrorMapper } from "../internal/errors.ts";
+import { withLeadFields, withMappedFields } from "../internal/lead-fields.ts";
+import type { LeadFieldMap } from "../internal/lead-fields.ts";
 import { assertWorkspaceId } from "../internal/ref.ts";
 import { readers } from "./adapter.ts";
 import {
@@ -39,6 +41,12 @@ export interface InstantlyOptions {
   readonly baseUrl?: string | undefined;
   /** Overrides what the adapter declares, for example on a plan without webhooks. */
   readonly capabilities?: CapabilityDeclaration | undefined;
+  /**
+   * Which of a lead's custom fields holds a value this vendor has no field
+   * for, for example `{ title: "job_title" }`. Read only where the vendor's
+   * own field is empty.
+   */
+  readonly leadFields?: LeadFieldMap | undefined;
 }
 
 export const instantly = (
@@ -62,12 +70,12 @@ export const instantly = (
   });
 
   return {
-    ...readers(client),
+    ...withLeadFields(readers(client), options.leadFields),
     capabilities: declared,
     caveats,
     costs,
     events: instantlyEvents(PROVIDER),
-    fields,
+    fields: withMappedFields(fields, options.leadFields),
     limits,
     // Instantly answers 402 when the plan does not include the endpoint.
     mapError: makeErrorMapper(PROVIDER, {

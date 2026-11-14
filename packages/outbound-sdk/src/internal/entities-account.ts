@@ -96,7 +96,8 @@ export const leadListSchema = z.object({
   ...baseFields,
   createdAt: isoDateTime,
   kind: z.enum(["companies", "leads"]),
-  name: z.string(),
+  /** The vendor's name for it, or its id when the vendor gave none. Never empty. */
+  name: z.string().min(1),
   /** How many records the list holds. */
   size: count,
 });
@@ -117,7 +118,7 @@ export type BlockEntry = z.infer<typeof blockEntrySchema>;
 export const tagSchema = z.object({
   ...baseFields,
   description: z.string().nullable(),
-  name: z.string(),
+  name: z.string().min(1),
 });
 
 export type Tag = z.infer<typeof tagSchema>;

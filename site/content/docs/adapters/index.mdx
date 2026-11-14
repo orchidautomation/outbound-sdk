@@ -31,6 +31,7 @@ Every vendor factory takes the same core options:
 | `apiKey` | the key variable above | The vendor key. A missing key throws when the adapter is constructed. |
 | `workspaceId` | `<PROVIDER>_WORKSPACE_ID`, then `default` | Your own label for the client or workspace. It is part of every ref (`provider:workspace:id`). |
 | `baseUrl` | the vendor's API | For a proxy or a test server. |
+| `leadFields` | none | Which of a lead's custom fields holds a value the vendor has no field for, such as `{ title: "job_title" }`. Read only where the vendor's own field is empty. See [field grades](/docs/capabilities#field-grades). |
 | `capabilities` | what the adapter declares | Overrides single capabilities, for example to turn one off on a plan without the endpoint. |
 
 Constructing an adapter makes no request.

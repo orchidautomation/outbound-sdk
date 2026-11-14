@@ -266,3 +266,12 @@ test("heyreach: a sender's campaigns are the campaign list narrowed by account i
   );
   assert.equal(requests.length, 1, "refused before any request");
 });
+
+test("heyreach: a campaign or list with no name is named by its id, never empty", async () => {
+  const { outbound, settle } = harness(suite, () =>
+    Response.json({ items: [{ id: 77, name: "  " }], totalCount: 1 })
+  );
+
+  assert.equal((await settle(outbound.campaigns.list())).items[0]?.name, "77");
+  assert.equal((await settle(outbound.lists.list())).items[0]?.name, "77");
+});

@@ -46,7 +46,8 @@ export const campaignSchema = z.object({
   ...base,
   channel: channelSchema,
   createdAt: isoDateTime,
-  name: z.string(),
+  /** The vendor's name for it, or its id when the vendor gave none. Never empty. */
+  name: z.string().min(1),
   status: campaignStatusSchema,
   tags: z.array(z.string()),
 });
@@ -317,7 +318,7 @@ export type MetricRow = z.infer<typeof metricRowSchema>;
 
 export const workspaceSchema = z.object({
   ...base,
-  name: z.string(),
+  name: z.string().min(1),
 });
 
 export type Workspace = z.infer<typeof workspaceSchema>;

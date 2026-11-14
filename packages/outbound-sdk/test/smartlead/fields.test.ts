@@ -4,9 +4,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import { smartlead } from "../../src/smartlead/index.ts";
 import { harness } from "../helpers/adapter-suite.ts";
 import { fixture } from "../helpers/fixtures.ts";
-import { CAMPAIGN, suite } from "./suite.ts";
+import { CAMPAIGN, KEY, suite } from "./suite.ts";
 
 test("smartlead: a campaign's lead carries phone, website, location and what its category means", async () => {
   const { outbound, settle } = harness(suite);
@@ -195,4 +196,80 @@ test("smartlead: a mailbox that names no campaigns has none", async () => {
 
   const page = await settle(outbound.sender("123").campaigns.list());
   assert.deepEqual(page.items, []);
+});
+
+const nameless = (id: number) => ({ id, name: null });
+
+test("smartlead: a campaign, list, tag or client with no name is named by its id, never empty", async () => {
+  const { outbound, settle } = harness(suite, (request) => {
+    const { pathname } = new URL(request.url);
+
+    if (pathname.endsWith("/campaigns/")) {
+      return Response.json([nameless(11)]);
+    }
+
+    if (pathname.endsWith("/lead-list/")) {
+      return Response.json({ data: [nameless(12)], ok: true });
+    }
+
+    if (pathname.endsWith("/email-accounts/tags")) {
+      return Response.json([nameless(13)]);
+    }
+
+    return pathname.endsWith("/client/")
+      ? Response.json([nameless(14)])
+      : undefined;
+  });
+
+  assert.equal((await settle(outbound.campaigns.list())).items[0]?.name, "11");
+  assert.equal((await settle(outbound.lists.list())).items[0]?.name, "12");
+  assert.equal((await settle(outbound.tags.list())).items[0]?.name, "13");
+  assert.equal((await settle(outbound.workspaces.list())).items[0]?.name, "14");
+});
+
+test("smartlead: a named custom field fills a field the vendor has none for, and the grade says so", async () => {
+  const mapped: typeof suite = {
+    ...suite,
+    make: () =>
+      smartlead({
+        apiKey: KEY,
+        leadFields: { company: "industry", title: "job_title" },
+        workspaceId: "client-a",
+      }),
+  };
+
+  const { outbound, settle } = harness(mapped);
+  const lead = await settle(outbound.leads.get("789"));
+
+  assert.equal(lead.title, "CEO", "custom_fields.job_title");
+  assert.equal(
+    lead.company,
+    "Example Co",
+    "the vendor's own company_name wins over a mapped field"
+  );
+  assert.equal(outbound.fields.lead.title, "derived");
+  assert.equal(outbound.fields.lead.company, "exact");
+
+  const listed = await settle(outbound.campaign("372").leads.list());
+  assert.equal(listed.items[0]?.title, "CEO", "on listings too");
+
+  const plain = harness(suite);
+  const unmapped = await plain.settle(plain.outbound.leads.get("789"));
+  assert.equal(unmapped.title, null, "nothing is guessed without the option");
+  assert.equal(plain.outbound.fields.lead.title, false);
+});
+
+test("smartlead: a mapped custom field that is missing or blank leaves the field empty", async () => {
+  const mapped: typeof suite = {
+    ...suite,
+    make: () =>
+      smartlead({
+        apiKey: KEY,
+        leadFields: { title: "role" },
+        workspaceId: "client-a",
+      }),
+  };
+
+  const { outbound, settle } = harness(mapped);
+  assert.equal((await settle(outbound.leads.get("789"))).title, null);
 });
