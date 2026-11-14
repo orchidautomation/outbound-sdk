@@ -5,17 +5,18 @@ description: outbound-sdk is not published to npm yet. How to build and install 
 
 <Callout type="warning" title="There is no npm package yet">
   `npm install outbound-sdk` does not install this project today: the package
-  has not been published and its GitHub repository is private. This page
-  describes what works now, for people with access to the repository, and what
+  has not been published. The GitHub repository is public, so anyone can build
+  the package from it and install the tarball. This page describes how, and what
   the install will be once the first release is out.
 </Callout>
 
 ## Today: from the repository
 
-The repository is private, so this works only for people who already have access to it. If you do not, there is nothing to install yet: the package will be published to npm, and this page will say so when it is. With access, build the package, pack it, and install the tarball in your project. The repository itself needs Node 24.15 or later to build; the built package runs on Node 22.
+The repository is public at [github.com/orchidautomation/outbound-sdk](https://github.com/orchidautomation/outbound-sdk), so anyone can do this. Clone it, build the package, pack it, and install the tarball in your project. The package will be published to npm, and this page will say so when it is. The repository itself needs Node 24.15 or later to build; the built package runs on Node 22.
 
 ```sh
-# in a clone of the repository
+git clone https://github.com/orchidautomation/outbound-sdk.git
+cd outbound-sdk
 npm ci
 npm run build
 cd packages/outbound-sdk && npm pack   # writes outbound-sdk-0.0.0.tgz

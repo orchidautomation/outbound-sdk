@@ -11,10 +11,12 @@ Before you start, confirm what the user has. Do not assume a published package o
 
 ## 1. Install it
 
-**The package is not on npm.** `npm install outbound-sdk` does not install it, and `npx outbound-sdk …` does not work, because the package has not been published and its repository is private. Check [installation](https://outbound-sdk.dev/docs/installation) for the current state before saying otherwise. Until it says the package is published, the only install is a tarball built from a clone of the repository, and that works only for someone who has access:
+**The package is not on npm.** `npm install outbound-sdk` does not install it, and `npx outbound-sdk …` does not work, because the package has not been published. Check [installation](https://outbound-sdk.dev/docs/installation) for the current state before saying otherwise. Until it says the package is published, the install is a tarball built from a clone of the repository, which is public (https://github.com/orchidautomation/outbound-sdk), so anyone can build it:
 
 ```sh
-# in a clone of the repository (needs Node 24.15 or later to build)
+# needs Node 24.15 or later to build
+git clone https://github.com/orchidautomation/outbound-sdk.git
+cd outbound-sdk
 npm ci
 npm run build
 cd packages/outbound-sdk && npm pack   # writes outbound-sdk-0.0.0.tgz
@@ -25,7 +27,7 @@ npm install /absolute/path/to/outbound-sdk-0.0.0.tgz
 
 The package is ESM only. In a project without `"type": "module"`, name TypeScript files `.mts`.
 
-If the user has no access to the repository, stop here and say there is nothing to install yet.
+If the user cannot build it (no Node 24.15 or later, or no git), say so and stop: there is no other install until the package is published.
 
 ## 2. Pick the adapter and the key
 
