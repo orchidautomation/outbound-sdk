@@ -114,10 +114,10 @@ export const costs = {
 } satisfies Record<string, OperationCost>;
 
 export const caveats: readonly string[] = [
-  "Nothing has been checked against a live Instantly workspace; every mapping follows the API V2 documentation read on 2026-11-14.",
+  "The reads were run once, read-only, against one live workspace on 2026-11-14. Fixtures are still built from the API V2 documentation, and subsequences, a campaign's own webhooks and a second page of most lists were not exercised because that workspace had none or too few.",
   "The end of a list is assumed to be a response without next_starting_after. The documentation does not say.",
-  "A reply's category is read from the email's i_status using the lead interest status values. The documentation does not list the values i_status takes.",
-  "An email's step is documented only as a string; it is mapped to a step index only when it is a whole number.",
+  "A reply's category is read from the email's i_status using the lead interest status values (seen live: 0, 1, -1 and -2). A received email carries the lead's address but no lead id, so a reply's leadRef is null; a sent message has one. Instantly does not mark an email as automatic, so isAuto is null.",
+  "An email's step and a lead's last step are ids of the form sequence_step_variant, each counted from 0 (seen live, not documented); any other form gives a null step. Step analytics count steps from 0 too, and can hold a row with no step for counts Instantly could not tie to one.",
   "Whether reply_count includes automatic replies is not documented; replied uses the unique reply count and repliedAuto the unique automatic count.",
   "Open counts are returned even when a campaign has open tracking turned off, because the analytics response does not say whether tracking was on.",
   "Daily analytics rows do not state their timezone, so timezone is null.",
@@ -128,10 +128,10 @@ export const caveats: readonly string[] = [
   "A campaign's senders are found by reading every mailbox and keeping those named in the campaign's email_list or carrying a tag in its email_tag_list, at two requests per page of mailboxes. A campaign that names tags only is filtered by Instantly.",
   "Sender health is three reads: the account, POST /accounts/test/vitals (a live DNS test, which Instantly may throttle) and POST /accounts/warmup-analytics. The warmup window is not documented. blacklisted and checkedAt are not reported. A DNS record Instantly could not resolve is null, not false.",
   "connected is true for an Active account and false for a Connection Error; every other account status is null.",
-  "A lead's engagement has no stepIndex: Instantly names the last step by an id, not a position. A lead has no tags in Instantly.",
+  "A lead's engagement.stepIndex is the last step sent, read from its status summary; lastOpenedAt is null when open tracking is off. A lead has no tags in Instantly, and the lead object was seen without a job title.",
   "A lead's interest is the documented label for lt_interest_status. A custom label costs one more read (lead-labels, first 100 labels), made only when a page holds a status that is not a built-in one; the same read gives a reply with a custom status its category.",
   "A lead list's size is null: the list object has no count, and the count costs one more read per list. The native read leadListVerificationStats returns total_leads for one list. kind is always leads.",
-  "Native reads return what Instantly sends, unmapped. Three query parameters Instantly takes as a repeated key (ids on campaignAnalytics, action_status and action_type on salesAgentActivities) are sent once, with one value. dfyAccounts never asks for passwords.",
+  "Native reads return what Instantly sends, unmapped. dfyAccounts never asks for passwords. Instantly refuses per-mailbox daily analytics (413) on a large workspace unless a mailbox is named, which the per-sender stats always do.",
   "The daily limits of leadLabelPrediction, localBusinessFilters and localBusinessSearch are counted in this process only; a restart forgets what was used.",
   "A webhook made for a custom lead label has no event_type, so its events are empty; custom_interest_value stays in raw. raw also holds the headers Instantly sends, which can carry a secret.",
   "A truncated message body costs one more read of that email (GET /emails/{id}) when bodies are asked for. That read is assumed to share the 20-per-minute limit of the email list.",

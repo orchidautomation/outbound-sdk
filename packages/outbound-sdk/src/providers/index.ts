@@ -38,7 +38,7 @@ export const providers: readonly ProviderInfo[] = [
       },
     ],
     id: "instantly",
-    maturity: "unverified",
+    maturity: "beta",
     name: "Instantly",
   },
   {

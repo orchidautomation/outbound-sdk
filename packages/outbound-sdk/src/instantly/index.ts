@@ -72,7 +72,7 @@ export const instantly = (
       secrets: [apiKey],
       statusCodes: { 402: "Unsupported" },
     }),
-    maturity: "unverified",
+    maturity: "beta",
     name: PROVIDER,
     native: NATIVE,
     raw: client.raw,

@@ -23,7 +23,7 @@ test("instantly: a lead carries its engagement counts and times", async () => {
     lastRepliedAt: "2026-11-12T11:45:00.000Z",
     opens: 4,
     replies: 1,
-    stepIndex: null,
+    stepIndex: 4,
   });
   assert.equal(lead.interest, "Meeting Booked", "lt_interest_status 2");
   assert.deepEqual(lead.tags, [], "Instantly does not tag leads");

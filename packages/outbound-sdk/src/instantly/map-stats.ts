@@ -83,13 +83,17 @@ export const summedRow = (
 ): MetricRow =>
   row(scope, sumCounts(days.map(dailyCounts)), { evidence: "derived" });
 
-/** `GET /campaigns/analytics/steps`: step is 1-based, variant is 0-based. */
+/**
+ * `GET /campaigns/analytics/steps`. Step and variant are both counted from 0
+ * (seen live: a seven-step campaign reports steps "0" to "6"). A row whose
+ * step is null or `\N` holds counts Instantly could not tie to a step.
+ */
 export const stepRow = (scope: RowScope, raw: JsonObject): MetricRow => {
   const step = count(raw.step);
   const variant = count(raw.variant);
 
   return row(scope, dailyCounts(raw), {
-    stepIndex: step === null || step < 1 ? null : step - 1,
+    stepIndex: step !== null && Number.isInteger(step) ? step : null,
     variantKey: variant === null ? null : variantKey(variant),
   });
 };

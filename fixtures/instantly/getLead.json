@@ -20,7 +20,7 @@
   "status_summary": {
     "lastStep": {
       "from": "campaign",
-      "stepID": "01a1d77f-5158-772f-ad63-67db9bf6ecd0",
+      "stepID": "0_4_0",
       "timestamp_executed": "2026-11-14T00:40:07.768Z"
     },
     "domain_complete": true

@@ -21,7 +21,7 @@
   "lead_id": "01a1d77f-5e65-78a7-8eb0-0216d691e16c",
   "eaccount": "eaccount-123",
   "ue_type": 3,
-  "step": "step-123",
+  "step": "0_2_1",
   "is_unread": 1,
   "is_auto_reply": 0,
   "reminder_ts": "2026-11-14T00:40:11.109Z",

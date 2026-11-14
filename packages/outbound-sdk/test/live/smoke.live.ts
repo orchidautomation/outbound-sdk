@@ -19,6 +19,10 @@ const enabled = process.env.LIVE_TESTS === "1";
 
 const TOLERATED = new Set(["Invalid", "Unauthorized"]);
 
+// Reads that answer 404 when the workspace has nothing to return. A 404 from
+// any other read means the path is wrong.
+const EMPTY_WHEN_UNUSED = new Set(["instantly:whitelabelDomain"]);
+
 const providers: readonly {
   env: string;
   make: () => Adapter<NativeCatalog>;
@@ -207,6 +211,15 @@ for (const provider of providers) {
         } catch (error) {
           // A plan that lacks a feature answers Unauthorized, and a read that
           // needs one of several inputs answers Invalid. Neither is a wrong path.
+          const unused =
+            OutboundError.is(error) &&
+            error.code === "NotFound" &&
+            EMPTY_WHEN_UNUSED.has(`${provider.name}:${name}`);
+
+          if (unused) {
+            continue;
+          }
+
           if (!OutboundError.is(error) || !TOLERATED.has(error.code)) {
             failures.push(`${name}: ${String(error)}`);
           }

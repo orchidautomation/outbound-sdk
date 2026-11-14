@@ -100,8 +100,29 @@ const LEAD_STATUS = new Map<number, LeadStatus>([
   [3, "completed"],
 ]);
 
-// The last step is named by an id (`last_step_id`), not a position, so
-// there is no step index to report.
+/**
+ * A step as Instantly names it on an email and on a lead's last step:
+ * `<sequence>_<step>_<variant>`, each counted from 0 (seen live, `0_6_0` for
+ * the seventh step's first variant). Any other form is not guessed.
+ */
+const STEP_ID = /^\d+_(?<step>\d+)_(?<variant>\d+)$/u;
+
+interface StepPosition {
+  readonly stepIndex: number | null;
+  readonly variantKey: string | null;
+}
+
+const stepPosition = (value: Json | undefined): StepPosition => {
+  const groups = STEP_ID.exec(text(value) ?? "")?.groups;
+
+  return groups === undefined
+    ? { stepIndex: null, variantKey: null }
+    : {
+        stepIndex: Number(groups.step),
+        variantKey: String.fromCodePoint(65 + Number(groups.variant)),
+      };
+};
+
 const engagement = (raw: JsonObject): LeadEngagement | null => {
   const read = {
     clicks: count(raw.email_click_count),
@@ -114,7 +135,13 @@ const engagement = (raw: JsonObject): LeadEngagement | null => {
 
   return Object.values(read).every((value) => value === null)
     ? null
-    : { ...read, stepIndex: null };
+    : {
+        ...read,
+        // The last step sent, from the lead's status summary.
+        stepIndex: stepPosition(
+          field(field(raw.status_summary, "lastStep"), "stepID")
+        ).stepIndex,
+      };
 };
 
 export const toLead = (
@@ -143,14 +170,6 @@ export const toLead = (
 export const SCHEDULED = 4;
 const RECEIVED = 2;
 
-const stepIndex = (value: Json | undefined): number | null => {
-  const step = text(value);
-
-  return step !== null && /^\d+$/u.test(step) && Number(step) >= 1
-    ? Number(step) - 1
-    : null;
-};
-
 const messageFields = (
   identity: Identity,
   raw: JsonObject,
@@ -166,10 +185,9 @@ const messageFields = (
     leadRef: refTo(identity, text(raw.lead_id)),
     senderRef: refTo(identity, emailAddress(raw.eaccount)),
     sentAt: timestamp(raw.timestamp_email) ?? timestamp(raw.timestamp_created),
-    stepIndex: stepIndex(raw.step),
     subject: text(raw.subject),
     threadId: text(raw.thread_id),
-    variantKey: null,
+    ...stepPosition(raw.step),
   };
 };
 

@@ -2,8 +2,8 @@
 
 Three adapters ship today. Each was written from the vendor's public API documentation read on 2026-11-14 and tested offline against documented payloads. Each has two layers: normalized reads that mean the same thing on every vendor, and a typed catalog of the vendor's own reads for everything else.
 
-- **HeyReach is `beta`:** its reads were run once, read-only, against one live workspace on 2026-11-14, which fixed two things the documentation got wrong or left out.
-- **Instantly and Smartlead are `unverified`:** neither has been run against a live account.
+- **HeyReach and Instantly are `beta`:** their reads were run, read-only, against one live workspace each on 2026-11-14. Both runs fixed things the documentation got wrong or left out: HeyReach's sequence layout, and Instantly's step numbering (steps count from 0 and an email names its step as `0_6_0`).
+- **Smartlead is `unverified`:** it has not been run against a live account.
 
 `outbound.caveats` lists what each adapter assumes, and `npm run test:live` (see below) is how an adapter is confirmed.
 

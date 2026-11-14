@@ -56,7 +56,16 @@ test("instantly: daily and step analytics keep their own counts", async () => {
     outbound.campaign(CAMPAIGN).stats({ scope: "step" })
   );
 
-  assert.equal(steps.rows[0]?.stepIndex, 0, 'step "1" is the first step');
+  assert.equal(steps.rows[0]?.stepIndex, 0, 'step "0" is the first step');
+  assert.deepEqual(
+    steps.rows.map((row) => [row.stepIndex, row.variantKey, row.sent]),
+    [
+      [0, "A", 5421],
+      [3, "B", 5422],
+      [null, null, 7],
+    ],
+    "steps and variants count from 0; a row with no step keeps its counts"
+  );
   assert.equal(
     steps.rows[0]?.variantKey,
     "A",

@@ -269,11 +269,14 @@ test("instantly: a message maps direction, sender, lead and thread", async () =>
   const [, second] = page.items;
   assert.equal(second?.bodyHtml, "This is a test email.<br/><br/>Second line.");
   assert.equal(second?.bodyText, "This is a test email.\n\nSecond line.");
+  assert.equal(message?.stepIndex, 2, "0_2_1 is the third step");
+  assert.equal(message?.variantKey, "B", "0_2_1 is the second variant");
   assert.equal(
-    message?.stepIndex,
+    second?.stepIndex,
     null,
-    "a step that is not a whole number is not guessed"
+    "a step in any other form is not guessed"
   );
+  assert.equal(second?.variantKey, null);
 });
 
 test("instantly: a lead's timeline looks up the lead's address once and carries it in the cursor", async () => {
@@ -522,7 +525,7 @@ test("instantly: a response that is not an object is a Provider error, not a cra
 
 test("instantly: an adapter lists what it has not confirmed against the live API", () => {
   const { outbound } = harness(suite);
-  assert.equal(outbound.maturity, "unverified");
+  assert.equal(outbound.maturity, "beta");
   assert.ok(outbound.caveats.length > 0);
-  assert.match(outbound.caveats[0] ?? "", /live Instantly workspace/u);
+  assert.match(outbound.caveats[0] ?? "", /one live workspace/u);
 });
