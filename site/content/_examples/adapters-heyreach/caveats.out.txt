@@ -1,5 +1,7 @@
 - Checked read-only against one live HeyReach workspace on 2026-11-14: campaigns, sequences, senders, a campaign's senders, sender health, a campaign's leads, lead lists, a list's leads, lead lookup, the blacklist, the webhook list, stats, messages, replies, one conversation by thread id and a lead's timeline all returned valid records. Other workspaces, plans and campaign layouts have not been seen. That workspace had no webhooks, no blacklisted leads and no company lists, so those three shapes come from the documentation alone. Webhook payloads were not checked. The fixtures are built by hand from documented and observed field names, not captured responses.
 
+- Added from the API reference after that live check and not run against a live workspace: leads.list without a campaign (the walk over campaigns), a sender's campaigns (accountIds on the campaign list), stats for every campaign as normalized rows, the unread filter (seen), a reply's category from its lead's auto-tag, lists.get and webhooks.get.
+
 - The 300 requests per minute limit is documented without a scope (key, workspace or organization) and without rate-limit headers, and the workspace's n8n, Make, Zapier and MCP keys may draw on the same budget.
 
 - Lists return totalCount and no next marker, so the end of a list is computed as offset plus page length reaching totalCount.

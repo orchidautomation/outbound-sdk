@@ -43,6 +43,7 @@ See [rate limits](/docs/rate-limits).
 
 ## Not verified
 
+- **The reads added after the live runs.** These follow the vendors' documentation and have not been run against a live account on any adapter: `leads.list` on HeyReach (it walks the campaigns), a reply's category and the `unread` filter on HeyReach, `stats.allCampaigns`, `campaigns.bySender`, `replies.unread`, `lists.get`, `webhooks.get`, and the fields `phone`, `website`, `location`, `companyLinkedinUrl`, `interestCategory`, `mailProvider`, `clickedTotal` and a sender's `tags`. Their fixtures for the per-campaign stats are built from response schemas, because the references give no example.
 - **Second pages on Instantly.** The live workspace was small, so for most Instantly listings only a first page was read live. Paging is tested against documented payloads.
 - **Where the live numbers come from.** The live runs were made by hand on 2026-11-14 and are not reproduced by any automated job. Treat them as one observation.
 
