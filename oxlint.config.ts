@@ -2,7 +2,7 @@ import { defineConfig } from "oxlint";
 import antiSlop from "ultracite/oxlint/anti-slop";
 import core from "ultracite/oxlint/core";
 
-// Limits come from the Linear document "Tech stack and engineering standards".
+// The limits are documented in docs/engineering-guardrails.md.
 // A rule is suppressed only inline, with a reason:
 //   // oxlint-disable-next-line <rule> -- <why>
 export default defineConfig({
