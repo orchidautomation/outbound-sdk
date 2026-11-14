@@ -6,7 +6,7 @@ import {
   replyCategorySchema,
 } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
-import { parseJson, toJson } from "../internal/json.ts";
+import { isJsonObject, parseJson, toJson } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
 import { providers } from "../providers/index.ts";
@@ -159,6 +159,24 @@ const COMMAND_TABLE = {
   limits: {
     help: "limits",
     run: async (outbound) => asJson(await outbound.limits()),
+  },
+  native: {
+    help: "native [name] [--input JSON]   the vendor's own reads; no name lists them",
+    run: async (outbound, input) => {
+      const [name] = input.positionals;
+
+      if (name === undefined) {
+        return asJson(outbound.native.catalog);
+      }
+
+      const params = parseInput(text(input, "input"));
+
+      if (!isJsonObject(params)) {
+        throw new OutboundError("Invalid", "--input must be a JSON object");
+      }
+
+      return asJson(await outbound.native.read(name, params));
+    },
   },
   replies: {
     help: "replies [--campaign ID] [--category positive|negative|neutral|ooo|...] [--since ISO] [--limit N] [--bodies]",

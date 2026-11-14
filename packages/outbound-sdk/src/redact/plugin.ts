@@ -208,10 +208,11 @@ export const redact = (options: RedactOptions = {}): OutboundPlugin => {
   return {
     // Asking for bodies while they are being removed is a contradiction, so
     // the capability is turned off and the request is refused up front.
+    // A native read returns the vendor's payload untouched, so it is turned off.
     capabilities: (capabilities) =>
       fields.has("body")
-        ? { ...capabilities, "messages.body": false }
-        : capabilities,
+        ? { ...capabilities, "messages.body": false, native: false }
+        : { ...capabilities, native: false },
     event: (event): OutboundEvent => ({
       ...event,
       data: redactEventData(masks, event.data),

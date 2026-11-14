@@ -62,6 +62,8 @@ export interface Capabilities {
   tags: boolean;
   /** The webhooks registered with the vendor. */
   "webhooks.list": boolean;
+  /** The vendor's own reads are available by name through `outbound.native`. */
+  native: boolean;
   /** Webhook payloads can be parsed into `OutboundEvent`s. */
   "events.parse": boolean;
   /** How a webhook is authenticated. */
@@ -95,6 +97,7 @@ export const NO_CAPABILITIES: Capabilities = {
   "messages.byThread": false,
   "messages.list": false,
   "messages.since": false,
+  native: false,
   "replies.category": false,
   "replies.list": false,
   "replies.since": false,

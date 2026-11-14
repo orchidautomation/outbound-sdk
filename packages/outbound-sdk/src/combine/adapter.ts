@@ -272,6 +272,8 @@ export const combine = (members: readonly Adapter[]): Adapter => {
       ...intersectCapabilities(first ?? resolveCapabilities(), ...rest),
       // A thread id is the vendor's own and names no member, so it cannot be routed.
       "messages.byThread": false,
+      // A native read belongs to one vendor; reach it through workspace(id).
+      native: false,
       // A combined instance always knows its workspaces: they are its members.
       workspaces: true,
     },

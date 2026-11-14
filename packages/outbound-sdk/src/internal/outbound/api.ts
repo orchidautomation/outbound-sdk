@@ -28,6 +28,12 @@ import type {
 } from "../entities.ts";
 import type { OutboundError } from "../errors.ts";
 import type { Json } from "../json.ts";
+import type {
+  NativeCatalog,
+  NativeParamsOf,
+  NeedsParams,
+  NoNative,
+} from "../native.ts";
 
 export interface ResultMeta {
   /** `exact` from the vendor, `sampled` when partial, `derived` when we computed or filtered it. */
@@ -268,6 +274,45 @@ export interface RawClient {
   ) => Promise<Json>;
 }
 
+export type NativeParams = Readonly<Record<string, Json | undefined>>;
+
+export interface NativeResult {
+  /** The vendor's response, as it was sent. Not normalized and not redacted. */
+  readonly data: Json;
+  readonly meta: ResultMeta;
+}
+
+type NativeArguments<Read> =
+  NeedsParams<Read> extends true
+    ? [params: NativeParamsOf<Read>, options?: OperationOptions]
+    : [params?: NativeParamsOf<Read>, options?: OperationOptions];
+
+/** One function per catalogued read, typed from the adapter's catalog. */
+export type NativeReads<Native> = {
+  readonly [Name in keyof Native]: (
+    ...args: NativeArguments<Native[Name]>
+  ) => Promise<NativeResult>;
+};
+
+/**
+ * The vendor's own reads that have no normalized form. Every one is a read:
+ * the catalog holds nothing that changes vendor data. Each call is one vendor
+ * request; pass the vendor's own paging parameters to page.
+ */
+export interface NativeClient<Native extends NativeCatalog = NoNative> {
+  readonly provider: string;
+  /** What this vendor offers beyond the normalized reads, with each read's parameters. */
+  readonly catalog: Native;
+  /** The reads as typed functions: `outbound.native.reads.inboxUnread({ limit: 20 })`. */
+  readonly reads: NativeReads<Native>;
+  /** A read by name, for callers that learn the name at run time. */
+  readonly read: (
+    name: string,
+    params?: NativeParams,
+    options?: OperationOptions
+  ) => Promise<NativeResult>;
+}
+
 export interface EstimateQuery {
   /** The listing or lookup to estimate, for example `leads.list`. */
   readonly action: string;
@@ -305,6 +350,8 @@ export interface OutboundApi {
   /** The webhooks registered with the vendor. */
   readonly webhooks: ReadCollection<WebhookSubscription, WebhookFilters>;
   readonly raw: RawClient;
+  /** The vendor's own reads, by name, for what has no normalized form. */
+  readonly native: NativeClient;
   readonly campaign: (id: string) => CampaignHandle;
   readonly sender: (id: string) => SenderHandle;
   readonly lead: (id: string) => LeadHandle;

@@ -7,6 +7,7 @@ import {
   audienceLists,
   campaignSetup,
   deliverabilityCheck,
+  vendorRead,
 } from "./account-tools.ts";
 import {
   campaignOverview,
@@ -91,6 +92,7 @@ export const TOOL_NAMES = [
   "campaign_setup",
   "deliverability_check",
   "audience_lists",
+  "vendor_read",
 ] as const;
 
 export type ToolName = (typeof TOOL_NAMES)[number];
@@ -120,6 +122,7 @@ export const createTools = (
     bind(outbound, campaignSetup),
     bind(outbound, deliverabilityCheck),
     bind(outbound, audienceLists),
+    bind(outbound, vendorRead),
   ];
 
   const wanted =
@@ -129,6 +132,12 @@ export const createTools = (
   const available = new Map([
     ["clients", "clients" in outbound],
     ["identity", "person" in outbound],
+    // Offered only when the vendor has reads of its own and no plugin turned them off.
+    [
+      "native",
+      outbound.capabilities.native &&
+        Object.keys(outbound.native.catalog).length > 0,
+    ],
   ]);
 
   return all.filter(

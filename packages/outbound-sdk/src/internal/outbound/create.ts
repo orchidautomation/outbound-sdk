@@ -1,4 +1,5 @@
 import { OutboundError } from "../errors.ts";
+import type { NativeCatalog, NoNative } from "../native.ts";
 import { Outbound } from "./outbound.ts";
 import type { OutboundOptions } from "./outbound.ts";
 import type { OutboundPlugin } from "./plugins.ts";
@@ -48,15 +49,18 @@ const install = (outbound: Outbound, plugin: OutboundPlugin): void => {
  */
 export const createOutbound = <
   const Plugins extends readonly OutboundPlugin[] = [],
+  Native extends NativeCatalog = NoNative,
 >(
-  options: OutboundOptions & { readonly plugins?: Plugins | undefined }
-): Outbound & ExtensionsOf<Plugins> => {
-  const outbound = new Outbound(options);
+  options: OutboundOptions<Native> & {
+    readonly plugins?: Plugins | undefined;
+  }
+): Outbound<Native> & ExtensionsOf<Plugins> => {
+  const outbound = new Outbound<Native>(options);
 
   for (const plugin of options.plugins ?? []) {
     install(outbound, plugin);
   }
 
   // SAFETY: install() just defined every property the plugins' extensions declare.
-  return outbound as Outbound & ExtensionsOf<Plugins>;
+  return outbound as Outbound<Native> & ExtensionsOf<Plugins>;
 };

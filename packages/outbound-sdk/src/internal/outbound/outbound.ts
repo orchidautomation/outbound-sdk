@@ -25,6 +25,7 @@ import type {
 import { OutboundError } from "../errors.ts";
 import { mergeHooks } from "../hooks.ts";
 import type { OutboundHooks } from "../hooks.ts";
+import type { NativeCatalog, NoNative } from "../native.ts";
 import type {
   CampaignFilters,
   CampaignHandle,
@@ -35,6 +36,7 @@ import type {
   LeadHandle,
   ListHandle,
   MessageFilters,
+  NativeClient,
   OutboundApi,
   RawClient,
   ReadCollection,
@@ -55,6 +57,7 @@ import {
   makeSenderHandle,
   makeThreadHandle,
 } from "./handles.ts";
+import { makeNativeClient } from "./native.ts";
 import { dispatch } from "./operations.ts";
 import {
   assertUniquePluginNames,
@@ -82,8 +85,10 @@ import {
 } from "./specs.ts";
 import { readStats } from "./stats.ts";
 
-export interface OutboundOptions extends OperationOptions {
-  readonly adapter: Adapter;
+export interface OutboundOptions<
+  Native extends NativeCatalog = NoNative,
+> extends OperationOptions {
+  readonly adapter: Adapter<Native>;
   /** `plugins[0]` is the outermost layer. */
   readonly plugins?: readonly OutboundPlugin[] | undefined;
   readonly hooks?: OutboundHooks | undefined;
@@ -120,7 +125,9 @@ const engineFor = (options: OutboundOptions): RequestEngine =>
     store: options.rateLimitStore,
   });
 
-export class Outbound implements OutboundApi {
+export class Outbound<
+  Native extends NativeCatalog = NoNative,
+> implements OutboundApi {
   readonly #core: Core;
   readonly #options: OutboundOptions;
   readonly #plugins: readonly OutboundPlugin[];
@@ -135,9 +142,10 @@ export class Outbound implements OutboundApi {
   readonly tags: ReadCollection<Tag, Record<never, never>>;
   readonly webhooks: ReadCollection<WebhookSubscription, WebhookFilters>;
   readonly raw: RawClient;
+  readonly native: NativeClient<Native>;
 
   constructor(
-    options: OutboundOptions,
+    options: OutboundOptions<Native>,
     engine: RequestEngine = engineFor(options)
   ) {
     const { adapter } = options;
@@ -189,6 +197,7 @@ export class Outbound implements OutboundApi {
     this.tags = makeReadCollection(this.#core, tagList(this.#core));
     this.webhooks = makeReadCollection(this.#core, webhookList(this.#core));
     this.raw = makeRawClient(this.#core);
+    this.native = makeNativeClient<Native>(this.#core);
   }
 
   get provider(): string {

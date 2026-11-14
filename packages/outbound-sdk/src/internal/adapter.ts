@@ -28,6 +28,7 @@ import type {
 import type { ErrorMapper } from "./errors.ts";
 import type { Json } from "./json.ts";
 import type { LimitDeclaration } from "./limits.ts";
+import type { NativeCatalog, NoNative } from "./native.ts";
 
 export type HttpMethod = "DELETE" | "GET" | "PATCH" | "POST" | "PUT";
 
@@ -169,7 +170,7 @@ export interface OperationCost {
   readonly perRecord?: number | undefined;
 }
 
-export interface Adapter {
+export interface Adapter<Native extends NativeCatalog = NoNative> {
   readonly name: string;
   /** A label for this credential's client or workspace. Part of every ref. */
   readonly workspaceId: string;
@@ -187,6 +188,11 @@ export interface Adapter {
   readonly caveats?: readonly string[] | undefined;
   /** Request costs by operation kind, for `outbound.estimate()`. */
   readonly costs?: Readonly<Record<string, OperationCost>> | undefined;
+  /**
+   * The vendor's reads that have no normalized form, by name. With the
+   * normalized reads they cover everything the vendor's API can report.
+   */
+  readonly native?: Native | undefined;
   /** Set by `combine()`: the adapters behind this one. */
   readonly members?: readonly Adapter[] | undefined;
 

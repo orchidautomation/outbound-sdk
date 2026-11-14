@@ -25,6 +25,10 @@ export type {
   ListAllOptions,
   ListOptions,
   MessageFilters,
+  NativeClient,
+  NativeParams,
+  NativeReads,
+  NativeResult,
   OutboundApi,
   PageResult,
   RawClient,
@@ -128,6 +132,16 @@ export type {
   Tag,
   WebhookSubscription,
 } from "./internal/entities-account.ts";
+
+export { defineNative } from "./internal/native.ts";
+
+export type {
+  NativeCatalog,
+  NativeParam,
+  NativeParamsOf,
+  NativeRead,
+  NoNative,
+} from "./internal/native.ts";
 
 export {
   CAPABILITY_KEYS,
