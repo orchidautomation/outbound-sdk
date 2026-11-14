@@ -38,7 +38,7 @@ export const layers = {
   identity: ["combine", "internal"],
   insights: ["internal", "tools"],
   internal: [],
-  loader: [...adapters, "internal", "providers"],
+  loader: [...adapters, "combine", "internal", "providers"],
   providers: [],
   reconcile: ["internal", "sync"],
   redact: ["internal"],

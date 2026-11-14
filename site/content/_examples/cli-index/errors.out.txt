@@ -31,12 +31,12 @@ Invalid: Unknown command "send". Run "outbound help"
 (exit code 1)
 
 $ outbound campaigns --provider mailchimp
-Invalid: Unknown provider "mailchimp". Known providers: heyreach, instantly, memory, smartlead
+Invalid: Unknown provider "mailchimp". Known providers: heyreach, instantly, memory, smartlead, or all
 (exit code 1)
 
 $ unset OUTBOUND_SDK_PROVIDER
 $ outbound campaigns
-Invalid: Set OUTBOUND_SDK_PROVIDER to one of: instantly, smartlead, heyreach, memory
+Invalid: Set OUTBOUND_SDK_PROVIDER to one of: instantly, smartlead, heyreach, memory, or all for every provider whose key is set
 (exit code 1)
 
 $ outbound providers --compact
