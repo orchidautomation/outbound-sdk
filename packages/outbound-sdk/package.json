@@ -97,6 +97,34 @@
     "./cli": {
       "types": "./dist/cli/index.d.ts",
       "import": "./dist/cli/index.js"
+    },
+    "./sync": {
+      "types": "./dist/sync/index.d.ts",
+      "import": "./dist/sync/index.js"
+    },
+    "./reconcile": {
+      "types": "./dist/reconcile/index.d.ts",
+      "import": "./dist/reconcile/index.js"
+    },
+    "./alerts": {
+      "types": "./dist/alerts/index.d.ts",
+      "import": "./dist/alerts/index.js"
+    },
+    "./benchmarks": {
+      "types": "./dist/benchmarks/index.d.ts",
+      "import": "./dist/benchmarks/index.js"
+    },
+    "./fixtures": {
+      "types": "./dist/fixtures/index.d.ts",
+      "import": "./dist/fixtures/index.js"
+    },
+    "./exporter": {
+      "types": "./dist/exporter/index.d.ts",
+      "import": "./dist/exporter/index.js"
+    },
+    "./failover": {
+      "types": "./dist/failover/index.d.ts",
+      "import": "./dist/failover/index.js"
     }
   },
   "publishConfig": {

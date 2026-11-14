@@ -46,6 +46,23 @@ const outbound = createOutbound({
 | `audit({ sink })` | Records each operation with its duration, request count and throttle time, and optionally each HTTP request with its redacted URL. Entries hold no record data. |
 | `tracing({ tracer })` | Emits an OpenTelemetry span per operation and per HTTP request. Pass a tracer from `@opentelemetry/api`. |
 
+## Group 3: keeping a copy in step
+
+| Plugin | What it does |
+| --- | --- |
+| `sync({ checkpoints })` | Adds `outbound.sync.run(collection, { onPage })`. It keeps a checkpoint per collection in a store you supply: a cursor, so a run that dies restarts on the page it was reading, and the start time of the last finished run, so the next one asks only for newer records, reaching back `overlapMinutes` (default 5). The checkpoint moves only after `onPage` resolves, so a failed page is delivered again. |
+| `reconcile()` | Adds `outbound.reconcile.events()`, which compares the webhooks you received with what the vendor lists and reports webhooks that never arrived, events with no record and late delivery, and `outbound.reconcile.deletions()`, which compares a full listing with the refs you hold. A mismatch is reported, never repaired silently. |
+| `alerts({ rules, notify })` | Checks fixed rules after each read and calls `notify` with what fired. Built in: `bounceRateAbove`, `replyRateBelow`, `senderNotActive` and `noSends`. A rule is arithmetic on what was just read; no model is involved. A failing notifier cannot fail the read. |
+
+## Group 4: context, files and bad days
+
+| Plugin | What it does |
+| --- | --- |
+| `benchmarks()` | Adds `outbound.benchmarks.campaign(id)`: a campaign's rates beside its own workspace's over the same dates. No outside benchmark is used. |
+| `fixtures({ dir, mode })` | Records answers to disk and replays them, with personal data replaced by numbered placeholders. `replay` never calls the vendor. List it last when recording. |
+| `exporter()` | Adds `outbound.export(listing, { to })`, which streams records to a `.csv` or `.jsonl` file as they arrive. For Parquet, DuckDB or anything else, pass a `RowWriter`; the package adds no dependency for those formats. |
+| `failover({ store })` | Keeps each successful read in a store you supply and serves it, with `meta.stale: true` and its original `meta.fetchedAt`, when the vendor is down or rate limited. A bad request, a missing record or a rejected key is never papered over. |
+
 ## Writing a plugin
 
 A plugin is an object with a `name` and any of:
