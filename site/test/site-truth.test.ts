@@ -27,7 +27,11 @@ const walk = (dir: string): string[] =>
   );
 
 const pages = walk(CONTENT).filter((file) => /\.mdx?$/u.test(file));
-const unpublished = manifest.version === "0.0.0";
+
+// Whether `npm install outbound-sdk` works. A GitHub Release with the tarball
+// is not npm, so this is set by hand in the pull request that first publishes
+// to npm, together with the same constant in skills/test/skills.test.ts.
+const unpublished = true;
 
 test("the status page and the status notice give each adapter its maturity", () => {
   const status = read("site/content/docs/status.mdx");

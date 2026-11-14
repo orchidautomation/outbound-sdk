@@ -95,4 +95,4 @@ RECORD_LIVE=1 npm run site:live          # also rewrites the two live-run.json t
 
 ## When the package is published
 
-`site/test/site-truth.test.ts` stops enforcing "no install command" once the package version is no longer `0.0.0`. At that point remove the banner in `site/blume.config.ts`, rewrite `site/content/_snippets/status.mdx` and `site/content/docs/installation.mdx`, and update `site/content/docs/status.mdx`. A new public subpath needs a page before the same test passes.
+`site/test/site-truth.test.ts` and `skills/test/skills.test.ts` enforce "no install command" while their `unpublished` constant is `true`. A GitHub Release is not npm: set both to `false` in the pull request that first publishes to npm, and in it remove the banner in `site/blume.config.ts`, rewrite `site/content/_snippets/status.mdx` and `site/content/docs/installation.mdx`, and update `site/content/docs/status.mdx`. A new public subpath needs a page before the same test passes.
