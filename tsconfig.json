@@ -32,7 +32,8 @@
     "oxlint.config.ts",
     "oxfmt.config.ts",
     "site/content/_examples",
-    "site/test"
+    "site/test",
+    "skills"
   ],
   "exclude": ["**/node_modules", "**/dist"]
 }

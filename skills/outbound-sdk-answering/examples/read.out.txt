@@ -1,0 +1,59 @@
+{
+  "data": {
+    "campaigns": [
+      {
+        "campaign": "memory:acme:cmp_founders",
+        "channel": "email",
+        "name": "SaaS founders",
+        "metrics": {
+          "bounce_rate": 0.02,
+          "bounced": 7,
+          "connections_accepted": null,
+          "connections_sent": null,
+          "contacted": 140,
+          "opened": null,
+          "positive": 7,
+          "positive_reply_rate": 0.05,
+          "replied": 14,
+          "reply_rate": 0.1,
+          "reply_rate_basis": "contacted",
+          "sent": 350
+        },
+        "status": "active"
+      },
+      {
+        "campaign": "memory:acme:cmp_agencies",
+        "channel": "email",
+        "name": "Agency owners",
+        "metrics": {
+          "bounce_rate": null,
+          "bounced": null,
+          "connections_accepted": null,
+          "connections_sent": null,
+          "contacted": 70,
+          "opened": null,
+          "positive": null,
+          "positive_reply_rate": null,
+          "replied": 7,
+          "reply_rate": 0.1,
+          "reply_rate_basis": "contacted",
+          "sent": 210
+        },
+        "status": "active"
+      }
+    ]
+  },
+  "meta": {
+    "evidence": "exact",
+    "provider": "memory",
+    "requests": 1,
+    "today": "2026-11-14"
+  },
+  "next": "Use campaign_trend for one campaign over time, or winning_steps to see which step drives replies.",
+  "ok": true
+}
+Campaign overview: SaaS founders leads at 10.0% reply rate.
+Campaign | Sent | Replies | Reply rate | Positive | Bounce
+SaaS founders | 350 | 14 | 10.0% | 7 | 2.0%
+Agency owners | 210 | 7 | 10.0% | — | —
+complete: false [ 'A listing was cut off at its cap; more records exist.' ]

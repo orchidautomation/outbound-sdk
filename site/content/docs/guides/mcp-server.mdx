@@ -179,6 +179,5 @@ The CLI server sets no `maxRequests`. To cap what one tool call may spend, build
 - Standard input and output only. There is no HTTP transport and nothing to host.
 - The server implements `initialize`, `ping`, `tools/list` and `tools/call`, for protocol versions `2025-06-18`, `2025-03-26` and `2024-11-05`. It has no resources, prompts or notifications of its own.
 - `outbound mcp` takes no plugins and no options beyond the environment and `--provider`. Anything else needs your own server.
-- A built-in tool is listed even when the adapter cannot serve it. Insight tools are filtered by what the adapter declares; built-in tools are filtered only by which plugins are on the instance.
-- The `next` hint of `reply_samples` names `cross_channel_lead`, which is not in the list unless the `identity` plugin is on the instance.
+- A tool is listed only when the adapter declares what it needs and the plugins on the instance allow it. A tool in the list can still refuse an input that needs more, with `Unsupported`.
 - No MCP client was run against the server for this page. The exchange above was recorded by calling the server's handler directly.

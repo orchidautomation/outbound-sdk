@@ -24,6 +24,7 @@ One small, typed, read-only TypeScript API over outbound sending tools. MIT, ope
 | `docs/` | For contributors: architecture, guardrails, adding an adapter, per-vendor research |
 | `site/` | The public documentation site (Blume), deployed to outbound-sdk.dev. `docs/site.md` says how to change and publish it |
 | `site/content/_examples/` | Every code sample the site shows. `npm test` runs each one |
+| `skills/` | Agent skills for SDK users. `npm test` runs their samples and commands; `skills/README.md` says how |
 
 The design authority is the Outbound SDK spec and the Linear document "Tech stack and engineering standards", both linked from the Linear project `Outbound SDK` (team `OUT`).
 

@@ -13,7 +13,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "architecture": "node scripts/check-architecture.mjs",
     "shape": "node scripts/check-repo-shape.mjs",
-    "test": "node --test \"scripts/*.test.mjs\" \"packages/*/test/**/*.test.ts\" \"site/test/*.test.ts\"",
+    "test": "node --test \"scripts/*.test.mjs\" \"packages/*/test/**/*.test.ts\" \"site/test/*.test.ts\" \"skills/test/*.test.ts\"",
     "build": "node scripts/build.mjs && node scripts/smoke-dist.mjs && node scripts/check-size.mjs",
     "check:static": "npm run typecheck && npm run architecture && npm run shape && npm run fixtures && git diff --check",
     "check:fast": "npm run lint && npm run check:static",
