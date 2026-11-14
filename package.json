@@ -27,7 +27,11 @@
   },
   "devDependencies": {
     "@changesets/cli": "3.0.3",
+    "@chat-adapter/slack": "4.45.0",
+    "@json-render/chat": "0.22.0",
+    "@json-render/core": "0.22.0",
     "@types/node": "26.6.6",
+    "chat": "4.45.0",
     "dependency-cruiser": "18.7.2",
     "esbuild": "0.28.2",
     "oxfmt": "0.78.0",

@@ -114,6 +114,10 @@
       "types": "./dist/reconcile/index.d.ts",
       "import": "./dist/reconcile/index.js"
     },
+    "./cards": {
+      "types": "./dist/cards/index.d.ts",
+      "import": "./dist/cards/index.js"
+    },
     "./alerts": {
       "types": "./dist/alerts/index.d.ts",
       "import": "./dist/alerts/index.js"

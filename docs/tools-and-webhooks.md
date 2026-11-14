@@ -56,7 +56,7 @@ A prospect's reply can contain instructions. Reply and message text is left out 
 
 The server implements `initialize`, `ping`, `tools/list` and `tools/call` directly on JSON-RPC, so the package gains no dependency.
 
-The CLI prints JSON: `outbound providers`, `capabilities`, `campaigns`, `campaign <id>` (with `--stats`, `--sequence`, `--subsequences` or `--settings`), `senders`, `health <sender id>`, `leads` (with `--campaign` or `--list`), `lists`, `replies`, `thread <id>`, `tags`, `blocklist`, `webhooks`, `stats`, `limits`, `tools` and `tool <name> --input '{}'`. `outbound native` lists the vendor's own reads and `outbound native <name> --input '{}'` runs one. `OUTBOUND_SDK_PROVIDER` or `--provider` picks the adapter.
+The CLI prints JSON: `outbound providers`, `capabilities`, `campaigns`, `campaign <id>` (with `--stats`, `--sequence`, `--subsequences` or `--settings`), `senders`, `health <sender id>`, `leads` (with `--campaign` or `--list`), `lists`, `replies`, `thread <id>`, `tags`, `blocklist`, `webhooks`, `stats`, `limits`, `tools` and `tool <name> --input '{}'`. `outbound tool` and `outbound insight` take `--card` to print the answer as a [card](cards.md) and `--slack` to print it as a Slack message. `outbound native` lists the vendor's own reads and `outbound native <name> --input '{}'` runs one. `OUTBOUND_SDK_PROVIDER` or `--provider` picks the adapter.
 
 ## Webhooks
 

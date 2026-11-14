@@ -434,3 +434,40 @@ test("the executable exits 1 and writes the reason to stderr for a wrong command
   assert.equal(result.stdout, "");
   assert.match(result.stderr, /Invalid: Unknown command "nope"/u);
 });
+
+test("--card prints a tool's card and --slack a Slack message ready to post", async () => {
+  const card = (await cli("tool", "sender_health", "--card")).json() as {
+    root: string;
+    elements: Record<string, { type: string; props: { title?: string } }>;
+  };
+
+  assert.equal(card.elements[card.root]?.type, "Card");
+  assert.equal(card.elements[card.root]?.props.title, "Sender health");
+
+  const slack = (await cli("tool", "sender_health", "--slack")).json() as {
+    text: string;
+    blocks: { type: string }[];
+  };
+
+  assert.equal(
+    slack.text,
+    "Sender health: 🟢 No sender needs attention (2 checked)."
+  );
+  assert.equal(slack.blocks[0]?.type, "header");
+});
+
+test("--slack draws an insight too, and an unknown insight is still an error", async () => {
+  const slack = (await cli("insight", "hot_leads", "--slack")).json() as {
+    text: string;
+    blocks: { type: string }[];
+  };
+
+  assert.equal(slack.text, "Hot leads: 1 lead to call first.");
+  assert.ok(slack.blocks.some((block) => block.type === "data_table"));
+
+  const plain = (await cli("insight", "hot_leads")).json() as { data: object };
+  assert.ok("data" in plain, "without a flag the answer is unchanged");
+
+  const unknown = await cli("insight", "no_such_insight", "--slack");
+  assert.equal(unknown.code, 1);
+});

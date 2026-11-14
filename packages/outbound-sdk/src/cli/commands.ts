@@ -11,6 +11,7 @@ import type { Json } from "../internal/json.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
 import { providers } from "../providers/index.ts";
 import { createTools } from "../tools/index.ts";
+import type { ToolResult } from "../tools/index.ts";
 
 export interface CommandInput {
   readonly positionals: readonly string[];
@@ -66,6 +67,29 @@ const asJson = toJson;
 const listing = async <Item>(walk: {
   readonly toArray: () => Promise<Item[]>;
 }): Promise<Json> => asJson(await walk.toArray());
+
+const wantsCard = (input: CommandInput): boolean =>
+  input.flags.slack === true || input.flags.card === true;
+
+/**
+ * A tool result as it should be printed: itself, or with `--card` its card,
+ * or with `--slack` that card as a Slack message, ready to post.
+ */
+const drawn = async (
+  name: string,
+  result: ToolResult,
+  input: CommandInput
+): Promise<Json> => {
+  if (!wantsCard(input)) {
+    return asJson(result);
+  }
+
+  // Loaded on demand, so the other commands do not pay for the cards.
+  const { cardFor, toSlackMessage } = await import("../cards/index.ts");
+  const card = cardFor(name, result);
+
+  return asJson(input.flags.slack === true ? toSlackMessage(card) : card);
+};
 
 export interface CommandSpec {
   readonly help: string;
@@ -141,23 +165,28 @@ const COMMAND_TABLE = {
       asJson(await outbound.sender(required(input, 0, "a sender id")).health()),
   },
   insight: {
-    help: "insight [name] [--input JSON]  computed answers; no name lists them",
+    help: "insight [name] [--input JSON] [--card | --slack]  computed answers; no name lists them",
     run: async (outbound, input) => {
       // Loaded on demand, so the other commands do not pay for the insights.
-      const { listInsights, runInsightByName } =
+      const { insightTools, listInsights, runInsightByName } =
         await import("../insights/index.ts");
 
       const [name] = input.positionals;
 
-      return name === undefined
-        ? asJson(listInsights())
-        : asJson(
-            await runInsightByName(
-              outbound,
-              name,
-              parseInput(text(input, "input"))
-            )
-          );
+      if (name === undefined) {
+        return asJson(listInsights());
+      }
+
+      const insightInput = parseInput(text(input, "input"));
+
+      // A card is drawn from the tool form of the answer.
+      const [asTool] = wantsCard(input)
+        ? insightTools(outbound, { only: [name] })
+        : [];
+
+      return asTool === undefined
+        ? asJson(await runInsightByName(outbound, name, insightInput))
+        : drawn(name, await asTool.call(insightInput), input);
     },
   },
   leads: {
@@ -248,7 +277,7 @@ const COMMAND_TABLE = {
       ),
   },
   tool: {
-    help: "tool <name> [--input JSON]",
+    help: "tool <name> [--input JSON] [--card | --slack]",
     run: async (outbound, input) => {
       const name = required(input, 0, "a tool name");
 
@@ -263,7 +292,11 @@ const COMMAND_TABLE = {
         );
       }
 
-      return asJson(await tool.call(parseInput(text(input, "input"))));
+      return drawn(
+        name,
+        await tool.call(parseInput(text(input, "input"))),
+        input
+      );
     },
   },
   tools: {
