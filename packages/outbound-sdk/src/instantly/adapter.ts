@@ -19,6 +19,7 @@ import {
   text,
 } from "../internal/json.ts";
 import type { JsonObject } from "../internal/json.ts";
+import { mapPage } from "../internal/page.ts";
 import { accountReaders } from "./adapter-account.ts";
 import { mailReaders } from "./adapter-mail.ts";
 import { TAG_PAGES } from "./capabilities.ts";
@@ -339,10 +340,7 @@ export const readers = (
         include_tags: true,
       });
 
-      return {
-        items: page.items.map((item) => toSender(identity, item)),
-        next: page.next,
-      };
+      return mapPage(page, (item) => toSender(identity, item));
     },
     listWorkspaces: async (_query, ctx) => {
       const workspace = await client.get(ctx, "/workspaces/current");

@@ -15,6 +15,7 @@ import {
   emailAddress,
   field,
   flag,
+  fullName,
   isJsonObject,
   list,
   objects,
@@ -54,14 +55,6 @@ export const toCampaign = (identity: Identity, raw: JsonObject): Campaign => ({
   tags: [],
 });
 
-const fullName = (raw: JsonObject): string | null => {
-  const name = [text(raw.firstName), text(raw.lastName)]
-    .filter((part) => part !== null)
-    .join(" ");
-
-  return name === "" ? null : name;
-};
-
 // A LinkedIn account has no status enum, only two booleans the docs leave
 // undefined. An invalid login is the clearer signal, so it wins.
 const senderStatus = (raw: JsonObject): SenderStatus => {
@@ -87,7 +80,7 @@ export const toSender = (identity: Identity, raw: JsonObject): Sender => ({
   kind: "linkedin",
   linkedinUrl: text(raw.profileUrl),
   mailProvider: null,
-  name: fullName(raw),
+  name: fullName(raw.firstName, raw.lastName),
   status: senderStatus(raw),
   // HeyReach has no tags on a LinkedIn account.
   tags: [],

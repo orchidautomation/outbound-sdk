@@ -1,16 +1,15 @@
 // Mailboxes and deliverability: tracking domains, done-for-you orders and inbox placement tests.
 // Each entry is one read Instantly documents; site/content/docs/coverage/instantly.mdx lists them all.
 
-import { defineNative } from "../internal/native.ts";
 import {
-  docs,
+  defineNative,
   inBody,
   inBodyRequired,
   inPath,
   inQuery,
   inQueryRequired,
-  PAGE,
-} from "./native-params.ts";
+} from "../internal/native.ts";
+import { docs, PAGE } from "./native-params.ts";
 
 export const SENDER_READS = defineNative({
   crmPhoneNumbers: {

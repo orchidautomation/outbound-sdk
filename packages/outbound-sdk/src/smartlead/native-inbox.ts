@@ -1,30 +1,35 @@
 // The master inbox views other than replies, which `replies.list` reads. Each
 // returns at most 20 threads per page and takes the same filter object.
 
-import { defineNative } from "../internal/native.ts";
-import { body, DOCS, query, queryRequired } from "./native-params.ts";
+import {
+  defineNative,
+  inBody,
+  inQuery,
+  inQueryRequired,
+} from "../internal/native.ts";
+import { DOCS } from "./native-params.ts";
 
 const PAGE = {
-  limit: body("number", "Threads per page, 1 to 20."),
-  offset: body("number", "Threads to skip."),
+  limit: inBody("number", "Threads per page, 1 to 20."),
+  offset: inBody("number", "Threads to skip."),
 };
 
 const HISTORY = {
-  fetch_message_history: query("boolean", "Add each thread's messages."),
+  fetch_message_history: inQuery("boolean", "Add each thread's messages."),
 };
 
 const FILTERS =
   "search, leadCategories, emailStatus, campaignId, emailAccountId, campaignTeamMemberId, campaignTagId, campaignClientId and replyTimeBetween";
 
 const filters = (note: string) => ({
-  filters: body("json", `An object of ${FILTERS}. ${note}`),
+  filters: inBody("json", `An object of ${FILTERS}. ${note}`),
 });
 
 const MANY = filters("Ids may be arrays: 5 campaigns, 10 of the others.");
 const SINGLE = filters("Each id is a single value.");
 
 const SORT = {
-  sortBy: body("string", "REPLY_TIME_DESC or SENT_TIME_DESC."),
+  sortBy: inBody("string", "REPLY_TIME_DESC or SENT_TIME_DESC."),
 };
 
 export const INBOX = defineNative({
@@ -56,7 +61,7 @@ export const INBOX = defineNative({
     params: {
       ...PAGE,
       ...MANY,
-      sortBy: body("string", "REMINDER_TIME_ASC or REMINDER_TIME_DESC."),
+      sortBy: inBody("string", "REMINDER_TIME_ASC or REMINDER_TIME_DESC."),
     },
     path: "/master-inbox/reminders",
   },
@@ -68,7 +73,7 @@ export const INBOX = defineNative({
       ...PAGE,
       ...HISTORY,
       ...MANY,
-      sortBy: body("string", "SCHEDULED_TIME_ASC or SCHEDULED_TIME_DESC."),
+      sortBy: inBody("string", "SCHEDULED_TIME_ASC or SCHEDULED_TIME_DESC."),
     },
     path: "/master-inbox/scheduled",
   },
@@ -99,13 +104,13 @@ export const INBOX = defineNative({
     docs: `${DOCS}/inbox/get-untracked`,
     method: "GET",
     params: {
-      fetchAttachments: query("boolean", "Add attachment details."),
-      fetchBody: query("boolean", "Add each email's body."),
-      from_email: query("string", "Only from this address."),
-      limit: query("number", "Replies per page, 1 to 100."),
-      offset: query("number", "Replies to skip."),
-      subject_line: query("string", "Only subjects containing this."),
-      to_email: query("string", "Only to this address."),
+      fetchAttachments: inQuery("boolean", "Add attachment details."),
+      fetchBody: inQuery("boolean", "Add each email's body."),
+      from_email: inQuery("string", "Only from this address."),
+      limit: inQuery("number", "Replies per page, 1 to 100."),
+      offset: inQuery("number", "Replies to skip."),
+      subject_line: inQuery("string", "Only subjects containing this."),
+      to_email: inQuery("string", "Only to this address."),
     },
     path: "/master-inbox/untracked-replies",
   },
@@ -128,7 +133,7 @@ export const INBOX = defineNative({
     docs: `${DOCS}/inbox/reply-status`,
     method: "GET",
     params: {
-      message_id: queryRequired(
+      message_id: inQueryRequired(
         "string",
         "The reply's Message-ID header, angle brackets included."
       ),

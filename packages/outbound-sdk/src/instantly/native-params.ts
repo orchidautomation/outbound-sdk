@@ -1,54 +1,7 @@
-// Builders for the entries of the native catalog. Each keeps the parameter's
-// place and type as literal types, so a read's parameters stay typed.
+// What the entries of the Instantly native catalog share: the paging
+// parameters and the address of a reference page.
 
-import type { NativeParam } from "../internal/native.ts";
-
-type Kind = NativeParam["type"];
-
-export interface Placed<Place extends NativeParam["in"], Type extends Kind> {
-  readonly description: string;
-  readonly in: Place;
-  readonly type: Type;
-}
-
-export interface Needed<
-  Place extends NativeParam["in"],
-  Type extends Kind,
-> extends Placed<Place, Type> {
-  readonly required: true;
-}
-
-export const inQuery = <Type extends Kind>(
-  type: Type,
-  description: string
-): Placed<"query", Type> => ({ description, in: "query", type });
-
-export const inQueryRequired = <Type extends Kind>(
-  type: Type,
-  description: string
-): Needed<"query", Type> => ({
-  description,
-  in: "query",
-  required: true,
-  type,
-});
-
-export const inBody = <Type extends Kind>(
-  type: Type,
-  description: string
-): Placed<"body", Type> => ({ description, in: "body", type });
-
-export const inBodyRequired = <Type extends Kind>(
-  type: Type,
-  description: string
-): Needed<"body", Type> => ({ description, in: "body", required: true, type });
-
-/** Every path parameter Instantly documents is a string. */
-export const inPath = (description: string): Placed<"path", "string"> => ({
-  description,
-  in: "path",
-  type: "string",
-});
+import { inQuery } from "../internal/native.ts";
 
 /** The cursor paging every Instantly list shares. */
 export const PAGE = {

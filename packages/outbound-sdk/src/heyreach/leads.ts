@@ -10,6 +10,7 @@ import type {
 import type { Lead } from "../internal/entities.ts";
 import { count, field, isJsonObject, list, text } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
+import { mapPage } from "../internal/page.ts";
 import { LIST_LEADS_PAGE_SIZE, PAGE_SIZE } from "./capabilities.ts";
 import type { HeyReachClient } from "./client.ts";
 import { lookupLeads } from "./lookup.ts";
@@ -81,6 +82,7 @@ const campaignLeads = async (
     offset
   );
 
+  // Not `mapPage`: the walk over every campaign needs `next` as a number.
   return {
     items: envelope.items.map((item) =>
       toCampaignLead(client.identity, item, query.campaignId)
@@ -216,10 +218,7 @@ export const leadReaders = (
         offset
       );
 
-      return {
-        items: envelope.items.map((item) => toLead(client.identity, item)),
-        next: envelope.next,
-      };
+      return mapPage(envelope, (item) => toLead(client.identity, item));
     }
 
     if (campaignId === undefined) {

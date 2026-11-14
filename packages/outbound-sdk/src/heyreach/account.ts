@@ -17,6 +17,7 @@ import {
   list,
 } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
+import { mapPage } from "../internal/page.ts";
 import type { HeyReachClient } from "./client.ts";
 import {
   toBlockedCompany,
@@ -100,10 +101,7 @@ export const accountReaders = (client: HeyReachClient): AccountReaders => ({
       offset
     );
 
-    return {
-      items: envelope.items.map((item) => toLeadList(client.identity, item)),
-      next: envelope.next,
-    };
+    return mapPage(envelope, (item) => toLeadList(client.identity, item));
   },
   listWebhooks: async (query, ctx) => {
     const offset = offsetOf(query.next);

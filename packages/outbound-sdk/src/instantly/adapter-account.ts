@@ -3,6 +3,7 @@
 
 import type { Adapter } from "../internal/adapter.ts";
 import { emailAddress } from "../internal/json.ts";
+import { mapPage } from "../internal/page.ts";
 import type { InstantlyClient } from "./client.ts";
 import {
   toBlockEntry,
@@ -57,48 +58,33 @@ export const accountReaders = (client: InstantlyClient): AccountReaders => {
     listBlocklist: async (query, ctx) => {
       const page = await listPage(client, ctx, "/block-lists-entries", query);
 
-      return {
-        items: page.items.map((item) => toBlockEntry(identity, item)),
-        next: page.next,
-      };
+      return mapPage(page, (item) => toBlockEntry(identity, item));
     },
     listLists: async (query, ctx) => {
       const page = await listPage(client, ctx, "/lead-lists", query);
 
-      return {
-        items: page.items.map((item) => toLeadList(identity, item)),
-        next: page.next,
-      };
+      return mapPage(page, (item) => toLeadList(identity, item));
     },
     listSubsequences: async (query, ctx) => {
       const page = await listPage(client, ctx, "/subsequences", query, {
         parent_campaign: query.campaignId,
       });
 
-      return {
-        items: page.items.map((item) =>
-          toSubsequence(identity, item, query.campaignId)
-        ),
-        next: page.next,
-      };
+      return mapPage(page, (item) =>
+        toSubsequence(identity, item, query.campaignId)
+      );
     },
     listTags: async (query, ctx) => {
       const page = await listPage(client, ctx, "/custom-tags", query);
 
-      return {
-        items: page.items.map((item) => toTag(identity, item)),
-        next: page.next,
-      };
+      return mapPage(page, (item) => toTag(identity, item));
     },
     listWebhooks: async (query, ctx) => {
       const page = await listPage(client, ctx, "/webhooks", query, {
         campaign: query.campaignId,
       });
 
-      return {
-        items: page.items.map((item) => toWebhook(identity, item)),
-        next: page.next,
-      };
+      return mapPage(page, (item) => toWebhook(identity, item));
     },
   };
 };

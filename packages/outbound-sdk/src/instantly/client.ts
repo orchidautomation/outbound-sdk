@@ -7,8 +7,7 @@ import type {
   RawDescriptor,
   RequestSpec,
 } from "../internal/adapter.ts";
-import { OutboundError } from "../internal/errors.ts";
-import { isJsonObject } from "../internal/json.ts";
+import { requireObject } from "../internal/errors.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
 import type { NativeRead } from "../internal/native.ts";
 import type { Identity } from "../internal/record.ts";
@@ -147,21 +146,12 @@ export const createClient = (options: ClientOptions): InstantlyClient => {
 
   return {
     get,
-    getObject: async (ctx, path, request) => {
-      const body = await get(ctx, path, request);
-
-      if (!isJsonObject(body)) {
-        throw new OutboundError(
-          "Provider",
-          `Instantly returned no object for ${path}`,
-          {
-            provider: options.identity.provider,
-          }
-        );
-      }
-
-      return body;
-    },
+    getObject: async (ctx, path, request) =>
+      requireObject(
+        await get(ctx, path, request),
+        options.identity.provider,
+        `Instantly returned no object for ${path}`
+      ),
     identity: options.identity,
     post: async (ctx, path, body) => {
       const response = await ctx.request(

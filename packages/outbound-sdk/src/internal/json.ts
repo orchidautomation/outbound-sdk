@@ -56,6 +56,18 @@ export const count = (value: Json | undefined): number | null => {
   return null;
 };
 
+/** A first and a last name as one, or `null` when the vendor gave neither. */
+export const fullName = (
+  first: Json | undefined,
+  last: Json | undefined
+): string | null => {
+  const name = [text(first), text(last)]
+    .filter((part) => part !== null)
+    .join(" ");
+
+  return name === "" ? null : name;
+};
+
 export const flag = (value: Json | undefined): boolean | null =>
   isBoolean(value) ? value : null;
 

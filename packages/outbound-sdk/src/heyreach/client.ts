@@ -7,8 +7,7 @@ import type {
   RawDescriptor,
   RequestSpec,
 } from "../internal/adapter.ts";
-import { OutboundError } from "../internal/errors.ts";
-import { isJsonObject } from "../internal/json.ts";
+import { requireObject } from "../internal/errors.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
 import type { Identity } from "../internal/record.ts";
 import { buildUrl } from "../internal/url.ts";
@@ -129,17 +128,12 @@ export const createClient = (options: ClientOptions): HeyReachClient => {
       return response.body;
     },
     identity: options.identity,
-    object: (body, path) => {
-      if (!isJsonObject(body)) {
-        throw new OutboundError(
-          "Provider",
-          `HeyReach returned no object for ${path}`,
-          { provider: options.identity.provider }
-        );
-      }
-
-      return body;
-    },
+    object: (body, path) =>
+      requireObject(
+        body,
+        options.identity.provider,
+        `HeyReach returned no object for ${path}`
+      ),
     post: async (ctx, path, body) => {
       const response = await ctx.request(
         authorize({ body, method: "POST", url: buildUrl(baseUrl, path) })

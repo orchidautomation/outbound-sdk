@@ -47,6 +47,64 @@ export const defineNative = <const Catalog extends NativeCatalog>(
   catalog: Catalog
 ): Catalog => catalog;
 
+// Builders for a catalog's parameters, so each one is a line. They keep the
+// place and the type as literal types, which is what gives a native read its
+// typed parameters.
+
+/** A parameter and where it goes. Exported so a catalog's type can be named. */
+export interface PlacedParam<
+  Place extends NativeParam["in"],
+  Type extends NativeParam["type"],
+> {
+  readonly description: string;
+  readonly in: Place;
+  readonly type: Type;
+}
+
+export interface NeededParam<
+  Place extends NativeParam["in"],
+  Type extends NativeParam["type"],
+> extends PlacedParam<Place, Type> {
+  readonly required: true;
+}
+
+export const inQuery = <const Type extends NativeParam["type"]>(
+  type: Type,
+  description: string
+): PlacedParam<"query", Type> => ({ description, in: "query", type });
+
+export const inQueryRequired = <const Type extends NativeParam["type"]>(
+  type: Type,
+  description: string
+): NeededParam<"query", Type> => ({
+  description,
+  in: "query",
+  required: true,
+  type,
+});
+
+export const inBody = <const Type extends NativeParam["type"]>(
+  type: Type,
+  description: string
+): PlacedParam<"body", Type> => ({ description, in: "body", type });
+
+export const inBodyRequired = <const Type extends NativeParam["type"]>(
+  type: Type,
+  description: string
+): NeededParam<"body", Type> => ({
+  description,
+  in: "body",
+  required: true,
+  type,
+});
+
+/** A path parameter. Ids are strings in the SDK, whatever the vendor uses. */
+export const inPath = (description: string): PlacedParam<"path", "string"> => ({
+  description,
+  in: "path",
+  type: "string",
+});
+
 interface ValueTypes {
   readonly boolean: boolean;
   readonly json: Json;

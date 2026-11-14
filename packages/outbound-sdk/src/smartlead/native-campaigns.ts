@@ -1,19 +1,18 @@
 // Smartlead's own reads about campaigns, leads, clients and webhooks that
 // have no normalized form.
 
-import { defineNative } from "../internal/native.ts";
-import { LEAD_STATISTICS_LANE } from "./capabilities.ts";
 import {
-  body,
-  bodyRequired,
-  DOCS,
-  paged,
-  path,
-  query,
-  queryRequired,
-} from "./native-params.ts";
+  defineNative,
+  inBody,
+  inBodyRequired,
+  inPath,
+  inQuery,
+  inQueryRequired,
+} from "../internal/native.ts";
+import { LEAD_STATISTICS_LANE } from "./capabilities.ts";
+import { DOCS, paged } from "./native-params.ts";
 
-const CAMPAIGN = { campaign_id: path("The campaign's id.") };
+const CAMPAIGN = { campaign_id: inPath("The campaign's id.") };
 
 export const CAMPAIGN_READS = defineNative({
   campaignEmailStatistics: {
@@ -24,16 +23,16 @@ export const CAMPAIGN_READS = defineNative({
     params: {
       ...CAMPAIGN,
       ...paged("Rows per page, at most 1000."),
-      email_sequence_number: query("number", "Only this step, 1 to 20."),
-      email_status: query(
+      email_sequence_number: inQuery("number", "Only this step, 1 to 20."),
+      email_status: inQuery(
         "string",
         "opened, clicked, replied, unsubscribed or bounced."
       ),
-      sent_time_end_date: query(
+      sent_time_end_date: inQuery(
         "string",
         "Sent before this time, as 2023-10-16 10:33:02.000Z."
       ),
-      sent_time_start_date: query(
+      sent_time_start_date: inQuery(
         "string",
         "Sent after this time, as 2023-10-16 10:33:02.000Z."
       ),
@@ -46,55 +45,55 @@ export const CAMPAIGN_READS = defineNative({
     docs: `${DOCS}/campaigns/search-leads`,
     method: "POST",
     params: {
-      campaignId: path("The campaign's id."),
-      deletedEmailAddresses: body("json", "Email addresses, as an array."),
-      emailAccountIds: body("json", "Mailbox ids the leads are assigned to."),
-      emailStatuses: body(
+      campaignId: inPath("The campaign's id."),
+      deletedEmailAddresses: inBody("json", "Email addresses, as an array."),
+      emailAccountIds: inBody("json", "Mailbox ids the leads are assigned to."),
+      emailStatuses: inBody(
         "json",
         "Array of is_opened, is_clicked, is_bounced, is_replied, is_unsubscribed, is_accepted, not_replied and the like."
       ),
-      espDomainTypes: body("json", "ESP domain types, integers 0 to 2."),
-      fieldSet: body(
+      espDomainTypes: inBody("json", "ESP domain types, integers 0 to 2."),
+      fieldSet: inBody(
         "string",
         "drafted_table (compact) or active_table (full)."
       ),
-      filterLeadsForManualCompletion: body(
+      filterLeadsForManualCompletion: inBody(
         "boolean",
         "Only leads waiting on a manual step."
       ),
-      filterManualSeqIds: body(
+      filterManualSeqIds: inBody(
         "json",
         "Manual step ids, with filterLeadsForManualCompletion."
       ),
-      includeSenderBounce: body("boolean", "Include sender-bounced leads."),
-      lastSeenLeadId: body(
+      includeSenderBounce: inBody("boolean", "Include sender-bounced leads."),
+      lastSeenLeadId: inBody(
         "number",
         "Cursor: lastSeenEclmId from the previous page."
       ),
-      lastSeenReplyTime: body(
+      lastSeenReplyTime: inBody(
         "string",
         "Second half of the cursor for active_table with statusFilter replied."
       ),
-      leadCategoryIds: body(
+      leadCategoryIds: inBody(
         "json",
         "Lead category ids; -1 also matches leads with none."
       ),
-      leadCategoryIsNull: body("boolean", "Only leads with no category."),
-      leadStatuses: body(
+      leadCategoryIsNull: inBody("boolean", "Only leads with no category."),
+      leadStatuses: inBody(
         "json",
         "Array of STARTED, INPROGRESS, COMPLETED, STOPPED, PAUSED, BLOCKED."
       ),
-      limit: body("number", "Leads per page, 1 to 100."),
-      searchText: body(
+      limit: inBody("number", "Leads per page, 1 to 100."),
+      searchText: inBody(
         "string",
         "Every word must match the email, first name or last name."
       ),
-      segTypes: body("json", "Segment types, integers 0 to 10."),
-      seqScheduleType: body("string", "MANUAL or AUTO."),
-      seqVariantIds: body("json", "Step variant ids."),
-      sequenceIds: body("json", "Step ids."),
-      sequenceNumbers: body("json", "Step numbers, 1 to 999."),
-      statusFilter: body(
+      segTypes: inBody("json", "Segment types, integers 0 to 10."),
+      seqScheduleType: inBody("string", "MANUAL or AUTO."),
+      seqVariantIds: inBody("json", "Step variant ids."),
+      sequenceIds: inBody("json", "Step ids."),
+      sequenceNumbers: inBody("json", "Step numbers, 1 to 999."),
+      statusFilter: inBody(
         "string",
         "A status tab: all, active, replied, failed, scheduled and the like."
       ),
@@ -110,7 +109,7 @@ export const CAMPAIGN_READS = defineNative({
     params: {
       ...CAMPAIGN,
       ...paged("Leads per page, at most 100."),
-      event_time_gt: query(
+      event_time_gt: inQuery(
         "string",
         "Only leads whose last event is after this day, YYYY-MM-DD."
       ),
@@ -133,10 +132,10 @@ export const CAMPAIGN_READS = defineNative({
     params: {
       ...CAMPAIGN,
       ...paged("Rows per page, 1 to 20."),
-      client_id: query("number", "The client, for a client's campaign."),
-      end_date: query("string", "Last day, YYYY-MM-DD; needs start_date."),
-      start_date: query("string", "First day, YYYY-MM-DD; needs end_date."),
-      time_zone: query("string", "The campaign's IANA time zone."),
+      client_id: inQuery("number", "The client, for a client's campaign."),
+      end_date: inQuery("string", "Last day, YYYY-MM-DD; needs start_date."),
+      start_date: inQuery("string", "First day, YYYY-MM-DD; needs end_date."),
+      time_zone: inQuery("string", "The campaign's IANA time zone."),
     },
     path: "/campaigns/{campaign_id}/mailbox-statistics",
   },
@@ -146,8 +145,8 @@ export const CAMPAIGN_READS = defineNative({
     method: "POST",
     params: {
       ...CAMPAIGN,
-      event_time_gt: query("string", "Only messages after this time."),
-      lead_ids: body("json", "Lead ids, as an array; null for every lead."),
+      event_time_gt: inQuery("string", "Only messages after this time."),
+      lead_ids: inBody("json", "Lead ids, as an array; null for every lead."),
     },
     path: "/campaigns/{campaign_id}/message-history-for-leads/bbfbdsFGHlBr76ruhjvh6fhHL",
   },
@@ -166,8 +165,8 @@ export const CAMPAIGN_READS = defineNative({
     method: "GET",
     params: {
       ...CAMPAIGN,
-      end_date: queryRequired("string", "Last day, YYYY-MM-DD."),
-      start_date: queryRequired("string", "First day, YYYY-MM-DD."),
+      end_date: inQueryRequired("string", "Last day, YYYY-MM-DD."),
+      start_date: inQueryRequired("string", "First day, YYYY-MM-DD."),
     },
     path: "/campaigns/{campaign_id}/top-level-analytics-by-date",
   },
@@ -177,9 +176,9 @@ export const CAMPAIGN_READS = defineNative({
     docs: `${DOCS}/campaigns/get-webhook-summary`,
     method: "GET",
     params: {
-      campaignId: path("The campaign's id."),
-      fromTime: queryRequired("string", "Start, as an ISO 8601 time."),
-      toTime: queryRequired("string", "End, as an ISO 8601 time."),
+      campaignId: inPath("The campaign's id."),
+      fromTime: inQueryRequired("string", "Start, as an ISO 8601 time."),
+      toTime: inQueryRequired("string", "End, as an ISO 8601 time."),
     },
     path: "/campaigns/{campaignId}/webhooks/summary",
   },
@@ -189,10 +188,10 @@ export const CAMPAIGN_READS = defineNative({
     docs: `${DOCS}/clients/get-by-id`,
     method: "GET",
     params: {
-      id: path("The client's id."),
-      includeCodeIntegrations: query("boolean", "Add the code snippets."),
-      includeCredits: query("boolean", "Add lead and email credits."),
-      includePermissions: query("boolean", "Add the client's permissions."),
+      id: inPath("The client's id."),
+      includeCodeIntegrations: inQuery("boolean", "Add the code snippets."),
+      includeCredits: inQuery("boolean", "Add lead and email credits."),
+      includePermissions: inQuery("boolean", "Add the client's permissions."),
     },
     path: "/client/{id}",
   },
@@ -201,7 +200,7 @@ export const CAMPAIGN_READS = defineNative({
       "The lead with an email address and every campaign it is in. An unknown address returns an empty object.",
     docs: `${DOCS}/leads/get-by-email`,
     method: "GET",
-    params: { email: queryRequired("string", "The lead's email address.") },
+    params: { email: inQueryRequired("string", "The lead's email address.") },
     path: "/leads/",
   },
   leadCampaignOverview: {
@@ -209,21 +208,21 @@ export const CAMPAIGN_READS = defineNative({
       "A lead's status, category, revenue and current step in each of its campaigns. Refuses client-level keys.",
     docs: `${DOCS}/leads/campaign-overview`,
     method: "GET",
-    params: { leadId: path("The lead's id.") },
+    params: { leadId: inPath("The lead's id.") },
     path: "/leads/{leadId}/campaign-overview",
   },
   leadList: {
     description: "One lead list: its name, lead count and dates.",
     docs: `${DOCS}/lead-lists/get-by-id`,
     method: "GET",
-    params: { id: path("The lead list's id.") },
+    params: { id: inPath("The lead list's id.") },
     path: "/lead-list/{id}",
   },
   leadNotes: {
     description: "The notes written on a lead.",
     docs: `${DOCS}/lead-notes/get-all`,
     method: "GET",
-    params: { id: path("The lead's id.") },
+    params: { id: inPath("The lead's id.") },
     path: "/crm/leads/notes/{id}",
   },
   leadSequenceDetails: {
@@ -232,8 +231,8 @@ export const CAMPAIGN_READS = defineNative({
     docs: `${DOCS}/leads/sequence-details`,
     method: "GET",
     params: {
-      campaignId: query("number", "Only this campaign."),
-      leadMapId: path("The lead-in-campaign mapping id."),
+      campaignId: inQuery("number", "Only this campaign."),
+      leadMapId: inPath("The lead-in-campaign mapping id."),
     },
     path: "/leads/{leadMapId}/sequence-details",
   },
@@ -241,7 +240,7 @@ export const CAMPAIGN_READS = defineNative({
     description: "The tasks created for a lead.",
     docs: `${DOCS}/lead-tasks/get-all`,
     method: "GET",
-    params: { id: path("The lead's id.") },
+    params: { id: inPath("The lead's id.") },
     path: "/crm/leads/tasks/{id}",
   },
   senderTagsByEmail: {
@@ -249,7 +248,7 @@ export const CAMPAIGN_READS = defineNative({
     docs: `${DOCS}/email-account-tags/get-all`,
     method: "POST",
     params: {
-      email_ids: bodyRequired("json", "Mailbox addresses, as an array."),
+      email_ids: inBodyRequired("json", "Mailbox addresses, as an array."),
     },
     path: "/email-accounts/tag-list",
   },
@@ -257,7 +256,7 @@ export const CAMPAIGN_READS = defineNative({
     description: "One webhook: its URL, events, categories and campaign.",
     docs: `${DOCS}/webhooks/get`,
     method: "GET",
-    params: { webhook_id: path("The webhook's id.") },
+    params: { webhook_id: inPath("The webhook's id.") },
     path: "/webhook/{webhook_id}",
   },
 });

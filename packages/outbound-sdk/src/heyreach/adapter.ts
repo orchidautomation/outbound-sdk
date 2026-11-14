@@ -9,6 +9,7 @@ import type {
 import type { MetricRow } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
 import type { JsonObject } from "../internal/json.ts";
+import { mapPage } from "../internal/page.ts";
 import { accountReaders, campaignSenders } from "./account.ts";
 import type { HeyReachClient } from "./client.ts";
 import { inboxReaders } from "./inbox.ts";
@@ -163,10 +164,7 @@ export const readers = (client: HeyReachClient): Readers => {
         offset
       );
 
-      return {
-        items: envelope.items.map((item) => toCampaign(identity, item)),
-        next: envelope.next,
-      };
+      return mapPage(envelope, (item) => toCampaign(identity, item));
     },
     listSenders: async (query, ctx) => {
       const { campaignId } = query;
@@ -185,10 +183,7 @@ export const readers = (client: HeyReachClient): Readers => {
         offset
       );
 
-      return {
-        items: envelope.items.map((item) => toSender(identity, item)),
-        next: envelope.next,
-      };
+      return mapPage(envelope, (item) => toSender(identity, item));
     },
     stats: (query, ctx) => readStats(client, ctx, query),
   };

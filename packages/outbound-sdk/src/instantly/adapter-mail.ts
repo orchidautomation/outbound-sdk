@@ -12,6 +12,7 @@ import type { Message, Reply } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
 import { field, text } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
+import { mapPage } from "../internal/page.ts";
 import { EMAILS_LANE } from "./capabilities.ts";
 import type { InstantlyClient } from "./client.ts";
 import { isScheduled, isTruncated, toMessage, toReply } from "./map-lead.ts";
@@ -126,12 +127,9 @@ export const mailReaders = (
   listMessages: async (query, ctx): Promise<Page<Message>> => {
     const page = await listEmails(client, ctx, query, false);
 
-    return {
-      items: page.items.map((item) =>
-        toMessage(client.identity, item, query.includeBody)
-      ),
-      next: page.next,
-    };
+    return mapPage(page, (item) =>
+      toMessage(client.identity, item, query.includeBody)
+    );
   },
   listReplies: async (query, ctx): Promise<Page<Reply>> => {
     const page = await listEmails(client, ctx, query, true);

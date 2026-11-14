@@ -11,6 +11,7 @@ import type {
 import type { WebhookSubscription } from "../internal/entities-account.ts";
 import type { Sequence } from "../internal/entities.ts";
 import { count, field, isJsonObject, objects, text } from "../internal/json.ts";
+import { mapPage } from "../internal/page.ts";
 import { BLOCKLIST_PAGE_SIZE } from "./capabilities.ts";
 import type { SmartleadClient } from "./client.ts";
 import {
@@ -162,10 +163,7 @@ export const accountReaders = (client: SmartleadClient): AccountReaders => {
         }
       );
 
-      return {
-        items: page.rows.map((entry) => toBlockEntry(identity, entry)),
-        next: page.next,
-      };
+      return mapPage(page, (entry) => toBlockEntry(identity, entry));
     },
     listLists: async (query, ctx) => {
       const page = await offsetPage(client, ctx, "/lead-list/", {
@@ -173,10 +171,7 @@ export const accountReaders = (client: SmartleadClient): AccountReaders => {
         offset: count(query.next) ?? 0,
       });
 
-      return {
-        items: page.rows.map((row) => toList(identity, row)),
-        next: page.next,
-      };
+      return mapPage(page, (row) => toList(identity, row));
     },
     listSubsequences: (query, ctx) => listSubsequences(client, ctx, query),
     // One response holds every tag of the account; there are no pages.

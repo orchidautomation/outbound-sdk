@@ -14,7 +14,6 @@ import {
   objects,
   text,
 } from "../internal/json.ts";
-import type { Json, JsonObject } from "../internal/json.ts";
 import type { SmartleadClient } from "./client.ts";
 import {
   dayRow,
@@ -27,6 +26,7 @@ import {
 } from "./map-stats.ts";
 import type { RowScope } from "./map-stats.ts";
 import { unwrap } from "./map.ts";
+import { objectOf } from "./shared.ts";
 
 const DAY_MS = 86_400_000;
 
@@ -66,24 +66,6 @@ const unsupported = (client: SmartleadClient, message: string): OutboundError =>
     provider: client.identity.provider,
   });
 
-const dataOf = (
-  client: SmartleadClient,
-  body: Json,
-  what: string
-): JsonObject => {
-  const data = unwrap(body);
-
-  if (!isJsonObject(data)) {
-    throw new OutboundError(
-      "Provider",
-      `Smartlead returned no object for ${what}`,
-      { provider: client.identity.provider }
-    );
-  }
-
-  return data;
-};
-
 const campaignPath = (scope: RowScope, leaf: string): string =>
   `/campaigns/${encodeURIComponent(scope.scopeId)}/${leaf}`;
 
@@ -96,7 +78,9 @@ const campaignTotal = async (
   if (query.from === undefined && query.to === undefined) {
     const lifetime = await client.get(ctx, campaignPath(scope, "analytics"));
 
-    return [lifetimeRow(scope, dataOf(client, lifetime, "campaign analytics"))];
+    return [
+      lifetimeRow(scope, objectOf(client, lifetime, "campaign analytics")),
+    ];
   }
 
   const range = resolveRange(query, true);
@@ -120,7 +104,7 @@ const campaignTotal = async (
     }
   );
 
-  return [windowRow(scope, dataOf(client, window, "campaign analytics"))];
+  return [windowRow(scope, objectOf(client, window, "campaign analytics"))];
 };
 
 // The daily endpoint is account-wide; campaign_ids narrows it to one campaign.
@@ -172,7 +156,7 @@ const workspaceTotal = async (
     query: { end_date: range.to, start_date: range.from, timezone: TIMEZONE },
   });
 
-  const stats = field(dataOf(client, body, "overall stats"), "overall_stats");
+  const stats = field(objectOf(client, body, "overall stats"), "overall_stats");
 
   return [overallRow(scope, isJsonObject(stats) ? stats : {})];
 };
@@ -196,7 +180,7 @@ const everyCampaign = async (
   });
 
   const campaigns = field(
-    dataOf(client, body, "campaign performance"),
+    objectOf(client, body, "campaign performance"),
     "campaign_wise_performance"
   );
 
@@ -248,7 +232,7 @@ const senderTotal = async (
   scope: RowScope,
   query: StatsQuery
 ): Promise<MetricRow[]> => {
-  const account = dataOf(
+  const account = objectOf(
     client,
     await client.get(
       ctx,

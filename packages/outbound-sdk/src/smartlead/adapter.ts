@@ -9,6 +9,7 @@ import type {
 } from "../internal/adapter.ts";
 import type { Sender } from "../internal/entities.ts";
 import { count, objects, text } from "../internal/json.ts";
+import { mapPage } from "../internal/page.ts";
 import { accountReaders } from "./account.ts";
 import type { SmartleadClient } from "./client.ts";
 import { getLead, listLeads } from "./leads.ts";
@@ -76,10 +77,7 @@ const listSenders = async (
     offset: count(query.next) ?? 0,
   });
 
-  return {
-    items: page.rows.map((account) => toSender(client.identity, account)),
-    next: page.next,
-  };
+  return mapPage(page, (account) => toSender(client.identity, account));
 };
 
 export const readers = (client: SmartleadClient): Readers => {

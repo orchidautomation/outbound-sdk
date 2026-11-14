@@ -2,7 +2,7 @@
 // campaign list and the lead category names.
 
 import type { AdapterContext } from "../internal/adapter.ts";
-import { OutboundError } from "../internal/errors.ts";
+import { OutboundError, requireObject } from "../internal/errors.ts";
 import {
   isJsonObject,
   list,
@@ -43,15 +43,12 @@ export const objectOf = (
   client: SmartleadClient,
   body: Json,
   what: string
-): JsonObject => {
-  const payload = unwrap(body);
-
-  if (!isJsonObject(payload)) {
-    throw providerError(client, `Smartlead returned no object for ${what}`);
-  }
-
-  return payload;
-};
+): JsonObject =>
+  requireObject(
+    unwrap(body),
+    client.identity.provider,
+    `Smartlead returned no object for ${what}`
+  );
 
 // `GET /campaigns/` returns every campaign at once: no pages, no filters.
 export const campaignList = async (
@@ -74,7 +71,7 @@ export const campaignIds = async (
 };
 
 export interface OffsetPage {
-  readonly rows: JsonObject[];
+  readonly items: JsonObject[];
   readonly next: number | undefined;
 }
 
@@ -89,8 +86,8 @@ export const offsetPage = async (
   const rows = objects(unwrap(await client.get(ctx, path, { query: page })));
 
   return {
+    items: rows,
     next: rows.length === page.limit ? page.offset + page.limit : undefined,
-    rows,
   };
 };
 

@@ -1,15 +1,14 @@
 // The AI Lead Finder Agents and the AI Sales Agents.
 // Each entry is one read Instantly documents; site/content/docs/coverage/instantly.mdx lists them all.
 
-import { defineNative } from "../internal/native.ts";
 import {
-  docs,
+  defineNative,
   inBody,
   inBodyRequired,
   inPath,
   inQuery,
-  PAGE,
-} from "./native-params.ts";
+} from "../internal/native.ts";
+import { docs, PAGE } from "./native-params.ts";
 
 export const SALES_AGENT_READS = defineNative({
   leadFinderActivities: {

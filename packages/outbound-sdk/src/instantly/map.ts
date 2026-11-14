@@ -15,6 +15,7 @@ import {
   count,
   emailAddress,
   field,
+  fullName,
   isJsonObject,
   objects,
   text,
@@ -164,14 +165,6 @@ const MAIL_PROVIDER = new Map<number, MailProvider>([
   [11, "other"],
 ]);
 
-const fullName = (raw: JsonObject): string | null => {
-  const name = [text(raw.first_name), text(raw.last_name)]
-    .filter((part) => part !== null)
-    .join(" ");
-
-  return name === "" ? null : name;
-};
-
 /** A mailbox. Instantly keys accounts by email address, not by an id. */
 export const toSender = (identity: Identity, raw: JsonObject): Sender => {
   const address = emailAddress(raw.email);
@@ -185,7 +178,7 @@ export const toSender = (identity: Identity, raw: JsonObject): Sender => {
     linkedinUrl: null,
     mailProvider:
       MAIL_PROVIDER.get(count(raw.provider_code) ?? Number.NaN) ?? null,
-    name: fullName(raw),
+    name: fullName(raw.first_name, raw.last_name),
     status: SENDER_STATUS.get(count(raw.status) ?? Number.NaN) ?? "unknown",
     // Present only when the request asked for `include_tags`.
     tags: objects(raw.tags).flatMap((tag) => text(tag.label) ?? []),
