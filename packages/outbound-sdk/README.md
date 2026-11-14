@@ -66,7 +66,19 @@ Every record carries `provider`, `workspaceId` and a `ref` (`provider:workspace:
 page.meta; // { evidence: "exact" | "sampled" | "derived", fetchedAt, complete, requests, throttledMs, stale, ... }
 ```
 
-Collections: `campaigns`, `senders`, `leads`, `messages`, `replies`, `workspaces`, each with `list` and `listAll`, and `get`, `exists` and `getMany` where a record can be looked up. Handles: `campaign(id)`, `sender(id)`, `lead(id)`. Also `stats()`, `limits()`, `estimate()`, `capabilities`, `caveats` and `raw` (the vendor's own API, reads only unless `allowWrites: true`).
+Collections: `campaigns`, `senders`, `leads`, `messages`, `replies`, `lists`, `tags`, `blocklist`, `webhooks` and `workspaces`, each with `list` and `listAll`, and `get`, `exists` and `getMany` where a record can be looked up. Handles: `campaign(id)` (with `settings()`, `sequence()`, `subsequences`, `stats()`), `sender(id)` (with `health()`, `warmup()`, `stats()`), `lead(id)`, `list(id)` and `thread(id)`. Also `stats()`, `limits()`, `estimate()`, `capabilities` and `caveats`.
+
+## Nothing a vendor reports is dropped
+
+The collections above are what every vendor shares. Everything else a vendor can report is in `outbound.native`, a catalog typed from the adapter you passed:
+
+```ts
+const outbound = createOutbound({ adapter: smartlead() });
+const unread = await outbound.native.reads.inboxUnread({ limit: 20 });
+unread.data; // Smartlead's own response
+```
+
+Native reads are rate limited and retried like the rest, can only read, and return the vendor's payload as sent. `outbound.raw` remains for a request the catalog does not name (reads only unless `allowWrites: true`).
 
 ## It tells you what it cannot do
 

@@ -17,6 +17,8 @@ import { smartlead } from "../../src/smartlead/index.ts";
 
 const enabled = process.env.LIVE_TESTS === "1";
 
+const TOLERATED = new Set(["Invalid", "Unauthorized"]);
+
 const providers: readonly {
   env: string;
   make: () => Adapter<NativeCatalog>;
@@ -203,8 +205,9 @@ for (const provider of providers) {
           // oxlint-disable-next-line no-await-in-loop -- one read at a time stays inside the rate limit.
           await outbound.native.read(name);
         } catch (error) {
-          // A plan that lacks a feature answers Unauthorized; that is not a wrong path.
-          if (!OutboundError.is(error) || error.code !== "Unauthorized") {
+          // A plan that lacks a feature answers Unauthorized, and a read that
+          // needs one of several inputs answers Invalid. Neither is a wrong path.
+          if (!OutboundError.is(error) || !TOLERATED.has(error.code)) {
             failures.push(`${name}: ${String(error)}`);
           }
         }

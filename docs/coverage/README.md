@@ -20,5 +20,5 @@ What `Through` holds depends on `Coverage`:
 
 - `normalized`: the SDK read or reads that use the endpoint, by capability key (`campaigns.settings`, `stats.byDay`), separated by commas. `campaigns.list` and `campaigns.get` are also accepted.
 - `native`: the name of the read in the adapter's native catalog. Its method and path must match the row.
-- `excluded`: the reason it is left out, in one sentence. Only three reasons are accepted: the endpoint returns secrets, it duplicates another row's data exactly, or it reports nothing about campaigns, leads, senders or results (billing, team members, API keys).
+- `excluded`: the reason it is left out, in one sentence. Only four reasons are accepted: the endpoint returns secrets, it duplicates another row's data exactly, it reports nothing about campaigns, leads, senders or results (billing, marketplace pricing, search filter lists), or it returns a file and not JSON, which the request engine cannot carry.
 - `write`: left empty. The SDK is read-only; writes are listed so the inventory is complete.

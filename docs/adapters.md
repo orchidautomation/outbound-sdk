@@ -1,6 +1,6 @@
 # Adapters
 
-Three adapters ship today. Each was written from the vendor's public API documentation read on 2026-11-14 and tested offline against documented payloads.
+Three adapters ship today. Each was written from the vendor's public API documentation read on 2026-11-14 and tested offline against documented payloads. Each has two layers: normalized reads that mean the same thing on every vendor, and a typed catalog of the vendor's own reads for everything else.
 
 - **HeyReach is `beta`:** its reads were run once, read-only, against one live workspace on 2026-11-14, which fixed two things the documentation got wrong or left out.
 - **Instantly and Smartlead are `unverified`:** neither has been run against a live account.
@@ -60,12 +60,45 @@ Generated from the adapters' own declarations. A filter is `server` (the vendor 
 | `webhooks.list`         | yes       | yes       | yes      |
 | `workspaces`            | yes       | yes       | no       |
 
-The gaps that matter most:
+What a vendor's API cannot answer stays `no`, and the adapter's research note says why:
 
-- **HeyReach replies carry no category.** Its auto-tags describe the lead, not a message, so a reply cannot be filtered by category. Messages, replies and a lead's timeline are read from conversations; a message has no id in HeyReach, so the SDK builds a stable one.
-- **Instantly cannot list a campaign's mailboxes.** A campaign can attach mailboxes by tag, and the API does not expand the tag, so the list would be silently incomplete.
-- **Smartlead has no per-mailbox stats** that are documented well enough to trust.
+- **HeyReach has no campaign settings, subsequences, tags or per-lead counts.** Its API can set a campaign's schedule but not read it, a campaign has one sequence tree, no endpoint lists the workspace's tags, and no lead carries open or reply counts.
+- **HeyReach replies carry no category.** Its auto-tags describe the lead, not a message; the newest one is the lead's `interest`.
+- **HeyReach has no list of every lead.** Leads are read per campaign or per saved list.
+- **Smartlead cannot list the leads of a saved list**, and its per-lead counts are documented only as a placeholder response.
+- **Instantly's per-mailbox stats are `derived`:** its mailbox analytics exist per day only.
 - **No adapter reveals deleted records.** Use the `reconcile` plugin's `deletions()`.
+
+## Native reads: nothing a vendor reports is dropped
+
+The normalized reads are the part all three vendors share. Everything else a vendor can report is in the adapter's native catalog and comes back as the vendor sent it:
+
+```ts
+const outbound = createOutbound({ adapter: smartlead() });
+
+// Typed from the adapter: the name and its parameters autocomplete.
+const unread = await outbound.native.reads.inboxUnread({ limit: 20 });
+
+// Or by a name learned at run time.
+outbound.native.catalog; // every read, with its parameters and a docs link
+await outbound.native.read("inboxUnread", { limit: 20 });
+```
+
+A native read goes through the same request engine as a normalized one: it is rate limited, retried and normalized on failure, and keys never reach an error. It can only be a read. Each call is one vendor request; pass the vendor's own paging parameters to page. The response is not normalized and not redacted, so `outbound.native` is turned off when the `redact` plugin is on. On a combined instance, use `outbound.workspace(id).native`.
+
+`outbound.raw` is still there for a request the catalog does not name.
+
+### Coverage
+
+`docs/coverage/<vendor>.md` lists every endpoint in each vendor's API reference and how the SDK reaches it. `npm test` checks each table against the adapter.
+
+| Vendor | Endpoints | Normalized | Native | Excluded | Writes |
+| --- | --- | --- | --- | --- | --- |
+| [Instantly](coverage/instantly.md) | 268 | 22 | 105 | 4 | 137 |
+| [Smartlead](coverage/smartlead.md) | 230 | 27 | 78 | 20 | 105 |
+| [HeyReach](coverage/heyreach.md) | 106 | 17 | 25 | 3 | 61 |
+
+A read is excluded only when it returns secrets (API keys, mailbox passwords, proxy credentials), reports nothing about campaigns, leads, senders or results (billing, marketplace pricing, search filter lists), or returns a file the SDK cannot carry (one HeyReach voice-message audio endpoint). Reads that spend credits are listed as writes.
 
 ## Rate limits each adapter declares
 
@@ -83,4 +116,4 @@ The SDK uses `share` (default 0.5) of these published numbers, because the limit
 LIVE_TESTS=1 INSTANTLY_API_KEY=... npm run test:live
 ```
 
-The live tests only read. They list campaigns and read one back, exercise each declared capability once, and check the rate budget. They run only when `LIVE_TESTS=1` and the provider's key are set, and are never part of `npm test` or CI. An adapter moves to `beta` once its reads have been run against a live account, and to `stable` once its fixtures are captured responses and the live tests pass on a schedule.
+The live tests only read. They list campaigns and read one back, exercise each declared capability once, call every native read that needs no input, and check the rate budget. They run only when `LIVE_TESTS=1` and the provider's key are set, and are never part of `npm test` or CI. An adapter moves to `beta` once its reads have been run against a live account, and to `stable` once its fixtures are captured responses and the live tests pass on a schedule.
