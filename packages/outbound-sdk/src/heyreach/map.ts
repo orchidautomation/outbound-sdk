@@ -6,6 +6,7 @@ import type {
   CampaignStatus,
   Lead,
   LeadStatus,
+  ReplyCategory,
   Sender,
   SenderStatus,
 } from "../internal/entities.ts";
@@ -85,8 +86,11 @@ export const toSender = (identity: Identity, raw: JsonObject): Sender => ({
   dailyLimit: null,
   kind: "linkedin",
   linkedinUrl: text(raw.profileUrl),
+  mailProvider: null,
   name: fullName(raw),
   status: senderStatus(raw),
+  // HeyReach has no tags on a LinkedIn account.
+  tags: [],
   warmup: null,
 });
 
@@ -128,6 +132,20 @@ const interest = (profile: Json | undefined): string | null => {
   return text(newest?.name);
 };
 
+// The three auto-tags HeyReach's help center names. The API reference does
+// not list the strings it returns, so any other name means nothing here.
+const AUTO_TAG = new Map<string, ReplyCategory>([
+  ["generic", "neutral"],
+  ["interested", "positive"],
+  ["not interested", "negative"],
+]);
+
+/** What a profile's newest auto-tag means, or `null`. */
+export const interestCategory = (
+  profile: Json | undefined
+): ReplyCategory | null =>
+  AUTO_TAG.get(interest(profile)?.toLowerCase() ?? "") ?? null;
+
 // `customFields` is an array of `{ name, value }` pairs.
 const customFields = (profile: Json | undefined): Record<string, string> =>
   Object.fromEntries(
@@ -154,6 +172,8 @@ const profileFields = (
     raw
   ),
   company: text(field(profile, "companyName")),
+  // `companyUrl` is the company's LinkedIn page, not its website.
+  companyLinkedinUrl: text(field(profile, "companyUrl")),
   custom: customFields(profile),
   email:
     emailAddress(field(profile, "emailAddress")) ??
@@ -163,10 +183,15 @@ const profileFields = (
   engagement: null,
   firstName: text(field(profile, "firstName")),
   interest: interest(profile),
+  interestCategory: interestCategory(profile),
   lastName: text(field(profile, "lastName")),
   tags: tagNames(field(profile, "tags")),
   linkedinUrl: text(field(profile, "profileUrl")),
+  location: text(field(profile, "location")),
+  // HeyReach profiles carry no phone number and no company website.
+  phone: null,
   title: text(field(profile, "position")),
+  website: null,
 });
 
 /**

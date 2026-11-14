@@ -77,6 +77,7 @@ export {
   evidenceSchema,
   leadSchema,
   leadStatusSchema,
+  mailProviderSchema,
   messageSchema,
   metricRowSchema,
   metricScopeSchema,
@@ -99,6 +100,7 @@ export type {
   Lead,
   LeadEngagement,
   LeadStatus,
+  MailProvider,
   Message,
   MetricRow,
   MetricScope,
@@ -132,6 +134,10 @@ export type {
   Tag,
   WebhookSubscription,
 } from "./internal/entities-account.ts";
+
+export { resolveFields } from "./internal/fields.ts";
+
+export type { FieldCoverage, FieldDeclaration } from "./internal/fields.ts";
 
 export { defineNative } from "./internal/native.ts";
 

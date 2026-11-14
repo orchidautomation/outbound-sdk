@@ -20,7 +20,14 @@ import type {
 } from "../internal/adapter.ts";
 import type { Message, Reply } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
-import { field, isString, objects, text, timestamp } from "../internal/json.ts";
+import {
+  field,
+  flag,
+  isString,
+  objects,
+  text,
+  timestamp,
+} from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
 import { recordBase, refTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
@@ -28,6 +35,7 @@ import { stableId } from "../internal/sha256.ts";
 import { normalizeBody } from "../internal/text.ts";
 import { PAGE_SIZE } from "./capabilities.ts";
 import type { HeyReachClient } from "./client.ts";
+import { interestCategory } from "./map.ts";
 
 export const CONVERSATIONS_PATH = "/inbox/GetConversationsV3";
 
@@ -88,18 +96,27 @@ const toMessage = (
   direction: isFromLead(raw) ? "in" : "out",
 });
 
+// HeyReach classifies a lead from its first campaign reply and keeps the
+// result on the lead (`autoTags`), with no link to a message. Every reply of
+// the conversation gets the lead's newest one, and says so in `categorySource`.
 const toReply = (
   scope: Scope,
   conversation: JsonObject,
   raw: JsonObject
-): Reply => ({
-  ...messageFields(scope, conversation, raw),
-  // HeyReach's auto-tags describe the lead, not a message, so no category is read.
-  category: "unknown",
-  categorySource: null,
-  direction: "in",
-  isAuto: null,
-});
+): Reply => {
+  const category = interestCategory(conversation.correspondentProfile);
+  const read = flag(conversation.read);
+
+  return {
+    ...messageFields(scope, conversation, raw),
+    category: category ?? "unknown",
+    categorySource: category === null ? null : "lead",
+    direction: "in",
+    isAuto: null,
+    // `read` is the conversation's, not one message's.
+    unread: read === null ? null : !read,
+  };
+};
 
 interface ConversationPage {
   readonly conversations: JsonObject[];

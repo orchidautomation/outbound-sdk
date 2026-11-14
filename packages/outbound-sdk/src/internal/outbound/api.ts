@@ -27,6 +27,7 @@ import type {
   Workspace,
 } from "../entities.ts";
 import type { OutboundError } from "../errors.ts";
+import type { FieldCoverage } from "../fields.ts";
 import type { Json } from "../json.ts";
 import type {
   NativeCatalog,
@@ -342,6 +343,12 @@ export interface OutboundApi {
   readonly maturity: "beta" | "stable" | "unverified";
   /** What the adapter assumes and has not confirmed against the live API. */
   readonly caveats: readonly string[];
+  /**
+   * Which fields of each record this adapter fills: `exact` from the vendor,
+   * `derived` by the adapter, or `false` when a `null` means the vendor has no
+   * such field.
+   */
+  readonly fields: FieldCoverage;
   readonly campaigns: Collection<Campaign, CampaignFilters>;
   readonly senders: Collection<Sender, SenderFilters>;
   readonly leads: Collection<Lead, LeadFilters>;

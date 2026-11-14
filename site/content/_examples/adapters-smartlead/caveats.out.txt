@@ -32,11 +32,11 @@
 
 - Dated statistics need both dates: a missing end is today (UTC), a missing start 2000-01-01 for totals, or 30 days before the end for daily rows and a campaign's dated total.
 
-- No delivered or automatic-reply count exists. A campaign's dated total uses non_ooo_reply_count for replied when present; lifetime reply_count includes out-of-office replies.
+- No delivered count exists. A campaign's dated total uses non_ooo_reply_count for replied and total_reply_count less non_ooo_reply_count for repliedAuto, which is out-of-office replies only; lifetime reply_count includes out-of-office replies and has no automatic-reply count.
 
-- Daily rows have sent, total opens and replies; the daily endpoint always reports 0 bounces, so bounced is null.
+- Daily rows have sent, total opens and replies, plus positive replies from a second request (GET /analytics/day-wise-positive-reply-stats); the daily endpoint always reports 0 bounces, so bounced is null.
 
-- Step statistics do not say whether opens and clicks are unique (mapped to openedTotal and clicked). A step with variants has a row per variant and no total.
+- Step statistics do not say whether opens and clicks are unique (mapped to openedTotal and clickedTotal). A step with variants has a row per variant and no total.
 
 - A sender is disconnected when is_smtp_success or is_imap_success is false, active when both are true, else unknown. warmup_reputation may be a number or a string such as 95%.
 

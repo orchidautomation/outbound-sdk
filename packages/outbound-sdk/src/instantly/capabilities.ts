@@ -5,6 +5,7 @@
 
 import type { OperationCost } from "../internal/adapter.ts";
 import type { CapabilityDeclaration } from "../internal/capabilities.ts";
+import type { FieldDeclaration } from "../internal/fields.ts";
 import type { LimitDeclaration } from "../internal/limits.ts";
 
 export const BASE_URL = "https://api.instantly.ai/api/v2";
@@ -73,6 +74,28 @@ export const capabilities: CapabilityDeclaration = {
   tags: true,
   "webhooks.list": true,
   workspaces: true,
+};
+
+// What an Instantly record never carries. A lead has no LinkedIn fields, no
+// location and no tags, and no report says how many emails were delivered.
+export const fields: FieldDeclaration = {
+  lead: {
+    companyLinkedinUrl: false,
+    linkedinUrl: false,
+    location: false,
+    tags: false,
+  },
+  leadList: { size: false },
+  metricRow: {
+    connectionsAccepted: false,
+    connectionsSent: false,
+    contentHash: false,
+    delivered: false,
+    inmailsSent: false,
+    timezone: false,
+  },
+  sender: { linkedinUrl: false },
+  senderHealth: { blacklisted: false, checkedAt: false },
 };
 
 export const limits: LimitDeclaration = {

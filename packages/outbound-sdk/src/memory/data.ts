@@ -10,6 +10,7 @@ import type {
   Lead,
   LeadEngagement,
   LeadStatus,
+  MailProvider,
   Message,
   MetricRow,
   Reply,
@@ -73,6 +74,8 @@ export interface MemorySender {
   readonly name?: string;
   readonly status?: SenderStatus;
   readonly dailyLimit?: number;
+  readonly mailProvider?: MailProvider;
+  readonly tags?: readonly string[];
   readonly warmup?: { readonly enabled: boolean; readonly score?: number };
   /** The campaigns this sender is attached to. */
   readonly campaignIds?: readonly string[];
@@ -93,6 +96,11 @@ export interface MemoryLead {
   readonly createdAt?: string;
   readonly engagement?: Partial<LeadEngagement>;
   readonly interest?: string;
+  readonly interestCategory?: ReplyCategory;
+  readonly companyLinkedinUrl?: string;
+  readonly location?: string;
+  readonly phone?: string;
+  readonly website?: string;
   readonly tags?: readonly string[];
   /** The saved lists the lead is on. */
   readonly listIds?: readonly string[];
@@ -114,6 +122,8 @@ export interface MemoryMessage {
   readonly category?: ReplyCategory;
   /** Inbound only. */
   readonly isAuto?: boolean;
+  /** Inbound only. */
+  readonly unread?: boolean;
 }
 
 export interface MemoryStats {
@@ -205,8 +215,10 @@ export const toSender = (identity: Identity, seed: MemorySender): Sender => ({
   dailyLimit: seed.dailyLimit ?? null,
   kind: seed.linkedinUrl === undefined ? "mailbox" : "linkedin",
   linkedinUrl: seed.linkedinUrl ?? null,
+  mailProvider: seed.mailProvider ?? null,
   name: seed.name ?? null,
   status: seed.status ?? "active",
+  tags: [...(seed.tags ?? [])],
   warmup:
     seed.warmup === undefined
       ? null
@@ -228,6 +240,7 @@ export const toLead = (identity: Identity, seed: MemoryLead): Lead => ({
   ...base(identity, seed.id),
   campaignRef: refOrNull(identity, seed.campaignId),
   company: seed.company ?? null,
+  companyLinkedinUrl: seed.companyLinkedinUrl ?? null,
   createdAt: seed.createdAt ?? null,
   custom: { ...seed.custom },
   email: seed.email?.trim().toLowerCase() ?? null,
@@ -235,11 +248,15 @@ export const toLead = (identity: Identity, seed: MemoryLead): Lead => ({
     seed.engagement === undefined ? null : toEngagement(seed.engagement),
   firstName: seed.firstName ?? null,
   interest: seed.interest ?? null,
+  interestCategory: seed.interestCategory ?? null,
   tags: [...(seed.tags ?? [])],
   lastName: seed.lastName ?? null,
   linkedinUrl: seed.linkedinUrl ?? null,
+  location: seed.location ?? null,
+  phone: seed.phone ?? null,
   status: seed.status ?? "active",
   title: seed.title ?? null,
+  website: seed.website ?? null,
 });
 
 const messageFields = (
@@ -283,6 +300,7 @@ export const toReply = (
   categorySource: seed.category === undefined ? null : "vendor",
   direction: "in",
   isAuto: seed.isAuto ?? null,
+  unread: seed.unread ?? null,
 });
 
 export interface MetricIdentity extends Identity {

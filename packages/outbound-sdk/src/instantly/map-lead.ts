@@ -160,18 +160,24 @@ export const toLead = (
   ...recordBase(identity, text(raw.id) ?? "", raw),
   campaignRef: refTo(identity, text(raw.campaign)),
   company: text(raw.company_name),
+  // An Instantly lead has no LinkedIn fields of its own.
+  companyLinkedinUrl: null,
   createdAt: timestamp(raw.timestamp_created),
   custom: stringMap(raw.payload),
   email: emailAddress(raw.email),
   engagement: engagement(raw),
   firstName: text(raw.first_name),
   interest: interest(raw.lt_interest_status, labels),
+  interestCategory: category(raw.lt_interest_status, labels) ?? null,
   lastName: text(raw.last_name),
   linkedinUrl: null,
+  location: null,
+  phone: text(raw.phone),
   status: LEAD_STATUS.get(count(raw.status) ?? Number.NaN) ?? "unknown",
   // Instantly tags mailboxes and campaigns, never leads.
   tags: [],
   title: text(raw.job_title),
+  website: text(raw.website) ?? text(raw.company_domain),
 });
 
 /** `ue_type`: 1 sent from a campaign, 2 received, 3 sent by hand, 4 scheduled. */
@@ -215,11 +221,9 @@ export const toMessage = (
   direction: count(raw.ue_type) === RECEIVED ? "in" : "out",
 });
 
-const isAuto = (raw: JsonObject): boolean | null => {
-  const value = raw.is_auto_reply;
-
-  return flag(value) ?? (count(value) === null ? null : count(value) === 1);
-};
+// `is_auto_reply` and `is_unread` are documented as 0 or 1.
+const oneOrZero = (value: Json | undefined): boolean | null =>
+  flag(value) ?? (count(value) === null ? null : count(value) === 1);
 
 export const toReply = (
   identity: Identity,
@@ -234,6 +238,7 @@ export const toReply = (
     category: mapped ?? "unknown",
     categorySource: mapped === undefined ? null : "vendor",
     direction: "in",
-    isAuto: isAuto(raw),
+    isAuto: oneOrZero(raw.is_auto_reply),
+    unread: oneOrZero(raw.is_unread),
   };
 };

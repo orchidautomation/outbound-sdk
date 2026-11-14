@@ -88,6 +88,7 @@ export const computeRates = (row: MetricRow): Record<MetricName, Rate> => ({
 const COUNT_KEYS = [
   "bounced",
   "clicked",
+  "clickedTotal",
   "connectionsAccepted",
   "connectionsSent",
   "contacted",
@@ -108,6 +109,7 @@ export type MetricCounts = Pick<MetricRow, (typeof COUNT_KEYS)[number]>;
 export const emptyCounts = (): MetricCounts => ({
   bounced: null,
   clicked: null,
+  clickedTotal: null,
   connectionsAccepted: null,
   connectionsSent: null,
   contacted: null,

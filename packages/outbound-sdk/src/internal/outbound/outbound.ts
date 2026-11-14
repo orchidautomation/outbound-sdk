@@ -23,6 +23,8 @@ import type {
   Workspace,
 } from "../entities.ts";
 import { OutboundError } from "../errors.ts";
+import { resolveFields } from "../fields.ts";
+import type { FieldCoverage } from "../fields.ts";
 import { mergeHooks } from "../hooks.ts";
 import type { OutboundHooks } from "../hooks.ts";
 import type { NativeCatalog, NoNative } from "../native.ts";
@@ -226,6 +228,12 @@ export class Outbound<
 
   get caveats(): readonly string[] {
     return this.#core.adapter.caveats ?? [];
+  }
+
+  get fields(): FieldCoverage {
+    const { adapter } = this.#core;
+
+    return adapter.fieldCoverage ?? resolveFields(adapter.fields);
   }
 
   /** The plugins on this instance, outermost first. */

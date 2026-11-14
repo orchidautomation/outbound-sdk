@@ -11,6 +11,7 @@ import {
   capabilities,
   caveats,
   costs,
+  fields,
   limits,
   WORKSPACE_ENV,
 } from "./capabilities.ts";
@@ -66,6 +67,7 @@ export const instantly = (
     caveats,
     costs,
     events: instantlyEvents(PROVIDER),
+    fields,
     limits,
     // Instantly answers 402 when the plan does not include the endpoint.
     mapError: makeErrorMapper(PROVIDER, {

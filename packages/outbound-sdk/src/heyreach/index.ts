@@ -17,6 +17,7 @@ import {
   capabilities,
   caveats,
   costs,
+  fields,
   limits,
   WORKSPACE_ENV,
 } from "./capabilities.ts";
@@ -81,6 +82,7 @@ export const heyreach = (
     caveats,
     costs,
     events: heyreachEvents(PROVIDER),
+    fields,
     limits,
     mapError: errorMapper(apiKey),
     // Read-only checks passed against one live workspace on 2026-11-14.

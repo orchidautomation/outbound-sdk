@@ -12,6 +12,7 @@ import {
   field,
   isJsonObject,
   objects,
+  text,
 } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
 import type { SmartleadClient } from "./client.ts";
@@ -131,17 +132,31 @@ const dailyRows = async (
 ): Promise<MetricRow[]> => {
   const range = resolveRange(query, true);
 
-  const body = await client.get(ctx, "/analytics/day-wise-overall-stats", {
+  const request = {
     query: {
       campaign_ids: scope.scope === "campaign" ? scope.scopeId : undefined,
       end_date: range.to,
       start_date: range.from,
       timezone: TIMEZONE,
     },
-  });
+  };
+
+  // Positive replies per day are a report of their own, counted on the day of
+  // the reply like the counts beside them.
+  const [body, positive] = await Promise.all([
+    client.get(ctx, "/analytics/day-wise-overall-stats", request),
+    client.get(ctx, "/analytics/day-wise-positive-reply-stats", request),
+  ]);
+
+  const positiveByDay = new Map(
+    objects(field(unwrap(positive), "day_wise_stats")).map((day) => [
+      text(day.date),
+      day.positive_replied,
+    ])
+  );
 
   return objects(field(unwrap(body), "day_wise_stats")).map((day) =>
-    dayRow(scope, day)
+    dayRow(scope, day, positiveByDay.get(text(day.date)))
   );
 };
 

@@ -26,6 +26,7 @@ import type {
   Workspace,
 } from "./entities.ts";
 import type { ErrorMapper } from "./errors.ts";
+import type { FieldCoverage, FieldDeclaration } from "./fields.ts";
 import type { Json } from "./json.ts";
 import type { LimitDeclaration } from "./limits.ts";
 import type { NativeCatalog, NoNative } from "./native.ts";
@@ -204,6 +205,16 @@ export interface Adapter<Native extends NativeCatalog = NoNative> {
   readonly events?: EventFormat | undefined;
   /** What is assumed and not yet confirmed against the live API. */
   readonly caveats?: readonly string[] | undefined;
+  /**
+   * The fields this adapter derives or never fills, by record. Omitted: every
+   * field is one the vendor reports.
+   */
+  readonly fields?: FieldDeclaration | undefined;
+  /**
+   * Set by `combine()` in place of `fields`: the coverage of the members read
+   * as one.
+   */
+  readonly fieldCoverage?: FieldCoverage | undefined;
   /** Request costs by operation kind, for `outbound.estimate()`. */
   readonly costs?: Readonly<Record<string, OperationCost>> | undefined;
   /**

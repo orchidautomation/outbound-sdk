@@ -4,6 +4,7 @@
 import type {
   Campaign,
   CampaignStatus,
+  MailProvider,
   Sender,
   SenderStatus,
   Sequence,
@@ -160,6 +161,16 @@ const SENDER_STATUS = new Map<number, SenderStatus>([
   [3, "paused"],
 ]);
 
+// 4 is AWS and 8 and 11 are Instantly's own AirMail mailboxes.
+const MAIL_PROVIDER = new Map<number, MailProvider>([
+  [1, "smtp"],
+  [2, "google"],
+  [3, "microsoft"],
+  [4, "other"],
+  [8, "other"],
+  [11, "other"],
+]);
+
 const fullName = (raw: JsonObject): string | null => {
   const name = [text(raw.first_name), text(raw.last_name)]
     .filter((part) => part !== null)
@@ -179,8 +190,12 @@ export const toSender = (identity: Identity, raw: JsonObject): Sender => {
     dailyLimit: count(raw.daily_limit),
     kind: "mailbox",
     linkedinUrl: null,
+    mailProvider:
+      MAIL_PROVIDER.get(count(raw.provider_code) ?? Number.NaN) ?? null,
     name: fullName(raw),
     status: SENDER_STATUS.get(count(raw.status) ?? Number.NaN) ?? "unknown",
+    // Present only when the request asked for `include_tags`.
+    tags: objects(raw.tags).flatMap((tag) => text(tag.label) ?? []),
     warmup:
       warmupStatus === null && count(raw.stat_warmup_score) === null
         ? null

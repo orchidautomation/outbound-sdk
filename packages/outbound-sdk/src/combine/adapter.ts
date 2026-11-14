@@ -12,6 +12,7 @@ import {
 } from "../internal/capabilities.ts";
 import type { MetricRow } from "../internal/entities.ts";
 import { makeErrorMapper, OutboundError } from "../internal/errors.ts";
+import { mergeFields, resolveFields } from "../internal/fields.ts";
 import type { Json } from "../internal/json.ts";
 import { recordBase } from "../internal/record.ts";
 import { accountReads } from "./account.ts";
@@ -277,6 +278,11 @@ export const combine = (members: readonly Adapter[]): Adapter => {
       // A combined instance always knows its workspaces: they are its members.
       workspaces: true,
     },
+    fieldCoverage: mergeFields(
+      members.map(
+        (member) => member.fieldCoverage ?? resolveFields(member.fields)
+      )
+    ),
     caveats: members.flatMap((member) =>
       (member.caveats ?? []).map(
         (caveat) => `${member.name} (${member.workspaceId}): ${caveat}`

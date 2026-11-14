@@ -6,6 +6,8 @@ import type {
   CampaignStatus,
   Lead,
   LeadStatus,
+  MailProvider,
+  ReplyCategory,
   Sender,
   SenderStatus,
   Sequence,
@@ -207,6 +209,19 @@ const warmup = (details: Json | undefined): Sender["warmup"] =>
       }
     : null;
 
+// GMAIL, OUTLOOK and SMTP in the current reference; the older one adds ZOHO.
+const MAIL_PROVIDER = new Map<string, MailProvider>([
+  ["GMAIL", "google"],
+  ["OUTLOOK", "microsoft"],
+  ["SMTP", "smtp"],
+]);
+
+const mailProvider = (value: Json | undefined): MailProvider | null => {
+  const type = text(value);
+
+  return type === null ? null : (MAIL_PROVIDER.get(type) ?? "other");
+};
+
 /** A mailbox. `raw` is the payload without its SMTP and IMAP passwords. */
 export const toSender = (identity: Identity, raw: JsonObject): Sender => ({
   ...recordBase(identity, text(raw.id) ?? "", withoutSecrets(raw)),
@@ -214,8 +229,13 @@ export const toSender = (identity: Identity, raw: JsonObject): Sender => ({
   dailyLimit: count(raw.message_per_day),
   kind: "mailbox",
   linkedinUrl: null,
+  mailProvider: mailProvider(raw.type),
   name: text(raw.from_name),
   status: senderStatus(raw),
+  // The mailbox list names a tag `tag_name`; the tag list names it `name`.
+  tags: objects(raw.tags).flatMap(
+    (tag) => text(tag.tag_name) ?? text(tag.name) ?? []
+  ),
   warmup: warmup(raw.warmup_details),
 });
 
@@ -235,6 +255,17 @@ const leadStatus = (status: Json | undefined, lead: JsonObject): LeadStatus =>
     ? "unsubscribed"
     : (LEAD_STATUS.get(text(status) ?? "") ?? "unknown");
 
+/**
+ * The account's lead categories, from `GET /leads/fetch-categories`: each
+ * id's name, and what it means for the ids whose sentiment says so.
+ */
+export interface LeadCategories {
+  readonly names: Readonly<Record<string, string>>;
+  readonly meanings: ReadonlyMap<string, ReplyCategory>;
+}
+
+export const NO_CATEGORIES: LeadCategories = { meanings: new Map(), names: {} };
+
 interface LeadPlace {
   readonly campaignId: string | null;
   readonly createdAt: Json | undefined;
@@ -242,6 +273,8 @@ interface LeadPlace {
   readonly raw: JsonObject;
   /** The lead category's name, when the read can resolve it. */
   readonly interest: string | null;
+  /** What the category means, when the category list says. */
+  readonly interestCategory: ReplyCategory | null;
   readonly tags: readonly string[];
 }
 
@@ -253,6 +286,8 @@ const leadRecord = (
   ...recordBase(identity, text(lead.id) ?? "", place.raw),
   campaignRef: refTo(identity, place.campaignId),
   company: text(lead.company_name),
+  // `linkedin_profile` is the person's; `company_url` is a website.
+  companyLinkedinUrl: null,
   createdAt: timestamp(place.createdAt),
   custom: stringMap(lead.custom_fields),
   email: emailAddress(lead.email),
@@ -260,12 +295,16 @@ const leadRecord = (
   engagement: null,
   firstName: text(lead.first_name),
   interest: place.interest,
+  interestCategory: place.interestCategory,
   lastName: text(lead.last_name),
   linkedinUrl: text(lead.linkedin_profile),
+  location: text(lead.location),
+  phone: text(lead.phone_number),
   status: leadStatus(place.status, lead),
   tags: [...place.tags],
   // Smartlead has no job title field; a title lives in the custom fields.
   title: null,
+  website: text(lead.website) ?? text(lead.company_url),
 });
 
 /**
@@ -276,13 +315,15 @@ export const toCampaignLead = (
   identity: Identity,
   campaignId: string,
   row: JsonObject,
-  categories: Readonly<Record<string, string>>
+  categories: LeadCategories
 ): Lead =>
   leadRecord(identity, isJsonObject(row.lead) ? row.lead : {}, {
     campaignId,
     createdAt: row.created_at,
     // The row names its category by id; the name comes from the category list.
-    interest: categories[text(row.lead_category_id) ?? ""] ?? null,
+    interest: categories.names[text(row.lead_category_id) ?? ""] ?? null,
+    interestCategory:
+      categories.meanings.get(text(row.lead_category_id) ?? "") ?? null,
     raw: row,
     status: row.status,
     // Tags are read per lead (`GET /crm/leads/tags`), so a listing has none.
@@ -293,7 +334,7 @@ interface FoundPlace {
   readonly campaignId: string;
   /** The campaign's item: of `lead_campaign_data`, or of the lead's campaigns. */
   readonly entry: JsonObject;
-  readonly categories: Readonly<Record<string, string>>;
+  readonly categories: LeadCategories;
 }
 
 /**
@@ -314,7 +355,10 @@ export const toFoundLead = (
     campaignId: place.campaignId,
     createdAt: lead.created_at,
     interest:
-      place.categories[text(place.entry.lead_category_id) ?? ""] ?? null,
+      place.categories.names[text(place.entry.lead_category_id) ?? ""] ?? null,
+    interestCategory:
+      place.categories.meanings.get(text(place.entry.lead_category_id) ?? "") ??
+      null,
     raw: { ...place.entry, lead },
     status: undefined,
     tags: [],
@@ -323,17 +367,24 @@ export const toFoundLead = (
 
 /**
  * `GET /leads/{id}`: the lead on its own, with no campaign. `tags` are the
- * names from `GET /crm/leads/tags?leadId=`.
+ * names from `GET /crm/leads/tags?leadId=`, and `categories` says what the
+ * lead's `category_id` means.
  */
 export const toLead = (
   identity: Identity,
   raw: JsonObject,
-  tags: readonly string[]
+  tags: readonly string[],
+  categories: LeadCategories = NO_CATEGORIES
 ): Lead =>
   leadRecord(identity, raw, {
     campaignId: null,
     createdAt: raw.created_at,
-    interest: text(raw.category_name),
+    interest:
+      text(raw.category_name) ??
+      categories.names[text(raw.category_id) ?? ""] ??
+      null,
+    interestCategory:
+      categories.meanings.get(text(raw.category_id) ?? "") ?? null,
     raw,
     status: raw.status,
     tags,

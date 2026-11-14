@@ -154,6 +154,16 @@ export const suite: AdapterSuite = {
     },
   ],
   secret: KEY,
+  unsampled: {
+    message: {
+      senderRef:
+        "the documented example's eaccount is the placeholder eaccount-123, not an address",
+    },
+    reply: {
+      senderRef:
+        "the documented example's eaccount is the placeholder eaccount-123, not an address",
+    },
+  },
   totals: {
     blocklist: 3,
     campaigns: 3,

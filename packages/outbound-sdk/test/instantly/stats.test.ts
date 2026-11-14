@@ -151,6 +151,7 @@ test("instantly: each overview count is read from its own field", async () => {
     {
       bounced: row?.bounced,
       clicked: row?.clicked,
+      clickedTotal: row?.clickedTotal,
       contacted: row?.contacted,
       opened: row?.opened,
       openedTotal: row?.openedTotal,
@@ -163,6 +164,7 @@ test("instantly: each overview count is read from its own field", async () => {
     {
       bounced: 11,
       clicked: 16,
+      clickedTotal: 15,
       contacted: 13,
       opened: 20,
       openedTotal: 19,
@@ -201,6 +203,7 @@ test("instantly: each daily count is read from its own field", async () => {
     {
       bounced: row?.bounced,
       clicked: row?.clicked,
+      clickedTotal: row?.clickedTotal,
       contacted: row?.contacted,
       date: row?.date,
       opened: row?.opened,
@@ -212,6 +215,7 @@ test("instantly: each daily count is read from its own field", async () => {
     {
       bounced: 41,
       clicked: 50,
+      clickedTotal: 42,
       contacted: 43,
       date: "2026-10-05",
       opened: 51,

@@ -286,7 +286,9 @@ export const readers = (
         });
       }
 
-      const page = await listPage(client, ctx, "/accounts", query);
+      const page = await listPage(client, ctx, "/accounts", query, {
+        include_tags: true,
+      });
 
       return {
         items: page.items.map((item) => toSender(identity, item)),

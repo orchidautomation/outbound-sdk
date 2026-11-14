@@ -35,6 +35,7 @@ export interface StepRow {
 const toRow = (provider: string, seed: StepRow): MetricRow => ({
   bounced: null,
   clicked: null,
+  clickedTotal: null,
   connectionsAccepted: null,
   connectionsSent: null,
   contacted: null,

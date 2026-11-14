@@ -8,16 +8,17 @@ import { count, field, isJsonObject, objects, text } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
 import type { SmartleadClient } from "./client.ts";
 import { leadsByEmail } from "./lookup.ts";
-import { toCampaignLead, toLead, unwrap } from "./map.ts";
+import { NO_CATEGORIES, toCampaignLead, toLead, unwrap } from "./map.ts";
+import type { LeadCategories } from "./map.ts";
 import {
   campaignIds,
-  categoryNames,
+  categoriesCursor,
   idList,
+  leadCategories,
   objectOf,
   pageSize,
   segment,
 } from "./shared.ts";
-import type { CategoryNames } from "./shared.ts";
 
 interface LeadPage {
   readonly items: Lead[];
@@ -27,7 +28,7 @@ interface LeadPage {
 
 interface LeadPlace {
   readonly campaignId: string;
-  readonly categories: CategoryNames;
+  readonly categories: LeadCategories;
   readonly limit: number;
   readonly offset: number;
 }
@@ -79,7 +80,7 @@ const allLeads = async (
     return { items: [] };
   }
 
-  const categories = await categoryNames(client, ctx, query.next);
+  const categories = await leadCategories(client, ctx, query.next);
 
   const page = await campaignLeads(client, ctx, {
     campaignId: current,
@@ -91,14 +92,20 @@ const allLeads = async (
   if (page.nextOffset !== undefined) {
     return {
       items: page.items,
-      next: { campaigns, categories, offset: page.nextOffset },
+      next: {
+        ...categoriesCursor(categories),
+        campaigns,
+        offset: page.nextOffset,
+      },
     };
   }
 
   return {
     items: page.items,
     next:
-      rest.length > 0 ? { campaigns: rest, categories, offset: 0 } : undefined,
+      rest.length > 0
+        ? { ...categoriesCursor(categories), campaigns: rest, offset: 0 }
+        : undefined,
   };
 };
 
@@ -115,7 +122,7 @@ export const listLeads = async (
     return await allLeads(client, ctx, query);
   }
 
-  const categories = await categoryNames(client, ctx, query.next);
+  const categories = await leadCategories(client, ctx, query.next);
 
   const page = await campaignLeads(client, ctx, {
     campaignId: query.campaignId,
@@ -129,11 +136,14 @@ export const listLeads = async (
     next:
       page.nextOffset === undefined
         ? undefined
-        : { categories, offset: page.nextOffset },
+        : { ...categoriesCursor(categories), offset: page.nextOffset },
   };
 };
 
-/** `GET /leads/{id}`, then the lead's tags from `GET /crm/leads/tags`. */
+/**
+ * `GET /leads/{id}`, then the lead's tags from `GET /crm/leads/tags` and, for
+ * a lead with a category, the category list.
+ */
 export const getLead = async (
   client: SmartleadClient,
   ctx: AdapterContext,
@@ -157,9 +167,17 @@ export const getLead = async (
     query: { leadId: id },
   });
 
+  // A lead names its category by id; what the id means is in the category
+  // list, read only for a lead that has one.
+  const categories =
+    text(lead.category_id) === null
+      ? NO_CATEGORIES
+      : await leadCategories(client, ctx, undefined);
+
   return toLead(
     client.identity,
     lead,
-    objects(unwrap(tags)).flatMap((tag) => text(tag.name) ?? [])
+    objects(unwrap(tags)).flatMap((tag) => text(tag.name) ?? []),
+    categories
   );
 };

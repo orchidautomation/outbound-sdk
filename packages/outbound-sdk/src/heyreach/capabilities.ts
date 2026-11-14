@@ -6,6 +6,7 @@
 
 import type { OperationCost } from "../internal/adapter.ts";
 import type { CapabilityDeclaration } from "../internal/capabilities.ts";
+import type { FieldDeclaration } from "../internal/fields.ts";
 import type { LimitDeclaration } from "../internal/limits.ts";
 
 export const BASE_URL = "https://api.heyreach.io/api/public";
@@ -86,6 +87,55 @@ export const capabilities: CapabilityDeclaration = {
   "webhooks.list": true,
   // CheckApiKey returns no identity and only an organization key can list workspaces.
   workspaces: false,
+};
+
+// What a HeyReach record never carries. LinkedIn has no opens, bounces,
+// warmup or DNS, and the API reports no step a message belongs to.
+export const fields: FieldDeclaration = {
+  campaign: { tags: false },
+  campaignSettings: false,
+  lead: { engagement: false, phone: false, website: false },
+  message: { bodyHtml: false, stepIndex: false, variantKey: false },
+  metricRow: {
+    bounced: false,
+    clicked: false,
+    clickedTotal: false,
+    contentHash: false,
+    delivered: false,
+    opened: false,
+    openedTotal: false,
+    repliedAuto: false,
+    stepIndex: false,
+    unsubscribed: false,
+    variantKey: false,
+  },
+  reply: {
+    bodyHtml: false,
+    // The lead's newest auto-tag, not a label on the message.
+    category: "derived",
+    categorySource: "derived",
+    isAuto: false,
+    stepIndex: false,
+    variantKey: false,
+  },
+  sender: {
+    address: false,
+    dailyLimit: false,
+    mailProvider: false,
+    tags: false,
+    warmup: false,
+  },
+  senderHealth: {
+    blacklisted: false,
+    checkedAt: false,
+    dns: false,
+    domain: false,
+    warmup: false,
+  },
+  sequence: { name: false },
+  tag: false,
+  webhook: { createdAt: false },
+  workspace: false,
 };
 
 export const limits: LimitDeclaration = {

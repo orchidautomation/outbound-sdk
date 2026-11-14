@@ -113,6 +113,7 @@ $ outbound capabilities
     "workspaces": true
   },
   "caveats": [],
+  "fields": {},
   "maturity": "stable",
   "provider": "memory",
   "workspaceId": "default"

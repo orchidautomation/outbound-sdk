@@ -5,6 +5,7 @@
 
 import type { OperationCost } from "../internal/adapter.ts";
 import type { CapabilityDeclaration } from "../internal/capabilities.ts";
+import type { FieldDeclaration } from "../internal/fields.ts";
 import type { LimitDeclaration } from "../internal/limits.ts";
 
 export const BASE_URL = "https://server.smartlead.ai/api/v1";
@@ -95,6 +96,35 @@ export const capabilities: CapabilityDeclaration = {
   workspaces: true,
 };
 
+// What a Smartlead record never carries, and what the adapter works out.
+export const fields: FieldDeclaration = {
+  campaignSettings: { endDate: false },
+  lead: { companyLinkedinUrl: false, engagement: false, title: false },
+  message: { variantKey: false },
+  metricRow: {
+    connectionsAccepted: false,
+    connectionsSent: false,
+    contentHash: false,
+    delivered: false,
+    inmailsSent: false,
+    // total_reply_count less non_ooo_reply_count.
+    repliedAuto: "derived",
+  },
+  reply: {
+    // The lead's category, not a label on the message.
+    category: "derived",
+    categorySource: "derived",
+    // Only an Out Of Office category says a reply was automatic.
+    isAuto: "derived",
+    // The master inbox does not say which step a reply answers.
+    stepIndex: false,
+    variantKey: false,
+  },
+  sender: { linkedinUrl: false },
+  senderHealth: { blacklisted: false, checkedAt: false, dns: false },
+  tag: { description: false },
+};
+
 const TEN_PER_MINUTE = [{ perMs: 60_000, requests: 10 }];
 
 export const limits: LimitDeclaration = {
@@ -114,7 +144,8 @@ export const costs = {
   // One request returns every campaign; there are no pages.
   "campaigns.list": { perPage: 1 },
   "campaigns.settings": { perPage: 1 },
-  // The lead, then its tags.
+  // The lead, then its tags, then the category list when the lead has a
+  // category.
   "leads.get": { perPage: 2 },
   // The first page also reads the lead category list and, without a
   // campaign, the campaign list. A lookup by address is one request, two
@@ -134,6 +165,7 @@ export const costs = {
   // One subsequence per page; the first page also reads the campaign list.
   "sequence.subsequences": { pageSize: 1, perPage: 1 },
   // A mailbox's totals cost two: the mailbox for its address, then the list.
+  // Daily rows cost two: the day-wise counts, then the positive replies.
   stats: { perPage: 1 },
   "tags.list": { perPage: 1 },
   // One campaign per page; without a campaign, the first page also reads the
@@ -160,9 +192,9 @@ export const caveats: readonly string[] = [
   "Replies come from POST /master-inbox/inbox-replies (illustrative item shape), 20 threads per page: each inbound history message is a reply, or only the latest without a history, and all share the lead's current category.",
   "Reply categories come from GET /leads/fetch-categories: sentiment_type gives positive or negative, null neutral, the name Out Of Office ooo; a list without sentiment_type leaves the rest unknown.",
   "Dated statistics need both dates: a missing end is today (UTC), a missing start 2000-01-01 for totals, or 30 days before the end for daily rows and a campaign's dated total.",
-  "No delivered or automatic-reply count exists. A campaign's dated total uses non_ooo_reply_count for replied when present; lifetime reply_count includes out-of-office replies.",
-  "Daily rows have sent, total opens and replies; the daily endpoint always reports 0 bounces, so bounced is null.",
-  "Step statistics do not say whether opens and clicks are unique (mapped to openedTotal and clicked). A step with variants has a row per variant and no total.",
+  "No delivered count exists. A campaign's dated total uses non_ooo_reply_count for replied and total_reply_count less non_ooo_reply_count for repliedAuto, which is out-of-office replies only; lifetime reply_count includes out-of-office replies and has no automatic-reply count.",
+  "Daily rows have sent, total opens and replies, plus positive replies from a second request (GET /analytics/day-wise-positive-reply-stats); the daily endpoint always reports 0 bounces, so bounced is null.",
+  "Step statistics do not say whether opens and clicks are unique (mapped to openedTotal and clickedTotal). A step with variants has a row per variant and no total.",
   "A sender is disconnected when is_smtp_success or is_imap_success is false, active when both are true, else unknown. warmup_reputation may be a number or a string such as 95%.",
   "Workspaces are Smartlead clients; a client-level key may be refused.",
   "Webhook signing is off until turned on per webhook; unsigned webhooks fail verify.",

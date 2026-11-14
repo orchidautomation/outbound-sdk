@@ -81,7 +81,8 @@ Every count on a `MetricRow` is a non-negative number, or `null` when the vendor
 | `contacted` | Unique leads contacted. |
 | `opened` | Unique opens. `null` when open tracking is off. |
 | `openedTotal` | Every open, repeats included. |
-| `clicked` | Clicks. |
+| `clicked` | Unique clicks: leads who clicked at least once. |
+| `clickedTotal` | Every click, repeats included. |
 | `replied` | Replies from people. Auto-replies are counted in `repliedAuto` where the vendor separates them. |
 | `repliedAuto` | Automatic replies. |
 | `positive` | Replies the vendor marked positive. |

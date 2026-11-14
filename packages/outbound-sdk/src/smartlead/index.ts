@@ -11,6 +11,7 @@ import {
   capabilities,
   caveats,
   costs,
+  fields,
   limits,
   WORKSPACE_ENV,
 } from "./capabilities.ts";
@@ -58,6 +59,7 @@ export const smartlead = (
     caveats,
     costs,
     events: smartleadEvents(PROVIDER),
+    fields,
     limits,
     mapError: makeErrorMapper(PROVIDER, { secrets: [apiKey] }),
     maturity: "unverified",

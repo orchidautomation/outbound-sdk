@@ -6,6 +6,7 @@ import { replyCategorySchema } from "../internal/entities.ts";
 import {
   count,
   field,
+  flag,
   isJsonObject,
   objects,
   text,
@@ -311,12 +312,17 @@ export const toInboxReplies = (
           },
         ];
 
+  const read = flag(item.is_read);
+
   return parts.map((part) => ({
     ...messageFields(identity, place, part, includeBody),
     category: category ?? "unknown",
-    categorySource: category === undefined ? null : "vendor",
+    // The category is the lead's, not one message's.
+    categorySource: category === undefined ? null : "lead",
     direction: "in",
     // Smartlead's only automatic-reply signal is the Out Of Office category.
     isAuto: category === "ooo" ? true : null,
+    // `is_read` is the thread's.
+    unread: read === null ? null : !read,
   }));
 };

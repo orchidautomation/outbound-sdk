@@ -136,6 +136,21 @@ export const suite: AdapterSuite = {
     },
   ],
   secret: KEY,
+  unsampled: {
+    metricRow: {
+      contacted:
+        "uniqueLeadsContacted was seen live and is not in the API reference, so the documented example has none",
+      positive:
+        "autoTaggedInterested was seen live and is not in the API reference, so the documented example has none",
+    },
+    reply: {
+      category:
+        "no documented conversation carries an auto-tag; fields.test.ts builds them",
+      categorySource:
+        "no documented conversation carries an auto-tag; fields.test.ts builds them",
+      subject: "only an InMail has a subject, and no documented reply is one",
+    },
+  },
   totals: {
     blocklist: 5,
     campaigns: 3,

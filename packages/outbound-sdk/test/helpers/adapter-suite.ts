@@ -19,6 +19,8 @@ import type {
   Outbound,
 } from "../../src/index.ts";
 import { createClock } from "./clock.ts";
+import { fieldCoverageTests } from "./field-coverage.ts";
+import type { CoverageSuite } from "./field-coverage.ts";
 import { fixture, fixtureText } from "./fixtures.ts";
 import { createFetch, json } from "./http.ts";
 import type { Handler, RecordedRequest } from "./http.ts";
@@ -74,6 +76,8 @@ export interface AdapterSuite {
   >;
   /** Webhook fixture file -> the event type it must become. */
   readonly webhooks: Readonly<Record<string, EventType>>;
+  /** Fields the adapter fills that the default fixtures do not show. */
+  readonly unsampled?: CoverageSuite["unsampled"];
 }
 
 const WORKSPACE = "client-a";
@@ -499,6 +503,7 @@ const webhookTests = (suite: AdapterSuite): void => {
 /** Registers the shared tests for one adapter. */
 export const runAdapterSuite = (suite: AdapterSuite): void => {
   listingTests(suite);
+  fieldCoverageTests(suite, () => harness(suite));
   capabilityTests(suite);
   requestTests(suite);
   webhookTests(suite);
