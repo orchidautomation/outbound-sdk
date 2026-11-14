@@ -76,7 +76,8 @@ export const heyreach = (options: HeyReachOptions = {}): Adapter => {
     events: heyreachEvents(PROVIDER),
     limits,
     mapError: errorMapper(apiKey),
-    maturity: "unverified",
+    // Read-only checks passed against one live workspace on 2026-11-14.
+    maturity: "beta",
     name: PROVIDER,
     raw: client.raw,
     secrets: [apiKey],

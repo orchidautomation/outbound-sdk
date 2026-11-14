@@ -29,4 +29,4 @@ For every adapter, offline, from the fixtures:
 
 ## Maturity
 
-An adapter starts as `unverified`. It becomes `beta` once its fixtures are captured from real responses, and `stable` once the live test suite passes against real credentials.
+An adapter starts as `unverified`: written from documentation and tested offline. It becomes `beta` once its reads have been run against a live account and the differences fixed, and `stable` once its fixtures are captured responses and the live tests pass on a schedule.

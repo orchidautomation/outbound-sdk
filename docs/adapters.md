@@ -1,6 +1,11 @@
 # Adapters
 
-Three adapters ship today. All three are `unverified`: each was written from the vendor's public API documentation read on 2026-11-14 and tested offline against documented payloads. None has been checked against a live account. `outbound.caveats` lists what each adapter assumes, and `npm run test:live` (see below) is how an adapter is confirmed.
+Three adapters ship today. Each was written from the vendor's public API documentation read on 2026-11-14 and tested offline against documented payloads.
+
+- **HeyReach is `beta`:** its reads were run once, read-only, against one live workspace on 2026-11-14, which fixed two things the documentation got wrong or left out.
+- **Instantly and Smartlead are `unverified`:** neither has been run against a live account.
+
+`outbound.caveats` lists what each adapter assumes, and `npm run test:live` (see below) is how an adapter is confirmed.
 
 | Adapter | Import | Channel | Key | Research |
 | --- | --- | --- | --- | --- |
@@ -27,13 +32,13 @@ Generated from the adapters' own declarations. A filter is `server` (the vendor 
 | `leads.byCampaign`   | yes       | yes       | yes      |
 | `leads.get`          | yes       | yes       | yes      |
 | `leads.since`        | client    | client    | server   |
-| `leads.timeline`     | yes       | yes       | no       |
-| `messages.list`      | yes       | yes       | no       |
-| `messages.body`      | sampled   | full      | no       |
-| `messages.since`     | server    | client    | no       |
-| `replies.list`       | yes       | yes       | no       |
+| `leads.timeline`     | yes       | yes       | yes      |
+| `messages.list`      | yes       | yes       | yes      |
+| `messages.body`      | sampled   | full      | full     |
+| `messages.since`     | server    | client    | client   |
+| `replies.list`       | yes       | yes       | yes      |
 | `replies.category`   | vendor    | vendor    | no       |
-| `replies.since`      | server    | client    | no       |
+| `replies.since`      | server    | client    | client   |
 | `stats.workspace`    | exact     | exact     | exact    |
 | `stats.campaign`     | exact     | exact     | exact    |
 | `stats.byDay`        | exact     | exact     | exact    |
@@ -46,7 +51,7 @@ Generated from the adapters' own declarations. A filter is `server` (the vendor 
 
 The gaps that matter most:
 
-- **HeyReach has no messages, replies or timeline.** Its API exposes messages only inside conversations, with no message id and an undocumented value for the lead's side of a thread. Guessing direction would be worse than declining, so those reads are refused. The inbox endpoints are reachable through `outbound.raw`. A `combine()` of an email tool and HeyReach therefore links a person's records across tools but shows no LinkedIn messages.
+- **HeyReach replies carry no category.** Its auto-tags describe the lead, not a message, so a reply cannot be filtered by category. Messages, replies and a lead's timeline are read from conversations; a message has no id in HeyReach, so the SDK builds a stable one.
 - **Instantly cannot list a campaign's mailboxes.** A campaign can attach mailboxes by tag, and the API does not expand the tag, so the list would be silently incomplete.
 - **Smartlead has no per-mailbox stats** that are documented well enough to trust.
 - **No adapter reveals deleted records.** Use the `reconcile` plugin's `deletions()`.
@@ -67,4 +72,4 @@ The SDK uses `share` (default 0.5) of these published numbers, because the limit
 LIVE_TESTS=1 INSTANTLY_API_KEY=... npm run test:live
 ```
 
-The live tests only read. They list campaigns and read one back, exercise each declared capability once, and check the rate budget. They run only when `LIVE_TESTS=1` and the provider's key are set, and are never part of `npm test` or CI. An adapter moves to `beta` once its fixtures are replaced by captured responses, and to `stable` once the live tests pass.
+The live tests only read. They list campaigns and read one back, exercise each declared capability once, and check the rate budget. They run only when `LIVE_TESTS=1` and the provider's key are set, and are never part of `npm test` or CI. An adapter moves to `beta` once its reads have been run against a live account, and to `stable` once its fixtures are captured responses and the live tests pass on a schedule.

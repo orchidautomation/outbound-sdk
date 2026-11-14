@@ -7,7 +7,7 @@ One small, typed, read-only TypeScript API over outbound sending tools: Instantl
 - **Calls no AI model.** Your agent does the reasoning; the SDK supplies the numbers.
 - **Swap the adapter, keep the code.**
 
-> Every adapter is currently `unverified`: written from the vendors' public documentation and tested offline, not yet checked against live accounts. `outbound.caveats` lists what each one assumes.
+> HeyReach is `beta`: its reads were run once against a live workspace. Instantly and Smartlead are `unverified`: written from public documentation and tested offline. `outbound.caveats` lists what each adapter assumes.
 
 ## Install
 

@@ -41,6 +41,11 @@ export const suite: AdapterSuite = {
       path: "/api/public/campaign/GetLeadsFromCampaign",
     },
     {
+      fixture: paged("getConversations"),
+      method: "POST",
+      path: "/api/public/inbox/GetConversationsV2",
+    },
+    {
       fixture: "getLead.json",
       method: "POST",
       path: "/api/public/lead/GetLead",
@@ -62,7 +67,7 @@ export const suite: AdapterSuite = {
     },
   ],
   secret: KEY,
-  totals: { campaigns: 3, leads: 3, senders: 3 },
+  totals: { campaigns: 3, leads: 3, messages: 6, replies: 2, senders: 3 },
   webhooks: {
     "webhook.message_sent.THIRD_PARTY.json": "linkedin.message_sent",
     "webhook.voice_note_received.json": "linkedin.message_received",

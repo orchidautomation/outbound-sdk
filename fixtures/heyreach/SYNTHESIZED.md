@@ -29,3 +29,6 @@ All personal data is replaced with fakes (Alex/Sam Example, person1@example.com,
 ## No fixture possible
 
 - Webhook payloads for connection_request_sent, connection_request_accepted, message_reply_received, every_message_reply_received, inmail_sent, inmail_reply_received, follow_sent, liked_post, viewed_profile, campaign_completed and lead_tag_updated: HeyReach publishes neither a schema nor an example. Not invented here.
+
+- `getConversations.json`, `getConversations.page2.json`: built by hand on 2026-11-14 to match the structure of live `POST /inbox/GetConversationsV2` responses (field names, types and the `ME` / `CORRESPONDENT` sender values were read from a real workspace). Every value is made up; no real conversation is included.
+- `getCampaignSequence.connectionCheck.json`: built by hand on 2026-11-14 to match the node layout of live campaigns (CHECK_IS_CONNECTION with the same messages on both branches). The message text is made up.

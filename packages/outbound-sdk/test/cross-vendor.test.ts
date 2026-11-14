@@ -65,11 +65,13 @@ test("the combined instance promises only what Instantly, Smartlead and HeyReach
     "HeyReach has no list of every lead"
   );
   assert.equal(capabilities["leads.byCampaign"], true);
+  assert.equal(capabilities["replies.list"], true);
   assert.equal(
-    capabilities["replies.list"],
+    capabilities["replies.category"],
     false,
-    "HeyReach lists no replies"
+    "HeyReach replies carry no category"
   );
+  assert.equal(capabilities["leads.timeline"], true);
   assert.equal(capabilities["senders.list"], true);
   assert.equal(capabilities.sequence, true);
   assert.equal(capabilities["stats.workspace"], "exact");

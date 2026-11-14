@@ -12,6 +12,7 @@ import { isNumber } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
 import { PAGE_SIZE } from "./capabilities.ts";
 import type { HeyReachClient } from "./client.ts";
+import { inboxReaders } from "./inbox.ts";
 import { toSequence } from "./map-sequence.ts";
 import { dailyRows, totalRow } from "./map-stats.ts";
 import {
@@ -31,6 +32,8 @@ type Readers = Pick<
   | "getSequence"
   | "listCampaigns"
   | "listLeads"
+  | "listMessages"
+  | "listReplies"
   | "listSenders"
   | "stats"
 >;
@@ -174,6 +177,7 @@ export const readers = (client: HeyReachClient): Readers => {
   const { identity } = client;
 
   return {
+    ...inboxReaders(client),
     ...leadReaders(client),
     getCampaign: async (id, ctx) => {
       const path = "/campaign/GetById";

@@ -5,12 +5,17 @@
 // connection request accepted, a check that passed, a reply to a message).
 // `END` closes a path and the `START` node is never returned.
 //
-// The flattening rule: starting at the root, a node becomes a step, then the
-// walk follows the one branch that does not go straight to `END`. That order
-// is unambiguous as long as at most one branch of every node holds further
-// steps. When both do, there is no single order, and the sequence is refused
-// with a clear error. A step after a branching node runs only for the leads
-// who took that branch (for example, those who accepted the connection).
+// The flattening rule: a node that acts on the lead becomes a step; a `CHECK_*`
+// node is a condition, not a step. When only one branch of a node holds
+// further steps, the walk follows it. When both do, they are compared: a real
+// HeyReach campaign starts with CHECK_IS_CONNECTION, whose "already connected"
+// branch is the same messages as the tail of the "send a connection request"
+// branch. If one branch is the tail of the other, the longer one is the
+// sequence. If they hold different steps there is no single order, and the
+// sequence is refused with a clear error. A step after a branching node runs
+// only for the leads who took that branch.
+//
+// The CHECK_IS_CONNECTION layout was read from live campaigns on 2026-11-14.
 
 import type { Sequence, SequenceStep } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
@@ -63,26 +68,43 @@ const toStep = (node: JsonObject, index: number): SequenceStep => ({
   })),
 });
 
-const walk = (identity: Identity, root: Json): JsonObject[] => {
-  const nodes: JsonObject[] = [];
-  let node: Json | undefined = root;
+const isCondition = (node: JsonObject): boolean =>
+  (text(node.nodeType) ?? "").startsWith("CHECK_");
 
-  while (isStep(node)) {
-    nodes.push(node);
-    const { conditionalNode, unconditionalNode }: JsonObject = node;
+// Two nodes are the same step when they do the same thing with the same text.
+const signature = (node: JsonObject): string =>
+  stableId(text(node.nodeType), ...variantBodies(node.payload));
 
-    if (isStep(conditionalNode) && isStep(unconditionalNode)) {
-      throw new OutboundError(
-        "Unsupported",
-        `This HeyReach sequence branches after step ${nodes.length} into two paths that both hold steps, so it has no single step order. Read the node tree with raw.get("/campaign/GetCampaignSequence")`,
-        { provider: identity.provider }
-      );
-    }
+const endsWith = (
+  longer: readonly JsonObject[],
+  shorter: readonly JsonObject[]
+): boolean => {
+  const tail = longer.slice(longer.length - shorter.length);
 
-    node = isStep(conditionalNode) ? conditionalNode : unconditionalNode;
+  return shorter.every(
+    (node, index) => signature(node) === signature(tail[index] ?? {})
+  );
+};
+
+const walk = (identity: Identity, node: Json | undefined): JsonObject[] => {
+  if (!isStep(node)) {
+    return [];
   }
 
-  return nodes;
+  const own = isCondition(node) ? [] : [node];
+  const yes = walk(identity, node.conditionalNode);
+  const no = walk(identity, node.unconditionalNode);
+  const [longer, shorter] = yes.length >= no.length ? [yes, no] : [no, yes];
+
+  if (!endsWith(longer, shorter)) {
+    throw new OutboundError(
+      "Unsupported",
+      `This HeyReach sequence branches at a ${text(node.nodeType) ?? "node"} into two paths that hold different steps, so it has no single step order. Read the node tree with raw.get("/campaign/GetCampaignSequence")`,
+      { provider: identity.provider }
+    );
+  }
+
+  return [...own, ...longer];
 };
 
 /** An empty response (`null`) is a campaign with no sequence. */

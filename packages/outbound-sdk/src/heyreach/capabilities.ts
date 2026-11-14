@@ -1,7 +1,8 @@
 // What the HeyReach adapter declares. Every statement here comes from
 // HeyReach's public API documentation; docs/research/heyreach.md records the
 // pages and the date they were read. Nothing has been checked against a live
-// workspace yet, which is why the adapter's maturity is `unverified`.
+// workspace until 2026-11-14, when the reads were run once against one live
+// workspace; the adapter's maturity is `beta`.
 
 import type { OperationCost } from "../internal/adapter.ts";
 import type { CapabilityDeclaration } from "../internal/capabilities.ts";
@@ -27,16 +28,17 @@ export const capabilities: CapabilityDeclaration = {
   "leads.list": false,
   // GetLeadsFromCampaign filters by creation time.
   "leads.since": "server",
-  // Messages exist only inside conversations: they have no id, the lead's
-  // `sender` value is not documented, and the docs do not say whether a
-  // conversation carries its whole thread. Guessing would be worse than no.
-  "leads.timeline": false,
-  "messages.body": false,
-  "messages.list": false,
-  "messages.since": false,
+  // Messages live inside conversations (POST /inbox/GetConversationsV2). A
+  // lead's timeline is the conversations filtered to its profile URL.
+  "leads.timeline": true,
+  "messages.body": "full",
+  "messages.list": true,
+  // The inbox has no date filter, so the wrapper filters after fetching.
+  "messages.since": "client",
+  // Auto-tags describe the lead, not a message, so replies carry no category.
   "replies.category": false,
-  "replies.list": false,
-  "replies.since": false,
+  "replies.list": true,
+  "replies.since": "client",
   // A campaign names its account ids, but no endpoint lists accounts by campaign.
   "senders.byCampaign": false,
   "senders.get": true,
@@ -65,6 +67,8 @@ export const costs = {
   "campaigns.list": { pageSize: PAGE_SIZE, perPage: 1 },
   "leads.get": { perPage: 1 },
   "leads.list": { pageSize: PAGE_SIZE, perPage: 1 },
+  "messages.list": { pageSize: PAGE_SIZE, perPage: 1 },
+  "replies.list": { pageSize: PAGE_SIZE, perPage: 1 },
   "senders.get": { perPage: 1 },
   "senders.list": { pageSize: PAGE_SIZE, perPage: 1 },
   "sequence.get": { perPage: 1 },
@@ -72,7 +76,7 @@ export const costs = {
 } satisfies Record<string, OperationCost>;
 
 export const caveats: readonly string[] = [
-  "Nothing has been checked against a live HeyReach workspace; every mapping follows the public API documentation read on 2026-11-14.",
+  "Checked read-only against one live HeyReach workspace on 2026-11-14: campaigns, sequences, senders, a campaign's leads, lead lookup, stats, messages, replies and a lead's timeline all returned valid records. Other workspaces, plans and campaign layouts have not been seen. Webhooks were not checked. The fixtures are still built from documentation, not captured responses.",
   "The 300 requests per minute limit is documented without a scope (key, workspace or organization) and without rate-limit headers, and the workspace's n8n, Make, Zapier and MCP keys may draw on the same budget.",
   "Lists return totalCount and no next marker, so the end of a list is computed as offset plus page length reaching totalCount.",
   "The campaign list's item fields come from a schema that disagrees with the documented GetById example; only id, name, creationTime and status are read.",
@@ -81,14 +85,17 @@ export const caveats: readonly string[] = [
   "A sender's dailyLimit is null: accountLimits holds several limit pairs and the docs do not say which are daily or what Limit and Max mean. They stay in raw.",
   "A lead's id is its LinkedIn profile URL, the only key GetLead accepts and the only one present in every lead shape. The docs do not say the URL has one canonical form.",
   "HeyReach has no list of every lead. Leads are read per campaign: outbound.campaign(id).leads works and outbound.leads.list() is refused.",
-  "GetLeadsFromCampaign shows only the pending leads that are about to start, so a campaign's lead count can be lower than its list.",
+  "A campaign's lead list was seen live to include finished leads, although the documentation describes it as pending leads only.",
   "A lead's status is replied when leadMessageStatus is MessageReply, otherwise it follows leadCampaignStatus with Pending as active. Failed has no equivalent and is unknown.",
   "A lead's email falls back from emailAddress to enrichedEmailAddress.",
-  "A sequence is a node tree. It is flattened by following, at each node, the one branch that holds further steps; a step after a branching node runs only for leads who took that branch. A tree where both branches hold steps is refused.",
+  "A sequence is a node tree. CHECK_ nodes are conditions and are not steps. Where both branches of a node hold steps and one is the tail of the other (the usual already-connected check), the longer branch is the sequence; where they differ the sequence is refused. A step after a branch runs only for leads who took it.",
   "Sequence variants come from payload.messages (or messageVersions), which the docs describe as A/B variants for MESSAGE nodes only; INMAIL and LIKE_POST payloads are not documented.",
   "Stats: replied is totalMessageReplies plus totalInmailReplies. totalMessageStarted and totalInmailStarted are not defined in the docs and are not read, so contacted is null and reply rates divide by messages sent.",
   "Daily stats are keyed by UTC midnight; the docs do not say which timezone buckets a day or whether endDate is inclusive. Stats need both from and to, or neither.",
-  "Messages and replies are not listed: conversation messages have no id and the lead's sender value is not documented. The inbox endpoints are reachable through raw.",
+  "Messages and replies are read from conversations. Checked against one live workspace on 2026-11-14: sender is ME or CORRESPONDENT, and each conversation carried its whole thread (longest read: 11 messages). Whether a very long thread is cut short is not known.",
+  "A message has no id in HeyReach. Its id is built from the conversation, the time, the side and the text, so an edited message gets a new id.",
+  "A message's campaign is known only when the listing is filtered to one campaign; otherwise campaignRef is null. A page is a page of conversations, so it can hold more messages than the limit asked for.",
+  "Replies carry no category: HeyReach's auto-tags describe the lead, not a message. The docs mention a deep-paging ceiling on conversations without stating it.",
   "Only the voice_note_received webhook payload is documented. Other events are assumed to share its skeleton, and the lowercase event_type names are inferred from two examples.",
   "Webhooks are not signed; correlation_id is the only identifier and is assumed to be stable across redelivery.",
 ];

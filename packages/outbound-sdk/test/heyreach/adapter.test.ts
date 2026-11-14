@@ -272,7 +272,7 @@ test("heyreach: an empty sequence response is a campaign with no steps", async (
   assert.equal(sequence.raw, null);
 });
 
-test("heyreach: a sequence whose two branches both hold steps is refused, not guessed", async () => {
+test("heyreach: a sequence whose two branches hold different steps is refused, not guessed", async () => {
   const { outbound, settle } = harness(suite, () =>
     Response.json({
       conditionalNode: { nodeType: "MESSAGE" },
@@ -285,7 +285,53 @@ test("heyreach: a sequence whose two branches both hold steps is refused, not gu
     async () => await settle(outbound.campaign(CAMPAIGN).sequence()),
     (error) =>
       isCode("Unsupported")(error) &&
-      /branches after step 1/u.test((error as Error).message)
+      /branches at a CONNECTION_REQUEST into two paths that hold different steps/u.test(
+        (error as Error).message
+      )
+  );
+});
+
+test("heyreach: the usual connection check flattens to request, then the messages both branches share", async () => {
+  const { outbound, settle } = harness(suite, () =>
+    Response.json(
+      fixture("heyreach", "getCampaignSequence.connectionCheck.json")
+    )
+  );
+
+  const { steps } = await settle(outbound.campaign(CAMPAIGN).sequence());
+  assert.deepEqual(
+    steps.map((step) => [
+      step.index,
+      step.action,
+      step.delayDays,
+      step.variants[0]?.body ?? null,
+    ]),
+    [
+      [0, "connection_request", 0, null],
+      [1, "message", 1, "Hi {FIRST_NAME}, thanks for connecting."],
+      [2, "message", 3, "Following up on my note."],
+    ],
+    "the check itself is a condition, not a step"
+  );
+});
+
+test("heyreach: a connection check whose branches send different messages is refused", async () => {
+  const tree = fixture(
+    "heyreach",
+    "getCampaignSequence.connectionCheck.json"
+  ) as {
+    conditionalNode: { payload: { messages: string[] } };
+  };
+
+  tree.conditionalNode.payload.messages = [
+    "A different opener for people already connected.",
+  ];
+  const { outbound, settle } = harness(suite, () => Response.json(tree));
+  await assert.rejects(
+    async () => await settle(outbound.campaign(CAMPAIGN).sequence()),
+    (error) =>
+      isCode("Unsupported")(error) &&
+      /branches at a CHECK_IS_CONNECTION/u.test((error as Error).message)
   );
 });
 
@@ -511,13 +557,13 @@ test("heyreach: a response that is not an object is a Provider error, not a cras
 
 test("heyreach: an adapter lists what it has not confirmed against the live API", () => {
   const { outbound } = harness(suite);
-  assert.equal(outbound.maturity, "unverified");
+  assert.equal(outbound.maturity, "beta");
   assert.match(outbound.caveats[0] ?? "", /live HeyReach workspace/u);
   assert.ok(
     outbound.caveats.some((caveat) => /300 requests per minute/u.test(caveat))
   );
-  assert.equal(outbound.capabilities["messages.list"], false);
-  assert.equal(outbound.capabilities["replies.list"], false);
+  assert.equal(outbound.capabilities["messages.list"], true);
+  assert.equal(outbound.capabilities["replies.category"], false);
   assert.equal(outbound.capabilities.workspaces, false);
   assert.equal(outbound.capabilities["events.verify"], "secret");
 });

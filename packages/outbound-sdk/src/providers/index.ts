@@ -76,7 +76,7 @@ export const providers: readonly ProviderInfo[] = [
       },
     ],
     id: "heyreach",
-    maturity: "unverified",
+    maturity: "beta",
     name: "HeyReach",
   },
   {

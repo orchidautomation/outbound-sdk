@@ -14,7 +14,7 @@ for await (const campaign of outbound.campaigns.listAll({ status: "active" })) {
 }
 ```
 
-> Status: not published to npm yet. Every adapter is `unverified`: written from the vendors' public documentation and tested offline, not yet checked against live accounts.
+> Status: not published to npm yet. HeyReach is `beta` (its reads were run once against a live workspace). Instantly and Smartlead are `unverified`: written from public documentation and tested offline.
 
 - [Using the package](packages/outbound-sdk/README.md)
 - [Adapters and what each can do](docs/adapters.md)
