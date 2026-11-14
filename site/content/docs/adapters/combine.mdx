@@ -26,6 +26,8 @@ Give each adapter a `workspaceId`: your own label for the client the key belongs
   ../../_examples/adapters-combine/production.out.txt
 </include>
 
+To skip the list, `fromEnv({ provider: "all" })` from `outbound-sdk/loader` combines every provider whose key is set in the environment. Each member takes its label from its own `*_WORKSPACE_ID` variable. For several keys of one vendor, write the list yourself.
+
 That sample constructs real adapters and makes no request. It shows three things:
 
 - **Maturity is the weakest member's.** One `unverified` member makes the instance `unverified`. See [what is verified](/docs/status).

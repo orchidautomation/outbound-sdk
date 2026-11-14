@@ -68,7 +68,7 @@ The client configuration is the same shape in Claude Code (`.mcp.json` in the pr
 }
 ```
 
-`OUTBOUND_SDK_PROVIDER` is `instantly`, `smartlead`, `heyreach` or `memory`. The adapter reads its own key variable: `INSTANTLY_API_KEY`, `SMARTLEAD_API_KEY` or `HEYREACH_API_KEY`. Without `OUTBOUND_SDK_PROVIDER` the command exits with code 1 and says which values it takes.
+`OUTBOUND_SDK_PROVIDER` is `instantly`, `smartlead`, `heyreach` or `memory`, or `all` for every provider whose key is set, behind one combined instance. The adapter reads its own key variable: `INSTANTLY_API_KEY`, `SMARTLEAD_API_KEY` or `HEYREACH_API_KEY`. Without `OUTBOUND_SDK_PROVIDER` the command exits with code 1 and says which values it takes.
 
 Once the package is published the command will be `npx` with the arguments `outbound-sdk` and `mcp`. Until [installation](/docs/installation) says so, that form fails.
 

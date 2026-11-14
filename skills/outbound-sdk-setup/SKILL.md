@@ -53,6 +53,7 @@ OUTBOUND_SDK_PROVIDER=memory npx outbound tool sender_health --input '{"limit":1
 | `heyreach` | `HEYREACH_API_KEY` | `beta`: run once, read-only, on one live workspace |
 | `smartlead` | `SMARTLEAD_API_KEY` | `unverified`: never run against a live account |
 | `memory` | none | demo data, no vendor behind it |
+| `all` | every key above that is set | one combined instance over those vendors; `memory` is never included |
 
 Tell the user what the maturity means for their vendor: `unverified` means expect mappings to be wrong. [What is verified](https://outbound-sdk.dev/docs/status) is the current record.
 
@@ -114,7 +115,7 @@ Add the insights with `extra: insightTools(outbound)` from `outbound-sdk/insight
 
 | What you see | Cause | Fix |
 | --- | --- | --- |
-| `Invalid: Set OUTBOUND_SDK_PROVIDER to one of: instantly, smartlead, heyreach, memory`, exit 1 | The variable is not set in the environment the client starts | Add it to the client's `env` |
+| `Invalid: Set OUTBOUND_SDK_PROVIDER to one of: instantly, smartlead, heyreach, memory, or all for every provider whose key is set`, exit 1 | The variable is not set in the environment the client starts | Add it to the client's `env` |
 | `Unauthorized: instantly needs an API key: pass apiKey or set INSTANTLY_API_KEY`, exit 1 | The adapter's key is missing (the message names your vendor's variable) | Add the key to `env`, or set it where the client inherits it |
 | `Cannot use import statement outside a module` | A `.ts` file in a CommonJS project | Rename it `.mts`, or set `"type": "module"` |
 | `npm error 404` for `outbound-sdk` | The package is not published | Install the tarball (step 1) |

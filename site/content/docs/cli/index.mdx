@@ -41,6 +41,8 @@ A command that reads data needs an adapter. The CLI builds one from the environm
 2. The id is one of `instantly`, `smartlead`, `heyreach` or `memory`.
 3. The adapter reads its own key from the environment: `INSTANTLY_API_KEY`, `SMARTLEAD_API_KEY` or `HEYREACH_API_KEY`. `outbound providers` lists the variables each one reads.
 
+4. The id `all` builds every provider whose key is set, with no list to maintain: one key gives that provider alone, several give one [combined](/docs/adapters/combine) instance. Set another key and its tool is included the next time the command starts. `memory` is never part of `all`, and with no key set the command exits with code 1 and names the variables.
+
 `memory` needs no key. It runs on a small built-in demo data set, the same one behind `demoData()` in `outbound-sdk/memory`: two campaigns, three leads, a few messages. Use it to try a command before pointing the CLI at a real account.
 
 ```sh
