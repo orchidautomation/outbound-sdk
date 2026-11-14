@@ -79,6 +79,7 @@ export interface MetaInput {
   readonly evidence: Evidence;
   readonly complete: boolean;
   readonly stale?: boolean | undefined;
+  readonly fetchedAt?: string | undefined;
 }
 
 export const metaFor = (
@@ -88,7 +89,7 @@ export const metaFor = (
 ): ResultMeta => ({
   complete: input.complete,
   evidence: input.evidence,
-  fetchedAt: new Date(core.engine.now()).toISOString(),
+  fetchedAt: input.fetchedAt ?? new Date(core.engine.now()).toISOString(),
   provider: core.adapter.name,
   requests: state.requests,
   stale: input.stale ?? false,

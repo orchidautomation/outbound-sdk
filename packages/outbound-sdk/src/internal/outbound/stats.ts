@@ -59,6 +59,7 @@ export const readStats = (
       meta: metaFor(core, state, {
         complete: true,
         evidence: output.evidence,
+        fetchedAt: output.fetchedAt,
         stale: output.stale,
       }),
       rows: checked(core, metricRowSchema, output.items, "stats"),

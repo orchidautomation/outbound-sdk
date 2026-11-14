@@ -35,11 +35,26 @@ export interface ThrottleEvent {
   readonly waitMs: number;
 }
 
+export interface RequestEvent {
+  readonly provider: string;
+  readonly method: string;
+  /** The request URL with secrets removed. */
+  readonly url: string;
+  readonly lane: string;
+  /** The HTTP status, or `null` when no response arrived. */
+  readonly status: number | null;
+  readonly durationMs: number;
+  /** Which attempt this was, starting at 1. */
+  readonly attempt: number;
+}
+
 type Hook<Event> = (event: Event) => void | Promise<void>;
 
 export interface OutboundHooks {
   readonly onAction?: Hook<ActionEvent> | undefined;
   readonly onError?: Hook<ErrorEvent> | undefined;
+  /** Fires once per HTTP request, after it settles. */
+  readonly onRequest?: Hook<RequestEvent> | undefined;
   readonly onRetry?: Hook<RetryEvent> | undefined;
   readonly onThrottle?: Hook<ThrottleEvent> | undefined;
 }
@@ -62,4 +77,39 @@ export const fire = <Event>(
   } catch {
     ignore();
   }
+};
+
+/** One set of hooks that calls every set given, in order. */
+export const mergeHooks = (
+  all: readonly (OutboundHooks | undefined)[]
+): OutboundHooks => {
+  const defined = all.filter((hooks) => hooks !== undefined);
+
+  return {
+    onAction: (event) => {
+      for (const hooks of defined) {
+        fire(hooks.onAction, event);
+      }
+    },
+    onError: (event) => {
+      for (const hooks of defined) {
+        fire(hooks.onError, event);
+      }
+    },
+    onRequest: (event) => {
+      for (const hooks of defined) {
+        fire(hooks.onRequest, event);
+      }
+    },
+    onRetry: (event) => {
+      for (const hooks of defined) {
+        fire(hooks.onRetry, event);
+      }
+    },
+    onThrottle: (event) => {
+      for (const hooks of defined) {
+        fire(hooks.onThrottle, event);
+      }
+    },
+  };
 };

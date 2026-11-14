@@ -94,6 +94,7 @@ const fetchPage = <Item, Filters>(
         meta: metaFor(core, state, {
           complete,
           evidence: output.evidence,
+          fetchedAt: output.fetchedAt,
           stale: output.stale,
         }),
       };
@@ -171,6 +172,7 @@ const getOne = <Item>(
         meta: metaFor(core, state, {
           complete: true,
           evidence: output.evidence,
+          fetchedAt: output.fetchedAt,
           stale: output.stale,
         }),
       };

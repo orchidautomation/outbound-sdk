@@ -27,8 +27,8 @@ export interface CallState {
   readonly retry: RetryPolicy;
   /** An epoch in milliseconds: the total budget across retries and waits. */
   readonly deadlineAt: number | undefined;
-  /** Stop after this many vendor requests. */
-  readonly maxRequests: number | undefined;
+  /** Stop after this many vendor requests. A plugin may lower it. */
+  maxRequests: number | undefined;
 }
 
 export interface RequestEnvironment {
@@ -161,7 +161,8 @@ const failureFor = async (
 
 const attempt = async (
   spec: RequestSpec,
-  environment: RequestEnvironment
+  environment: RequestEnvironment,
+  attemptNumber: number
 ): Promise<Attempt> => {
   const { adapter, budget, hooks, runtime, state } = environment;
   const lane = spec.lane ?? DEFAULT_LANE;
@@ -174,9 +175,12 @@ const attempt = async (
     signal: state.signal,
   });
   state.requests += 1;
+  const startedAt = runtime.now();
+  let status: number | null = null;
 
   try {
     const response = await fetchOnce(spec, environment);
+    ({ status } = response);
     const body = await readBody(response);
     await noteHeaders(response, environment);
 
@@ -216,6 +220,15 @@ const attempt = async (
     };
   } finally {
     budget.release();
+    fire(hooks.onRequest, {
+      attempt: attemptNumber,
+      durationMs: runtime.now() - startedAt,
+      lane,
+      method: spec.method,
+      provider: adapter.name,
+      status,
+      url: redactUrl(spec.url, adapter.secrets),
+    });
   }
 };
 
@@ -252,7 +265,7 @@ export const execute = async (
   for (let attemptNumber = 1; ; attemptNumber += 1) {
     assertRequestBudget(environment);
     // oxlint-disable-next-line no-await-in-loop -- attempts are sequential by definition.
-    const result = await attempt(spec, environment);
+    const result = await attempt(spec, environment, attemptNumber);
 
     if (result.kind === "ok") {
       return result.response;
