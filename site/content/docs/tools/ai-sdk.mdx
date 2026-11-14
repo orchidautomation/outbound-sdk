@@ -1,0 +1,60 @@
+---
+title: AI SDK tools
+description: The outbound tools as a tool set for the AI SDK, keyed by tool name and ready to pass to generateText or streamText.
+sidebar:
+  label: AI SDK
+related:
+  - /docs/tools
+  - /docs/tools/untrusted-content
+  - /guides/agent-tools
+---
+
+`aiSdkTools(outbound)` from `outbound-sdk/tools/ai-sdk` returns the [tools](/docs/tools) as one AI SDK tool per outbound tool, keyed by tool name. Pass the object as `tools` to `generateText` or `streamText`.
+
+This subpath imports `ai`, which is an optional peer dependency: version 6 or 7. Install it only if you import this subpath. See [installation](/docs/installation).
+
+`aiSdkTools` takes the same `only` and `extra` options as [`createTools`](/docs/tools#options).
+
+## Build the tools and run one
+
+<include meta='title="ai-sdk.ts"'>
+  ../../_examples/tools-ai-sdk/ai-sdk.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/tools-ai-sdk/ai-sdk.out.txt
+</include>
+
+Each tool has a `description`, an `inputSchema` built from the tool's JSON Schema, and an `execute` function that returns the tool's result object. A failed tool returns `{ ok: false }` from `execute`. It does not throw, so the AI SDK passes the failure to the model as an ordinary tool result.
+
+## Wiring it to a model
+
+<include meta='title="generate.ts"'>
+  ../../_examples/tools-ai-sdk/generate.ts
+</include>
+
+`ask` takes the instance, a model and a question. `stopWhen: stepCountIs(5)` gives the model up to five steps, so it can call a tool, read the result and answer inside one `generateText` call.
+
+## A real run
+
+This function was run against a real model on 2026-11-14: `deepseek/deepseek-v4-flash`, through the Vercel AI Gateway, with `ai` 7. The outbound side was the in-memory adapter's demo data, so the run shows a model calling the tools and answering from what they return. It says nothing about a vendor. This is the transcript of that run: the question, each tool call the model made, and its answer.
+
+<include lang="json" meta='title="Transcript of one live run"'>
+  ../../_examples/tools-ai-sdk/live-run.json
+</include>
+
+<Callout type="note" title="An example run, not a recorded output">
+  A model does not answer the same way twice, so the test suite does not
+  reproduce this transcript, and it is not checked on every commit the way the
+  other outputs on this site are. The run is `site/test/live/ai-sdk.live.ts` in
+  the repository; `npm run site:live` repeats it with an AI Gateway credential
+  and asserts that the model called a tool and named the campaign from the
+  tool's result. Only `ai` 7 was run; `ai` 6 is accepted by the peer range and
+  was not.
+</Callout>
+
+The first live run found a problem that is now fixed. The model does not know today's date, so it asked for 2024 to 2026 and found no data. Every tool result now carries `meta.today`, and the date inputs tell the model to leave the range out for the whole history and not to guess.
+
+## Reply text
+
+A model given `reply_samples` can ask for reply text. It comes back truncated and marked as untrusted. See [untrusted content](/docs/tools/untrusted-content).

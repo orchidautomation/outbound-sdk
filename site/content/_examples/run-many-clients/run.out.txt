@@ -1,0 +1,18 @@
+Every campaign:
+  emailtool:acme:cmp_1  Acme founders
+  emailtool:acme:cmp_2  Acme agencies
+  linkedintool:acme:cmp_1  Acme on LinkedIn
+  emailtool:globex:cmp_1  Globex outreach
+
+acme (combined): 3 campaigns
+globex (emailtool): cmp_1 is "Globex outreach"
+acme via clients.stats(): 3 campaigns, sent 300, connections sent 40
+
+Workspace stats:
+  emailtool:acme  sent 300, connections sent null
+  linkedintool:acme  sent null, connections sent 40
+  emailtool:globex  sent 50, connections sent null
+
+Per client:
+  acme: 3 campaigns, sent 300, replied 10
+  globex: 1 campaigns, sent 50, replied 1

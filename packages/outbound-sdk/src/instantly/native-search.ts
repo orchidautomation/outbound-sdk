@@ -1,5 +1,5 @@
 // Creator search and local business search.
-// Each entry is one read Instantly documents; docs/coverage/instantly.md lists them all.
+// Each entry is one read Instantly documents; site/content/docs/coverage/instantly.mdx lists them all.
 
 import { defineNative } from "../internal/native.ts";
 import { LOCAL_FILTERS_LANE, LOCAL_SEARCH_LANE } from "./capabilities.ts";

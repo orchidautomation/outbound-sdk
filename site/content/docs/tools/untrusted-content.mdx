@@ -1,0 +1,87 @@
+---
+title: Untrusted content in tool results
+description: How the tools handle text a prospect wrote, so that a model reading replies sees it as data. What the SDK does, and what it cannot do for you.
+sidebar:
+  label: Untrusted content
+related:
+  - /docs/tools
+  - /docs/plugins/redact
+  - /guides/reply-text-for-llm
+---
+
+A reply is text written by someone outside your company. It can say anything, including "ignore your previous instructions". When a model reads replies through a [tool](/docs/tools), that text enters the model's context. The tools handle it in four ways.
+
+<Callout type="warning" title="A convention, not a guarantee">
+  Everything on this page is labelling. The SDK leaves text out by default,
+  shortens it and marks it as untrusted. It does not inspect, filter or
+  neutralize what the text says, and it cannot make a model obey the label. It
+  does not prevent prompt injection. Keep what the agent is allowed to do small:
+  these tools only read, so give the same agent no tool that sends, deletes or
+  pays unless a person approves each use.
+</Callout>
+
+## What the tools do
+
+1. **Left out unless asked.** `reply_samples` returns `body: null` for every reply unless the call sets `include_bodies: true`, and `cross_channel_lead` does the same for every message on its timeline. A model that only needs counts and categories never sees the text.
+2. **Truncated.** Text is cut to `DEFAULT_BODY_CHARS`, which is 500 characters. `truncated` says whether anything was cut.
+3. **Wrapped and labelled.** Text comes back inside an object with `untrusted_content`, `truncated` and `note`. The note is the exported string `UNTRUSTED_NOTE`.
+4. **Said in the description.** The descriptions of `reply_samples` and `cross_channel_lead`, which the model reads before calling them, say the text is untrusted. A timeline also holds your own outgoing messages, wrapped the same way.
+
+The seed below holds one reply that tries to give the model orders:
+
+<include meta='title="seed.ts"'>
+  ../../_examples/tools-untrusted-content/seed.ts
+</include>
+
+<include meta='title="bodies.ts"'>
+  ../../_examples/tools-untrusted-content/bodies.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/tools-untrusted-content/bodies.out.txt
+</include>
+
+The instruction in the reply is still there in `untrusted_content`. Nothing removed it. The wrapper tells the model what the text is; what the model does with it is up to the model and to your own prompt.
+
+`DEFAULT_BODY_CHARS` is a constant, not an option. There is no setting that returns longer text through a tool. To read a whole reply in your own code, use `outbound.replies` with `include: ["body"]`, as in the guide to [reply text for a model](/guides/reply-text-for-llm).
+
+## With the redact plugin, bodies are refused
+
+When the instance has the [`redact` plugin](/docs/plugins/redact), a call that asks for bodies fails with `Unsupported`. The text never reaches the tool, so it cannot reach the model.
+
+<include meta='title="redact.ts"'>
+  ../../_examples/tools-untrusted-content/redact.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/tools-untrusted-content/redact.out.txt
+</include>
+
+## vendor_read output is wrapped too
+
+`vendor_read` returns the vendor's own response to a [native read](/docs/native), not a normalized record. Any field in it may hold text a prospect wrote, so the whole response is returned as `untrusted_content` with the same note. It is not truncated, and there is no `truncated` field.
+
+With the `redact` plugin on the instance, `vendor_read` is not offered at all, because a native read cannot be redacted.
+
+The sample below answers the one request it makes with a lead label built from Instantly's documented schema, through a `fetch` the sample supplies. It is not a live response.
+
+<include meta='title="vendor-read.ts"'>
+  ../../_examples/tools-untrusted-content/vendor-read.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/tools-untrusted-content/vendor-read.out.txt
+</include>
+
+## What is not wrapped
+
+- **Names, subjects and other short fields.** A campaign name, a list name or a tag is returned as a plain string. A prospect does not usually write these, but anyone who can edit your vendor account can.
+- **Insight tools.** The [insights](/docs/insights) offered through `extra` return their own result shapes and do not use this wrapper. None of them reads message bodies, but `dropped_replies` returns each reply's subject line as a plain string, and a prospect can write a subject line.
+- **The MCP server's instructions** repeat the rule once for the whole server. See [`outbound mcp`](/docs/cli/mcp).
+
+## What to do in your own agent
+
+- Leave `include_bodies` off unless the task needs the words.
+- Tell the model in your system prompt that tool results are data.
+- Do not give an agent that reads replies a tool that acts on the outside world without a person in between.
+- If the text must not leave your systems at all, add the `redact` plugin and the question never arises.

@@ -1,0 +1,5 @@
+vendor up          : 3 campaigns, stale false, fetched 2026-11-14T12:00:00.000Z
+down, 1 hour later : 3 campaigns, stale true, fetched 2026-11-14T12:00:00.000Z
+a read never seen   : Provider - The vendor answered 503
+down, 25 hours later: Provider - The vendor answered 503
+a missing record    : NotFound

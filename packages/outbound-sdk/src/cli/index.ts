@@ -4,6 +4,7 @@ import { parseArgs } from "node:util";
 
 import type { Adapter } from "../internal/adapter.ts";
 import { OutboundError } from "../internal/errors.ts";
+import { field } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
 import { createOutbound } from "../internal/outbound/create.ts";
@@ -112,13 +113,16 @@ export const run = async (
       return 0;
     }
 
-    print(
-      io,
-      await command.run(outbound, { flags: values, positionals: rest }),
-      compact
-    );
+    const answer = await command.run(outbound, {
+      flags: values,
+      positionals: rest,
+    });
 
-    return 0;
+    print(io, answer, compact);
+
+    // A tool never throws: its failure is a result, printed like any other.
+    // The exit code still says the command did not get an answer.
+    return name === "tool" && field(answer, "ok") === false ? 1 : 0;
   } catch (error) {
     const code = OutboundError.is(error) ? error.code : "Error";
     io.stderr(

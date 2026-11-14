@@ -13,6 +13,7 @@ import {
   isPositive,
   leadsOf,
   nameOf,
+  noteEngagement,
   positiveLabelsField,
   readCapped,
 } from "./read.ts";
@@ -298,13 +299,9 @@ export const accountSummary = defineInsight({
       );
     }
 
-    if (!context.outbound.capabilities["leads.engagement"]) {
-      context.note(
-        "This tool reports no per-lead open, click or reply counts, so those are null."
-      );
-    }
-
     const leads = await readLeads(context, values);
+
+    noteEngagement(context, leads, "those are null");
     const byEmail = new Map<string, Lead[]>();
 
     for (const lead of leads) {

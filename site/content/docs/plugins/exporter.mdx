@@ -1,0 +1,89 @@
+---
+title: exporter
+description: Stream every record of a listing to a CSV or JSON Lines file as pages arrive, or to a writer of your own for Parquet, DuckDB or anything else.
+sidebar:
+  label: exporter
+related:
+  - /guides/export-leads
+  - /docs/api/pagination
+  - /docs/plugins/sync
+---
+
+`exporter()` from `outbound-sdk/exporter` adds `outbound.export(source, { to })`. It writes every record of a listing to a `.csv` or `.jsonl` file, one row at a time as pages arrive, so a large export never sits in memory. For another format, pass a `RowWriter` with two functions. The package adds no dependency for Parquet or DuckDB. Writing to a path uses `node:fs`.
+
+## Sample
+
+Runs on the [shared seed](/docs/plugins#every-plugin).
+
+<include meta='title="run.ts"'>../../_examples/plugins-exporter/run.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/plugins-exporter/run.out.txt
+</include>
+
+## Options
+
+`exporter()` takes no options.
+
+`outbound.export(source, options)`:
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `source` | `AsyncIterable` | required | Anything that yields records: `outbound.leads.listAll()`, a campaign's `leads.listAll()`, or a generator of your own. |
+| `to` | `string \| RowWriter` | required | A file path ending in `.csv` or `.jsonl`, or a writer. An existing file is overwritten. |
+| `columns` | `string[]` | the first record's fields, without `raw` | The columns to write, in order. |
+| `includeRaw` | `boolean` | `false` | Keep `raw`, the vendor's payload, among the default columns. It has no effect when `columns` is set. |
+
+It returns `{ rows, columns }`.
+
+## How rows are written
+
+| Format | Row | Header |
+| --- | --- | --- |
+| `.csv` | The listed columns, comma separated. `null` and a missing field are empty. An object or array is written as JSON. A cell holding a comma, a double quote or a line break is quoted, with quotes doubled. Lines end with `\n`. | The column names. For an empty listing, the `columns` you named. When you named none there is no header and the file is empty. |
+| `.jsonl` | One JSON object per line with exactly the listed columns. A missing field is `null`. | None |
+| `RowWriter` | A JSON object with exactly the listed columns, in order, as for `.jsonl`. `columns` and `includeRaw` apply to it as they do to a file. A missing field is `null`. | Up to you |
+
+The default columns come from the first record only. A later record with a field the first one lacked does not get a column. Name `columns` when records vary.
+
+An item of the source that is not an object is skipped and not counted.
+
+## A writer of your own
+
+A `RowWriter` is `write(row)` and `close()`, both async. `export` awaits each `write` before reading the next record, so a slow writer slows the listing down and does not build a queue.
+
+<include meta='title="writer.ts"'>
+  ../../_examples/plugins-exporter/writer.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/plugins-exporter/writer.out.txt
+</include>
+
+## What it changes
+
+It changes no capability, no record and nothing in `meta`. It has no layer of its own, so its position in `plugins` does not matter.
+
+## With other plugins
+
+`export` writes whatever the source yields. A listing from the instance has been through every layer:
+
+- With `redact`, the file holds masked values and `raw` is `null`.
+- Without it, the file holds the leads' addresses and names. It is your file, on your disk. The SDK keeps no copy.
+- With `clients` or `identity`, the added fields are columns when the first record has them.
+- A `budget` or `maxRequests` cap stops the listing part way, as below.
+
+## When it fails
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| The path ends in neither `.csv` nor `.jsonl` | `Invalid`, when the first record arrives or an empty listing ends. Nothing is written. | Use one of the two, or pass a writer. |
+| The source fails part way | The source's error. The file is closed and keeps the rows written so far. | Do not treat the file as complete. Export again, or resume from the listing's `cursor` into a new file. |
+| The source fails before its first record | The source's error. No file is created. A writer you passed is closed without a row. | Nothing. `close` is called once whatever happens. |
+| `write` or `close` rejects | That error | Nothing more is written. |
+| The listing is empty | `rows: 0`. A CSV holds only its header line, or nothing when you named no `columns`. A `.jsonl` file is empty, and a writer is closed without a row. | Nothing. |
+
+## Limits
+
+- CSV cells are not escaped against spreadsheet formulas. A value that starts with `=`, `+`, `-` or `@` is written as it is. Lead fields come from outside your company, so treat an exported CSV as untrusted when opening it in a spreadsheet.
+- There is no append mode and no built-in resume. For a copy you keep in step run after run, use [`sync`](/docs/plugins/sync).

@@ -151,6 +151,58 @@ test("a wrong command or argument exits 1 with a one-line reason on stderr", asy
   }
 });
 
+test("a flag that takes a fixed word refuses any other, in one line that names the words", async () => {
+  for (const [argv, pattern] of [
+    [
+      ["campaigns", "--status", "live"],
+      /^Invalid: --status must be one of: active, archived, completed, draft, paused, unknown$/u,
+    ],
+    [
+      ["replies", "--category", "angry"],
+      /^Invalid: --category must be one of: bounce, negative, neutral, ooo, positive, unknown, unsubscribe$/u,
+    ],
+    [["stats", "--by", "week"], /^Invalid: --by must be one of: day, total$/u],
+    [
+      ["campaign", "cmp_founders", "--stats", "--by", "week"],
+      /^Invalid: --by must be one of: day, total$/u,
+    ],
+  ] as const) {
+    const result = await cli(...argv);
+    assert.equal(result.code, 1, argv.join(" "));
+    assert.match(result.err, pattern);
+    assert.equal(result.out, "");
+  }
+
+  const total = (await cli("stats", "--by", "total")).json() as {
+    rows: { date: string | null }[];
+  };
+
+  assert.equal(total.rows.length, 1);
+  assert.equal(total.rows[0]?.date, null);
+  assert.ok(
+    ((await cli("stats", "--by", "day")).json() as { rows: unknown[] }).rows
+      .length > 1
+  );
+});
+
+test("a tool that answers ok: false prints its result and exits 1, like an insight", async () => {
+  const failed = await cli(
+    "tool",
+    "campaign_trend",
+    "--input",
+    '{"campaign":"cmp_founders","from":"yesterday","to":"2026-10-31"}'
+  );
+
+  assert.equal(failed.code, 1);
+  assert.equal(failed.err, "");
+
+  const result = failed.json() as { ok: boolean; error: { code: string } };
+  assert.equal(result.ok, false);
+  assert.equal(result.error.code, "Invalid");
+  assert.equal((await cli("tool", "sender_health")).code, 0);
+  assert.equal((await cli("insight", "no_such_insight")).code, 1);
+});
+
 test("without an adapter or OUTBOUND_SDK_PROVIDER it says what to set", async () => {
   const saved = process.env.OUTBOUND_SDK_PROVIDER;
   delete process.env.OUTBOUND_SDK_PROVIDER;

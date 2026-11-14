@@ -1,0 +1,4 @@
+constructor default: 3 request(s), waits [ 500, 1000 ]
+retries: 0: 1 request(s), waits []
+fixed 250 ms: 4 request(s), waits [ 250, 250, 250 ]
+default backoff at random 0.5: 500, 1000, 2000, 4000, 8000, 16000, 30000, 30000

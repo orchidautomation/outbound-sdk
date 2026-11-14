@@ -310,6 +310,19 @@ export const combine = (members: readonly Adapter[]): Adapter => {
       baseUrl: "combined://",
       isRead: () => false,
     },
+    // One client on two tools carries one label on both members, so scoping
+    // to the label keeps both. A label on one member is that member itself.
+    scope: (workspaceId) => {
+      // `provider:workspace` names one member, for what only one vendor can
+      // answer: its native reads, its raw client, its threads.
+      const labelled = members.filter(
+        (member) =>
+          member.workspaceId === workspaceId ||
+          `${member.name}:${member.workspaceId}` === workspaceId
+      );
+
+      return labelled.length > 1 ? combine(labelled) : labelled[0];
+    },
     secrets: members.flatMap((member) => member.secrets),
     workspaceId: COMBINED,
   };

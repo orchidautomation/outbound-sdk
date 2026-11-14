@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import { budget } from "../src/budget/index.ts";
 import { combine } from "../src/combine/index.ts";
 import {
   createOutbound,
@@ -8,6 +9,7 @@ import {
   OutboundError,
 } from "../src/index.ts";
 import type { Adapter } from "../src/index.ts";
+import { insights } from "../src/insights/index.ts";
 import { instantly } from "../src/instantly/index.ts";
 import { memory } from "../src/memory/index.ts";
 import { createClock } from "./helpers/clock.ts";
@@ -244,6 +246,34 @@ test("workspaces are the members, and workspace(id) scopes to one of them", asyn
       "lntool:client-a:client-a",
     ]
   );
+  // client-a is on two tools, so its scope keeps both of them.
+  const both = outbound.workspace("client-a");
+  assert.deepEqual(
+    [
+      ...new Set(
+        (await both.campaigns.listAll().toArray()).map(
+          (campaign) => `${campaign.provider}:${campaign.workspaceId}`
+        )
+      ),
+    ],
+    ["mailtool:client-a", "lntool:client-a"]
+  );
+  assert.deepEqual(
+    (await both.workspaces.list()).items.map((workspace) => workspace.ref),
+    ["mailtool:client-a:client-a", "lntool:client-a:client-a"]
+  );
+  // `provider:workspace` names one member, for what one vendor alone answers.
+  const oneTool = outbound.workspace("lntool:client-a");
+  assert.equal(oneTool.provider, "lntool");
+  assert.equal(oneTool.workspaceId, "client-a");
+  await assert.rejects(
+    async () => await both.raw.get("/anything"),
+    (error) =>
+      OutboundError.is(error) &&
+      error.code === "Unsupported" &&
+      error.message.includes('outbound.workspace("provider:workspace").raw') &&
+      error.message.includes('"lntool:client-a"')
+  );
   const scoped = outbound.workspace("client-b");
   assert.equal(scoped.provider, "mailtool");
   assert.equal(scoped.workspaceId, "client-b");
@@ -256,6 +286,28 @@ test("workspaces are the members, and workspace(id) scopes to one of them", asyn
     () => outbound.workspace("client-z"),
     (error) => OutboundError.is(error) && error.code === "NotFound"
   );
+});
+
+test("workspace(id) keeps the plugins and the methods they add", async () => {
+  const outbound = createOutbound({
+    adapter: combine([email("client-a"), email("client-b")]),
+    plugins: [insights(), budget({ maxRequests: 50, per: "run" })],
+  });
+
+  const scoped = outbound.workspace("client-b");
+  const report = await scoped.insights.campaignRanking({});
+
+  const read = [...report.data.ranked, ...report.data.tooFewSends];
+
+  assert.equal(report.meta.provider, "mailtool");
+  assert.ok(read.length > 0);
+  assert.ok(
+    read.every((campaign) =>
+      campaign.campaign.startsWith("mailtool:client-b:")
+    ),
+    "only client-b's campaigns were read"
+  );
+  assert.equal(scoped.requestBudget.remaining(), 50);
 });
 
 test("two adapters with the same provider and workspace label are refused", () => {

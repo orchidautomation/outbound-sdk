@@ -1,0 +1,127 @@
+---
+title: HeyReach coverage
+description: "Every endpoint in HeyReach's public API reference and how outbound-sdk reaches it: a normalized read, a native read, excluded with a reason, or a write."
+sidebar:
+  label: HeyReach
+related:
+  - /docs/coverage
+  - /docs/adapters/heyreach
+  - /docs/native
+---
+
+Inventoried on 2026-11-14 from HeyReach's public API reference at `https://docs.heyreach.io`: the page index (`llms.txt`) and the machine-readable reference (`openapi.json`), checked against the Postman collection the docs link to (published 2026-09-16, 88 requests, every one of them also in the reference). The reference documents 106 endpoints, all on `https://api.heyreach.io/api/public`: 17 are used by normalized reads, 25 are in the native catalog (`packages/outbound-sdk/src/heyreach/native.ts`), 3 are excluded and 61 are writes.
+
+The five `/management/organizations` reads belong to the Organization Management API. They need the organization API key in place of a workspace key and answer 401 without it. HeyReach documents no sister service on another host.
+
+Two of the excluded rows return secrets. The third, a voice message's audio file, returns a file and not JSON: the request engine reads every response as text, so a binary body cannot be returned intact. It becomes a native read once the engine can hand back bytes.
+
+Two reads stay in the native catalog and are also used by a normalized read: lookup by profile or email (`leads.lookup`) asks `POST /campaign/GetCampaignsForLead` for the campaigns and, for an email address, `POST /list/GetListsForLead` for a list to find the profile in.
+
+| Method | Path | Reads | Coverage | Through |
+| --- | --- | --- | --- | --- |
+| `GET` | `/auth/CheckApiKey` | Whether the API key works | native | `checkApiKey` |
+| `POST` | `/blacklist/AddCompanies` | Adds companies to the blacklist | write |  |
+| `POST` | `/blacklist/AddLeads` | Adds leads to the blacklist | write |  |
+| `POST` | `/blacklist/GetCompanies` | Blacklisted companies | normalized | `blocklist` |
+| `POST` | `/blacklist/GetLeads` | Blacklisted leads | normalized | `blocklist` |
+| `POST` | `/blacklist/RemoveCompanies` | Removes companies from the blacklist | write |  |
+| `POST` | `/blacklist/RemoveLeads` | Removes leads from the blacklist | write |  |
+| `POST` | `/campaign/AddLeadsToCampaign` | Adds leads to a campaign | write |  |
+| `POST` | `/campaign/AddLeadsToCampaignV2` | Adds leads to a campaign and reports the counts | write |  |
+| `POST` | `/campaign/AddLinkedInAccountsToCampaign` | Adds senders to a campaign | write |  |
+| `POST` | `/campaign/Create` | Creates a campaign | write |  |
+| `POST` | `/campaign/CreateCampaignFromTemplate` | Creates a campaign from another campaign | write |  |
+| `POST` | `/campaign/CreateV2` | Creates a campaign with voice message versions | write |  |
+| `POST` | `/campaign/GetAll` | Campaigns, filtered by status, sender or name | normalized | `campaigns.list`, `campaigns.status` |
+| `GET` | `/campaign/GetById` | One campaign with its progress counts and sender ids | normalized | `campaigns.get`, `senders.byCampaign` |
+| `GET` | `/campaign/GetCampaignSequence` | A campaign's sequence tree | normalized | `sequence` |
+| `GET` | `/campaign/GetCampaignSequenceV2` | A campaign's sequence tree with voice message versions | native | `campaignSequenceV2` |
+| `POST` | `/campaign/GetCampaignsForLead` | The campaigns one lead is in | native | `campaignsForLead` |
+| `POST` | `/campaign/GetLeadsFromCampaign` | A campaign's leads with their status | normalized | `leads.byCampaign`, `leads.since` |
+| `POST` | `/campaign/Pause` | Pauses a campaign | write |  |
+| `POST` | `/campaign/RemoveLinkedInAccountsFromCampaign` | Removes senders from a campaign | write |  |
+| `POST` | `/campaign/Resume` | Resumes a campaign | write |  |
+| `POST` | `/campaign/StartCampaign` | Starts a campaign | write |  |
+| `POST` | `/campaign/StopLeadInCampaign` | Stops one lead in a campaign | write |  |
+| `POST` | `/campaign/UpdateAccounts` | Replaces a campaign's senders | write |  |
+| `PATCH` | `/campaign/UpdateLeadCustomFields/campaigns/{campaignId}/leads/custom-fields` | Changes a campaign lead's custom fields | write |  |
+| `POST` | `/campaign/UpdateSchedule` | Changes a campaign's schedule | write |  |
+| `POST` | `/campaign/UpdateSequence` | Replaces a campaign's sequence | write |  |
+| `POST` | `/campaign/UpdateSequenceV2` | Replaces a campaign's sequence, voice versions included | write |  |
+| `POST` | `/campaign/UpdateSettings` | Changes a campaign's name, list and exclusions | write |  |
+| `POST` | `/enrichment/enrich-email` | Starts an email-enrichment job for a lead | write |  |
+| `GET` | `/enrichment/enrich-email/check-job/{jobId}` | The state and result of an email-enrichment job | native | `enrichEmailJob` |
+| `GET` | `/inbox/GetChatroom/{accountId}/{conversationId}` | One conversation with all its messages | normalized | `messages.byThread` |
+| `POST` | `/inbox/GetConversationsV2` | Conversations with messages, paged by offset | native | `conversationsV2` |
+| `POST` | `/inbox/GetConversationsV3` | Conversations with messages, paged by cursor and bounded by date | normalized | `messages.list`, `messages.since`, `replies.list`, `replies.since`, `leads.timeline` |
+| `GET` | `/inbox/GetVoiceMessageAudio/{accountId}/{conversationId}/{messageId}` | A voice message's audio file | excluded | Not one of the three accepted reasons: it returns an audio file, not JSON, and the request engine reads every body as text, so the bytes cannot be handed back intact; the transcript and duration are in the conversation reads. |
+| `POST` | `/inbox/SendMessage` | Sends a message in a conversation | write |  |
+| `POST` | `/inbox/SetSeenStatus` | Marks a conversation seen or unseen | write |  |
+| `POST` | `/lead/AddTags` | Adds tags to a lead | write |  |
+| `POST` | `/lead/GetLead` | One lead's profile, by profile URL | normalized | `leads.get`, `leads.lookup` |
+| `POST` | `/lead/GetTags` | One lead's tags | normalized | `leads.get` |
+| `POST` | `/lead/ReplaceTags` | Replaces a lead's tags | write |  |
+| `POST` | `/lead_tags/CreateTags` | Creates workspace tags | write |  |
+| `POST` | `/li_account/Connect` | Connects a LinkedIn account with credentials | write |  |
+| `POST` | `/li_account/ConnectWithCookies` | Connects a LinkedIn account with cookies | write |  |
+| `GET` | `/li_account/GetAccountProxy/{accountId}` | A LinkedIn account's proxy | excluded | It returns secrets: the host, username and password of a custom proxy. |
+| `GET` | `/li_account/GetAccountStatus/{accountId}` | A LinkedIn account's connection status | normalized | `senders.health` |
+| `POST` | `/li_account/GetAll` | LinkedIn accounts | normalized | `senders.list`, `senders.byCampaign` |
+| `GET` | `/li_account/GetById` | One LinkedIn account | normalized | `senders.get` |
+| `GET` | `/li_account/GetProxyCountries` | Supported proxy countries | native | `proxyCountries` |
+| `POST` | `/li_account/Reconnect` | Reconnects a LinkedIn account | write |  |
+| `POST` | `/li_account/ReloginRecruiter` | Signs an account back in to Recruiter | write |  |
+| `POST` | `/li_account/ReloginSalesNavigator` | Signs an account back in to Sales Navigator | write |  |
+| `DELETE` | `/li_account/RemoveAccount/{accountId}` | Removes a LinkedIn account | write |  |
+| `POST` | `/li_account/Resync` | Starts a resync of an account's inbox | write |  |
+| `POST` | `/li_account/SubmitPin` | Submits a LinkedIn verification PIN | write |  |
+| `POST` | `/li_account/UpdateInboxConfiguration` | Changes how an account's inbox is scraped | write |  |
+| `POST` | `/li_account/UpdateProxy` | Changes an account's proxy | write |  |
+| `POST` | `/list/AddLeadsToList` | Adds leads to a list | write |  |
+| `POST` | `/list/AddLeadsToListV2` | Adds leads to a list and reports the counts | write |  |
+| `POST` | `/list/CreateEmptyList` | Creates an empty list | write |  |
+| `DELETE` | `/list/DeleteLeadsFromList` | Deletes leads from a list by member id | write |  |
+| `DELETE` | `/list/DeleteLeadsFromListByProfileUrl` | Deletes leads from a list by profile URL | write |  |
+| `POST` | `/list/GetAll` | Lead and company lists | normalized | `lists.list` |
+| `GET` | `/list/GetById` | One lead or company list | native | `listById` |
+| `POST` | `/list/GetCompaniesFromList` | The companies in a company list | native | `companiesFromList` |
+| `POST` | `/list/GetLeadsFromList` | The leads in a lead list | normalized | `lists.leads`, `leads.since`, `leads.lookup` |
+| `POST` | `/list/GetListsForLead` | The lists one lead is in | native | `listsForLead` |
+| `PATCH` | `/list/UpdateLeadCustomFields/lists/{listId}/leads/custom-fields` | Changes a list lead's custom fields | write |  |
+| `GET` | `/management/organizations/api-keys/workspaces/{workspaceId}` | A workspace's API and integration keys | excluded | It returns secrets: every API and integration key of the workspace. |
+| `POST` | `/management/organizations/api-keys/workspaces/{workspaceId}` | Generates a new API key for a workspace | write |  |
+| `POST` | `/management/organizations/linkedin-accounts` | LinkedIn accounts across every workspace | native | `organizationLinkedInAccounts` |
+| `POST` | `/management/organizations/linkedin-accounts/MoveToWorkspace` | Moves a LinkedIn account to another workspace | write |  |
+| `DELETE` | `/management/organizations/linkedin-accounts/{linkedInAccountId}` | Deletes a LinkedIn account | write |  |
+| `POST` | `/management/organizations/users` | Users of the organization, invited ones included | native | `organizationUsers` |
+| `POST` | `/management/organizations/users/invite/admins` | Invites admins | write |  |
+| `POST` | `/management/organizations/users/invite/managers` | Invites managers to workspaces | write |  |
+| `POST` | `/management/organizations/users/invite/members` | Invites members with permissions | write |  |
+| `POST` | `/management/organizations/users/workspaces/{workspaceId}` | Users of one workspace with roles and permissions | native | `workspaceUsers` |
+| `GET` | `/management/organizations/users/{userId}` | One user with roles and permissions | native | `organizationUser` |
+| `GET` | `/management/organizations/workspaces` | Workspaces with seat limits and seats used | native | `organizationWorkspaces` |
+| `POST` | `/management/organizations/workspaces` | Creates a workspace | write |  |
+| `PATCH` | `/management/organizations/workspaces/{workspaceId}` | Changes a workspace's name or seat limit | write |  |
+| `POST` | `/MyNetwork/GetMyNetworkForSender` | One sender's LinkedIn connections | native | `myNetworkForSender` |
+| `POST` | `/MyNetwork/IsConnection` | Whether a lead is a connection of a sender | native | `isConnection` |
+| `POST` | `/stats/GetOverallStats` | Totals and daily counts for the workspace, a campaign or a sender | normalized | `stats.workspace`, `stats.campaign`, `stats.byDay`, `stats.bySender` |
+| `POST` | `/stats/GetOverallStatsByCampaign` | Totals and daily counts, one row per campaign | native | `statsByCampaign` |
+| `POST` | `/voice/BulkCommit` | Assigns voices to several senders at once | write |  |
+| `POST` | `/voice/CreateCustomVoice` | Clones a voice from an uploaded sample | write |  |
+| `DELETE` | `/voice/DeleteCustomVoice/{id}` | Deletes a cloned voice | write |  |
+| `GET` | `/voice/GetElevenLabsConnection` | The workspace's ElevenLabs connection status | native | `elevenLabsConnection` |
+| `GET` | `/voice/GetElevenLabsVoices` | Imported ElevenLabs voices | native | `elevenLabsVoices` |
+| `GET` | `/voice/GetSenderVoice/{accountId}` | The voice assigned to a sender | native | `senderVoice` |
+| `GET` | `/voice/GetStaticClip/{clipId}` | One uploaded voice clip, metadata and transcript | native | `staticClip` |
+| `GET` | `/voice/GetStaticClips` | Uploaded voice clips, metadata and transcripts | native | `staticClips` |
+| `GET` | `/voice/GetVoices` | Predefined and cloned voices | native | `voices` |
+| `GET` | `/voice/GetVoiceUsage/{id}` | The senders a voice is assigned to | native | `voiceUsage` |
+| `POST` | `/voice/RefreshElevenLabsLibrary` | Re-imports the ElevenLabs voice library | write |  |
+| `DELETE` | `/voice/RemoveSenderVoice/{accountId}` | Removes a sender's voice | write |  |
+| `PUT` | `/voice/SetSenderVoice/{accountId}` | Assigns a voice to a sender | write |  |
+| `POST` | `/voice/UploadStaticClip` | Uploads a voice clip | write |  |
+| `POST` | `/webhooks/CreateWebhook` | Creates a webhook | write |  |
+| `DELETE` | `/webhooks/DeleteWebhook` | Deletes a webhook | write |  |
+| `POST` | `/webhooks/GetAllWebhooks` | Webhooks | normalized | `webhooks.list` |
+| `GET` | `/webhooks/GetWebhookById` | One webhook | native | `webhookById` |
+| `PATCH` | `/webhooks/UpdateWebhook` | Changes a webhook | write |  |

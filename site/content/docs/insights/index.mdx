@@ -1,0 +1,280 @@
+---
+title: Insights
+description: The 26 computed answers in outbound-sdk/insights, what every answer carries, how inputs and capabilities are checked, and how to run one by name, as an agent tool, from the command line, or define your own.
+sidebar:
+  label: Overview
+related:
+  - /docs/insights/people
+  - /docs/insights/operations
+  - /docs/tools
+  - /docs/status
+---
+
+`outbound-sdk/insights` answers the questions operators ask, computed from the normalized reads. Each insight is one typed method, one agent tool and one CLI command. It calls no AI model, stores nothing and never writes to a vendor. Every number is a count, a rate or a textbook test you can check by hand.
+
+How far each adapter has been checked against a live account is on [what is verified](/docs/status).
+
+## Set it up
+
+Add the plugin. Every insight becomes a method on `outbound.insights`.
+
+<include meta='title="outbound.ts"'>
+  ../../_examples/insights-index/setup.ts
+</include>
+
+The plugin makes no request by itself. An insight reads through the instance, so the vendor's rate limit, your `maxRequests` and every other plugin apply to it. See [rate limits](/docs/rate-limits).
+
+## What every answer carries
+
+Every insight returns the same three parts: its tool name in `insight`, the answer in `data`, and `meta`.
+
+<include meta='title="answer.ts"'>
+  ../../_examples/insights-index/answer.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/insights-index/answer.out.txt
+</include>
+
+| Field | What it holds |
+| --- | --- |
+| `data` | The answer. Its type is exported under the insight's name: `CampaignRanking`, `PersonSummary` and so on. |
+| `meta.requests` | Vendor requests the insight made. The in-memory adapter makes none, so the samples on this site show 0. |
+| `meta.complete` | `false` when a cap stopped a read early, so the answer covers part of the data. |
+| `meta.evidence` | `exact` only when every read behind the answer was exact. Otherwise the weakest of them: `sampled`, then `derived`. |
+| `meta.notes` | What to know before trusting the numbers: which cap was reached, or a part that was skipped because the adapter cannot read it. |
+| `meta.computedAt` | When the insight ran, ISO 8601 UTC. |
+| `meta.provider` | The adapter's name. |
+
+Pass `meta.notes` on with the numbers. An answer cut short by a cap looks like a whole answer unless you say so.
+
+## Caps
+
+Every read an insight makes has a cap you can set. The defaults keep one call to tens of requests on a real vendor. When a cap stops a read, `meta.complete` is `false` and a note names the cap. The answer is never padded or guessed.
+
+| Cap | Default | Where |
+| --- | --- | --- |
+| `max_campaigns` | 20 | The [people](/docs/insights/people) insights and `copyReuse` |
+| `max_campaigns` | 25 | The [senders](/docs/insights/senders) and [operations](/docs/insights/operations) insights that list campaigns |
+| `max_campaigns` | 50 | `bounceWatch` |
+| `max_leads` | 500 | `hotLeads`, `personalizationGaps` |
+| `max_leads` | 1,000 | `accountSummary` |
+| `max_leads` | 2,000 | `pipelineForecast` |
+| `max_leads_per_campaign` | 500 | `leadCollisions`, `suppressionCheck`, `clientReport` |
+| `max_block_entries` | 2,000 | `suppressionCheck` |
+| `max_replies` | 50 | `droppedReplies` |
+| `max_messages` | 2,000 | `replyTiming` |
+| `max_senders` | 50 | `domainHealth`, `campaignDiagnosis` |
+| `max_senders` | 100 | `warmupReadiness` |
+| `max_senders` | 200 | `senderCapacity`, `senderLoad` |
+
+The range of each cap is on the insight's own section. Thresholds (a bounce rate that is too high, a warmup score that is too low) are inputs with defaults too.
+
+`maxRequests` on `createOutbound` is a different limit. It is the most vendor requests one call may make, and a call that reaches it fails with `RateLimited` instead of returning part of an answer.
+
+## Counts that are null
+
+A count a vendor does not report is `null`, never `0`, and so is every rate built on it. An insight sets such a record apart and says why. It does not rank it last or count it as clean.
+
+<include meta='title="nulls.ts"'>
+  ../../_examples/insights-index/nulls.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/insights-index/nulls.out.txt
+</include>
+
+## The two tests behind the numbers
+
+**The Wilson interval.** A rate from a small sample is a weak claim: 2 replies from 10 sends and 200 from 1,000 are both 20%, but only the second tells you much. Wherever an insight reports a rate that rests on a sample, it also reports the 95% Wilson score interval, the range the true rate plausibly lies in. Rankings sort by the low end of that interval (the high end for a bounce rate), so a lucky small campaign cannot outrank a proven large one.
+
+**The two-proportion test.** When an insight compares two rates (this week against last, variant A against B, email against LinkedIn), it runs a two-proportion z-test and reports the p-value: the chance of a gap at least this large if the two rates were in fact equal. Under `alpha` (an input, default 0.05) the insight calls the difference "more than chance". Over it, the insight says the gap could be chance. It never calls a winner on the raw rates alone.
+
+Both are exported, with the other arithmetic the insights share.
+
+<include meta='title="statistics.ts"'>
+  ../../_examples/insights-index/statistics.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/insights-index/statistics.out.txt
+</include>
+
+Rates, interval ends and p-values are rounded to four decimal places. A p-value shown as `0` is under 0.00005.
+
+## Inputs are checked
+
+An input is checked twice: by the method's type when you compile, and by the insight's schema when it runs. A key the insight does not take is refused as `Invalid`, with the list of inputs it does take. It is never dropped, because a dropped filter would quietly answer a wider question than the one asked.
+
+An insight that needs a capability the adapter lacks is refused as `Unsupported` before any request is made, and is left out of the tool list, so a model is never offered a tool that cannot work.
+
+<include meta='title="input-checking.ts"'>
+  ../../_examples/insights-index/input-checking.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/insights-index/input-checking.out.txt
+</include>
+
+Each `@ts-expect-error` marks a line the compiler rejects. Without the comment, the sample would not type-check. Input names are snake case (`max_campaigns`) because the same schema serves the agent tool and the CLI.
+
+## The insights
+
+The tool and CLI name of each is the same words in snake case: `personSummary` is `person_summary`.
+
+### People and accounts
+
+[Reference](/docs/insights/people)
+
+| Method | Answers | Needs |
+| --- | --- | --- |
+| `personSummary` | One person across campaigns and channels: messages sent, replies, steps replied to, interest | `leads.lookup`, `leads.timeline` |
+| `accountSummary` | Everyone at one company domain, across campaigns and tools | `leads.list`, or `leads.byCampaign` when the adapter cannot list every lead |
+| `leadCollisions` | People in two or more campaigns at once, inside a tool or across tools | `leads.byCampaign` |
+| `suppressionCheck` | Leads in campaigns although they are on the block list | `blocklist`, `leads.byCampaign` |
+| `droppedReplies` | Replies nobody answered, longest waiting first | `replies.list` |
+| `hotLeads` | Who to call first, scored from interest, replies, clicks, opens and recency | `leads.list`, or `leads.byCampaign` with a campaign given |
+| `personalizationGaps` | Leads that will get broken copy because a merge variable has no value | `sequence`, `leads.byCampaign` |
+
+### Copy and sequence
+
+[Reference](/docs/insights/copy)
+
+| Method | Answers | Needs |
+| --- | --- | --- |
+| `stepFunnel` | Where replies come from, step by step | `sequence`, `stats.byStep` |
+| `variantTest` | Whether an A/B leader is ahead by more than chance | `stats.byStep` |
+| `copyAudit` | Problems in the copy: length, links, spam words, broken variables | `sequence` |
+| `copyReuse` | How the same copy performs in different campaigns | `sequence`, `stats.byStep` |
+| `replyTiming` | How fast people reply, and on which days and hours | `messages.list` |
+
+### Senders and deliverability
+
+[Reference](/docs/insights/senders)
+
+| Method | Answers | Needs |
+| --- | --- | --- |
+| `domainHealth` | DNS, sign-in, block list and warmup spam rate per sending domain | `senders.list`, `senders.health` |
+| `senderCapacity` | What senders can send against what campaigns ask and what went out | `senders.list` |
+| `bounceWatch` | Campaigns and senders over a bounce threshold | `stats.campaign` |
+| `warmupReadiness` | Senders that are not ready to send, with reasons | `senders.list` |
+| `senderLoad` | Senders on too many campaigns, and idle ones | `senders.list`, `senders.byCampaign` |
+| `settingsAudit` | Risky schedules, tracking and stop rules | `campaigns.settings` |
+
+### Campaign operations and reporting
+
+[Reference](/docs/insights/operations)
+
+| Method | Answers | Needs |
+| --- | --- | --- |
+| `campaignDiagnosis` | Why one campaign is underperforming, most serious finding first | `stats.campaign` |
+| `pipelineForecast` | Leads left, days of sending left, and the replies to expect | `leads.byCampaign`, `stats.campaign` |
+| `anomalies` | Days whose sends, replies or bounces broke from trend | `stats.byDay`, and `stats.workspace` for the whole workspace or `stats.campaign` for one campaign |
+| `periodComparison` | This period against the one before | `stats.campaign` |
+| `campaignRanking` | Campaigns ranked fairly at different volumes | `stats.campaign` |
+| `channelMix` | Email against LinkedIn | `stats.campaign` |
+| `tagRollup` | Results grouped by campaign tag | `stats.campaign` |
+| `clientReport` | One report for a client or workspace, with action items | `stats.campaign` |
+
+"Needs" is what must be there for the insight to run at all. Many insights read more when the adapter can serve it, and say in `meta.notes` what they left out when it cannot. Each section of the reference pages lists both. The [capabilities](/docs/capabilities) page explains the keys.
+
+## Which adapter serves which
+
+An insight is offered when the adapter declares every capability it needs. This sample asks each vendor's adapter what it declares.
+
+<include meta='title="vendors.ts"'>
+  ../../_examples/insights-index/vendors.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/insights-index/vendors.out.txt
+</include>
+
+HeyReach has no per-step stats, so it cannot serve `stepFunnel`, `variantTest` or `copyReuse`, and its API cannot read campaign settings, so it cannot serve `settingsAudit`.
+
+A declaration is what the adapter's code says it can do. It is not a live run. Which insights were run against a live account, on which vendor and when, is on [what is verified](/docs/status).
+
+## Run one by name
+
+`runInsightByName` takes the tool name or the method name and JSON input. It is what the CLI and an agent's tool call go through. The answer's `data` is typed as JSON, so use the method when you know the insight at compile time. An unknown name throws `Invalid` and lists the known names.
+
+`listInsights` needs no instance. It returns each insight's `name`, `key`, `description`, `needs` and its input as JSON Schema in `parameters`.
+
+`insightTools(outbound)` returns the insights this instance can serve as agent tools, in the form every wrapper in [`outbound-sdk/tools`](/docs/tools) accepts through `extra`. Pass `only` to offer some of them.
+
+<include meta='title="by-name.ts"'>
+  ../../_examples/insights-index/by-name.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/insights-index/by-name.out.txt
+</include>
+
+A tool call never throws. It returns `ok: true` with `data.result`, `data.complete` and `data.notes`, or `ok: false` with an error `code` and `message`. Both carry `next`, one sentence on what to ask after this.
+
+## From the command line
+
+`outbound insight` with no name lists every insight as JSON. With a name it runs one and prints the answer. `--input` takes the same inputs as the method, as JSON.
+
+```sh
+outbound insight
+outbound insight person_summary --input '{"person":"jane@example.com"}'
+outbound insight client_report --input '{}'
+```
+
+`outbound mcp` serves the insights with the other tools. See [CLI commands](/docs/cli/commands) and [the MCP server](/docs/cli/mcp). These commands are not run by this site's tests.
+
+## Define your own
+
+`defineInsight` takes a name, a description, a Zod object for the input, the capabilities it needs and a `run` function. `runInsight` runs it with the same input checking, capability check and `meta` as the built-in ones, and keeps its typed answer. A definition's `execute` method is the untyped form the tool list uses.
+
+<include meta='title="define.ts"'>
+  ../../_examples/insights-index/define.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/insights-index/define.out.txt
+</include>
+
+`run` receives a context. Read through its helpers so the cost and the evidence of every read reach `meta`.
+
+| On the context | What it does |
+| --- | --- |
+| `outbound` | The instance to read through. |
+| `now` | The time the insight runs at, in milliseconds. Use it, not `Date.now()`, so a test can fix the clock with the `now` option of `runInsight`. |
+| `rows(stats)` | Records a stats read and returns its rows. |
+| `one(item)` | Records one lookup and returns the record. |
+| `page(page)` | Records one page and returns its items. An unfinished page marks the answer incomplete. |
+| `all(walk, cap)` | Walks a `listAll` to its end or its `max`, and marks the answer incomplete when `max` cut it short. |
+| `note(text)` | Adds a note. The same note is kept once. |
+| `partial(reason)` | Marks the answer incomplete, with the reason as a note. |
+
+The arithmetic is exported from `outbound-sdk/insights` as plain functions:
+
+| Function | Returns |
+| --- | --- |
+| `rate(part, whole)` | `part / whole`, or `null` when either is unknown or the whole is zero |
+| `wilson(successes, trials)` | The 95% Wilson interval as `low` and `high`, or `null` |
+| `compareRates(first, second, alpha)` | The two-proportion test: `z`, `pValue`, `significant`. `null` when a side has no trials or both rates are 0 or 1 |
+| `total(values)` | The known values added up. `null` when none is known |
+| `mean`, `median`, `percentile(values, fraction)` | `null` for an empty list. Percentiles use linear interpolation |
+| `deviation(values)` | The sample standard deviation. `null` with fewer than two values |
+| `zScore(value, history)` | How many standard deviations `value` sits from the mean of `history`. `null` when the history has no spread |
+| `round(value)` | Four decimal places. `null` stays `null` |
+| `tally(values)` | How often each value occurs, as a `Map` in first-seen order |
+
+`defineInsight` does not add your insight to `outbound.insights`, `listInsights` or `insightTools`. Those hold the built-in 26.
+
+## Things to know
+
+- **"The last N days" means N complete UTC days ending yesterday**, so a half-finished today cannot read as a drop.
+- **Records are linked by exact identifier, never by name.** An email address finds a LinkedIn record only when a tool holds both for that person.
+- **Finding a person costs a different number of requests on each vendor:** 1 on Instantly, 2 by profile or about 4 by email on HeyReach, and 1 to 2 on Smartlead.
+- **A vendor's thread can be shorter than its sequence.** Instantly's email list does not hold every email a campaign sent, so `personSummary` counts messages sent from the lead's last step when the thread is shorter, and says so in a note.
+- **A combined instance cannot read a conversation by thread id**, because a thread id is one vendor's own. `droppedReplies` reads the lead's timeline there.
+- **`bounceWatch` judges a sender on everything it sent in the period**, not only in the offending campaign: no vendor reports one sender within one campaign.
+- **`variantTest` makes no correction for comparing three or more variants**, and its "sends still needed" assumes both rates stay as they are.
+- **`anomalies` judges a day against a flat baseline without a z-score.** If every earlier day had the same count, there is no standard deviation to measure against. A day with another count is flagged with `judgedBy: "flat_baseline"` and a `null` `zScore`, whatever `threshold` is.
+- **A rate over several campaigns counts only the campaigns that report both sides of it.** `tagRollup`, `channelMix`, `periodComparison` and `clientReport` add counts up across campaigns. A campaign that reports sends but no bounces adds to the sends shown and is left out of the bounce rate, and a note says so.
+- **`hotLeads` is a ranking, not a prediction.** Its score is the sum of weighted parts that are returned with it.
+- **The findings are sentences built from the numbers by fixed rules.** No model writes them, so the same data always gives the same sentence.

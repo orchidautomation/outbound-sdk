@@ -1,0 +1,3 @@
+instantly: ok, 25 lines
+smartlead: ok, 25 lines
+heyreach: Unsupported: variant_test is not available: the heyreach adapter does not support stats.byStep

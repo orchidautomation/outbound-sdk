@@ -1,0 +1,91 @@
+tools/call
+{
+  "id": 3,
+  "jsonrpc": "2.0",
+  "result": {
+    "content": [
+      {
+        "text": "{\"data\":{\"senders\":[{\"daily_limit\":40,\"kind\":\"mailbox\",\"sender\":\"memory:acme:mbx_1\",\"status\":\"active\",\"warmup_enabled\":true,\"warmup_score\":96}],\"unhealthy\":0},\"meta\":{\"evidence\":\"exact\",\"provider\":\"memory\",\"requests\":0,\"today\":\"2026-11-14\"},\"next\":\"A sender address is not included. Look a sender up by its ref if you need more.\",\"ok\":true}",
+        "type": "text"
+      }
+    ],
+    "isError": false,
+    "structuredContent": {
+      "data": {
+        "senders": [
+          {
+            "daily_limit": 40,
+            "kind": "mailbox",
+            "sender": "memory:acme:mbx_1",
+            "status": "active",
+            "warmup_enabled": true,
+            "warmup_score": 96
+          }
+        ],
+        "unhealthy": 0
+      },
+      "meta": {
+        "evidence": "exact",
+        "provider": "memory",
+        "requests": 0,
+        "today": "2026-11-14"
+      },
+      "next": "A sender address is not included. Look a sender up by its ref if you need more.",
+      "ok": true
+    }
+  }
+}
+
+tools/call that fails: a result with isError, not a protocol error
+{
+  "id": 4,
+  "jsonrpc": "2.0",
+  "result": {
+    "content": [
+      {
+        "text": "{\"error\":{\"code\":\"Invalid\",\"message\":\"campaign_overview: \\\"client\\\" is not an input. It takes: from, limit, status, to\"},\"next\":\"Check the input and try again.\",\"ok\":false}",
+        "type": "text"
+      }
+    ],
+    "isError": true,
+    "structuredContent": {
+      "error": {
+        "code": "Invalid",
+        "message": "campaign_overview: \"client\" is not an input. It takes: from, limit, status, to"
+      },
+      "next": "Check the input and try again.",
+      "ok": false
+    }
+  }
+}
+
+tools/call for a tool the server does not have
+{
+  "error": {
+    "code": -32602,
+    "message": "Unknown tool: send_email"
+  },
+  "id": 5,
+  "jsonrpc": "2.0"
+}
+
+ping
+{
+  "id": 6,
+  "jsonrpc": "2.0",
+  "result": {}
+}
+
+a notification
+(no response)
+
+a method that is not implemented
+{
+  "error": {
+    "code": -32601,
+    "message": "Method not found: resources/list"
+  },
+  "id": 7,
+  "jsonrpc": "2.0"
+}
+

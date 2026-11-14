@@ -1,0 +1,107 @@
+---
+title: In-memory adapter
+description: Run the whole SDK on plain data with no key and no network, seed every record type, limit it to what a real vendor declares, and know where it differs from a vendor.
+sidebar:
+  label: In-memory
+related:
+  - /docs/adapters
+  - /docs/capabilities
+  - /guides/test-without-a-key
+---
+
+`memory()` from `outbound-sdk/memory` is a complete adapter over data you pass in. Use it in tests, in demos and to try a call before you have a key. Most samples on this site run on it.
+
+## Options
+
+| Option | Default | What it is |
+| --- | --- | --- |
+| `data` | `{}` | The seed: a `MemoryData` object, described below. |
+| `workspaceId` | `default` | The workspace label records carry. It may not contain a colon. |
+| `name` | `memory` | The provider name records carry. |
+| `pageSize` | `50` | Records per page, to exercise paging with a small seed. |
+| `capabilities` | everything it can serve | Overrides single capabilities, to exercise gating and fallbacks. |
+
+## Seed data
+
+Every array in `MemoryData` is optional, and on most seed types only `id` is required. A field you leave out gets a default (`status: "active"`, `channel: "email"`, a name equal to the id) or `null`.
+
+<include meta='title="seed.ts"'>
+  ../../_examples/adapters-memory/seed.ts
+</include>
+
+| Key | Seed type | Notes |
+| --- | --- | --- |
+| `campaigns` | `MemoryCampaign` | `steps` (each a `MemoryStep` with `MemoryVariant`s) become the sequence. `settings` is a `MemorySettings`. `subsequences` are `MemorySubsequence`s. |
+| `senders` | `MemorySender` | A sender with a `linkedinUrl` is a LinkedIn account, otherwise a mailbox. `campaignIds` attaches it to campaigns. `health` is a `MemoryHealth`. |
+| `leads` | `MemoryLead` | `campaignId` puts the lead in a campaign, `listIds` on saved lists. `engagement` is partial: counts you leave out are `null`. |
+| `messages` | `MemoryMessage` | `direction` and `sentAt` are required. An inbound message is also a reply; `category` and `isAuto` apply to inbound only. |
+| `stats` | `MemoryStats` | One row per day. See below. |
+| `lists` | `MemoryList` | `size` is counted from the leads whose `listIds` name the list. |
+| `blocklist` | `MemoryBlockEntry` | `kind` defaults to `email` when the value has an `@`, else `domain`. |
+| `tags` | `MemoryTag` |  |
+| `webhooks` | `MemoryWebhook` | Subscriptions that `outbound.webhooks` lists. `url` is required. |
+
+A variant with no `key` is lettered `A`, `B`, `C` by position. A step with no `parentIndex` follows the step before it.
+
+### Stats rows
+
+A `MemoryStats` row is counts for one campaign on one day. Which reads a row feeds depends on its optional fields:
+
+- A row with neither `senderId` nor `stepIndex` counts for its campaign and for the workspace.
+- A row with `stepIndex` feeds per-step stats only. Add `variantKey` to make it the row of one variant of that step: a step read then returns one row per step and variant, with `variantKey` set, the way a vendor that splits step stats by variant does. A row without it is the step as a whole (`variantKey: null`).
+- A row with `senderId` feeds that sender's stats only.
+
+A stats read for a campaign that nothing in the seed names (no campaign, stats row, lead, message or sender) is `NotFound`. A campaign that is named and has no rows in the range returns no rows.
+
+The adapter sums rows the way a vendor's analytics endpoint would. It does not derive per-step or per-sender numbers from the campaign rows, so seed them when the code under test reads them. A count you leave out of `counts` is `null`, never `0`.
+
+<include meta='title="run.ts"'>../../_examples/adapters-memory/run.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/adapters-memory/run.out.txt
+</include>
+
+The campaign's two day rows sum to 120 sent and 8 replied. `delivered` was never seeded, so it is `null`.
+
+## Demo data
+
+`demoData()` returns a small made-up data set: two campaigns, two mailboxes, three leads, three messages, two days of stats, and one list, tag, webhook and block list entry. Its dates are in September and October 2026. Use it when the numbers do not matter; write a seed when they do.
+
+## Limit it to what a vendor can do
+
+Pass `capabilities` to turn single capabilities off or to weaken a filter from `server` to `client`. The adapter then behaves like a narrower vendor: gated calls are refused before they run, and a `client` filter is applied by the SDK and marked `derived`.
+
+<include meta='title="limited.ts"'>
+  ../../_examples/adapters-memory/limited.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/adapters-memory/limited.out.txt
+</include>
+
+To get one vendor's whole declaration, pass that adapter's own `capabilities`: `instantly({ apiKey: "not-used" }).capabilities`. The guides on this site do that to show which calls each vendor's adapter would refuse. It proves what the adapter refuses. It does not prove what the vendor's API returns.
+
+## Where it differs from a vendor
+
+<include meta='title="differences.ts"'>
+  ../../_examples/adapters-memory/differences.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/adapters-memory/differences.out.txt
+</include>
+
+|  | In-memory | A vendor adapter |
+| --- | --- | --- |
+| Requests | None. `meta.requests` is `0` and `meta.throttledMs` is `0` on every result. | Counted per result. |
+| Rate limit | A placeholder of 1,000,000 per second that never throttles. | The vendor's declared limits. |
+| Failures | The adapter raises only `NotFound`; the SDK adds `Unsupported` and `Invalid` for a gated or malformed call. Nothing times out, nothing returns a 429, nothing is retried. | Every [error code](/docs/api/errors). |
+| `outbound.native` | Empty catalog. A read is `Unsupported`. | The vendor's catalog. |
+| `outbound.raw` | Every request is `Unsupported`: there is no API behind it. | The vendor's own API. |
+| `outbound.estimate` | No costs are declared, so `requests` is `null`. | The adapter's cost table. |
+| Webhooks | No parser and no verification. `outbound.webhooks` lists the seeded subscriptions and receives nothing. | Parsed by `outbound-sdk/webhooks`. |
+| Caveats and maturity | No caveats; `stable`, because there is no vendor to verify against. | See [what is verified](/docs/status). |
+| Evidence | Stats rows are `exact`. | `exact` or `derived`, by capability. |
+| Data quirks | Returns what you seeded, complete and consistent. | See each adapter's caveats. |
+
+Code that passes on the in-memory adapter has been shown to call the SDK correctly. It has not been shown to work against a vendor. Retries, rate limits and a vendor's missing fields need an injected `fetch` or a live key to exercise.

@@ -1,0 +1,17 @@
+Lead runway for 4 active campaigns
+
+ADD LEADS Ecommerce ops: 0 leads left, about 0 days left at 30 new leads a day
+    expect about 0 more replies (0 to 0)
+ADD LEADS SaaS founders: 40 leads left, about 2 days left at 20 new leads a day
+    expect about 6 more replies (5 to 7)
+Agency owners: 400 leads left, about 16 days left at 25 new leads a day
+    expect about 48 more replies (38 to 60)
+Fintech CFOs: 120 leads left, days left unknown
+    replies cannot be estimated yet
+
+Every figure after the lead counts is an estimate. It assumes:
+  - Every remaining lead is contacted.
+  - Remaining leads reply at the rate the campaign has had so far; leads already partway through the sequence may reply less.
+  - The daily pace stays what it was over the recent days. Days with no report count as no sends.
+
+Vendor requests spent: 0

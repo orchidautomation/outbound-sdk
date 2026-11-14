@@ -3,12 +3,12 @@
 // calls no model and stores nothing. One definition serves the typed method
 // on the instance, the agent tool and the CLI command.
 
-import type { z, ZodObject, ZodType } from "zod";
+import type { ZodObject, ZodType } from "zod";
 
 import type { CapabilityKey } from "../internal/capabilities.ts";
 import type { Evidence, MetricRow } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
-import { toJson } from "../internal/json.ts";
+import { toJson, unknownKey } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
 import type {
   ListAll,
@@ -89,12 +89,21 @@ export interface InsightEntry {
   ) => Promise<InsightResult<Json>>;
 }
 
-export interface InsightSpec<Key extends string, Input, Data> {
+/**
+ * `Input` is what `run` receives, with every default applied. `Given` is what
+ * a caller writes, where a field with a default may be left out.
+ */
+export interface InsightSpec<Key extends string, Input, Data, Given = Input> {
   readonly key: Key;
   readonly name: string;
   readonly description: string;
-  readonly inputSchema: ZodObject & ZodType<Input>;
+  readonly inputSchema: ZodObject & ZodType<Input, Given>;
   readonly needs: readonly CapabilityKey[];
+  /**
+   * Capabilities this input needs on top of `needs`, when what is read
+   * depends on the input. Checked before any request, like `needs`.
+   */
+  readonly needsFor?: ((input: Input) => readonly CapabilityKey[]) | undefined;
   readonly next: string;
   readonly run: (context: InsightContext, input: Input) => Promise<Data>;
 }
@@ -103,10 +112,13 @@ export interface InsightDefinition<
   Key extends string = string,
   Input = never,
   Data = Json,
+  Given = Input,
 > extends InsightEntry {
   readonly key: Key;
-  readonly inputSchema: ZodObject & ZodType<Input>;
+  readonly inputSchema: ZodObject & ZodType<Input, Given>;
   readonly run: (context: InsightContext, input: Input) => Promise<Data>;
+  /** Never set. It carries the caller's input type to `outbound.insights`. */
+  readonly given?: Given;
 }
 
 const RANK: Readonly<Record<Evidence, number>> = {
@@ -196,11 +208,21 @@ const missing = (
 ): CapabilityKey[] =>
   needs.filter((key) => outbound.capabilities[key] === false);
 
-const prepare = <Key extends string, Input, Data>(
+const prepare = <Key extends string, Input, Data, Given>(
   outbound: OutboundApi,
-  spec: InsightSpec<Key, Input, Data>,
+  spec: InsightSpec<Key, Input, Data, Given>,
   input: Json | undefined
 ): Input => {
+  // A misspelt or unsupported filter is refused. Dropping it would let the
+  // insight quietly answer a wider question than the one asked.
+  const stray = unknownKey(Object.keys(spec.inputSchema.shape), input);
+
+  if (stray !== undefined) {
+    throw new OutboundError("Invalid", `${spec.name}: ${stray}`, {
+      provider: outbound.provider,
+    });
+  }
+
   const parsed = spec.inputSchema.safeParse(input ?? {});
 
   if (!parsed.success) {
@@ -214,11 +236,13 @@ const prepare = <Key extends string, Input, Data>(
   }
 
   const absent = missing(outbound, spec.needs);
+  // What only this input needs is named apart, so the caller knows another input may work.
+  const forInput = missing(outbound, spec.needsFor?.(parsed.data) ?? []);
 
-  if (absent.length > 0) {
+  if (absent.length > 0 || forInput.length > 0) {
     throw new OutboundError(
       "Unsupported",
-      `${spec.name} is not available: the ${outbound.provider} adapter does not support ${absent.join(", ")}`,
+      `${spec.name} is not available${absent.length > 0 ? "" : " for this input"}: the ${outbound.provider} adapter does not support ${[...new Set([...absent, ...forInput])].join(", ")}`,
       { provider: outbound.provider }
     );
   }
@@ -226,9 +250,9 @@ const prepare = <Key extends string, Input, Data>(
   return parsed.data;
 };
 
-const execute = async <Key extends string, Input, Data>(
+const execute = async <Key extends string, Input, Data, Given>(
   outbound: OutboundApi,
-  spec: InsightSpec<Key, Input, Data>,
+  spec: InsightSpec<Key, Input, Data, Given>,
   input: Json | undefined,
   options: RunOptions = {}
 ): Promise<InsightResult<Data>> => {
@@ -252,9 +276,9 @@ const execute = async <Key extends string, Input, Data>(
  * Defines an insight. The key, the input type and the data type are kept as
  * written, so `outbound.insights` is typed from the definitions.
  */
-export const defineInsight = <const Key extends string, Input, Data>(
-  spec: InsightSpec<Key, Input, Data>
-): InsightDefinition<Key, Input, Data> => ({
+export const defineInsight = <const Key extends string, Input, Data, Given>(
+  spec: InsightSpec<Key, Input, Data, Given>
+): InsightDefinition<Key, Input, Data, Given> => ({
   ...spec,
   execute: async (outbound, input, options) => {
     const result = await execute(outbound, spec, input, options);
@@ -264,10 +288,10 @@ export const defineInsight = <const Key extends string, Input, Data>(
 });
 
 /** Checks the input and the capabilities, then runs one insight, keeping its typed answer. */
-export const runInsight = <Key extends string, Input, Data>(
+export const runInsight = <Key extends string, Input, Data, Given>(
   outbound: OutboundApi,
-  definition: InsightDefinition<Key, Input, Data>,
-  input: z.input<InsightDefinition<Key, Input, Data>["inputSchema"]>,
+  definition: InsightDefinition<Key, Input, Data, Given>,
+  input: Given,
   options: RunOptions = {}
 ): Promise<InsightResult<Data>> =>
   // SAFETY: an insight's input is a plain object of JSON values, and it is parsed before use.

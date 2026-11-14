@@ -1,0 +1,55 @@
+---
+title: Claude Agent SDK tools
+description: The outbound tools as an in-process MCP server for the Claude Agent SDK, with the list of tool names to pre-approve.
+sidebar:
+  label: Claude Agent SDK
+related:
+  - /docs/tools
+  - /docs/cli/mcp
+  - /docs/tools/untrusted-content
+  - /guides/agent-tools
+---
+
+`outbound-sdk/tools/claude-agent` gives the [tools](/docs/tools) to the Claude Agent SDK as an in-process MCP server. Nothing is spawned and no port is opened: the server lives in your process.
+
+This subpath imports `@anthropic-ai/claude-agent-sdk`, which is an optional peer dependency. Install it only if you import this subpath. See [installation](/docs/installation).
+
+| Export | What it returns |
+| --- | --- |
+| `claudeAgentTools(outbound, options)` | `server` to pass as `options.mcpServers[serverName]`, `allowedTools` to pass as `options.allowedTools`, and `serverName`. |
+| `claudeToolDefinitions(outbound, options)` | The tool definitions on their own, for an MCP server you build yourself with `createSdkMcpServer`. |
+
+Both take the `only` and `extra` options of [`createTools`](/docs/tools#options). `claudeAgentTools` also takes `serverName`, which defaults to `outbound`. The agent addresses each tool as `mcp__<serverName>__<tool>`.
+
+## Build the server and run a tool
+
+<include meta='title="claude-agent.ts"'>
+  ../../_examples/tools-claude-agent/claude-agent.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/tools-claude-agent/claude-agent.out.txt
+</include>
+
+- **Every tool is marked `readOnlyHint: true`.** All of them only read, which is why `allowedTools` lists every one: you can pre-approve the whole set.
+- **A result is MCP text content.** The tool's result object is serialized as JSON in one `text` item.
+- **A failed tool sets `isError: true`.** The content is still the `{ ok: false, error, next }` object, so the model can read why.
+
+## Wiring it to an agent
+
+<include meta='title="query.ts"'>
+  ../../_examples/tools-claude-agent/query.ts
+</include>
+
+<Callout type="note" title="No model was called">
+  The test suite loads `query.ts`, type-checks it against the Agent SDK and
+  never calls `ask`, so the agent loop is wiring that was not run. The first
+  sample calls a tool's `handler` by hand, which is the step the Agent SDK
+  performs when Claude asks for the tool.
+</Callout>
+
+To serve the same tools to Claude Code, Claude Desktop or another MCP client without writing code, run [`outbound mcp`](/docs/cli/mcp).
+
+## Reply text
+
+A model given `reply_samples` can ask for reply text. It comes back truncated and marked as untrusted. See [untrusted content](/docs/tools/untrusted-content).

@@ -1,0 +1,124 @@
+---
+title: Build a weekly client report an agency can send, from one call
+description: One function that turns a client's campaigns into a plain-text weekly report with the change from last week, the best campaigns and a to-do list, plus what it does when a vendor cannot answer.
+sidebar:
+  label: Weekly client report
+related:
+  - /docs/insights
+  - /docs/adapters/combine
+  - /guides/run-many-clients
+---
+
+Every Monday an agency writes the same email for each client: what went out, what came back, what changed, what needs doing. `clientReport` computes all of it in one call: this week against the week before, with a test for whether the change is more than chance; the best campaigns; campaigns over a bounce threshold; campaigns about to run out of leads; days that broke from trend; and a list of actions. It calls no AI model. Every number is a count, a rate or a textbook test.
+
+This guide wraps that call in one function that returns the report as text, runs it for every client behind one instance, and shows what happens when it cannot answer.
+
+<include>../_snippets/status.mdx</include>
+
+## Before you start
+
+- Node 22 or later.
+- The code below runs on the in-memory adapter, so it needs no vendor key. Each sample on this page is a file in the repository that the test suite runs; the output shown is what it printed.
+- For real data: an Instantly, Smartlead or HeyReach API key. A read-only key is enough. No method of the SDK writes to a vendor.
+
+## What you get
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/weekly-client-report/run.out.txt
+</include>
+
+## Write the report
+
+`outbound.insights.clientReport` takes the length of the period in days and returns `data` and `meta`. The function below formats `data` and passes on anything `meta` says about the answer.
+
+<include meta='title="report.ts"'>
+  ../_examples/weekly-client-report/report.ts
+</include>
+
+Three things in it are worth copying:
+
+- **A count can be `null`.** A vendor that does not report a number gets `null`, never `0`, and a rate built on it is `null` too. Print "not reported", not a zero.
+- **`data.totals.finding` is a sentence.** It already says whether the reply rate moved by more than chance, from a two-proportion test at `alpha` (default 0.05).
+- **`meta.complete` and `meta.notes` travel with the report.** When a cap stopped a read early, the report covers part of the data and a note says which part.
+
+"The last 7 days" means seven complete UTC days ending yesterday, so a half-finished today cannot read as a drop.
+
+## Try it without a key
+
+The in-memory adapter takes plain data. This seed is three weeks of results for one client, with one campaign whose bounces jumped last week:
+
+<include meta='title="seed.ts"'>
+  ../_examples/weekly-client-report/seed.ts
+</include>
+
+<include meta='title="run.ts"'>
+  ../_examples/weekly-client-report/run.ts
+</include>
+
+That is the script that printed the report above.
+
+## Point it at your vendor
+
+Swap the adapter. Nothing else changes.
+
+<include meta='title="outbound.ts"'>
+  ../_examples/weekly-client-report/production.ts
+</include>
+
+`maxRequests` caps what one call may spend. On a real vendor the report costs two stats requests per campaign, and for each active campaign three more plus a read of its leads (up to `max_leads_per_campaign`, default 500). The default `max_campaigns` is 25. If the cap is reached the call fails with `RateLimited` instead of spending your vendor quota; raise `maxRequests` or lower `max_campaigns`.
+
+## One report per client
+
+Give each client's key its own adapter and a `workspaceId` that is your label for the client. `outbound.workspace(id)` is the same instance scoped to that client, with the same plugins, so the function above runs unchanged. A client on two tools keeps one label on both adapters, and its scope covers both.
+
+<include meta='title="per-client.ts"'>
+  ../_examples/weekly-client-report/per-client.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/weekly-client-report/per-client.out.txt
+</include>
+
+The second client has no campaigns, so its counts are "not reported" and not zero.
+
+To send it weekly, call the function from whatever scheduler you already run (cron, a GitHub Actions schedule, a Vercel cron route) and hand the text to your email tool. The SDK stores nothing and schedules nothing.
+
+## What each vendor can serve
+
+The same function, run on the in-memory adapter limited to what each vendor's adapter declares. This shows which calls a vendor's adapter would refuse. It does not show what that vendor's API returns.
+
+<include meta='title="vendors.ts"'>
+  ../_examples/weekly-client-report/vendors.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/weekly-client-report/vendors.out.txt
+</include>
+
+`clientReport` needs only `stats.campaign`, which all three declare. Parts of the report that need more (`stats.byDay` for unusual days, `leads.byCampaign` for leads left) come back `null` with a note when an adapter cannot read them.
+
+## When it cannot answer
+
+<include meta='title="failures.ts"'>
+  ../_examples/weekly-client-report/failures.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/weekly-client-report/failures.out.txt
+</include>
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| An input the insight does not take | `Invalid`, naming the key and listing the inputs | Fix the key. An unknown filter is never dropped silently. |
+| A cap stopped a read | `meta.complete` is `false` and a note says why | Raise the cap, or send the report with the note. |
+| Input out of range | `Invalid`, before any request | Fix the value. |
+| The adapter cannot read campaign stats | `Unsupported`, before any request | Use an adapter that declares `stats.campaign`. |
+| A rejected key | `Unauthorized`. It is not retried. | Check the key and its scope. |
+| The vendor is rate limiting | Waited out and retried for you. `RateLimited` only once `deadline` or `maxRequests` is passed. | Raise the budget, or run the report later. |
+
+## Limits
+
+- The report is per instance or per workspace. There is no filter by campaign tag on `clientReport`; use `tagRollup` to group results by tag.
+- Anomalies need at least five days of history before the period (`min_baseline_points`).
+- "Leads left" reads up to `max_leads_per_campaign` leads per active campaign. Past that, the report says it is incomplete.
+- The numbers are only as good as the vendor's. On an `unverified` adapter, check a report against the vendor's own dashboard before sending it to a client.

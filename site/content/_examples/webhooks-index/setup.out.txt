@@ -1,0 +1,9 @@
+heyreach
+HeyReach: Integrations > Webhooks > Create webhook, one per event type. HeyReach does not sign payloads, so put a secret in the URL (https://your.app/hooks/<secret>) or add it as a custom header named x-webhook-secret, and pass the same value as `secret`.
+
+instantly
+Instantly: Settings > Integrations > Webhooks > Add webhook (Hyper Growth plan or above). Instantly does not sign payloads, so put a secret in the URL (https://your.app/hooks/<secret>) or add it as a custom header named x-webhook-secret, and pass the same value as `secret`.
+
+smartlead
+Smartlead: Settings > Webhooks > Add webhook, per account, client or campaign (only one fires per event; the account-level one wins). Turn on signing for the webhook and pass its whsec_ secret as `secret`: the SDK then checks the Standard Webhooks signature and rejects anything older than five minutes. An unsigned Smartlead webhook fails verification.
+

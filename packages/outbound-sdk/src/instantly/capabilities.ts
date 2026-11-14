@@ -1,7 +1,7 @@
 // What the Instantly adapter declares. Every statement here comes from
 // Instantly's API V2 documentation; docs/research/instantly.md records the
-// pages and the date they were read. Nothing has been checked against a live
-// workspace yet, which is why the adapter's maturity is `unverified`.
+// pages and the date they were read. Its reads were then run against one live
+// workspace, which is why the adapter's maturity is `beta`.
 
 import type { OperationCost } from "../internal/adapter.ts";
 import type { CapabilityDeclaration } from "../internal/capabilities.ts";

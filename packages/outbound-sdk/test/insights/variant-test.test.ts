@@ -5,7 +5,7 @@ import { combine } from "../../src/combine/index.ts";
 import { createOutbound, OutboundError } from "../../src/index.ts";
 import { insights, runInsightByName } from "../../src/insights/index.ts";
 import { memory } from "../../src/memory/index.ts";
-import type { MemoryData } from "../../src/memory/index.ts";
+import type { MemoryData, MemoryStats } from "../../src/memory/index.ts";
 import { must, ref, toolWithRows, withRows } from "./copy-helpers.ts";
 import type { StepRow } from "./copy-helpers.ts";
 import { NOW, single } from "./helpers.ts";
@@ -266,6 +266,7 @@ test("variant_test returns nothing to test when the stats carry no variants, or 
     "The step stats carry no variant rows, so there is nothing to compare.",
   ]);
 
+  // c2 exists and has no stats: an empty answer, not an error.
   const none = await withRows(DATA, ROWS).insights.variantTest(
     { campaign: ref("c2") },
     { now: NOW }
@@ -330,4 +331,103 @@ test("variant_test reads the campaign's tool on a combined instance", async () =
   );
 
   assert.equal(linkedin.data.variantStatsReported, false);
+});
+
+test("variant_test is NotFound for a campaign that does not exist, as step_funnel is", async () => {
+  const outbound = single(DATA);
+
+  for (const call of [
+    () => outbound.insights.variantTest({ campaign: ref("nope") }),
+    () => outbound.insights.stepFunnel({ campaign: ref("nope") }),
+    // The stats read itself, whatever the scope of the campaign.
+    () => outbound.campaign("nope").stats({ scope: "step" }),
+    () => outbound.campaign("nope").stats(),
+  ]) {
+    // oxlint-disable-next-line no-await-in-loop -- one refusal at a time keeps a failure's message readable.
+    await assert.rejects(
+      call,
+      (error) =>
+        error instanceof OutboundError &&
+        error.code === "NotFound" &&
+        error.message === "Campaign nope was not found"
+    );
+  }
+
+  // A campaign the seed names only in a stats row still exists.
+  const seeded = await single({
+    stats: [{ campaignId: "c9", counts: { sent: 5 }, date: "2026-11-01" }],
+  })
+    .campaign("c9")
+    .stats();
+
+  assert.equal(seeded.rows[0]?.sent, 5);
+});
+
+const stat = (
+  date: string,
+  stepIndex: number,
+  counts: { replied: number; sent: number }
+): MemoryStats => ({ campaignId: "c1", counts, date, stepIndex });
+
+test("the in-memory adapter holds step stats per variant, so variant_test runs on seed data alone", async () => {
+  const outbound = single({
+    campaigns: [{ id: "c1" }],
+    stats: [
+      { ...stat("2026-11-01", 0, { replied: 40, sent: 600 }), variantKey: "A" },
+      { ...stat("2026-11-02", 0, { replied: 20, sent: 400 }), variantKey: "A" },
+      {
+        ...stat("2026-11-01", 0, { replied: 30, sent: 1000 }),
+        variantKey: "B",
+      },
+      // A step the vendor does not split.
+      stat("2026-11-01", 1, { replied: 9, sent: 900 }),
+    ],
+  });
+
+  const stats = await outbound.campaign("c1").stats({ scope: "step" });
+
+  // One row per step and variant, the days added up, in step then variant order.
+  assert.deepEqual(
+    stats.rows.map((each) => [
+      each.stepIndex,
+      each.variantKey,
+      each.sent,
+      each.replied,
+    ]),
+    [
+      [0, "A", 1000, 60],
+      [0, "B", 1000, 30],
+      [1, null, 900, 9],
+    ]
+  );
+
+  const byDay = await outbound
+    .campaign("c1")
+    .stats({ by: "day", scope: "step", to: "2026-11-01" });
+
+  assert.deepEqual(
+    byDay.rows.map((each) => [each.date, each.stepIndex, each.variantKey]),
+    [
+      ["2026-11-01", 0, "A"],
+      ["2026-11-01", 0, "B"],
+      ["2026-11-01", 1, null],
+    ]
+  );
+
+  const result = await outbound.insights.variantTest(
+    { campaign: ref("c1") },
+    { now: NOW }
+  );
+
+  assert.equal(result.data.variantStatsReported, true);
+  // 60 of 1,000 against 30 of 1,000, as in the first test: p = 0.0012.
+  assert.deepEqual(
+    result.data.steps.map((step) => [
+      step.step,
+      step.verdict,
+      step.leader,
+      step.pValue,
+    ]),
+    [[0, "winner", "A", 0.0012]]
+  );
 });

@@ -1,0 +1,4 @@
+instantly
+sent: GET https://api.instantly.ai/api/v2/campaigns?limit=5&search=q4
+sent: POST https://api.instantly.ai/api/v2/leads/list
+Unsupported - DELETE /campaigns/abc is not a known read on instantly. The SDK is read-only; pass allowWrites: true to createOutbound to permit it

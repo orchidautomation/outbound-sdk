@@ -1,0 +1,126 @@
+---
+title: Combine adapters
+description: Put several adapters or several keys behind one instance, and know what the combined instance promises, how lookups are routed, and what it cannot do.
+sidebar:
+  label: Combine
+related:
+  - /docs/adapters
+  - /docs/plugins/clients
+  - /guides/run-many-clients
+  - /guides/person-across-email-and-linkedin
+---
+
+`combine([...])` from `outbound-sdk/combine` takes several adapters and returns one. Use it for a client on two tools (email and LinkedIn), for an agency with one key per client, or both. Every record keeps its own `provider`, `workspaceId` and `ref`, so data from two tools or two clients cannot be confused.
+
+A combined instance reads every member live and keeps nothing. Each call pays each vendor's rate limit, on that vendor's own budget.
+
+## Construct it
+
+Give each adapter a `workspaceId`: your own label for the client the key belongs to. Two members may share a label when they are different vendors. Two members with the same vendor and the same label are refused with `Invalid`, as are an empty list and a combined adapter inside another.
+
+<include meta='title="outbound.ts"'>
+  ../../_examples/adapters-combine/production.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/adapters-combine/production.out.txt
+</include>
+
+That sample constructs real adapters and makes no request. It shows three things:
+
+- **Maturity is the weakest member's.** One `unverified` member makes the instance `unverified`. See [what is verified](/docs/status).
+- **Caveats are every member's**, each prefixed with the member's provider and label.
+- **Each member has its own rate budget**, from its own vendor's declared limits and its own key. `outbound.limits()` returns one snapshot per member.
+
+The rest of this page runs on in-memory members limited to what Instantly and HeyReach declare, so the refusals are the ones the real adapters would make. The records are seed data, not vendor responses.
+
+<include meta='title="seed.ts"'>
+  ../../_examples/adapters-combine/seed.ts
+</include>
+
+## What it promises
+
+<include meta='title="run.ts"'>../../_examples/adapters-combine/run.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/adapters-combine/run.out.txt
+</include>
+
+### Only what every member can do
+
+The combined instance's capabilities are the weakest value of each key across its members. Put HeyReach beside Instantly and the instance gives up everything HeyReach cannot do: the `given up` line above. A call that needs one of those is refused as `Unsupported` on the combined instance, even for a record that lives in the member that could serve it. Scope to that member to get it back (see [below](#scope-to-one-client)).
+
+Three keys do not follow the weakest member:
+
+| Capability | On a combined instance | Why |
+| --- | --- | --- |
+| `workspaces` | always `yes` | Its workspaces are its members. Listing them makes no request. |
+| `native` | always `no` | A native read belongs to one vendor. |
+| `messages.byThread` | always `no` | A thread id is the vendor's own and names no member, so `outbound.thread(id)` cannot be routed. |
+
+### Listings walk every member
+
+A listing reads the first member to its end, then the second, and so on, in the order you passed them. The cursor records which member the walk is in, so a saved cursor resumes in the right place. Records are not merged or sorted across members.
+
+A listing filtered to one campaign or one saved list goes straight to the member that owns it.
+
+### Lookups need a ref
+
+Three members above each have a campaign with the id `cmp_1`. A lookup on a combined instance therefore takes the record's `ref` (`provider:workspace:id`), which every record carries. A bare vendor id is refused with `Invalid`. This applies to `campaigns.get`, to `campaign(id)`, `sender(id)`, `lead(id)` and `list(id)`, and to a `campaignId` filter.
+
+### Stats stay one row per member
+
+`outbound.stats()` on a combined instance returns one row per member, side by side. They are never added together, because they are different workspaces and often different channels. A count a member does not report is `null` in its row.
+
+## Scope to one client
+
+`outbound.workspace(id)` returns the same API scoped to one label. It keeps the plugins of the instance it came from and the methods they add, so `outbound.workspace(id).insights` works.
+
+<include meta='title="scope.ts"'>
+  ../../_examples/adapters-combine/scope.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/adapters-combine/scope.out.txt
+</include>
+
+- **A label one member carries scopes to that member.** The result behaves like an instance built on that adapter alone: its own capabilities, bare ids, `native` and `raw`.
+- **A label several members carry scopes to all of them.** A client on two tools keeps one label on both adapters, and its scope is those members, still combined. Lookups there still need refs, and `native`, `raw` and `thread` are still unavailable.
+- **An unknown label throws `NotFound`.**
+
+<Callout type="warning" title="native and raw on a shared label">
+  The error for `native` and `raw` on a combined instance says to use
+  `outbound.workspace(id)`. That works only when one member carries the label.
+  For a label on two tools, as `acme` is above, there is no way to reach one
+  member's native catalog or raw API from the combined instance. Keep a separate
+  `createOutbound({adapter})` for that member.
+</Callout>
+
+## Webhooks
+
+The adapter that `combine` returns can route a webhook payload: the member whose format matches parses it, and the events carry that member's workspace label. The combined adapter has no signature check of its own.
+
+<include meta='title="webhooks.ts"'>
+  ../../_examples/adapters-combine/webhooks.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/adapters-combine/webhooks.out.txt
+</include>
+
+This is the adapter contract, one level below the usual entry point. `parse` from `outbound-sdk/webhooks` does not take an adapter: it detects the vendor from the payload, verifies with the `secret` you pass and labels events with the `workspaceId` you pass. With one endpoint per client that is enough, and it is the documented path. See [webhooks](/docs/webhooks).
+
+Two members of the same vendor cannot be told apart by payload format: the first one that matches parses the payload. Give each client its own webhook URL and call `parse` with that client's `workspaceId`.
+
+## What it cannot do
+
+| Call | On a combined instance | What to do |
+| --- | --- | --- |
+| `outbound.native`, `outbound.raw` | `Unsupported` | `outbound.workspace(id)` when one member carries the label; otherwise a separate instance. |
+| `outbound.thread(id)` | `Unsupported` | Scope to the member, or read the lead's `timeline()` by ref. |
+| A lookup by bare id | `Invalid` | Pass the record's `ref`. |
+| A read one member lacks | `Unsupported` | Scope to a member that has it. |
+| `outbound.estimate(...)` | `requests: null` | The combined adapter declares no costs. Estimate on a scoped instance. |
+| One sorted list across members | not offered | Collect with `listAll()` and sort. |
+
+To answer questions across members, for example one person across email and LinkedIn, use the [insights](/docs/insights) and the [identity plugin](/docs/plugins/identity), which work on a combined instance.

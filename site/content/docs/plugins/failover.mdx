@@ -1,0 +1,108 @@
+---
+title: failover
+description: Serve the last good answer to a read, marked stale with its original fetch time, when the vendor is down or rate limiting, from a store you supply.
+sidebar:
+  label: failover
+related:
+  - /guides/vendor-outage
+  - /docs/plugins/cache
+  - /docs/retries
+  - /docs/api/results
+---
+
+`failover({ store })` from `outbound-sdk/failover` keeps every successful read in a store you supply. When a later read of the same thing fails because the vendor is unavailable or rate limiting, it returns the stored answer with `meta.stale: true` and the original `meta.fetchedAt`. A failure that is the caller's own (a bad request, a missing record, a rejected key) is never covered. It does not detect an outage ahead of time or skip the vendor: every read is tried first, with the SDK's normal [retries](/docs/retries).
+
+## Sample
+
+The in-memory adapter never fails, so the sample puts a small stand-in plugin inside `failover` that fails the way an outage does.
+
+<include meta='title="outage.ts"'>
+  ../../_examples/plugins-failover/outage.ts
+</include>
+
+<include meta='title="run.ts"'>../../_examples/plugins-failover/run.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/plugins-failover/run.out.txt
+</include>
+
+An hour into the outage the campaign list came from the store, marked stale, with the time it was really fetched. The sender list had never been read, so there was nothing to serve. After 25 hours the stored answer was older than `maxAge`, and the error came through.
+
+## Options
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `store` | `CacheStore` | required | Where answers are kept. There is no default: an answer that should outlive an outage should outlive the process too. |
+| `maxAge` | `number` | `604800` (7 days) | How old a stored answer may be and still be served, in seconds. |
+| `now` | `() => number` | `Date.now` | The clock, for tests. |
+
+## What counts as down
+
+The stored answer is served only when the layers inside throw an `OutboundError` that:
+
+| Condition | Meaning |
+| --- | --- |
+| has code `Provider`, or has code `RateLimited` and an HTTP `status` | A vendor failure the SDK's retries did not get past, such as repeated 5xx answers, or a 429 that outlasted them. |
+| is not `aborted` | A call you cancelled through `signal` fails as it would without the plugin. |
+
+`Invalid`, `NotFound`, `Unauthorized` and `Unsupported` always reach the caller.
+
+So does a `RateLimited` the SDK raised itself, which carries no `status`. Those are your own caps, not an outage, and a stored answer is never served for them:
+
+- `maxRequests` on a call or on the instance.
+- The [`budget`](/docs/plugins/budget) plugin.
+- A `deadline` that would pass while the SDK's own [rate budget](/docs/rate-limits) for the vendor is full.
+
+## What is stored
+
+One entry per operation, like [`cache`](/docs/plugins/cache#what-is-cached): one page of a listing, one lookup, one stats read. The key is `failover:` followed by the cache plugin's key, a hash of the adapter's provider, its workspace label and the operation with all its arguments. So:
+
+- Only the exact read that succeeded before can be served. Another filter, another date range or another page is another entry.
+- A walk over several pages during an outage is served page by page, as long as every page was stored. Each stored page carries the continuation to the next.
+- Every successful read rewrites its entry, so the store holds the latest good answer.
+
+## The store
+
+The store is the `CacheStore` interface from `outbound-sdk/cache`: `get(key)`, `set(key, entry, ttlMs)` and `delete(key)`, all async. `set` receives `maxAge` in milliseconds, so a store can expire entries itself. The plugin also checks an entry's age when it serves one.
+
+<include meta='title="store.ts"'>
+  ../../_examples/plugins-failover/store.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/plugins-failover/store.out.txt
+</include>
+
+`memoryCacheStore()` from `outbound-sdk/cache` also fits, as in the first sample, but it is lost with the process and holds 500 entries by default.
+
+## What it changes
+
+| Field | On a served answer |
+| --- | --- |
+| `meta.stale` | `true`. It is `false` on every other answer. |
+| `meta.fetchedAt` | When the vendor was asked for the answer. With `cache` on the instance too, that is still the vendor request, not a later cache hit. |
+| `meta.requests`, `meta.throttledMs` | What this call spent trying the vendor before it gave up. |
+
+It changes no capability. Records are served as they were stored.
+
+Methods that return no `meta` cannot tell you an answer was stale. That includes `outbound.benchmarks.campaign()`, `outbound.reconcile`, `outbound.clients.stats()` and `outbound.person()`.
+
+## With other plugins
+
+- **List it before the layers whose failures it should cover**, and after `redact`. The store holds what the layers inside returned, so with `redact` first the store holds unmasked records.
+- **List it before `cache`.** A read then reaches the vendor only on a cache miss, and a failure on that miss is covered. Either order reports the right `meta.fetchedAt`: `failover` keeps the time of the vendor request for an answer the cache served, and `cache` never stores an answer marked `stale`, so with `cache` listed first every read during an outage tries the vendor again.
+- `budget` inside it still stops a read with `RateLimited`. That is not a vendor failure, so no stored answer is served.
+- It can share a store with `cache`. The key prefix keeps their entries apart.
+- `audit` and `tracing` inside it record the failed operation. Outside it they record a success.
+- `alerts` listed before it runs its rules on stale records as on fresh ones.
+
+## When it fails
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| The vendor is down and the read was stored | The stored answer, `meta.stale: true` | Show its age from `meta.fetchedAt`. |
+| The vendor is down and the read was never stored, or is older than `maxAge` | The original `Provider` or `RateLimited` error | Handle it as you would without the plugin. |
+| The caller's own mistake | The original error | Fix the call. |
+| A request cap of your own stops the read (`maxRequests`, `budget`, a `deadline` on a full rate budget) | The original `RateLimited` error, with no `status` | Raise the cap, or reset the budget. |
+| `store.set` rejects after a successful read | The read fails with the store's error | Catch errors inside your store if a store outage should not fail reads. |
+| `store.get` rejects while the vendor is down | The store's error, not the vendor's | The same. |

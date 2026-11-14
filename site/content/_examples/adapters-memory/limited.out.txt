@@ -1,0 +1,4 @@
+sequence - ok
+settings - Unsupported - Reading a campaign's settings is not available: the narrowtool adapter does not support it (campaigns.settings)
+step stats - Unsupported - Reading stats for the step scope is not available: the narrowtool adapter does not support it (stats.byStep)
+paused: [ 'narrowtool:default:cmp_li' ] derived

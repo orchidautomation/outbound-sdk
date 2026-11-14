@@ -1,0 +1,3 @@
+instantly: ok, 2 + 5 + 2 records (leads.since client, replies.since server)
+smartlead: ok, 2 + 5 + 2 records (leads.since client, replies.since client)
+heyreach: Unsupported: Listing leads is not available: the heyreach adapter does not support it (leads.list) (leads.since server, replies.since server)

@@ -1,0 +1,94 @@
+---
+title: Share one rate budget between workers with Redis
+description: Several processes on one vendor key spend one rate budget instead of one each, using the Redis store that ships with outbound-sdk and the Redis client you already have.
+sidebar:
+  label: Shared rate budget
+related:
+  - /docs/rate-limits
+  - /docs/retries
+  - /guides/run-many-clients
+---
+
+The SDK keeps every request inside the vendor's rate limit, but by default it counts in the process. Run three workers on one Instantly key and each keeps its own budget, so together they can send three times what one would. On HeyReach, whose burst limit is 15 requests per 2 seconds, that is enough to draw 429s. This guide puts the count in Redis so every process on a key draws from one budget.
+
+<include>../_snippets/status.mdx</include>
+
+## Before you start
+
+- Node 22 or later, and a Redis you can reach from every worker: Redis, Valkey or Upstash.
+- A Redis client you already use. The package ships none; you pass one function.
+- **What was verified.** On 2026-11-14 the store was run by hand against a real Redis 7 server, not Valkey or Upstash: it gave the same answers as the in-memory store over a schedule of request times, a pause set by one caller blocked the key for the others, and two workers sharing a budget of 5 requests a second never reserved more than 5 in any second. Nobody has run it in production. The samples on this page run without Redis, and say so where that matters.
+
+## The problem, shown
+
+Two workers on one key, each making three reads. First with a store each, which is what two processes have by default, then with one store between them. `outbound.limits()` reports what each worker believes has been used.
+
+<include meta='title="two-workers.ts"'>
+  ../_examples/shared-rate-budget/two-workers.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/shared-rate-budget/two-workers.out.txt
+</include>
+
+With separate stores each worker thinks 3 of its 7 requests are used, while HeyReach has seen 6. With one store both see 6, and the next request but one would wait.
+
+The sample uses one in-memory store object to stand in for Redis, because both implement the same `RateLimitStore` interface, and a fetch that answers with HeyReach's documented campaign list:
+
+<include meta='title="documented-fetch.ts"'>
+  ../_examples/shared-rate-budget/documented-fetch.ts
+</include>
+
+## Use the Redis store
+
+`redisRateLimitStore` takes `evaluate`, a function that runs a Lua script on your client and resolves with its reply. The comment shows the line for each common client.
+
+<include meta='title="worker.ts"'>
+  ../_examples/shared-rate-budget/redis.ts
+</include>
+
+Create every worker this way and they share the budget. Nothing else changes: the same reads, the same `meta.throttledMs`, the same errors.
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `evaluate` | required | Runs a Lua script: `(script, keys, args) => Promise<reply>` |
+| `prefix` | `outbound-sdk:rate` | Prepended to every key |
+| `onError` | none | Called when Redis cannot be reached |
+
+## What it keeps in Redis
+
+One sorted set per credential and lane, holding one member per request in the longest window, and one key per paused lane. Both expire on their own. This sample prints the keys for an Instantly worker without a Redis:
+
+<include meta='title="redis-keys.ts"'>
+  ../_examples/shared-rate-budget/redis-keys.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/shared-rate-budget/redis-keys.out.txt
+</include>
+
+- **The API key is not in the key name.** The credential is named by the provider and a hash of the key.
+- **Each lane has its own log**, such as Instantly's 20 per minute on `GET /emails`.
+- **The braces are a Redis Cluster hash tag**, so a credential's keys live on one node and the script may touch them together.
+
+Each reservation is one script call, so two processes can never both take the last slot.
+
+## When Redis is down
+
+The store falls back to counting in the process and calls `onError`. Reads keep working and each process still limits itself; what is lost is the sharing. When Redis is back the next request uses it again. Log `onError` so you know when the budget is not shared.
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| Redis unreachable | Requests go on, counted per process. `onError` is called. | Alert on `onError`. Lower `share` if an outage would push you over the vendor's limit. |
+| The shared budget is full | The call waits, and reports the wait in `meta.throttledMs` | Nothing, or give the call a `deadline` |
+| The budget is full past the call's `deadline` | `RateLimited` with `timedOut: true` and `retryAfterMs`, before any request | Run later, or raise the deadline |
+| The vendor answers 429 anyway | The lane is paused in Redis for every worker, then the request is retried | Something else is spending the key's limit. Lower `share`. |
+| `evaluate` returns something that is not a number | It is read as 0: the request goes | Check the adapter line for your client |
+
+## Limits
+
+- **Sharing covers the count and the pause after a 429.** The slowdown that follows a 429 (the rate halves, then climbs back) is kept per process.
+- **Request times come from each worker's clock.** Keep clocks in step with NTP. A worker whose clock is far ahead takes slots early.
+- **One Redis round trip per request.** For reads that take tens of milliseconds at the vendor this is small, but it is not free.
+- **A budget spaces reservations, not arrivals.** Network jitter can bunch requests at the vendor. The default share of one half leaves room for that.
+- **Another store** (Cloudflare KV, a Durable Object, a database) works if you implement `reserve`, `pause` and `usage` and make `reserve` atomic. KV has no atomic check-and-set, so a Durable Object is the right fit on Cloudflare. None ships with the package.

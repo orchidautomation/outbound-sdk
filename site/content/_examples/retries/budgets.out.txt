@@ -1,0 +1,15 @@
+timeout: 2 request(s), Provider
+  instantly did not answer within 5000 ms
+  timedOut true, aborted false, permanent false
+deadline: 2 request(s), Provider
+  instantly responded 503
+  timedOut true, aborted false, permanent false
+maxRequests: 2 request(s), RateLimited
+  The call used its budget of 2 request(s) to instantly
+  timedOut false, aborted false, permanent false
+retries: 0: 1 request(s), Provider
+  instantly responded 503
+  timedOut false, aborted false, permanent false
+signal: 0 request(s), Provider
+  The call was aborted
+  timedOut false, aborted true, permanent true

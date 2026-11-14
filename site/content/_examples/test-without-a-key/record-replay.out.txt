@@ -1,0 +1,7 @@
+files: [
+  'memory.default.campaigns.list.1d2c822351e4.json',
+  'memory.default.leads.list.5489d1f8c1a0.json'
+]
+ok - personal data is replaced before it is saved
+ok - replay answers from disk without the adapter
+ok - an unrecorded read is NotFound

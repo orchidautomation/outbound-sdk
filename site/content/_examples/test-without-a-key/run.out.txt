@@ -1,0 +1,4 @@
+ok - only active campaigns are summarised
+ok - counts are added up over the days seeded
+ok - no results is null, not 0
+ok - refs are provider:workspace:id

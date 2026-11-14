@@ -1,0 +1,5 @@
+ok - a page says it is not the last and gives a cursor
+ok - the cursor continues where the page ended
+ok - listAll walks every page
+ok - max stops the walk and says records were left
+ok - a leads cursor is refused by campaigns

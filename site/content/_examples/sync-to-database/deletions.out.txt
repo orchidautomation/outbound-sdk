@@ -1,0 +1,3 @@
+listed 5 leads
+deleted at the vendor: [ 'memory:acme:lead_2' ]
+not in the database yet: [ 'memory:acme:lead_6' ]

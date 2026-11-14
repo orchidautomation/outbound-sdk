@@ -42,6 +42,27 @@ const count = (input: CommandInput, name: string, fallback: number): number => {
   return parsed;
 };
 
+/** A flag that takes one of a fixed set of words. Anything else is refused, never guessed. */
+const choice = <Value extends string>(
+  input: CommandInput,
+  name: string,
+  allowed: readonly Value[]
+): Value | undefined => {
+  const value = text(input, name);
+  const match = allowed.find((candidate) => candidate === value);
+
+  if (value !== undefined && match === undefined) {
+    throw new OutboundError(
+      "Invalid",
+      `--${name} must be one of: ${allowed.join(", ")}`
+    );
+  }
+
+  return match;
+};
+
+const BY = ["day", "total"] as const;
+
 const parseInput = (source: string | undefined): Json => {
   const parsed = source === undefined ? {} : parseJson(source);
 
@@ -103,7 +124,7 @@ const COMMAND_TABLE = {
       listing(outbound.blocklist.listAll({ max: count(input, "limit", 50) })),
   },
   campaign: {
-    help: "campaign <id> [--stats] [--sequence] [--subsequences] [--settings] [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--by day]",
+    help: "campaign <id> [--stats] [--sequence] [--subsequences] [--settings] [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--by day|total]",
     run: async (outbound, input) => {
       const campaign = outbound.campaign(required(input, 0, "a campaign id"));
 
@@ -122,7 +143,7 @@ const COMMAND_TABLE = {
       if (input.flags.stats === true) {
         return asJson(
           await campaign.stats({
-            by: text(input, "by") === "day" ? "day" : "total",
+            by: choice(input, "by", BY),
             from: text(input, "from"),
             to: text(input, "to"),
           })
@@ -134,19 +155,13 @@ const COMMAND_TABLE = {
   },
   campaigns: {
     help: "campaigns [--status active|paused|draft|completed|archived] [--limit N]",
-    run: (outbound, input) => {
-      const status = text(input, "status");
-
-      return listing(
+    run: (outbound, input) =>
+      listing(
         outbound.campaigns.listAll({
           max: count(input, "limit", 50),
-          status:
-            status === undefined
-              ? undefined
-              : campaignStatusSchema.parse(status),
+          status: choice(input, "status", campaignStatusSchema.options),
         })
-      );
-    },
+      ),
   },
   capabilities: {
     help: "capabilities",
@@ -229,22 +244,16 @@ const COMMAND_TABLE = {
   },
   replies: {
     help: "replies [--campaign ID] [--category positive|negative|neutral|ooo|...] [--since ISO] [--limit N] [--bodies]",
-    run: (outbound, input) => {
-      const category = text(input, "category");
-
-      return listing(
+    run: (outbound, input) =>
+      listing(
         outbound.replies.listAll({
           campaignId: text(input, "campaign"),
-          category:
-            category === undefined
-              ? undefined
-              : replyCategorySchema.parse(category),
+          category: choice(input, "category", replyCategorySchema.options),
           include: input.flags.bodies === true ? ["body"] : undefined,
           max: count(input, "limit", 50),
           since: text(input, "since"),
         })
-      );
-    },
+      ),
   },
   senders: {
     help: "senders [--limit N]",
@@ -252,11 +261,11 @@ const COMMAND_TABLE = {
       listing(outbound.senders.listAll({ max: count(input, "limit", 50) })),
   },
   stats: {
-    help: "stats [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--by day]",
+    help: "stats [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--by day|total]",
     run: async (outbound, input) =>
       asJson(
         await outbound.stats({
-          by: text(input, "by") === "day" ? "day" : "total",
+          by: choice(input, "by", BY),
           from: text(input, "from"),
           to: text(input, "to"),
         })

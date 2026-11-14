@@ -1,0 +1,2 @@
+ok - the documented payload maps to a Campaign
+ok - 3 requests: /api/v2/campaigns, /api/v2/custom-tag-mappings, /api/v2/custom-tags

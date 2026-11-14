@@ -1,0 +1,197 @@
+---
+title: Capabilities
+description: Every adapter declares what it can read as a flat map. What each key gates, what the grades mean, how to branch on the map, and how an adapter option or a plugin changes it.
+sidebar:
+  label: Capabilities
+related:
+  - /docs/adapters
+  - /docs/api/errors
+  - /guides/portable-code
+---
+
+The vendors do not offer the same reads. One has no list of every lead, another cannot report stats per step. Each adapter declares what it can do as a flat map of keys, and `outbound.capabilities` is that map. Reading it sends nothing.
+
+Two rules follow from the map:
+
+- **A read the adapter cannot serve is refused before any request.** It throws `Unsupported`, naming the key. You never get an empty list that means "not supported".
+- **Anything an adapter does not declare is `false`.** An adapter that says nothing never advertises a wrong yes.
+
+<include meta='title="read.ts"'>../_examples/capabilities/read.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/capabilities/read.out.txt
+</include>
+
+That prints what each adapter declares for seven of the keys. The full table, per vendor, is on the [adapters](/docs/adapters) page.
+
+## Branch on it
+
+Code that has to run on more than one vendor asks the map first, or makes the call and handles `Unsupported`.
+
+<include meta='title="branch.ts"'>../_examples/capabilities/branch.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/capabilities/branch.out.txt
+</include>
+
+The last instance is a real HeyReach adapter in front of a stand-in vendor that counts requests. The refusal comes from the SDK, and the count stays at 0.
+
+A value is `false` or something truthy, so `if (outbound.capabilities["leads.list"])` works for every key. Compare against a grade when the grade matters to you.
+
+## Every key
+
+`CAPABILITY_KEYS` is the list of all 38. `Capabilities` is the type of the map, and `CapabilityKey` the type of a key.
+
+### Campaigns and sequences
+
+| Key | Values | Gates |
+| --- | --- | --- |
+| `campaigns.status` | `server`, `client`, `false` | The `status` filter on `campaigns.list` |
+| `campaigns.settings` | boolean | `campaign(id).settings()` |
+| `sequence` | boolean | `campaign(id).sequence()` |
+| `sequence.subsequences` | boolean | `campaign(id).subsequences` |
+
+Listing campaigns and reading one need no key. Every adapter can.
+
+### Senders
+
+| Key | Values | Gates |
+| --- | --- | --- |
+| `senders.list` | boolean | `senders.list` with no `campaignId` |
+| `senders.byCampaign` | boolean | `senders.list({ campaignId })` and `campaign(id).senders`. Does not need `senders.list`. |
+| `senders.get` | boolean | `senders.get`, `sender(id).get()`, and `sender(id).warmup()` |
+| `senders.warmup` | boolean | `sender(id).warmup()` |
+| `senders.health` | boolean | `sender(id).health()` |
+
+### Leads and lists
+
+| Key | Values | Gates |
+| --- | --- | --- |
+| `leads.list` | boolean | `leads.list` across every campaign, with no `campaignId`, `listId` or lookup |
+| `leads.byCampaign` | boolean | `leads.list({ campaignId })` and `campaign(id).leads`. Does not need `leads.list`. |
+| `leads.get` | boolean | `leads.get` and `lead(id).get()` |
+| `leads.lookup` | boolean | The `email` and `linkedinUrl` filters: finding a lead without walking every lead |
+| `leads.since` | `server`, `client`, `false` | The `since` and `until` filters on leads |
+| `leads.timeline` | boolean | `lead(id).timeline()` |
+| `leads.engagement` | boolean | No read on the instance. It says whether leads carry `engagement`: open, click and reply counts. Some [insights](/docs/insights) check it. |
+| `lists.list` | boolean | `lists.list` |
+| `lists.leads` | boolean | `leads.list({ listId })` and `list(id).leads` |
+
+### Messages and replies
+
+| Key | Values | Gates |
+| --- | --- | --- |
+| `messages.list` | boolean | `messages.list`, `campaign(id).messages`, `lead(id).timeline()`, `thread(id).messages()` |
+| `messages.byThread` | boolean | The `threadId` filter and `thread(id).messages()` |
+| `messages.since` | `server`, `client`, `false` | The `since` and `until` filters on messages |
+| `messages.body` | `full`, `sampled`, `false` | `include: ["body"]` on messages and on replies |
+| `replies.list` | boolean | `replies.list` and `campaign(id).replies` |
+| `replies.category` | `vendor`, `false` | The `category` filter on replies |
+| `replies.since` | `server`, `client`, `false` | The `since` and `until` filters on replies |
+
+`messages.body` is `full` when the vendor returns every body and `sampled` when it returns some. `replies.category` is `vendor` when the categories come from the vendor. The SDK never asks a model to classify a reply.
+
+### Stats
+
+| Key | Values | Gates |
+| --- | --- | --- |
+| `stats.workspace` | `exact`, `derived`, `false` | `outbound.stats()` |
+| `stats.campaign` | `exact`, `derived`, `false` | `campaign(id).stats()` |
+| `stats.byStep` | `exact`, `derived`, `false` | `campaign(id).stats({ scope: "step" })` |
+| `stats.bySender` | `exact`, `derived`, `false` | `sender(id).stats()` |
+| `stats.byDay` | `exact`, `derived`, `false` | `by: "day"` on any of the four, in addition to the scope's own key |
+
+### Account
+
+| Key | Values | Gates |
+| --- | --- | --- |
+| `workspaces` | boolean | `workspaces.list` |
+| `tags` | boolean | `tags.list` |
+| `blocklist` | boolean | `blocklist.list` |
+| `webhooks.list` | boolean | `webhooks.list` and `campaign(id).webhooks` |
+| `native` | boolean | `outbound.native`: see [native reads](/docs/native) |
+
+### Webhooks and sync
+
+These describe the adapter. No call on the instance is gated on them.
+
+| Key | Values | Says |
+| --- | --- | --- |
+| `events.parse` | boolean | The vendor's webhook payloads can be parsed into events. See [webhooks](/docs/webhooks). |
+| `events.verify` | `signature`, `secret`, `false` | How a webhook is authenticated: a signature the vendor computes, or a shared secret you put in the URL or a header. See [verification](/docs/webhooks/verification). |
+| `deletionDetection` | boolean | Whether list calls reveal deleted records. |
+
+## Filter grades
+
+A filter key is `server`, `client` or `false`.
+
+| Grade | What happens | Result is marked |
+| --- | --- | --- |
+| `server` | The vendor filters. | `exact` |
+| `client` | The vendor cannot. The SDK fetches each page unfiltered and filters it before handing it to you. | `derived` |
+| `false` | The filter is refused with `Unsupported`. |  |
+
+<include meta='title="grades.ts"'>../_examples/capabilities/grades.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/capabilities/grades.out.txt
+</include>
+
+A `client` filter gives the right records and costs more to get them:
+
+- **Every page is fetched.** Asking for the last day of leads still walks every lead. The cost is that of the unfiltered listing.
+- **Pages come back short.** A page can hold fewer records than `limit`, or none, with more pages to come. Go by `cursor`, not by how many items arrived. See [pagination](/docs/api/pagination#limit).
+- **`meta.evidence` is `derived`** on that result, so code downstream can tell. See [results](/docs/api/results#evidence).
+
+Without the filter the same listing is `exact`. The grade only applies when the filter is used.
+
+## Stat grades
+
+A stat key is `exact`, `derived` or `false`: the vendor reports the numbers, the adapter computes them from other vendor data, or they are not available. A stats result is `derived` when any of its rows is. See [stats](/docs/api/stats#grades).
+
+## Change what an adapter declares
+
+Each vendor adapter takes a `capabilities` option that overrides what it declares. Use it when your account differs from the default: a plan without an endpoint, or a key that cannot read one.
+
+<include meta='title="override.ts"'>
+  ../_examples/capabilities/override.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/capabilities/override.out.txt
+</include>
+
+A key you turn off is refused up front like any other. On Instantly, turning `tags` off also stops the two extra requests a campaign listing makes to read tag names, and campaigns then come back with empty `tags`.
+
+A declaration is a claim. Turning a key on does not give a vendor an endpoint it lacks: the call then fails, as `Unsupported` when the adapter has no read for it, or with whatever the vendor answers.
+
+The [in-memory adapter](/docs/adapters/memory) takes the same option. That is how the samples on this site run code "as" a vendor: see [how the samples are run](/docs/samples).
+
+## Plugins can only narrow
+
+A plugin may change the map the instance advertises, and only downwards. A plugin that turns something off is named in the refusal. A plugin that tries to turn something on is ignored.
+
+<include meta='title="plugins.ts"'>
+  ../_examples/capabilities/plugins.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/capabilities/plugins.out.txt
+</include>
+
+`outbound.capabilities` is the map after every plugin. The [redact](/docs/plugins/redact) plugin uses this: it turns off `native`, and `messages.body` when bodies are being masked, so a read that would return unmasked text is refused and not quietly passed through.
+
+A [combined](/docs/adapters/combine) instance works the same way. Its map holds, for each key, the weakest value among its adapters, so it promises only what every one of them can do. `outbound.workspace(id).capabilities` is the map for one of them.
+
+## Helpers
+
+Exported from `outbound-sdk` for code that works with the maps directly, such as an adapter or a plugin:
+
+| Export | Does |
+| --- | --- |
+| `CAPABILITY_KEYS` | Every key, as an array. |
+| `NO_CAPABILITIES` | A map with every key `false`. |
+| `resolveCapabilities(declared?)` | A partial declaration filled out with `false`. |
+| `intersectCapabilities(first, ...rest)` | For each key, the weakest value across the maps. |
+
+"Weakest" orders the values: `false` is below `client`, `derived`, `sampled` and `secret`, which are below `server`, `exact`, `full`, `signature`, `vendor` and `true`.

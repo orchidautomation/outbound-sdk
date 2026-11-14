@@ -1,5 +1,5 @@
 // Every Smartlead read that has no normalized form, by name. A native read
-// returns the vendor's payload as sent. docs/coverage/smartlead.md lists
+// returns the vendor's payload as sent. site/content/docs/coverage/smartlead.mdx lists
 // every endpoint Smartlead documents and which of these reads it.
 //
 // Left out on purpose, because they return secrets: client API keys, a

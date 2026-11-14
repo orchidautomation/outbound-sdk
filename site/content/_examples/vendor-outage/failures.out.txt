@@ -1,0 +1,5 @@
+rejected key: Unauthorized, permanent true
+deleted record: NotFound, permanent true
+answer too old: Provider, permanent false
+different filter: Provider, permanent false
+same read as before: answered

@@ -26,7 +26,7 @@ const SENT = [
 const DATA: MemoryData = {
   campaigns: [{ id: "c1" }, { id: "c2" }],
   stats: [
-    // Replies never move, so their baseline has no spread. Bounces are not reported.
+    // Replies never move, so their baseline is flat. Bounces are not reported.
     ...SENT.map(([date, sent, positive]) =>
       row("c1", date, { positive, replied: 5, sent })
     ),
@@ -66,6 +66,7 @@ test("anomalies returns the days that broke from their baseline, newest first, a
       direction: "above",
       finding:
         "positive was 30 on 2026-11-13, against an average of 1.5 over the 6 days with data before it (z = 52.0336).",
+      judgedBy: "z_score",
       metric: "positive",
       value: 30,
       zScore: 52.0336,
@@ -79,6 +80,7 @@ test("anomalies returns the days that broke from their baseline, newest first, a
       direction: "below",
       finding:
         "sent was 50 on 2026-11-10, against an average of 100.1429 over the 7 days with data before it (z = -19.2155).",
+      judgedBy: "z_score",
       metric: "sent",
       value: 50,
       zScore: -19.2155,
@@ -99,13 +101,13 @@ test("anomalies returns the days that broke from their baseline, newest first, a
       reason: null,
       testable: true,
     },
+    // Replies are 5 every day: a flat baseline is tested, and nothing differs from it.
     {
-      daysTested: 0,
+      daysTested: 4,
       daysWithData: 4,
       metric: "replied",
-      reason:
-        "The baseline has no spread: its days all have the same count, so nothing can be called unusual.",
-      testable: false,
+      reason: null,
+      testable: true,
     },
     {
       daysTested: 0,
@@ -173,6 +175,108 @@ test("anomalies follows the threshold, the baseline length and the days checked"
   assert.equal(short.data.metrics[0]?.daysWithData, 2);
 });
 
+// Ten replies a day, then seven from 11-07 on. NOW is 2026-11-14.
+const FLAT: MemoryData = {
+  campaigns: [{ id: "f1" }],
+  stats: Array.from({ length: 13 }, (_, index) => {
+    const day = String(index + 1).padStart(2, "0");
+
+    return row("f1", `2026-11-${day}`, {
+      replied: index + 1 < 7 ? 10 : 7,
+      sent: 100,
+    });
+  }),
+};
+
+test("anomalies flags a break from a flat baseline on the day it happens, and says how it was judged", async () => {
+  const result = await single(FLAT).insights.anomalies(
+    {
+      baseline_days: 6,
+      campaign: "memory:agency:f1",
+      days: 7,
+      metrics: ["replied", "sent"],
+    },
+    { now: NOW }
+  );
+
+  assert.deepEqual(result.data.period, {
+    from: "2026-11-07",
+    to: "2026-11-13",
+  });
+  assert.deepEqual(
+    result.data.anomalies.map((each) => [
+      each.date,
+      each.judgedBy,
+      each.zScore,
+      each.direction,
+    ]),
+    [
+      // 11-08 is held to five 10s and one 7: mean 9.5, deviation
+      // sqrt((5 x 0.25 + 6.25) / 5) = 1.2247; z = -2.5 / 1.2247 = -2.04,
+      // inside the 2.5 threshold. So only the first day of the drop is flagged.
+      ["2026-11-07", "flat_baseline", null, "below"],
+    ]
+  );
+  assert.deepEqual(result.data.anomalies[0], {
+    baselineMean: 10,
+    baselinePoints: 6,
+    date: "2026-11-07",
+    direction: "below",
+    finding:
+      "replied was 7 on 2026-11-07, against 10 on each of the 6 days with data before it (a flat baseline has no z-score: any other count is flagged).",
+    judgedBy: "flat_baseline",
+    metric: "replied",
+    value: 7,
+    zScore: null,
+  });
+  // 11-13 is held to six 7s: flat again, and equal, so tested and not flagged.
+  // Sends are 100 every day: every day is tested and none differs.
+  assert.deepEqual(result.data.metrics, [
+    {
+      daysTested: 7,
+      daysWithData: 7,
+      metric: "replied",
+      reason: null,
+      testable: true,
+    },
+    {
+      daysTested: 7,
+      daysWithData: 7,
+      metric: "sent",
+      reason: null,
+      testable: true,
+    },
+  ]);
+
+  // A break from a flat baseline sorts before a z-score on the same day.
+  const both = await single({
+    campaigns: [{ id: "f1" }],
+    stats: (FLAT.stats ?? []).map((seed, index) => ({
+      ...seed,
+      counts: {
+        ...seed.counts,
+        sent: [100, 104, 96, 100, 102, 98, 50][index] ?? 100,
+      },
+    })),
+  }).insights.anomalies(
+    {
+      baseline_days: 6,
+      campaign: "memory:agency:f1",
+      days: 1,
+      metrics: ["sent", "replied"],
+    },
+    { now: Date.parse("2026-11-08T12:00:00.000Z") }
+  );
+
+  assert.deepEqual(
+    both.data.anomalies.map((each) => [each.metric, each.judgedBy]),
+    [
+      ["replied", "flat_baseline"],
+      ["sent", "z_score"],
+    ]
+  );
+});
+
 test("anomalies adds campaigns together for the workspace, so one campaign's dip can vanish", async () => {
   const result = await single(DATA).insights.anomalies(
     { baseline_days: 7, days: 5, metrics: ["sent"] },
@@ -207,10 +311,34 @@ test("anomalies has nothing to test without data, and is refused without stats b
       await single(DATA, { "stats.byDay": false }).insights.anomalies({}),
     unsupported("stats.byDay")
   );
+  // The whole workspace is read from workspace stats: refused by the insight
+  // itself, before any request, with the way out.
+  const noWorkspace = single(DATA, { "stats.workspace": false });
+
+  await assert.rejects(
+    async () => await noWorkspace.insights.anomalies({}),
+    (error) =>
+      error instanceof Error &&
+      error.message ===
+        "anomalies is not available for this input: the memory adapter does not support stats.workspace"
+  );
+
+  // A campaign is still served there.
+  const served = await noWorkspace.insights.anomalies(
+    { campaign: "memory:agency:c1" },
+    { now: NOW }
+  );
+
+  assert.equal(served.data.scope, "memory:agency:c1");
   await assert.rejects(
     async () =>
-      await single(DATA, { "stats.workspace": false }).insights.anomalies({}),
-    unsupported("stats.workspace")
+      await single(DATA, { "stats.campaign": false }).insights.anomalies({
+        campaign: "memory:agency:c1",
+      }),
+    (error) =>
+      error instanceof Error &&
+      error.message ===
+        "anomalies is not available for this input: the memory adapter does not support stats.campaign"
   );
 });
 

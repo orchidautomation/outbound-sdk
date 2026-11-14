@@ -1,0 +1,95 @@
+---
+title: alerts
+description: Check fixed rules on the records each read returns and call your own notifier with what fired, using the four built-in rules or rules you write.
+sidebar:
+  label: alerts
+related:
+  - /guides/deliverability-check
+  - /docs/insights/operations
+  - /docs/api/stats
+---
+
+`alerts({ rules, notify })` from `outbound-sdk/alerts` checks every record a read returns against a list of rules and calls your `notify` function with the alerts that fired. A rule is arithmetic on one record the read returned: a rate against a threshold, a status against a value. No model is involved. The plugin fetches nothing, schedules nothing and remembers nothing: rules run only on the reads you make.
+
+## Sample
+
+Runs on the [shared seed](/docs/plugins#every-plugin), where one campaign has 18 bounces in 200 sends and one sender is disconnected.
+
+<include meta='title="run.ts"'>../../_examples/plugins-alerts/run.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/plugins-alerts/run.out.txt
+</include>
+
+The bounce and reply alerts appear three times: once for the two-day total, and once for each day of the by-day read, which is a separate read returning separate rows. By default nothing removes repeats. Pass `dedupe` to be told once per rule and subject.
+
+## Options
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `rules` | `AlertRule[]` | required | Checked against every record, in order. |
+| `notify` | `(alerts: Alert[]) => void \| Promise<void>` | required | Called once per operation that fired at least one alert, with all of that operation's alerts. Not awaited. |
+| `dedupe` | `AlertDedupe` | none | A store of the alerts already notified: `has(key)` and `add(key)`, sync or async. With it, an alert is notified once per rule and subject (the key is `rule\|subject`), however many reads show it, and `notify` gets only the alerts not seen before. `memoryAlertDedupe()` keeps the keys in this process's memory, for one run. Supply your own to remember across runs: the SDK stores nothing itself. A store that fails is ignored and cannot fail the read; nothing is notified for that read. |
+
+## Built-in rules
+
+| Rule | Fires for | Alert `rule` |
+| --- | --- | --- |
+| `bounceRateAbove(threshold, { minSent })` | A stats row whose bounce rate (bounced divided by sent) is above `threshold`, a fraction from 0 to 1. | `bounce-rate-above` |
+| `replyRateBelow(threshold, { minSent })` | A stats row whose reply rate is below `threshold`. The rate is replies divided by leads contacted, or by messages sent when the vendor does not report contacted. | `reply-rate-below` |
+| `senderNotActive()` | A sender whose status is anything except `active` or `unknown`. | `sender-not-active` |
+| `noSends()` | A stats row for one day (`date` is set) whose `sent` is exactly `0`. | `no-sends` |
+
+Both rate rules skip a row with fewer sends than `minSent` (default `50`), and a row whose rate is `null` because the vendor did not report a count. A missing count never fires a rule.
+
+`noSends()` needs the vendor to return a row for the silent day. A vendor that leaves empty days out of its daily stats gives it nothing to check.
+
+## Alerts and your own rules
+
+An `Alert` is:
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `rule` | `string` | The rule's name. |
+| `subject` | `string` | The ref of the campaign, sender or workspace it is about. For a stats row, its `scopeRef`. |
+| `message` | `string` | A sentence, for example "Bounce rate is 9.0%, above 5.0%". |
+| `value` | `number \| string \| null` | What was measured. |
+| `threshold` | `number \| string \| null` | What it was compared with. |
+
+An `AlertRule` is `{ name, check }`, where `check(record)` returns an `Alert` or `null`. It receives every kind of record the instance returns, so it starts by telling them apart, as `untaggedCampaign` does in the sample. A rule sees one record at a time. Anything that needs two records, or a change since last week, is not a rule: see [insights](/docs/insights).
+
+## What it adds
+
+| Member | Returns |
+| --- | --- |
+| `outbound.alerts.evaluate(records)` | The alerts those records fire. It does not call `notify`. |
+
+Use `evaluate` to check records you already hold, or to test a rule.
+
+## What it changes
+
+It changes no capability, no record and nothing in `meta`. Records pass through untouched.
+
+## With other plugins
+
+- Inside `cache`, rules run once per real read. Before `cache`, they run on every read, cache hits included.
+- Listed after `redact`, rules see unmasked records. An alert `message` you build from a lead's fields carries them unmasked to your notifier.
+- A stats row served stale by `failover` fires the same alerts as a fresh one. The rule cannot see `meta`.
+
+## When it fails
+
+<include meta='title="failures.ts"'>
+  ../../_examples/plugins-alerts/failures.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/plugins-alerts/failures.out.txt
+</include>
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| `notify` throws or rejects | Nothing. The read succeeds and the alerts are lost. | Make the notifier retry or queue on its own. |
+| `notify` is slow | Nothing. The read does not wait for it. | An alert can arrive after the read returns. |
+| A rule's `check` throws | The read fails with that error | Guard a rule you write against records it does not expect. |
+| The read fails | No rules run | Nothing. A failed read is not an alert. Watch for errors with [hooks](/docs/api/hooks). |
+| A row is too small for a rate | No alert | Lower `minSent` if small rows matter to you. |

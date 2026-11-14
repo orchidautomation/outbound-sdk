@@ -1,0 +1,16 @@
+instantly: 10 tools, the last is vendor_read
+smartlead: 10 tools, the last is vendor_read
+heyreach: 8 tools, the last is vendor_read
+
+tool                  instantly    smartlead    heyreach
+campaign_overview     ok           ok           ok
+campaign_trend        ok           ok           ok
+winning_steps         ok           ok           not offered
+sender_health         ok           ok           ok
+reply_samples         ok           ok           ok
+lead_runway           ok           ok           ok
+compare_clients       ok           ok           ok
+cross_channel_lead    ok           ok           ok
+campaign_setup        ok           ok           not offered
+deliverability_check  ok           ok           ok
+audience_lists        ok           ok           ok

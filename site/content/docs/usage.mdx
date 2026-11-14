@@ -1,0 +1,51 @@
+---
+title: Usage
+description: Construct an Outbound instance with an adapter, list and read records, follow a campaign down to its sequence, stats and leads, and handle the one error class.
+---
+
+Create one instance per adapter, then call the same methods on it whichever vendor is behind it.
+
+## Construct an instance
+
+<include meta='title="outbound.ts"'>../_examples/usage/vendor.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/usage/vendor.out.txt
+</include>
+
+Constructing an instance makes no request. `maturity` says how far the adapter has been checked against the live API (see [what is verified](/docs/status)), and `capabilities` says what it can do before you ask.
+
+To try the SDK without a key, use the [in-memory adapter](/docs/adapters/memory). The rest of this page does.
+
+## Read
+
+<include meta='title="reads.ts"'>../_examples/usage/reads.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/usage/reads.out.txt
+</include>
+
+- **Collections** (`campaigns`, `senders`, `leads`, `messages`, `replies`, `lists`, `tags`, `blocklist`, `webhooks`, `workspaces`) have `list` for one page and `listAll` for every page, fetched under the vendor's rate limit as you iterate. See [collections](/docs/api/collections).
+- **Handles** (`campaign(id)`, `sender(id)`, `lead(id)`, `list(id)`, `thread(id)`) are one record and what hangs off it. See [handles](/docs/api/handles).
+- **Every result carries `meta`:** how it was obtained (`exact`, `sampled` or `derived`), when, how many vendor requests it cost and whether it is complete. See [results](/docs/api/results).
+
+An id can be the vendor's own id or a `ref` from any record. On an instance that [combines](/docs/adapters/combine) several adapters, use the ref.
+
+## Handle errors
+
+There is one error class, `OutboundError`, with a `code`.
+
+<include meta='title="errors.ts"'>../_examples/usage/errors.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/usage/errors.out.txt
+</include>
+
+A missing record is `NotFound`. A read the adapter cannot serve is `Unsupported`, thrown before any request. `exists` never throws for a missing record. The full list of codes is on the [errors](/docs/api/errors) page.
+
+## Next
+
+- [Capabilities](/docs/capabilities): branch on what an adapter can do.
+- [Insights](/docs/insights): computed answers on top of these reads.
+- [Rate limits](/docs/rate-limits) and [retries](/docs/retries): what the SDK does so you do not have to.
+- [Guides](/guides): complete tasks, end to end.

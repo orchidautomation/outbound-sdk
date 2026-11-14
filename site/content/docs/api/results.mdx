@@ -1,0 +1,87 @@
+---
+title: Results and meta
+description: The meta object on every result says how the answer was obtained, when, at what cost and whether it is whole. What each field means and how to use it to decide whether to trust an answer.
+sidebar:
+  label: Results
+related:
+  - /docs/api/pagination
+  - /docs/capabilities
+  - /docs/plugins/failover
+---
+
+Every read returns its data and a `meta` object beside it. `meta` is how you tell an exact, complete, fresh answer from one that is partial, computed or old, without knowing which vendor served it.
+
+<include meta='title="meta.ts"'>../../_examples/api-results/meta.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/api-results/meta.out.txt
+</include>
+
+The in-memory adapter sends no HTTP requests, so `requests` is 0 here. On a vendor adapter, a read that reaches the vendor counts at least 1.
+
+## The fields
+
+`ResultMeta`:
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `evidence` | `"exact"`, `"derived"` or `"sampled"` | How the answer was obtained. See [evidence](#evidence). |
+| `complete` | `boolean` | `false` when more pages exist. On a single record and on stats it is `true`. |
+| `fetchedAt` | ISO 8601 UTC timestamp | When the SDK got the answer. On an answer served from a store, when it was first fetched. |
+| `requests` | `number` | Vendor HTTP requests the call sent, retries included. |
+| `throttledMs` | `number` | Milliseconds the call spent waiting for the [rate budget](/docs/rate-limits). |
+| `provider` | `string` | The adapter that answered. |
+| `workspaceId` | `string` | The workspace label it answered for. |
+| `stale` | `boolean` | `true` when an older answer was served because the vendor was down. |
+
+## Where meta sits
+
+| Result | Type | Shape |
+| --- | --- | --- |
+| A page, from `list` | `PageResult<Item>` | `{ items, cursor, complete, meta }` |
+| One record, from `get` and most handle methods | `WithMeta<Item>` | The record's own fields, plus `meta` |
+| Stats | `StatsResult` | `{ rows, meta }` |
+| A walk, from `listAll` | `ListAll<Item>` | `walk.meta`: the meta of the last page fetched. `undefined` before the first page. |
+| A bulk read, from `getMany` | `BulkResult<Item>` | `meta` on each `results[n].value` |
+| A native read | `NativeResult` | `{ data, meta }` |
+
+`PageResult` has `complete` at the top level too. It is the same value as `meta.complete`. `cursor` is absent on the last page.
+
+`WithMeta<Item>` is the record with one more field, so `campaign.name` and `campaign.meta` sit side by side. Remove `meta` before you store the record if your table has no column for it.
+
+Two reads have no `meta`: `outbound.sender(id).warmup()` returns two fields of the sender, and [`outbound.raw`](/docs/api/raw) returns the vendor's response body.
+
+### Counting across pages
+
+`requests` and `throttledMs` count the whole call. For one `list` that is one page. For a walk they keep adding up: after `listAll` has fetched three pages, `walk.meta.requests` is the total for all three. The same holds for `lead(id).timeline()` and `thread(id).messages()`, which walk every page for you, and for `getMany`, where each value's `meta.requests` is the batch's count so far.
+
+## Evidence
+
+| Value | Meaning |
+| --- | --- |
+| `exact` | The vendor returned this, and the adapter mapped it. |
+| `derived` | The SDK or the adapter computed or filtered it. |
+| `sampled` | The answer rests on part of the data. No normalized read returns it today. |
+
+Two things make a normalized read `derived`:
+
+- **A filter the vendor cannot apply.** When a filter's capability is `client`, the SDK filters each page after fetching it. The records are real, but the page is not what the vendor would have returned for that filter, and it can be shorter than `limit`.
+- **A stat the adapter computes.** When any row of a stats result is not `exact`, the result is `derived`.
+
+<include meta='title="evidence.ts"'>
+  ../../_examples/api-results/evidence.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/api-results/evidence.out.txt
+</include>
+
+`derived` is not a warning that the data is wrong. It says the answer is one step away from the vendor, which matters when you reconcile against the vendor's own dashboard. [Insights](/docs/insights) carry a `meta` of their own for what they compute.
+
+## Stale answers
+
+`stale` is `false` unless a plugin served an answer from a store. The [failover](/docs/plugins/failover) plugin does that when the vendor is unavailable or rate limiting: it returns the last good answer with `stale: true` and a `fetchedAt` that is when the vendor was asked. Check both before acting on a number that has to be current.
+
+## Plugins and meta
+
+`meta` describes the read after every plugin has run. A plugin can serve an answer without a request, in which case `requests` is 0, and can set `stale` and `fetchedAt`. The [cache](/docs/plugins/cache) and [failover](/docs/plugins/failover) pages say what each one does to these fields.

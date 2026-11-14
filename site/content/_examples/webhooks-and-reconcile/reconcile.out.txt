@@ -1,0 +1,6 @@
+compared 2 events, matched 2
+not compared: 1
+listed by the vendor, no webhook: [ 'instantly:acme:msg_no_webhook' ]
+webhook for a message the vendor does not list: []
+late: reply.received by 34 minutes
+late: message.opened by 39 minutes

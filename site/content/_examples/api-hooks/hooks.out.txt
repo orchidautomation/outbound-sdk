@@ -1,0 +1,71 @@
+-- a call that succeeds
+onRequest {
+  attempt: 1,
+  durationMs: 0,
+  lane: 'default',
+  method: 'GET',
+  provider: 'instantly',
+  status: 200,
+  url: 'https://api.instantly.ai/api/v2/campaigns'
+}
+onAction {
+  action: 'raw',
+  provider: 'instantly',
+  workspaceId: 'default',
+  durationMs: 0,
+  requests: 1,
+  throttledMs: 0
+}
+-- a call that is throttled, fails once and is retried
+onThrottle { lane: 'default', provider: 'instantly', waitMs: 1000 }
+onRequest {
+  attempt: 1,
+  durationMs: 0,
+  lane: 'default',
+  method: 'GET',
+  provider: 'instantly',
+  status: 503,
+  url: 'https://api.instantly.ai/api/v2/campaigns'
+}
+onRetry {
+  attempt: 1,
+  delayMs: 500,
+  provider: 'instantly',
+  reason: 'instantly responded 503',
+  url: 'https://api.instantly.ai/api/v2/campaigns'
+}
+onThrottle { lane: 'default', provider: 'instantly', waitMs: 500 }
+onRequest {
+  attempt: 2,
+  durationMs: 0,
+  lane: 'default',
+  method: 'GET',
+  provider: 'instantly',
+  status: 200,
+  url: 'https://api.instantly.ai/api/v2/campaigns'
+}
+onAction {
+  action: 'raw',
+  provider: 'instantly',
+  workspaceId: 'default',
+  durationMs: 2000,
+  requests: 2,
+  throttledMs: 1500
+}
+-- a call that fails
+onThrottle { lane: 'default', provider: 'instantly', waitMs: 1000 }
+onRequest {
+  attempt: 1,
+  durationMs: 0,
+  lane: 'default',
+  method: 'GET',
+  provider: 'instantly',
+  status: 401,
+  url: 'https://api.instantly.ai/api/v2/campaigns'
+}
+onError {
+  action: 'raw',
+  error: 'instantly responded 401',
+  provider: 'instantly',
+  workspaceId: 'default'
+}

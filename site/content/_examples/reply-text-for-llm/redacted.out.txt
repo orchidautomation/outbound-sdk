@@ -1,0 +1,28 @@
+heyreach messages.body: full -> false
+heyreach native: true -> false
+{
+  company: '[redacted]',
+  custom: { phone: '[redacted]' },
+  email: '[redacted]',
+  firstName: '[redacted]',
+  lastName: '[redacted]',
+  linkedinUrl: '[redacted]',
+  raw: null,
+  ref: 'memory:acme:lead_dana',
+  status: 'replied'
+}
+{
+  bodyText: null,
+  category: 'positive',
+  leadRef: 'memory:acme:lead_dana',
+  sentAt: '2026-11-12T09:30:00.000Z',
+  subject: '[redacted]'
+}
+{
+  error: {
+    code: 'Unsupported',
+    message: 'Reading reply bodies is not available: the redact plugin turned it off (messages.body)'
+  },
+  next: 'This tool is not available with the current adapter or plugins. Try another tool.',
+  ok: false
+}

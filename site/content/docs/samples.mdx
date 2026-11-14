@@ -1,0 +1,34 @@
+---
+title: How the samples are run
+description: Every code sample on this site is a file in the repository that the test suite runs on the in-memory adapter. What that proves, and what it does not.
+sidebar:
+  label: How the samples are run
+---
+
+No page on this site carries TypeScript of its own. Every sample is a file under `site/content/_examples/` in the repository, spliced into the page at build time. The test suite runs each one, and a page cannot show a file that was not run.
+
+## What the test does
+
+- **Runs every sample as a script.** A file that no other sample imports is run with Node. It must exit without an error. A file that only defines something, such as the `outbound.ts` in a guide that constructs a real adapter, is loaded and type-checked but makes no request: nothing on this site calls a vendor.
+- **Compares the output.** When a page shows a sample's output, that text is a recorded file. The test fails if the script prints anything else.
+- **Resolves `outbound-sdk` to the source in the repository**, and only for subpaths the package exports, so a sample cannot import something you could not.
+- **Refuses the network.** `fetch` is replaced with a function that rejects. A sample runs on the [in-memory adapter](/docs/adapters/memory), or on a `fetch` the sample supplies itself.
+- **Fixes the clock** at 2026-11-14 12:00 UTC, so "the last 7 days" means the same days on every run and the recorded output does not rot.
+- **Type-checks every sample** with the same strict settings as the SDK.
+- **Rejects other code on a page.** Only commands, configuration and plain text may be written in a page directly.
+
+## What it does not prove
+
+A sample that runs on the in-memory adapter proves the code is correct TypeScript, that it runs, and what the SDK does with the data it was given. It does not prove what Instantly, Smartlead or HeyReach return. [What is verified](/docs/status) says what was run against a live account.
+
+Four things on the site are not run by the test and are marked where they appear: shell commands, agent client configuration (JSON), SQL shown for a database other than the one the sample uses, and the transcripts of a real model calling the tools, which were recorded once by a live run and cannot be reproduced exactly.
+
+In a guide's "what each vendor can serve" output, a vendor that is not refused has only passed the capability check on made-up data. It was not run against that vendor.
+
+## Running a guide as each vendor
+
+The in-memory adapter declares every capability. A real vendor does not. Each guide therefore runs its code a second time on the in-memory adapter limited to what each vendor's adapter declares, with this helper:
+
+<include meta='title="as-vendor.ts"'>../_examples/_shared/as-vendor.ts</include>
+
+That run shows which calls a vendor's adapter would refuse as `Unsupported`. It still says nothing about the vendor's data.

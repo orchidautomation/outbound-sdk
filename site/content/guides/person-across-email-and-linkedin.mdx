@@ -1,0 +1,144 @@
+---
+title: See every campaign one person is in, across an email tool and a LinkedIn tool
+description: One function that takes an email address or a LinkedIn profile URL and returns each campaign the person is in on every tool, with messages sent and replies per channel. Records are linked by exact identifier only.
+sidebar:
+  label: One person, two channels
+related:
+  - /docs/insights/people
+  - /docs/adapters/combine
+  - /docs/plugins/identity
+  - /guides/account-brief
+---
+
+Before you answer a reply, you want to know what else this person was sent: which campaigns, on which channel, and whether they already replied somewhere else. `personSummary` takes an email address or a LinkedIn profile URL and returns one entry per campaign the person is in, on every tool behind the instance, with messages sent, replies, the steps replied to, the vendor's interest label and totals by channel.
+
+It links records by exact identifier only: the same lowercased email address, or the same LinkedIn profile. It never matches on a name or a company. So an email address reaches a LinkedIn record only when some tool holds both the address and the profile for that person. When no record holds both, you get the email side only, and nothing tells you a LinkedIn side exists.
+
+<include>../_snippets/status.mdx</include>
+
+## Before you start
+
+- Node 22 or later.
+- The code below runs on the in-memory adapter, so it needs no vendor key. Each sample on this page is a file in the repository that the test suite runs; the output shown is what it printed.
+- For real data: an API key for each tool. A read-only key is enough. No method of the SDK writes to a vendor.
+
+## What you get
+
+Three lookups against two tools. Dana's address finds her LinkedIn campaign too. Omar's address does not find his, and his profile does not find his email campaign.
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/person-across-email-and-linkedin/run.out.txt
+</include>
+
+## Put two tools behind one instance
+
+`combine` takes one adapter per tool. Every record keeps its own `provider`, so the email tool's campaigns and the LinkedIn tool's campaigns are never confused.
+
+<include meta='title="agency.ts"'>
+  ../_examples/person-across-email-and-linkedin/agency.ts
+</include>
+
+## Write the lookup
+
+<include meta='title="person.ts"'>
+  ../_examples/person-across-email-and-linkedin/person.ts
+</include>
+
+What the insight does with the identifier:
+
+1. It asks every tool for leads with that exact address or profile.
+2. Each record it gets back is checked again: a record counts only when it carries the identifier asked for. The vendor's own matching is not trusted.
+3. If a matching record carries a second identifier, it asks for that one too. This is the only way an address reaches a LinkedIn record.
+4. For each record it reads the lead's messages and the campaign.
+
+Three things in the answer are worth knowing:
+
+- **`data.found` is `false` when no record matches.** That is an answer, not an error. It means no record carries the identifier, not that the person was never contacted.
+- **`data.identifiers` lists every identifier the matching records carry**, as `email:` and `linkedin:` keys. One key means nothing linked the two channels.
+- **`messagesSent` can come from the lead's last step.** When a vendor's thread holds fewer sent messages than the lead's last step number implies, the step number is used and a note says so.
+
+## Try it without a key
+
+Two made-up tools. The LinkedIn tool has one record that carries both of Dana's identifiers, which is the only way an Instantly and HeyReach pairing can link a person, because an Instantly lead carries no profile. Nothing carries both of Omar's.
+
+<include meta='title="seed.ts"'>
+  ../_examples/person-across-email-and-linkedin/seed.ts
+</include>
+
+<include meta='title="run.ts"'>
+  ../_examples/person-across-email-and-linkedin/run.ts
+</include>
+
+That is the script that printed the output above.
+
+## Read the messages in one timeline
+
+`personSummary` returns counts. The `identity` plugin adds `outbound.person(key)`, which returns the lead records themselves and every message to and from the person across tools, oldest first. It uses the same exact-identifier rule.
+
+<include meta='title="timeline.ts"'>
+  ../_examples/person-across-email-and-linkedin/timeline.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/person-across-email-and-linkedin/timeline.out.txt
+</include>
+
+`bodyText` is `null` on the timeline unless you ask for it: `outbound.person(identifier, { include: ["body"] })` reads message text for every record, where the adapter declares `messages.body`. For one record, `outbound.lead(ref).timeline({ include: ["body"] })` does the same, which is covered in [handles](/docs/api/handles).
+
+## Point it at your vendor
+
+Swap the adapters. Nothing else changes.
+
+<include meta='title="outbound.ts"'>
+  ../_examples/person-across-email-and-linkedin/production.ts
+</include>
+
+Whether an address reaches the LinkedIn side depends on what each tool stores. These come from the adapters' own notes, not from this guide's data:
+
+- **Instantly** leads carry no LinkedIn profile. A lookup by profile returns nothing from Instantly, and an Instantly record never links an address to a profile.
+- **HeyReach** leads can carry an email address. Then the address finds the HeyReach record, and its profile finds the person's other HeyReach campaigns. HeyReach has no read that returns a profile for an address, so the adapter goes through a saved list the address is in: an address that is in no saved list is not found although HeyReach holds it.
+- **Smartlead** has no read that finds a lead by LinkedIn profile. A lookup by profile returns nothing and sends no request.
+
+## What each vendor can serve
+
+The same function, run on the in-memory adapter limited to what each vendor's adapter declares. This shows which calls a vendor's adapter would refuse. It does not show what that vendor's API returns.
+
+<include meta='title="vendors.ts"'>
+  ../_examples/person-across-email-and-linkedin/vendors.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/person-across-email-and-linkedin/vendors.out.txt
+</include>
+
+`personSummary` needs `leads.lookup` and `leads.timeline`. All three adapters declare both, so none refuses it.
+
+## What it costs
+
+One lookup per identifier, on each tool, then up to two requests per campaign the person is in: the lead's messages (read once per lead) and the campaign. `max_campaigns` (default 20, at most 50) bounds the second part. A HeyReach lookup by email address is four requests in the usual case. `maxRequests` on the instance caps the whole call; past it the call fails with `RateLimited` instead of spending your vendor quota.
+
+## When it cannot answer
+
+<include meta='title="failures.ts"'>
+  ../_examples/person-across-email-and-linkedin/failures.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/person-across-email-and-linkedin/failures.out.txt
+</include>
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| A name, or other text that is neither an address nor a profile URL | `Invalid`, before any request | Pass an email address or a LinkedIn profile URL. |
+| No record carries the identifier | `data.found` is `false`, `campaigns` is empty | Try the person's other identifier. The two sides may not be linked. |
+| The person is in more campaigns than `max_campaigns` | `meta.complete` is `false` and a note says where it stopped: "Stopped at 1 records of the person; more exist." | Raise `max_campaigns`. |
+| The adapter cannot look a lead up by identifier | `Unsupported`, before any request | Use an adapter that declares `leads.lookup`. |
+| A rejected key | `Unauthorized`. It is not retried. | Check the key and its scope. |
+
+## Limits
+
+- No fuzzy matching. Two records with the same name and company, one with an address and one with a profile, stay two people.
+- An address in one tool and a profile in another are linked only through a record that holds both. Look the person up by each identifier when you have both.
+- `repliedSteps` is empty when the vendor does not tie a reply to a step.
+- `campaignReplyRate` is campaigns replied in, divided by campaigns that sent at least one message. It is `null` when none did.
+- The numbers are only as good as the vendor's. On an `unverified` adapter, check a summary against the vendor's own lead page before relying on it.

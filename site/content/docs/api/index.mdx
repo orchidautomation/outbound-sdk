@@ -1,0 +1,105 @@
+---
+title: API reference
+description: Every option, collection, handle, method and property of an Outbound instance on one page, each linked to the page that documents it.
+sidebar:
+  label: Overview
+related:
+  - /docs/usage
+  - /docs/capabilities
+  - /docs/retries
+---
+
+`createOutbound(options)` returns one instance. Everything below hangs off it. The types are exported from `outbound-sdk` under the names in code font.
+
+<include meta='title="surface.ts"'>
+  ../../_examples/api-index/surface.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/api-index/surface.out.txt
+</include>
+
+## Constructor options
+
+`OutboundOptions`. Only `adapter` is required.
+
+| Option | Type | Default | What it does |
+| --- | --- | --- | --- |
+| `adapter` | `Adapter` | required | The vendor behind the instance. See [adapters](/docs/adapters). |
+| `plugins` | `OutboundPlugin[]` | none | Layers around every read. `plugins[0]` is the outermost. See [plugins](/docs/plugins). |
+| `hooks` | `OutboundHooks` | none | Functions that observe calls and HTTP requests. See [hooks](/docs/api/hooks). |
+| `timeout` | `number` | `30000` | Milliseconds allowed for each attempt. See [retries](/docs/retries). |
+| `retries` | `number` or a policy | `4` | Retries after the first attempt. See [retries](/docs/retries). |
+| `deadline` | `number` | none | Total milliseconds for one call, across retries and waits. |
+| `maxRequests` | `number` | none | The most vendor requests one call may send. |
+| `signal` | `AbortSignal` | none | Cancels calls. |
+| `share` | `number` | `0.5` | The fraction of the vendor's published rate limit to use. Greater than 0, at most 1. See [rate limits](/docs/rate-limits). |
+| `rateLimitStore` | `RateLimitStore` | this process's memory | Where the rate budget is counted. See [rate limits](/docs/rate-limits). |
+| `allowWrites` | `boolean` | `false` | Lets [`raw`](/docs/api/raw) send requests that are not reads. |
+| `fetch` | `typeof fetch` | the global `fetch` | A replacement for `fetch`. |
+| `runtime` | `Partial<Runtime>` | the real clock | Replaces the clock, timers and randomness. Meant for tests. |
+
+`timeout`, `retries`, `deadline`, `maxRequests` and `signal` are `OperationOptions`. Set on the constructor they are defaults. Every method that reads also takes them, and a value passed to one call wins for that call.
+
+## Collections
+
+Each has `list` for one page and `listAll` for every page. Three also have `get`, `exists` and `getMany`. See [collections](/docs/api/collections).
+
+| Collection | Record | Filters | `get`, `exists`, `getMany` |
+| --- | --- | --- | --- |
+| `outbound.campaigns` | `Campaign` | `status` | yes |
+| `outbound.senders` | `Sender` | `campaignId` | yes |
+| `outbound.leads` | `Lead` | `campaignId`, `listId`, `email`, `linkedinUrl`, `since`, `until` | yes |
+| `outbound.messages` | `Message` | `campaignId`, `leadId`, `threadId`, `since`, `until`, `include` | no |
+| `outbound.replies` | `Reply` | `campaignId`, `category`, `since`, `until`, `include` | no |
+| `outbound.lists` | `LeadList` | none | no |
+| `outbound.tags` | `Tag` | none | no |
+| `outbound.blocklist` | `BlockEntry` | none | no |
+| `outbound.webhooks` | `WebhookSubscription` | `campaignId` | no |
+| `outbound.workspaces` | `Workspace` | none | no |
+
+## Handles
+
+A handle is one record and what hangs off it. Making one sends nothing. See [handles](/docs/api/handles).
+
+| Handle | Methods | Collections under it |
+| --- | --- | --- |
+| `outbound.campaign(id)` | `get`, `sequence`, `settings`, `stats` | `senders`, `leads`, `messages`, `replies`, `subsequences`, `webhooks` |
+| `outbound.sender(id)` | `get`, `stats`, `warmup`, `health` | none |
+| `outbound.lead(id)` | `get`, `timeline` | none |
+| `outbound.list(id)` | none | `leads` |
+| `outbound.thread(id)` | `messages` | none |
+
+## Methods
+
+| Method | Returns | What it does |
+| --- | --- | --- |
+| `outbound.stats(options?)` | `Promise<StatsResult>` | Counts for the workspace, a campaign, a campaign's steps or a sender. See [stats](/docs/api/stats). |
+| `outbound.limits()` | `Promise<LimitsSnapshot[]>` | The rate budget for this credential: each window, its size after `share`, and how much is used. One entry per adapter behind the instance. It sends no request. See [rate limits](/docs/rate-limits). |
+| `outbound.estimate(query)` | `Estimate` | How many vendor requests a read would cost, from what the adapter declares. It sends no request. |
+| `outbound.workspace(id)` | the same instance type | The instance scoped to one workspace label, with the same plugins. See [combine](/docs/adapters/combine). |
+
+`estimate` takes `action` (an operation name such as `leads.list`), `records` (how many you expect to read) and `limit` (a page size). It returns `requests` and a `basis` sentence. `requests` is `null` when the adapter declares no cost for the action or when you did not say how many records. The output above shows both cases on the Instantly adapter.
+
+On a combined instance, `id` is a workspace label, or `provider:workspace` to name one adapter when several share a label. `workspace(id)` throws `NotFound` when nothing on the instance matches. On an instance with one adapter, its own label returns the instance itself.
+
+## Properties
+
+Reading a property sends no request.
+
+| Property | Type | What it holds |
+| --- | --- | --- |
+| `outbound.provider` | `string` | The adapter's name, for example `instantly`. `combined` on a combined instance. |
+| `outbound.workspaceId` | `string` | Your label for this credential's client or workspace. It is part of every `ref`. See [records](/docs/api/records). |
+| `outbound.capabilities` | `Capabilities` | What this instance can read, after plugins narrowed it. See [capabilities](/docs/capabilities). |
+| `outbound.maturity` | `"stable"`, `"beta"` or `"unverified"` | How far the adapter has been checked against the live API. See [what is verified](/docs/status). |
+| `outbound.caveats` | `string[]` | What the adapter assumes and has not confirmed. |
+| `outbound.plugins` | `OutboundPlugin[]` | The plugins on the instance, outermost first. |
+| `outbound.raw` | `RawClient` | The vendor's own API by path. See [raw](/docs/api/raw). |
+| `outbound.native` | `NativeClient` | The vendor's own reads by name. See [native reads](/docs/native). |
+
+## What every result shares
+
+- Every result carries `meta`. See [results](/docs/api/results).
+- Every listing pages the same way. See [pagination](/docs/api/pagination).
+- Every failure is an `OutboundError` with a `code`. See [errors](/docs/api/errors).

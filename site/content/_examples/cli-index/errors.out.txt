@@ -1,0 +1,44 @@
+$ outbound campaign no-such-campaign
+NotFound: Campaign no-such-campaign was not found
+(exit code 1)
+
+$ outbound campaign
+Invalid: Missing a campaign id
+(exit code 1)
+
+$ outbound campaigns --limit 0
+Invalid: --limit must be a positive whole number
+(exit code 1)
+
+$ outbound campaigns --status live
+Invalid: --status must be one of: active, archived, completed, draft, paused, unknown
+(exit code 1)
+
+$ outbound stats --by week
+Invalid: --by must be one of: day, total
+(exit code 1)
+
+$ outbound tool sender_health --input '{oops'
+Invalid: --input must be valid JSON
+(exit code 1)
+
+$ outbound native inboxUnreadCount
+Unsupported: Reading the vendor's own data is not available: the memory adapter does not support it (native)
+(exit code 1)
+
+$ outbound send
+Invalid: Unknown command "send". Run "outbound help"
+(exit code 1)
+
+$ outbound campaigns --provider mailchimp
+Invalid: Unknown provider "mailchimp". Known providers: heyreach, instantly, memory, smartlead
+(exit code 1)
+
+$ unset OUTBOUND_SDK_PROVIDER
+$ outbound campaigns
+Invalid: Set OUTBOUND_SDK_PROVIDER to one of: instantly, smartlead, heyreach, memory
+(exit code 1)
+
+$ outbound providers --compact
+[{"channels":["email"],"envVars":[{"name":"INSTANTLY_API_KEY","required":true},{"name":"INSTANTLY_WORKSPACE_ID","required":false}],"id":"instantly","maturity":"beta","name":"Instantly","note":"Its reads were run, read-only, against one live workspace. Fixtures are built from the documentation."},{"channels":["email"],"envVars":[{"name":"SMARTLEAD_API_KEY","required":true},{"name":"SMARTLEAD_WORKSPACE_ID","required":false}],"id":"smartlead","maturity":"unverified","name":"Smartlead","note":"Never run against a live account. Written from the public documentation and tested offline only."},{"channels":["linkedin"],"envVars":[{"name":"HEYREACH_API_KEY","required":true},{"name":"HEYREACH_WORKSPACE_ID","required":false}],"id":"heyreach","maturity":"beta","name":"HeyReach","note":"Its reads were run, read-only, against one live workspace. Fixtures are built from the documentation."},{"channels":["email","linkedin"],"envVars":[],"id":"memory","maturity":"stable","name":"In-memory (tests and demos)","note":"Holds data in memory. For tests and demos; there is no vendor behind it."}]
+

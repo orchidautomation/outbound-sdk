@@ -1,0 +1,6 @@
+active campaigns: 1 (campaigns.status is "server", evidence exact)
+totals: sent 420, replied 21, opened not reported (evidence exact)
+by step: step 0 sent 140, reply rate 10.0% of sent
+by step: step 1 sent 280, reply rate 2.5% of sent
+settings: daily limit 60, open tracking false
+positive replies: 1

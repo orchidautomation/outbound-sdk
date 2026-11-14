@@ -1,0 +1,7 @@
+5 rows handed to the writer
+{"ref":"memory:acme:lead_1","email":"ana@example.com","status":"active"}
+{"ref":"memory:acme:lead_2","email":"ben@example.com","status":"replied"}
+{"ref":"memory:acme:lead_3","email":"caro@example.com","status":"active"}
+{"ref":"memory:acme:lead_4","email":"dev@example.com","status":"active"}
+{"ref":"memory:acme:lead_5","email":"eli@example.com","status":"bounced"}
+

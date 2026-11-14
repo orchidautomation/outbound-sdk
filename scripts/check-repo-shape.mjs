@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// Repository shape limits, ported from Felspar's check of the same name.
+// Repository shape limits.
 // Passing a review threshold is a warning; passing a hard limit fails.
 // The limits are documented in docs/engineering-guardrails.md.
 

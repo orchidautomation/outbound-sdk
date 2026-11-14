@@ -1,0 +1,10 @@
+4 active senders can send 120 a day. Active campaigns ask for 110, which fits. 93 a day were sent on average over the last 7 days.
+Headroom is 10 a day. A campaign of 40 a day does not fit: short by 30.
+
+Before you count on that capacity:
+  - Ecommerce ops asks for 70 a day but its 2 active senders can send 60.
+  - cara@example.com is not ready: Warmup score 72 is under 90.
+  - dan@example.com is not ready: Status is paused.
+  - Ecommerce ops has 3 senders, 1 of them not active.
+
+Active senders attached to no campaign: eve@example.com

@@ -1,0 +1,40 @@
+An argument the tool does not take
+{
+  "error": {
+    "code": "Invalid",
+    "message": "campaign_overview: \"client\" is not an input. It takes: from, limit, status, to"
+  },
+  "next": "Check the input and try again.",
+  "ok": false
+}
+
+A value of the wrong shape
+{
+  "error": {
+    "code": "Invalid",
+    "message": "campaign_trend: from Use YYYY-MM-DD"
+  },
+  "next": "Check the input and try again.",
+  "ok": false
+}
+
+A record that does not exist
+{
+  "error": {
+    "code": "NotFound",
+    "message": "Campaign no-such-campaign was not found"
+  },
+  "next": "Check the input and try again.",
+  "ok": false
+}
+
+A read the adapter cannot serve
+{
+  "error": {
+    "code": "Unsupported",
+    "message": "Filtering replies by category is not available: the memory adapter does not support it (replies.category)"
+  },
+  "next": "This tool is not available with the current adapter or plugins. Try another tool.",
+  "ok": false
+}
+

@@ -133,3 +133,45 @@ export const hasReplied = (lead: Lead): boolean =>
   lead.status === "replied" ||
   (lead.engagement?.replies ?? 0) > 0 ||
   (lead.engagement?.lastRepliedAt ?? null) !== null;
+
+const COUNTS = "no per-lead open, click or reply counts";
+
+/**
+ * Says which records lack open, click and reply counts, and only when some
+ * do. One tool: the adapter's own declaration decides. A combined instance
+ * lacks `leads.engagement` as soon as one tool does, although the others
+ * still fill the counts, so there each tool is judged by the records read
+ * and the ones with no counts on any lead are named. `effect` finishes the
+ * sentence, for example `those are null`.
+ */
+export const noteEngagement = (
+  context: InsightContext,
+  leads: readonly Lead[],
+  effect: string
+): void => {
+  const { outbound } = context;
+
+  if (outbound.capabilities["leads.engagement"]) {
+    return;
+  }
+
+  if (leads.every((lead) => lead.provider === outbound.provider)) {
+    context.note(`This tool reports ${COUNTS}, so ${effect}.`);
+
+    return;
+  }
+
+  const reporting = new Set(
+    leads.flatMap((lead) => (lead.engagement === null ? [] : [lead.provider]))
+  );
+
+  const lacking = [...new Set(leads.map((lead) => lead.provider))]
+    .filter((provider) => !reporting.has(provider))
+    .toSorted();
+
+  if (lacking.length > 0) {
+    context.note(
+      `${lacking.join(", ")} ${lacking.length === 1 ? "reports" : "report"} ${COUNTS}, so ${effect} for ${lacking.length === 1 ? "its" : "their"} records. Records from the other tools carry what their vendor reports.`
+    );
+  }
+};

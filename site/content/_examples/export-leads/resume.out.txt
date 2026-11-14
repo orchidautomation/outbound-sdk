@@ -1,0 +1,9 @@
+first attempt: Error: process killed, 3 rows written
+a cursor was saved: true
+second attempt: 2 written, 1 already in the file, done true
+{"email":"ana@example.com","ref":"memory:acme:lead_1","status":"active"}
+{"email":"ben@example.com","ref":"memory:acme:lead_2","status":"replied"}
+{"email":"caro@example.com","ref":"memory:acme:lead_3","status":"active"}
+{"email":"dev@example.com","ref":"memory:acme:lead_4","status":"active"}
+{"email":"eli@example.com","ref":"memory:acme:lead_5","status":"bounced"}
+

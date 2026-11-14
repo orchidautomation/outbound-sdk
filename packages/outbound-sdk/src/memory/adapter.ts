@@ -251,8 +251,16 @@ const listers = (store: Store): Listers => {
           },
         ],
       }),
-    stats: (query) =>
-      Promise.resolve(queryStats(identity, data.stats ?? [], query)),
+    stats: (query) => {
+      const ofCampaign = query.scope === "campaign" || query.scope === "step";
+
+      // A campaign nothing in the data mentions has no stats to be empty: it is not found.
+      return ofCampaign && !store.mentionsCampaign(query.scopeId)
+        ? Promise.reject(
+            notFound(identity.provider, "Campaign", query.scopeId ?? "")
+          )
+        : Promise.resolve(queryStats(identity, data.stats ?? [], query));
+    },
   };
 };
 
@@ -272,6 +280,15 @@ export const memory = (options: MemoryOptions = {}): Adapter => {
     (data.campaigns ?? []).map((seed) => [seed.id, seed.channel ?? "email"])
   );
 
+  // Seeds are short: a campaign can exist only as the id its stats, leads or messages name.
+  const mentioned = new Set<string | undefined>([
+    ...channels.keys(),
+    ...(data.stats ?? []).map((seed) => seed.campaignId),
+    ...(data.leads ?? []).map((seed) => seed.campaignId),
+    ...(data.messages ?? []).map((seed) => seed.campaignId),
+    ...(data.senders ?? []).flatMap((seed) => seed.campaignIds ?? []),
+  ]);
+
   const store: Store = {
     capabilities,
     channelOf: (campaignId) =>
@@ -279,6 +296,8 @@ export const memory = (options: MemoryOptions = {}): Adapter => {
       "email",
     data,
     identity,
+    mentionsCampaign: (campaignId) =>
+      campaignId !== undefined && mentioned.has(campaignId),
     pageSize: options.pageSize ?? 50,
   };
 

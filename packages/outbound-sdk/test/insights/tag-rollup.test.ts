@@ -219,3 +219,51 @@ test("tag_rollup groups campaigns of two tools under the same tag", async () => 
   );
   assert.equal(result.meta.provider, "combined");
 });
+
+test("tag_rollup divides a count only by the sends of the campaigns that report it, and says which tag left campaigns out", async () => {
+  const result = await single({
+    campaigns: [
+      { id: "r1", name: "Reports bounces", tags: ["mixed", "whole"] },
+      { id: "r2", name: "No bounce count", tags: ["mixed"] },
+      { id: "r3", name: "No counts at all", tags: ["mixed"] },
+    ],
+    stats: [
+      row("r1", "2026-11-02", {
+        bounced: 10,
+        contacted: 1000,
+        replied: 50,
+        sent: 1000,
+      }),
+      // Sends and replies, but no bounce count.
+      row("r2", "2026-11-03", { contacted: 300, replied: 30, sent: 300 }),
+    ],
+  }).insights.tagRollup(NOVEMBER, { now: NOW });
+
+  const mixed = result.data.tags.find((each) => each.tag === "mixed");
+  const whole = result.data.tags.find((each) => each.tag === "whole");
+
+  // The counts are every campaign's: 1,300 sends and 10 bounces.
+  assert.deepEqual(
+    [mixed?.campaigns, mixed?.sent, mixed?.bounced],
+    [3, 1300, 10]
+  );
+  // The bounce rate is 10 of the 1,000 sends of the campaign that reports
+  // bounces: 1%, the same as that campaign alone. 10 of 1,300 would be 0.77%.
+  assert.deepEqual(mixed?.bounceRate, {
+    count: 10,
+    high: 0.0183,
+    low: 0.0054,
+    of: 1000,
+    rate: 0.01,
+  });
+  assert.deepEqual(whole?.bounceRate, mixed?.bounceRate);
+  // Both campaigns with counts report replies, so that rate covers both.
+  assert.deepEqual(
+    [mixed?.replyRate.count, mixed?.replyRate.of, mixed?.replyRate.rate],
+    [80, 1300, 0.0615]
+  );
+  // r3 reports nothing, so it is left out of nothing: 1 of 2, not 1 of 3.
+  assert.deepEqual(result.meta.notes, [
+    "Tag mixed: bounce rate (1 of 2) counts only the campaigns that report both the count and what it is divided by. The others are left out of the rate, not counted as 0.",
+  ]);
+});

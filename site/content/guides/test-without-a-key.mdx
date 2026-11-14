@@ -1,0 +1,170 @@
+---
+title: Test code that reads outbound data without a vendor key
+description: Tests for your own code that run on the in-memory adapter with a seed you write, covering unsupported calls, vendor failures, paging and recorded answers, plus what the in-memory adapter does not tell you.
+sidebar:
+  label: Test without a key
+related:
+  - /docs/adapters/memory
+  - /docs/plugins/fixtures
+  - /docs/capabilities
+  - /docs/api/errors
+  - /docs/samples
+---
+
+Code that reads campaigns and replies should have tests that run in CI with no key, no network and no vendor account. The in-memory adapter is a complete adapter over data you hand it. Your code runs against it unchanged, because it takes an `Outbound` instance and does not know which adapter is behind it.
+
+This guide tests one small function five ways: with a seed, with capabilities turned off, with injected failures, with small pages, and against recorded answers. Then it says where the in-memory adapter differs from a vendor, because a green run here proves your code and nothing about the vendor.
+
+<include>../_snippets/status.mdx</include>
+
+## Before you start
+
+- Node 22 or later.
+- No key. Each sample on this page is a file in the repository that the test suite runs; the output shown is what it printed.
+- The samples are plain scripts that assert with `node:assert/strict` and print a line per check, because that is how this site runs them. In your project, put the same assertions inside `test()` from `node:test`, or `it()` in Vitest or Jest. Nothing here depends on a test runner.
+
+## What you get
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/test-without-a-key/run.out.txt
+</include>
+
+## The code under test
+
+One line per active campaign: sends, reply rate and how many replies the vendor labelled positive.
+
+<include meta='title="summary.ts"'>
+  ../_examples/test-without-a-key/summary.ts
+</include>
+
+It takes the instance as an argument. That is the whole trick: production passes one built on `instantly()`, a test passes one built on `memory()`.
+
+## A seed of your own
+
+Only `id` is required on every seed record, and every other field has a default. State what the test is about and leave the rest out.
+
+<include meta='title="seed.ts"'>
+  ../_examples/test-without-a-key/seed.ts
+</include>
+
+<include meta='title="run.ts"'>../_examples/test-without-a-key/run.ts</include>
+
+That is the script that printed the four lines above. Three things worth asserting in your own tests:
+
+- **A missing count is `null`.** The campaign with no stats rows has no total, and the summary must not print `0` for it.
+- **Refs, not ids.** Every record carries `provider:workspace:id`. Assert on `ref` when the code will ever run on more than one account.
+- **Use dates near now.** Code that asks for "the last 7 days" reads the clock. Seed dates relative to it, or pass your own clock with `createOutbound({ runtime: { now } })`.
+
+`demoData()` from `outbound-sdk/memory` is a ready-made seed for trying things out. For a test, write the seed in the test, so the expected numbers are visible next to the assertions.
+
+## Limit capabilities to exercise `Unsupported`
+
+The in-memory adapter declares every capability. No vendor does. Pass `capabilities` to turn one off, and the instance refuses the calls that need it, before they reach the adapter, with the same error a vendor's adapter gives.
+
+To run a test as a particular vendor, limit the in-memory adapter to what that vendor's adapter declares. [The helper](/docs/samples) is a few lines, and every guide on this site uses it:
+
+<include meta='title="vendors.ts"'>
+  ../_examples/test-without-a-key/vendors.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/test-without-a-key/vendors.out.txt
+</include>
+
+This shows which calls a vendor's adapter would refuse. It does not show what that vendor's API returns. HeyReach does not label replies, so the summary reports `null` for positive replies there and does not call the filter.
+
+## Inject failures with a plugin
+
+The in-memory adapter has no failure switch. A plugin's `wrap` sits between your call and the adapter, and can throw the error a vendor's adapter would.
+
+<include meta='title="failing.ts"'>
+  ../_examples/test-without-a-key/failing.ts
+</include>
+
+<include meta='title="failures.ts"'>
+  ../_examples/test-without-a-key/failures.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/test-without-a-key/failures.out.txt
+</include>
+
+| What happened | What you get | What to assert |
+| --- | --- | --- |
+| A capability is off | `Unsupported`, before the adapter is called | That your code checks `outbound.capabilities` first, or lets the error through on purpose. |
+| The vendor is down | `Provider`, with `permanent: false` | That your code retries later or reports it. It should not treat it as "no data". |
+| The vendor is rate limiting | `RateLimited`, with `retryAfterMs` when the vendor gave one | That your code waits at least that long. |
+| The key is rejected | `Unauthorized`, with `permanent: true` | That your code stops and does not retry. |
+| One record of a bulk lookup is missing | An entry in `errors`. `getMany` does not throw. | That your code reads `errors` as well as `results`. |
+
+An error thrown by a plugin reaches your code at once. The retries and waits a real adapter does for a 503 or a 429 happen in the request engine, below the plugins, and the in-memory adapter never gets there. To test those, use a real adapter with `fetch` replaced, as shown [further down](#the-adapter-itself-without-a-key).
+
+## Paging with a small page size
+
+The default page is 50 records. A five-record seed then fits on one page, and code that forgets to follow the cursor passes its tests. Set `pageSize` to 2.
+
+<include meta='title="pagination.ts"'>
+  ../_examples/test-without-a-key/pagination.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/test-without-a-key/pagination.out.txt
+</include>
+
+## Record once, replay in every test
+
+The `fixtures` plugin saves each answer to a file and serves it back. `record` calls the adapter and saves, `replay` answers from disk and never calls the adapter, and `auto` (the default) replays when a file exists and records when it does not. Personal data is replaced with numbered placeholders before anything is saved.
+
+This sample records against the in-memory adapter into the system's temporary folder, then replays with an adapter that holds no data at all.
+
+<include meta='title="record-replay.ts"'>
+  ../_examples/test-without-a-key/record-replay.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/test-without-a-key/record-replay.out.txt
+</include>
+
+What to know before relying on it:
+
+- **A file is one operation.** Its name is the provider, the workspace, the operation and a hash of the workspace and the operation's exact options. A read with another filter, page size or cursor has no file and fails with `NotFound` in `replay`.
+- **The recording run gets the scrubbed data too.** Assert on the placeholders (`person1@example.com`, `Company 1`), not on the real values. The same real value always gets the same placeholder from one instance of the plugin. Counts and stats are kept as they are.
+- **List it last when recording**, so what is saved is the adapter's answer and not another plugin's view of it.
+- **A recording made with a real key is a snapshot** of that account on that day. It is still the only one of these techniques that holds real vendor responses, as mapped by the adapter. Commit the files only after reading them: scrubbing covers the fields the SDK knows to be personal.
+
+## The adapter itself, without a key
+
+Everything above replaces the adapter. To run a real adapter's own code (its mapping, its request count) with no key, give `createOutbound` a `fetch` of your own. This one answers from Instantly's documented payloads in the repository's `fixtures/instantly/` folder. They are built from Instantly's published schema and are not live responses.
+
+<include meta='title="http.ts"'>
+  ../_examples/test-without-a-key/http.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/test-without-a-key/http.out.txt
+</include>
+
+A `fetch` like this can also answer 503 or 429 to exercise retries. Those wait on real timers unless you replace them too, with the `runtime` option.
+
+## Where memory differs from a real vendor
+
+| On the in-memory adapter | On a vendor's adapter |
+| --- | --- |
+| Every capability is on unless you turn it off. | Each vendor lacks some. Run your tests as each vendor you support. |
+| No HTTP request is made. `meta.requests` is `0` and `onRequest` hooks never fire. | Each read costs requests, some more than one per page. |
+| Nothing is rate limited, throttled or retried. | Calls wait for the rate budget and retry failures. `deadline` and `maxRequests` matter. |
+| Filters are exact: status, date and category do what they say. | Some filters are applied by the SDK after fetching, and some are refused. |
+| Evidence is always `exact`. | An answer can be `derived` or `sampled`, and a count the vendor does not report is `null`. |
+| A page is `pageSize` records, by offset. | Page sizes and cursors are the vendor's. A page can come back short. |
+| Ids are whatever you seeded. | Ids are the vendor's: UUIDs, numbers, or a LinkedIn profile URL for a HeyReach lead. |
+| `raw` is `null` and there are no caveats. | `raw` holds the vendor's payload, and `outbound.caveats` lists what the adapter assumes. |
+| It never fails by itself. | Keys expire, records disappear, vendors go down. |
+
+A test on the in-memory adapter proves that your code is correct for the data it was given. Whether a vendor returns that data is a separate question, answered by [what is verified](/docs/status) and by running your code once against a real account.
+
+## Limits
+
+- The in-memory adapter holds the data you gave it when it was created. To test "the data changed", create a second adapter with the second seed.
+- Fixture files are tied to the exact operation. Changing a filter in your code means recording again.
+- Scrubbed recordings cannot test code that depends on real names, domains or message text.
+- Nothing on this page checks a vendor's behaviour. Instantly and HeyReach are `beta` and Smartlead is `unverified`: see [what is verified](/docs/status).

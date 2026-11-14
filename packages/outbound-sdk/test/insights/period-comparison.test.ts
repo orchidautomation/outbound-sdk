@@ -38,6 +38,10 @@ const DATA: MemoryData = {
   ],
 };
 
+// New has no row at all in the earlier period, so it is not counted there.
+const BOUNCE_NOTE =
+  "Every campaign added together: this period's bounce rate (1 of 3), the earlier period's bounce rate (1 of 2) count only the campaigns that report both the count and what it is divided by. The others are left out of the rate, not counted as 0.";
+
 const CURRENT = { from: "2026-11-07", to: "2026-11-13" };
 const PREVIOUS = { from: "2026-10-31", to: "2026-11-06" };
 
@@ -153,7 +157,19 @@ test("period_comparison sets the last days against the days before, per campaign
     [1800, 93, 0.0517, 900, "no_real_change"]
   );
   assert.equal(result.meta.complete, true);
-  assert.deepEqual(result.meta.notes, []);
+  // Only Rising reports bounces. Its 5 and 10 are divided by its own 500
+  // sends, not by every campaign's 1,000 and 900.
+  assert.deepEqual(
+    [
+      result.data.total.current.bounced,
+      result.data.total.current.bounceRate,
+      result.data.total.previous.bounced,
+      result.data.total.previous.bounceRate,
+      result.data.total.change.bounceRate,
+    ],
+    [5, 0.01, 10, 0.02, -0.01]
+  );
+  assert.deepEqual(result.meta.notes, [BOUNCE_NOTE]);
 });
 
 test("period_comparison follows days, min_sent, alpha and the statuses", async () => {
@@ -277,6 +293,7 @@ test("period_comparison leaves workspace totals out when the adapter has none, a
   assert.equal(result.data.workspace, null);
   assert.equal(result.data.total.current.sent, 1000);
   assert.deepEqual(result.meta.notes, [
+    BOUNCE_NOTE,
     "Workspace totals were left out: the adapter has no workspace stats. `total` adds up the campaigns read.",
   ]);
 

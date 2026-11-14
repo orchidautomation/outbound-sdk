@@ -1,0 +1,4 @@
+events.parse: true
+events.verify: secret
+reply.received instantly acme
+verify: undefined

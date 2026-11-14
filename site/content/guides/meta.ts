@@ -1,0 +1,31 @@
+import { defineMeta } from "blume";
+
+export default defineMeta({
+  pages: [
+    "weekly-client-report",
+    "diagnose-campaign",
+    "lead-runway",
+    "ab-test-winner",
+    "person-across-email-and-linkedin",
+    "account-brief",
+    "unanswered-replies",
+    "hot-leads-call-list",
+    "double-contacted-leads",
+    "pre-launch-audit",
+    "deliverability-check",
+    "sender-capacity",
+    "mcp-server",
+    "agent-tools",
+    "reply-text-for-llm",
+    "sync-to-database",
+    "export-leads",
+    "webhooks-and-reconcile",
+    "run-many-clients",
+    "portable-code",
+    "native-reads",
+    "shared-rate-budget",
+    "vendor-outage",
+    "test-without-a-key",
+  ],
+  title: "Guides",
+});

@@ -1,0 +1,68 @@
+- outbound.raw returns responses unchanged: GET /email-accounts includes SMTP and IMAP passwords, which only normalized records drop.
+
+- outbound.native returns each payload as Smartlead sent it. Its catalog leaves out the reads that return secrets: client API keys, a mailbox looked up by address, SmartSenders orders and one-time passwords, and a client's whitelabel credentials.
+
+- Native reads of SmartDelivery, SmartProspect, SmartSenders and SmartServers call other hosts with the same key; an account without the product is refused. Their parameters and responses follow the reference alone.
+
+- Nothing is checked against a live account; mappings follow the documentation read on 2026-11-14, whose three sources disagree, also on envelopes (bare or { ok | success, data }; both are accepted).
+
+- The API key travels in the URL (api_key): the SDK redacts it, but a proxy or server log can record it.
+
+- leads.list without a campaign walks every campaign: a lead in no campaign is never returned, and one in several is returned once by listAll.
+
+- leads.list({ email }) reads GET /leads/?email=: one record per campaign, all with the lead's id (listAll keeps one), status unknown unless unsubscribed, createdAt the lead's own. Address matching is undocumented; other addresses are dropped.
+
+- No endpoint finds a lead by LinkedIn profile: leads.list({ linkedinUrl }) returns nothing and sends no request.
+
+- A lead's status, campaign and creation time are per campaign; leads.get returns no campaign and its example looks illustrative.
+
+- STOPPED maps to paused; lead status BLOCKED maps to bounced.
+
+- Messages come from GET /campaigns/all-leads-activities (10 requests per 60 s, no campaign filter, pages of leads): campaign(id).messages reads the whole feed, and thread_replies is not read.
+
+- senderRef is null on feed and history messages (mailbox named by address). leadRef on replies and thread messages needs lead.id or lead_id on the thread; documented examples show an address only.
+
+- threadId is the lead-in-campaign mapping id; history messages have none. GET /master-inbox/{id} is documented without message ids or bodies; older history items are accepted too.
+
+- A lead's timeline follows the older documentation's { history, from, to } shape.
+
+- Replies come from POST /master-inbox/inbox-replies (illustrative item shape), 20 threads per page: each inbound history message is a reply, or only the latest without a history, and all share the lead's current category.
+
+- Reply categories come from GET /leads/fetch-categories: sentiment_type gives positive or negative, null neutral, the name Out Of Office ooo; a list without sentiment_type leaves the rest unknown.
+
+- Dated statistics need both dates: a missing end is today (UTC), a missing start 2000-01-01 for totals, or 30 days before the end for daily rows and a campaign's dated total.
+
+- No delivered or automatic-reply count exists. A campaign's dated total uses non_ooo_reply_count for replied when present; lifetime reply_count includes out-of-office replies.
+
+- Daily rows have sent, total opens and replies; the daily endpoint always reports 0 bounces, so bounced is null.
+
+- Step statistics do not say whether opens and clicks are unique (mapped to openedTotal and clicked). A step with variants has a row per variant and no total.
+
+- A sender is disconnected when is_smtp_success or is_imap_success is false, active when both are true, else unknown. warmup_reputation may be a number or a string such as 95%.
+
+- Workspaces are Smartlead clients; a client-level key may be refused.
+
+- Webhook signing is off until turned on per webhook; unsigned webhooks fail verify.
+
+- Webhook examples omit lead ids, so leadRef needs sl_email_lead_id or lead_id.
+
+- Settings: dailyNewLeads is max_leads_per_day, gapMinutes min_time_btwn_emails, dailyLimit sending_limit (newer example only), startDate the UTC day of schedule_start_time. One sending window, no end date.
+
+- stopOnReply is true for REPLY_TO_AN_EMAIL, false for NEVER, else null. stopOnAutoReply needs out_of_office_detection_settings.ignoreOOOasReply, documented on the settings update only.
+
+- Subsequences are campaigns whose parent_campaign_id is the campaign, one per page; that GET /campaigns/ lists them is implied, not confirmed. Trigger conditions cannot be read, so branch is null.
+
+- Sender health reads the mailbox and its 7-day warmup-stats (both documented shapes). DNS records, block list state and check time are not reported.
+
+- A mailbox's statistics are its row, by address, of GET /analytics/mailbox/name-wise-health-metrics (totals only, no filter, undocumented paging): a mailbox it leaves out gets null counts. opened is taken as total opens.
+
+- interest is the lead category's name, resolved through GET /leads/fetch-categories; leads.get reads category_name, shown only in an illustrative example.
+
+- Lead tags cost a request per lead (GET /crm/leads/tags), so only leads.get fills them. engagement is null: no JSON response documents per-lead counts.
+
+- Tags come from GET /email-accounts/tags; whether campaign tags share that list is unconfirmed.
+
+- Webhooks are listed per campaign; without one the adapter walks the campaigns and returns each once. User-level or client-level webhooks may appear under none.
+
+- Block list entries with an @ are emails, the rest domains.
+

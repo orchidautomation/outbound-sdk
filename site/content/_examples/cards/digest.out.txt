@@ -1,0 +1,17 @@
+{"emoji":true,"text":"Outbound this morning","type":"plain_text"}
+[{"text":"Saturday 14 November","type":"mrkdwn"}]
+{"text":"*Hot leads*","type":"mrkdwn"}
+{"text":"1 lead to call first.","type":"mrkdwn"}
+[{"text":"*Hot*\n1","type":"mrkdwn"},{"text":"*Scored*\n1","type":"mrkdwn"}]
+{"text":"• Alex Example · Example Co · 62 · marked Interested, replied 1 time(s), last reply 39 day(s) ago, 2 open(s).","type":"mrkdwn"}
+"divider"
+{"text":"*Domain health*","type":"mrkdwn"}
+{"text":"🔴 1 sending domain at high risk.","type":"mrkdwn"}
+[{"text":"*Domains*\n1","type":"mrkdwn"},{"text":"*High risk*\n1","type":"mrkdwn"}]
+{"text":"• 🔴 *example.com*: DKIM failing; 29 of 200 warmup emails landed in spam (0.145, over 0.1)","type":"mrkdwn"}
+"divider"
+{"text":"*Warmup readiness*","type":"mrkdwn"}
+{"text":"🟡 1 of 2 senders are ready to send.","type":"mrkdwn"}
+[{"text":"*Ready*\n1","type":"mrkdwn"},{"text":"*Not ready*\n1","type":"mrkdwn"}]
+{"text":"• outreach2@example.com · active · 88 · score low","type":"mrkdwn"}
+[{"text":"memory · 0 requests","type":"mrkdwn"}]

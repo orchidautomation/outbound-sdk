@@ -1,0 +1,95 @@
+---
+title: cache
+description: Serve a repeat read from a store for a set number of seconds, with the store interface, a custom store, and what a cached answer says about itself.
+sidebar:
+  label: cache
+related:
+  - /docs/rate-limits
+  - /docs/plugins/failover
+  - /docs/api/results
+---
+
+`cache({ ttl })` from `outbound-sdk/cache` keeps the answer to each read in a store and serves it again for `ttl` seconds, to save rate budget. The store is yours. The default is an in-memory store in this process. A cached answer keeps the time it was originally fetched in `meta.fetchedAt`. A failed read is not stored, and neither is an answer marked `stale`.
+
+## Sample
+
+The sample moves a clock forward and counts the reads that got past the cache. It runs on the [shared seed](/docs/plugins#every-plugin).
+
+<include meta='title="run.ts"'>../../_examples/plugins-cache/run.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/plugins-cache/run.out.txt
+</include>
+
+The read 30 seconds later was served from the store, with the first read's `fetchedAt`. A different filter is a different entry. At 60 seconds the entry is as old as `ttl`, which counts as expired, so the read went through again.
+
+## Options
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `ttl` | `number` | required | How long an answer may be reused, in seconds. `0` or less turns the cache off. |
+| `store` | `CacheStore` | `memoryCacheStore()` | Where entries are kept. |
+| `only` | operation kinds | every operation | Cache only these operations, for example `["campaigns.get", "stats"]`. |
+| `now` | `() => number` | `Date.now` | The clock, for tests. |
+
+The operation kinds are the names in `Operation["kind"]` from `outbound-sdk`: `campaigns.list`, `campaigns.get`, `leads.list`, `leads.get`, `messages.list`, `replies.list`, `senders.list`, `senders.get`, `sequence.get`, `stats`, `workspaces.list`, and the account reads `blocklist.list`, `campaigns.settings`, `lists.list`, `senders.health`, `sequence.subsequences`, `tags.list` and `webhooks.list`.
+
+## What is cached
+
+One entry holds one operation's output: one page of a listing, one lookup or one stats read. The key is a hash of the adapter's `provider`, its `workspaceId` and the operation with all its arguments, so:
+
+- Another page, another filter, another date range or another id is another entry.
+- `campaigns.get("cmp_1")` and a get by the same campaign's ref are two entries.
+- Two instances that share a store and have the same provider and workspace label share entries.
+- A page is cached with the continuation to its next page, so a walk over cached pages makes no request.
+
+Per-call options (`timeout`, `retries`, `maxRequests`) are not part of the key.
+
+## The store
+
+A store is three async functions. `set` receives the time to live in milliseconds, so a store such as Redis can expire the entry itself. The plugin also checks an entry's age when it reads one, so a store that never expires anything is still correct.
+
+| Function | Called |
+| --- | --- |
+| `get(key)` | Before every cached operation. Return `undefined` for a miss. |
+| `set(key, entry, ttlMs)` | After every successful read that was not served from the store, unless the answer is marked `stale`. |
+| `delete(key)` | Never by the plugin. It is there for you. |
+
+An entry is `{ output, storedAt }`: the operation's output and the fetch time as an epoch in milliseconds. Both are plain data that survives `JSON.stringify`.
+
+<include meta='title="store.ts"'>
+  ../../_examples/plugins-cache/store.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/plugins-cache/store.out.txt
+</include>
+
+`memoryCacheStore(maxEntries = 500)` is the default store. It holds entries in a `Map` and drops the oldest one written once it is full. It does not remove expired entries on its own. `cacheKey(scope, operation)` returns the key for one read.
+
+## What it changes
+
+| Field | On a cache hit |
+| --- | --- |
+| `meta.fetchedAt` | When the answer was originally fetched, not now. |
+| `meta.requests` | Requests this call made. `0` for a single read served from the store. |
+| `meta.stale` | `false`. Only [`failover`](/docs/plugins/failover) sets it, and a stale answer is never stored. |
+
+Nothing else in `meta` says an answer came from the cache. Compare `fetchedAt` with the clock when you need to know its age. It changes no capability.
+
+## With other plugins
+
+- **The store holds what the layers inside the cache returned.** With `redact` listed before `cache`, as recommended, the store holds unmasked records and masking happens on the way out. Give the store the same protection as the vendor data itself.
+- Layers inside the cache (`audit`, `tracing`, `budget`, `alerts`) do not run on a hit.
+- Layers outside it (`redact`, `clients`, `identity`) run on every read.
+- `failover` takes the same `CacheStore` interface and prefixes its keys with `failover:`, so the two can share one store.
+- With `failover` inside the cache, an answer it serves during an outage is passed on with `stale: true` and its original `fetchedAt`, and is not stored. The next read tries the vendor again.
+- A layer inside the cache that sets `fetchedAt` on its answer is believed: the entry is stored with that time, and `ttl` counts from it.
+
+## When it fails
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| The read fails | The error. Nothing is stored. | Nothing. The next read tries again. |
+| `store.get` or `store.set` rejects | The read fails with that error, even when the vendor answered | Catch errors inside your store and return `undefined` from `get` if a cache outage should not fail reads. |
+| The vendor's data changed inside `ttl` | The old answer, with its original `fetchedAt` | Lower `ttl`, limit the cache with `only`, or call `store.delete(cacheKey(...))`. |

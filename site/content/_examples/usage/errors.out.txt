@@ -1,0 +1,3 @@
+NotFound true
+Unsupported - Reading a campaign's settings is not available: the memory adapter does not support it (campaigns.settings)
+false

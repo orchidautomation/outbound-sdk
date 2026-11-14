@@ -1,0 +1,9 @@
+bare id: Invalid - Campaign "cmp_1" must be a ref (provider:workspace:id) of an adapter on this combined instance
+ref: ok
+unknown client: NotFound - Workspace initech is not on this instance
+same label twice: Invalid - Two adapters are both memory:default. Give each one its own workspaceId so their records stay apart
+thread on combined: Unsupported - Reading one conversation is not available: the combined adapter does not support it (messages.byThread)
+thread on one workspace: ok
+thread on one member: ok
+one key rejected: Unauthorized - emailtool responded 401
+the other client alone: ok

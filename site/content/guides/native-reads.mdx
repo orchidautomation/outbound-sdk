@@ -1,0 +1,143 @@
+---
+title: Read data only one vendor has, through the native catalog
+description: List a vendor's own reads, call one with typed parameters or by a name learned at run time, reach it on a combined instance, and see what is refused, with requests and responses recorded offline.
+sidebar:
+  label: Vendor-only reads
+related:
+  - /docs/native
+  - /docs/api/raw
+  - /docs/coverage
+  - /docs/adapters/combine
+---
+
+The normalized reads cover what Instantly, Smartlead and HeyReach have in common. Some questions have no common form: "which lists is this person on in HeyReach?" is one. Each adapter lists those vendor-only reads in a catalog, and `outbound.native` calls them by name through the same engine as every other read, so they are rate limited and retried and their errors are normalized.
+
+What comes back is the vendor's own response. It is not normalized, not comparable across vendors and not masked. Every catalog entry is a read. Nothing here sends, pauses or edits, and a write through `outbound.raw` is refused.
+
+<include>../_snippets/status.mdx</include>
+
+## Before you start
+
+- Node 22 or later.
+- The samples build a real HeyReach adapter and make no network call. The catalog is data on the adapter. The reads go through a `fetch` the sample supplies, which answers from fixture files in the repository.
+- For real data: a HeyReach, Instantly or Smartlead API key. A read-only key is enough.
+
+<Callout
+  type="warning"
+  title="The responses on this page are fixtures, not live responses"
+>
+  They come from `fixtures/heyreach/` in the repository. Those files follow the
+  field names in HeyReach's API reference, and every value in them is made up.
+  They show the shape the adapter expects. They do not show what your account
+  returns.
+</Callout>
+
+## What you get
+
+Three reads: a typed native read, a native read by name, and a raw `GET`. The last block is every request the SDK made.
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/native-reads/read.out.txt
+</include>
+
+- **`data` is the vendor's payload**, with the vendor's field names: `leadFullName`, `totalCount`, `campaignStatus`.
+- **`meta` is the SDK's**, the same as on any read: `provider`, `requests`, `evidence`.
+- **One call is one request.** The first answer says `totalCount: 3` and holds two items. Nothing follows pages for you: pass the vendor's own paging parameters, here `offset`, and call again. `meta.complete` is `true` because the one request succeeded. It does not know about the vendor's paging.
+- **`raw.get` returns the payload alone**, with no `meta`.
+
+## List the catalog
+
+`outbound.native.catalog` is static. Reading it makes no request, so you can print it before you have a working key.
+
+<include meta='title="catalog.ts"'>
+  ../_examples/native-reads/catalog.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/native-reads/catalog.out.txt
+</include>
+
+Each entry says what the read answers, the vendor's method and path, each parameter with its type and where it goes (`path`, `query` or `body`), and the vendor's documentation page. HeyReach reads some data with `POST`. The method is the vendor's; the call is still a read.
+
+## Call a read
+
+<include meta='title="read.ts"'>../_examples/native-reads/read.ts</include>
+
+There are three ways in, from most to least checked:
+
+- **`outbound.native.reads.<name>(params)`** is typed from the catalog. A wrong parameter name, a missing required parameter or a string where a number belongs does not compile. Use it when you know the read while writing the code.
+- **`outbound.native.read(name, params)`** takes the name as a string, for a name that arrives at run time from a config file or a model. The same checks run when it is called, and a bad call is `Invalid` before any request.
+- **`outbound.raw.get(path, { query })`** and `outbound.raw.request(method, path, { query, body })` take the vendor's path as documented. Nothing about the parameters is checked. It is for an endpoint the catalog does not name. It still refuses anything that is not a known read.
+
+The sample injects `fetch` so it can run offline. Leave that option out in your own code.
+
+<include meta='title="fixture-fetch.ts"'>
+  ../_examples/native-reads/fixture-fetch.ts
+</include>
+
+## On a combined instance
+
+With several adapters behind one instance, `outbound.native` has no catalog: two vendors have two sets of names. Go through `outbound.workspace(id)`, which is the same instance scoped to one adapter. It is typed as the general API, so use `read(name)` there, not `reads`.
+
+<include meta='title="combined.ts"'>
+  ../_examples/native-reads/combined.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/native-reads/combined.out.txt
+</include>
+
+## Point it at your vendor
+
+Remove the `fetch` option. `heyreach()` reads `HEYREACH_API_KEY`. For Instantly or Smartlead, swap the adapter and list its catalog: the read names are different for each vendor.
+
+## What each vendor can serve
+
+Read from each real adapter's declaration, with no request made.
+
+<include meta='title="vendors.ts"'>
+  ../_examples/native-reads/vendors.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/native-reads/vendors.out.txt
+</include>
+
+All three adapters declare a catalog. The last line is the in-memory stand-in the other guides run on: it copies a vendor's declared capabilities but has no vendor API behind it, so it has no catalog and cannot stand in for native reads. That is why this guide runs on fixtures. The [coverage](/docs/coverage) pages account for every endpoint of each vendor.
+
+## What it costs in vendor requests
+
+One native or raw call is one vendor request, counted against the same rate budget as normalized reads. A read can name its own rate lane where the vendor limits an endpoint separately. Listing the catalog costs nothing. To read every page of a vendor list you make one call per page, so set `maxRequests` on the instance or on the call when a loop drives it.
+
+## When it cannot answer
+
+<include meta='title="failures.ts"'>
+  ../_examples/native-reads/failures.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/native-reads/failures.out.txt
+</include>
+
+Only the last case reached the fixture `fetch`. Every refusal above it happened before a request.
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| A write, or any method and path that is not a known read, through `raw` | `Unsupported`, before any request | Nothing. The SDK is read-only. |
+| A `GET` whose response holds a secret, such as a workspace's API keys | `Unsupported`, before any request | Nothing. The adapter refuses it on purpose. |
+| A name that is not in the catalog | `Invalid`, before any request | List `outbound.native.catalog`. |
+| An unknown, missing or wrongly typed parameter | `Invalid`, naming the parameter | Read the entry's `params`. |
+| The `redact` plugin is on | `Unsupported`: the plugin turned `native` off | Use an instance without `redact` for this read. The payload cannot be masked. |
+| A combined instance | `Unsupported`, pointing at `workspace(id).native` | Scope to one workspace first. |
+| The in-memory adapter | `Unsupported`. It has no catalog. | Test native reads with an injected `fetch`, as here. |
+| The vendor answers with an error | A normalized error: `NotFound`, `Unauthorized`, `RateLimited` and so on | Handle it as for any other read. |
+
+The refusal message for `raw` mentions `allowWrites`. That option on `createOutbound` turns the check off and takes the instance outside the read-only boundary. See [raw](/docs/api/raw) before using it.
+
+## Limits
+
+- A native response is the vendor's. Field names, paging and meaning differ per vendor, and the vendor can change them. Code that reads it is not portable.
+- It is not masked. Text inside it may be written by prospects. The `vendor_read` tool wraps it as untrusted content for that reason.
+- `redact` turns off both `outbound.native` and `outbound.raw`: neither payload can be masked.
+- The responses shown are fixtures. No native read was run against a live account for this page. For what was run live, see [what is verified](/docs/status).
+- A native or raw call throws its refusal directly instead of returning a rejected promise, so `await` the call inside `try`, as the samples do. A `.catch()` chained on the call does not see a refusal.

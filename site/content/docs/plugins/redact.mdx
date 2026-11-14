@@ -1,0 +1,118 @@
+---
+title: redact
+description: Mask emails, names, companies, LinkedIn URLs, custom fields, subjects and bodies in everything an instance returns, and know exactly which fields it does not touch.
+sidebar:
+  label: redact
+related:
+  - /docs/tools/untrusted-content
+  - /docs/plugins/identity
+  - /docs/plugins/fixtures
+---
+
+`redact()` from `outbound-sdk/redact` masks personal fields in the records an instance returns, before they reach a caller, an agent or a report. It always sets `raw` to `null`, because the vendor's payload holds everything the normalized fields were taken from. It fails closed: a record it does not recognise is refused, never passed through. List it first, so it is the outermost layer.
+
+## Sample
+
+<include meta='title="run.ts"'>../../_examples/plugins-redact/run.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/plugins-redact/run.out.txt
+</include>
+
+## Options
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `fields` | `RedactField[]` | all seven | What to mask: `"email"`, `"name"`, `"company"`, `"linkedin"`, `"custom"`, `"subject"`, `"body"`. |
+| `strategy` | `"mask" \| "hash"` | `"mask"` | `mask` replaces a value with `[redacted]`. `hash` replaces it with `redacted:` and 16 hex characters derived from the value, so the same value always gives the same token and people can still be counted and joined. |
+
+A `null` value stays `null` under both strategies. The subpath also exports `ALL_FIELDS` and `MASK` (the string `[redacted]`).
+
+<include meta='title="hash.ts"'>../../_examples/plugins-redact/hash.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/plugins-redact/hash.out.txt
+</include>
+
+The token is a hash of the value with no secret mixed in. Anyone who can guess an address can compute its token and confirm the guess. Treat hashed output as pseudonymous, not anonymous.
+
+## What it masks
+
+| Record | Masked, by field | Left as it is |
+| --- | --- | --- |
+| Lead | `email` (`email`), `firstName` and `lastName` (`name`), `company` (`company`), `linkedinUrl` (`linkedin`), every value in `custom` (`custom`). Custom field names are kept. | `title`, `status`, `tags`, `interest`, `engagement`, dates |
+| Message, reply | `subject` (`subject`), `bodyText` and `bodyHtml` (`body`) | Dates, direction, category |
+| Sender | `address` (`email`), `linkedinUrl` (`linkedin`), `name` (`name`) | Status, limits, warmup |
+| Block list entry | `value`, when the entry is an email address or a LinkedIn profile | A blocked domain, and any other kind |
+| Stats row | Nothing but its `scopeRef` (see below). It holds counts only. | Everything else |
+| Campaign, workspace, sequence, settings, sender health, list, tag, webhook | Nothing but ids and refs (see below) | Everything except `raw` |
+| Every record | An email address (`email`) or a LinkedIn profile URL (`linkedin`) inside `ref`, `sourceId` or any field whose name ends in `Ref` or `Refs` | An id the vendor made up, such as a number or a UUID |
+
+Every record except a stats row has `raw` set to `null`, whatever `fields` says. Sequence steps are template text and are not masked.
+
+### Ids and refs
+
+Some vendors use personal data as an id. Instantly addresses a mailbox by its email address, so a sender's `ref` and `sourceId` hold it, and so does every `senderRef` that points at the sender. HeyReach identifies a lead by its LinkedIn profile URL, which then sits in the lead's `ref` and in the `leadRef` of its messages.
+
+`redact` masks that part of `ref`, `sourceId` and every `*Ref` field, on records and on webhook events, when the matching field (`email` or `linkedin`) is being masked:
+
+- With `mask`, the address or the URL becomes `[redacted]`. Two senders then share one `ref`, so refs no longer tell records apart.
+- With `hash`, it becomes the same token every time, so a record keeps its `ref` from one call to the next and a `senderRef` still equals the sender's `ref`. An address gives the token its `email` or `address` field gets.
+
+A masked ref cannot be passed back to `outbound.sender(ref)` or `outbound.lead(ref)`: it no longer holds the vendor's id.
+
+What stays: an id that is not an address or a profile URL is not personal data and is left as it is. A bare profile slug with no URL around it cannot be told from such an id, and stays too.
+
+## What it turns off
+
+| Capability | Becomes | When | Why |
+| --- | --- | --- | --- |
+| `messages.body` | `false` | `fields` includes `"body"` (the default) | Asking for bodies while they are being removed is a contradiction, so the call is refused up front. |
+| `native` | `false` | Always | A native read returns the vendor's payload untouched. |
+
+[`outbound.raw`](/docs/api/raw) has no capability of its own, and returns the same untouched payload. It is refused as `Unsupported` on an instance with `redact`, whether or not the adapter has native reads.
+
+It changes nothing in `meta`.
+
+## What it adds
+
+| Member | Holds |
+| --- | --- |
+| `outbound.redacted` | `{ fields, strategy }`: the fields being masked, sorted, and `"mask"` or `"hash"`. Other plugins and the tools read it to know what they cannot see. |
+
+## Webhook events
+
+The plugin also has an `event` hook, which runs when you pass the instance's plugins to `parse()` from `outbound-sdk/webhooks` (see [webhooks](/docs/webhooks)). It sets the event's `raw` to `null` and rewrites `data`:
+
+- `leadEmail`, `leadName`, `linkedinUrl`, `subject` and `text` are masked by their field, when they are strings. A value of another type becomes `null`.
+- Any other key keeps a plain value (string, number, boolean, `null`).
+- Any other key holding an object or an array becomes `[redacted]`, because it could hold anything.
+
+## With other plugins
+
+List `redact` first. It masks what the layers inside it return, so `cache`, `failover` and `fixtures` inside it see, and store, unmasked records. To keep masked data in a store, list that plugin before `redact`.
+
+`redact` masks the fields it knows and passes every other field through:
+
+- `clients` adds `client`, your own label. It passes through.
+- `identity` adds `personKey` and `personKeys`, which hold the email address and the profile slug. `redact` masks the part after `email:` or `linkedin:` when that field is being masked: `email:[redacted]`, or with `hash` `email:redacted:` and 16 hex characters, the same token the lead's `email` gets.
+- `outbound.person()` is refused as `Unsupported` while `redact` masks `email` or `linkedin`, because it links records by those identifiers and would see none. The `cross_channel_lead` tool is not offered then. With a `fields` list that leaves both out, `person()` works as usual.
+- [`insights`](/docs/insights) and the method-only plugins (`exporter`, `sync`, `reconcile`, `benchmarks`) read through the instance, so they receive masked records.
+
+## When it fails
+
+<include meta='title="failures.ts"'>
+  ../../_examples/plugins-redact/failures.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/plugins-redact/failures.out.txt
+</include>
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| A read asks for bodies (`include: ["body"]`) | `Unsupported`, before any request. The message names the plugin. | Leave bodies out, or construct `redact` with `fields` that do not include `"body"`. |
+| A native read, or any `outbound.raw` request | `Unsupported`, before any request. The message names the plugin. | Use a second instance without `redact` for those reads, and handle its output as unmasked. |
+| `outbound.person()` while `email` or `linkedin` is masked | `Unsupported`, before any read | Look the person up on an instance without `redact`, or leave both fields out of `fields`. |
+| `redact` listed twice | `Invalid`, when the instance is built | List it once. |
+| A layer inside returns something that is not an SDK record | `Unsupported`. Nothing is returned. | Fix the plugin that produced it. |

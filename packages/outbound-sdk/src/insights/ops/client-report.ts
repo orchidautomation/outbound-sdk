@@ -9,7 +9,7 @@ import { findAnomalies } from "./anomalies.ts";
 import type { Anomaly } from "./anomalies.ts";
 import { rankCampaigns } from "./campaign-ranking.ts";
 import type { RankedCampaign } from "./campaign-ranking.ts";
-import { readPeriods, totalOf } from "./period-comparison.ts";
+import { noted, readPeriods, totalOf } from "./period-comparison.ts";
 import type { CampaignPeriods, Comparison } from "./period-comparison.ts";
 import { forecastCampaign } from "./pipeline-forecast.ts";
 import {
@@ -321,7 +321,11 @@ export const clientReport = defineInsight({
         .toReversed(),
       bounceProblems: bounceProblems(periods.campaigns, options),
       runningOutOfLeads: await readRunways(context, periods.campaigns, options),
-      totals: totalOf(periods.campaigns, options.alpha),
+      totals: noted(
+        context,
+        "Totals",
+        totalOf(periods.campaigns, options.alpha)
+      ),
     };
 
     const leftOut = [

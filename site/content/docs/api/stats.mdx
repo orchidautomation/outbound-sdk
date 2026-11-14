@@ -1,0 +1,144 @@
+---
+title: Stats
+description: How to read counts for a workspace, a campaign, a campaign's steps or a sender, as one total or one row per day, and how the six rates are computed from those counts.
+sidebar:
+  label: Stats
+related:
+  - /docs/api/records
+  - /docs/capabilities
+  - /docs/insights
+---
+
+Stats are counts: how many were sent, opened, replied, bounced. The SDK returns counts only and computes every rate from them with one set of definitions, so a reply rate means the same thing on every vendor. A vendor's own percentages are never passed through.
+
+## Three ways in
+
+| Call | Scope |
+| --- | --- |
+| `outbound.stats(options?)` | The workspace by default, or any scope with `scope` and `scopeId` |
+| `outbound.campaign(id).stats(options?)` | That campaign, or its steps with `scope: "step"` |
+| `outbound.sender(id).stats(options?)` | That sender |
+
+All three return a `StatsResult`: `rows`, an array of [`MetricRow`](#the-counts), and [`meta`](/docs/api/results).
+
+<include meta='title="seed.ts"'>../../_examples/api-stats/seed.ts</include>
+
+<include meta='title="scopes.ts"'>../../_examples/api-stats/scopes.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/api-stats/scopes.out.txt
+</include>
+
+## Options
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `scope` | `"workspace"`, `"campaign"`, `"step"`, `"sender"` | `"workspace"` | What the counts are for. On `campaign(id).stats` only `"campaign"` (the default) and `"step"`. Not an option on `sender(id).stats`. |
+| `scopeId` | `string` | none | The campaign for the `campaign` and `step` scopes, the sender for `sender`. Only on `outbound.stats`: the handles fill it in. |
+| `from` | `YYYY-MM-DD` | none | First day, inclusive. |
+| `to` | `YYYY-MM-DD` | none | Last day, inclusive. |
+| `by` | `"total"` or `"day"` | `"total"` | One row over the range, or one row per day. |
+
+Plus the per-call options every read takes: see [retries](/docs/retries).
+
+- `from` and `to` are calendar days, not timestamps. Anything else, such as `2026-11-09T00:00:00Z`, is `Invalid`. So is a `from` after `to`, and a scope other than `workspace` without a `scopeId`.
+- With no `from` or `to`, the SDK passes no range and the adapter decides what the vendor is asked for. Pass both when the number matters.
+- `scope: "step"` returns one row per step, each with its `stepIndex`.
+- A scope with nothing to report returns no rows. An empty `rows` is not a row of zeros.
+
+## Scopes and capabilities
+
+Each scope needs a capability, and `by: "day"` needs one more. A scope the adapter cannot serve is refused with `Unsupported` before any request.
+
+| Request                   | Needs                 |
+| ------------------------- | --------------------- |
+| `scope: "workspace"`      | `stats.workspace`     |
+| `scope: "campaign"`       | `stats.campaign`      |
+| `scope: "step"`           | `stats.byStep`        |
+| `scope: "sender"`         | `stats.bySender`      |
+| `by: "day"`, on any scope | `stats.byDay` as well |
+
+### Grades
+
+A stat capability is `"exact"`, `"derived"` or `false`.
+
+| Grade | Meaning |
+| --- | --- |
+| `exact` | The vendor reports these counts for this scope, and the adapter passes them on. |
+| `derived` | The adapter computes them from other vendor data, for example by adding up daily rows. |
+| `false` | Not available. |
+
+Each row says which it was in its own `evidence` field, and `meta.evidence` is `derived` as soon as one row is not `exact`. The [adapter pages](/docs/adapters) list each vendor's grades.
+
+## The counts
+
+Every count on a `MetricRow` is a non-negative number, or `null` when the vendor does not report it. See [null is not zero](/docs/api/records#null-is-not-zero).
+
+| Field | Counts |
+| --- | --- |
+| `sent` | Messages sent: email sends, or LinkedIn messages. |
+| `delivered` | Messages delivered. |
+| `contacted` | Unique leads contacted. |
+| `opened` | Unique opens. `null` when open tracking is off. |
+| `openedTotal` | Every open, repeats included. |
+| `clicked` | Clicks. |
+| `replied` | Replies from people. Auto-replies are counted in `repliedAuto` where the vendor separates them. |
+| `repliedAuto` | Automatic replies. |
+| `positive` | Replies the vendor marked positive. |
+| `bounced` | Messages that bounced. |
+| `unsubscribed` | Unsubscribes. |
+| `connectionsSent` | LinkedIn connection requests sent. LinkedIn only. |
+| `connectionsAccepted` | LinkedIn connection requests accepted. LinkedIn only. |
+| `inmailsSent` | LinkedIn InMails sent. LinkedIn only. |
+
+The other fields say what the row is:
+
+| Field | Type | Holds |
+| --- | --- | --- |
+| `scope` | `"workspace"`, `"campaign"`, `"step"`, `"sender"` |  |
+| `scopeRef` | `string` | The ref of the campaign or sender the row is for. |
+| `date` | `YYYY-MM-DD` or `null` | The day, for a daily row. `null` for a total. |
+| `timezone` | `string` or `null` | The vendor's timezone for a daily row. A vendor's "day" is not always UTC. |
+| `stepIndex` | integer or `null` | The step, for a per-step row. |
+| `variantKey` | `string` or `null` | The variant, for a per-variant row. |
+| `contentHash` | `string` or `null` | The hash of the copy the row is for, where known. |
+| `evidence` | `"exact"`, `"derived"`, `"sampled"` | How this row was obtained. |
+| `provider`, `workspaceId`, `schemaVersion` |  | As on every [record](/docs/api/records). |
+
+What a vendor counts as an open or a reply differs in the details. Each adapter's `caveats` and its [adapter page](/docs/adapters) record what is known.
+
+## Rates
+
+`computeRates(row)` returns six rates for one row. Each is `{ value, basis }`: `value` between 0 and 1, and `basis` the count it was divided by.
+
+<include meta='title="rates.ts"'>../../_examples/api-stats/rates.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/api-stats/rates.out.txt
+</include>
+
+| Rate | Numerator | Divided by |
+| --- | --- | --- |
+| `replyRate` | `replied` | `contacted`, or `sent` when `contacted` is missing |
+| `positiveReplyRate` | `positive` | `contacted`, or `sent` |
+| `unsubscribeRate` | `unsubscribed` | `contacted`, or `sent` |
+| `openRate` | `opened` | `delivered`, or `sent` when `delivered` is missing |
+| `bounceRate` | `bounced` | `sent` |
+| `acceptanceRate` | `connectionsAccepted` | `connectionsSent` |
+
+- A rate is `{ value: null, basis: null }` when its numerator is missing, or when every base it could use is missing or 0. The sample has no LinkedIn counts, so `acceptanceRate` is `null`.
+- Read `basis` before comparing two rates. A reply rate over `contacted` and one over `sent` are different numbers for the same campaign.
+- An open rate is `null` when open tracking is off. Where it exists, mail privacy features inflate it.
+
+`METRIC_DEFINITIONS` holds a `name` and a one-sentence `description` for each rate, keyed by the same six names. Use them as labels and tooltips so a report says what its numbers mean.
+
+## Adding rows
+
+`sumCounts(rows)` adds rows of counts together. A count stays `null` only when no row reports it. `emptyCounts()` is a row with every count `null`.
+
+Unique counts (`opened`, `contacted`) are summed as they are, which over-counts a person who appears in more than one row. A total from the vendor (`by: "total"`) is the better number when the vendor has one.
+
+## Related
+
+- [Insights](/docs/insights) are computed on top of these reads: comparisons between periods, variant tests, funnels.
+- [Rate limits](/docs/rate-limits): a stats read is one or more vendor requests like any other.

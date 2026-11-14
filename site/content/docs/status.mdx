@@ -1,0 +1,62 @@
+---
+title: What is verified
+description: What has been run against a live vendor account and what has not, per adapter, with the dates. Read this before relying on a number from outbound-sdk.
+sidebar:
+  label: What is verified
+---
+
+This page is the one place that says how far each part has been checked. Other pages link here and do not restate it.
+
+## The package
+
+- **Not published.** `outbound-sdk` is not on npm, and its GitHub repository is private. See [installation](/docs/installation) for what works today.
+- **Nothing has been released.** There is no version to pin and no changelog yet.
+- **Tested offline.** The test suite runs every adapter against documented vendor payloads with personal data removed, and runs every code sample on this site (see [how the samples are run](/docs/samples)).
+
+## Adapters
+
+| Adapter | Maturity | What that means |
+| --- | --- | --- |
+| Instantly | `beta` | Its reads were run, read-only, against one live workspace on 2026-11-14. |
+| HeyReach | `beta` | Its reads were run, read-only, against one live workspace on 2026-11-14. |
+| Smartlead | `unverified` | Untested. It has never been run against a live account. It is written from Smartlead's public documentation, which contradicts itself in places, and tested offline only. Expect mappings to be wrong until someone runs the live checks with a Smartlead key. |
+| In-memory | `stable` | It has no vendor behind it. |
+
+`beta` means one workspace, once. It does not mean every plan, every account shape or every edge of the vendor's API. Both live runs fixed things the vendors' documentation got wrong or left out, so expect an `unverified` adapter to need the same. `outbound.maturity` and `outbound.caveats` report this at run time: the caveats list what each adapter assumes and has not confirmed.
+
+No adapter is `stable`. An adapter becomes `stable` once its fixtures are captured responses and the live checks pass on a schedule.
+
+## Insights
+
+Run against one live workspace each on 2026-11-14: Instantly served all 26 insights. HeyReach served 22 and refused four as `Unsupported`: `stepFunnel`, `variantTest` and `copyReuse` (its API has no per-step stats) and `settingsAudit` (its API cannot read campaign settings). No insight has been run on a live Smartlead account.
+
+## Rate limits
+
+Measured on live workspaces on 2026-11-14:
+
+- **Instantly:** 300 reads fired at once all succeeded, with no 429 and no retry (1,505 HTTP requests in 30 seconds).
+- **HeyReach:** 100 reads fired at once all succeeded, with no 429 (33 seconds). HeyReach's real burst limit, 15 requests per 2 seconds, is not in its documentation; it was read from the live API's 429 response and is now declared by the adapter.
+- **Smartlead:** not load-tested.
+- **The Redis store** that shares one budget between processes was checked by hand against a real Redis 7 server, including two workers on one budget. It has not been run in production by anyone, nor on Valkey or Upstash.
+
+See [rate limits](/docs/rate-limits).
+
+## Not verified
+
+- **Second pages on Instantly.** The live workspace was small, so for most Instantly listings only a first page was read live. Paging is tested against documented payloads.
+- **Where the live numbers come from.** The live runs were made by hand on 2026-11-14 and are not reproduced by any automated job. Treat them as one observation.
+
+- **Webhooks.** Parsing and verification are tested against each vendor's documented payloads. No parser has received a real delivery from a vendor.
+- **Smartlead, end to end.** See above.
+- **Cloudflare Workers.** The package uses web standards outside the CLI, the exporter and the fixtures plugin, but no CI job runs it on Workers.
+- **The samples on this site** run on the in-memory adapter. They prove the code runs and what the SDK does with the data given. They do not prove what a vendor's API returns.
+
+## Confirming an adapter yourself
+
+The repository has live checks that only read. They list campaigns and read one back, exercise each declared capability once, call every native read that needs no input, and check the rate budget.
+
+```sh
+LIVE_TESTS=1 INSTANTLY_API_KEY=... npm run test:live
+```
+
+They run only when `LIVE_TESTS=1` and the provider's key are set, and are never part of the normal test run.

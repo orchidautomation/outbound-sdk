@@ -1,0 +1,3 @@
+read succeeded: 2 senders
+sent 100 -> alerts: 0
+sent 200 -> alerts: 1

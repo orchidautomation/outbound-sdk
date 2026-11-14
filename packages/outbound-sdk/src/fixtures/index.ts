@@ -3,7 +3,8 @@
 // you say and nowhere else.
 //
 // List it last (innermost) when recording, so what is saved is the vendor's
-// answer and not another plugin's view of it.
+// answer and not another plugin's view of it. Listed before `identity`, the
+// person keys that plugin adds are rebuilt from the placeholders.
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -37,15 +38,25 @@ export interface FixturesOptions {
   readonly scrub?: boolean | undefined;
 }
 
-/** The file one operation is saved to. */
+export interface FixtureScope {
+  readonly provider: string;
+  readonly workspaceId: string;
+}
+
+const fileSafe = (label: string): string => label.replaceAll(/[^\w.-]+/gu, "_");
+
+/**
+ * The file one operation is saved to. The workspace is part of the name and
+ * of the hash, so two workspaces of one provider never share a file.
+ */
 export const fixtureFile = (
   dir: string,
-  provider: string,
+  scope: FixtureScope,
   operation: Operation
 ): string =>
   path.join(
     dir,
-    `${provider}.${operation.kind}.${stableId(JSON.stringify(operation)).slice(0, 12)}.json`
+    `${fileSafe(scope.provider)}.${fileSafe(scope.workspaceId)}.${operation.kind}.${stableId(scope.workspaceId, JSON.stringify(operation)).slice(0, 12)}.json`
   );
 
 const load = async (file: string): Promise<OperationOutput | undefined> => {
@@ -83,7 +94,7 @@ export const fixtures = (options: FixturesOptions): OutboundPlugin => {
   return {
     name: "fixtures",
     wrap: async (operation, next, info) => {
-      const file = fixtureFile(options.dir, info.provider, operation);
+      const file = fixtureFile(options.dir, info, operation);
       const saved = mode === "record" ? undefined : await load(file);
 
       if (saved !== undefined) {

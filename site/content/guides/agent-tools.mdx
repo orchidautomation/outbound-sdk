@@ -1,0 +1,151 @@
+---
+title: Give your agent tools that answer questions about campaigns
+description: A set of read-only tools your own agent can call, in the shapes the OpenAI SDK, the AI SDK and the Claude Agent SDK take, with recorded tool calls and the failures a model will see.
+sidebar:
+  label: Tools for your agent
+related:
+  - /docs/tools
+  - /docs/tools/openai
+  - /docs/tools/ai-sdk
+  - /docs/tools/claude-agent
+  - /guides/mcp-server
+  - /guides/reply-text-for-llm
+---
+
+You are building an agent and want it to answer "which step gets the replies?" or "which campaign is behind?" from live data. `outbound-sdk/tools` gives it tools shaped like those questions, not like vendor endpoints. Each tool has a description written for a model, its input as JSON Schema, and a function that reads, arranges and returns compact JSON.
+
+The SDK calls no model. Your model decides which tool to call and what the answer means. A tool only reads: there is no tool that sends, pauses or edits. This guide lists the tools, records real calls to them, and shows the wiring for three agent SDKs. The AI SDK wiring was run once against a real model, and that transcript is shown; the other two were not.
+
+<include>../_snippets/status.mdx</include>
+
+## Before you start
+
+- Node 22 or later.
+- The code runs on the in-memory adapter, so it needs no vendor key and no model key. Each sample is a file the test suite runs; the output shown is what it printed.
+- `outbound-sdk/tools` needs no other package. `outbound-sdk/tools/ai-sdk` needs `ai` (version 6 or 7) and `outbound-sdk/tools/claude-agent` needs `@anthropic-ai/claude-agent-sdk`. Both are optional peers.
+- For real data: an Instantly, Smartlead or HeyReach API key. A read-only key is enough.
+
+## What you get
+
+A model's function call is a tool name and an arguments string. `handle` takes both and returns the string to send back. These are two real calls on seeded data.
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/agent-tools/calls.out.txt
+</include>
+
+Every result has the same four parts:
+
+- **`ok`** is `true` or `false`. A tool never throws.
+- **`data`** is the answer. A count the vendor does not report is `null`, never 0, and a rate built on it is `null` too.
+- **`meta.evidence`** is `exact`, `sampled` or `derived`, so the model can say how far to trust a number. `meta.requests` is the vendor requests the call made.
+- **`next`** suggests the tool to call after this one.
+
+In the seed, step 2 got 10 replies from 210 sends and step 1 got 4 from 140, so `winning_steps` lists step index 1 first at 0.0476. No `contacted` count is seeded per step, so the rate is on `sent` and `reply_rate_basis` says so.
+
+## Build the instance and choose the tools
+
+<include meta='title="outbound.ts"'>
+  ../_examples/agent-tools/outbound.ts
+</include>
+
+`createTools` returns the built-in tools the instance can serve. A tool that needs a capability the adapter lacks is left out. Two of the twelve need a plugin and are left out without it: `compare_clients` needs `clients`, `cross_channel_lead` needs `identity`. `vendor_read` is offered only when the adapter has vendor reads of its own and no plugin turned them off, so it is never in the list on the in-memory adapter.
+
+`insightTools` from `outbound-sdk/insights` turns the 26 [insights](/docs/insights) into tools of the same form. Pass them as `extra`. Offering all of them costs tokens on every model call, so name the ones you want with `only`.
+
+<include meta='title="tools.ts"'>../_examples/agent-tools/tools.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/agent-tools/tools.out.txt
+</include>
+
+## Run a call from the model
+
+`openaiTools` returns the definitions in the two shapes the OpenAI SDK takes, and `handle`. It imports nothing from `openai`.
+
+<include meta='title="calls.ts"'>../_examples/agent-tools/calls.ts</include>
+
+Your loop is: send `tools` with the request; for each function call the model returns, pass its name and its `arguments` string to `handle`; send the returned string back as that call's output; repeat until the model answers in text. That loop is not shown as a sample here because the `openai` package is not a dependency of this repository, so a sample could not be type-checked or run. An empty arguments string is treated as no arguments.
+
+## Wire it to the AI SDK
+
+`aiSdkTools` returns one AI SDK tool per outbound tool, each with `execute`, so the AI SDK runs the calls and the loop for you.
+
+<include meta='title="ai-sdk.ts"'>../_examples/agent-tools/ai-sdk.ts</include>
+
+This one was run against a real model on 2026-11-14: `deepseek/deepseek-v4-flash` through the Vercel AI Gateway, on this guide's seeded in-memory data. The model called `campaign_ranking`, one of the insight tools, and answered from its result:
+
+<include lang="json" meta='title="Transcript of one live run"'>
+  ../_examples/agent-tools/live-run.json
+</include>
+
+A model does not answer the same way twice, so this is an example run and not an output the test suite reproduces. `npm run site:live` in the repository repeats it with an AI Gateway credential.
+
+## Wire it to the Claude Agent SDK
+
+`claudeAgentTools` returns the tools as an in-process MCP server, with the list of names to allow. Each tool is annotated as read-only. This file is type-checked and loaded by the test suite; the function in it was not run against a model.
+
+<include meta='title="claude-agent.ts"'>
+  ../_examples/agent-tools/claude-agent.ts
+</include>
+
+For a client that starts a command instead of importing code, such as Claude Code or Cursor, use the [local MCP server](/guides/mcp-server). It serves the same tools.
+
+## Try it without a key
+
+<include meta='title="seed.ts"'>../_examples/agent-tools/seed.ts</include>
+
+Every sample on this page reads this seed through `outbound.ts`.
+
+## Point it at your vendor
+
+In `outbound.ts`, replace `memory({ ... })` with `instantly()`, `smartlead()` or `heyreach()`. Each reads its key from the environment. Nothing else changes. On a real vendor, also set `maxRequests` on `createOutbound`: a model chooses how often to call a tool, and the cap is what stops one question from spending your vendor quota.
+
+## What each vendor can serve
+
+The same five calls on the in-memory adapter limited to what each vendor's adapter declares, with the `identity` plugin on. This shows which calls a vendor's adapter would refuse. It does not show what that vendor's API returns.
+
+<include meta='title="vendors.ts"'>../_examples/agent-tools/vendors.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/agent-tools/vendors.out.txt
+</include>
+
+HeyReach reports no per-step stats and no readable campaign settings, so `winning_steps`, `campaign_setup` and four insights are not offered there. It reports no reply categories either: `reply_samples` is offered, because it works without the filter, and the call that asks for a category comes back `Unsupported`. Its real adapter also offers `vendor_read`, as do the other two; the in-memory stand-in has no vendor reads, so the counts above are one short of a real instance.
+
+## What it costs in vendor requests
+
+A tool spends vendor requests only when called. The descriptions tell the model what a call costs, and `meta.requests` reports what it spent.
+
+- `campaign_overview`: the campaign list, then one stats read per campaign, up to `limit` (default 10, at most 50).
+- `deliverability_check`: one or more requests per sender, up to `limit` (default 10, at most 25).
+- `compare_clients`: one request per campaign.
+- `vendor_read`: one request per call, none to list the reads on offer.
+- An insight tool reports its own cost in its description, for example `campaign_ranking` reads one stats request per campaign up to `max_campaigns`.
+
+## When it cannot answer
+
+<include meta='title="failures.ts"'>
+  ../_examples/agent-tools/failures.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/agent-tools/failures.out.txt
+</include>
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| The model named a tool that does not exist | `ok: false`, `Invalid`, "Unknown tool" | Send it back. The `next` hint tells the model to use a listed tool. |
+| The arguments string is not JSON | `ok: false`, `Invalid` | Send it back. |
+| A value the schema refuses | `ok: false`, `Invalid`, naming the field | Send it back. The model can correct the value. |
+| An argument the tool does not take | `ok: false`, `Invalid`, listing the inputs | Send it back. It is never dropped silently. |
+| A record that does not exist | `ok: false`, `NotFound` | Send it back. |
+| The adapter cannot serve the read | `ok: false`, `Unsupported` | Send it back. `next` tells the model to try another tool. |
+| The vendor rejects the key, or rate limits past your budget | `ok: false` with `Unauthorized` or `RateLimited` | Fix the key, or raise `maxRequests` or `deadline`. |
+
+## Limits
+
+- One live run with one model is shown. Whether another model picks the right tool is not tested by this repository. The OpenAI and Claude Agent SDK wiring was never run against a model.
+- Built-in tools and insight tools are both filtered by what the adapter declares. A tool that is offered can still be refused for a read only its input asks for, such as a reply category on HeyReach.
+- `cross_channel_lead` returns message text only with `include_bodies: true`, wrapped and cut like reply text. Its timeline also holds your own outgoing messages.
+- Reply text is left out unless asked for, cut to 500 characters, and marked untrusted. That marking is a convention a model can ignore. See [hand reply text to a model](/guides/reply-text-for-llm).
+- Tool definitions are sent with `strict: false` in the OpenAI shape.

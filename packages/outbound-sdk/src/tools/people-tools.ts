@@ -38,7 +38,7 @@ export const leadRunway: ToolDefinition<z.infer<typeof runwayInput>> = {
     "How many days until a campaign runs out of leads to contact. It counts the campaign's leads that are still active, and divides by the number of new people contacted per day over the lookback window. It is an estimate: it counts leads by listing them (up to max_leads), and a lead already in sequence still counts as active.",
   inputSchema: runwayInput,
   name: "lead_runway",
-  needs: [],
+  needs: ["leads.byCampaign", "stats.campaign", "stats.byDay"],
   run: async (outbound, input) => {
     const campaign = outbound.campaign(input.campaign);
     const now = Date.now();
@@ -99,8 +99,14 @@ const hasClients = (
 ): outbound is OutboundApi & WithClients => "clients" in outbound;
 
 const compareInput = z.object({
-  from: day.optional().describe("First day, YYYY-MM-DD"),
-  to: day.optional().describe("Last day, YYYY-MM-DD"),
+  from: day
+    .optional()
+    .describe(
+      "First day, YYYY-MM-DD. Leave out for the whole history. Do not guess the date: every result gives today as meta.today"
+    ),
+  to: day
+    .optional()
+    .describe("Last day, YYYY-MM-DD. Leave out for up to today"),
 });
 
 export const compareClients: ToolDefinition<z.infer<typeof compareInput>> = {
@@ -108,7 +114,7 @@ export const compareClients: ToolDefinition<z.infer<typeof compareInput>> = {
     "The same counts for every client, side by side. Each client's numbers are its campaigns added together, so unique counts can count one person twice. Costs one vendor request per campaign. Needs the clients plugin.",
   inputSchema: compareInput,
   name: "compare_clients",
-  needs: ["clients"],
+  needs: ["clients", "stats.campaign"],
   run: async (outbound, input) => {
     if (!hasClients(outbound)) {
       throw new OutboundError(
@@ -161,7 +167,10 @@ interface PersonResult {
 }
 
 interface WithPerson {
-  readonly person: (identifier: string) => Promise<PersonResult>;
+  readonly person: (
+    identifier: string,
+    options?: { readonly include?: readonly "body"[] | undefined }
+  ) => Promise<PersonResult>;
 }
 
 const hasPerson = (
@@ -193,7 +202,9 @@ export const crossChannelLead: ToolDefinition<z.infer<typeof personInput>> = {
       );
     }
 
-    const person = await outbound.person(input.person);
+    const person = await outbound.person(input.person, {
+      include: input.include_bodies ? ["body"] : undefined,
+    });
 
     const timeline: Json[] = person.timeline.map((message) => ({
       body: input.include_bodies ? untrusted(message.bodyText) : null,

@@ -1,0 +1,3 @@
+acme: used 6 of 3000 a minute, 50 a second allowed
+globex: used 3 of 3000 a minute, 50 a second allowed
+keys used: [ 'Bearer example-key-acme', 'Bearer example-key-globex' ]

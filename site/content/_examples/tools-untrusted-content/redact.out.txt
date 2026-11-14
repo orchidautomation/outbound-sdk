@@ -1,0 +1,14 @@
+true {
+  evidence: 'exact',
+  provider: 'memory',
+  requests: 0,
+  today: '2026-11-14'
+}
+{
+  "error": {
+    "code": "Unsupported",
+    "message": "Reading reply bodies is not available: the redact plugin turned it off (messages.body)"
+  },
+  "next": "This tool is not available with the current adapter or plugins. Try another tool.",
+  "ok": false
+}

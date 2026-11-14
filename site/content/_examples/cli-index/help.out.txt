@@ -1,0 +1,32 @@
+$ outbound help
+outbound: read-only access to outbound sending tools
+
+Usage: outbound <command> [options]
+
+  providers
+  blocklist [--limit N]
+  campaign <id> [--stats] [--sequence] [--subsequences] [--settings] [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--by day|total]
+  campaigns [--status active|paused|draft|completed|archived] [--limit N]
+  capabilities
+  health <sender id>
+  insight [name] [--input JSON] [--card | --slack]  computed answers; no name lists them
+  leads [--campaign ID | --list ID] [--limit N]
+  lists [--limit N]
+  limits
+  native [name] [--input JSON]   the vendor's own reads; no name lists them
+  replies [--campaign ID] [--category positive|negative|neutral|ooo|...] [--since ISO] [--limit N] [--bodies]
+  senders [--limit N]
+  stats [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--by day|total]
+  tags [--limit N]
+  thread <id> [--bodies]
+  tool <name> [--input JSON] [--card | --slack]
+  tools
+  webhooks [--campaign ID] [--limit N]
+  mcp                      start a local MCP server on stdio
+
+Options:
+  --provider <id>          the adapter to use (default: OUTBOUND_SDK_PROVIDER)
+  --compact                print JSON on one line
+
+Each adapter reads its own key from the environment, for example INSTANTLY_API_KEY.
+

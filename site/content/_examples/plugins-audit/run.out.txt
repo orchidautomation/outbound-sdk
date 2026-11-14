@@ -1,0 +1,5 @@
+{"attempt":1,"durationMs":0,"lane":"default","method":"GET","provider":"instantly","status":200,"url":"https://api.instantly.ai/api/v2/accounts?limit=100","at":"2026-11-14T12:00:00.000Z","type":"request"}
+{"at":"2026-11-14T12:00:00.000Z","durationMs":0,"error":null,"operation":"senders.list","provider":"instantly","records":2,"requests":1,"throttledMs":0,"type":"call","workspaceId":"acme"}
+{"attempt":1,"durationMs":0,"lane":"default","method":"GET","provider":"instantly","status":200,"url":"https://api.instantly.ai/api/v2/accounts?limit=100","at":"2026-11-14T12:00:00.000Z","type":"request"}
+{"at":"2026-11-14T12:00:00.000Z","durationMs":0,"error":null,"operation":"senders.list","provider":"instantly","records":2,"requests":1,"throttledMs":0,"type":"call","workspaceId":"acme"}
+{"at":"2026-11-14T12:00:00.000Z","durationMs":0,"error":"RateLimited","operation":"senders.list","provider":"instantly","records":null,"requests":0,"throttledMs":0,"type":"call","workspaceId":"acme"}

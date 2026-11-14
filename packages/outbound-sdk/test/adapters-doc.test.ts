@@ -1,5 +1,5 @@
-// Checks the capability table in docs/adapters.md against what each adapter
-// declares, so the table cannot drift from the code.
+// Checks the capability table in site/content/docs/adapters/index.mdx against
+// what each adapter declares, so the table cannot drift from the code.
 
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -11,7 +11,12 @@ import { CAPABILITY_KEYS, resolveCapabilities } from "../src/index.ts";
 import { instantly } from "../src/instantly/index.ts";
 import { smartlead } from "../src/smartlead/index.ts";
 
-const FILE = path.resolve(import.meta.dirname, "../../../docs/adapters.md");
+const FILE = path.resolve(
+  import.meta.dirname,
+  "../../../site/content/docs/adapters/index.mdx"
+);
+
+const NAME = "site/content/docs/adapters/index.mdx";
 
 const COLUMNS = [
   resolveCapabilities(instantly({ apiKey: "test-key" }).capabilities),
@@ -36,7 +41,7 @@ const expected = (): string[] =>
 const documented = (): string[] => {
   const lines = readFileSync(FILE, "utf-8").split("\n");
   const header = lines.findIndex((line) => /^\|\s*Capability\s*\|/u.test(line));
-  assert.notEqual(header, -1, "docs/adapters.md has a Capability table");
+  assert.notEqual(header, -1, `${NAME} has a Capability table`);
   const rows: string[] = [];
 
   for (const line of lines.slice(header + 2)) {
@@ -56,7 +61,7 @@ const documented = (): string[] => {
   return rows;
 };
 
-test("the capability table in docs/adapters.md matches what each adapter declares", () => {
+test(`the capability table in ${NAME} matches what each adapter declares`, () => {
   assert.deepEqual(
     documented(),
     expected(),

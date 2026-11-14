@@ -1,0 +1,11 @@
+350 sent, 300 contacted
+
+acceptanceRate: null of null
+bounceRate: 1.7% of sent
+openRate: 45.9% of delivered
+positiveReplyRate: 2.0% of contacted
+replyRate: 5.0% of contacted
+unsubscribeRate: 0.3% of contacted
+
+Reply rate:
+Replies from people, excluding auto-replies where the vendor separates them, divided by unique leads contacted (or messages sent when contacted is unknown).

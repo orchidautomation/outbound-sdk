@@ -1,0 +1,4 @@
+instantly: ok, 5 rows
+smartlead: ok, 5 rows
+heyreach: Unsupported: Listing leads is not available: the heyreach adapter does not support it (leads.list)
+heyreach: one campaign, 3 rows

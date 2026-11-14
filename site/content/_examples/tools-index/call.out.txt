@@ -1,0 +1,60 @@
+{
+  "data": {
+    "campaigns": [
+      {
+        "campaign": "memory:acme:cmp_founders",
+        "channel": "email",
+        "name": "Q4 SaaS founders",
+        "metrics": {
+          "bounce_rate": 0.0111,
+          "bounced": 1,
+          "connections_accepted": null,
+          "connections_sent": null,
+          "contacted": 90,
+          "opened": 52,
+          "positive": 3,
+          "positive_reply_rate": 0.0333,
+          "replied": 7,
+          "reply_rate": 0.0778,
+          "reply_rate_basis": "contacted",
+          "sent": 90
+        },
+        "status": "active"
+      }
+    ]
+  },
+  "meta": {
+    "evidence": "exact",
+    "provider": "memory",
+    "requests": 1,
+    "today": "2026-11-14"
+  },
+  "next": "Use campaign_trend for one campaign over time, or winning_steps to see which step drives replies.",
+  "ok": true
+}
+{
+  "data": {
+    "campaign": "cmp_founders",
+    "metric": "replied",
+    "points": [
+      {
+        "date": "2026-10-05",
+        "timezone": "UTC",
+        "value": 4
+      },
+      {
+        "date": "2026-10-06",
+        "timezone": "UTC",
+        "value": 3
+      }
+    ]
+  },
+  "meta": {
+    "evidence": "exact",
+    "provider": "memory",
+    "requests": 0,
+    "today": "2026-11-14"
+  },
+  "next": "Use winning_steps to see which step or variant explains a change.",
+  "ok": true
+}

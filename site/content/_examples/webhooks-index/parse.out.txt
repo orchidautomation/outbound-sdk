@@ -1,0 +1,23 @@
+{
+  "campaignRef": "instantly:client-a:01a1d77b-a332-7a01-8e03-6f1a3f4d7599",
+  "data": {
+    "campaignName": "My First Campaign",
+    "isFirst": true,
+    "leadEmail": "person1@example.com",
+    "stepIndex": 0,
+    "subject": "Re: Hello Alex",
+    "text": "Thanks for reaching out, let's talk next week.",
+    "variantKey": "A",
+    "vendorEvent": "reply_received"
+  },
+  "id": "ab72ea7bb4fd8b9ba91a3a2b3e593a10",
+  "leadRef": null,
+  "messageRef": "instantly:client-a:01a1d77b-a37a-7316-9165-874e4863045c",
+  "occurredAt": "2026-11-14T00:36:06.650Z",
+  "provider": "instantly",
+  "raw": "(the original body)",
+  "schemaVersion": 1,
+  "senderRef": "instantly:client-a:person2@example.com",
+  "type": "reply.received",
+  "workspaceId": "client-a"
+}

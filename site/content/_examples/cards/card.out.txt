@@ -1,0 +1,112 @@
+Sender health: 🟢 No sender needs attention (2 checked).
+[
+  {
+    "text": {
+      "emoji": true,
+      "text": "Sender health",
+      "type": "plain_text"
+    },
+    "type": "header"
+  },
+  {
+    "text": {
+      "text": "*🟢 No sender needs attention (2 checked).*",
+      "type": "mrkdwn"
+    },
+    "type": "section"
+  },
+  {
+    "fields": [
+      {
+        "text": "*Senders*\n2",
+        "type": "mrkdwn"
+      },
+      {
+        "text": "*Not active*\n0",
+        "type": "mrkdwn"
+      }
+    ],
+    "type": "section"
+  },
+  {
+    "caption": "Sender health",
+    "rows": [
+      [
+        {
+          "text": "Sender",
+          "type": "raw_text"
+        },
+        {
+          "text": "Kind",
+          "type": "raw_text"
+        },
+        {
+          "text": "Status",
+          "type": "raw_text"
+        },
+        {
+          "text": "Daily limit",
+          "type": "raw_text"
+        },
+        {
+          "text": "Warmup",
+          "type": "raw_text"
+        }
+      ],
+      [
+        {
+          "text": "memory:acme:mbx_1",
+          "type": "raw_text"
+        },
+        {
+          "text": "mailbox",
+          "type": "raw_text"
+        },
+        {
+          "text": "active",
+          "type": "raw_text"
+        },
+        {
+          "text": "40",
+          "type": "raw_text"
+        },
+        {
+          "text": "96",
+          "type": "raw_text"
+        }
+      ],
+      [
+        {
+          "text": "memory:acme:mbx_2",
+          "type": "raw_text"
+        },
+        {
+          "text": "mailbox",
+          "type": "raw_text"
+        },
+        {
+          "text": "active",
+          "type": "raw_text"
+        },
+        {
+          "text": "40",
+          "type": "raw_text"
+        },
+        {
+          "text": "88",
+          "type": "raw_text"
+        }
+      ]
+    ],
+    "type": "data_table"
+  },
+  {
+    "elements": [
+      {
+        "text": "exact · memory · 0 requests",
+        "type": "mrkdwn"
+      }
+    ],
+    "type": "context"
+  }
+]

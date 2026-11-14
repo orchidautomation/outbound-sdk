@@ -1,0 +1,115 @@
+---
+title: Pagination
+description: Read one page with a cursor or walk every page with listAll, cap a walk with max, and resume a walk after a crash from a saved cursor without skipping a record.
+sidebar:
+  label: Pagination
+related:
+  - /docs/api/collections
+  - /docs/api/results
+  - /guides/sync-to-database
+---
+
+Vendors page in different ways: a cursor, an offset, a page number. The SDK shows you one: an opaque `cursor` string. `list` reads one page. `listAll` reads all of them, one at a time, under the [rate budget](/docs/rate-limits).
+
+The samples on this page read five leads from an adapter that serves two per page:
+
+<include meta='title="seed.ts"'>../../_examples/api-pagination/seed.ts</include>
+
+## One page at a time
+
+<include meta='title="pages.ts"'>
+  ../../_examples/api-pagination/pages.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/api-pagination/pages.out.txt
+</include>
+
+`list` returns a `PageResult`:
+
+| Field | Holds |
+| --- | --- |
+| `items` | The records on this page. |
+| `cursor` | Pass it back to the same `list` or `listAll` for the next page. `undefined` on the last page. |
+| `complete` | `true` on the last page. |
+| `meta` | See [results](/docs/api/results). |
+
+### Cursors
+
+- **A cursor is opaque.** It is a string to store and pass back. Its contents can change between versions of the SDK.
+- **A cursor belongs to one listing.** It records the provider, the workspace and the listing it came from. Passing it to another listing, another workspace or another vendor is `Invalid`, as the output shows.
+- **Keep the filters the same.** A cursor says where the vendor was in a listing. It does not record the filters. Send the same filters with it, or the vendor continues a different listing from the same position.
+- **A cursor is the vendor's position, wrapped.** How long a position stays valid is up to the vendor. The SDK cannot extend it.
+
+### `limit`
+
+`limit` is a page size hint. An adapter serves at most what its vendor allows, so `limit: 500` above returned two records from an adapter whose page size is two. `limit: 1` returned one.
+
+`limit` must be a positive integer. Anything else is `Invalid` before any request. It is the size of one page and not a cap on a walk: for that, use `max`.
+
+A page can also be shorter than `limit` with more pages to come. That happens when the SDK filters a page for you (a [`client` filter](/docs/capabilities#filter-grades)) or a vendor returns a short page. Go by `cursor` or `complete`, never by `items.length`.
+
+## Every page
+
+<include meta='title="list-all.ts"'>
+  ../../_examples/api-pagination/list-all.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/api-pagination/list-all.out.txt
+</include>
+
+`listAll(options?)` returns a `ListAll`. Calling it sends nothing. Pages are fetched when you iterate, one request for a page only once the loop has used up the page before.
+
+| Member | Holds |
+| --- | --- |
+| `for await (const item of walk)` | Each record in turn. |
+| `walk.toArray()` | Every record in one array. |
+| `walk.cursor` | The cursor after the last page that was fully handed out. `undefined` before that, and at the end. |
+| `walk.meta` | The `meta` of the last page fetched. `undefined` before the first page. |
+| `walk.truncated` | `true` once `max` stopped the walk while more records existed. |
+
+`listAll` takes the same filters as `list`, plus:
+
+| Option | Meaning |
+| --- | --- |
+| `limit` | The size of each page, as on `list`. |
+| `cursor` | Where to start: a cursor from an earlier `list` or walk of the same listing. |
+| `max` | Stop after this many records. |
+| `timeout`, `retries`, `deadline`, `maxRequests`, `signal` | The [per-call options](/docs/retries). They cover the whole walk: `maxRequests: 20` is twenty requests for all the pages together, and `deadline` runs from the first page. |
+
+### `max` and `truncated`
+
+`max: 3` above stopped after three records, and `truncated` says two were left. With `max: 5` on five records nothing was left, so `truncated` is `false`. When the cap falls exactly on the end of a page and the vendor has more pages, `truncated` is `true` as well.
+
+`toArray()` holds every record in memory at once. On a listing that can be large, iterate, or set `max` and check `truncated`.
+
+### Records that move between pages
+
+A listing can shift while you walk it: a record is added, and one you already saw slides onto the next page. `listAll` drops a record it has already handed out in the same walk, by its `ref`. It cannot show you a record that slid backwards past the page you are on. A walk is a read of a moving list, not a snapshot.
+
+## Resume after a crash
+
+`walk.cursor` moves only after a page has been fully handed out. Save it as you go, and a new process can start from it.
+
+<include meta='title="resume.ts"'>
+  ../../_examples/api-pagination/resume.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/api-pagination/resume.out.txt
+</include>
+
+The first run handled `lead_3` and then died on `lead_4`, part way through the second page. The saved cursor points at the start of that page, so the second run reads the whole page again: `lead_3` is delivered twice.
+
+That is at-least-once delivery. A walk resumed from a saved cursor never skips a record, and it repeats the records of the page it was reading. Make the work you do per record safe to repeat: write to your database with an upsert keyed on `ref`.
+
+- Before the first page is finished, `walk.cursor` is `undefined`. Resuming from `undefined` starts at the beginning, which is correct.
+- After the last page, `walk.cursor` is `undefined` again. Record that the walk finished separately, or a finished walk and one that never started look the same.
+- The duplicate filter covers one walk. A resumed walk is a new one and does not know what the old one handed out.
+
+The [sync](/docs/plugins/sync) plugin does this bookkeeping for you with a store you supply.
+
+## What a walk costs
+
+Each page is at least one vendor request, and some adapters need more per page. `outbound.estimate({ action: "leads.list", records: 2500 })` returns the number from what the adapter declares, without sending anything: see the [overview](/docs/api#methods). `walk.meta.requests` is what the walk has spent so far.

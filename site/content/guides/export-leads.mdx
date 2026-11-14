@@ -1,0 +1,156 @@
+---
+title: Export every lead or reply to CSV, JSON Lines or your own format
+description: A function that streams every lead to a CSV file, replies to JSON Lines, and any listing to a writer of your own, plus a walk you can resume when a long export dies part-way.
+sidebar:
+  label: Export leads to a file
+related:
+  - /docs/plugins/exporter
+  - /docs/plugins/redact
+  - /docs/api/pagination
+  - /guides/sync-to-database
+---
+
+Someone asks for "all the leads in a spreadsheet". The `exporter` plugin adds `outbound.export(listing, { to })`: it walks a listing page by page under the rate budget and writes each record as it arrives, so a large export never sits in memory. It writes `.csv` and `.jsonl` itself. For any other format you pass a writer, and the package adds no dependency for it.
+
+The exporter opens its file fresh on every call and takes no cursor. It cannot continue a file it started earlier. This guide shows the plain export first, then a walk of your own that can resume.
+
+<include>../_snippets/status.mdx</include>
+
+## Before you start
+
+- Node 22 or later.
+- The code below runs on the in-memory adapter, so it needs no vendor key. Each sample on this page is a file in the repository that the test suite runs; the output shown is what it printed. The samples write under the system's temporary folder and print the file contents.
+- For real data: an Instantly, Smartlead or HeyReach API key. A read-only key is enough. No method of the SDK writes to a vendor.
+
+<Callout type="warning" title="An export is personal data">
+  A lead export holds names, email addresses and employers, and a reply export
+  can hold what people wrote. The file leaves every control the vendor had on
+  it. Export only the columns you need, and see [masking](#mask-personal-data)
+  below before sending a file to anyone.
+</Callout>
+
+## What you get
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/export-leads/run.out.txt
+</include>
+
+## Write the export
+
+`outbound.export` takes anything you can iterate with `for await`, which is what every `listAll()` returns.
+
+<include meta='title="export.ts"'>../_examples/export-leads/export.ts</include>
+
+- **The extension picks the format.** `.csv` gets a header row and the usual CSV quoting: a value with a comma, a quote or a line break is quoted, and quotes are doubled. `.jsonl` is one JSON object per line. Anything else is refused.
+- **Name the columns.** Without `columns`, they are the fields of the first record, minus `raw`. That is every field the record has, as the reply export above shows. A missing value is an empty cell in CSV and `null` in JSON Lines.
+- **`raw` is left out** unless you pass `includeRaw: true`. It is the vendor's whole payload and holds everything the normalized fields were taken from.
+- **An object or array in a CSV cell** (a lead's `custom` fields, its `tags`) is written as JSON text.
+
+The result is `rows` and `columns`. It says nothing about whether the listing was complete: see [the cap](#when-it-cannot-answer).
+
+## Try it without a key
+
+<include meta='title="seed.ts"'>../_examples/export-leads/seed.ts</include>
+
+<include meta='title="run.ts"'>../_examples/export-leads/run.ts</include>
+
+That is the script that printed the two files above.
+
+## Point it at your vendor
+
+Swap the adapter. Nothing else changes.
+
+<include meta='title="outbound.ts"'>
+  ../_examples/export-leads/production.ts
+</include>
+
+## Mask personal data
+
+List `redact` before `exporter`. It is then the outermost plugin, and every record is masked before the exporter sees it. With `strategy: "hash"` the same value always becomes the same token, so rows can still be counted and joined without the file holding an address.
+
+<include meta='title="redacted.ts"'>
+  ../_examples/export-leads/redacted.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/export-leads/redacted.out.txt
+</include>
+
+Refs, campaign and status are untouched. The last two rows share a company and so share a token. `redact` always drops `raw`, whatever `includeRaw` says.
+
+## Another format through a writer
+
+A `RowWriter` is two functions: `write(row)` and `close()`. This one writes gzipped JSON Lines with Node's own `zlib`. A Parquet or DuckDB writer has the same shape, with that library's calls inside.
+
+<include meta='title="gzip-writer.ts"'>
+  ../_examples/export-leads/gzip-writer.ts
+</include>
+
+<include meta='title="writer.ts"'>../_examples/export-leads/writer.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/export-leads/writer.out.txt
+</include>
+
+`columns` and `includeRaw` apply to a writer as they do to a file: each row it is handed holds exactly the export's columns, and `raw` only when you asked for it. `close()` is called once, also when the listing fails or is empty, so a writer can release its file.
+
+## Resume a long export yourself
+
+The exporter cannot resume. It opens the file for writing, which empties it, and it has no cursor option of its own. For an export long enough to be interrupted, walk the listing yourself: `listAll()` exposes a `cursor` that moves each time a whole page has been handed out, and accepts one to start from.
+
+<include meta='title="resumable.ts"'>
+  ../_examples/export-leads/resumable.ts
+</include>
+
+<include meta='title="resume.ts"'>../_examples/export-leads/resume.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/export-leads/resume.out.txt
+</include>
+
+The first attempt died in the middle of page two. The saved cursor points at the start of page two, so the second attempt reads that page again and the one row already in the file is skipped. This is at-least-once delivery: the page being written when the run died is always replayed, so the writer must drop what it already has. Here that is a set of the refs in the file. For a file too large to read back, keep the refs of the last page beside the cursor.
+
+Keep the cursor somewhere that survives the crash (a row in a table, a file next to the export). A cursor belongs to the listing that issued it: the same collection, the same adapter and workspace.
+
+## What each vendor can serve
+
+The same export, run on the in-memory adapter limited to what each vendor's adapter declares. This shows which calls a vendor's adapter would refuse. It does not show what that vendor's API returns.
+
+<include meta='title="vendors.ts"'>
+  ../_examples/export-leads/vendors.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/export-leads/vendors.out.txt
+</include>
+
+HeyReach is refused because it has no list of every lead: leads exist only inside a campaign or a saved list. Export `outbound.campaign(id).leads.listAll()` once per campaign, as the fallback above does for one. A person in two campaigns is then two rows.
+
+## What it costs in vendor requests
+
+An export costs exactly what the listing costs: one walk of every page. `outbound.estimate({ action: "leads.list", records })` gives the expected request count where the adapter declares a cost. To spend less, pass filters to the listing (`campaignId`, `since`) and `max`.
+
+## When it cannot answer
+
+<include meta='title="failures.ts"'>
+  ../_examples/export-leads/failures.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/export-leads/failures.out.txt
+</include>
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| The file is not `.csv` or `.jsonl` | `Invalid`, before any request | Use one of the two, or pass a writer. |
+| The vendor failed part-way | The listing's error, after its own retries. The file holds the rows written before it. | Do not use the partial file. Write to a temporary name and rename on success, or use the resumable walk. |
+| `max` cut the listing short | A normal result. `rows` is the capped count. | Keep the listing in a variable and read its `truncated` after the export. |
+| The listing is empty | A file with a header and no rows | Pass `columns`. Without them an empty listing has no first record to take them from, so there is no header and the file is empty. |
+| The adapter cannot list the collection | `Unsupported`, before any request | Export per campaign, as in the vendor run above. |
+
+## Limits
+
+- No resume, no append: every `export()` call starts the file again.
+- Columns are fixed by the first record or by `columns`. A field that only later records have is not added.
+- A reply or message has no body unless the listing asked for it with `include: ["body"]`, which can cost extra requests per record on some vendors.
+- The exporter writes what the listing yields. On an `unverified` adapter, compare a few rows with the vendor's own app before sending the file on.

@@ -1,0 +1,160 @@
+---
+title: Hand reply text to a model with people's details masked and the text marked untrusted
+description: Replies read with the sender's name, address and company masked or hashed, and the reply text cut short and wrapped as untrusted content. Plus exactly what that does and does not protect against.
+sidebar:
+  label: Reply text for a model
+related:
+  - /docs/plugins/redact
+  - /docs/tools/untrusted-content
+  - /guides/agent-tools
+  - /guides/mcp-server
+---
+
+You want a model to read what prospects wrote back: to summarise objections, or to draft a note for a rep. Two things are in the way. The records carry personal data you may not want in a prompt. And the text was written by a stranger, who can address your model directly.
+
+The SDK does two separate jobs here, and neither is a guarantee:
+
+- **The `redact` plugin masks fields.** Email, name, company, LinkedIn URL, custom fields, subject and body are replaced before a record leaves the instance. It does not look inside text.
+- **The tools mark reply text.** Text is left out unless asked for, cut to 500 characters, and wrapped in an object that says it is untrusted. That is a label. It does not stop prompt injection, and a model may ignore it.
+
+The SDK calls no model and does not inspect, classify or clean reply text.
+
+<include>../_snippets/status.mdx</include>
+
+## Before you start
+
+- Node 22 or later.
+- The code runs on the in-memory adapter, so it needs no key. Each sample is a file the test suite runs; the output shown is what it printed.
+- For real data: an Instantly, Smartlead or HeyReach API key. A read-only key is enough.
+
+## What you get
+
+`reply_samples` is the tool that reads replies. The first call is the default. The second asks for text.
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/reply-text-for-llm/bodies.out.txt
+</include>
+
+- **Without `include_bodies`** a reply is its category, its time and refs. `body` is `null`. A model that only needs to count or sort replies never sees the text.
+- **With it**, `body` is `untrusted_content`, `truncated` and `note`. The second reply is an injection attempt, and it comes through word for word. The third is longer than 500 characters, so it is cut and `truncated` is `true`.
+- **`category` comes from the vendor**, never from a model. `category_source` says so.
+- **The tool returns refs, not addresses.** `lead` is a ref such as `memory:acme:lead_dana`. But the first reply carries a phone number and an address in its text, because the prospect typed them.
+
+<include meta='title="bodies.ts"'>
+  ../_examples/reply-text-for-llm/bodies.ts
+</include>
+
+The note is the exported constant `UNTRUSTED_NOTE` and the cut-off is `DEFAULT_BODY_CHARS`, both from `outbound-sdk/tools`.
+
+## Mask every field: `redact()`
+
+With no options, `redact()` masks every field it knows and replaces each value with `[redacted]`. List it first in `plugins` so it is the outermost layer.
+
+<include meta='title="redacted.ts"'>
+  ../_examples/reply-text-for-llm/redacted.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/reply-text-for-llm/redacted.out.txt
+</include>
+
+What changed:
+
+- **`messages.body` is turned off.** Asking for text while text is being masked is a contradiction, so the request is refused as `Unsupported` before it is made. Nothing comes back as a masked body.
+- **`native` is turned off.** A vendor read returns the vendor's payload as sent, which cannot be masked, so `outbound.native` and `outbound.raw` are refused and the `vendor_read` tool is not offered.
+- **`raw` is always `null`.** The vendor's payload holds everything the normalized fields came from.
+- **Counts, categories and times are untouched.** Campaigns, stats and sequences pass through. A ref is untouched unless the vendor built the id from an email address or a LinkedIn profile URL: that part is masked like the field.
+- **A record it does not recognise is refused**, not passed through.
+
+## Keep the text, mask the people: `fields` and `strategy: "hash"`
+
+To let a model read replies, leave `body` out of `fields`. `messages.body` then stays on. `strategy: "hash"` replaces each value with a stable token, `redacted:` and 16 hex characters, so the same address always gives the same token and people can still be counted and joined.
+
+The function below is for code that builds its own prompt without going through a tool. It marks text the way the tools do.
+
+<include meta='title="prompt.ts"'>
+  ../_examples/reply-text-for-llm/prompt.ts
+</include>
+
+<include meta='title="hashed.ts"'>
+  ../_examples/reply-text-for-llm/hashed.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/reply-text-for-llm/hashed.out.txt
+</include>
+
+Read the first reply in that output. The lead's `email` field is a token, and the reply text still says "write to dana@example.com". Redaction masks fields. It does not search text for addresses, phone numbers or names. If that text must not reach a model, do not ask for bodies.
+
+A hash is a token, not anonymity. Anyone who can guess an address can hash it and compare.
+
+## What marking does and does not do
+
+<Callout type="warning" title="The note is a convention, not a control">
+  `untrusted_content` and its note tell a model how to treat the text. Nothing
+  enforces it. A model can still follow an instruction inside a reply.
+</Callout>
+
+What limits the damage is what the agent is able to do, not the label:
+
+- Give an agent that reads reply text no tool that sends, edits or exports. Every tool in this SDK reads, so the risk comes from the other tools you add.
+- Leave `include_bodies` off for tasks that only need categories and counts.
+- Use a read-only vendor key, so that a confused agent holding the key cannot change anything at the vendor.
+- Treat what the model writes after reading replies as unreviewed. A reply can aim at the reader of the summary too.
+
+## Try it without a key
+
+<include meta='title="seed.ts"'>
+  ../_examples/reply-text-for-llm/seed.ts
+</include>
+
+Three made-up people and three replies: one with contact details in the text, one injection attempt, one long.
+
+## Point it at your vendor
+
+Swap `memory({ ... })` for `instantly()`, `smartlead()` or `heyreach()`. The plugin list stays the same.
+
+## What each vendor can serve
+
+The in-memory adapter limited to what each vendor's adapter declares. This shows which calls a vendor's adapter would refuse. It does not show what that vendor's API returns.
+
+<include meta='title="vendors.ts"'>
+  ../_examples/reply-text-for-llm/vendors.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/reply-text-for-llm/vendors.out.txt
+</include>
+
+All three declare full message bodies. HeyReach declares no reply categories, so filtering by `category` is refused there and a reply's category is `null`.
+
+## What it costs in vendor requests
+
+`redact` makes no request of its own. Reading replies costs what the listing costs, and `meta.requests` reports it. On Instantly, a reply whose body the list cut short costs one more read of that email when bodies are asked for, and the email list is limited to 20 requests a minute.
+
+## When it cannot answer
+
+<include meta='title="failures.ts"'>
+  ../_examples/reply-text-for-llm/failures.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/reply-text-for-llm/failures.out.txt
+</include>
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| Bodies asked for while `body` is masked | `Unsupported`, before any request. From a tool, `ok: false`. | Leave `body` out of `fields` if a model must read text. |
+| A vendor read or a raw request with `redact` on | `Unsupported`, before any request. `vendor_read` is not offered. | Use an instance without `redact` for that read, away from the model. |
+| A person looked up by address while `redact` masks `email` or `linkedin` | `Unsupported`, before any read. `cross_channel_lead` is not offered. | Look people up on an instance without `redact`. |
+| `redact` listed twice | `Invalid` when the instance is created | List it once. |
+| A reply has no text | `body` is `null` | Nothing. A missing body is `null`, never an empty string. |
+
+## Limits
+
+- Redaction masks the fields `email`, `name`, `company`, `linkedin`, `custom`, `subject` and `body`. It does not mask a lead's `title`, and it does not look inside any text.
+- An id the vendor built from an email address or a LinkedIn profile URL is masked inside `ref`, `sourceId` and every `*Ref` field. On HeyReach a lead's id is its profile URL, so with `redact` on its `ref` holds `[redacted]` or a token in its place, and cannot be passed back to `outbound.lead()`. Any other id is left as it is.
+- `redact` turns off `outbound.native` and `outbound.raw`. On an instance without `redact`, both return the vendor's payload unmasked: do not hand them to code a model drives.
+- Marking text as untrusted does not stop prompt injection.
+- Truncation is by character count, 500 by default in the tools. It can cut a word or a sentence in half.
+- Categories are the vendor's. The SDK does not classify replies.

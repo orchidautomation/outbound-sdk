@@ -1,0 +1,3 @@
+instantly: 26 of 26. Refuses: none
+smartlead: 26 of 26. Refuses: none
+heyreach: 22 of 26. Refuses: step_funnel, variant_test, copy_reuse, settings_audit

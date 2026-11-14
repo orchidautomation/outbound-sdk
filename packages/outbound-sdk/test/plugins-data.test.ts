@@ -309,7 +309,10 @@ test("fixtures records scrubbed answers, then replays them without calling the v
   );
   assert.deepEqual(recorded.items[0]?.custom, { phone: "value-1" });
   const [file] = readdirSync(dir);
-  assert.match(file ?? "", /^memory\.leads\.list\.[0-9a-f]{12}\.json$/u);
+  assert.match(
+    file ?? "",
+    /^memory\.default\.leads\.list\.[0-9a-f]{12}\.json$/u
+  );
   const saved = readFileSync(path.join(dir, file ?? ""), "utf-8");
   assert.ok(
     !/northwind|jane|doe|555/iu.test(saved),
@@ -466,6 +469,19 @@ test("exporter writes JSON Lines, leaves raw out by default, and handles an empt
     }
   );
   assert.equal(readFileSync(empty, "utf-8"), "ref\n");
+
+  // With no columns given and no record to take them from, there is no header: an empty file, not a blank line.
+  for (const name of ["none.csv", "none.jsonl"]) {
+    const file = path.join(dir, name);
+
+    assert.deepEqual(
+      // oxlint-disable-next-line no-await-in-loop -- two small files, one after the other.
+      await outbound.export(outbound.replies.listAll(), { to: file }),
+      { columns: [], rows: 0 }
+    );
+    assert.equal(readFileSync(file, "utf-8"), "");
+  }
+
   await assert.rejects(
     outbound.export(outbound.campaigns.listAll(), {
       to: path.join(dir, "campaigns.parquet"),
@@ -475,6 +491,13 @@ test("exporter writes JSON Lines, leaves raw out by default, and handles an empt
       /pass a writer for other formats/u.test(error.message)
   );
 });
+
+// A listing that fails before its first record.
+const failingAtOnce: AsyncIterable<JsonObject> = {
+  [Symbol.asyncIterator]: () => ({
+    next: () => Promise.reject(new Error("the vendor never answered")),
+  }),
+};
 
 // A listing that fails part-way through.
 const failing = async function* failing() {
@@ -516,4 +539,13 @@ test("exporter hands rows to a writer you supply, and closes it even when the so
     /the vendor went away/u
   );
   assert.equal(closed, 2);
+
+  // Also when no row ever reached the writer: a failed source, or an empty one.
+  await assert.rejects(
+    outbound.export(failingAtOnce, { to: writer }),
+    /the vendor never answered/u
+  );
+  assert.equal(closed, 3);
+  await outbound.export(outbound.replies.listAll(), { to: writer });
+  assert.equal(closed, 4);
 });

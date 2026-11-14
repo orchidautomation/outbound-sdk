@@ -77,7 +77,8 @@ export const findPerson = async (
 
     // oxlint-disable-next-line no-await-in-loop -- each answer can add the next identifier to ask for.
     const leads = await context.all(
-      context.outbound.leads.listAll({ ...filterFor(next), max: maxRecords })
+      context.outbound.leads.listAll({ ...filterFor(next), max: maxRecords }),
+      `${maxRecords} records of the person`
     );
 
     for (const lead of leads) {

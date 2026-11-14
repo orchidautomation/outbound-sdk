@@ -7,4 +7,4 @@
 
 export { ALL_FIELDS, MASK, redact } from "./plugin.ts";
 
-export type { RedactField, RedactOptions } from "./plugin.ts";
+export type { RedactExtension, RedactField, RedactOptions } from "./plugin.ts";

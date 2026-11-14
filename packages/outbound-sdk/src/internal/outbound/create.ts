@@ -1,7 +1,7 @@
-import { OutboundError } from "../errors.ts";
 import type { NativeCatalog, NoNative } from "../native.ts";
 import { Outbound } from "./outbound.ts";
 import type { OutboundOptions } from "./outbound.ts";
+import { installExtensions } from "./plugins.ts";
 import type { OutboundPlugin } from "./plugins.ts";
 
 type ExtensionOf<Plugin> =
@@ -21,28 +21,6 @@ type UnionToIntersection<Union> = (
 export type ExtensionsOf<Plugins extends readonly OutboundPlugin[]> =
   UnionToIntersection<ExtensionOf<Plugins[number]>>;
 
-const isExtension = (value: unknown): value is object =>
-  typeof value === "object" && value !== null;
-
-const install = (outbound: Outbound, plugin: OutboundPlugin): void => {
-  const extension = plugin.extend?.(outbound);
-
-  if (!isExtension(extension)) {
-    return;
-  }
-
-  for (const [name, value] of Object.entries(extension)) {
-    if (name in outbound) {
-      throw new OutboundError(
-        "Invalid",
-        `The ${plugin.name} plugin adds "${name}", which already exists on the instance`
-      );
-    }
-
-    Object.defineProperty(outbound, name, { enumerable: true, value });
-  }
-};
-
 /**
  * Creates the client. One instance wraps one adapter; `combine()` puts
  * several adapters behind one.
@@ -57,10 +35,8 @@ export const createOutbound = <
 ): Outbound<Native> & ExtensionsOf<Plugins> => {
   const outbound = new Outbound<Native>(options);
 
-  for (const plugin of options.plugins ?? []) {
-    install(outbound, plugin);
-  }
+  installExtensions(outbound, options.plugins ?? []);
 
-  // SAFETY: install() just defined every property the plugins' extensions declare.
+  // SAFETY: installExtensions() just defined every property the plugins' extensions declare.
   return outbound as Outbound<Native> & ExtensionsOf<Plugins>;
 };

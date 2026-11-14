@@ -1,0 +1,123 @@
+---
+title: outbound mcp
+description: A local Model Context Protocol server on stdio that serves the read-only tools and insights to an agent client. What it implements, how to configure a client, and where the keys live.
+sidebar:
+  label: MCP server
+related:
+  - /docs/tools
+  - /docs/tools/untrusted-content
+  - /docs/cli
+  - /guides/mcp-server
+---
+
+`outbound mcp` starts a Model Context Protocol server on standard input and output. An agent client such as Claude Code, Claude Desktop or Cursor starts it as a child process and can then call the [AI tools](/docs/tools) and the [insights](/docs/insights) against your account.
+
+- **Local.** The server is a process on your machine, started by your client. Nothing is hosted.
+- **Stores nothing.** It keeps no state between calls and writes no file.
+- **Read-only.** Every tool only reads, and each is listed with `readOnlyHint: true`.
+- **Keys from the environment.** The adapter reads its key from an environment variable. The server takes no key as an argument and the protocol never carries one.
+
+<Callout type="warning" title="Not on npm yet">
+  `outbound-sdk` is not published, so a client configuration that runs `npx
+  outbound-sdk mcp` does not work today. Install the package from a tarball
+  first and point the client at the installed binary. See
+  [installation](/docs/installation).
+</Callout>
+
+## Configure a client
+
+Most clients take a JSON entry with a command, its arguments and its environment. Use the path to the `outbound` binary in the project where you installed the package.
+
+```json
+{
+  "mcpServers": {
+    "outbound": {
+      "command": "/path/to/your/project/node_modules/.bin/outbound",
+      "args": ["mcp"],
+      "env": {
+        "OUTBOUND_SDK_PROVIDER": "instantly",
+        "INSTANTLY_API_KEY": "your-key"
+      }
+    }
+  }
+}
+```
+
+To try it with no key, on the demo data:
+
+```json
+{
+  "mcpServers": {
+    "outbound-demo": {
+      "command": "/path/to/your/project/node_modules/.bin/outbound",
+      "args": ["mcp"],
+      "env": { "OUTBOUND_SDK_PROVIDER": "memory" }
+    }
+  }
+}
+```
+
+These configurations are not run by the test suite, and no agent client was connected to the server for this page. Where the file lives and what it is called depends on the client; check its documentation. The provider and key variables are the ones on the [CLI overview](/docs/cli#choosing-the-provider).
+
+A key in a client's configuration file is stored in plain text on your disk by that client. A read-only key is enough: the SDK never writes to a vendor.
+
+## What the server implements
+
+The protocol is JSON-RPC 2.0, one message per line. The server implements what a tool server needs and nothing else, directly, so the package gains no dependency.
+
+| Method | Answer |
+| --- | --- |
+| `initialize` | The protocol version, `capabilities.tools`, `serverInfo` and `instructions` |
+| `ping` | An empty result |
+| `tools/list` | Every tool: `name`, `description`, `inputSchema` and `annotations.readOnlyHint` |
+| `tools/call` | The tool's result as `content` (one text item of JSON), `structuredContent` and `isError` |
+| a notification (no `id`) | Nothing. `notifications/initialized` is accepted and ignored. |
+| anything else | Error `-32601`, method not found |
+
+There are no resources, prompts, sampling or list-change notifications. `PROTOCOL_VERSIONS` lists the protocol versions the server speaks. If the client asks for one of them the server answers with it; otherwise it answers with the newest it has.
+
+## The tools it serves
+
+`outbound mcp` serves the built-in tools the instance can serve, then every insight the adapter can serve. It is built in code with `createMcpServer(outbound, options)` from `outbound-sdk/cli`, which the sample below calls the same way and drives in-process, with no stdio.
+
+<include meta='title="server.ts"'>../../_examples/cli-mcp/server.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/cli-mcp/server.out.txt
+</include>
+
+That is 9 built-in tools and 26 insights on the in-memory adapter. Three things change the list on a real setup:
+
+- A real adapter also serves `vendor_read`, because it has [native reads](/docs/native).
+- The CLI builds an instance with no plugins, so `outbound mcp` never serves `compare_clients` or `cross_channel_lead`. To serve those, build the server yourself on an instance that has the `clients` or `identity` plugin.
+- A built-in tool or an insight whose adapter lacks a capability it needs is left out. On HeyReach that removes `winning_steps` and `campaign_setup`.
+
+The `instructions` string repeats the rule about reply text once for the whole server. It is a label for the model, not a safeguard. See [untrusted content](/docs/tools/untrusted-content).
+
+## Calls and errors
+
+A tool that fails is a normal result with `isError: true`, so the model can read the reason. A protocol error is reserved for a message the server cannot act on.
+
+<include meta='title="calls.ts"'>../../_examples/cli-mcp/calls.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/cli-mcp/calls.out.txt
+</include>
+
+| Code     | When                                               |
+| -------- | -------------------------------------------------- |
+| `-32700` | The line is not JSON                               |
+| `-32600` | The message is not a JSON-RPC 2.0 request          |
+| `-32601` | The method is not one of the four above            |
+| `-32602` | `tools/call` names a tool the server does not have |
+
+## Build your own server
+
+`createMcpServer(outbound, options)` returns two functions and owns no transport:
+
+| Function | Takes | Returns |
+| --- | --- | --- |
+| `handle(message)` | One parsed JSON-RPC message | The response object, or `undefined` for a notification |
+| `handleLine(line)` | One line of text | The response as a JSON string, or `undefined` for a notification or a blank line |
+
+Options are `only` and `extra` from [`createTools`](/docs/tools#options), plus `version`, which is reported as `serverInfo.version` and defaults to `0.0.0`. Use it when you want the server on an instance with plugins, a subset of the tools, or a transport other than stdio.

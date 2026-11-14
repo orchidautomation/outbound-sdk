@@ -5,6 +5,11 @@ name: Publish to npm
 # from that commit, refuses to continue if the bytes differ, and publishes
 # those exact bytes with provenance. There is no long-lived npm token: the
 # package uses npm trusted publishing from this workflow.
+#
+# Two jobs. `build` installs the dependencies and runs every check, so it
+# runs third-party code, and it cannot mint an OIDC token. `publish` holds
+# the token and runs no package code: it checks the tarball's digest again
+# and hands it to npm. No npm cache is restored in either job.
 on:
   workflow_dispatch:
     inputs:
@@ -19,28 +24,33 @@ permissions:
   contents: read
 
 jobs:
-  publish:
+  build:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    environment: npm-publish
     permissions:
       contents: read
-      id-token: write
+    outputs:
+      tarball: ${{ steps.pack.outputs.tarball }}
     steps:
+      - name: Refuse inputs that are not a full commit SHA and a SHA-256
+        env:
+          COMMIT: ${{ github.event.inputs.commit }}
+          EXPECTED: ${{ github.event.inputs.digest }}
+        run: |
+          [[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$EXPECTED" =~ ^[0-9a-f]{64}$ ]]
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.inputs.commit }}
+          fetch-depth: 0
+          persist-credentials: false
       - name: Refuse a commit that is not on main
-        run: |
-          git fetch origin main
-          git merge-base --is-ancestor "$COMMIT" origin/main
+        run: git merge-base --is-ancestor "$COMMIT" origin/main
         env:
           COMMIT: ${{ github.event.inputs.commit }}
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
-          registry-url: https://registry.npmjs.org
-          cache: npm
       - run: npm ci
       - name: Every check, inside the publish workflow
         run: npm run check
@@ -54,7 +64,45 @@ jobs:
           echo "Tarball $tarball has SHA-256 $actual"
           test "$actual" = "$EXPECTED"
           echo "tarball=$tarball" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: package
+          path: ${{ steps.pack.outputs.tarball }}
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: npm-publish
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.inputs.commit }}
+          persist-credentials: false
+          sparse-checkout: .node-version
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          registry-url: https://registry.npmjs.org
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: package
+          path: package
+      - name: Check the digest again
+        env:
+          EXPECTED: ${{ github.event.inputs.digest }}
+          TARBALL: package/${{ needs.build.outputs.tarball }}
+        run: |
+          actual=$(sha256sum "$TARBALL" | cut -d ' ' -f 1)
+          echo "Tarball $TARBALL has SHA-256 $actual"
+          test "$actual" = "$EXPECTED"
       - name: Publish those exact bytes
         run: npm publish "$TARBALL" --provenance --access public
         env:
-          TARBALL: ${{ steps.pack.outputs.tarball }}
+          TARBALL: package/${{ needs.build.outputs.tarball }}

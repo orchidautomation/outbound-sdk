@@ -1,0 +1,49 @@
+---
+title: Coverage
+description: How every endpoint in each vendor's public API reference is reached by outbound-sdk, with the counts per vendor and the rules the per-vendor tables follow.
+sidebar:
+  label: Overview
+related:
+  - /docs/adapters
+  - /docs/native
+  - /docs/capabilities
+---
+
+One page per vendor lists every endpoint in that vendor's public API reference and says how the SDK reaches it. The rule: nothing a vendor can report about campaigns, leads, senders or results is dropped. A read is either normalized, or it is in the adapter's [native catalog](/docs/native) and returned as the vendor sent it.
+
+| Vendor | Endpoints | Normalized | Native | Excluded | Writes |
+| --- | --- | --- | --- | --- | --- |
+| [Instantly](/docs/coverage/instantly) | 268 | 22 | 105 | 4 | 137 |
+| [Smartlead](/docs/coverage/smartlead) | 230 | 27 | 78 | 20 | 105 |
+| [HeyReach](/docs/coverage/heyreach) | 106 | 17 | 25 | 3 | 61 |
+
+Each inventory was taken from the vendor's documentation on 2026-11-14. The repository's test suite checks each table against the adapter (`packages/outbound-sdk/test/coverage-docs.test.ts`), so a table cannot drift from the code. It checks the table against the adapter, not against the vendor: an endpoint a vendor adds later is missing here until the inventory is taken again. The research note each adapter was written from is in the repository, under `docs/research/`.
+
+## The table
+
+Each vendor page has exactly one table with these columns, one row per endpoint:
+
+| Column   | Holds                                                    |
+| -------- | -------------------------------------------------------- |
+| Method   | `GET`, `POST`, `PUT`, `PATCH` or `DELETE`                |
+| Path     | The vendor's path, with `{name}` for each path parameter |
+| Reads    | What the endpoint returns, in a few words                |
+| Coverage | `normalized`, `native`, `excluded` or `write`            |
+| Through  | See below                                                |
+
+What `Through` holds depends on `Coverage`:
+
+- `normalized`: the SDK read or reads that use the endpoint, by [capability key](/docs/capabilities) (`campaigns.settings`, `stats.byDay`), separated by commas. `campaigns.list` and `campaigns.get` are also accepted.
+- `native`: the name of the read in the adapter's native catalog. Its method and path must match the row.
+- `excluded`: the reason it is left out, in one sentence. Only four reasons are accepted: the endpoint returns secrets, it duplicates another row's data exactly, it reports nothing about campaigns, leads, senders or results (billing, marketplace pricing, search filter lists), or it returns a file and not JSON, which the request engine cannot carry.
+- `write`: left empty. The SDK is read-only; writes are listed so the inventory is complete.
+
+A `POST` that only reads counts as a read. A read that spends vendor credits is listed as a write.
+
+## What the test checks
+
+- Every row has a known method, a path, and a few words on what it reads, and is listed once.
+- A `normalized` row names only SDK reads that exist.
+- A `native` row names a read in the adapter's catalog with the same method and path, and every read in the catalog has a row.
+- An `excluded` row gives a reason.
+- A `write` row is never a `GET`.

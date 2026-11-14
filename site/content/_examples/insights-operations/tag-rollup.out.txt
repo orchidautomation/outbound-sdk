@@ -1,0 +1,5 @@
+saas: campaigns 2, sent 2730, reply rate 0.0769 (low end 0.0639), bounce rate 0.01
+agency: campaigns 1, sent 2100, reply rate 0.075 (low end 0.0591), bounce rate 0.01
+(no tag): campaigns 1, sent 60, reply rate 0.1 (low end 0.0279), bounce rate 0
+ecommerce: campaigns 1, sent 1680, reply rate 0.02 (low end 0.0131), bounce rate 0.0321
+note: Tag saas: bounce rate (1 of 2) counts only the campaigns that report both the count and what it is divided by. The others are left out of the rate, not counted as 0.

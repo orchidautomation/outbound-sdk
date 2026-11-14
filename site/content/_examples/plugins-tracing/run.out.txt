@@ -1,0 +1,23 @@
+outbound.http GET [ok] {
+  'http.request.method': 'GET',
+  'outbound.attempt': 1,
+  'outbound.lane': 'default',
+  'outbound.provider': 'instantly',
+  'url.full': 'https://api.instantly.ai/api/v2/accounts?limit=100',
+  'http.response.status_code': 200
+}
+outbound.senders.list [ok] {
+  'outbound.operation': 'senders.list',
+  'outbound.provider': 'instantly',
+  'outbound.workspace': 'acme',
+  'outbound.records': 2,
+  'outbound.evidence': 'exact',
+  'outbound.requests': 1
+}
+outbound.campaigns.get [error] {
+  'outbound.operation': 'campaigns.get',
+  'outbound.provider': 'memory',
+  'outbound.workspace': 'agency',
+  'outbound.error': 'NotFound',
+  'outbound.requests': 0
+}

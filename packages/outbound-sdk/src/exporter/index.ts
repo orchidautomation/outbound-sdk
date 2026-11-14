@@ -9,7 +9,11 @@ import { isJsonObject, toJson } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
 import type { OutboundPlugin } from "../internal/outbound/plugins.ts";
 
-/** Receives rows one at a time. Implement it to write Parquet, DuckDB or anything else. */
+/**
+ * Receives rows one at a time. Implement it to write Parquet, DuckDB or
+ * anything else. A row holds the export's columns and nothing else, and
+ * `close` is called once, also when the source fails or yields nothing.
+ */
 export interface RowWriter {
   readonly write: (row: JsonObject) => Promise<void>;
   readonly close: () => Promise<void>;
@@ -20,7 +24,7 @@ export interface ExportOptions {
   readonly to: RowWriter | string;
   /** The columns to write, in order. Defaults to the first record's fields without `raw`. */
   readonly columns?: readonly string[] | undefined;
-  /** Include the vendor's raw payload. Defaults to `false`. */
+  /** Include the vendor's raw payload when `columns` is not given. Defaults to `false`. */
   readonly includeRaw?: boolean | undefined;
 }
 
@@ -68,7 +72,8 @@ const fileWriter = async (
 
   const handle = await open(file, "w");
 
-  if (csv) {
+  // An empty listing with no `columns` given has no header to write.
+  if (csv && columns.length > 0) {
     await handle.write(
       `${columns.map((column) => csvCell(column)).join(",")}\n`
     );
@@ -79,11 +84,7 @@ const fileWriter = async (
     write: async (row) => {
       const line = csv
         ? columns.map((column) => csvCell(row[column])).join(",")
-        : JSON.stringify(
-            Object.fromEntries(
-              columns.map((column) => [column, row[column] ?? null])
-            )
-          );
+        : JSON.stringify(row);
 
       await handle.write(`${line}\n`);
     },
@@ -114,7 +115,12 @@ const exportRows = async <Item>(
             : options.to;
         }
 
-        await writer.write(row);
+        // Every writer gets the same row: the export's columns, in order.
+        await writer.write(
+          Object.fromEntries(
+            columns.map((column) => [column, row[column] ?? null])
+          )
+        );
         rows += 1;
       }
     }
@@ -124,7 +130,8 @@ const exportRows = async <Item>(
       ? await fileWriter(options.to, columns)
       : options.to;
   } finally {
-    await writer?.close();
+    // A writer the caller supplied is closed even when no row reached it.
+    await (writer ?? (isPath(options.to) ? undefined : options.to))?.close();
   }
 
   return { columns, rows };

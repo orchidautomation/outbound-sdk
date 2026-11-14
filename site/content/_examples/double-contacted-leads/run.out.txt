@@ -1,0 +1,24 @@
+2 people are in two or more active campaigns (1 across tools, 1 inside one tool)
+
+  email:raj@example.com is in 3 campaigns across mailtool and lntool (email and linkedin).
+    Founders Q4 (mailtool, email), lead is active
+    Agency owners (mailtool, email), lead is active
+    LinkedIn founders (lntool, linkedin), lead is active
+  email:nina@example.com is in 2 mailtool campaigns at once.
+    Founders Q4 (mailtool, email), lead is active
+    Agency owners (mailtool, email), lead is active
+
+Read 10 leads in 3 campaigns. 0 had no address and no profile to match on.
+
+4 leads are in active campaigns although they are on a block list (2 by address, 1 by domain, 1 by profile)
+
+  https://www.linkedin.com/in/pat-quinn-example is in "LinkedIn founders" but the block list holds the linkedin https://www.linkedin.com/in/pat-quinn-example.
+    lead is active; the entry is on this tool's own list
+  kim@blocked.example is in "Agency owners" but the block list holds the domain blocked.example.
+    lead is active; the entry is on this tool's own list
+  sue@example.com is in "Agency owners" but the block list holds the email sue@example.com.
+    lead is active; the entry is on another tool's list
+  leo@example.com is in "Founders Q4" but the block list holds the email leo@example.com.
+    lead is completed; the entry is on this tool's own list
+
+Read 5 block list entries and 10 leads. 1 entries are of a kind that cannot be matched to a lead, such as a company name.

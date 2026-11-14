@@ -1,0 +1,10 @@
+memory:agency:cmp_founders
+  reply rate 6.0%, workspace 2.8%, ratio 2.18
+  bounce rate 1.0%, workspace 3.0%, ratio 0.33
+  open rate not reported, ratio null
+memory:agency:cmp_ecom
+  reply rate 1.0%, workspace 2.8%, ratio 0.36
+  bounce rate 9.0%, workspace 3.0%, ratio 3.00
+  open rate not reported, ratio null
+NotFound: Campaign cmp_missing was not found
+Unsupported: Reading stats for the workspace scope is not available: the memory adapter does not support it (stats.workspace)

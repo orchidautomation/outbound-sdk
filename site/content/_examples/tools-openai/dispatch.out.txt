@@ -1,0 +1,7 @@
+[
+  {
+    "call_id": "call_1",
+    "output": "{\"data\":{\"senders\":[{\"daily_limit\":40,\"kind\":\"mailbox\",\"sender\":\"memory:acme:mbx_1\",\"status\":\"active\",\"warmup_enabled\":true,\"warmup_score\":96}],\"unhealthy\":0},\"meta\":{\"evidence\":\"exact\",\"provider\":\"memory\",\"requests\":0,\"today\":\"2026-11-14\"},\"next\":\"A sender address is not included. Look a sender up by its ref if you need more.\",\"ok\":true}",
+    "type": "function_call_output"
+  }
+]

@@ -1,6 +1,6 @@
 # Engineering guardrails
 
-These limits are enforced by scripts and lint rules. Each check has its own test with an accepted and a rejected case. The source of the limits is Felspar's guardrails and the Linear document "Tech stack and engineering standards".
+These limits are enforced by scripts and lint rules. Each check has its own test with an accepted and a rejected case.
 
 ## File and function size
 
@@ -54,4 +54,4 @@ Ultracite on Oxlint and Oxfmt, with the `core` and `anti-slop` presets (`oxlint.
 
 ## Differences from the plan
 
-- TypeScript is pinned to 6.0.3, as in Felspar. TypeScript 7 has no JavaScript compiler API, and dependency-cruiser needs that API to read TypeScript imports.
+- TypeScript is pinned to 6.0.3. TypeScript 7 has no JavaScript compiler API, and dependency-cruiser needs that API to read TypeScript imports.

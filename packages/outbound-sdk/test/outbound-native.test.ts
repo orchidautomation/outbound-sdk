@@ -256,7 +256,7 @@ test("a combined instance has no native reads of its own; each workspace keeps i
   assert.deepEqual(outbound.native.catalog, {});
   const error = await failure(() => outbound.native.read("inboxUnread"));
   assert.equal(error.code, "Unsupported");
-  assert.match(error.message, /workspace\(id\)\.native/u);
+  assert.match(error.message, /workspace\("provider:workspace"\)\.native/u);
 
   const result = await outbound
     .workspace("default")

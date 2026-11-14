@@ -11,6 +11,7 @@ import {
   isPositive,
   leadsOf,
   nameOf,
+  noteEngagement,
   positiveLabelsField,
   readCapped,
 } from "./read.ts";
@@ -241,13 +242,13 @@ export const hotLeads = defineInsight({
   needs: [],
   next: "Use person_summary with a lead's email address or LinkedIn profile to read the conversation before calling.",
   run: async (context, values) => {
-    if (!context.outbound.capabilities["leads.engagement"]) {
-      context.note(
-        "This tool reports no per-lead open, click or reply counts, so scores rest on the interest label and the lead's status."
-      );
-    }
-
     const leads = await readLeads(context, values);
+
+    noteEngagement(
+      context,
+      leads,
+      "scores rest on the interest label and the lead's status"
+    );
 
     const open = leads.filter(
       (lead) => lead.status !== "unsubscribed" && lead.status !== "bounced"
