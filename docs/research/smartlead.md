@@ -27,7 +27,7 @@ Everything below marks which source a claim rests on. **Envelope shapes for seve
   - Client keys: scoped to one client (sub-account), own rate limit. Some endpoints reject client keys with `401` (lead search, lead campaign overview, sequence details, get client by id, assign client). `GET /campaigns/{id}` "additionally filters by client_id" for client keys.
 - **Plan gating:** API access is "available on the Pro plan and higher. On Base and Popular plans, API Key Management is hidden." Wrong plan returns the text `API Key access denied`. Client workspaces are plan-gated too (listed under "not included" on lower plans; "3 client workspaces included" on Unlimited Prime).
 - **Versioning:** only `v1`. No version header, no dated versions.
-- **Sister services on other hosts** (out of scope): `smartdelivery.smartlead.ai`, `prospect-api.smartlead.ai`, `smart-senders.smartlead.ai`, `smartservers.smartlead.ai`.
+- **Sister services on other hosts**: `smartdelivery.smartlead.ai`, `prospect-api.smartlead.ai`, `smart-senders.smartlead.ai`, `smartservers.smartlead.ai`. Their reads are in the native catalog; see "Endpoint inventory" below.
 - **IDs:** three different ids matter. `lead.id` (global lead), `campaign_lead_map_id` (a lead inside one campaign; also called `email_lead_map_id`, `sl_email_lead_map_id`, "lead map id", `lastSeenEclmId`), and `stats_id` (one sent email).
 - **Timestamps:** ISO 8601, shown as UTC (`Z` or `+00:00`) in every example.
 
@@ -454,6 +454,20 @@ Which source was followed: the **reference pages on `api.smartlead.ai`** for URL
 - **`senderRef` on messages** from the activity feed and a lead's history: they name the mailbox by address (`from_email`, `from`) only.
 - **`leadRef` on replies**, unless the thread carries `lead.id` or `lead_id`: every documented example names the lead by address.
 - **Sender DNS records, block list state and check time**, **a campaign end date**, **a tag description**, **subsequence trigger conditions on read**, **a list of every webhook**, **daily rows per mailbox or per step**.
+
+## Endpoint inventory and native catalog (added 2026-11-14)
+
+Fetched fresh on 2026-11-14: `https://api.smartlead.ai/llms-full.txt` (262 pages, 242 of them endpoint pages) and `https://api.smartlead.ai/llms.txt`. No API call was made. The result is `docs/coverage/smartlead.md` (230 endpoints) and the native catalog in `src/smartlead/native*.ts` (78 reads).
+
+- **Sister services.** All four take the same `api_key` query parameter under `/api/v1` on their own host. The SmartDelivery pages document no parameter beyond the path ids, and say "Contact support for access and API details", so those entries declare none. SmartProspect takes its paging numbers as strings.
+- **Secrets, left out of the catalog.** `GET /client/api-key` (client keys), `GET /email-accounts/fetch-email-account-details` (same payload as the mailbox by id, passwords included), `GET /smart-senders/order-details` (a `password` per mailbox), `GET /smart-senders/auth-secret` (a one-time password). `GET /client/{id}` is catalogued without `includeWhitelabel`, which adds `gpt_api_info` and whitelabel credentials, and `GET /campaigns/{id}/mailbox-statistics` without `private_api_key`.
+- **POSTs that are not reads.** `POST /search-email-leads/search-contacts` answers with a `filter_id`, so it records the search; `fetch-contacts` and `search-contacts/find-emails` spend credits (`402 Payment Required` is documented). All three are listed as writes.
+- **Rate lanes.** `GET /campaigns/{id}/leads-statistics` and `GET /analytics/mailbox/domain-wise-health-metrics` are native reads on their own 10 per 60 seconds lanes; the third laned endpoint, the activity feed, is the normalized `messages.list`.
+- **Considered for normalizing, and left native.**
+  - `GET /analytics/day-wise-overall-stats-by-sent-time` has a daily `bounced`, which `stats.byDay` leaves `null`. It counts every metric on the day the email was sent, while the normalized daily rows count each on the day it happened, so mixing the two would put a different meaning in one row.
+  - `GET /campaigns/{id}/leads-export` has `open_count`, `click_count` and `reply_count` per lead, which would fill `leads.engagement`. It is one CSV of the whole campaign with no paging and no documented quoting rules.
+  - `GET /campaigns/{id}/leads-statistics` and `/mailbox-statistics` still document only a placeholder response.
+- **Paths without a reference page.** `llms.txt` and the quickstart name `GET /webhooks`, `GET /leads/by-email`, `GET /analytics/overview`, `PATCH /campaigns/{id}/status` and `POST /campaigns/new`; the reference pages give different paths for each, and these are not inventoried.
 
 ## Sources
 

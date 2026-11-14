@@ -14,7 +14,7 @@ export const WORKSPACE_ENV = "SMARTLEAD_WORKSPACE_ID";
 /** `GET /campaigns/all-leads-activities` has its own 10 per 60 seconds limit. */
 export const ACTIVITIES_LANE = "all-leads-activities";
 
-/** Declared for `raw` callers; the adapter itself does not call these two. */
+/** The native reads of these two endpoints use the lanes; no normalized read does. */
 export const LEAD_STATISTICS_LANE = "leads-statistics";
 export const DOMAIN_HEALTH_LANE = "domain-wise-health";
 
@@ -62,6 +62,8 @@ export const capabilities: CapabilityDeclaration = {
   "messages.list": true,
   // event_time_from narrows the feed; the wrapper filters on the send time.
   "messages.since": "client",
+  // The reads with no normalized form, by name: see native.ts.
+  native: true,
   "replies.category": "vendor",
   "replies.list": true,
   // replyTimeBetween narrows the inbox; the wrapper filters on the reply time.
@@ -138,6 +140,8 @@ export const costs = {
 
 export const caveats: readonly string[] = [
   "outbound.raw returns responses unchanged: GET /email-accounts includes SMTP and IMAP passwords, which only normalized records drop.",
+  "outbound.native returns each payload as Smartlead sent it. Its catalog leaves out the reads that return secrets: client API keys, a mailbox looked up by address, SmartSenders orders and one-time passwords, and a client's whitelabel credentials.",
+  "Native reads of SmartDelivery, SmartProspect, SmartSenders and SmartServers call other hosts with the same key; an account without the product is refused. Their parameters and responses follow the reference alone.",
   "Nothing is checked against a live account; mappings follow the documentation read on 2026-11-14, whose three sources disagree, also on envelopes (bare or { ok | success, data }; both are accepted).",
   "The API key travels in the URL (api_key): the SDK redacts it, but a proxy or server log can record it.",
   "leads.list without a campaign walks every campaign: a lead in no campaign is never returned, and one in several is returned once by listAll.",
