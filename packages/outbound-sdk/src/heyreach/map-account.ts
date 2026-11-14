@@ -17,8 +17,9 @@ import {
   timestamp,
 } from "../internal/json.ts";
 import type { JsonObject } from "../internal/json.ts";
-import { recordBase, refTo, refsTo } from "../internal/record.ts";
+import { eventTypesOf, recordBase, refTo, refsTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
+import { EVENT_TYPES } from "./webhooks.ts";
 
 /** `POST /list/GetAll`: `listType` is `USER_LIST` or `COMPANY_LIST`. */
 export const toLeadList = (identity: Identity, raw: JsonObject): LeadList => ({
@@ -118,6 +119,11 @@ export const toWebhook = (
     active: flag(raw.isActive),
     campaignRefs: refsTo(identity, campaigns),
     createdAt: null,
+    // The list names an event in upper case; a payload names it in lower.
+    eventTypes: eventTypesOf(
+      event === null ? [] : [event.toLowerCase()],
+      EVENT_TYPES
+    ),
     events: event === null ? [] : [event],
     name: text(raw.webhookName),
     url: text(raw.webhookUrl) ?? "",

@@ -255,6 +255,7 @@ A webhook registered with the vendor. The SDK lists them. It does not create or 
 | `url` | `string` | Where the vendor posts. It can hold a secret in its path or query. |
 | `name` | `string` or `null` |  |
 | `events` | `string[]` | Event names in the vendor's own words. |
+| `eventTypes` | event type[] | What those events become when they arrive: the SDK's own [event types](/docs/webhooks), without repeats. Empty when no event name is one the adapter knows. |
 | `active` | boolean or `null` |  |
 | `campaignRefs` | `string[]` | The campaigns the webhook is limited to. Empty for every campaign. |
 | `createdAt` | ISO timestamp or `null` |  |

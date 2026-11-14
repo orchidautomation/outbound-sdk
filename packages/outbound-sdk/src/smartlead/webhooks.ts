@@ -32,7 +32,7 @@ import { fromBase64, hmacSha256, timingSafeEqual, toBase64 } from "./hmac.ts";
 import { campaignStatus, withoutSecrets } from "./map.ts";
 
 // MANUAL_STEP_REACHED has no equivalent and stays unknown.
-const EVENT_TYPES = new Map<string, EventType>([
+export const EVENT_TYPES = new Map<string, EventType>([
   ["CAMPAIGN_STATUS_CHANGED", "campaign.status_changed"],
   ["EMAIL_BOUNCE", "message.bounced"],
   ["EMAIL_LINK_CLICK", "message.clicked"],

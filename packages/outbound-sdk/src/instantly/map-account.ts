@@ -23,8 +23,9 @@ import {
   timestamp,
 } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
-import { recordBase, refTo, refsTo } from "../internal/record.ts";
+import { eventTypesOf, recordBase, refTo, refsTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
+import { EVENT_TYPES } from "./webhooks.ts";
 
 const CLOCK = /^\d{2}:\d{2}$/u;
 const DATE = /^\d{4}-\d{2}-\d{2}$/u;
@@ -277,6 +278,13 @@ export const toWebhook = (
   active: webhookActive(raw),
   campaignRefs: refsTo(identity, [text(raw.campaign)]),
   createdAt: timestamp(raw.timestamp_created),
+  // `all_events` is every event Instantly sends.
+  eventTypes: eventTypesOf(
+    text(raw.event_type) === "all_events"
+      ? [...EVENT_TYPES.keys()]
+      : [text(raw.event_type) ?? ""],
+    EVENT_TYPES
+  ),
   // A webhook for a custom lead label has no event type.
   events: [text(raw.event_type)].flatMap((event) => event ?? []),
   name: text(raw.name),

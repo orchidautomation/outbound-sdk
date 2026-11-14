@@ -86,6 +86,7 @@ $ outbound webhooks
     "active": true,
     "campaignRefs": [],
     "createdAt": null,
+    "eventTypes": [],
     "events": [
       "reply_received"
     ],

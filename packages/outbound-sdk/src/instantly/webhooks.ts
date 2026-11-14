@@ -26,7 +26,7 @@ import type { Identity } from "../internal/record.ts";
 import { fromOne, variantKey } from "../internal/sequence.ts";
 import { stableId } from "../internal/sha256.ts";
 
-const EVENT_TYPES = new Map<string, EventType>([
+export const EVENT_TYPES = new Map<string, EventType>([
   ["account_error", "sender.status_changed"],
   ["auto_reply_received", "reply.received"],
   ["campaign_completed", "campaign.status_changed"],

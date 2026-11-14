@@ -273,3 +273,19 @@ test("smartlead: a mapped custom field that is missing or blank leaves the field
   const { outbound, settle } = harness(mapped);
   assert.equal((await settle(outbound.leads.get("789"))).title, null);
 });
+
+test("smartlead: a webhook says which of the SDK's event types its events become", async () => {
+  const { outbound, settle } = harness(suite);
+  const hooks = await settle(outbound.campaign(CAMPAIGN).webhooks.list());
+
+  assert.deepEqual(
+    hooks.items.map((hook) => [hook.events, hook.eventTypes]),
+    [
+      [["LEAD_CATEGORY_UPDATED"], ["reply.categorized"]],
+      [
+        ["EMAIL_REPLY", "EMAIL_BOUNCE"],
+        ["message.bounced", "reply.received"],
+      ],
+    ]
+  );
+});

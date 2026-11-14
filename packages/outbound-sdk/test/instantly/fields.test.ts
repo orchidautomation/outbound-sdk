@@ -250,3 +250,25 @@ test("instantly: a campaign with no name is named by its id, never empty", async
     "c-77"
   );
 });
+
+test("instantly: a webhook says which of the SDK's event types its event becomes", async () => {
+  const { outbound, settle } = harness(suite);
+  const hooks = await settle(outbound.webhooks.listAll().toArray());
+  const byEvent = new Map(hooks.map((hook) => [hook.events[0], hook]));
+
+  assert.deepEqual(byEvent.get("lead_interested")?.eventTypes, [
+    "reply.categorized",
+  ]);
+
+  const all = byEvent.get("all_events")?.eventTypes ?? [];
+  assert.ok(all.includes("reply.received") && all.includes("message.sent"));
+  assert.equal(new Set(all).size, all.length, "each type once");
+  assert.equal(all.includes("unknown"), false);
+
+  const custom = hooks.find((hook) => hook.events.length === 0);
+  assert.deepEqual(
+    custom?.eventTypes,
+    [],
+    "a webhook for a custom lead label has no event type"
+  );
+});

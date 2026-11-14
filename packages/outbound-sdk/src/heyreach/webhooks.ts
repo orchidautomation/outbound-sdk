@@ -26,7 +26,7 @@ import { stableId } from "../internal/sha256.ts";
 
 // The 13 documented event types, by the lowercase name the payload carries.
 // Follows, post likes and profile views have no normalized type.
-const EVENT_TYPES = new Map<string, EventType>([
+export const EVENT_TYPES = new Map<string, EventType>([
   ["campaign_completed", "campaign.status_changed"],
   ["connection_request_accepted", "linkedin.connection_accepted"],
   ["connection_request_sent", "linkedin.connection_sent"],

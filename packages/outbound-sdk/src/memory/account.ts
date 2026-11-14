@@ -10,6 +10,7 @@ import type {
   Tag,
   WebhookSubscription,
 } from "../internal/entities-account.ts";
+import type { EventType } from "../internal/entities.ts";
 import { recordBase, refsTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
 import { makeRef } from "../internal/ref.ts";
@@ -71,6 +72,7 @@ export interface MemoryWebhook {
   readonly url: string;
   readonly name?: string;
   readonly events?: readonly string[];
+  readonly eventTypes?: readonly EventType[];
   readonly active?: boolean;
   readonly campaignId?: string;
   readonly createdAt?: string;
@@ -173,6 +175,7 @@ export const toWebhook = (
   active: seed.active ?? true,
   campaignRefs: refsTo(identity, [seed.campaignId]),
   createdAt: seed.createdAt ?? null,
+  eventTypes: [...(seed.eventTypes ?? [])],
   events: [...(seed.events ?? [])],
   name: seed.name ?? null,
   url: seed.url,

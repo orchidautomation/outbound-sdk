@@ -4,7 +4,7 @@
 
 import { z } from "zod";
 
-import { baseFields, count, isoDateTime } from "./entities.ts";
+import { baseFields, count, eventTypeSchema, isoDateTime } from "./entities.ts";
 import type {
   Campaign,
   Lead,
@@ -130,6 +130,11 @@ export const webhookSubscriptionSchema = z.object({
   /** The campaigns the webhook is limited to. Empty for every campaign. */
   campaignRefs: z.array(z.string()),
   createdAt: isoDateTime,
+  /**
+   * What those events become when they arrive: the SDK's own event types,
+   * without repeats. Empty when no event name is one the adapter knows.
+   */
+  eventTypes: z.array(eventTypeSchema),
   /** Event names in the vendor's own words. */
   events: z.array(z.string()),
   name: z.string().nullable(),

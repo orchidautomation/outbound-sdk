@@ -275,3 +275,17 @@ test("heyreach: a campaign or list with no name is named by its id, never empty"
   assert.equal((await settle(outbound.campaigns.list())).items[0]?.name, "77");
   assert.equal((await settle(outbound.lists.list())).items[0]?.name, "77");
 });
+
+test("heyreach: a webhook says which of the SDK's event types its event becomes", async () => {
+  const { outbound, settle } = harness(suite);
+  const hooks = await settle(outbound.webhooks.listAll().toArray());
+
+  assert.deepEqual(
+    hooks.slice(0, 2).map((hook) => [hook.events, hook.eventTypes]),
+    [
+      [["CONNECTION_REQUEST_SENT"], ["linkedin.connection_sent"]],
+      [["EVERY_MESSAGE_REPLY_RECEIVED"], ["linkedin.message_received"]],
+    ],
+    "the list names an event in upper case"
+  );
+});
