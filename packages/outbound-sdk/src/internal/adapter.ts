@@ -4,6 +4,14 @@
 
 import type { CapabilityDeclaration } from "./capabilities.ts";
 import type {
+  BlockEntry,
+  CampaignSettings,
+  LeadList,
+  SenderHealth,
+  Tag,
+  WebhookSubscription,
+} from "./entities-account.ts";
+import type {
   Campaign,
   CampaignStatus,
   Lead,
@@ -75,11 +83,15 @@ export interface TimeRange {
 
 export interface LeadQuery extends PageQuery, TimeRange {
   readonly campaignId?: string | undefined;
+  /** A saved lead list. Never set together with `campaignId`. */
+  readonly listId?: string | undefined;
 }
 
 export interface MessageQuery extends PageQuery, TimeRange {
   readonly campaignId?: string | undefined;
   readonly leadId?: string | undefined;
+  /** A `threadId` from an earlier message. */
+  readonly threadId?: string | undefined;
   /** Bodies are expensive on some vendors, so they are fetched only on request. */
   readonly includeBody: boolean;
 }
@@ -88,6 +100,14 @@ export interface ReplyQuery extends PageQuery, TimeRange {
   readonly campaignId?: string | undefined;
   readonly category?: ReplyCategory | undefined;
   readonly includeBody: boolean;
+}
+
+export interface SubsequenceQuery extends PageQuery {
+  readonly campaignId: string;
+}
+
+export interface WebhookQuery extends PageQuery {
+  readonly campaignId?: string | undefined;
 }
 
 export interface StatsQuery {
@@ -206,4 +226,32 @@ export interface Adapter {
     query: PageQuery,
     ctx: AdapterContext
   ) => Promise<Page<Workspace>>;
+  readonly getCampaignSettings?: (
+    campaignId: string,
+    ctx: AdapterContext
+  ) => Promise<CampaignSettings>;
+  readonly listSubsequences?: (
+    query: SubsequenceQuery,
+    ctx: AdapterContext
+  ) => Promise<Page<Sequence>>;
+  readonly getSenderHealth?: (
+    senderId: string,
+    ctx: AdapterContext
+  ) => Promise<SenderHealth>;
+  readonly listLists?: (
+    query: PageQuery,
+    ctx: AdapterContext
+  ) => Promise<Page<LeadList>>;
+  readonly listBlocklist?: (
+    query: PageQuery,
+    ctx: AdapterContext
+  ) => Promise<Page<BlockEntry>>;
+  readonly listTags?: (
+    query: PageQuery,
+    ctx: AdapterContext
+  ) => Promise<Page<Tag>>;
+  readonly listWebhooks?: (
+    query: WebhookQuery,
+    ctx: AdapterContext
+  ) => Promise<Page<WebhookSubscription>>;
 }

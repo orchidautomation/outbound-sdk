@@ -4,7 +4,7 @@
 // a run that dies restarts on the page it was reading, and a high-water mark,
 // so the next run asks only for newer records. Nothing is stored on our side.
 
-import type { Entity } from "../internal/entities.ts";
+import type { Entity } from "../internal/entities-account.ts";
 import type {
   CampaignFilters,
   LeadFilters,

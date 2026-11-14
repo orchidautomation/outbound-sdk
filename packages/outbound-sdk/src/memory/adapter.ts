@@ -3,6 +3,7 @@
 
 import type {
   Adapter,
+  LeadQuery,
   Page,
   PageQuery,
   TimeRange,
@@ -15,14 +16,28 @@ import { recordBase } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
 import { assertWorkspaceId } from "../internal/ref.ts";
 import {
+  toBlockEntry,
+  toHealth,
+  toList,
+  toSettings,
+  toTag,
+  toWebhook,
+} from "./account.ts";
+import {
   toCampaign,
   toLead,
   toMessage,
   toReply,
   toSender,
   toSequence,
+  toSubsequence,
 } from "./data.ts";
-import type { MemoryCampaign, MemoryData, MemoryMessage } from "./data.ts";
+import type {
+  MemoryCampaign,
+  MemoryData,
+  MemoryLead,
+  MemoryMessage,
+} from "./data.ts";
 import { queryStats } from "./stats.ts";
 
 export interface MemoryOptions {
@@ -38,13 +53,19 @@ export interface MemoryOptions {
 }
 
 const FULL_CAPABILITIES: CapabilityDeclaration = {
+  blocklist: true,
+  "campaigns.settings": true,
   "campaigns.status": "server",
   "leads.byCampaign": true,
+  "leads.engagement": true,
   "leads.get": true,
   "leads.list": true,
   "leads.since": "server",
   "leads.timeline": true,
+  "lists.leads": true,
+  "lists.list": true,
   "messages.body": "full",
+  "messages.byThread": true,
   "messages.list": true,
   "messages.since": "server",
   "replies.category": "vendor",
@@ -52,14 +73,18 @@ const FULL_CAPABILITIES: CapabilityDeclaration = {
   "replies.since": "server",
   "senders.byCampaign": true,
   "senders.get": true,
+  "senders.health": true,
   "senders.list": true,
   "senders.warmup": true,
   sequence: true,
+  "sequence.subsequences": true,
   "stats.byDay": "exact",
   "stats.bySender": "exact",
   "stats.byStep": "exact",
   "stats.campaign": "exact",
   "stats.workspace": "exact",
+  tags: true,
+  "webhooks.list": true,
   workspaces: true,
 };
 
@@ -119,6 +144,7 @@ const selectMessages = (
   query: TimeRange & {
     readonly campaignId?: string | undefined;
     readonly leadId?: string | undefined;
+    readonly threadId?: string | undefined;
   },
   key: "messages.since" | "replies.since"
 ): MemoryMessage[] =>
@@ -127,7 +153,18 @@ const selectMessages = (
       (query.campaignId === undefined ||
         message.campaignId === query.campaignId) &&
       (query.leadId === undefined || message.leadId === query.leadId) &&
+      (query.threadId === undefined || message.threadId === query.threadId) &&
       (!filtersByTime(store, key) || within(message.sentAt, query))
+  );
+
+const selectLeads = (store: Store, query: LeadQuery): MemoryLead[] =>
+  (store.data.leads ?? []).filter(
+    (lead) =>
+      (query.campaignId === undefined ||
+        lead.campaignId === query.campaignId) &&
+      (query.listId === undefined ||
+        (lead.listIds ?? []).includes(query.listId)) &&
+      (!filtersByTime(store, "leads.since") || within(lead.createdAt, query))
   );
 
 type Getters = Pick<
@@ -194,13 +231,7 @@ const listers = (store: Store): Listers => {
       );
     },
     listLeads: (query) => {
-      const seeds = (data.leads ?? []).filter(
-        (lead) =>
-          (query.campaignId === undefined ||
-            lead.campaignId === query.campaignId) &&
-          (!filtersByTime(store, "leads.since") ||
-            within(lead.createdAt, query))
-      );
+      const seeds = selectLeads(store, query);
 
       return Promise.resolve(
         paginate(
@@ -276,6 +307,80 @@ const listers = (store: Store): Listers => {
   };
 };
 
+type AccountReads = Pick<
+  Adapter,
+  | "getCampaignSettings"
+  | "getSenderHealth"
+  | "listBlocklist"
+  | "listLists"
+  | "listSubsequences"
+  | "listTags"
+  | "listWebhooks"
+>;
+
+const accountReads = (store: Store): AccountReads => {
+  const { data, identity, pageSize } = store;
+
+  const page = <Item>(items: readonly Item[], query: PageQuery) =>
+    Promise.resolve(paginate(items, query, pageSize));
+
+  return {
+    getCampaignSettings: (id) =>
+      Promise.resolve(
+        toSettings(identity, id, findCampaign(store, id).settings ?? {})
+      ),
+    getSenderHealth: (id) => {
+      const seed = data.senders?.find((sender) => sender.id === id);
+
+      return seed === undefined
+        ? Promise.reject(notFound(identity.provider, "Sender", id))
+        : Promise.resolve(toHealth(identity, seed, seed.health ?? {}));
+    },
+    listBlocklist: (query) =>
+      page(
+        (data.blocklist ?? []).map((seed) => toBlockEntry(identity, seed)),
+        query
+      ),
+    listLists: (query) =>
+      page(
+        (data.lists ?? []).map((seed) =>
+          toList(
+            identity,
+            seed,
+            (data.leads ?? []).filter((lead) =>
+              (lead.listIds ?? []).includes(seed.id)
+            ).length
+          )
+        ),
+        query
+      ),
+    listSubsequences: (query) => {
+      const campaign = findCampaign(store, query.campaignId);
+
+      return page(
+        (campaign.subsequences ?? []).map((seed) =>
+          toSubsequence(identity, campaign, seed)
+        ),
+        query
+      );
+    },
+    listTags: (query) =>
+      page(
+        (data.tags ?? []).map((seed) => toTag(identity, seed)),
+        query
+      ),
+    listWebhooks: (query) =>
+      page(
+        (data.webhooks ?? []).flatMap((seed) =>
+          query.campaignId === undefined || seed.campaignId === query.campaignId
+            ? [toWebhook(identity, seed)]
+            : []
+        ),
+        query
+      ),
+  };
+};
+
 /** An adapter over data held in memory. */
 export const memory = (options: MemoryOptions = {}): Adapter => {
   const provider = options.name ?? "memory";
@@ -305,6 +410,7 @@ export const memory = (options: MemoryOptions = {}): Adapter => {
   return {
     ...getters(store),
     ...listers(store),
+    ...accountReads(store),
     capabilities,
     costs: {},
     // Nothing is rate limited in memory; the numbers only keep the engine's math defined.

@@ -21,6 +21,7 @@ export type {
   LeadFilters,
   LeadHandle,
   ListAll,
+  ListHandle,
   ListAllOptions,
   ListOptions,
   MessageFilters,
@@ -35,7 +36,9 @@ export type {
   SenderHandle,
   StatsOptions,
   StatsResult,
+  ThreadHandle,
   TopLevelStatsOptions,
+  WebhookFilters,
   WithMeta,
 } from "./internal/outbound/api.ts";
 
@@ -87,10 +90,10 @@ export type {
   Campaign,
   CampaignStatus,
   Channel,
-  Entity,
   EventType,
   Evidence,
   Lead,
+  LeadEngagement,
   LeadStatus,
   Message,
   MetricRow,
@@ -105,6 +108,26 @@ export type {
   SequenceVariant,
   Workspace,
 } from "./internal/entities.ts";
+
+export {
+  blockEntrySchema,
+  campaignSettingsSchema,
+  leadListSchema,
+  senderHealthSchema,
+  tagSchema,
+  webhookSubscriptionSchema,
+} from "./internal/entities-account.ts";
+
+export type {
+  BlockEntry,
+  CampaignSettings,
+  Entity,
+  LeadList,
+  SenderHealth,
+  SendingWindow,
+  Tag,
+  WebhookSubscription,
+} from "./internal/entities-account.ts";
 
 export {
   CAPABILITY_KEYS,

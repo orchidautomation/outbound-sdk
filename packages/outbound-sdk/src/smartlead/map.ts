@@ -118,8 +118,10 @@ const toStep = (step: JsonObject, position: number): SequenceStep => {
 
   return {
     action: "email",
+    branch: null,
     delayDays: delayDays(step),
     index: number === null || number < 1 ? position : number - 1,
+    parentIndex: null,
     // With no variants the copy is on the step itself.
     variants: (variants.length === 0 ? [step] : variants).map(toVariant),
   };
@@ -136,9 +138,15 @@ export const toSequence = (
   return {
     ...recordBase(identity, campaignId, steps ?? null),
     campaignRef: refTo(identity, campaignId) ?? "",
+    kind: "main",
+    name: null,
     steps: objects(steps)
       .map(toStep)
-      .toSorted((left, right) => left.index - right.index),
+      .toSorted((left, right) => left.index - right.index)
+      .map((step, position, sorted) => ({
+        ...step,
+        parentIndex: sorted[position - 1]?.index ?? null,
+      })),
   };
 };
 
@@ -218,7 +226,10 @@ const leadRecord = (
   createdAt: timestamp(place.createdAt),
   custom: stringMap(lead.custom_fields),
   email: emailAddress(lead.email),
+  engagement: null,
   firstName: text(lead.first_name),
+  interest: null,
+  tags: [],
   lastName: text(lead.last_name),
   linkedinUrl: text(lead.linkedin_profile),
   status: leadStatus(place.status, lead),

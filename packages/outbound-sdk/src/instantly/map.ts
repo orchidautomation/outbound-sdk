@@ -85,8 +85,10 @@ export const variantKey = (index: number): string =>
 
 const toStep = (step: JsonObject, index: number): SequenceStep => ({
   action: text(step.type) ?? "email",
+  branch: null,
   delayDays: delayDays(step),
   index,
+  parentIndex: index === 0 ? null : index - 1,
   variants: objects(step.variants).map((variant, variantIndex) => {
     const subject = text(variant.subject);
     const body = text(variant.body);
@@ -108,6 +110,8 @@ export const toSequence = (identity: Identity, raw: JsonObject): Sequence => {
   return {
     ...recordBase(identity, id, raw.sequences ?? null),
     campaignRef: refTo(identity, id) ?? "",
+    kind: "main",
+    name: null,
     steps: objects(first?.steps).map(toStep),
   };
 };
@@ -168,7 +172,10 @@ export const toLead = (identity: Identity, raw: JsonObject): Lead => ({
   createdAt: timestamp(raw.timestamp_created),
   custom: stringMap(raw.payload),
   email: emailAddress(raw.email),
+  engagement: null,
   firstName: text(raw.first_name),
+  interest: null,
+  tags: [],
   lastName: text(raw.last_name),
   linkedinUrl: null,
   status: LEAD_STATUS.get(count(raw.status) ?? Number.NaN) ?? "unknown",

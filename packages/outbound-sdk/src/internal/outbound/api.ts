@@ -5,6 +5,14 @@ import type { TimeRange } from "../adapter.ts";
 import type { Capabilities } from "../capabilities.ts";
 import type { LimitsSnapshot, OperationOptions } from "../engine/engine.ts";
 import type {
+  BlockEntry,
+  CampaignSettings,
+  LeadList,
+  SenderHealth,
+  Tag,
+  WebhookSubscription,
+} from "../entities-account.ts";
+import type {
   Campaign,
   CampaignStatus,
   Evidence,
@@ -124,11 +132,19 @@ export interface SenderFilters {
 
 export interface LeadFilters extends TimeRange {
   readonly campaignId?: string | undefined;
+  /** A saved lead list. Not together with `campaignId`. */
+  readonly listId?: string | undefined;
+}
+
+export interface WebhookFilters {
+  readonly campaignId?: string | undefined;
 }
 
 export interface MessageFilters extends TimeRange {
   readonly campaignId?: string | undefined;
   readonly leadId?: string | undefined;
+  /** A `threadId` from an earlier message. */
+  readonly threadId?: string | undefined;
   readonly include?: readonly Include[] | undefined;
 }
 
@@ -166,8 +182,18 @@ export interface CampaignHandle {
   readonly sequence: (
     options?: OperationOptions
   ) => Promise<WithMeta<Sequence>>;
+  /** The schedule, daily caps, tracking and stop rules. */
+  readonly settings: (
+    options?: OperationOptions
+  ) => Promise<WithMeta<CampaignSettings>>;
+  /** The follow-up sequences attached to the campaign. */
+  readonly subsequences: ReadCollection<Sequence, Record<never, never>>;
+  readonly webhooks: ReadCollection<WebhookSubscription, Record<never, never>>;
   readonly senders: ReadCollection<Sender, Scoped<SenderFilters, "campaignId">>;
-  readonly leads: ReadCollection<Lead, Scoped<LeadFilters, "campaignId">>;
+  readonly leads: ReadCollection<
+    Lead,
+    Scoped<LeadFilters, "campaignId" | "listId">
+  >;
   readonly messages: ReadCollection<
     Message,
     Scoped<MessageFilters, "campaignId">
@@ -188,6 +214,28 @@ export interface SenderHandle {
   readonly warmup: (
     options?: OperationOptions
   ) => Promise<NonNullable<Sender["warmup"]>>;
+  /** DNS records, connection state and warmup traffic. */
+  readonly health: (
+    options?: OperationOptions
+  ) => Promise<WithMeta<SenderHealth>>;
+}
+
+export interface ListHandle {
+  readonly id: string;
+  readonly leads: ReadCollection<
+    Lead,
+    Scoped<LeadFilters, "campaignId" | "listId">
+  >;
+}
+
+export interface ThreadHandle {
+  readonly id: string;
+  /** Every message of the conversation, oldest first. */
+  readonly messages: (
+    options?: OperationOptions & {
+      readonly include?: readonly Include[] | undefined;
+    }
+  ) => Promise<PageResult<Message>>;
 }
 
 export interface LeadHandle {
@@ -249,10 +297,21 @@ export interface OutboundApi {
   readonly messages: ReadCollection<Message, MessageFilters>;
   readonly replies: ReadCollection<Reply, ReplyFilters>;
   readonly workspaces: ReadCollection<Workspace, Record<never, never>>;
+  /** Saved lead lists. */
+  readonly lists: ReadCollection<LeadList, Record<never, never>>;
+  /** The addresses, domains and profiles the account never contacts. */
+  readonly blocklist: ReadCollection<BlockEntry, Record<never, never>>;
+  readonly tags: ReadCollection<Tag, Record<never, never>>;
+  /** The webhooks registered with the vendor. */
+  readonly webhooks: ReadCollection<WebhookSubscription, WebhookFilters>;
   readonly raw: RawClient;
   readonly campaign: (id: string) => CampaignHandle;
   readonly sender: (id: string) => SenderHandle;
   readonly lead: (id: string) => LeadHandle;
+  /** One saved lead list. */
+  readonly list: (id: string) => ListHandle;
+  /** One conversation, by the `threadId` a message carries. */
+  readonly thread: (id: string) => ThreadHandle;
   /** The same API scoped to one client or workspace. */
   readonly workspace: (id: string) => OutboundApi;
   readonly stats: (options?: TopLevelStatsOptions) => Promise<StatsResult>;

@@ -20,6 +20,7 @@ import type {
   Sequence,
   Workspace,
 } from "../entities.ts";
+import { OutboundError } from "../errors.ts";
 import type {
   CampaignFilters,
   Include,
@@ -124,8 +125,17 @@ export const leadList = (core: Core): ListSpec<Lead, LeadFilters> => ({
   action: "leads.list",
   keyOf: refOf,
   prepare: (filters) => {
+    if (filters.campaignId !== undefined && filters.listId !== undefined) {
+      throw new OutboundError(
+        "Invalid",
+        "Leads can be listed by campaign or by list, not both at once"
+      );
+    }
+
     // Some vendors have no global lead list: leads exist only per campaign.
-    if (filters.campaignId === undefined) {
+    if (filters.listId !== undefined) {
+      requireCapability(core.gate, "lists.leads", "Listing a list's leads");
+    } else if (filters.campaignId === undefined) {
       requireCapability(core.gate, "leads.list", "Listing leads");
     } else {
       requireCapability(
@@ -139,7 +149,11 @@ export const leadList = (core: Core): ListSpec<Lead, LeadFilters> => ({
       requireCapability(core.gate, "leads.since", "Filtering leads by date");
     }
 
-    return { campaignId: filters.campaignId, ...normalizeRange(filters) };
+    return {
+      campaignId: filters.campaignId,
+      listId: filters.listId,
+      ...normalizeRange(filters),
+    };
   },
   schema: leadSchema,
   toOperation: (filters, page) => ({
@@ -164,6 +178,14 @@ export const messageList = (core: Core): ListSpec<Message, MessageFilters> => ({
   prepare: (filters) => {
     requireCapability(core.gate, "messages.list", "Listing messages");
 
+    if (filters.threadId !== undefined) {
+      requireCapability(
+        core.gate,
+        "messages.byThread",
+        "Reading one conversation"
+      );
+    }
+
     if (wantsBody(filters.include)) {
       requireCapability(core.gate, "messages.body", "Reading message bodies");
     }
@@ -180,6 +202,7 @@ export const messageList = (core: Core): ListSpec<Message, MessageFilters> => ({
       campaignId: filters.campaignId,
       include: filters.include,
       leadId: filters.leadId,
+      threadId: filters.threadId,
       ...normalizeRange(filters),
     };
   },
@@ -191,6 +214,7 @@ export const messageList = (core: Core): ListSpec<Message, MessageFilters> => ({
       includeBody: wantsBody(filters.include),
       leadId: filters.leadId,
       since: filters.since,
+      threadId: filters.threadId,
       until: filters.until,
       ...page,
     },

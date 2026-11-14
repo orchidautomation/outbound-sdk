@@ -85,6 +85,11 @@ const maskCustom = (
       )
     : { ...custom };
 
+const BLOCK_FIELDS = new Map<string, RedactField>([
+  ["email", "email"],
+  ["linkedin", "linkedin"],
+]);
+
 // Records are told apart by a field only that kind has.
 const redactRecord = (masks: Masks, record: OutboundRecord): OutboundRecord => {
   if ("scope" in record) {
@@ -115,6 +120,33 @@ const redactRecord = (masks: Masks, record: OutboundRecord): OutboundRecord => {
     };
   }
 
+  if ("value" in record) {
+    // A block list entry names a person only when it is an address or a profile.
+    const blocked: RedactField | undefined = BLOCK_FIELDS.get(record.kind);
+
+    return {
+      ...record,
+      raw: null,
+      value:
+        blocked === undefined
+          ? record.value
+          : (maskIf(masks, blocked, record.value) ?? MASK),
+    };
+  }
+
+  if (
+    "steps" in record ||
+    "schedule" in record ||
+    "dns" in record ||
+    "size" in record ||
+    "url" in record ||
+    "description" in record
+  ) {
+    // Sequences hold template text; settings, health, lists, webhooks and
+    // tags hold no person.
+    return { ...record, raw: null };
+  }
+
   if ("kind" in record) {
     return {
       ...record,
@@ -125,8 +157,8 @@ const redactRecord = (masks: Masks, record: OutboundRecord): OutboundRecord => {
     };
   }
 
-  if ("steps" in record || "tags" in record || "name" in record) {
-    // Sequences hold template text, campaigns and workspaces hold no person.
+  if ("tags" in record || "name" in record) {
+    // Campaigns and workspaces hold no person.
     return { ...record, raw: null };
   }
 

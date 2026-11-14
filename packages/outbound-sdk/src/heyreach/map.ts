@@ -120,7 +120,10 @@ const profileFields = (
   email:
     emailAddress(field(profile, "emailAddress")) ??
     emailAddress(field(profile, "enrichedEmailAddress")),
+  engagement: null,
   firstName: text(field(profile, "firstName")),
+  interest: null,
+  tags: [],
   lastName: text(field(profile, "lastName")),
   linkedinUrl: text(field(profile, "profileUrl")),
   title: text(field(profile, "position")),

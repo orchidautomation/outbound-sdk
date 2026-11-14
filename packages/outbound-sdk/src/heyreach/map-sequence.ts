@@ -57,8 +57,10 @@ const variantBodies = (payload: Json | undefined): (string | null)[] => {
 
 const toStep = (node: JsonObject, index: number): SequenceStep => ({
   action: (text(node.nodeType) ?? "unknown").toLowerCase(),
+  branch: null,
   delayDays: delayDays(node),
   index,
+  parentIndex: index === 0 ? null : index - 1,
   variants: variantBodies(node.payload).map((body, variantIndex) => ({
     body,
     contentHash: stableId(null, body),
@@ -115,5 +117,7 @@ export const toSequence = (
 ): Sequence => ({
   ...recordBase(identity, campaignId, raw),
   campaignRef: refTo(identity, campaignId) ?? "",
+  kind: "main",
+  name: null,
   steps: walk(identity, raw).map(toStep),
 });

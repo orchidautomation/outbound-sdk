@@ -8,6 +8,7 @@ import type {
   CampaignStatus,
   Channel,
   Lead,
+  LeadEngagement,
   LeadStatus,
   Message,
   MetricRow,
@@ -22,6 +23,14 @@ import { recordBase, refTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
 import { makeRef } from "../internal/ref.ts";
 import { stableId } from "../internal/sha256.ts";
+import type {
+  MemoryBlockEntry,
+  MemoryHealth,
+  MemoryList,
+  MemorySettings,
+  MemoryTag,
+  MemoryWebhook,
+} from "./account.ts";
 
 export interface MemoryVariant {
   readonly key?: string;
@@ -33,6 +42,16 @@ export interface MemoryStep {
   readonly action?: string;
   readonly delayDays?: number;
   readonly variants: readonly MemoryVariant[];
+  /** The step before this one. Defaults to the previous step in the list. */
+  readonly parentIndex?: number;
+  /** The outcome of the parent's condition that leads here. */
+  readonly branch?: string;
+}
+
+export interface MemorySubsequence {
+  readonly id: string;
+  readonly name?: string;
+  readonly steps: readonly MemoryStep[];
 }
 
 export interface MemoryCampaign {
@@ -43,6 +62,8 @@ export interface MemoryCampaign {
   readonly createdAt?: string;
   readonly tags?: readonly string[];
   readonly steps?: readonly MemoryStep[];
+  readonly settings?: MemorySettings;
+  readonly subsequences?: readonly MemorySubsequence[];
 }
 
 export interface MemorySender {
@@ -55,6 +76,7 @@ export interface MemorySender {
   readonly warmup?: { readonly enabled: boolean; readonly score?: number };
   /** The campaigns this sender is attached to. */
   readonly campaignIds?: readonly string[];
+  readonly health?: MemoryHealth;
 }
 
 export interface MemoryLead {
@@ -69,6 +91,11 @@ export interface MemoryLead {
   readonly status?: LeadStatus;
   readonly custom?: Readonly<Record<string, string>>;
   readonly createdAt?: string;
+  readonly engagement?: Partial<LeadEngagement>;
+  readonly interest?: string;
+  readonly tags?: readonly string[];
+  /** The saved lists the lead is on. */
+  readonly listIds?: readonly string[];
 }
 
 export interface MemoryMessage {
@@ -80,6 +107,7 @@ export interface MemoryMessage {
   readonly senderId?: string;
   readonly stepIndex?: number;
   readonly variantKey?: string;
+  readonly threadId?: string;
   readonly subject?: string;
   readonly body?: string;
   /** Inbound only. */
@@ -105,6 +133,10 @@ export interface MemoryData {
   readonly leads?: readonly MemoryLead[];
   readonly messages?: readonly MemoryMessage[];
   readonly stats?: readonly MemoryStats[];
+  readonly lists?: readonly MemoryList[];
+  readonly blocklist?: readonly MemoryBlockEntry[];
+  readonly tags?: readonly MemoryTag[];
+  readonly webhooks?: readonly MemoryWebhook[];
 }
 
 const base = (identity: Identity, sourceId: string) =>
@@ -124,23 +156,45 @@ export const toCampaign = (
   tags: [...(seed.tags ?? [])],
 });
 
-export const toSequence = (
-  identity: Identity,
-  seed: MemoryCampaign
-): Sequence => ({
-  ...base(identity, seed.id),
-  campaignRef: makeRef(identity.provider, identity.workspaceId, seed.id),
-  steps: (seed.steps ?? []).map((step, index) => ({
-    action: step.action ?? (seed.channel === "linkedin" ? "message" : "email"),
+const toSteps = (
+  steps: readonly MemoryStep[],
+  channel: Channel | undefined
+): Sequence["steps"] =>
+  steps.map((step, index) => ({
+    action: step.action ?? (channel === "linkedin" ? "message" : "email"),
+    branch: step.branch ?? null,
     delayDays: step.delayDays ?? null,
     index,
+    parentIndex: step.parentIndex ?? (index === 0 ? null : index - 1),
     variants: step.variants.map((variant, variantIndex) => ({
       body: variant.body ?? null,
       contentHash: stableId(variant.subject, variant.body),
       subject: variant.subject ?? null,
       variantKey: variant.key ?? String.fromCodePoint(65 + variantIndex),
     })),
-  })),
+  }));
+
+export const toSequence = (
+  identity: Identity,
+  seed: MemoryCampaign
+): Sequence => ({
+  ...base(identity, seed.id),
+  campaignRef: makeRef(identity.provider, identity.workspaceId, seed.id),
+  kind: "main",
+  name: null,
+  steps: toSteps(seed.steps ?? [], seed.channel),
+});
+
+export const toSubsequence = (
+  identity: Identity,
+  campaign: MemoryCampaign,
+  seed: MemorySubsequence
+): Sequence => ({
+  ...base(identity, seed.id),
+  campaignRef: makeRef(identity.provider, identity.workspaceId, campaign.id),
+  kind: "subsequence",
+  name: seed.name ?? seed.id,
+  steps: toSteps(seed.steps, campaign.channel),
 });
 
 export const toSender = (identity: Identity, seed: MemorySender): Sender => ({
@@ -164,7 +218,21 @@ export const toLead = (identity: Identity, seed: MemoryLead): Lead => ({
   createdAt: seed.createdAt ?? null,
   custom: { ...seed.custom },
   email: seed.email?.trim().toLowerCase() ?? null,
+  engagement:
+    seed.engagement === undefined
+      ? null
+      : {
+          clicks: seed.engagement.clicks ?? null,
+          lastContactedAt: seed.engagement.lastContactedAt ?? null,
+          lastOpenedAt: seed.engagement.lastOpenedAt ?? null,
+          lastRepliedAt: seed.engagement.lastRepliedAt ?? null,
+          opens: seed.engagement.opens ?? null,
+          replies: seed.engagement.replies ?? null,
+          stepIndex: seed.engagement.stepIndex ?? null,
+        },
   firstName: seed.firstName ?? null,
+  interest: seed.interest ?? null,
+  tags: [...(seed.tags ?? [])],
   lastName: seed.lastName ?? null,
   linkedinUrl: seed.linkedinUrl ?? null,
   status: seed.status ?? "active",
@@ -187,7 +255,7 @@ const messageFields = (
   sentAt: seed.sentAt,
   stepIndex: seed.stepIndex ?? null,
   subject: seed.subject ?? null,
-  threadId: null,
+  threadId: seed.threadId ?? null,
   variantKey: seed.variantKey ?? null,
 });
 
