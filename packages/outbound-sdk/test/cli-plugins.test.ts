@@ -113,7 +113,7 @@ test("outbound mcp masks personal fields by default and says so", async () => {
   const session = await outbound(["mcp"], [initialize, list, replyBodies]);
 
   assert.equal(session.code, 0);
-  assert.match(instructionsOf(session), /Plugins on: redact\./u);
+  assert.match(instructionsOf(session), /Plugins on: redact, identity\./u);
   assert.match(instructionsOf(session), /reply text is not available/u);
   assert.ok(
     !toolNames(session).includes("cross_channel_lead"),
@@ -130,7 +130,7 @@ test("--no-redact serves records unmasked, and reply text on request", async () 
 
   assert.match(
     instructionsOf(session),
-    /No plugins are on: personal fields .* are not masked/u
+    /Plugins on: identity\. Personal fields .* are not masked/u
   );
   assert.equal(callResult(session, 2).ok, true);
   assert.match(JSON.stringify(callResult(session, 2)), /untrusted_content/u);
@@ -160,7 +160,7 @@ export default { plugins: [clients({ rules: [{ campaignTag: "acme", client: "Acm
   assert.equal(session.code, 0, session.err);
   assert.match(
     instructionsOf(session),
-    /Plugins on: redact, clients, cache, budget\./u
+    /Plugins on: redact, clients, cache, budget, identity\./u
   );
   assert.ok(toolNames(session).includes("compare_clients"));
 });
@@ -177,7 +177,10 @@ export default { plugins: [redact({ fields: ["email"] })] };`
   );
 
   assert.equal(session.code, 0, session.err);
-  assert.match(instructionsOf(session), /Plugins on: redact\. redact masks/u);
+  assert.match(
+    instructionsOf(session),
+    /Plugins on: redact, identity\. redact masks/u
+  );
   // Only email is masked, so reply text stays readable.
   assert.equal(callResult(session, 2).ok, true);
 

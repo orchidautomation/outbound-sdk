@@ -44,6 +44,24 @@ export interface FoundPerson {
   readonly records: readonly Lead[];
 }
 
+interface Redacted {
+  readonly redacted: { readonly fields: readonly string[] };
+}
+
+type Outbound = InsightContext["outbound"];
+
+// The redact plugin says what it masks on the instance. Told apart by shape,
+// so the insights do not import that plugin.
+const isRedacted = (outbound: Outbound): outbound is Outbound & Redacted =>
+  "redacted" in outbound;
+
+const maskedIdentifiers = (outbound: Outbound): string[] =>
+  isRedacted(outbound)
+    ? outbound.redacted.fields.filter(
+        (field) => field === "email" || field === "linkedin"
+      )
+    : [];
+
 /**
  * Asks the vendor for the person by each identifier. A record that carries a
  * second identifier is looked up under that one too, so an email address can
@@ -60,6 +78,18 @@ export const findPerson = async (
     throw new OutboundError(
       "Invalid",
       "Give an email address or a LinkedIn profile URL",
+      { provider: context.outbound.provider }
+    );
+  }
+
+  // The records come back masked, so the identifier asked for would match
+  // none of them: refuse instead of reporting a known person as not found.
+  const masked = maskedIdentifiers(context.outbound);
+
+  if (masked.length > 0) {
+    throw new OutboundError(
+      "Unsupported",
+      `A person cannot be looked up while the redact plugin masks ${masked.join(" and ")}: the records could not be matched to the identifier`,
       { provider: context.outbound.provider }
     );
   }

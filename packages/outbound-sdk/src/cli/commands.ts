@@ -122,6 +122,30 @@ export const offeredTools = async (
   return createTools(outbound, { extra: insightTools(outbound) });
 };
 
+/** Lists the insights, or runs the one the first argument names. */
+const runInsight: Command = async (outbound, input) => {
+  // Loaded on demand, so the other commands do not pay for the insights.
+  const { insightTools, listInsights, runInsightByName } =
+    await import("../insights/index.ts");
+
+  const [name] = input.positionals;
+
+  if (name === undefined) {
+    return asJson(listInsights());
+  }
+
+  const insightInput = parseInput(text(input, "input"));
+
+  // A card is drawn from the tool form of the answer.
+  const [asTool] = wantsCard(input)
+    ? insightTools(outbound, { only: [name] })
+    : [];
+
+  return asTool === undefined
+    ? asJson(await runInsightByName(outbound, name, insightInput))
+    : drawn(name, await asTool.call(insightInput), input);
+};
+
 export interface CommandSpec {
   readonly help: string;
   readonly run: Command;
@@ -191,28 +215,7 @@ const COMMAND_TABLE = {
   },
   insight: {
     help: "insight [name] [--input JSON] [--card | --slack]  computed answers; no name lists them",
-    run: async (outbound, input) => {
-      // Loaded on demand, so the other commands do not pay for the insights.
-      const { insightTools, listInsights, runInsightByName } =
-        await import("../insights/index.ts");
-
-      const [name] = input.positionals;
-
-      if (name === undefined) {
-        return asJson(listInsights());
-      }
-
-      const insightInput = parseInput(text(input, "input"));
-
-      // A card is drawn from the tool form of the answer.
-      const [asTool] = wantsCard(input)
-        ? insightTools(outbound, { only: [name] })
-        : [];
-
-      return asTool === undefined
-        ? asJson(await runInsightByName(outbound, name, insightInput))
-        : drawn(name, await asTool.call(insightInput), input);
-    },
+    run: runInsight,
   },
   leads: {
     help: "leads [--campaign ID | --list ID] [--limit N]",
@@ -254,25 +257,18 @@ const COMMAND_TABLE = {
   },
   person: {
     help: "person <email or LinkedIn URL> [--limit N] [--card | --slack]  one person's campaigns across every tool",
-    run: async (outbound, input) => {
-      const { insightTools, runInsightByName } =
-        await import("../insights/index.ts");
-
-      const personInput = {
-        max_campaigns: count(input, "limit", 20),
-        person: required(input, 0, "an email address or a LinkedIn URL"),
-      };
-
-      const [asTool] = wantsCard(input)
-        ? insightTools(outbound, { only: ["person_summary"] })
-        : [];
-
-      return asTool === undefined
-        ? asJson(
-            await runInsightByName(outbound, "person_summary", personInput)
-          )
-        : drawn("person_summary", await asTool.call(personInput), input);
-    },
+    // The person_summary insight, with its input taken from the arguments.
+    run: (outbound, input) =>
+      runInsight(outbound, {
+        flags: {
+          ...input.flags,
+          input: JSON.stringify({
+            max_campaigns: count(input, "limit", 20),
+            person: required(input, 0, "an email address or a LinkedIn URL"),
+          }),
+        },
+        positionals: ["person_summary"],
+      }),
   },
   replies: {
     help: "replies [--campaign ID] [--category positive|negative|neutral|ooo|...] [--since ISO] [--limit N] [--bodies]",
