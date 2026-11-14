@@ -16,6 +16,7 @@ export default defineMeta({
     "insights",
     "plugins",
     "tools",
+    "cards",
     "cli",
     "webhooks",
     "troubleshooting",

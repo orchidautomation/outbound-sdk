@@ -21,6 +21,7 @@ The documentation is at [outbound-sdk.dev](https://outbound-sdk.dev). It is buil
 - [Using the package](packages/outbound-sdk/README.md)
 - [Adapters and what each can do](https://outbound-sdk.dev/docs/adapters), with [every endpoint accounted for](https://outbound-sdk.dev/docs/coverage)
 - [Insights](https://outbound-sdk.dev/docs/insights): 26 computed answers, from one person across email and LinkedIn to a weekly client report
+- [Cards](https://outbound-sdk.dev/docs/cards): every answer as a card for Slack, Chat SDK or any json-render renderer
 - [Plugins](https://outbound-sdk.dev/docs/plugins)
 - [AI tools](https://outbound-sdk.dev/docs/tools), the [CLI](https://outbound-sdk.dev/docs/cli) and its [MCP server](https://outbound-sdk.dev/docs/cli/mcp), and [webhooks](https://outbound-sdk.dev/docs/webhooks)
 - [Guides](https://outbound-sdk.dev/guides): complete tasks, end to end

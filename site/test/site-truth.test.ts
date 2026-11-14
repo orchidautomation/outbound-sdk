@@ -88,6 +88,7 @@ test("while the package is unpublished, no page shows an install command for it"
 test("every public subpath has a page", () => {
   const home: Readonly<Record<string, string>> = {
     ".": "docs/usage.mdx",
+    "./cards": "docs/cards.mdx",
     "./cli": "docs/cli/index.mdx",
     "./combine": "docs/adapters/combine.mdx",
     "./heyreach": "docs/adapters/heyreach.mdx",

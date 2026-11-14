@@ -1,0 +1,56 @@
+{
+  "elements": {
+    "card-1": {
+      "children": [],
+      "props": {
+        "content": "Founders Q4 bounces at 8.1%, above the 3% limit.",
+        "style": "bold"
+      },
+      "type": "Text"
+    },
+    "card-2-1": {
+      "children": [],
+      "props": {
+        "label": "About",
+        "value": "memory:acme:cmp_founders"
+      },
+      "type": "Field"
+    },
+    "card-2-2": {
+      "children": [],
+      "props": {
+        "label": "Measured",
+        "value": "0.08"
+      },
+      "type": "Field"
+    },
+    "card-2-3": {
+      "children": [],
+      "props": {
+        "label": "Limit",
+        "value": "0.03"
+      },
+      "type": "Field"
+    },
+    "card-2": {
+      "children": [
+        "card-2-1",
+        "card-2-2",
+        "card-2-3"
+      ],
+      "props": {},
+      "type": "Fields"
+    },
+    "card": {
+      "children": [
+        "card-1",
+        "card-2"
+      ],
+      "props": {
+        "title": "🚨 Bounce rate above"
+      },
+      "type": "Card"
+    }
+  },
+  "root": "card"
+}

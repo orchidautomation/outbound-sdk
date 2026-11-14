@@ -9,7 +9,7 @@ Usage: outbound <command> [options]
   campaigns [--status active|paused|draft|completed|archived] [--limit N]
   capabilities
   health <sender id>
-  insight [name] [--input JSON]  computed answers; no name lists them
+  insight [name] [--input JSON] [--card | --slack]  computed answers; no name lists them
   leads [--campaign ID | --list ID] [--limit N]
   lists [--limit N]
   limits
@@ -19,7 +19,7 @@ Usage: outbound <command> [options]
   stats [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--by day|total]
   tags [--limit N]
   thread <id> [--bodies]
-  tool <name> [--input JSON]
+  tool <name> [--input JSON] [--card | --slack]
   tools
   webhooks [--campaign ID] [--limit N]
   mcp                      start a local MCP server on stdio
