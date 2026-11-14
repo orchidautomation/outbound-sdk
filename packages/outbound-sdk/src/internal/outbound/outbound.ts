@@ -62,6 +62,7 @@ import { dispatch } from "./operations.ts";
 import {
   assertUniquePluginNames,
   composeOperations,
+  installExtensions,
   narrowCapabilities,
 } from "./plugins.ts";
 import type { OutboundPlugin } from "./plugins.ts";
@@ -245,16 +246,18 @@ export class Outbound<
     return makeThreadHandle(this.#core, id);
   }
 
-  workspace(id: string): Outbound {
+  /**
+   * The same instance scoped to one client or workspace. It keeps the
+   * plugins and what they add, so `outbound.workspace(id).insights` works.
+   */
+  workspace(id: string): this {
     const { adapter, engine } = this.#core;
 
     if (adapter.members === undefined && adapter.workspaceId === id) {
       return this;
     }
 
-    const member = adapter.members?.find(
-      (candidate) => candidate.workspaceId === id
-    );
+    const member = adapter.scope?.(id);
 
     if (member === undefined) {
       throw new OutboundError(
@@ -266,7 +269,12 @@ export class Outbound<
       );
     }
 
-    return new Outbound({ ...this.#options, adapter: member }, engine);
+    const scoped = new Outbound({ ...this.#options, adapter: member }, engine);
+
+    installExtensions(scoped, this.#plugins);
+
+    // SAFETY: the scoped instance has this one's class, options and plugins, and so everything they add.
+    return scoped as this;
   }
 
   stats(options?: TopLevelStatsOptions): Promise<StatsResult> {

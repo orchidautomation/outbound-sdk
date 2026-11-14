@@ -209,6 +209,12 @@ export interface Adapter<Native extends NativeCatalog = NoNative> {
   readonly native?: Native | undefined;
   /** Set by `combine()`: the adapters behind this one. */
   readonly members?: readonly Adapter[] | undefined;
+  /**
+   * Set by `combine()`: the adapter for one workspace label. When several
+   * members carry the label, as a client on two tools does, it is those
+   * members combined. `undefined` when no member carries it.
+   */
+  readonly scope?: ((workspaceId: string) => Adapter | undefined) | undefined;
 
   // One page per call. The wrapper loops, throttles and retries.
   readonly listCampaigns: (
