@@ -126,8 +126,8 @@ export type Tag = z.infer<typeof tagSchema>;
 export const webhookSubscriptionSchema = z.object({
   ...baseFields,
   active: flag,
-  /** The campaign the webhook is limited to. `null` for every campaign. */
-  campaignRef: z.string().nullable(),
+  /** The campaigns the webhook is limited to. Empty for every campaign. */
+  campaignRefs: z.array(z.string()),
   createdAt: isoDateTime,
   /** Event names in the vendor's own words. */
   events: z.array(z.string()),

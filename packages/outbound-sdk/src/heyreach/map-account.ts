@@ -17,7 +17,7 @@ import {
   timestamp,
 } from "../internal/json.ts";
 import type { JsonObject } from "../internal/json.ts";
-import { recordBase, refTo } from "../internal/record.ts";
+import { recordBase, refTo, refsTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
 
 /** `POST /list/GetAll`: `listType` is `USER_LIST` or `COMPANY_LIST`. */
@@ -104,8 +104,7 @@ export const webhookCampaigns = (raw: JsonObject): string[] =>
 
 /**
  * `POST /webhooks/GetAllWebhooks`. A webhook listens to one event type. It can
- * be limited to several campaigns, which one `campaignRef` cannot hold: the
- * ref is set only when there is exactly one, and the ids stay in raw.
+ * be limited to several campaigns; an empty `campaignRefs` is every campaign.
  */
 export const toWebhook = (
   identity: Identity,
@@ -117,7 +116,7 @@ export const toWebhook = (
   return {
     ...recordBase(identity, text(raw.id) ?? "", raw),
     active: flag(raw.isActive),
-    campaignRef: campaigns.length === 1 ? refTo(identity, campaigns[0]) : null,
+    campaignRefs: refsTo(identity, campaigns),
     createdAt: null,
     events: event === null ? [] : [event],
     name: text(raw.webhookName),

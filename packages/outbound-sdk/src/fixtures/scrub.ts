@@ -108,7 +108,7 @@ const accountRecord = (
 
   return {
     ...base(record),
-    campaignRef: scrubRef(record.campaignRef),
+    campaignRefs: record.campaignRefs.map((ref) => scrubRef(ref) ?? ref),
     name: placeholder("value", record.name),
     url: "https://example.com/webhook",
   };

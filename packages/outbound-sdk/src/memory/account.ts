@@ -10,7 +10,7 @@ import type {
   Tag,
   WebhookSubscription,
 } from "../internal/entities-account.ts";
-import { recordBase, refTo } from "../internal/record.ts";
+import { recordBase, refsTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
 import { makeRef } from "../internal/ref.ts";
 
@@ -171,7 +171,7 @@ export const toWebhook = (
 ): WebhookSubscription => ({
   ...base(identity, seed.id),
   active: seed.active ?? true,
-  campaignRef: refTo(identity, seed.campaignId),
+  campaignRefs: refsTo(identity, [seed.campaignId]),
   createdAt: seed.createdAt ?? null,
   events: [...(seed.events ?? [])],
   name: seed.name ?? null,

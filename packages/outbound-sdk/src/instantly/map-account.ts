@@ -23,7 +23,7 @@ import {
   timestamp,
 } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
-import { recordBase, refTo } from "../internal/record.ts";
+import { recordBase, refTo, refsTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
 
 const CLOCK = /^\d{2}:\d{2}$/u;
@@ -268,7 +268,7 @@ export const toWebhook = (
 ): WebhookSubscription => ({
   ...recordBase(identity, text(raw.id) ?? "", raw),
   active: webhookActive(raw),
-  campaignRef: refTo(identity, text(raw.campaign)),
+  campaignRefs: refsTo(identity, [text(raw.campaign)]),
   createdAt: timestamp(raw.timestamp_created),
   // A webhook for a custom lead label has no event type.
   events: [text(raw.event_type)].flatMap((event) => event ?? []),

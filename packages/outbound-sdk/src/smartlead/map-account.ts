@@ -26,7 +26,7 @@ import {
   timestamp,
 } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
-import { recordBase, refTo } from "../internal/record.ts";
+import { recordBase, refTo, refsTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
 import { reputation, withoutSecrets } from "./map.ts";
 
@@ -249,7 +249,7 @@ export const toWebhook = (
   ...recordBase(identity, text(raw.id) ?? "", withoutSecrets(raw)),
   // Only the newer example carries is_active.
   active: flag(raw.is_active),
-  campaignRef: refTo(identity, text(raw.email_campaign_id) ?? campaignId),
+  campaignRefs: refsTo(identity, [text(raw.email_campaign_id) ?? campaignId]),
   createdAt: timestamp(raw.created_at),
   events: list(raw.event_types).flatMap((event) => text(event) ?? []),
   name: text(raw.name),

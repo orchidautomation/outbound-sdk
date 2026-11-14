@@ -382,7 +382,11 @@ test("smartlead: a campaign's webhooks are one request, in both documented shape
   assert.equal(first?.url, "https://hooks.example.com/smartlead");
   assert.deepEqual(first?.events, ["LEAD_CATEGORY_UPDATED"]);
   assert.equal(first?.createdAt, "2022-09-14T05:08:55.018Z");
-  assert.equal(first?.campaignRef, "smartlead:client-a:2180", "its own id");
+  assert.deepEqual(
+    first?.campaignRefs,
+    ["smartlead:client-a:2180"],
+    "its own id"
+  );
   assert.equal(first?.active, null, "this shape has no is_active");
   assert.deepEqual(second?.events, ["EMAIL_REPLY", "EMAIL_BOUNCE"]);
 
@@ -410,9 +414,9 @@ test("smartlead: a campaign's webhooks are one request, in both documented shape
   assert.equal(webhook?.sourceId, "456");
   assert.equal(webhook?.active, true);
   assert.equal(webhook?.createdAt, null);
-  assert.equal(
-    webhook?.campaignRef,
-    "smartlead:client-a:372",
+  assert.deepEqual(
+    webhook?.campaignRefs,
+    ["smartlead:client-a:372"],
     "the campaign that was asked"
   );
   assert.deepEqual(webhook?.events, ["LEAD_REPLIED", "LEAD_OPENED"]);
@@ -443,11 +447,11 @@ test("smartlead: webhooks without a campaign walk the campaigns and return each 
     `${API}/campaigns/2710100/webhooks`,
   ]);
   assert.deepEqual(
-    webhooks.map((webhook) => [webhook.sourceId, webhook.campaignRef]),
+    webhooks.map((webhook) => [webhook.sourceId, webhook.campaignRefs]),
     [
-      ["44", "smartlead:client-a:2180"],
-      ["45", "smartlead:client-a:2180"],
-      ["46", "smartlead:client-a:2710100"],
+      ["44", ["smartlead:client-a:2180"]],
+      ["45", ["smartlead:client-a:2180"]],
+      ["46", ["smartlead:client-a:2710100"]],
     ],
     "webhook 44 is listed by both campaigns and returned once"
   );

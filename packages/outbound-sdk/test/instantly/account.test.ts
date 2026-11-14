@@ -238,13 +238,13 @@ test("instantly: webhooks map url, event, campaign and whether they are active",
   assert.equal(first?.name, "Positive replies");
   assert.equal(first?.url, "https://hooks.example.com/instantly/replies");
   assert.deepEqual(first?.events, ["lead_interested"]);
-  assert.equal(first?.campaignRef, `instantly:client-a:${CAMPAIGN}`);
+  assert.deepEqual(first?.campaignRefs, [`instantly:client-a:${CAMPAIGN}`]);
   assert.equal(first?.active, true, "status 1");
   assert.equal(first?.createdAt, "2026-08-01T06:00:00.000Z");
 
   assert.equal(second?.name, null);
   assert.deepEqual(second?.events, ["all_events"]);
-  assert.equal(second?.campaignRef, null, "null means every campaign");
+  assert.deepEqual(second?.campaignRefs, [], "empty means every campaign");
   assert.equal(second?.active, false, "status -1 is disabled after failures");
 
   assert.deepEqual(

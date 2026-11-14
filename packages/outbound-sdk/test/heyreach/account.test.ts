@@ -287,7 +287,7 @@ test("heyreach: webhooks map one event each, and never ask for the custom header
       webhook.url,
       webhook.events,
       webhook.active,
-      webhook.campaignRef,
+      webhook.campaignRefs,
     ]),
     [
       [
@@ -296,7 +296,7 @@ test("heyreach: webhooks map one event each, and never ask for the custom header
         "https://hooks.example.com/heyreach/one",
         ["CONNECTION_REQUEST_SENT"],
         true,
-        "heyreach:client-a:274079",
+        ["heyreach:client-a:274079"],
       ],
       [
         "124",
@@ -304,7 +304,7 @@ test("heyreach: webhooks map one event each, and never ask for the custom header
         "https://hooks.example.com/heyreach/two",
         ["EVERY_MESSAGE_REPLY_RECEIVED"],
         false,
-        null,
+        [],
       ],
       [
         "125",
@@ -312,10 +312,10 @@ test("heyreach: webhooks map one event each, and never ask for the custom header
         "https://hooks.example.com/heyreach/three",
         ["CAMPAIGN_COMPLETED"],
         true,
-        null,
+        ["heyreach:client-a:274079", "heyreach:client-a:274080"],
       ],
     ],
-    "a webhook for two campaigns has no single campaign ref"
+    "a webhook for two campaigns names both"
   );
   assert.equal(webhooks[0]?.createdAt, null);
   assert.deepEqual(
@@ -363,7 +363,7 @@ test("heyreach: a webhook without an event, a name or a state maps them as empty
   assert.deepEqual(webhook?.events, []);
   assert.equal(webhook?.name, null);
   assert.equal(webhook?.active, null);
-  assert.equal(webhook?.campaignRef, null);
+  assert.deepEqual(webhook?.campaignRefs, []);
 });
 
 test("heyreach: a sender's health is its connection state, with no DNS, domain or warmup", async () => {
