@@ -2,15 +2,36 @@
 
 # outbound-sdk
 
-One small, typed, read-only TypeScript API over outbound sending tools: Instantly, Smartlead and HeyReach first.
+One small, typed, read-only TypeScript API over outbound sending tools: Instantly, Smartlead and HeyReach. It never writes to a vendor tool, stores nothing and calls no AI model.
 
-- Read-only. It never sends, pauses, edits or deletes anything in a vendor tool.
-- Stores nothing. Calls no AI model.
-- Swap the adapter and keep your code.
+```ts
+import { createOutbound } from "outbound-sdk";
+import { instantly } from "outbound-sdk/instantly";
 
-> Status: under construction. Nothing is published to npm yet.
+const outbound = createOutbound({ adapter: instantly() });
+for await (const campaign of outbound.campaigns.listAll({ status: "active" })) {
+  console.log(campaign.name, campaign.ref);
+}
+```
 
-See `AGENTS.md` for how the repository is organised and `docs/` for the design.
+> Status: not published to npm yet. Every adapter is `unverified`: written from the vendors' public documentation and tested offline, not yet checked against live accounts.
+
+- [Using the package](packages/outbound-sdk/README.md)
+- [Adapters and what each can do](docs/adapters.md)
+- [Plugins](docs/plugins.md)
+- [AI tools, the MCP server, the CLI and webhooks](docs/tools-and-webhooks.md)
+- [Architecture](docs/architecture.md) and [engineering guardrails](docs/engineering-guardrails.md)
+- [Adding an adapter](docs/new-adapter.md)
+
+## Working on it
+
+```sh
+npm ci
+npm run check        # lint, types, architecture, repo shape, fixtures, tests, coverage, build, size
+npm run check:fast   # the static checks only
+```
+
+See `AGENTS.md` for the rules of the repository.
 
 ## License
 

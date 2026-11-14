@@ -21,7 +21,7 @@ One small, typed, read-only TypeScript API over outbound sending tools. MIT, ope
 | `packages/outbound-sdk/test/` | Tests, through entry points only |
 | `fixtures/<provider>/` | Documented vendor payloads with personal data removed |
 | `scripts/` | Guardrail checks, each with its own test |
-| `docs/` | Architecture, guardrails, decisions, per-vendor research |
+| `docs/` | Architecture, adapters, plugins, tools, guardrails, per-vendor research |
 
 The design authority is the Outbound SDK spec and the Linear document "Tech stack and engineering standards", both linked from the Linear project `Outbound SDK` (team `OUT`).
 
@@ -32,7 +32,8 @@ The design authority is the Outbound SDK spec and the Linear document "Tech stac
 | `npm run check:fast` | lint, type check, architecture, repo shape, `git diff --check` |
 | `npm run check` | `check:fast`, tests, build, dist smoke test, size budget |
 | `npm run check:changed` | only the checks a change touches |
-| `npm run fix` | formatter and lint autofixes |
+| `npm run fix` | formatter and lint autofixes (run it twice) |
+| `npm run test:live` | read-only checks against real keys; needs `LIVE_TESTS=1` |
 
 Node is pinned in `.node-version`. Install with `npm ci`.
 
@@ -50,6 +51,7 @@ Node is pinned in `.node-version`. Install with `npm ci`.
 - Size limits are in `docs/engineering-guardrails.md`. Split by responsibility; never minify to pass.
 - Vendor facts come from that vendor's current documentation, fetched fresh. Record the URLs and the date in `docs/research/<provider>.md` before changing an adapter.
 - Each fact has one home. Link between Linear and this repository instead of copying text.
+- The vendor-drift agent may edit one vendor's `map*.ts`, `capabilities.ts`, `webhooks.ts`, tests, fixtures and research note, and nothing else. `scripts/check-drift-scope.mjs` enforces it.
 
 ## Adding or changing an adapter
 
