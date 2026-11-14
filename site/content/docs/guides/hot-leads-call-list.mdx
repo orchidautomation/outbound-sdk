@@ -112,7 +112,7 @@ The ranking needs per-lead reply, click and open counts (`leads.engagement`). Wi
 
 - **Instantly** declares `leads.engagement` and can list every lead. It serves the full ranking.
 - **Smartlead**'s adapter does not declare `leads.engagement`: the only per-lead counts are in an endpoint whose response is not documented, and in a CSV export. The call succeeds with a note, and scores rest on the label and the status.
-- **HeyReach** reports no per-lead counts at all, and has no list of every lead, so the call without a campaign is refused. With a campaign ref it runs, but the adapter's notes say a campaign's leads carry no interest label either. On HeyReach this ranking has almost nothing to rank on. Do not build a call list on it.
+- **HeyReach** reports no per-lead counts at all. The call runs, with or without a campaign, but the adapter's notes say a campaign's leads carry no interest label either. On HeyReach this ranking has almost nothing to rank on. Do not build a call list on it.
 
 ## What it costs
 

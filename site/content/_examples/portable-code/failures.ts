@@ -43,13 +43,11 @@ await refused("by step", () =>
   outbound.campaign("274079").stats({ scope: "step" })
 );
 
-// 3. A filter the vendor cannot apply. It is refused, not ignored.
-await refused("by category", () =>
-  outbound.replies.list({ category: "positive" })
-);
+// 3. A field the vendor has nothing to fill. It is refused, not left empty.
+await refused("warmup", () => outbound.sender("1101").warmup());
 
-// 4. A listing the vendor does not offer in that form.
-await refused("every lead", () => outbound.leads.list());
+// 4. A listing the vendor does not offer.
+await refused("tags", () => outbound.tags.list());
 
 console.log("requests made:", requests);
 

@@ -2,10 +2,10 @@ settings: Unsupported, permanent true
   Reading a campaign's settings is not available: the heyreach adapter does not support it (campaigns.settings)
 by step: Unsupported, permanent true
   Reading stats for the step scope is not available: the heyreach adapter does not support it (stats.byStep)
-by category: Unsupported, permanent true
-  Filtering replies by category is not available: the heyreach adapter does not support it (replies.category)
-every lead: Unsupported, permanent true
-  Listing leads is not available: the heyreach adapter does not support it (leads.list)
+warmup: Unsupported, permanent true
+  Reading a sender's warmup is not available: the heyreach adapter does not support it (senders.warmup)
+tags: Unsupported, permanent true
+  Listing tags is not available: the heyreach adapter does not support it (tags)
 requests made: 0
 turned off: Unsupported, permanent true
   Reading stats for the campaign scope is not available: the memory adapter does not support it (stats.campaign)

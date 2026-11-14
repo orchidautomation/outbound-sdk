@@ -319,7 +319,7 @@ test("rejects malformed input as Invalid before any adapter call", async () => {
     () => outbound.leads.list({ since: "2026-02-01", until: "2026-01-01" }),
     () => outbound.stats({ from: "2026/01/01" }),
     () => outbound.stats({ from: "2026-02-01", to: "2026-01-01" }),
-    () => outbound.stats({ scope: "campaign" }),
+    () => outbound.stats({ scope: "sender" }),
   ]) {
     assert.equal((await failure(action)).code, "Invalid");
   }

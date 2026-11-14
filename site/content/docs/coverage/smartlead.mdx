@@ -18,6 +18,7 @@ Notes on the count:
 - `GET /leads/{lead_id}/campaigns` is only in the deprecated Notion reference. It is listed because `leads.timeline` calls it.
 - `llms.txt` and the quickstart name a few short paths that have no reference page and contradict the reference (`GET /webhooks`, `GET /leads/by-email`, `GET /analytics/overview`, `POST /campaigns/new`). They are not listed.
 - Nothing here was checked against a live account.
+- Two reads stay in the native catalog and are also used by a normalized read: `stats.allCampaigns` reads `GET /analytics/campaign/overall-stats`, and `stats.byDay` reads `GET /analytics/day-wise-positive-reply-stats` for its positive replies.
 
 Two parameters are left out of the native catalog because they carry or return secrets: `includeWhitelabel` on `GET /client/{id}` (whitelabel credentials) and `private_api_key` on `GET /campaigns/{campaign_id}/mailbox-statistics`.
 

@@ -1,6 +1,6 @@
-38 keys
+41 keys
 campaigns.settings   instantly true | smartlead true | heyreach false
-leads.list           instantly true | smartlead true | heyreach false
+leads.list           instantly true | smartlead true | heyreach true
 leads.since          instantly client | smartlead client | heyreach server
 messages.body        instantly full | smartlead full | heyreach full
 stats.byStep         instantly exact | smartlead exact | heyreach false

@@ -53,6 +53,7 @@ A filter is `server` (the vendor filters), `client` (the SDK filters after fetch
 | Capability              | Instantly | Smartlead | HeyReach |
 | ----------------------- | --------- | --------- | -------- |
 | `blocklist`             | yes       | yes       | yes      |
+| `campaigns.bySender`    | yes       | yes       | yes      |
 | `campaigns.settings`    | yes       | yes       | no       |
 | `campaigns.status`      | server    | client    | server   |
 | `deletionDetection`     | no        | no        | no       |
@@ -61,7 +62,7 @@ A filter is `server` (the vendor filters), `client` (the SDK filters after fetch
 | `leads.byCampaign`      | yes       | yes       | yes      |
 | `leads.engagement`      | yes       | no        | no       |
 | `leads.get`             | yes       | yes       | yes      |
-| `leads.list`            | yes       | yes       | no       |
+| `leads.list`            | yes       | yes       | yes      |
 | `leads.lookup`          | yes       | yes       | yes      |
 | `leads.since`           | client    | client    | server   |
 | `leads.timeline`        | yes       | yes       | yes      |
@@ -72,9 +73,10 @@ A filter is `server` (the vendor filters), `client` (the SDK filters after fetch
 | `messages.list`         | yes       | yes       | yes      |
 | `messages.since`        | server    | client    | server   |
 | `native`                | yes       | yes       | yes      |
-| `replies.category`      | vendor    | vendor    | no       |
+| `replies.category`      | vendor    | vendor    | vendor   |
 | `replies.list`          | yes       | yes       | yes      |
 | `replies.since`         | server    | client    | server   |
+| `replies.unread`        | server    | client    | server   |
 | `senders.byCampaign`    | yes       | yes       | yes      |
 | `senders.get`           | yes       | yes       | yes      |
 | `senders.health`        | yes       | yes       | yes      |
@@ -82,6 +84,7 @@ A filter is `server` (the vendor filters), `client` (the SDK filters after fetch
 | `senders.warmup`        | yes       | yes       | no       |
 | `sequence`              | yes       | yes       | yes      |
 | `sequence.subsequences` | yes       | yes       | no       |
+| `stats.allCampaigns`    | exact     | exact     | exact    |
 | `stats.byDay`           | exact     | exact     | exact    |
 | `stats.bySender`        | derived   | exact     | exact    |
 | `stats.byStep`          | exact     | exact     | no       |
@@ -99,8 +102,8 @@ What a vendor's API cannot answer stays `no`. The SDK does not fill the gap with
 
 - **HeyReach has no campaign settings, subsequences, tags or per-lead counts.** Its API can set a campaign's schedule but not read it, a campaign has one sequence tree, no endpoint lists the workspace's tags, and no lead carries open or reply counts.
 - **HeyReach has no per-step stats** and no warmup: LinkedIn accounts are not warmed up.
-- **HeyReach replies carry no category.** Its auto-tags describe the lead, not a message; the newest one is the lead's `interest`.
-- **HeyReach has no list of every lead.** Leads are read per campaign or per saved list, or found by profile or email.
+- **Smartlead and HeyReach have no endpoint that lists every lead.** `leads.list` is `yes` because each adapter walks the campaigns and reads their leads. A lead in no campaign is never returned.
+- **On Smartlead and HeyReach a reply's category is its lead's.** Neither vendor labels a message. The reply carries `categorySource: "lead"` to say so, and `outbound.fields.reply.category` is `derived`.
 - **HeyReach cannot list workspaces** with a workspace key.
 - **Smartlead cannot list the leads of a saved list**, and its per-lead counts are documented only as a placeholder response.
 - **Instantly's per-mailbox stats are `derived`:** its mailbox analytics exist per day only, so the adapter sums them.

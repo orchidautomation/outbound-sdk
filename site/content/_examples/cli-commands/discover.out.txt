@@ -74,6 +74,7 @@ $ outbound capabilities
 {
   "capabilities": {
     "blocklist": true,
+    "campaigns.bySender": true,
     "campaigns.settings": true,
     "campaigns.status": "server",
     "deletionDetection": false,
@@ -96,6 +97,7 @@ $ outbound capabilities
     "replies.category": "vendor",
     "replies.list": true,
     "replies.since": "server",
+    "replies.unread": "server",
     "senders.byCampaign": true,
     "senders.get": true,
     "senders.health": true,
@@ -106,6 +108,7 @@ $ outbound capabilities
     "stats.byDay": "exact",
     "stats.bySender": "exact",
     "stats.byStep": "exact",
+    "stats.allCampaigns": "exact",
     "stats.campaign": "exact",
     "stats.workspace": "exact",
     "tags": true,

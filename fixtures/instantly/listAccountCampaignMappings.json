@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "campaign_id": "01a1d77f-5e23-7a9a-9112-a6f7089f329f",
+      "campaign_name": "My First Campaign",
+      "timestamp_created": "2026-11-14T00:40:11.043Z",
+      "status": 1
+    },
+    {
+      "campaign_id": "01a1d77f-5e23-7a9a-9112-a6f7089f3290",
+      "campaign_name": "Second Campaign",
+      "timestamp_created": "2026-11-13T00:40:11.043Z",
+      "status": 2
+    }
+  ],
+  "next_starting_after": "01a1d77f-5e23-7a9a-9112-a6f7089f3290"
+}

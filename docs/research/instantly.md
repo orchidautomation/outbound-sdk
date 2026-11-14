@@ -477,3 +477,15 @@ Hand-run once, from one process, with the default `share` of 0.5 (so 50 requests
 | 14 `messages.list` on the lane limited to 20 a minute | all 14 succeeded; no 429; 60 seconds |
 
 These are single observations, not a benchmark, and other tools on the same workspace may have been using the same limit at the time.
+
+## Read again on 2026-11-14 for field coverage and the derived reads
+
+Source: `https://api.instantly.ai/openapi/api_v2.json`, fetched fresh (198 paths, 268 operations). Nothing here was run against a live workspace.
+
+- **Clicks.** `GET /campaigns/analytics/overview` and `GET /campaigns/analytics` have `link_click_count` ("The number of links that got clicked") and `link_click_count_unique` ("first click per lead"). The daily and step reports have `clicks` and `unique_clicks` ("Unique meaning from unique leads, not unique links"). Unique goes to `clicked`, the other to `clickedTotal`.
+- **Every campaign's stats (`stats.allCampaigns`).** `GET /campaigns/analytics` with no `id`: "Leave this field empty to get the analytics for all campaigns". A bare array, one object per campaign, with `campaign_id`. Here `open_count` is "The number of leads that opened at least one email", so it is not read as a total of opens, and the response has no count of interested leads (`total_interested` is on the overview only), so `positive` is `null`. No per-day form exists for every campaign at once. The reference gives a schema and no example, so `fixtures/instantly/getCampaignsAnalytics.json` is built from the schema.
+- **A sender's campaigns (`campaigns.bySender`).** `GET /account-campaign-mappings/{email}`: `{ items: [{ campaign_id, campaign_name, timestamp_created, status }], next_starting_after }`, with `limit` and `starting_after`. The status enum is the campaign's (`-99, -1, -2, 0, 1, 2, 3, 4`).
+- **Unread (`replies.unread`).** `GET /emails` takes `is_unread` ("Whether the email is unread"), and each email carries `is_unread` (`null` or a number).
+- **Sender fields.** `provider_code` enum: 1 Custom IMAP/SMTP, 2 Google, 3 Microsoft, 4 AWS, 8 AirMail, 11 Airmail Instant. `GET /accounts` takes `include_tags` and then returns `tags[] { id, label, description }` on each account.
+- **Lead fields.** `phone`, `website` and `company_domain` are on the lead. No location and no LinkedIn field is documented.
+- **A list's size.** `GET /lead-lists/{id}/verification-stats` returns `total_leads`. Not used: it is one request per list.

@@ -1,7 +1,12 @@
 // A complete adapter backed by data in memory. It tests the core without a
 // network and powers demos.
 
-import type { Adapter, LeadQuery, TimeRange } from "../internal/adapter.ts";
+import type {
+  Adapter,
+  CampaignQuery,
+  LeadQuery,
+  TimeRange,
+} from "../internal/adapter.ts";
 import type { CapabilityDeclaration } from "../internal/capabilities.ts";
 import { makeErrorMapper } from "../internal/errors.ts";
 import { recordBase } from "../internal/record.ts";
@@ -16,7 +21,12 @@ import {
   toSender,
   toSequence,
 } from "./data.ts";
-import type { MemoryData, MemoryLead, MemoryMessage } from "./data.ts";
+import type {
+  MemoryCampaign,
+  MemoryData,
+  MemoryLead,
+  MemoryMessage,
+} from "./data.ts";
 import { queryStats } from "./stats.ts";
 import { findCampaign, notFound, paginate } from "./store.ts";
 import type { Store } from "./store.ts";
@@ -35,6 +45,7 @@ export interface MemoryOptions {
 
 const FULL_CAPABILITIES: CapabilityDeclaration = {
   blocklist: true,
+  "campaigns.bySender": true,
   "campaigns.settings": true,
   "campaigns.status": "server",
   "leads.byCampaign": true,
@@ -53,6 +64,7 @@ const FULL_CAPABILITIES: CapabilityDeclaration = {
   "replies.category": "vendor",
   "replies.list": true,
   "replies.since": "server",
+  "replies.unread": "server",
   "senders.byCampaign": true,
   "senders.get": true,
   "senders.health": true,
@@ -63,6 +75,7 @@ const FULL_CAPABILITIES: CapabilityDeclaration = {
   "stats.byDay": "exact",
   "stats.bySender": "exact",
   "stats.byStep": "exact",
+  "stats.allCampaigns": "exact",
   "stats.campaign": "exact",
   "stats.workspace": "exact",
   tags: true,
@@ -157,28 +170,45 @@ type Listers = Pick<
   | "stats"
 >;
 
+// The campaigns a query asks for: one sender's, and one status when this
+// adapter is set to filter by status itself.
+const selectCampaigns = (
+  store: Store,
+  query: CampaignQuery
+): readonly MemoryCampaign[] => {
+  const { data } = store;
+  const filterHere = store.capabilities["campaigns.status"] === "server";
+
+  const attached =
+    query.senderId === undefined
+      ? undefined
+      : (data.senders ?? []).find((sender) => sender.id === query.senderId)
+          ?.campaignIds;
+
+  return (data.campaigns ?? []).filter(
+    (campaign) =>
+      (query.senderId === undefined ||
+        (attached ?? []).includes(campaign.id)) &&
+      (!filterHere ||
+        query.status === undefined ||
+        (campaign.status ?? "active") === query.status)
+  );
+};
+
 const listers = (store: Store): Listers => {
   const { data, identity, pageSize } = store;
 
   return {
-    listCampaigns: (query) => {
-      const filterHere = store.capabilities["campaigns.status"] === "server";
-
-      const seeds = (data.campaigns ?? []).filter(
-        (campaign) =>
-          !filterHere ||
-          query.status === undefined ||
-          (campaign.status ?? "active") === query.status
-      );
-
-      return Promise.resolve(
+    listCampaigns: (query) =>
+      Promise.resolve(
         paginate(
-          seeds.map((seed) => toCampaign(identity, seed)),
+          selectCampaigns(store, query).map((seed) =>
+            toCampaign(identity, seed)
+          ),
           query,
           pageSize
         )
-      );
-    },
+      ),
     listLeads: (query) => {
       const seeds = selectLeads(store, query);
 
@@ -212,6 +242,7 @@ const listers = (store: Store): Listers => {
             .filter(
               (seed) =>
                 seed.direction === "in" &&
+                (query.unread === undefined || seed.unread === query.unread) &&
                 (query.category === undefined ||
                   (seed.category ?? "unknown") === query.category)
             )
@@ -252,7 +283,9 @@ const listers = (store: Store): Listers => {
         ],
       }),
     stats: (query) => {
-      const ofCampaign = query.scope === "campaign" || query.scope === "step";
+      const ofCampaign =
+        query.scopeId !== undefined &&
+        (query.scope === "campaign" || query.scope === "step");
 
       // A campaign nothing in the data mentions has no stats to be empty: it is not found.
       return ofCampaign && !store.mentionsCampaign(query.scopeId)

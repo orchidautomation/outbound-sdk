@@ -75,3 +75,8 @@ Added on 2026-11-14 for the lookup by email: `listLeadsByEmail*.json`, the respo
 - webhook.lead_unsubscribed.json
 - webhook.lead_wrong_person.json
 - webhook.reply_received.json
+
+## Added 2026-11-14 for stats per campaign and a mailbox's campaigns
+
+- `getCampaignsAnalytics.json` (`GET /campaigns/analytics`): built from the response schema in the OpenAPI specification, which has no example. Every count has its own value.
+- `listAccountCampaignMappings.json`, `listAccountCampaignMappings.page2.json` (`GET /account-campaign-mappings/{email}`): built from the response schema. The campaign ids are those of `listCampaigns.json`.

@@ -15,8 +15,8 @@ const testAs = async (vendor: Vendor): Promise<string> => {
 
   assert.equal(founders?.sent, 200);
 
-  // HeyReach does not label replies, so the summary cannot count positives.
-  assert.equal(founders?.positiveReplies, vendor === "heyreach" ? null : 2);
+  // All three vendors say what a reply's category is, so each counts them.
+  assert.equal(founders?.positiveReplies, 2);
 
   return `ok - ${vendor}: sent ${founders?.sent}, positive replies ${founders?.positiveReplies}`;
 };

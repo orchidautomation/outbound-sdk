@@ -126,7 +126,7 @@ The in-memory adapter limited to what each vendor's adapter declares. This shows
   ../../_examples/reply-text-for-llm/vendors.out.txt
 </include>
 
-All three declare full message bodies. HeyReach declares no reply categories, so filtering by `category` is refused there and a reply's category is `null`.
+All three declare full message bodies and reply categories. On Smartlead and HeyReach the category is the lead's label, not a label on the message: every reply in a thread carries the same one, with `categorySource: "lead"`.
 
 ## What it costs in vendor requests
 

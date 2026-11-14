@@ -78,7 +78,7 @@ test("heyreach: a message id is stable across reads and unique within a thread",
   assert.equal(one[0]?.bodyText, null, "bodies are left out unless asked for");
 });
 
-test("heyreach: replies are the lead's messages only, with no category", async () => {
+test("heyreach: replies are the lead's messages only, and an untagged lead's have no category", async () => {
   const { outbound, settle } = harness(suite);
 
   const replies = await settle(
@@ -98,9 +98,15 @@ test("heyreach: replies are the lead's messages only, with no category", async (
       ["in", "Not interested right now.", "unknown", null, null],
     ]
   );
-  await assert.rejects(
-    async () => await outbound.replies.list({ category: "positive" }),
-    /does not support it \(replies\.category\)/u
+
+  const positive = await settle(
+    outbound.replies.list({ category: "positive" })
+  );
+
+  assert.deepEqual(
+    positive.items,
+    [],
+    "no documented conversation carries an auto-tag, so none is positive"
   );
 });
 

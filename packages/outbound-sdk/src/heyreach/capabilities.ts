@@ -22,6 +22,8 @@ export const LIST_LEADS_PAGE_SIZE = 1000;
 export const capabilities: CapabilityDeclaration = {
   // POST /blacklist/GetLeads, then POST /blacklist/GetCompanies.
   blocklist: true,
+  // POST /campaign/GetAll takes an `accountIds` array.
+  "campaigns.bySender": true,
   // A campaign's schedule can only be written (POST /campaign/UpdateSchedule).
   // GET /campaign/GetById returns no schedule, limits or stop rules.
   "campaigns.settings": false,
@@ -35,8 +37,9 @@ export const capabilities: CapabilityDeclaration = {
   // No lead shape carries open, click or reply counts.
   "leads.engagement": false,
   "leads.get": true,
-  // HeyReach has no list of every lead: leads are read per campaign or per list.
-  "leads.list": false,
+  // No endpoint lists every lead, so the adapter walks the campaigns and
+  // reads each one's leads, as it does for a vendor that lists per campaign.
+  "leads.list": true,
   // POST /campaign/GetCampaignsForLead takes an email or a profile URL, and
   // POST /lead/GetLead gives the profile.
   "leads.lookup": true,
@@ -56,8 +59,11 @@ export const capabilities: CapabilityDeclaration = {
   // GetConversationsV3 bounds conversations by the time of their newest
   // message (`from`); the adapter then drops the older messages inside them.
   "messages.since": "server",
-  // Auto-tags describe the lead, not a message, so replies carry no category.
-  "replies.category": false,
+  // A reply takes the meaning of its lead's newest auto-tag, and the filter
+  // is applied to that after fetching.
+  "replies.category": "vendor",
+  // GetConversationsV3 takes `seen`.
+  "replies.unread": "server",
   "replies.list": true,
   "replies.since": "server",
   // GET /campaign/GetById names the campaign's account ids; the account list
@@ -76,6 +82,8 @@ export const capabilities: CapabilityDeclaration = {
   // GetOverallStats filtered to one account id.
   "stats.bySender": "exact",
   "stats.byStep": false,
+  // POST /stats/GetOverallStatsByCampaign.
+  "stats.allCampaigns": "exact",
   "stats.campaign": "exact",
   "stats.workspace": "exact",
   // Tags can be created (POST /lead_tags/CreateTags) and read per lead
@@ -159,7 +167,8 @@ export const costs = {
   "campaigns.list": { pageSize: PAGE_SIZE, perPage: 1 },
   // The profile and its tags are two requests.
   "leads.get": { perPage: 2 },
-  // A campaign's leads. A saved list's leads come up to 1000 a page.
+  // A campaign's leads. A saved list's leads come up to 1000 a page. Without
+  // a campaign or a list, each new page of campaigns costs one more request.
   "leads.list": { pageSize: PAGE_SIZE, perPage: 1 },
   // One person by profile URL: the campaigns and the profile, two requests.
   // By email it is three (campaigns, the lists the address is in, a name
@@ -196,7 +205,7 @@ export const caveats: readonly string[] = [
   "HeyReach matches a profile URL whatever its scheme, www prefix, trailing slash or query, but by exact case: seen live, a slug sent in upper case is not found. The lookup sends the slug lowercased, so a profile HeyReach stores with upper-case letters would not be found. A slug with non-ASCII letters is sent percent-encoded; how HeyReach stores one is not known.",
   "No HeyReach read returns a profile for an email address. An email lookup asks for the campaigns (which names the person), then one saved list the address is in, searches that list for the name (5 rows at most) and reads each match's profile until one carries the address: four requests in the usual case. An address that is in no saved list, or whose profile is not among those rows, gives an empty page although HeyReach knows it. The record's email is the address asked for, which the profile may hold as its enriched or custom address.",
   "Lookup was checked against one live lead in one campaign. A person in several campaigns (and so a second page of campaigns) and a known person in no campaign were not seen; an empty campaign answer and a 404 from GetCampaignsForLead are both read as no campaigns.",
-  "HeyReach has no list of every lead. Leads are read per campaign or per saved list: outbound.campaign(id).leads and outbound.list(id).leads work, and outbound.leads.list() is refused. Walking every list would repeat a lead that sits in several lists, drop its campaign and status, and miss leads whose list was deleted, so it is not offered as a complete list.",
+  "No endpoint lists every lead. leads.list without a campaign or a saved list walks every campaign and reads its leads: a lead in no campaign is never returned, one in several campaigns comes once per campaign from list and once from listAll, and the walk costs a request per page of campaigns on top of the lead pages. Saved lists are not walked: a list row carries no campaign or status, and a lead can sit in several lists.",
   "A saved list's leads carry tags, custom fields and the auto-tag but no status, campaign or creation time, although the list can be filtered by when a lead was added. A company list's rows are companies, not leads, and are not mapped: read them with outbound.native.reads.companiesFromList.",
   "A lead's interest is the name of its newest auto-tag (Interested, Not interested and Generic were seen live; the API reference does not list the names). It is present on a list's leads and absent from a campaign's leads and from lead lookup, where it is null.",
   "A lead's tags come from the list row, or from a second request (POST /lead/GetTags) on lead lookup. A campaign's leads carry no tags, so theirs are empty.",
@@ -215,7 +224,7 @@ export const caveats: readonly string[] = [
   "A message's id is built from the conversation, the time, the side and the text, so an edited message gets a new id. The live API now returns a messageId the API reference does not list; it stays in raw so that existing ids do not change.",
   "A message's threadId is the LinkedIn account id and the conversation id joined by a colon, because one conversation can only be read back with both. A thread read returns the whole conversation in one page and does not know its campaign, so campaignRef is null.",
   "A message's campaign is known only when the listing is filtered to one campaign; otherwise campaignRef is null. A page is a page of conversations, so it can hold more messages than the limit asked for.",
-  "Replies carry no category: HeyReach's auto-tag is made from a lead's first campaign reply but is stored on the lead, with no link to a message. It is read as the lead's interest and counted in stats as positive.",
+  "A reply's category is its lead's: HeyReach's auto-tag is made from a lead's first campaign reply and stored on the lead, with no link to a message, so every reply of a conversation takes the lead's newest one (categorySource: lead). Interested is positive, Not Interested negative and Generic neutral, matched without case; any other name is unknown. Filtering replies by category is done after fetching, so a page can come back short. unread is the conversation's read flag, the same on each of its replies.",
   "The blacklist is two lists read one after the other, leads then companies. An entry's id is prefixed lead- or company- because the two are numbered separately. A blacklisted lead's value is its profile URL, else its email, else its name (kind other); a company's is its name, else its LinkedIn page. matchingStatus and resolutionStage stay in raw.",
   "A webhook subscription lists one event type. Filtering webhooks by campaign is done after fetching and keeps webhooks that cover every campaign. Custom headers are never requested, because they can hold a secret; a request for one webhook by id (native webhookById, or raw) is always sent with includeCustomHeaders=false. HeyReach gives a webhook no creation time.",
   "Native reads return HeyReach's own payloads. Checked read-only against the same live workspace on 2026-11-14: checkApiKey, listById, campaignsForLead, myNetworkForSender, isConnection, campaignSequenceV2, statsByCampaign, proxyCountries, conversationsV2, voices, staticClips, elevenLabsConnection, elevenLabsVoices and voiceUsage answered 200; listsForLead, staticClip, senderVoice, webhookById and enrichEmailJob answered a documented 404 because the workspace had nothing to return; companiesFromList answered 400 for a lead list, the workspace having no company list. The five organization reads answer 401 with a workspace key and were not seen with an organization key.",

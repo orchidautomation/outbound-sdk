@@ -134,6 +134,11 @@ export const suite: AdapterSuite = {
       method: "POST",
       path: "/api/public/stats/GetOverallStats",
     },
+    {
+      fixture: "getOverallStatsByCampaign.json",
+      method: "POST",
+      path: "/api/public/stats/GetOverallStatsByCampaign",
+    },
   ],
   secret: KEY,
   unsampled: {

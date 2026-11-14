@@ -32,6 +32,11 @@ export const suite: AdapterSuite = {
   provider: "instantly",
   routes: [
     {
+      fixture: "getCampaignsAnalytics.json",
+      method: "GET",
+      path: "/api/v2/campaigns/analytics",
+    },
+    {
       fixture: paged("listCampaigns"),
       method: "GET",
       path: "/api/v2/campaigns",
@@ -57,6 +62,11 @@ export const suite: AdapterSuite = {
       path: /^\/api\/v2\/campaigns\/[\w-]+$/u,
     },
     { fixture: paged("listAccounts"), method: "GET", path: "/api/v2/accounts" },
+    {
+      fixture: paged("listAccountCampaignMappings"),
+      method: "GET",
+      path: /^\/api\/v2\/account-campaign-mappings\/[^/]+$/u,
+    },
     {
       fixture: "getAccountDailyAnalytics.json",
       method: "GET",

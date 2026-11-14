@@ -42,6 +42,7 @@ A filter the adapter cannot serve is refused with `Unsupported` before any reque
 | Filter | Type | Needs |
 | --- | --- | --- |
 | `status` | `"active"`, `"paused"`, `"draft"`, `"completed"`, `"archived"` or `"unknown"` | `campaigns.status` |
+| `senderId` | `string` | `campaigns.bySender` |
 
 `campaigns.list` and `campaigns.get` need no capability. Every adapter has them.
 
@@ -67,7 +68,7 @@ A filter the adapter cannot serve is refused with `Unsupported` before any reque
 
 `campaignId` and `listId` together are refused with `Invalid`. The date filters compare a lead's `createdAt`. `leads.get` needs `leads.get`.
 
-Some vendors have no list of every lead: leads exist only inside a campaign. That is why the scoped listings do not depend on `leads.list`.
+Some vendors have no endpoint that lists every lead. Their adapters walk the campaigns to serve `leads.list`, and the scoped listings do not depend on it.
 
 ### `messages`
 
@@ -90,6 +91,7 @@ The date filters compare `sentAt`.
 | `campaignId` | `string` |  |
 | `category` | `"positive"`, `"negative"`, `"neutral"`, `"ooo"`, `"bounce"`, `"unsubscribe"` or `"unknown"` | `replies.category` |
 | `since`, `until` | ISO 8601 date or timestamp, inclusive | `replies.since` |
+| `unread` | boolean: `true` for unread replies only, `false` for read ones only | `replies.unread` |
 | `include: ["body"]` |  | `messages.body` |
 
 ### The rest

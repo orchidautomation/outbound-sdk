@@ -74,3 +74,10 @@ The docs examples behind `getLeadById.json`, `getBulkLeadMessageHistory.json`, `
 ## Webhook fixtures
 
 `webhook.<EVENT_TYPE>.json` files are the "Example Response" payloads from the Notion webhook guide, sanitized. `webhook.email.account.disconnected.json` and `webhook.campaign.bounce_threshold.breached.json` are the two sample payloads from help-center article 403, which use a different envelope (`id`, `type`, `data`, `meta`). There is no documented payload for `FIRST_EMAIL_SENT` (docs say "same structure as `EMAIL_SENT`"), so there is no fixture for it.
+
+## Added 2026-11-14 for stats per campaign and positive replies per day
+
+| File | Source and what was synthesized |
+| --- | --- |
+| `analyticsDayWisePositiveReplyStats.json` | The documented example of `GET /analytics/day-wise-positive-reply-stats`, unchanged. |
+| `analyticsCampaignOverallStats.json` | The documented example of `GET /analytics/campaign/overall-stats` has one campaign; its id was changed to a campaign of the other fixtures and a second campaign was added. |

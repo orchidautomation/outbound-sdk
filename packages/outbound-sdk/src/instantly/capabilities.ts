@@ -28,6 +28,8 @@ export const TAG_PAGES = 10;
 
 export const capabilities: CapabilityDeclaration = {
   blocklist: true,
+  // GET /account-campaign-mappings/{email}.
+  "campaigns.bySender": true,
   "campaigns.settings": true,
   // Draft and completed are filtered by Instantly. Active and paused each
   // cover several Instantly statuses, so the adapter matches those itself.
@@ -57,6 +59,8 @@ export const capabilities: CapabilityDeclaration = {
   native: true,
   "replies.category": "vendor",
   "replies.list": true,
+  // GET /emails takes is_unread.
+  "replies.unread": "server",
   "replies.since": "server",
   "senders.byCampaign": true,
   "senders.get": true,
@@ -69,6 +73,8 @@ export const capabilities: CapabilityDeclaration = {
   // Per-mailbox numbers exist by day only; a total is summed by the adapter.
   "stats.bySender": "derived",
   "stats.byStep": "exact",
+  // GET /campaigns/analytics with no id: a row per campaign, totals only.
+  "stats.allCampaigns": "exact",
   "stats.campaign": "exact",
   "stats.workspace": "exact",
   tags: true,

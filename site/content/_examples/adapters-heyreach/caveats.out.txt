@@ -30,7 +30,7 @@
 
 - Lookup was checked against one live lead in one campaign. A person in several campaigns (and so a second page of campaigns) and a known person in no campaign were not seen; an empty campaign answer and a 404 from GetCampaignsForLead are both read as no campaigns.
 
-- HeyReach has no list of every lead. Leads are read per campaign or per saved list: outbound.campaign(id).leads and outbound.list(id).leads work, and outbound.leads.list() is refused. Walking every list would repeat a lead that sits in several lists, drop its campaign and status, and miss leads whose list was deleted, so it is not offered as a complete list.
+- No endpoint lists every lead. leads.list without a campaign or a saved list walks every campaign and reads its leads: a lead in no campaign is never returned, one in several campaigns comes once per campaign from list and once from listAll, and the walk costs a request per page of campaigns on top of the lead pages. Saved lists are not walked: a list row carries no campaign or status, and a lead can sit in several lists.
 
 - A saved list's leads carry tags, custom fields and the auto-tag but no status, campaign or creation time, although the list can be filtered by when a lead was added. A company list's rows are companies, not leads, and are not mapped: read them with outbound.native.reads.companiesFromList.
 
@@ -68,7 +68,7 @@
 
 - A message's campaign is known only when the listing is filtered to one campaign; otherwise campaignRef is null. A page is a page of conversations, so it can hold more messages than the limit asked for.
 
-- Replies carry no category: HeyReach's auto-tag is made from a lead's first campaign reply but is stored on the lead, with no link to a message. It is read as the lead's interest and counted in stats as positive.
+- A reply's category is its lead's: HeyReach's auto-tag is made from a lead's first campaign reply and stored on the lead, with no link to a message, so every reply of a conversation takes the lead's newest one (categorySource: lead). Interested is positive, Not Interested negative and Generic neutral, matched without case; any other name is unknown. Filtering replies by category is done after fetching, so a page can come back short. unread is the conversation's read flag, the same on each of its replies.
 
 - The blacklist is two lists read one after the other, leads then companies. An entry's id is prefixed lead- or company- because the two are numbered separately. A blacklisted lead's value is its profile URL, else its email, else its name (kind other); a company's is its name, else its LinkedIn page. matchingStatus and resolutionStage stay in raw.
 

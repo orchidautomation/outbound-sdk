@@ -32,7 +32,14 @@ export const readStats = async (
     throw new OutboundError("Invalid", "from must not be after to");
   }
 
-  if (scope !== "workspace" && options.scopeId === undefined) {
+  // The campaign scope with no campaign named is a row per campaign.
+  const everyCampaign = scope === "campaign" && options.scopeId === undefined;
+
+  if (
+    scope !== "workspace" &&
+    options.scopeId === undefined &&
+    !everyCampaign
+  ) {
     throw new OutboundError(
       "Invalid",
       `stats for the ${scope} scope need a scopeId`
@@ -41,8 +48,10 @@ export const readStats = async (
 
   requireCapability(
     core.gate,
-    SCOPE_CAPABILITY[scope],
-    `Reading stats for the ${scope} scope`
+    everyCampaign ? "stats.allCampaigns" : SCOPE_CAPABILITY[scope],
+    everyCampaign
+      ? "Reading stats for every campaign in one call"
+      : `Reading stats for the ${scope} scope`
   );
 
   if (by === "day") {

@@ -104,3 +104,136 @@ test("instantly: a reply says whether it is unread", async () => {
     "0 is read, and a missing flag is unknown"
   );
 });
+
+test("instantly: unread replies are asked for with is_unread, and without the filter it is not sent", async () => {
+  const { outbound, requests, settle } = harness(suite);
+  await settle(outbound.replies.list({ unread: true }));
+  await settle(outbound.replies.list({ unread: false }));
+  await settle(outbound.replies.list());
+
+  assert.deepEqual(
+    requests
+      .map((request) => new URL(request.url))
+      .filter((url) => url.pathname.endsWith("/emails"))
+      .map((url) => url.searchParams.get("is_unread")),
+    ["true", "false", null]
+  );
+});
+
+test("instantly: every campaign's totals come from one request, each count from its own field", async () => {
+  const { outbound, requests, settle } = harness(suite);
+
+  const stats = await settle(
+    outbound.stats({ from: "2026-10-01", scope: "campaign", to: "2026-10-31" })
+  );
+
+  const url = new URL(requests[0]?.url ?? "");
+  assert.equal(requests.length, 1);
+  assert.equal(url.pathname, "/api/v2/campaigns/analytics");
+  assert.equal(url.searchParams.get("id"), null, "no id is every campaign");
+  assert.equal(url.searchParams.get("start_date"), "2026-10-01");
+  assert.equal(url.searchParams.get("end_date"), "2026-10-31");
+
+  const [first, second] = stats.rows;
+  assert.equal(
+    first?.scopeRef,
+    "instantly:client-a:01a1d77f-5e23-7a9a-9112-a6f7089f329f"
+  );
+  assert.equal(second?.sent, 203);
+  assert.deepEqual(
+    {
+      bounced: first?.bounced,
+      clicked: first?.clicked,
+      clickedTotal: first?.clickedTotal,
+      contacted: first?.contacted,
+      opened: first?.opened,
+      openedTotal: first?.openedTotal,
+      positive: first?.positive,
+      replied: first?.replied,
+      repliedAuto: first?.repliedAuto,
+      sent: first?.sent,
+      unsubscribed: first?.unsubscribed,
+    },
+    {
+      bounced: 117,
+      clicked: 115,
+      clickedTotal: 114,
+      contacted: 102,
+      opened: 106,
+      // open_count is leads who opened on this report, not every open.
+      openedTotal: null,
+      // The per-campaign report has no count of interested leads.
+      positive: null,
+      replied: 109,
+      repliedAuto: 112,
+      sent: 103,
+      unsubscribed: 118,
+    }
+  );
+});
+
+test("instantly: every campaign by day is refused before any request", async () => {
+  const { outbound, requests, settle } = harness(suite);
+
+  await assert.rejects(
+    async () =>
+      await settle(
+        outbound.stats({ by: "day", retries: 0, scope: "campaign" })
+      ),
+    /totals only/u
+  );
+  assert.equal(requests.length, 0);
+});
+
+test("instantly: a mailbox's campaigns come from its campaign mappings, page by page", async () => {
+  const { outbound, requests, settle } = harness(suite);
+
+  const campaigns = await settle(
+    outbound.sender("Person1@Example.com").campaigns.listAll().toArray()
+  );
+
+  const paths = requests.map((request) => new URL(request.url).pathname);
+  assert.equal(
+    paths[0],
+    "/api/v2/account-campaign-mappings/Person1%40Example.com",
+    "the mailbox's address is the id, percent-encoded"
+  );
+  assert.deepEqual(
+    campaigns.map((campaign) => [
+      campaign.sourceId,
+      campaign.name,
+      campaign.status,
+      campaign.createdAt,
+    ]),
+    [
+      [
+        "01a1d77f-5e23-7a9a-9112-a6f7089f329f",
+        "My First Campaign",
+        "active",
+        "2026-11-14T00:40:11.043Z",
+      ],
+      [
+        "01a1d77f-5e23-7a9a-9112-a6f7089f3290",
+        "Second Campaign",
+        "paused",
+        "2026-11-13T00:40:11.043Z",
+      ],
+      [
+        "01a1d77f-5e24-7c14-aff0-9be8b7ae4a52",
+        "Third Campaign",
+        "completed",
+        "2026-11-12T00:40:11.043Z",
+      ],
+    ]
+  );
+
+  const paused = await settle(
+    outbound.sender("person1@example.com").campaigns.list({ status: "paused" })
+  );
+
+  assert.deepEqual(
+    paused.items.map((campaign) => campaign.name),
+    ["Second Campaign"],
+    "the status filter is applied to the mapped status"
+  );
+});

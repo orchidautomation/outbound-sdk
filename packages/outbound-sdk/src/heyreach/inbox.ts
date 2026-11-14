@@ -144,6 +144,11 @@ const readConversations = async (
     filters.campaignIds = [campaign];
   }
 
+  if ("unread" in query && query.unread !== undefined) {
+    // `seen` is true for read conversations and false for unread ones.
+    filters.seen = !query.unread;
+  }
+
   if ("leadId" in query && query.leadId !== undefined) {
     // A looked-up lead's id also names its campaign; the filter takes the URL.
     filters.leadProfileUrl = query.leadId;
@@ -272,7 +277,14 @@ export const inboxReaders = (client: HeyReachClient): InboxReaders => ({
             isFromLead(raw) ? [toReply(scope, conversation, raw)] : []
           )
         )
-        .filter((reply) => inRange(reply.sentAt, query)),
+        .filter(
+          (reply) =>
+            inRange(reply.sentAt, query) &&
+            // The auto-tag filter of the listing takes HeyReach's own tag
+            // names, which the reference does not list, so the category is
+            // matched here on the mapped value.
+            (query.category === undefined || reply.category === query.category)
+        ),
       next: page.next,
     };
   },

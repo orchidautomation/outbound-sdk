@@ -65,6 +65,7 @@ A sequence holds template text, never a rendered message. The text a lead receiv
 | `get()` | `WithMeta<Sender>` | `senders.get` |
 | `warmup()` | `{ enabled, score }` | `senders.warmup` and `senders.get` |
 | `health()` | `WithMeta<SenderHealth>`: DNS records, connection state, warmup traffic | `senders.health` |
+| `campaigns.list()`, `campaigns.listAll()` | The campaigns the sender is attached to | `campaigns.bySender` |
 | `stats(options?)` | `StatsResult` for this sender | `stats.bySender`; `stats.byDay` for `by: "day"` |
 
 `warmup()` reads the sender and returns its `warmup` field. It throws `NotFound` when the sender has no warmup data, so you never get `null` from it. It is the one handle method whose result has no `meta`.

@@ -27,7 +27,8 @@ const exportAs = async (vendor: Vendor): Promise<string> => {
       throw error;
     }
 
-    // No list of every lead: export one campaign's leads at a time.
+    // An adapter with no list of every lead: export one campaign's leads at
+    // a time. Instantly, Smartlead and HeyReach all list every lead.
     const campaign = outbound.campaign("cmp_founders");
 
     const result = await outbound.export(campaign.leads.listAll(), {

@@ -94,6 +94,7 @@ const listEmails = async (
       query: {
         campaign_id: query.campaignId,
         email_type: received ? "received" : undefined,
+        is_unread: "unread" in query ? query.unread : undefined,
         lead,
         limit: pageSize(query.limit),
         max_timestamp_created: query.until,

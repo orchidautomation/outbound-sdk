@@ -1,5 +1,5 @@
 instantly: ok, leads read from one list
 smartlead: ok, leads read from one list
   note: This tool reports no per-lead open, click or reply counts, so those are null.
-heyreach: ok, leads read campaign by campaign
+heyreach: ok, leads read from one list
   note: This tool reports no per-lead open, click or reply counts, so those are null.

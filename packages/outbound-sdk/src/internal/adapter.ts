@@ -70,6 +70,8 @@ export interface PageQuery {
 
 export interface CampaignQuery extends PageQuery {
   readonly status?: CampaignStatus | undefined;
+  /** Only the campaigns this sender is attached to. */
+  readonly senderId?: string | undefined;
 }
 
 export interface SenderQuery extends PageQuery {
@@ -105,6 +107,8 @@ export interface MessageQuery extends PageQuery, TimeRange {
 export interface ReplyQuery extends PageQuery, TimeRange {
   readonly campaignId?: string | undefined;
   readonly category?: ReplyCategory | undefined;
+  /** `true` for unread replies only, `false` for read ones only. */
+  readonly unread?: boolean | undefined;
   readonly includeBody: boolean;
 }
 
@@ -118,7 +122,10 @@ export interface WebhookQuery extends PageQuery {
 
 export interface StatsQuery {
   readonly scope: MetricScope;
-  /** The campaign or sender id. Not used for the workspace scope. */
+  /**
+   * The campaign or sender id. Not used for the workspace scope. The
+   * campaign scope without one asks for a row per campaign.
+   */
   readonly scopeId?: string | undefined;
   /** Inclusive `YYYY-MM-DD`. */
   readonly from?: string | undefined;

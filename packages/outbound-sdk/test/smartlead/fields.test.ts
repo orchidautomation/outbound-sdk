@@ -87,3 +87,112 @@ test("smartlead: an unlisted mailbox type is other, and a missing one is unknown
     ]
   );
 });
+
+test("smartlead: unread replies are picked after fetching, because the inbox has no filter for it", async () => {
+  const { outbound, requests, settle } = harness(suite);
+  assert.equal(outbound.capabilities["replies.unread"], "client");
+
+  const unread = await settle(outbound.replies.list({ unread: true }));
+  assert.ok(
+    unread.items.length > 0,
+    "is_read is false on the documented threads"
+  );
+  assert.equal(unread.meta.evidence, "derived");
+  assert.equal(
+    JSON.stringify(JSON.parse(requests.at(-1)?.body ?? "{}")).includes("read"),
+    false,
+    "nothing about read state is sent"
+  );
+
+  const read = await settle(outbound.replies.list({ unread: false }));
+  assert.deepEqual(read.items, [], "none of the documented threads is read");
+
+  const plain = await settle(outbound.replies.list());
+  assert.equal(plain.meta.evidence, "exact");
+});
+
+test("smartlead: every campaign's totals come from the campaign performance report", async () => {
+  const { outbound, requests, settle } = harness(suite);
+
+  const stats = await settle(
+    outbound.stats({ from: "2024-01-01", scope: "campaign", to: "2024-01-31" })
+  );
+
+  const url = new URL(requests[0]?.url ?? "");
+  assert.equal(requests.length, 1);
+  assert.equal(url.pathname, "/api/v1/analytics/campaign/overall-stats");
+  assert.equal(url.searchParams.get("start_date"), "2024-01-01");
+  assert.equal(url.searchParams.get("end_date"), "2024-01-31");
+  assert.equal(url.searchParams.get("full_data"), "true");
+  assert.deepEqual(
+    stats.rows.map((row) => [
+      row.scopeRef,
+      row.sent,
+      row.contacted,
+      row.opened,
+      row.openedTotal,
+      row.replied,
+      row.positive,
+      row.bounced,
+    ]),
+    [
+      ["smartlead:client-a:372", 500, 480, 230, 250, 45, 25, 8],
+      ["smartlead:client-a:373", 300, 290, 110, 120, 21, 9, 3],
+    ]
+  );
+});
+
+test("smartlead: every campaign by day is refused before any request", async () => {
+  const { outbound, requests, settle } = harness(suite);
+
+  await assert.rejects(
+    async () =>
+      await settle(
+        outbound.stats({ by: "day", retries: 0, scope: "campaign" })
+      ),
+    /totals only/u
+  );
+  assert.equal(requests.length, 0);
+});
+
+test("smartlead: a mailbox's campaigns are the campaign list narrowed to the ids the mailbox names", async () => {
+  const account = fixture("smartlead", "getEmailAccount.json") as Record<
+    string,
+    unknown
+  >;
+
+  const { outbound, requests, settle } = harness(suite, (request) =>
+    new URL(request.url).pathname.endsWith("/email-accounts/123/")
+      ? Response.json({ ...account, campaign_ids: [2_710_100, 999] })
+      : undefined
+  );
+
+  const page = await settle(outbound.sender("123").campaigns.list());
+  const [first, second] = requests.map((request) => new URL(request.url));
+
+  assert.equal(first?.pathname, "/api/v1/email-accounts/123/");
+  assert.equal(first?.searchParams.get("fetch_campaigns"), "true");
+  assert.equal(second?.pathname, "/api/v1/campaigns/");
+  assert.equal(requests.length, 2);
+  assert.deepEqual(
+    page.items.map((campaign) => campaign.sourceId),
+    ["2710100"],
+    "an id the campaign list does not have is left out"
+  );
+});
+
+test("smartlead: a mailbox that names no campaigns has none", async () => {
+  const { campaign_ids: _ids, ...account } = fixture(
+    "smartlead",
+    "getEmailAccount.json"
+  ) as Record<string, unknown>;
+
+  const { outbound, settle } = harness(suite, (request) =>
+    new URL(request.url).pathname.endsWith("/email-accounts/123/")
+      ? Response.json(account)
+      : undefined
+  );
+
+  const page = await settle(outbound.sender("123").campaigns.list());
+  assert.deepEqual(page.items, []);
+});

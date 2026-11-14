@@ -15,7 +15,7 @@ The five `/management/organizations` reads belong to the Organization Management
 
 Two of the excluded rows return secrets. The third, a voice message's audio file, returns a file and not JSON: the request engine reads every response as text, so a binary body cannot be returned intact. It becomes a native read once the engine can hand back bytes.
 
-Two reads stay in the native catalog and are also used by a normalized read: lookup by profile or email (`leads.lookup`) asks `POST /campaign/GetCampaignsForLead` for the campaigns and, for an email address, `POST /list/GetListsForLead` for a list to find the profile in.
+Three reads stay in the native catalog and are also used by a normalized read: lookup by profile or email (`leads.lookup`) asks `POST /campaign/GetCampaignsForLead` for the campaigns and, for an email address, `POST /list/GetListsForLead` for a list to find the profile in, and `stats.allCampaigns` reads `POST /stats/GetOverallStatsByCampaign`.
 
 | Method | Path | Reads | Coverage | Through |
 | --- | --- | --- | --- | --- |

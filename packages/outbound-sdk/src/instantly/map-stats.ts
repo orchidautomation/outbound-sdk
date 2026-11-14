@@ -58,6 +58,25 @@ export const overviewRow = (scope: RowScope, raw: JsonObject): MetricRow =>
     unsubscribed: count(raw.unsubscribed_count),
   });
 
+/**
+ * One campaign's row of `GET /campaigns/analytics`. Here `open_count` is the
+ * leads who opened, not every open, so no total of opens is read, and the
+ * report has no count of interested leads.
+ */
+export const campaignRow = (scope: RowScope, raw: JsonObject): MetricRow =>
+  row(scope, {
+    ...emptyCounts(),
+    bounced: count(raw.bounced_count),
+    clicked: count(raw.link_click_count_unique),
+    clickedTotal: count(raw.link_click_count),
+    contacted: count(raw.contacted_count),
+    opened: count(raw.open_count_unique),
+    replied: count(raw.reply_count_unique),
+    repliedAuto: count(raw.reply_count_automatic_unique),
+    sent: count(raw.emails_sent_count),
+    unsubscribed: count(raw.unsubscribed_count),
+  });
+
 const dailyCounts = (raw: JsonObject): MetricCounts => ({
   ...emptyCounts(),
   bounced: count(raw.bounced),

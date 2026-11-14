@@ -68,7 +68,7 @@ Constructing an instance sends nothing, so a wrong key is only found on the firs
 
 The vendors do not offer the same reads. A read the adapter cannot serve throws `Unsupported` before any request, and the message ends with the capability key in brackets.
 
-- Look the key up on the [capabilities](/docs/capabilities) page. It often names a nearby read that does work: HeyReach has no list of every lead, and does list the leads of one campaign.
+- Look the key up on the [capabilities](/docs/capabilities) page. It often names a nearby read that does work: HeyReach cannot list a workspace's tags, and does return a lead's tags with the lead.
 - Check `outbound.capabilities[key]` before the call in code that runs on more than one vendor.
 - The [adapters](/docs/adapters) page has the table of what each vendor declares.
 - If the message says a plugin turned it off, see [below](#native-reads-are-off-with-redact).

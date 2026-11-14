@@ -36,6 +36,8 @@ export const capabilities: CapabilityDeclaration = {
   // GET /leads/get-domain-block-list: addresses and domains.
   blocklist: true,
   // GET /campaigns/{id}: schedule, caps, tracking and stop rules.
+  // GET /email-accounts/{id}/?fetch_campaigns=true names the campaign ids.
+  "campaigns.bySender": true,
   "campaigns.settings": true,
   // GET /campaigns/ has no status filter and returns every campaign at once.
   "campaigns.status": "client",
@@ -71,6 +73,8 @@ export const capabilities: CapabilityDeclaration = {
   "replies.category": "vendor",
   "replies.list": true,
   // replyTimeBetween narrows the inbox; the wrapper filters on the reply time.
+  // A thread carries is_read, and the inbox has no filter for it.
+  "replies.unread": "client",
   "replies.since": "client",
   "senders.byCampaign": true,
   "senders.get": true,
@@ -87,6 +91,8 @@ export const capabilities: CapabilityDeclaration = {
   // address. The per-campaign mailbox endpoint documents no response.
   "stats.bySender": "exact",
   "stats.byStep": "exact",
+  // GET /analytics/campaign/overall-stats: a row per campaign, totals only.
+  "stats.allCampaigns": "exact",
   "stats.campaign": "exact",
   "stats.workspace": "exact",
   // GET /email-accounts/tags: one tag space for mailboxes, leads and campaigns.

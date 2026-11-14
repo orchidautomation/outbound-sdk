@@ -133,6 +133,8 @@ export type Include = "body";
 
 export interface CampaignFilters {
   readonly status?: CampaignStatus | undefined;
+  /** Only the campaigns this sender is attached to. */
+  readonly senderId?: string | undefined;
 }
 
 export interface SenderFilters {
@@ -164,6 +166,8 @@ export interface MessageFilters extends TimeRange {
 export interface ReplyFilters extends TimeRange {
   readonly campaignId?: string | undefined;
   readonly category?: ReplyCategory | undefined;
+  /** `true` for unread replies only, `false` for read ones only. */
+  readonly unread?: boolean | undefined;
   readonly include?: readonly Include[] | undefined;
 }
 
@@ -178,7 +182,10 @@ export interface StatsOptions extends OperationOptions {
 
 export interface TopLevelStatsOptions extends StatsOptions {
   readonly scope?: MetricScope | undefined;
-  /** The campaign or sender, for the `campaign`, `step` and `sender` scopes. */
+  /**
+   * The campaign or sender, for the `campaign`, `step` and `sender` scopes.
+   * The `campaign` scope without one returns a row per campaign, in one call.
+   */
   readonly scopeId?: string | undefined;
 }
 
@@ -223,6 +230,11 @@ export interface CampaignHandle {
 export interface SenderHandle {
   readonly id: string;
   readonly get: (options?: OperationOptions) => Promise<WithMeta<Sender>>;
+  /** The campaigns the sender is attached to. */
+  readonly campaigns: ReadCollection<
+    Campaign,
+    Scoped<CampaignFilters, "senderId">
+  >;
   readonly stats: (options?: StatsOptions) => Promise<StatsResult>;
   readonly warmup: (
     options?: OperationOptions

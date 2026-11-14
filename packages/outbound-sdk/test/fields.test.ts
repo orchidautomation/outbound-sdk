@@ -90,3 +90,106 @@ test("fields: a combined instance fills a field when any member does", () => {
     "neither member reports a delivered count"
   );
 });
+
+test("stats: the campaign scope with no campaign named returns a row per campaign", async () => {
+  const outbound = createOutbound({
+    adapter: memory({
+      data: {
+        campaigns: [{ id: "c1" }, { id: "c2" }],
+        stats: [
+          { campaignId: "c1", counts: { sent: 10 }, date: "2026-10-01" },
+          { campaignId: "c1", counts: { sent: 5 }, date: "2026-10-02" },
+          { campaignId: "c2", counts: { sent: 7 }, date: "2026-10-01" },
+          {
+            campaignId: "c1",
+            counts: { sent: 99 },
+            date: "2026-10-01",
+            senderId: "s1",
+          },
+        ],
+      },
+    }),
+    fetch: offline,
+  });
+
+  const totals = await outbound.stats({ scope: "campaign" });
+  assert.deepEqual(
+    totals.rows.map((row) => [row.scopeRef, row.sent]),
+    [
+      ["memory:default:c1", 15],
+      ["memory:default:c2", 7],
+    ],
+    "a per-sender row is not a campaign total and is left out"
+  );
+
+  const daily = await outbound.stats({ by: "day", scope: "campaign" });
+  assert.equal(daily.rows.length, 3, "a row per campaign per day");
+
+  const off = createOutbound({
+    adapter: memory({
+      capabilities: { "stats.allCampaigns": false },
+      data: {},
+    }),
+    fetch: offline,
+  });
+
+  await assert.rejects(
+    async () => await off.stats({ scope: "campaign" }),
+    /stats\.allCampaigns/u,
+    "refused as unsupported, by the capability's name"
+  );
+  await assert.rejects(
+    async () => await off.stats({ scope: "sender" }),
+    /need a scopeId/u,
+    "the other scopes still need an id"
+  );
+});
+
+test("campaigns: a sender's campaigns, on one adapter and routed through a combined one", async () => {
+  const data = {
+    campaigns: [{ id: "c1" }, { id: "c2" }, { id: "c3" }],
+    senders: [{ campaignIds: ["c1", "c3"], id: "s1" }, { id: "s2" }],
+  };
+
+  const outbound = createOutbound({
+    adapter: memory({ data }),
+    fetch: offline,
+  });
+
+  const mine = await outbound.sender("s1").campaigns.list();
+  assert.deepEqual(
+    mine.items.map((campaign) => campaign.sourceId),
+    ["c1", "c3"]
+  );
+  assert.deepEqual((await outbound.sender("s2").campaigns.list()).items, []);
+  assert.deepEqual(
+    (await outbound.campaigns.list({ senderId: "s1" })).items.length,
+    2,
+    "the same read as a filter on the campaign list"
+  );
+
+  const both = createOutbound({
+    adapter: combine([
+      memory({ data, workspaceId: "acme" }),
+      memory({ data: { campaigns: [{ id: "other" }] }, workspaceId: "globex" }),
+    ]),
+    fetch: offline,
+  });
+
+  const routed = await both.sender("memory:acme:s1").campaigns.list();
+  assert.deepEqual(
+    routed.items.map((campaign) => campaign.ref),
+    ["memory:acme:c1", "memory:acme:c3"],
+    "only the member that owns the sender is asked"
+  );
+
+  const off = createOutbound({
+    adapter: memory({ capabilities: { "campaigns.bySender": false }, data }),
+    fetch: offline,
+  });
+
+  await assert.rejects(
+    async () => await off.sender("s1").campaigns.list(),
+    /campaigns\.bySender/u
+  );
+});

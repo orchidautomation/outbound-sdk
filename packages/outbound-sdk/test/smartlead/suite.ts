@@ -137,6 +137,11 @@ export const suite: AdapterSuite = {
       method: "GET",
       path: `${API}/analytics/day-wise-positive-reply-stats`,
     },
+    {
+      fixture: "analyticsCampaignOverallStats.json",
+      method: "GET",
+      path: `${API}/analytics/campaign/overall-stats`,
+    },
     { fixture: "listClients.json", method: "GET", path: `${API}/client/` },
     {
       fixture: "getEmailAccountWarmupStats.json",

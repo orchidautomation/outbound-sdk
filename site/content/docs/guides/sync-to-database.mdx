@@ -140,7 +140,7 @@ The same sync, run on the in-memory adapter limited to what each vendor's adapte
   ../../_examples/sync-to-database/vendors.out.txt
 </include>
 
-- **HeyReach is refused** because it has no list of every lead: leads exist only inside a campaign or a list. Sync leads once per campaign by passing `campaignId`. Each campaign then has its own checkpoint.
+- **HeyReach and Smartlead walk their campaigns** to list every lead, because neither has an endpoint for it. A lead in no campaign is never synced. Pass `campaignId` to sync one campaign with its own checkpoint.
 - **`leads.since` is `client` on Instantly and Smartlead.** Their APIs cannot filter leads by date, so the SDK reads every lead and drops the older ones before your `onPage` sees them. The second run hands you only what is new, and still costs as many vendor requests as the first. On Smartlead the same is true of replies and messages.
 - `server` means the vendor applies the filter, and a later run costs requests in proportion to what changed.
 

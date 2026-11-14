@@ -25,6 +25,7 @@ import {
 } from "./specs-account.ts";
 import {
   campaignGet,
+  campaignList,
   leadGet,
   leadList,
   messageList,
@@ -89,6 +90,7 @@ export const makeSenderHandle = (core: Core, id: string): SenderHandle => {
   const health = makeGetter(core, healthGet(core));
 
   return {
+    campaigns: scoped(core, campaignList(core), { senderId }),
     get: (options) => get(senderId, options),
     health: (options) => health(senderId, options),
     id: senderId,

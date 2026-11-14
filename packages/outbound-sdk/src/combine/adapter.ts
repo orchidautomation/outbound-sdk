@@ -107,10 +107,21 @@ const scopedOrAcross = <
 };
 
 const lists = (members: readonly Adapter[]): Lists => ({
-  listCampaigns: (query, ctx) =>
-    pageAcross(members, ctx, query, (member, memberCtx, next) =>
+  listCampaigns: (query, ctx) => {
+    if (query.senderId !== undefined) {
+      // A sender lives in exactly one member, and so do its campaigns.
+      const routed = routeRef(members, ctx, query.senderId, "Sender");
+
+      return routed.member.listCampaigns(
+        { ...query, senderId: routed.id },
+        routed.ctx
+      );
+    }
+
+    return pageAcross(members, ctx, query, (member, memberCtx, next) =>
       member.listCampaigns({ ...query, next }, memberCtx)
-    ),
+    );
+  },
   listLeads: (query, ctx) => {
     if (query.listId !== undefined) {
       // A saved list lives in exactly one member.

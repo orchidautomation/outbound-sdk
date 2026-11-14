@@ -1,5 +1,5 @@
 combined combined
-given up: campaigns.settings, leads.engagement, leads.list, messages.byThread, native, replies.category, senders.warmup, sequence.subsequences, stats.byStep, tags
+given up: campaigns.settings, leads.engagement, messages.byThread, native, senders.warmup, sequence.subsequences, stats.byStep, tags
 instantly:acme:cmp_1 - Acme founders
 instantly:acme:cmp_2 - Acme agencies
 heyreach:acme:cmp_1 - Acme LinkedIn

@@ -1,0 +1,7 @@
+lead.email           instantly exact | smartlead exact | heyreach exact
+lead.phone           instantly exact | smartlead exact | heyreach false
+lead.linkedinUrl     instantly false | smartlead exact | heyreach exact
+lead.engagement      instantly exact | smartlead false | heyreach false
+reply.category       instantly exact | smartlead derived | heyreach derived
+senderHealth.dns     instantly exact | smartlead false | heyreach false
+metricRow.delivered  instantly false | smartlead false | heyreach false

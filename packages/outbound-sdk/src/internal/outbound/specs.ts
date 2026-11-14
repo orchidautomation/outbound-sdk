@@ -57,7 +57,15 @@ export const campaignList = (
       );
     }
 
-    return { status: filters.status };
+    if (filters.senderId !== undefined) {
+      requireCapability(
+        core.gate,
+        "campaigns.bySender",
+        "Listing a sender's campaigns"
+      );
+    }
+
+    return { senderId: filters.senderId, status: filters.status };
   },
   schema: campaignSchema,
   toOperation: (filters, page) => ({
@@ -255,6 +263,14 @@ export const replyList = (core: Core): ListSpec<Reply, ReplyFilters> => ({
       );
     }
 
+    if (filters.unread !== undefined) {
+      requireCapability(
+        core.gate,
+        "replies.unread",
+        "Filtering replies by whether they are unread"
+      );
+    }
+
     if (wantsBody(filters.include)) {
       requireCapability(core.gate, "messages.body", "Reading reply bodies");
     }
@@ -271,6 +287,7 @@ export const replyList = (core: Core): ListSpec<Reply, ReplyFilters> => ({
       campaignId: filters.campaignId,
       category: filters.category,
       include: filters.include,
+      unread: filters.unread,
       ...normalizeRange(filters),
     };
   },
@@ -282,6 +299,7 @@ export const replyList = (core: Core): ListSpec<Reply, ReplyFilters> => ({
       category: filters.category,
       includeBody: wantsBody(filters.include),
       since: filters.since,
+      unread: filters.unread,
       until: filters.until,
       ...page,
     },

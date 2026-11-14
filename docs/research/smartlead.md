@@ -523,3 +523,16 @@ Fetched 2026-11-14.
 - https://help.smartlead.ai/smartleadai/Webhook-Guide-Updated-4d0ae6b2fa6a4db1b4c1ead824a86866 and its child pages: Email-Sent, Email-Opened, Link-Clicked, Email-Replied, Threaded-Replies, Email-Bounce, Lead-Unsubscribed, Lead-Category-Updated, Campaign-Status-Change, Untracked-replies, Manual-Step-Reached
 
 This rewrite (after the first copy was lost) was produced from the earlier fetches without re-fetching any page.
+
+## Read again on 2026-11-14 for field coverage and the derived reads
+
+Source: `https://api.smartlead.ai/llms-full.txt`, fetched fresh. Nothing here was run against a live account.
+
+- **Out-of-office replies.** The `analytics-by-date` page (api-reference/campaigns/get-analytics-by-date) has a section "Separating out-of-office replies": `total_reply_count` is "Every reply, with no exclusions", `non_ooo_reply_count` is "Replies from leads not categorised as out-of-office", and it gives the formula `ooo_replies = total_reply_count - non_ooo_reply_count`. `repliedAuto` on a dated total is that difference. `reply_count` is not used for it: it leaves out replies flagged as ignored.
+- **Positive replies per day.** `GET /analytics/day-wise-positive-reply-stats` (api-reference/analytics/day-wise-positive-reply): `{ ok, data: { day_wise_stats: [{ date, positive_replied }] } }`, with the same `start_date`, `end_date`, `timezone`, `campaign_ids` as the day-wise counts. The adapter reads it beside `day-wise-overall-stats`.
+- **Every campaign's stats (`stats.allCampaigns`).** `GET /analytics/campaign/overall-stats` (api-reference/analytics/campaign-performance): `{ ok, data: { campaign_wise_performance: [{ id, campaign_name, sent, opened, replied, bounced, positive_replied, unique_lead_count, unique_open_count, ...rates }] } }`. `start_date` and `end_date` are required. `limit`, `offset` and `full_data` ("Set to \"true\" to return full data set") are optional and their defaults are not stated; the adapter sends `full_data=true`. Whether that returns every campaign of a large account is not confirmed.
+- **Step clicks.** `sequence-analytics` has one `click_count` and one `open_count` per step and variant and calls neither unique. Both are read as totals (`clickedTotal`, `openedTotal`).
+- **A sender's campaigns (`campaigns.bySender`).** `GET /email-accounts/{id}/?fetch_campaigns=true` (api-reference/email-accounts/get-by-id): "Array of campaign IDs using this email account (only if `fetch_campaigns=true`)". The campaign list is then narrowed to those ids.
+- **Sender fields.** `type` is `GMAIL`, `OUTLOOK` or `SMTP`. `tags[] { tag_id, tag_name, tag_color }` is "Always included in the response" of the mailbox list.
+- **Unread.** A master-inbox thread carries `is_read`. `POST /master-inbox/unread-replies` exists and stays native: its response is assumed, not documented, to match `inbox-replies`. The filter is applied after fetching.
+- **Per-lead engagement, still not mapped.** The current `all-leads-activities` page shows a flat list of events (`lead_email`, `activity_type`, `event_time`), which contradicts the rows with `activities[]` the adapter follows from the older source. The campaign statistics page gives one example of account totals and a field list of per-email rows. No source agrees with another, so per-lead counts stay `null` until a live account settles the shape.

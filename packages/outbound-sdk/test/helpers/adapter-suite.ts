@@ -195,6 +195,8 @@ const SINCE = "2020-01-01T00:00:00Z";
 // must throw Unsupported before any request leaves.
 const PROBES: Partial<Record<CapabilityKey, Probe>> = {
   blocklist: (outbound) => outbound.blocklist.list(),
+  "campaigns.bySender": (outbound, ids) =>
+    outbound.sender(ids.sender ?? "missing").campaigns.list(),
   "campaigns.settings": (outbound, ids) =>
     outbound.campaign(ids.campaign).settings(),
   "lists.leads": (outbound, ids) =>
@@ -225,6 +227,7 @@ const PROBES: Partial<Record<CapabilityKey, Probe>> = {
     outbound.replies.list({ category: "positive" }),
   "replies.list": (outbound) => outbound.replies.list(),
   "replies.since": (outbound) => outbound.replies.list({ since: SINCE }),
+  "replies.unread": (outbound) => outbound.replies.list({ unread: true }),
   "senders.byCampaign": (outbound, ids) =>
     outbound.campaign(ids.campaign).senders.list(),
   "senders.get": (outbound, ids) =>
@@ -238,6 +241,7 @@ const PROBES: Partial<Record<CapabilityKey, Probe>> = {
     outbound.sender(ids.sender ?? "missing").stats(),
   "stats.byStep": (outbound, ids) =>
     outbound.campaign(ids.campaign).stats({ scope: "step" }),
+  "stats.allCampaigns": (outbound) => outbound.stats({ scope: "campaign" }),
   "stats.campaign": (outbound, ids) => outbound.campaign(ids.campaign).stats(),
   "stats.workspace": (outbound) => outbound.stats(),
   workspaces: (outbound) => outbound.workspaces.list(),
