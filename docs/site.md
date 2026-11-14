@@ -6,7 +6,8 @@ The site at [outbound-sdk.dev](https://outbound-sdk.dev) is built from `site/` w
 
 | Path | Holds |
 | --- | --- |
-| `site/content/docs/`, `site/content/guides/` | The pages (`.mdx`). The folder is the route. |
+| `site/pages/index.astro` | The home page at `/`, a custom Astro page. Its samples are files in `content/_examples`; its adapter badges come from `outbound-sdk/providers` |
+| `site/content/docs/` | The pages (`.mdx`), guides under `docs/guides/`. The folder is the route, so everything is under `/docs` |
 | `site/content/_examples/<name>/` | Every code sample, and the output each one printed (`.out.txt`) |
 | `site/content/_snippets/status.mdx` | The "not published yet" notice the guides include |
 | `site/blume.config.ts` | Title, banner, tabs, the text of `llms.txt`, the Vercel adapter |
@@ -32,12 +33,12 @@ A page carries no code of its own. To show code:
    git diff site/content/_examples   # every changed output is a change to what the site claims
    ```
 
-3. Splice both into the page:
+3. Splice both into the page. The path is relative to the page; from `content/docs/guides/` it is `../../_examples`:
 
    ```mdx
-   <include meta='title="run.ts"'>../_examples/<name>/run.ts</include>
+   <include meta='title="run.ts"'>../../_examples/<name>/run.ts</include>
 
-   <include lang="text" meta='title="Output"'>../_examples/<name>/run.out.txt</include>
+   <include lang="text" meta='title="Output"'>../../_examples/<name>/run.out.txt</include>
    ```
 
 Use `<Callout type="warning">` for callouts. The `:::` form is broken by the formatter.

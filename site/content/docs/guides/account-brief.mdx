@@ -6,14 +6,14 @@ sidebar:
 related:
   - /docs/insights/people
   - /docs/adapters/combine
-  - /guides/person-across-email-and-linkedin
+  - /docs/guides/person-across-email-and-linkedin
 ---
 
 Ten minutes before a call with someone at a company, you want to know who else there you have written to, and what came back. `accountSummary` takes the company's domain, or any email address at it, and returns each person whose address is at that domain: name, title, the campaigns they are in, their status and interest label in each, and open, click and reply counts. It adds totals and the most recent reply.
 
 It matches on the exact email domain and nothing else. A lead the tool knows only by a LinkedIn profile is not found, even when its company field names the company. The answer says how many leads it read that had no address.
 
-<include>../_snippets/status.mdx</include>
+<include>../../_snippets/status.mdx</include>
 
 ## Before you start
 
@@ -24,12 +24,14 @@ It matches on the exact email domain and nothing else. A lead the tool knows onl
 ## What you get
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/account-brief/run.out.txt
+  ../../_examples/account-brief/run.out.txt
 </include>
 
 ## Write the brief
 
-<include meta='title="brief.ts"'>../_examples/account-brief/brief.ts</include>
+<include meta='title="brief.ts"'>
+  ../../_examples/account-brief/brief.ts
+</include>
 
 What the insight does:
 
@@ -50,9 +52,9 @@ Records name their campaign by ref. To print a campaign's name, read it with `ou
 
 Two made-up tools and four people at one company, one of them known by profile only.
 
-<include meta='title="seed.ts"'>../_examples/account-brief/seed.ts</include>
+<include meta='title="seed.ts"'>../../_examples/account-brief/seed.ts</include>
 
-<include meta='title="run.ts"'>../_examples/account-brief/run.ts</include>
+<include meta='title="run.ts"'>../../_examples/account-brief/run.ts</include>
 
 That is the script that printed the brief above.
 
@@ -61,7 +63,7 @@ That is the script that printed the brief above.
 Swap the adapters. Nothing else changes. One tool works too.
 
 <include meta='title="outbound.ts"'>
-  ../_examples/account-brief/production.ts
+  ../../_examples/account-brief/production.ts
 </include>
 
 A combined instance promises only what every tool behind it can do. With HeyReach in it, there is no list of every lead, so leads are read campaign by campaign, and the answer carries a note that names the tools whose records have no per-lead counts. Records from a tool that does report counts still carry them.
@@ -71,11 +73,11 @@ A combined instance promises only what every tool behind it can do. With HeyReac
 The insight, run on the in-memory adapter limited to what each vendor's adapter declares. This shows which calls a vendor's adapter would refuse and which notes it adds. It does not show what that vendor's API returns.
 
 <include meta='title="vendors.ts"'>
-  ../_examples/account-brief/vendors.ts
+  ../../_examples/account-brief/vendors.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/account-brief/vendors.out.txt
+  ../../_examples/account-brief/vendors.out.txt
 </include>
 
 No adapter refuses the call: it needs leads by list or by campaign, and each has one of them. The Smartlead and HeyReach adapters report no per-lead open, click or reply counts, so those are `null` for them and the brief shows who is in which campaign, their status and their label. On HeyReach a lead is found only when HeyReach holds an email address for it.
@@ -87,11 +89,11 @@ One request per page of leads read. `max_leads` (default 1,000, at most 20,000) 
 ## When it cannot answer
 
 <include meta='title="failures.ts"'>
-  ../_examples/account-brief/failures.ts
+  ../../_examples/account-brief/failures.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/account-brief/failures.out.txt
+  ../../_examples/account-brief/failures.out.txt
 </include>
 
 | What happened | What you get | What to do |

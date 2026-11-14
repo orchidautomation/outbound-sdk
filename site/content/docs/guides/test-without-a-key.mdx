@@ -15,7 +15,7 @@ Code that reads campaigns and replies should have tests that run in CI with no k
 
 This guide tests one small function five ways: with a seed, with capabilities turned off, with injected failures, with small pages, and against recorded answers. Then it says where the in-memory adapter differs from a vendor, because a green run here proves your code and nothing about the vendor.
 
-<include>../_snippets/status.mdx</include>
+<include>../../_snippets/status.mdx</include>
 
 ## Before you start
 
@@ -26,7 +26,7 @@ This guide tests one small function five ways: with a seed, with capabilities tu
 ## What you get
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/test-without-a-key/run.out.txt
+  ../../_examples/test-without-a-key/run.out.txt
 </include>
 
 ## The code under test
@@ -34,7 +34,7 @@ This guide tests one small function five ways: with a seed, with capabilities tu
 One line per active campaign: sends, reply rate and how many replies the vendor labelled positive.
 
 <include meta='title="summary.ts"'>
-  ../_examples/test-without-a-key/summary.ts
+  ../../_examples/test-without-a-key/summary.ts
 </include>
 
 It takes the instance as an argument. That is the whole trick: production passes one built on `instantly()`, a test passes one built on `memory()`.
@@ -44,10 +44,12 @@ It takes the instance as an argument. That is the whole trick: production passes
 Only `id` is required on every seed record, and every other field has a default. State what the test is about and leave the rest out.
 
 <include meta='title="seed.ts"'>
-  ../_examples/test-without-a-key/seed.ts
+  ../../_examples/test-without-a-key/seed.ts
 </include>
 
-<include meta='title="run.ts"'>../_examples/test-without-a-key/run.ts</include>
+<include meta='title="run.ts"'>
+  ../../_examples/test-without-a-key/run.ts
+</include>
 
 That is the script that printed the four lines above. Three things worth asserting in your own tests:
 
@@ -64,11 +66,11 @@ The in-memory adapter declares every capability. No vendor does. Pass `capabilit
 To run a test as a particular vendor, limit the in-memory adapter to what that vendor's adapter declares. [The helper](/docs/samples) is a few lines, and every guide on this site uses it:
 
 <include meta='title="vendors.ts"'>
-  ../_examples/test-without-a-key/vendors.ts
+  ../../_examples/test-without-a-key/vendors.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/test-without-a-key/vendors.out.txt
+  ../../_examples/test-without-a-key/vendors.out.txt
 </include>
 
 This shows which calls a vendor's adapter would refuse. It does not show what that vendor's API returns. HeyReach does not label replies, so the summary reports `null` for positive replies there and does not call the filter.
@@ -78,15 +80,15 @@ This shows which calls a vendor's adapter would refuse. It does not show what th
 The in-memory adapter has no failure switch. A plugin's `wrap` sits between your call and the adapter, and can throw the error a vendor's adapter would.
 
 <include meta='title="failing.ts"'>
-  ../_examples/test-without-a-key/failing.ts
+  ../../_examples/test-without-a-key/failing.ts
 </include>
 
 <include meta='title="failures.ts"'>
-  ../_examples/test-without-a-key/failures.ts
+  ../../_examples/test-without-a-key/failures.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/test-without-a-key/failures.out.txt
+  ../../_examples/test-without-a-key/failures.out.txt
 </include>
 
 | What happened | What you get | What to assert |
@@ -104,11 +106,11 @@ An error thrown by a plugin reaches your code at once. The retries and waits a r
 The default page is 50 records. A five-record seed then fits on one page, and code that forgets to follow the cursor passes its tests. Set `pageSize` to 2.
 
 <include meta='title="pagination.ts"'>
-  ../_examples/test-without-a-key/pagination.ts
+  ../../_examples/test-without-a-key/pagination.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/test-without-a-key/pagination.out.txt
+  ../../_examples/test-without-a-key/pagination.out.txt
 </include>
 
 ## Record once, replay in every test
@@ -118,11 +120,11 @@ The `fixtures` plugin saves each answer to a file and serves it back. `record` c
 This sample records against the in-memory adapter into the system's temporary folder, then replays with an adapter that holds no data at all.
 
 <include meta='title="record-replay.ts"'>
-  ../_examples/test-without-a-key/record-replay.ts
+  ../../_examples/test-without-a-key/record-replay.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/test-without-a-key/record-replay.out.txt
+  ../../_examples/test-without-a-key/record-replay.out.txt
 </include>
 
 What to know before relying on it:
@@ -137,11 +139,11 @@ What to know before relying on it:
 Everything above replaces the adapter. To run a real adapter's own code (its mapping, its request count) with no key, give `createOutbound` a `fetch` of your own. This one answers from Instantly's documented payloads in the repository's `fixtures/instantly/` folder. They are built from Instantly's published schema and are not live responses.
 
 <include meta='title="http.ts"'>
-  ../_examples/test-without-a-key/http.ts
+  ../../_examples/test-without-a-key/http.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/test-without-a-key/http.out.txt
+  ../../_examples/test-without-a-key/http.out.txt
 </include>
 
 A `fetch` like this can also answer 503 or 429 to exercise retries. Those wait on real timers unless you replace them too, with the `runtime` option.

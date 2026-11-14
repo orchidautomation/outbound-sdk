@@ -6,15 +6,15 @@ sidebar:
 related:
   - /docs/insights/senders
   - /docs/plugins/alerts
-  - /guides/sender-capacity
-  - /guides/diagnose-campaign
+  - /docs/guides/sender-capacity
+  - /docs/guides/diagnose-campaign
 ---
 
 A failing DKIM record or a list that bounces at 6% costs more every day it goes unseen. `domainHealth` groups your mailboxes by sending domain and gives each a risk level with the reasons: failing DNS records, mailboxes on a block list or disconnected, warmup emails landing in spam. `bounceWatch` lists the campaigns whose bounce rate is over a threshold, with the senders behind them. The `alerts` plugin checks fixed rules against every record a read returns and calls a function you supply.
 
 Nothing here watches anything on its own. The SDK has no background process and stores nothing. A check happens when your scheduler runs this function, and an alert can only fire after a read that the function made. Between two runs, nobody is looking.
 
-<include>../_snippets/status.mdx</include>
+<include>../../_snippets/status.mdx</include>
 
 ## Before you start
 
@@ -26,7 +26,7 @@ Nothing here watches anything on its own. The SDK has no background process and 
 ## What you get
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/deliverability-check/run.out.txt
+  ../../_examples/deliverability-check/run.out.txt
 </include>
 
 The first part is the function's return value. The last part is what the notifier was handed while the function ran.
@@ -34,7 +34,7 @@ The first part is the function's return value. The last part is what the notifie
 ## Write the check
 
 <include meta='title="check.ts"'>
-  ../_examples/deliverability-check/check.ts
+  ../../_examples/deliverability-check/check.ts
 </include>
 
 How the two insights judge:
@@ -51,7 +51,7 @@ How the two insights judge:
 `alerts({ rules, notify })` wraps every read on the instance. After a read returns, each record is checked against each rule, and `notify` is called once with whatever fired. A rule is arithmetic on one record. The built-in rules are `bounceRateAbove`, `replyRateBelow`, `senderNotActive` and `noSends`.
 
 <include meta='title="run.ts"'>
-  ../_examples/deliverability-check/run.ts
+  ../../_examples/deliverability-check/run.ts
 </include>
 
 Three things to know before you wire `notify` to a pager:
@@ -65,7 +65,7 @@ Three things to know before you wire `notify` to a pager:
 This seed has two sending domains, four mailboxes and three campaigns:
 
 <include meta='title="seed.ts"'>
-  ../_examples/deliverability-check/seed.ts
+  ../../_examples/deliverability-check/seed.ts
 </include>
 
 `run.ts` above is the script that printed the output at the top. In it, `go.example.com` is high risk for two reasons and medium for a third. One campaign is over the threshold at 54 of 900, and of its two senders only one is itself over 3%. The campaign with 3 bounces in 40 sends is 7.5%, and is reported as too small to judge.
@@ -75,7 +75,7 @@ This seed has two sending domains, four mailboxes and three campaigns:
 Swap the adapter, and replace the notifier with your own.
 
 <include meta='title="outbound.ts"'>
-  ../_examples/deliverability-check/production.ts
+  ../../_examples/deliverability-check/production.ts
 </include>
 
 Then call `deliverabilityCheck(outbound)` from your scheduler. A crontab line for every morning at 07:00 looks like this (not run by the test suite):
@@ -89,11 +89,11 @@ Then call `deliverabilityCheck(outbound)` from your scheduler. A crontab line fo
 The same function, run on the in-memory adapter limited to what each vendor's adapter declares. This shows which calls a vendor's adapter would refuse. It does not show what that vendor's API returns.
 
 <include meta='title="vendors.ts"'>
-  ../_examples/deliverability-check/vendors.ts
+  ../../_examples/deliverability-check/vendors.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/deliverability-check/vendors.out.txt
+  ../../_examples/deliverability-check/vendors.out.txt
 </include>
 
 All three declare what the function needs. What each vendor reports inside a health record differs, and the adapters say so in their caveats: Instantly reports no block list state, Smartlead reports no DNS records or block list state, and HeyReach's health is a LinkedIn account's connection state only. Those checks show up in `notReported`.
@@ -108,11 +108,11 @@ All three declare what the function needs. What each vendor reports inside a hea
 ## When it cannot answer
 
 <include meta='title="failures.ts"'>
-  ../_examples/deliverability-check/failures.ts
+  ../../_examples/deliverability-check/failures.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/deliverability-check/failures.out.txt
+  ../../_examples/deliverability-check/failures.out.txt
 </include>
 
 | What happened | What you get | What to do |

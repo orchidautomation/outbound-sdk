@@ -6,8 +6,8 @@ sidebar:
 related:
   - /docs/plugins/redact
   - /docs/tools/untrusted-content
-  - /guides/agent-tools
-  - /guides/mcp-server
+  - /docs/guides/agent-tools
+  - /docs/guides/mcp-server
 ---
 
 You want a model to read what prospects wrote back: to summarise objections, or to draft a note for a rep. Two things are in the way. The records carry personal data you may not want in a prompt. And the text was written by a stranger, who can address your model directly.
@@ -19,7 +19,7 @@ The SDK does two separate jobs here, and neither is a guarantee:
 
 The SDK calls no model and does not inspect, classify or clean reply text.
 
-<include>../_snippets/status.mdx</include>
+<include>../../_snippets/status.mdx</include>
 
 ## Before you start
 
@@ -32,7 +32,7 @@ The SDK calls no model and does not inspect, classify or clean reply text.
 `reply_samples` is the tool that reads replies. The first call is the default. The second asks for text.
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/reply-text-for-llm/bodies.out.txt
+  ../../_examples/reply-text-for-llm/bodies.out.txt
 </include>
 
 - **Without `include_bodies`** a reply is its category, its time and refs. `body` is `null`. A model that only needs to count or sort replies never sees the text.
@@ -41,7 +41,7 @@ The SDK calls no model and does not inspect, classify or clean reply text.
 - **The tool returns refs, not addresses.** `lead` is a ref such as `memory:acme:lead_dana`. But the first reply carries a phone number and an address in its text, because the prospect typed them.
 
 <include meta='title="bodies.ts"'>
-  ../_examples/reply-text-for-llm/bodies.ts
+  ../../_examples/reply-text-for-llm/bodies.ts
 </include>
 
 The note is the exported constant `UNTRUSTED_NOTE` and the cut-off is `DEFAULT_BODY_CHARS`, both from `outbound-sdk/tools`.
@@ -51,11 +51,11 @@ The note is the exported constant `UNTRUSTED_NOTE` and the cut-off is `DEFAULT_B
 With no options, `redact()` masks every field it knows and replaces each value with `[redacted]`. List it first in `plugins` so it is the outermost layer.
 
 <include meta='title="redacted.ts"'>
-  ../_examples/reply-text-for-llm/redacted.ts
+  ../../_examples/reply-text-for-llm/redacted.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/reply-text-for-llm/redacted.out.txt
+  ../../_examples/reply-text-for-llm/redacted.out.txt
 </include>
 
 What changed:
@@ -73,15 +73,15 @@ To let a model read replies, leave `body` out of `fields`. `messages.body` then 
 The function below is for code that builds its own prompt without going through a tool. It marks text the way the tools do.
 
 <include meta='title="prompt.ts"'>
-  ../_examples/reply-text-for-llm/prompt.ts
+  ../../_examples/reply-text-for-llm/prompt.ts
 </include>
 
 <include meta='title="hashed.ts"'>
-  ../_examples/reply-text-for-llm/hashed.ts
+  ../../_examples/reply-text-for-llm/hashed.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/reply-text-for-llm/hashed.out.txt
+  ../../_examples/reply-text-for-llm/hashed.out.txt
 </include>
 
 Read the first reply in that output. The lead's `email` field is a token, and the reply text still says "write to dana@example.com". Redaction masks fields. It does not search text for addresses, phone numbers or names. If that text must not reach a model, do not ask for bodies.
@@ -105,7 +105,7 @@ What limits the damage is what the agent is able to do, not the label:
 ## Try it without a key
 
 <include meta='title="seed.ts"'>
-  ../_examples/reply-text-for-llm/seed.ts
+  ../../_examples/reply-text-for-llm/seed.ts
 </include>
 
 Three made-up people and three replies: one with contact details in the text, one injection attempt, one long.
@@ -119,11 +119,11 @@ Swap `memory({ ... })` for `instantly()`, `smartlead()` or `heyreach()`. The plu
 The in-memory adapter limited to what each vendor's adapter declares. This shows which calls a vendor's adapter would refuse. It does not show what that vendor's API returns.
 
 <include meta='title="vendors.ts"'>
-  ../_examples/reply-text-for-llm/vendors.ts
+  ../../_examples/reply-text-for-llm/vendors.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/reply-text-for-llm/vendors.out.txt
+  ../../_examples/reply-text-for-llm/vendors.out.txt
 </include>
 
 All three declare full message bodies. HeyReach declares no reply categories, so filtering by `category` is refused there and a reply's category is `null`.
@@ -135,11 +135,11 @@ All three declare full message bodies. HeyReach declares no reply categories, so
 ## When it cannot answer
 
 <include meta='title="failures.ts"'>
-  ../_examples/reply-text-for-llm/failures.ts
+  ../../_examples/reply-text-for-llm/failures.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/reply-text-for-llm/failures.out.txt
+  ../../_examples/reply-text-for-llm/failures.out.txt
 </include>
 
 | What happened | What you get | What to do |

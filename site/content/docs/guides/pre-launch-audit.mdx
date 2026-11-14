@@ -7,14 +7,14 @@ related:
   - /docs/insights/copy
   - /docs/insights/people
   - /docs/insights/senders
-  - /guides/sender-capacity
+  - /docs/guides/sender-capacity
 ---
 
 Most launch mistakes are visible before the first email goes out: a variable with one brace missing, a lead with no first name, a follow-up with a new subject that starts a second thread, a daily limit the mailboxes cannot carry. Three insights find them. `copyAudit` checks every step and variant of the sequence against fixed text rules. `personalizationGaps` checks every lead against the merge variables the copy uses. `settingsAudit` checks the schedule, limits and tracking.
 
 It is a report. Nothing here blocks, delays or edits a campaign: the SDK is read-only, and the launch button stays in your vendor tool. The rules are fixed and no AI model reads the copy.
 
-<include>../_snippets/status.mdx</include>
+<include>../../_snippets/status.mdx</include>
 
 ## Before you start
 
@@ -25,13 +25,13 @@ It is a report. Nothing here blocks, delays or edits a campaign: the SDK is read
 ## What you get
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/pre-launch-audit/run.out.txt
+  ../../_examples/pre-launch-audit/run.out.txt
 </include>
 
 ## Write the audit
 
 <include meta='title="audit.ts"'>
-  ../_examples/pre-launch-audit/audit.ts
+  ../../_examples/pre-launch-audit/audit.ts
 </include>
 
 What each call checks:
@@ -46,9 +46,11 @@ The three use different variable rules on purpose. `copyAudit` flagged `{{firstN
 
 This seed is one draft campaign with five leads and two mailboxes, and one running campaign the audit leaves alone:
 
-<include meta='title="seed.ts"'>../_examples/pre-launch-audit/seed.ts</include>
+<include meta='title="seed.ts"'>
+  ../../_examples/pre-launch-audit/seed.ts
+</include>
 
-<include meta='title="run.ts"'>../_examples/pre-launch-audit/run.ts</include>
+<include meta='title="run.ts"'>../../_examples/pre-launch-audit/run.ts</include>
 
 That is the script that printed the audit above.
 
@@ -57,7 +59,7 @@ That is the script that printed the audit above.
 Swap the adapter. Nothing else changes.
 
 <include meta='title="outbound.ts"'>
-  ../_examples/pre-launch-audit/production.ts
+  ../../_examples/pre-launch-audit/production.ts
 </include>
 
 To make it a gate, call the function from your own launch checklist or CI job and decide there what counts as a failure, for example any `high` finding. The decision and the gate are yours: the SDK reports and never stops a launch.
@@ -67,11 +69,11 @@ To make it a gate, call the function from your own launch checklist or CI job an
 Each insight, run on the in-memory adapter limited to what each vendor's adapter declares. This shows which calls a vendor's adapter would refuse. It does not show what that vendor's API returns.
 
 <include meta='title="vendors.ts"'>
-  ../_examples/pre-launch-audit/vendors.ts
+  ../../_examples/pre-launch-audit/vendors.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/pre-launch-audit/vendors.out.txt
+  ../../_examples/pre-launch-audit/vendors.out.txt
 </include>
 
 `settingsAudit` needs `campaigns.settings`. The HeyReach adapter declares it `false`: HeyReach's API returns no schedule, start or end date for a campaign, and sending limits belong to the LinkedIn account. On HeyReach, run the other two and check settings in HeyReach itself.
@@ -88,11 +90,11 @@ A read can be more than one vendor request. On Instantly, reading a campaign is 
 ## When it cannot answer
 
 <include meta='title="failures.ts"'>
-  ../_examples/pre-launch-audit/failures.ts
+  ../../_examples/pre-launch-audit/failures.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/pre-launch-audit/failures.out.txt
+  ../../_examples/pre-launch-audit/failures.out.txt
 </include>
 
 | What happened | What you get | What to do |

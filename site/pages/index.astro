@@ -1,0 +1,1035 @@
+---
+// The home page. The docs live under /docs; this page says what the SDK is
+// and sends readers there. Every code sample is a file under
+// content/_examples that the test suite runs, and each adapter's maturity is
+// read from the package's own provider catalog, so neither can drift from
+// what the SDK does.
+import { Code } from "astro:components";
+import data from "blume:data";
+import PageLayout from "blume/components/layout/PageLayout.astro";
+
+import { providers } from "../../packages/outbound-sdk/src/providers/index.ts";
+
+const { config } = data;
+
+// Each sample's source and the output the test suite recorded for it.
+const examples = import.meta.glob<string>("../content/_examples/*/*", {
+  eager: true,
+  import: "default",
+  query: "?raw",
+});
+
+const example = (name: string): string => {
+  const text = examples[`../content/_examples/${name}`];
+
+  if (text === undefined) {
+    throw new Error(`The home page shows ${name}, which does not exist.`);
+  }
+
+  return text.trimEnd();
+};
+
+const samples = [
+  { id: "memory", label: "No key", name: "usage/first-read" },
+  { id: "vendor", label: "A vendor", name: "usage/vendor" },
+  { id: "insight", label: "An insight", name: "insights-index/answer" },
+].map((sample) => ({
+  ...sample,
+  code: example(`${sample.name}.ts`),
+  file: `${sample.name.split("/").at(-1)}.ts`,
+  output: example(`${sample.name}.out.txt`),
+}));
+
+const CHANNELS = { email: "Email", linkedin: "LinkedIn" } as const;
+
+const vendors = providers.filter(({ id }) => id !== "memory");
+
+const promises = [
+  {
+    title: "Read-only",
+    body: "No method sends, pauses, edits or deletes anything in a vendor tool. The one way to send anything else is off until you turn it on.",
+  },
+  {
+    title: "Stores nothing",
+    body: "Nothing is kept on our side. A plugin that keeps state takes a store you supply.",
+  },
+  {
+    title: "Runs no AI model",
+    body: "Your agent does the reasoning; the SDK supplies the numbers. Insights are counts, rates and textbook tests.",
+  },
+  {
+    title: "Never a silent zero",
+    body: "A count the vendor does not report is null, not 0, so a missing number cannot pass for a real one.",
+  },
+  {
+    title: "Says what it cannot do",
+    body: "Each adapter declares its capabilities. A call that needs one it lacks throws Unsupported before any request leaves.",
+  },
+  {
+    title: "Every record says where it came from",
+    body: "provider, workspaceId and a ref like instantly:acme:cmp_1, so data from two tools or two clients cannot be confused.",
+  },
+];
+
+const features = [
+  {
+    title: "Normalized reads",
+    href: "/docs/usage",
+    body: "Campaigns, sequences, senders, leads, messages, replies and stats mean the same thing on every vendor.",
+  },
+  {
+    title: "The native catalog",
+    href: "/docs/native",
+    body: "Everything else a vendor can report, typed and returned as the vendor sent it. Nothing readable is dropped.",
+  },
+  {
+    title: "26 insights",
+    href: "/docs/insights",
+    body: "Computed answers, from one person across email and LinkedIn to a weekly client report.",
+  },
+  {
+    title: "Plugins",
+    href: "/docs/plugins",
+    body: "Several clients behind one instance, caching, redaction, failover, sync and more.",
+  },
+  {
+    title: "AI tools and MCP",
+    href: "/docs/tools",
+    body: "Hand the reads to an agent as tools for the AI SDK, OpenAI or the Claude Agent SDK, or serve them over MCP.",
+  },
+  {
+    title: "CLI and webhooks",
+    href: "/docs/cli",
+    body: "Run any read or insight from a terminal, and get one event shape for every vendor's webhooks.",
+  },
+];
+
+const guides = [
+  { title: "A weekly client report", href: "/docs/guides/weekly-client-report" },
+  { title: "Replies nobody answered", href: "/docs/guides/unanswered-replies" },
+  { title: "Diagnose a campaign", href: "/docs/guides/diagnose-campaign" },
+  { title: "A deliverability check", href: "/docs/guides/deliverability-check" },
+  { title: "An MCP server for your agent", href: "/docs/guides/mcp-server" },
+  { title: "Test without a key", href: "/docs/guides/test-without-a-key" },
+];
+
+const maturityLabel = {
+  beta: "beta",
+  stable: "stable",
+  unverified: "unverified",
+} as const;
+---
+
+<PageLayout
+  site={{ title: config.title, description: config.description }}
+  logo={config.logo}
+  banner={config.banner}
+  analytics={config.analytics}
+  navigation={data.navigation}
+  favicon={config.favicon}
+  fontCssVars={data.fontCssVars}
+  themeMode={config.theme.mode}
+  searchEnabled={config.search.enabled}
+  siteUrl={config.site}
+  ogEnabled={config.og.enabled}
+  structuredDataEnabled={config.structuredData}
+  page={{
+    title: "outbound-sdk: one read-only TypeScript API over outbound tools",
+    description: config.description,
+    route: "/",
+  }}
+>
+  <div class="home">
+    <section class="hero">
+      <div class="hero-grid" aria-hidden="true"></div>
+      <div class="wrap hero-inner">
+        <div class="hero-copy">
+          <a class="pill" href="/docs/status">
+            <span class="pill-dot"></span>
+            Preview · not on npm yet
+            <span class="pill-arrow" aria-hidden="true">→</span>
+          </a>
+          <h1>
+            One read-only API for your <span class="accent">outbound tools</span>
+          </h1>
+          <p class="lede">
+            Read campaigns, sequences, leads, replies, senders and results from
+            Instantly, Smartlead and HeyReach with the same TypeScript. Swap the
+            adapter to switch vendors, or put several behind one instance.
+          </p>
+          <div class="actions">
+            <a class="btn btn-primary" href="/docs">Read the docs</a>
+            <a class="btn btn-ghost" href="/docs/guides">Browse the guides</a>
+          </div>
+          <ul class="facts">
+            <li>Read-only</li>
+            <li>Stores nothing</li>
+            <li>Calls no AI model</li>
+          </ul>
+        </div>
+
+        <div class="window" data-tabs>
+          <div class="window-bar">
+            <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+            <div class="tabs" role="tablist" aria-label="Code samples">
+              {
+                samples.map((sample, index) => (
+                  <button
+                    type="button"
+                    role="tab"
+                    class="tab"
+                    id={`tab-${sample.id}`}
+                    aria-controls={`panel-${sample.id}`}
+                    aria-selected={index === 0 ? "true" : "false"}
+                    tabindex={index === 0 ? 0 : -1}
+                  >
+                    {sample.label}
+                  </button>
+                ))
+              }
+            </div>
+          </div>
+          {
+            samples.map((sample, index) => (
+              <div
+                class="panel"
+                role="tabpanel"
+                id={`panel-${sample.id}`}
+                aria-labelledby={`tab-${sample.id}`}
+                hidden={index !== 0}
+              >
+                <div class="file">{sample.file}</div>
+                <Code
+                  code={sample.code.trimEnd()}
+                  lang="ts"
+                  themes={{ light: "github-light", dark: "github-dark" }}
+                  defaultColor={false}
+                />
+                <div class="file">Output</div>
+                <pre class="output">{sample.output.trimEnd()}</pre>
+              </div>
+            ))
+          }
+          <p class="window-note">
+            Every sample on this site is a file the test suite runs. The output
+            is what it printed. <a href="/docs/samples">How samples are run</a>
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="wrap section">
+      <div class="section-head">
+        <p class="eyebrow">Adapters</p>
+        <h2>Three vendors, one shape</h2>
+        <p>
+          What the three share is normalized. How far each adapter has been
+          checked against a live account is stated plainly.
+        </p>
+      </div>
+      <div class="vendors">
+        {
+          vendors.map((provider) => (
+            <a class="card vendor" href={`/docs/adapters/${provider.id}`}>
+              <div class="vendor-top">
+                <span class="vendor-name">{provider.name}</span>
+                <span class={`badge badge-${provider.maturity}`}>
+                  {maturityLabel[provider.maturity]}
+                </span>
+              </div>
+              <p class="vendor-channel">{provider.channels.map((channel) => CHANNELS[channel]).join(" · ")}</p>
+              <p>{provider.note}</p>
+              <code class="vendor-import">outbound-sdk/{provider.id}</code>
+            </a>
+          ))
+        }
+      </div>
+    </section>
+
+    <section class="wrap section">
+      <div class="section-head">
+        <p class="eyebrow">What it promises</p>
+        <h2>Built to be trusted with a client's numbers</h2>
+      </div>
+      <div class="promises">
+        {
+          promises.map((promise) => (
+            <div class="promise">
+              <h3>{promise.title}</h3>
+              <p>{promise.body}</p>
+            </div>
+          ))
+        }
+      </div>
+    </section>
+
+    <section class="wrap section">
+      <div class="section-head">
+        <p class="eyebrow">What is in the box</p>
+        <h2>From one read to a whole agency's reporting</h2>
+      </div>
+      <div class="features">
+        {
+          features.map((feature) => (
+            <a class="card feature" href={feature.href}>
+              <h3>
+                {feature.title}
+                <span class="arrow" aria-hidden="true">→</span>
+              </h3>
+              <p>{feature.body}</p>
+            </a>
+          ))
+        }
+      </div>
+    </section>
+
+    <section class="wrap section split">
+      <div>
+        <p class="eyebrow">Guides</p>
+        <h2>Complete tasks, end to end</h2>
+        <p class="muted">
+          Each guide is a real job an operator does, with code you can run on
+          the in-memory adapter before you point it at a key.
+        </p>
+        <a class="btn btn-ghost" href="/docs/guides">All guides</a>
+      </div>
+      <ul class="guide-list">
+        {
+          guides.map((guide) => (
+            <li>
+              <a href={guide.href}>
+                <span>{guide.title}</span>
+                <span class="arrow" aria-hidden="true">→</span>
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+
+    <section class="wrap section">
+      <div class="agents card">
+        <div>
+          <p class="eyebrow">For agents</p>
+          <h2>These docs read well by machine too</h2>
+          <p class="muted">
+            The docs' MCP server serves the documentation only. To let an agent
+            read your campaigns, use <a href="/docs/cli/mcp">the SDK's own MCP
+            server</a>.
+          </p>
+        </div>
+        <ul class="agent-links">
+          <li><a href="/llms.txt"><code>/llms.txt</code></a> an index of every page</li>
+          <li><a href="/llms-full.txt"><code>/llms-full.txt</code></a> every page in one file</li>
+          <li><code>.md</code> on any page's address for its Markdown</li>
+          <li><code>https://outbound-sdk.dev/mcp</code> with <code>search_docs</code> and <code>get_page</code></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="wrap cta">
+      <h2>Start with the in-memory adapter</h2>
+      <p class="muted">
+        No key and no network: a small demo data set, the same API.
+      </p>
+      <div class="actions">
+        <a class="btn btn-primary" href="/docs/installation">Installation</a>
+        <a class="btn btn-ghost" href="/docs/status">What is verified</a>
+      </div>
+    </section>
+  </div>
+</PageLayout>
+
+<script>
+  const STEPS = new Map([
+    ["ArrowLeft", -1],
+    ["ArrowRight", 1],
+  ]);
+
+  const setUp = () => {
+    for (const root of document.querySelectorAll<HTMLElement>("[data-tabs]")) {
+      const tabs = [...root.querySelectorAll<HTMLButtonElement>("[role=tab]")];
+
+      const select = (next: HTMLButtonElement) => {
+        for (const tab of tabs) {
+          const on = tab === next;
+
+          const panel = root.querySelector<HTMLElement>(
+            `#${tab.getAttribute("aria-controls")}`
+          );
+
+          tab.setAttribute("aria-selected", String(on));
+          tab.tabIndex = on ? 0 : -1;
+
+          if (panel) {
+            panel.hidden = !on;
+          }
+        }
+      };
+
+      for (const [index, tab] of tabs.entries()) {
+        tab.addEventListener("click", () => select(tab));
+        tab.addEventListener("keydown", (event) => {
+          const step = STEPS.get(event.key);
+
+          const next =
+            step === undefined
+              ? undefined
+              : tabs[(index + step + tabs.length) % tabs.length];
+
+          if (next) {
+            select(next);
+            next.focus();
+          }
+        });
+      }
+    }
+  };
+
+  setUp();
+
+  document.addEventListener("astro:page-load", setUp);
+</script>
+
+<style>
+  .home {
+    --home-radius: 14px;
+    --home-wrap: 76rem;
+    color: var(--color-foreground);
+  }
+
+  .wrap {
+    margin-inline: auto;
+    max-width: var(--home-wrap);
+    padding-inline: 1.25rem;
+  }
+
+  .accent {
+    color: var(--color-accent);
+  }
+
+  .muted,
+  .section-head p:not(.eyebrow) {
+    color: var(--color-muted-foreground);
+  }
+
+  /* Hero */
+  .hero {
+    border-bottom: 1px solid var(--color-border);
+    overflow: hidden;
+    position: relative;
+  }
+
+  .hero-grid {
+    background-image:
+      linear-gradient(var(--color-border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--color-border) 1px, transparent 1px);
+    background-size: 44px 44px;
+    inset: 0;
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 30%, transparent 75%);
+    opacity: 0.55;
+    position: absolute;
+  }
+
+  .hero::after {
+    background: radial-gradient(
+      closest-side,
+      color-mix(in oklab, var(--color-accent) 22%, transparent),
+      transparent
+    );
+    content: "";
+    height: 34rem;
+    left: 50%;
+    pointer-events: none;
+    position: absolute;
+    top: -16rem;
+    transform: translateX(-50%);
+    width: 60rem;
+  }
+
+  .hero-inner {
+    align-items: center;
+    display: grid;
+    gap: 3rem;
+    padding-block: 4.5rem 5rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  @media (min-width: 64rem) {
+    .hero-inner {
+      gap: 3.5rem;
+      grid-template-columns: 0.9fr 1.2fr;
+      padding-block: 6rem 6.5rem;
+    }
+  }
+
+  .pill {
+    align-items: center;
+    background: var(--color-background);
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    color: var(--color-muted-foreground);
+    display: inline-flex;
+    font-size: 0.8125rem;
+    gap: 0.5rem;
+    padding: 0.3rem 0.8rem 0.3rem 0.65rem;
+    text-decoration: none;
+    transition: border-color 150ms;
+  }
+
+  .pill:hover {
+    border-color: var(--color-accent);
+    color: var(--color-foreground);
+  }
+
+  .pill-dot {
+    background: #f59e0b;
+    border-radius: 999px;
+    box-shadow: 0 0 0 3px color-mix(in oklab, #f59e0b 25%, transparent);
+    height: 0.45rem;
+    width: 0.45rem;
+  }
+
+  .hero h1 {
+    font-size: clamp(2.4rem, 5.5vw, 3.9rem);
+    font-weight: 650;
+    letter-spacing: -0.045em;
+    line-height: 1.04;
+    margin: 1.4rem 0 0;
+    text-wrap: balance;
+  }
+
+  .lede {
+    color: var(--color-muted-foreground);
+    font-size: 1.125rem;
+    line-height: 1.65;
+    margin: 1.75rem 0 0;
+    max-width: 34rem;
+    text-wrap: pretty;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 2rem;
+  }
+
+  .btn {
+    align-items: center;
+    border-radius: 10px;
+    display: inline-flex;
+    font-size: 0.9375rem;
+    font-weight: 550;
+    height: 2.75rem;
+    padding-inline: 1.2rem;
+    text-decoration: none;
+    transition:
+      background-color 150ms,
+      border-color 150ms,
+      transform 150ms;
+  }
+
+  .btn:active {
+    transform: translateY(1px);
+  }
+
+  .btn-primary {
+    background: var(--color-accent);
+    color: var(--color-accent-foreground);
+  }
+
+  .btn-primary:hover {
+    background: color-mix(in oklab, var(--color-accent) 88%, #000);
+  }
+
+  .btn-ghost {
+    background: var(--color-background);
+    border: 1px solid var(--color-border);
+    color: var(--color-foreground);
+  }
+
+  .btn-ghost:hover {
+    border-color: var(--color-muted-foreground);
+  }
+
+  .facts {
+    color: var(--color-muted-foreground);
+    display: flex;
+    flex-wrap: wrap;
+    font-size: 0.875rem;
+    gap: 0.5rem 1.5rem;
+    list-style: none;
+    margin: 2rem 0 0;
+    padding: 0;
+  }
+
+  .facts li {
+    align-items: center;
+    display: inline-flex;
+    gap: 0.45rem;
+  }
+
+  .facts li::before {
+    color: var(--color-accent);
+    content: "✓";
+    font-weight: 700;
+  }
+
+  /* Code window */
+  .window {
+    background: var(--color-background);
+    border: 1px solid var(--color-border);
+    border-radius: var(--home-radius);
+    box-shadow:
+      0 1px 0 color-mix(in oklab, var(--color-foreground) 4%, transparent),
+      0 24px 60px -24px color-mix(in oklab, var(--color-foreground) 28%, transparent);
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .window-bar {
+    align-items: center;
+    background: var(--color-muted);
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    gap: 1rem;
+    padding: 0.55rem 0.75rem;
+  }
+
+  .dots {
+    display: none;
+    gap: 0.4rem;
+  }
+
+  @media (min-width: 30rem) {
+    .dots {
+      display: inline-flex;
+    }
+  }
+
+  .dots i {
+    background: var(--color-border);
+    border-radius: 999px;
+    height: 0.65rem;
+    width: 0.65rem;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 0.25rem;
+    overflow-x: auto;
+  }
+
+  .tab {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    color: var(--color-muted-foreground);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.8125rem;
+    padding: 0.3rem 0.7rem;
+    white-space: nowrap;
+  }
+
+  .tab:hover {
+    color: var(--color-foreground);
+  }
+
+  .tab[aria-selected="true"] {
+    background: var(--color-background);
+    border-color: var(--color-border);
+    color: var(--color-foreground);
+  }
+
+  .file {
+    color: var(--color-muted-foreground);
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 0.75rem;
+    padding: 0.85rem 1.1rem 0;
+  }
+
+  .panel :global(pre.astro-code),
+  .output {
+    background: transparent !important;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 0.78rem;
+    line-height: 1.7;
+    margin: 0;
+    overflow-x: auto;
+    padding: 0.5rem 1.1rem 0.9rem;
+  }
+
+  .panel :global(.astro-code span) {
+    color: var(--shiki-light);
+  }
+
+  :global([data-theme="dark"]) .panel :global(.astro-code span) {
+    color: var(--shiki-dark);
+  }
+
+  .output {
+    border-top: 1px dashed var(--color-border);
+    color: var(--color-muted-foreground);
+    margin-top: 0.35rem;
+    white-space: pre;
+  }
+
+  .window-note {
+    border-top: 1px solid var(--color-border);
+    color: var(--color-muted-foreground);
+    font-size: 0.78rem;
+    margin: 0;
+    padding: 0.7rem 1.1rem;
+  }
+
+  .window-note a,
+  .agents a {
+    color: var(--color-accent);
+  }
+
+  /* Sections */
+  .section {
+    padding-block: 5rem 0;
+  }
+
+  .section-head {
+    margin-bottom: 2.25rem;
+    max-width: 40rem;
+  }
+
+  .eyebrow {
+    color: var(--color-accent);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    margin: 0 0 0.6rem;
+    text-transform: uppercase;
+  }
+
+  .home h2 {
+    font-size: clamp(1.6rem, 3vw, 2.15rem);
+    font-weight: 650;
+    letter-spacing: -0.035em;
+    line-height: 1.15;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .section-head p:not(.eyebrow),
+  .split .muted,
+  .agents .muted,
+  .cta .muted {
+    font-size: 1.0625rem;
+    line-height: 1.6;
+    margin: 0.85rem 0 0;
+  }
+
+  .card {
+    background: var(--color-background);
+    border: 1px solid var(--color-border);
+    border-radius: var(--home-radius);
+    color: inherit;
+    text-decoration: none;
+  }
+
+  a.card {
+    transition:
+      border-color 150ms,
+      transform 150ms,
+      box-shadow 150ms;
+  }
+
+  a.card:hover {
+    border-color: color-mix(in oklab, var(--color-accent) 55%, var(--color-border));
+    box-shadow: 0 12px 32px -18px color-mix(in oklab, var(--color-foreground) 35%, transparent);
+    transform: translateY(-2px);
+  }
+
+  .home h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+
+  /* No specificity, so a component's own margin wins over this reset. */
+  :where(.home) p {
+    margin: 0;
+  }
+
+  /* Vendors */
+  .vendors {
+    display: grid;
+    gap: 1rem;
+  }
+
+  @media (min-width: 48rem) {
+    .vendors {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  .vendor {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 1.4rem;
+  }
+
+  .vendor p {
+    color: var(--color-muted-foreground);
+    font-size: 0.9rem;
+    line-height: 1.55;
+  }
+
+  .vendor-top {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .vendor-name {
+    font-size: 1.2rem;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+  }
+
+  .vendor .vendor-channel {
+    font-size: 0.8125rem;
+  }
+
+  .vendor-import {
+    color: var(--color-muted-foreground);
+    font-size: 0.78rem;
+    margin-top: auto;
+    padding-top: 0.5rem;
+  }
+
+  .badge {
+    border: 1px solid;
+    border-radius: 999px;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 0.72rem;
+    padding: 0.1rem 0.55rem;
+  }
+
+  .badge-beta {
+    background: color-mix(in oklab, #0ea5e9 12%, transparent);
+    border-color: color-mix(in oklab, #0ea5e9 40%, transparent);
+    color: #0284c7;
+  }
+
+  .badge-unverified {
+    background: color-mix(in oklab, #f59e0b 12%, transparent);
+    border-color: color-mix(in oklab, #f59e0b 45%, transparent);
+    color: #b45309;
+  }
+
+  .badge-stable {
+    background: color-mix(in oklab, #10b981 12%, transparent);
+    border-color: color-mix(in oklab, #10b981 40%, transparent);
+    color: #047857;
+  }
+
+  :global([data-theme="dark"]) .badge-beta {
+    color: #7dd3fc;
+  }
+
+  :global([data-theme="dark"]) .badge-unverified {
+    color: #fcd34d;
+  }
+
+  :global([data-theme="dark"]) .badge-stable {
+    color: #6ee7b7;
+  }
+
+  /* Promises */
+  .promises {
+    border: 1px solid var(--color-border);
+    border-radius: var(--home-radius);
+    display: grid;
+    overflow: hidden;
+  }
+
+  @media (min-width: 40rem) {
+    .promises {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .promises {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  .promise {
+    border-bottom: 1px solid var(--color-border);
+    border-right: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 0 -1px -1px 0;
+    padding: 1.5rem;
+  }
+
+  .promise h3::before {
+    background: var(--color-accent);
+    border-radius: 2px;
+    content: "";
+    display: block;
+    height: 3px;
+    margin-bottom: 0.9rem;
+    width: 1.5rem;
+  }
+
+  .promise p,
+  .feature p {
+    color: var(--color-muted-foreground);
+    font-size: 0.9rem;
+    line-height: 1.55;
+  }
+
+  /* Features */
+  .features {
+    display: grid;
+    gap: 1rem;
+  }
+
+  @media (min-width: 40rem) {
+    .features {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .features {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  .feature {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1.4rem;
+  }
+
+  .feature h3 {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .arrow {
+    color: var(--color-muted-foreground);
+    transition:
+      transform 150ms,
+      color 150ms;
+  }
+
+  a:hover .arrow {
+    color: var(--color-accent);
+    transform: translateX(3px);
+  }
+
+  /* Guides */
+  .split {
+    align-items: start;
+    display: grid;
+    gap: 2rem;
+  }
+
+  .split .btn {
+    margin-top: 1.5rem;
+  }
+
+  @media (min-width: 56rem) {
+    .split {
+      gap: 4rem;
+      grid-template-columns: 0.8fr 1.2fr;
+    }
+  }
+
+  .guide-list {
+    border-top: 1px solid var(--color-border);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .guide-list a {
+    align-items: center;
+    border-bottom: 1px solid var(--color-border);
+    color: inherit;
+    display: flex;
+    font-weight: 500;
+    justify-content: space-between;
+    padding: 1rem 0.25rem;
+    text-decoration: none;
+  }
+
+  .guide-list a:hover span:first-child {
+    color: var(--color-accent);
+  }
+
+  /* Agents */
+  .agents {
+    background:
+      linear-gradient(
+        135deg,
+        color-mix(in oklab, var(--color-accent) 7%, transparent),
+        transparent 60%
+      ),
+      var(--color-background);
+    display: grid;
+    gap: 2rem;
+    padding: 2rem;
+  }
+
+  @media (min-width: 56rem) {
+    .agents {
+      gap: 3rem;
+      grid-template-columns: 1fr 1fr;
+      padding: 2.5rem;
+    }
+  }
+
+  .agent-links {
+    color: var(--color-muted-foreground);
+    display: grid;
+    font-size: 0.9rem;
+    gap: 0.85rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .agent-links code {
+    background: var(--color-muted);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    color: var(--color-foreground);
+    font-size: 0.8rem;
+    padding: 0.1rem 0.4rem;
+    word-break: break-all;
+  }
+
+  .agent-links a {
+    margin-right: 0.35rem;
+    text-decoration: none;
+  }
+
+  /* CTA */
+  .cta {
+    padding-block: 6rem;
+    text-align: center;
+  }
+
+  .cta .actions {
+    justify-content: center;
+  }
+</style>

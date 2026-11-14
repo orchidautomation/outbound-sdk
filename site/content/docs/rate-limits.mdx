@@ -3,7 +3,7 @@ title: Rate limits
 description: How outbound-sdk keeps every request inside each vendor's published limits, what it does on a 429, what was measured on live accounts, and how several processes share one budget.
 related:
   - /docs/retries
-  - /guides/shared-rate-budget
+  - /docs/guides/shared-rate-budget
   - /docs/status
 ---
 
@@ -74,7 +74,7 @@ The default store counts requests in the process. Three workers, or three server
   ../_examples/shared-rate-budget/redis.ts
 </include>
 
-The [shared budget guide](/guides/shared-rate-budget) walks through it, including what was and was not verified against a real Redis.
+The [shared budget guide](/docs/guides/shared-rate-budget) walks through it, including what was and was not verified against a real Redis.
 
 For another store (Cloudflare KV, a Durable Object, a database), implement the three methods of `RateLimitStore`: `reserve`, `pause` and `usage`. `reserve` must be atomic, or two processes can both take the last slot.
 

@@ -24,7 +24,7 @@ The documentation is at [outbound-sdk.dev](https://outbound-sdk.dev). It is buil
 - [Cards](https://outbound-sdk.dev/docs/cards): every answer as a card for Slack, Chat SDK or any json-render renderer
 - [Plugins](https://outbound-sdk.dev/docs/plugins)
 - [AI tools](https://outbound-sdk.dev/docs/tools), the [CLI](https://outbound-sdk.dev/docs/cli) and its [MCP server](https://outbound-sdk.dev/docs/cli/mcp), and [webhooks](https://outbound-sdk.dev/docs/webhooks)
-- [Guides](https://outbound-sdk.dev/guides): complete tasks, end to end
+- [Guides](https://outbound-sdk.dev/docs/guides): complete tasks, end to end
 - [What is verified](https://outbound-sdk.dev/docs/status)
 - For contributors: [architecture](docs/architecture.md), [engineering guardrails](docs/engineering-guardrails.md) and [adding an adapter](docs/new-adapter.md), and [changing and publishing the documentation site](docs/site.md)
 

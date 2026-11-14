@@ -6,7 +6,7 @@ sidebar:
 related:
   - /docs/rate-limits
   - /docs/retries
-  - /guides/shared-rate-budget
+  - /docs/guides/shared-rate-budget
 ---
 
 `budget({ maxRequests })` from `outbound-sdk/budget` caps vendor requests, so one question from an agent or one runaway loop cannot spend a vendor's whole rate limit. The cap is enforced inside the request engine, request by request. A call that reaches it stops with `RateLimited`. Retries count, because each one is a vendor request. List it last, so it sits next to the engine and counts only requests that reach the vendor.

@@ -5,15 +5,15 @@ sidebar:
   label: Unanswered replies
 related:
   - /docs/insights/people
-  - /guides/person-across-email-and-linkedin
-  - /guides/hot-leads-call-list
+  - /docs/guides/person-across-email-and-linkedin
+  - /docs/guides/hot-leads-call-list
 ---
 
 A prospect replies "yes, send me pricing" and nobody answers, because the reply sat in a shared inbox over a weekend. `droppedReplies` finds those. It reads the replies since a date, keeps the categories that need an answer, reads each conversation, and reports a reply as dropped when nothing was sent after it and it has waited longer than a number of hours you choose. The list comes back longest waiting first.
 
 It only lists. It does not answer, assign or mark anything, in the SDK or in the vendor tool. It also does not know about answers given outside the tool: a reply you answered from your own mailbox or by phone still shows as unanswered.
 
-<include>../_snippets/status.mdx</include>
+<include>../../_snippets/status.mdx</include>
 
 ## Before you start
 
@@ -25,13 +25,13 @@ It only lists. It does not answer, assign or mark anything, in the SDK or in the
 ## What you get
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/unanswered-replies/run.out.txt
+  ../../_examples/unanswered-replies/run.out.txt
 </include>
 
 ## Write the list
 
 <include meta='title="unanswered.ts"'>
-  ../_examples/unanswered-replies/unanswered.ts
+  ../../_examples/unanswered-replies/unanswered.ts
 </include>
 
 How a reply ends up on the list:
@@ -55,10 +55,12 @@ The categories come from the vendor or from fixed rules. The SDK calls no AI mod
 Ten messages on one made-up tool: two people waiting, one answered, one too recent, and two that need no answer.
 
 <include meta='title="seed.ts"'>
-  ../_examples/unanswered-replies/seed.ts
+  ../../_examples/unanswered-replies/seed.ts
 </include>
 
-<include meta='title="run.ts"'>../_examples/unanswered-replies/run.ts</include>
+<include meta='title="run.ts"'>
+  ../../_examples/unanswered-replies/run.ts
+</include>
 
 That is the script that printed the list above.
 
@@ -66,7 +68,9 @@ That is the script that printed the list above.
 
 Swap the adapter and export a function for your scheduler to call: cron, a GitHub Actions schedule, a Vercel cron route. What you do with the text (post it to a channel, email it to the account owner) is your code.
 
-<include meta='title="job.ts"'>../_examples/unanswered-replies/job.ts</include>
+<include meta='title="job.ts"'>
+  ../../_examples/unanswered-replies/job.ts
+</include>
 
 The SDK stores nothing, so each run starts from the vendor's data and lists every reply still waiting, including ones the last run listed. If you want each reply reported once, keep the `reply` refs you already reported in your own store.
 
@@ -75,11 +79,11 @@ The SDK stores nothing, so each run starts from the vendor's data and lists ever
 The insight, run on the in-memory adapter limited to what each vendor's adapter declares. This shows which calls a vendor's adapter would refuse. It does not show what that vendor's API returns.
 
 <include meta='title="vendors.ts"'>
-  ../_examples/unanswered-replies/vendors.ts
+  ../../_examples/unanswered-replies/vendors.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/unanswered-replies/vendors.out.txt
+  ../../_examples/unanswered-replies/vendors.out.txt
 </include>
 
 `droppedReplies` needs only `replies.list`, which all three declare. All three can also read a thread and a lead's timeline, and all three take a date filter on replies, so none adds a note here.
@@ -93,11 +97,11 @@ One request per page of replies, plus one per conversation checked: at most abou
 ## When it cannot answer
 
 <include meta='title="failures.ts"'>
-  ../_examples/unanswered-replies/failures.ts
+  ../../_examples/unanswered-replies/failures.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/unanswered-replies/failures.out.txt
+  ../../_examples/unanswered-replies/failures.out.txt
 </include>
 
 | What happened | What you get | What to do |

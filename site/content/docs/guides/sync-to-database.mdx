@@ -7,14 +7,14 @@ related:
   - /docs/plugins/sync
   - /docs/plugins/reconcile
   - /docs/api/pagination
-  - /guides/webhooks-and-reconcile
+  - /docs/guides/webhooks-and-reconcile
 ---
 
 Dashboards and joins want the data in your own database, not behind a vendor's rate limit. The `sync` plugin walks a collection page by page, hands each page to a function you write, and keeps one checkpoint per collection in a store you supply: a cursor, so a run that dies restarts on the page it was reading, and the start time of the last finished run, so the next run asks only for newer records.
 
 The plugin writes nothing itself. This guide supplies the three parts it leaves to you: the tables, the upserts and the checkpoint store. It also shows what a sync does not do: it does not copy stats, and it does not notice a record that was deleted at the vendor.
 
-<include>../_snippets/status.mdx</include>
+<include>../../_snippets/status.mdx</include>
 
 ## Before you start
 
@@ -27,7 +27,7 @@ The plugin writes nothing itself. This guide supplies the three parts it leaves 
 Two runs against the same database, an hour apart. Between them one lead and one reply were added at the vendor.
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/sync-to-database/run.out.txt
+  ../../_examples/sync-to-database/run.out.txt
 </include>
 
 The first run reads everything. The second asks for leads and replies from five minutes before the first run started, and gets one of each. Campaigns have no date filter, so they are listed in full on every run.
@@ -37,7 +37,7 @@ The first run reads everything. The second asks for leads and replies from five 
 Every record carries a `ref` (`provider:workspace:id`) that is unique across vendors and clients. Use it as the primary key.
 
 <include meta='title="database.ts"'>
-  ../_examples/sync-to-database/database.ts
+  ../../_examples/sync-to-database/database.ts
 </include>
 
 Two things here are not optional:
@@ -61,7 +61,7 @@ ON CONFLICT (ref) DO UPDATE SET
 `outbound.sync.run(collection, options)` syncs one collection: `campaigns`, `leads`, `replies`, `messages` or `senders`. The type argument names the record your `onPage` receives. It is not checked against the collection, so keep the two in step.
 
 <include meta='title="sync-all.ts"'>
-  ../_examples/sync-to-database/sync-all.ts
+  ../../_examples/sync-to-database/sync-all.ts
 </include>
 
 Each run returns a `SyncResult`: how many records and pages it read, whether it continued an unfinished run (`resumed`), the lower bound it asked for (`since`) and whether it reached the end (`complete`).
@@ -74,9 +74,11 @@ How the lower bound works:
 
 ## Try it without a key
 
-<include meta='title="seed.ts"'>../_examples/sync-to-database/seed.ts</include>
+<include meta='title="seed.ts"'>
+  ../../_examples/sync-to-database/seed.ts
+</include>
 
-<include meta='title="run.ts"'>../_examples/sync-to-database/run.ts</include>
+<include meta='title="run.ts"'>../../_examples/sync-to-database/run.ts</include>
 
 That is the script that printed the two runs above. The fixed clock of the samples is 12:00, so the second instance is given a clock one hour ahead.
 
@@ -85,11 +87,11 @@ That is the script that printed the two runs above. The fixed clock of the sampl
 Here `onPage` writes the second page and then throws, which is what a lost connection or a killed process looks like to the plugin.
 
 <include meta='title="resume.ts"'>
-  ../_examples/sync-to-database/resume.ts
+  ../../_examples/sync-to-database/resume.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/sync-to-database/resume.out.txt
+  ../../_examples/sync-to-database/resume.out.txt
 </include>
 
 The second run starts with `lead_3`, not `lead_1`. `lead_3` and `lead_4` were already written by the run that failed, and they are delivered again. The upsert makes that harmless: five leads, five rows.
@@ -99,7 +101,7 @@ The second run starts with `lead_3`, not `lead_1`. `lead_3` and `lead_4` were al
 Swap the adapter. The tables, the upserts and the checkpoint store do not change.
 
 <include meta='title="outbound.ts"'>
-  ../_examples/sync-to-database/production.ts
+  ../../_examples/sync-to-database/production.ts
 </include>
 
 Then call `syncAll` from whatever scheduler you already run (cron, a GitHub Actions schedule, a Vercel cron route). The SDK schedules nothing. To bound one invocation, pass `maxPages`: the run stops with `complete: false` and the next invocation continues from the checkpoint.
@@ -117,11 +119,11 @@ A sync only ever sees what the vendor lists. When a lead is deleted at the vendo
 The `reconcile` plugin's `deletions()` lists the whole collection and compares it with the refs you hold:
 
 <include meta='title="deletions.ts"'>
-  ../_examples/sync-to-database/deletions.ts
+  ../../_examples/sync-to-database/deletions.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/sync-to-database/deletions.out.txt
+  ../../_examples/sync-to-database/deletions.out.txt
 </include>
 
 It reports and changes nothing: deleting the rows, or marking them, is your decision. It lists the whole collection, so it costs as much as a full sync. Run it less often than the sync. It covers `campaigns`, `leads` and `senders`.
@@ -131,11 +133,11 @@ It reports and changes nothing: deleting the rows, or marking them, is your deci
 The same sync, run on the in-memory adapter limited to what each vendor's adapter declares. This shows which calls a vendor's adapter would refuse. It does not show what that vendor's API returns.
 
 <include meta='title="vendors.ts"'>
-  ../_examples/sync-to-database/vendors.ts
+  ../../_examples/sync-to-database/vendors.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/sync-to-database/vendors.out.txt
+  ../../_examples/sync-to-database/vendors.out.txt
 </include>
 
 - **HeyReach is refused** because it has no list of every lead: leads exist only inside a campaign or a list. Sync leads once per campaign by passing `campaignId`. Each campaign then has its own checkpoint.
@@ -149,11 +151,11 @@ A run is one listing per collection: the number of pages, times that vendor's co
 ## When it cannot answer
 
 <include meta='title="failures.ts"'>
-  ../_examples/sync-to-database/failures.ts
+  ../../_examples/sync-to-database/failures.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/sync-to-database/failures.out.txt
+  ../../_examples/sync-to-database/failures.out.txt
 </include>
 
 | What happened | What you get | What to do |

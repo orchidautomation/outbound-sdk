@@ -28,9 +28,13 @@ export default defineConfig({
   navigation: {
     tabs: [
       { label: "Docs", path: "/docs" },
-      { label: "Guides", path: "/guides" },
+      { label: "Guides", path: "/docs/guides" },
     ],
   },
+  // The guides moved under /docs; keep the old addresses working.
+  redirects: [
+    { from: "/guides/:slug*", status: 308, to: "/docs/guides/:slug*" },
+  ],
   theme: { accent: "#e11d48" },
   title: "outbound-sdk",
 });

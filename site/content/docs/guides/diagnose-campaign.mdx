@@ -6,15 +6,15 @@ sidebar:
 related:
   - /docs/insights/operations
   - /docs/plugins/benchmarks
-  - /guides/deliverability-check
-  - /guides/lead-runway
+  - /docs/guides/deliverability-check
+  - /docs/guides/lead-runway
 ---
 
 "This campaign is not working" has a short list of usual causes: too few sends to tell, bounces, a mailbox that stopped, a schedule that barely opens, a sequence with no follow-ups. `campaignDiagnosis` checks one campaign for each of them and returns findings with the numbers behind them and what to look at next. Two more reads give context. `anomalies` finds the days whose counts broke from the days before. The `benchmarks` plugin puts the campaign's rates beside the whole workspace's.
 
 The checks are fixed rules on counts. No AI model is called, the copy is not read, and nothing is changed. An empty list of findings means nothing was found in what could be checked, which is why the answer also lists what could not be.
 
-<include>../_snippets/status.mdx</include>
+<include>../../_snippets/status.mdx</include>
 
 ## Before you start
 
@@ -25,13 +25,13 @@ The checks are fixed rules on counts. No AI model is called, the copy is not rea
 ## What you get
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/diagnose-campaign/run.out.txt
+  ../../_examples/diagnose-campaign/run.out.txt
 </include>
 
 ## Write the diagnosis
 
 <include meta='title="diagnose.ts"'>
-  ../_examples/diagnose-campaign/diagnose.ts
+  ../../_examples/diagnose-campaign/diagnose.ts
 </include>
 
 The checks, with their defaults. Each bar is an input.
@@ -65,9 +65,13 @@ For context:
 
 This seed is five weeks of results for three campaigns, one of which lost a mailbox a week ago:
 
-<include meta='title="seed.ts"'>../_examples/diagnose-campaign/seed.ts</include>
+<include meta='title="seed.ts"'>
+  ../../_examples/diagnose-campaign/seed.ts
+</include>
 
-<include meta='title="run.ts"'>../_examples/diagnose-campaign/run.ts</include>
+<include meta='title="run.ts"'>
+  ../../_examples/diagnose-campaign/run.ts
+</include>
 
 That is the script that printed the diagnosis above. The paused mailbox, the halved sends and the two unusual days of sends on 2026-11-07 and 2026-11-08 are the same event seen three ways. The findings do not connect them: that reading is yours.
 
@@ -76,7 +80,7 @@ That is the script that printed the diagnosis above. The paused mailbox, the hal
 Swap the adapter. Nothing else changes.
 
 <include meta='title="outbound.ts"'>
-  ../_examples/diagnose-campaign/production.ts
+  ../../_examples/diagnose-campaign/production.ts
 </include>
 
 Pass the campaign's vendor id or its `ref` to the function.
@@ -86,11 +90,11 @@ Pass the campaign's vendor id or its `ref` to the function.
 The same function, run on the in-memory adapter limited to what each vendor's adapter declares. This shows which calls a vendor's adapter would refuse. It does not show what that vendor's API returns.
 
 <include meta='title="vendors.ts"'>
-  ../_examples/diagnose-campaign/vendors.ts
+  ../../_examples/diagnose-campaign/vendors.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/diagnose-campaign/vendors.out.txt
+  ../../_examples/diagnose-campaign/vendors.out.txt
 </include>
 
 `campaignDiagnosis` needs only `stats.campaign`. Every other read is skipped and named when the adapter cannot serve it. The HeyReach adapter cannot read campaign settings, so the schedule and tracking checks are not run there and the two findings that depend on them are missing, not passed.
@@ -106,11 +110,11 @@ None of them reads leads or messages, so the cost does not grow with the size of
 ## When it cannot answer
 
 <include meta='title="failures.ts"'>
-  ../_examples/diagnose-campaign/failures.ts
+  ../../_examples/diagnose-campaign/failures.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/diagnose-campaign/failures.out.txt
+  ../../_examples/diagnose-campaign/failures.out.txt
 </include>
 
 | What happened | What you get | What to do |
@@ -124,7 +128,7 @@ None of them reads leads or messages, so the cost does not grow with the size of
 
 ## Limits
 
-- One campaign per call. To find which campaign to diagnose, start from `campaignRanking` or the [weekly client report](/guides/weekly-client-report).
+- One campaign per call. To find which campaign to diagnose, start from `campaignRanking` or the [weekly client report](/docs/guides/weekly-client-report).
 - The findings are independent checks. Two findings with one cause are reported as two.
 - It does not read the copy or the leads. Follow a finding's `next` to the insight that does: `stepFunnel` and `copyAudit` for replies, `bounceWatch` for bounces, `pipelineForecast` for leads left.
 - Against a flat baseline `anomalies` has no z-score to go by. A campaign that sends the same number every day is flagged on the first day it sends any other number, however small the difference, and `threshold` does not apply.

@@ -5,15 +5,15 @@ sidebar:
   label: A/B test verdict
 related:
   - /docs/insights/copy
-  - /guides/pre-launch-audit
-  - /guides/diagnose-campaign
+  - /docs/guides/pre-launch-audit
+  - /docs/guides/diagnose-campaign
 ---
 
 Variant A has a 6% reply rate and variant B has 3%. Whether that is a result or noise depends on how many leads each one reached. `variantTest` answers that for every step of a campaign that has two or more variants: it takes the variant with the highest rate, compares it with each of the others by a two-proportion z-test, and returns one of three verdicts: `winner`, `no_difference_yet` or `too_little_data`. `stepFunnel` adds which step the replies come from, so you know how much a winner is worth.
 
 It does not tell you when a test is finished. It has no stopping rule, it makes no correction when a step has three or more variants, and reading it every day until it says `winner` will produce winners that are not real. [Limits](#limits) says what to do about each. It calls no AI model and changes nothing in your vendor tool: turning a variant off is up to you.
 
-<include>../_snippets/status.mdx</include>
+<include>../../_snippets/status.mdx</include>
 
 ## Before you start
 
@@ -24,7 +24,7 @@ It does not tell you when a test is finished. It has no stopping rule, it makes 
 ## What you get
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/ab-test-winner/run.out.txt
+  ../../_examples/ab-test-winner/run.out.txt
 </include>
 
 ## Write the verdict
@@ -32,7 +32,7 @@ It does not tell you when a test is finished. It has no stopping rule, it makes 
 `outbound.insights.variantTest` takes a campaign and returns one entry per tested step. `outbound.insights.stepFunnel` takes the same campaign and returns one row per step.
 
 <include meta='title="verdict.ts"'>
-  ../_examples/ab-test-winner/verdict.ts
+  ../../_examples/ab-test-winner/verdict.ts
 </include>
 
 How a step gets its verdict:
@@ -49,9 +49,9 @@ A count the vendor does not report is `null`, never `0`, and a rate built on it 
 
 The in-memory adapter takes plain data. A stats row in its seed can name a step and a variant (`stepIndex` and `variantKey`), so this seed holds one row per variant, which is the shape the Instantly and Smartlead adapters produce for step stats.
 
-<include meta='title="seed.ts"'>../_examples/ab-test-winner/seed.ts</include>
+<include meta='title="seed.ts"'>../../_examples/ab-test-winner/seed.ts</include>
 
-<include meta='title="run.ts"'>../_examples/ab-test-winner/run.ts</include>
+<include meta='title="run.ts"'>../../_examples/ab-test-winner/run.ts</include>
 
 That is the script that printed the verdict above. Step 0 is 48 of 800 against 24 of 800, a gap chance would produce about 4 times in 1,000. Step 1 is 28 of 700 against 20 of 700, a gap chance would produce about one time in four.
 
@@ -60,7 +60,7 @@ That is the script that printed the verdict above. Step 0 is 48 of 800 against 2
 Swap the adapter. Nothing else changes.
 
 <include meta='title="outbound.ts"'>
-  ../_examples/ab-test-winner/production.ts
+  ../../_examples/ab-test-winner/production.ts
 </include>
 
 Pass the campaign's vendor id or its `ref` to the function.
@@ -70,11 +70,11 @@ Pass the campaign's vendor id or its `ref` to the function.
 The same function, run on the in-memory adapter limited to what each vendor's adapter declares. This shows which calls a vendor's adapter would refuse. It does not show what that vendor's API returns.
 
 <include meta='title="vendors.ts"'>
-  ../_examples/ab-test-winner/vendors.ts
+  ../../_examples/ab-test-winner/vendors.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/ab-test-winner/vendors.out.txt
+  ../../_examples/ab-test-winner/vendors.out.txt
 </include>
 
 Both insights need `stats.byStep`. The HeyReach adapter declares it `false` because HeyReach's API has no statistics per step, so the call is refused before any request. There is no fallback: without counts per variant there is nothing to test.
@@ -86,11 +86,11 @@ Both insights need `stats.byStep`. The HeyReach adapter declares it `false` beca
 ## When it cannot answer
 
 <include meta='title="failures.ts"'>
-  ../_examples/ab-test-winner/failures.ts
+  ../../_examples/ab-test-winner/failures.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/ab-test-winner/failures.out.txt
+  ../../_examples/ab-test-winner/failures.out.txt
 </include>
 
 | What happened | What you get | What to do |

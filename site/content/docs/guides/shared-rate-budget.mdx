@@ -6,12 +6,12 @@ sidebar:
 related:
   - /docs/rate-limits
   - /docs/retries
-  - /guides/run-many-clients
+  - /docs/guides/run-many-clients
 ---
 
 The SDK keeps every request inside the vendor's rate limit, but by default it counts in the process. Run three workers on one Instantly key and each keeps its own budget, so together they can send three times what one would. On HeyReach, whose burst limit is 15 requests per 2 seconds, that is enough to draw 429s. This guide puts the count in Redis so every process on a key draws from one budget.
 
-<include>../_snippets/status.mdx</include>
+<include>../../_snippets/status.mdx</include>
 
 ## Before you start
 
@@ -24,11 +24,11 @@ The SDK keeps every request inside the vendor's rate limit, but by default it co
 Two workers on one key, each making three reads. First with a store each, which is what two processes have by default, then with one store between them. `outbound.limits()` reports what each worker believes has been used.
 
 <include meta='title="two-workers.ts"'>
-  ../_examples/shared-rate-budget/two-workers.ts
+  ../../_examples/shared-rate-budget/two-workers.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/shared-rate-budget/two-workers.out.txt
+  ../../_examples/shared-rate-budget/two-workers.out.txt
 </include>
 
 With separate stores each worker thinks 3 of its 7 requests are used, while HeyReach has seen 6. With one store both see 6, and the next request but one would wait.
@@ -36,7 +36,7 @@ With separate stores each worker thinks 3 of its 7 requests are used, while HeyR
 The sample uses one in-memory store object to stand in for Redis, because both implement the same `RateLimitStore` interface, and a fetch that answers with HeyReach's documented campaign list:
 
 <include meta='title="documented-fetch.ts"'>
-  ../_examples/shared-rate-budget/documented-fetch.ts
+  ../../_examples/shared-rate-budget/documented-fetch.ts
 </include>
 
 ## Use the Redis store
@@ -44,7 +44,7 @@ The sample uses one in-memory store object to stand in for Redis, because both i
 `redisRateLimitStore` takes `evaluate`, a function that runs a Lua script on your client and resolves with its reply. The comment shows the line for each common client.
 
 <include meta='title="worker.ts"'>
-  ../_examples/shared-rate-budget/redis.ts
+  ../../_examples/shared-rate-budget/redis.ts
 </include>
 
 Create every worker this way and they share the budget. Nothing else changes: the same reads, the same `meta.throttledMs`, the same errors.
@@ -60,11 +60,11 @@ Create every worker this way and they share the budget. Nothing else changes: th
 One sorted set per credential and lane, holding one member per request in the longest window, and one key per paused lane. Both expire on their own. This sample prints the keys for an Instantly worker without a Redis:
 
 <include meta='title="redis-keys.ts"'>
-  ../_examples/shared-rate-budget/redis-keys.ts
+  ../../_examples/shared-rate-budget/redis-keys.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/shared-rate-budget/redis-keys.out.txt
+  ../../_examples/shared-rate-budget/redis-keys.out.txt
 </include>
 
 - **The API key is not in the key name.** The credential is named by the provider and a hash of the key.

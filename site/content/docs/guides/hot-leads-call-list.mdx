@@ -5,15 +5,15 @@ sidebar:
   label: Who to call first
 related:
   - /docs/insights/people
-  - /guides/unanswered-replies
-  - /guides/person-across-email-and-linkedin
+  - /docs/guides/unanswered-replies
+  - /docs/guides/person-across-email-and-linkedin
 ---
 
 A rep with an hour to make calls wants the leads in order. `hotLeads` reads the leads and gives each a score from what the vendor reports about them: a positive interest label, replies, clicks, opens, and how recent the last reply is. It returns the leads highest score first.
 
 The score is a weighted sum, and every part of it comes back with the lead. It is not a prediction: no model is trained or called, and nothing says a lead with 95 points is more likely to buy than one with 31. It says the first has a positive label and replied twice, and the second replied once. The weights are inputs, so you can change what "first" means.
 
-<include>../_snippets/status.mdx</include>
+<include>../../_snippets/status.mdx</include>
 
 ## Before you start
 
@@ -24,13 +24,13 @@ The score is a weighted sum, and every part of it comes back with the lead. It i
 ## What you get
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/hot-leads-call-list/run.out.txt
+  ../../_examples/hot-leads-call-list/run.out.txt
 </include>
 
 ## Write the list
 
 <include meta='title="call-list.ts"'>
-  ../_examples/hot-leads-call-list/call-list.ts
+  ../../_examples/hot-leads-call-list/call-list.ts
 </include>
 
 The score is the sum of five parts, with these defaults:
@@ -63,10 +63,12 @@ Who is left out:
 Eight leads on one made-up tool.
 
 <include meta='title="seed.ts"'>
-  ../_examples/hot-leads-call-list/seed.ts
+  ../../_examples/hot-leads-call-list/seed.ts
 </include>
 
-<include meta='title="run.ts"'>../_examples/hot-leads-call-list/run.ts</include>
+<include meta='title="run.ts"'>
+  ../../_examples/hot-leads-call-list/run.ts
+</include>
 
 That is the script that printed the list above.
 
@@ -75,11 +77,11 @@ That is the script that printed the list above.
 Every weight is an input. This run makes a recent reply worth most, shortens the recency window to a week and ignores opens.
 
 <include meta='title="weights.ts"'>
-  ../_examples/hot-leads-call-list/weights.ts
+  ../../_examples/hot-leads-call-list/weights.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/hot-leads-call-list/weights.out.txt
+  ../../_examples/hot-leads-call-list/weights.out.txt
 </include>
 
 Ben is now seven points behind Ava, and Dev is gone: with opens worth nothing he scores 0.
@@ -89,7 +91,7 @@ Ben is now seven points behind Ava, and Dev is gone: with opens worth nothing he
 Swap the adapter. Nothing else changes.
 
 <include meta='title="outbound.ts"'>
-  ../_examples/hot-leads-call-list/production.ts
+  ../../_examples/hot-leads-call-list/production.ts
 </include>
 
 Call the function from a scheduler you already run and send the text where the reps will see it. The SDK stores nothing and schedules nothing. The list has no phone numbers: a lead record has no phone field.
@@ -99,11 +101,11 @@ Call the function from a scheduler you already run and send the text where the r
 The insight, run on the in-memory adapter limited to what each vendor's adapter declares. This shows which calls a vendor's adapter would refuse and which notes it adds. It does not show what that vendor's API returns.
 
 <include meta='title="vendors.ts"'>
-  ../_examples/hot-leads-call-list/vendors.ts
+  ../../_examples/hot-leads-call-list/vendors.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/hot-leads-call-list/vendors.out.txt
+  ../../_examples/hot-leads-call-list/vendors.out.txt
 </include>
 
 The ranking needs per-lead reply, click and open counts (`leads.engagement`). Without them only the interest label and a `replied` status are left to score on.
@@ -119,11 +121,11 @@ One request per page of leads read. `max_leads` (default 500, at most 20,000) se
 ## When it cannot answer
 
 <include meta='title="failures.ts"'>
-  ../_examples/hot-leads-call-list/failures.ts
+  ../../_examples/hot-leads-call-list/failures.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/hot-leads-call-list/failures.out.txt
+  ../../_examples/hot-leads-call-list/failures.out.txt
 </include>
 
 | What happened | What you get | What to do |

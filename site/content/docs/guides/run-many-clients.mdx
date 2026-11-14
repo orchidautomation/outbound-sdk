@@ -7,15 +7,15 @@ related:
   - /docs/adapters/combine
   - /docs/plugins/clients
   - /docs/rate-limits
-  - /guides/weekly-client-report
-  - /guides/shared-rate-budget
+  - /docs/guides/weekly-client-report
+  - /docs/guides/shared-rate-budget
 ---
 
 An agency holds one API key per client, sometimes two when a client is on an email tool and a LinkedIn tool, and sometimes one key whose workspace holds several clients' campaigns. `combine` puts any number of adapters behind one instance. The `clients` plugin tags every record with the client it belongs to and adds totals per client.
 
 Every record keeps its own provider and workspace, so two clients' data cannot be confused, and nothing is added together across clients unless you ask for it. The combined instance reads each tool live on each call and keeps nothing.
 
-<include>../_snippets/status.mdx</include>
+<include>../../_snippets/status.mdx</include>
 
 ## Before you start
 
@@ -26,7 +26,7 @@ Every record keeps its own provider and workspace, so two clients' data cannot b
 ## What you get
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/run-many-clients/run.out.txt
+  ../../_examples/run-many-clients/run.out.txt
 </include>
 
 ## One adapter per client key
@@ -34,7 +34,7 @@ Every record keeps its own provider and workspace, so two clients' data cannot b
 Give each key its own adapter, and give each adapter a `workspaceId`. That is your label for the client, not anything the vendor knows. It ends up in every ref: `provider:workspace:id`.
 
 <include meta='title="instance.ts"'>
-  ../_examples/run-many-clients/instance.ts
+  ../../_examples/run-many-clients/instance.ts
 </include>
 
 - **A client on two tools carries one label on both adapters.** Two adapters may share a label as long as their providers differ.
@@ -45,9 +45,11 @@ The samples name the in-memory adapters `emailtool` and `linkedintool` so the re
 
 ## Try it without a key
 
-<include meta='title="seed.ts"'>../_examples/run-many-clients/seed.ts</include>
+<include meta='title="seed.ts"'>
+  ../../_examples/run-many-clients/seed.ts
+</include>
 
-<include meta='title="run.ts"'>../_examples/run-many-clients/run.ts</include>
+<include meta='title="run.ts"'>../../_examples/run-many-clients/run.ts</include>
 
 That is the script that printed the output above. Taking it in order:
 
@@ -55,7 +57,7 @@ That is the script that printed the output above. Taking it in order:
 
 **`outbound.workspace(id)` is one client.** It is the same instance scoped to the adapters that carry that label. For `acme` that is two adapters, so the scope is itself a combined instance and covers both tools. For `globex` it is one adapter, the scope is that adapter, and a bare id works again.
 
-**The scope keeps the plugins.** `acme.clients.stats()` works because `clients` came along, and the same holds for any plugin's methods, such as `insights`. Code written for one client runs unchanged on a scope: [the weekly report](/guides/weekly-client-report) loops over `outbound.workspaces` this way.
+**The scope keeps the plugins.** `acme.clients.stats()` works because `clients` came along, and the same holds for any plugin's methods, such as `insights`. Code written for one client runs unchanged on a scope: [the weekly report](/docs/guides/weekly-client-report) loops over `outbound.workspaces` this way.
 
 **Workspace stats are one row per member, never added together.** `outbound.stats()` asks each member for its own workspace totals and returns the rows side by side, each with its `provider` and `workspaceId`. The LinkedIn tool's row has `sent: null`, not `0`: it does not count emails.
 
@@ -70,11 +72,11 @@ Three members above have a campaign with the id `cmp_1`. On a combined instance 
 When one key covers several clients, the workspace cannot tell them apart. Pass `rules` to `clients`. A rule can match on `provider`, `workspaceId`, `campaignTag`, `campaignName` (a regular expression) or `campaignIds` (refs). The first rule that matches decides. A record that matches no rule is `unassigned`: nothing is guessed.
 
 <include meta='title="rules.ts"'>
-  ../_examples/run-many-clients/rules.ts
+  ../../_examples/run-many-clients/rules.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/run-many-clients/rules.out.txt
+  ../../_examples/run-many-clients/rules.out.txt
 </include>
 
 - **Every record gets a `client`**, not only campaigns. A lead, a message or a reply is assigned through its campaign. A sender belongs to no campaign, so a tag or name rule cannot place it and it is `unassigned`.
@@ -87,21 +89,21 @@ When one key covers several clients, the workspace cannot tell them apart. Pass 
 Each adapter's requests are counted against that adapter's own credential. A heavy read for one client does not slow another client's reads. The in-memory adapter makes no HTTP request, so this sample uses two real Instantly adapters with made-up keys and a `fetch` that answers from Instantly's documented payloads in the repository's `fixtures/instantly/` folder. Those are documented payloads, not live responses, and nothing leaves the process.
 
 <include meta='title="budgets.ts"'>
-  ../_examples/run-many-clients/budgets.ts
+  ../../_examples/run-many-clients/budgets.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/run-many-clients/budgets.out.txt
+  ../../_examples/run-many-clients/budgets.out.txt
 </include>
 
 `outbound.limits()` returns one snapshot per member. `acme` was read twice and `globex` once, at three requests a read (Instantly's campaign list also reads tag assignments and tag names). The allowances shown are half of what Instantly publishes, because an instance uses a `share` of 0.5 of each limit unless you set another.
 
-Budgets are counted in this process. Several processes on the same keys need a shared store: see [sharing a rate budget](/guides/shared-rate-budget).
+Budgets are counted in this process. Several processes on the same keys need a shared store: see [sharing a rate budget](/docs/guides/shared-rate-budget).
 
 ## Point it at your vendor
 
 <include meta='title="outbound.ts"'>
-  ../_examples/run-many-clients/production.ts
+  ../../_examples/run-many-clients/production.ts
 </include>
 
 Pass `apiKey` to every adapter. An adapter given none reads its vendor's own environment variable (`INSTANTLY_API_KEY`, `HEYREACH_API_KEY`), so a client whose variable is missing would be read with whatever key that holds. The sample refuses to build the instance instead.
@@ -111,11 +113,11 @@ Pass `apiKey` to every adapter. An adapter given none reads its vendor's own env
 A combined instance promises only what every member can do. This is the in-memory adapter limited to what the Instantly and HeyReach adapters declare, alone and combined. It shows which calls would be refused. It does not show what either API returns.
 
 <include meta='title="vendors.ts"'>
-  ../_examples/run-many-clients/vendors.ts
+  ../../_examples/run-many-clients/vendors.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/run-many-clients/vendors.out.txt
+  ../../_examples/run-many-clients/vendors.out.txt
 </include>
 
 Combining an email tool with HeyReach turns off what HeyReach lacks, for every member: reply categories, per-step stats, the list of every lead. Two capabilities are off on every combined instance whatever the members: `messages.byThread`, because a thread id is the vendor's own and names no member, and `native`, because a native read belongs to one vendor.
@@ -133,11 +135,11 @@ To get a capability back, scope to one member. A label that is on one adapter do
 ## When it cannot answer
 
 <include meta='title="failures.ts"'>
-  ../_examples/run-many-clients/failures.ts
+  ../../_examples/run-many-clients/failures.ts
 </include>
 
 <include lang="text" meta='title="Output"'>
-  ../_examples/run-many-clients/failures.out.txt
+  ../../_examples/run-many-clients/failures.out.txt
 </include>
 
 | What happened | What you get | What to do |
