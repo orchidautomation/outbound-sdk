@@ -1,15 +1,15 @@
 $ outbound mcp
-  plugins:      Plugins on: redact. redact masks personal fields such as emails and names, and reply text is not available.
+  plugins:      Plugins on: redact, identity. redact masks personal fields such as emails and names, and reply text is not available.
   tools:        35
   reply text:   refused (Reading reply bodies is not available: the redact plugin turned it off (messages.body))
 
 $ outbound mcp --no-redact
-  plugins:      No plugins are on: personal fields such as emails and names are not masked.
-  tools:        35
+  plugins:      Plugins on: identity. Personal fields such as emails and names are not masked.
+  tools:        36
   reply text:   returned
 
 $ outbound mcp --config outbound.config.ts --cache 300 --max-requests 50
-  plugins:      Plugins on: redact, clients, cache, budget. redact masks personal fields such as emails and names, and reply text is not available.
+  plugins:      Plugins on: redact, clients, cache, budget, identity. redact masks personal fields such as emails and names, and reply text is not available.
   tools:        36
   reply text:   refused (Reading reply bodies is not available: the redact plugin turned it off (messages.body))
 

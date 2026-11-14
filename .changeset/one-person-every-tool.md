@@ -1,0 +1,5 @@
+---
+"outbound-sdk": minor
+---
+
+With no provider named, the CLI, `outbound mcp` and `fromEnv()` do the same as `all`: every vendor whose key is set, as one combined instance, so a person is found across Instantly and HeyReach with nothing to configure. A named provider still picks one vendor. New `outbound person <email or LinkedIn URL>`. The CLI installs the identity plugin, so `cross_channel_lead` is served and leads carry `personKey`; `outbound tools` and `outbound tool` now offer the insights, as `outbound mcp` does. `person_summary` now refuses with `Unsupported` while `redact` masks emails or LinkedIn profiles, instead of reporting a known person as not found; with redact off, the MCP server's instructions still say that personal fields are not masked.

@@ -1,8 +1,20 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { OutboundError } from "../../src/index.ts";
-import { agency, EMAIL_TOOL, NOW, PROFILE, single } from "./helpers.ts";
+import { combine } from "../../src/combine/index.ts";
+import { createOutbound, OutboundError } from "../../src/index.ts";
+import { insights } from "../../src/insights/index.ts";
+import { memory } from "../../src/memory/index.ts";
+import { redact } from "../../src/redact/index.ts";
+import type { RedactField } from "../../src/redact/index.ts";
+import {
+  agency,
+  EMAIL_TOOL,
+  LINKEDIN_TOOL,
+  NOW,
+  PROFILE,
+  single,
+} from "./helpers.ts";
 
 test("person_summary reports each campaign, replies and the steps replied to, across email and LinkedIn", async () => {
   const result = await agency().insights.personSummary(
@@ -272,4 +284,34 @@ test("person_summary keeps one record per campaign when a vendor uses one lead i
   );
   assert.equal(result.data.totals.messagesSent, 3);
   assert.equal(result.data.totals.campaignReplyRate, 0.5);
+});
+
+/** The two tools behind redact, masking these fields (all by default). */
+const masked = (fields?: readonly RedactField[]) =>
+  createOutbound({
+    adapter: combine([
+      memory({ data: EMAIL_TOOL, name: "mailtool", workspaceId: "agency" }),
+      memory({ data: LINKEDIN_TOOL, name: "lntool", workspaceId: "agency" }),
+    ]),
+    plugins: [redact(fields === undefined ? {} : { fields }), insights()],
+  });
+
+test("person_summary refuses when redact masks the identifiers, instead of reporting not found", async () => {
+  for (const fields of [undefined, ["email"], ["linkedin"]] as const) {
+    await assert.rejects(
+      masked(fields).insights.personSummary({ person: "person1@example.com" }),
+      (error) =>
+        OutboundError.is(error) &&
+        error.code === "Unsupported" &&
+        /redact plugin masks/u.test(error.message)
+    );
+  }
+
+  // Masking something other than the identifiers leaves the lookup working.
+  const named = await masked(["name"]).insights.personSummary({
+    person: PROFILE,
+  });
+
+  assert.equal(named.data.found, true);
+  assert.equal(named.data.totals.campaigns, 4);
 });

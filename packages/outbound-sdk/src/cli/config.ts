@@ -119,7 +119,8 @@ const wantsRedact = (
 
 /**
  * The plugins for one command, outermost first: redact, then the config
- * file's plugins, then cache, then budget, next to the request engine.
+ * file's plugins, then cache, then budget, then identity, next to the
+ * request engine.
  * `mcp` turns redact on unless `--no-redact` is set.
  */
 export const pluginsFor = async (
@@ -152,6 +153,13 @@ export const pluginsFor = async (
     // A run is reset before each MCP tool call, so this caps one tool call.
     // Outside the MCP server a command is one run.
     plugins.push(budget({ maxRequests, per: "run" }));
+  }
+
+  // identity links one person's records across tools, for `outbound person`
+  // and cross_channel_lead. It sits inside redact, which masks the keys it adds.
+  if (!plugins.some((plugin) => plugin.name === "identity")) {
+    const { identity } = await import("../identity/index.ts");
+    plugins.push(identity());
   }
 
   return plugins;

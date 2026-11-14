@@ -89,7 +89,7 @@ The stand-in has one blind spot. A filter graded `client` is applied by the SDK,
 
 ## Point it at your vendor
 
-Pass an instance built on `instantly()`, `smartlead()` or `heyreach()`. The function does not change. To pick the vendor from the environment, `fromEnv()` from `outbound-sdk/loader` builds the adapter named by `OUTBOUND_SDK_PROVIDER`.
+Pass an instance built on `instantly()`, `smartlead()` or `heyreach()`. The function does not change. To pick the vendor from the environment, `fromEnv()` from `outbound-sdk/loader` builds the adapter named by `OUTBOUND_SDK_PROVIDER`, or, when it is not set, one adapter over every vendor whose key is set.
 
 ## What it costs in vendor requests
 

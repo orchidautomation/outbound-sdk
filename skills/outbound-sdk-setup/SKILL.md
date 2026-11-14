@@ -96,6 +96,8 @@ For any other plugin, or plugin options, use a config file: [examples/outbound.c
 
 A `.mjs` or `.js` file works on every supported Node. A `.ts` file needs a Node version that runs TypeScript files directly. The server's `instructions` name the plugins that are on. Plugins and their order are on the [plugins](https://outbound-sdk.dev/docs/plugins) page.
 
+With keys for several vendors set and no `OUTBOUND_SDK_PROVIDER`, `outbound mcp` serves all of them as one instance; `--no-redact` then lets the agent look one person up across them.
+
 **A server of your own** is for when you want to build the instance in code: [examples/server.ts](examples/server.ts) picks the adapter from `OUTBOUND_SDK_PROVIDER`, as `outbound mcp` does, adds `redact()`, and serves stdio with `serveStdio`.
 
 - Copy it into the project as `server.mts` (or `server.ts` in a `"type": "module"` project) and point the client at `node /absolute/path/to/server.mts`. Node 24 runs it as is.
@@ -115,7 +117,7 @@ Add the insights with `extra: insightTools(outbound)` from `outbound-sdk/insight
 
 | What you see | Cause | Fix |
 | --- | --- | --- |
-| `Invalid: Set OUTBOUND_SDK_PROVIDER to one of: instantly, smartlead, heyreach, memory, or all for every provider whose key is set`, exit 1 | The variable is not set in the environment the client starts | Add it to the client's `env` |
+| `Invalid: No provider key is set. Set at least one of: INSTANTLY_API_KEY, SMARTLEAD_API_KEY, HEYREACH_API_KEY, …`, exit 1 | Neither a key nor `OUTBOUND_SDK_PROVIDER` is set in the environment the client starts | Add the key to the client's `env` |
 | `Unauthorized: instantly needs an API key: pass apiKey or set INSTANTLY_API_KEY`, exit 1 | The adapter's key is missing (the message names your vendor's variable) | Add the key to `env`, or set it where the client inherits it |
 | `Cannot use import statement outside a module` | A `.ts` file in a CommonJS project | Rename it `.mts`, or set `"type": "module"` |
 | `npm error 404` for `outbound-sdk` | The package is not published | Install the tarball (step 1) |

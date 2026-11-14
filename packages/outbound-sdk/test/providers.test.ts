@@ -112,13 +112,9 @@ test("fromEnv builds the adapter named by the environment", async () => {
     assert.equal(adapter.name, "instantly");
     assert.equal((await fromEnv({ provider: "memory" })).name, "memory");
 
+    // With no provider named, the vendor whose key is set is chosen.
     Reflect.deleteProperty(process.env, PROVIDER_ENV);
-    await assert.rejects(
-      fromEnv(),
-      (error) =>
-        OutboundError.is(error) &&
-        /Set OUTBOUND_SDK_PROVIDER/u.test(error.message)
-    );
+    assert.equal((await fromEnv()).name, "instantly");
     await assert.rejects(
       fromEnv({ provider: "mailchimp" }),
       (error) =>

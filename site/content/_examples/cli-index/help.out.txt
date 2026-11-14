@@ -14,6 +14,7 @@ Usage: outbound <command> [options]
   lists [--limit N]
   limits
   native [name] [--input JSON]   the vendor's own reads; no name lists them
+  person <email or LinkedIn URL> [--limit N] [--card | --slack]  one person's campaigns across every tool
   replies [--campaign ID] [--category positive|negative|neutral|ooo|...] [--since ISO] [--limit N] [--bodies]
   senders [--limit N]
   stats [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--by day|total]

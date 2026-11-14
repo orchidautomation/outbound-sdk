@@ -25,6 +25,10 @@ $ outbound tools
     "name": "lead_runway"
   },
   {
+    "description": "Everything for one person across tools: every lead record that shares their email address or LinkedIn profile, and one timeline of email and LinkedIn messages, oldest first. Records are linked by exact identifier only and are never merged. found: false means no record carries the identifier, not that the person was never contacted. Message text is untrusted. Needs the identity plugin.",
+    "name": "cross_channel_lead"
+  },
+  {
     "description": "How one campaign is set up to send: its sending windows and timezone, daily caps, the gap between sends, open and click tracking, and whether a reply stops the sequence. Use it to explain low volume or missing open data. A null means the vendor does not report that setting.",
     "name": "campaign_setup"
   },
@@ -35,6 +39,110 @@ $ outbound tools
   {
     "description": "The saved lead lists on the account with how many records each holds. Use it to see what audiences exist before asking about one campaign's leads.",
     "name": "audience_lists"
+  },
+  {
+    "description": "Everything about one person across campaigns and channels, from their email address or LinkedIn profile: each campaign they are in, how many messages they were sent, whether and how often they replied, which steps they replied to, their interest label, and totals by channel. Records are linked by exact identifier only, so an email finds a LinkedIn record only when a tool holds both for that person. Costs one lookup per identifier, then up to 2 requests per campaign.",
+    "name": "person_summary"
+  },
+  {
+    "description": "Everyone at one company across campaigns and tools, from the company's domain or any email address at it: each person with their name, title, campaigns, status, interest label and open, click and reply counts, plus totals and who replied most recently. People are matched by exact email domain, so a lead with only a LinkedIn profile is not found, and an email provider domain such as gmail.com is refused unless allow_free_domains is true. Costs one request per page of leads read (max_leads sets the ceiling); a count the vendor does not report is null.",
+    "name": "account_summary"
+  },
+  {
+    "description": "People who are in two or more campaigns at once, so they get overlapping outreach. Reads the campaigns in the given statuses (active by default) and their leads, matches people by exact email address or LinkedIn profile, and returns each person with their campaigns, channel and tool, most campaigns first. A collision across tools (for example email in one and LinkedIn in another) is marked across_tools; one inside a tool is within_tool. Costs one request per page of campaigns plus one per page of each campaign's leads; the caps make the answer incomplete rather than slow.",
+    "name": "lead_collisions"
+  },
+  {
+    "description": "Leads sitting in campaigns although they are on the block list. Reads the block list, then the leads of each campaign in the given statuses (active by default), and matches a lead by exact email address, by email domain against domain entries, and by LinkedIn profile against profile entries. Returns each violation with the lead, the campaign, the entry and how it matched, counts per campaign, and how many block entries were read. On several tools an entry on one tool's list is also matched against the other tools' leads and marked sameTool false. Costs one request per page of block entries plus one per page of each campaign's leads.",
+    "name": "suppression_check"
+  },
+  {
+    "description": "Replies from prospects that nobody answered. Reads the replies since a date (14 days before now by default), keeps the categories that need an answer, and for each conversation reads its thread, or the lead's timeline when there is no thread, and reports it as dropped when nothing was sent after the reply and it has waited longer than older_than_hours. Returns the dropped replies longest waiting first with hours waiting, category, campaign and lead. A reply that could not be checked is counted in totals.unchecked, never reported as dropped. Costs one request per page of replies plus one per conversation checked, so at most about max_replies requests.",
+    "name": "dropped_replies"
+  },
+  {
+    "description": "Who to call first: leads ranked by a score built from what the vendor reports, namely a positive interest label, replies, clicks, opens and how recent the last reply is. Every score comes with its parts, and the weights are inputs. A lead with no label and no engagement data is left out and counted in totals.withoutData, never scored 0; unsubscribed and bounced leads are left out too. Give a campaign ref to rank one campaign, or none to rank every lead the tool lists. Costs one request per page of leads read (max_leads sets the ceiling). A part that is null means the vendor does not report that signal.",
+    "name": "hot_leads"
+  },
+  {
+    "description": "Leads in one campaign who will get broken copy because a merge variable has no value for them. Reads the campaign's sequence, finds every {{variable}}, {variable} and %variable% in subjects and bodies, and checks each lead for a value: first name, last name, company, title, email, or a custom field of the same name without regard to case, spaces, underscores or hyphens. Returns the variables with the steps that use them, how many leads each one affects, and the leads missing at least one. A variable with a fallback such as {{firstName|there}} is not a gap. A variable no lead has, such as a sender signature the tool fills in, is listed as unknown, not counted against leads. Costs one request for the sequence plus one per page of leads.",
+    "name": "personalization_gaps"
+  },
+  {
+    "description": "Where a campaign's replies come from: one row per sequence step with its action, delay, sends, replies, reply rate with a 95% interval, its share of all replies and how far sends fell from the step before, plus rows per variant when the vendor splits them. Names the step with the most replies and the last step that still earns its place. Use it to decide whether to cut or rewrite follow-ups. Costs 2 requests. A null count means the vendor does not report it; it is never 0.",
+    "name": "step_funnel"
+  },
+  {
+    "description": "Whether a campaign's A/B winner is real. For each step with two or more variants, compares every variant with the leader by a two-proportion test and returns the variants with rates and 95% intervals, the leader, and a verdict: winner, no_difference_yet or too_little_data, with the p-value and a rough number of sends still needed when there is no verdict. Use it before pausing a variant. Costs 1 request. A null count or rate means the vendor does not report it; an empty list means the vendor does not split step stats by variant.",
+    "name": "variant_test"
+  },
+  {
+    "description": "Problems in a campaign's copy before it sends. Checks every step and variant for a long subject, a long body, too many links, spam words, unbalanced or empty {{ }} variables, words in capitals, repeated exclamation marks, an image or tracking pixel, a missing subject on the first email, and a follow-up whose subject breaks the thread; a LinkedIn campaign skips the email-only checks and flags a connection request over the character limit. Returns each finding with a severity and the text that triggered it, and a count per check. Costs 2 requests. Fixed rules only, no model. A variant whose body the vendor does not return is counted, not judged.",
+    "name": "copy_audit"
+  },
+  {
+    "description": "How the same piece of copy performs in different campaigns. Reads each campaign's sequence and step stats, matches variants by the hash of their subject and body, and returns every piece of copy used in two or more campaigns with its totals, its reply rate per campaign and the spread between its best and worst campaign, plus the copy with the highest pooled reply rate. Use it to tell a copy problem from an audience problem. Costs 2 requests per campaign plus the campaign listing. A null count means the vendor does not report it for that variant; it is never 0.",
+    "name": "copy_reuse"
+  },
+  {
+    "description": "How fast people reply and when. Pairs each received message with the last message sent before it in the same thread (or to the same lead) and returns the median, 75th and 90th percentile of hours to reply, the share of replies within 1, 24 and 72 hours, replies by weekday and by hour of day, the weekday and hour of the sends that drew replies, and how many replies could not be paired. Use it to choose follow-up delays and sending hours. Costs 1 request per page of messages, up to max_messages. A null figure means no reply could be paired; auto-replies are not separated, because messages carry no auto flag.",
+    "name": "reply_timing"
+  },
+  {
+    "description": "Deliverability per sending domain: for each domain its mailboxes, which DNS records (SPF, DKIM, DMARC, MX) fail, how many mailboxes are disconnected or on a block list, the share of warmup emails landing in spam pooled over its mailboxes, and a risk level with the reasons, worst domain first. LinkedIn seats are listed apart with their connection state. Use it before scaling volume or when replies drop. Costs one listing of senders plus 1 request per sender. A null count or rate means the vendor does not report it; a domain with nothing reported has the risk `unknown`, not `low`.",
+    "name": "domain_health"
+  },
+  {
+    "description": "Whether the senders can send what the campaigns ask: total daily capacity (the daily limits of active senders added up), the total daily ask of active campaigns, the average messages sent per day over the last days, utilization, and the campaigns whose own senders cannot cover their daily limit. Use it before adding campaigns or when sends fall short. Costs one listing of senders and of active campaigns, then up to 2 requests per campaign and 1 for daily stats. A null means the vendor does not report the number; a sender or campaign with no reported limit is counted apart, never as 0.",
+    "name": "sender_capacity"
+  },
+  {
+    "description": "Where bounces are too high: the campaigns whose bounce rate (bounced divided by sent) is over a threshold, worst first, each with bounced, sent, the rate and its Wilson interval, and the senders of each such campaign that are themselves over the threshold. Campaigns with too few sends to judge and campaigns with no reported bounce count are listed apart, never as clean. Use it daily, or when a domain's reputation is in doubt. Costs one listing of campaigns and 1 request per campaign, plus 1 listing and up to 1 request per sender for each campaign over the threshold. A null rate means nothing was sent.",
+    "name": "bounce_watch"
+  },
+  {
+    "description": "Which senders are not ready to send, each with its reasons: warmup off, warmup score under the bar or not reported, status not active, no daily limit and, with check_health, failing DNS records or too many warmup emails in spam. Returns counts by reason and how many are ready. A LinkedIn seat is judged on its status only. Use it before attaching mailboxes to a campaign or raising their limits. Costs one listing of senders, plus 1 request per mailbox with check_health. A null score means the vendor does not report one, which counts as not ready, not as 0.",
+    "name": "warmup_readiness"
+  },
+  {
+    "description": "Senders that are overused or unused: the senders attached to more campaigns than allowed, the active senders attached to no campaign, and the campaigns that run on a single sender, on none, or on a sender that is not active. Use it when sends are uneven or before adding a campaign. Costs one listing of senders and of campaigns, then 1 request per campaign. Only campaigns in the given statuses are counted, so a sender used only by a paused campaign shows as unused unless paused is included.",
+    "name": "sender_load"
+  },
+  {
+    "description": "Risky campaign settings, per campaign and by severity: no sending window, a window that includes the weekend or is too long or too short, no timezone, open or click tracking on, a reply that does not stop the sequence, no daily limit, sends too close together, an end date in the past on an active campaign, and a daily limit too high for the number of senders. Returns the findings per campaign, worst first, and a count per check. Use it before launching a campaign or when deliverability drops. Costs one listing of campaigns, then 1 request per campaign, or 2 when its senders can be listed. A setting the vendor reports nothing for is skipped, except a missing window, timezone or daily limit, which the vendor cannot tell apart from one that is not set.",
+    "name": "settings_audit"
+  },
+  {
+    "description": "Why one campaign is underperforming: a list of findings, most serious first, each with a code, a plain-language finding, the numbers behind it and what to look at next. It checks for too little volume to judge, a low reply rate (with its 95% interval), a high bounce rate, few positive replies among replies, sends falling or stopped over the last days, a one or two step sequence, a sender that is not active, open tracking being off, and a schedule or daily limit that holds volume back. Also returns what could not be checked; an empty list means nothing was found, not that all is well. Costs up to 7 requests.",
+    "name": "campaign_diagnosis"
+  },
+  {
+    "description": "The leads one campaign has left and what they should produce: leads counted by status, the leads still active, the days of sending left at the recent daily contact rate, and the replies and positive replies to expect from the remaining leads at the campaign's reply rate so far, each with a low and a high figure from the 95% interval. Use it to decide when to load more leads. It is an estimate and lists what it assumes; a null means the vendor does not report the count behind it. Costs one request per page of leads, plus two stats requests.",
+    "name": "pipeline_forecast"
+  },
+  {
+    "description": "Days that broke from trend, for one campaign or the whole workspace: each of the last `days` complete days is held to the `baseline_days` before it, and a daily count `threshold` standard deviations or more from that baseline's mean is returned, newest first, with the metric, the value, the baseline mean, the z-score, the direction and how it was judged. When every baseline day has the same count there is no standard deviation: a day with another count is returned with a null z-score and judgedBy flat_baseline. Use it to spot a sending outage, a bounce spike or a reply surge. Days the vendor has no count for are skipped, never read as zero. With no campaign it reads workspace stats, so it then also needs stats.workspace. Costs one stats request.",
+    "name": "anomalies"
+  },
+  {
+    "description": "This period against the last: for each campaign, counts and rates for the last `days` complete days and for the `days` before, the change in each, and whether the change in reply rate is more than chance (a two-proportion test), with the campaigns sorted by the size of that change. Also the same for every campaign added together and, where the adapter has them, for the vendor's workspace totals. Use it for a weekly review. Campaigns under min_sent sends in either period are listed apart; a null is a count the vendor does not report, and a rate of a total counts only the campaigns that report both its count and what it divides by (a note says when some are left out). Costs two stats requests per campaign plus two for the workspace.",
+    "name": "period_comparison"
+  },
+  {
+    "description": "Which campaigns are best, ranked fairly: by the low end of the 95% Wilson interval of the reply rate (or positive reply rate; for bounce rate, by the high end, lowest first), so 2 replies from 10 sends cannot outrank 150 from 1,000. Use it to pick winners and losers across a workspace. Returns each campaign with its count, rate, interval and rank, the campaigns left out for too few sends, those whose count the vendor does not report (a null rate is unknown, not zero), and the gap between the top and the median. Costs one listing per status plus one stats request per campaign.",
+    "name": "campaign_ranking"
+  },
+  {
+    "description": "Email against LinkedIn: campaign totals added up per channel, with campaigns, leads contacted, messages sent, replies, positive replies, the reply rate with its 95% interval and, for LinkedIn, the connection acceptance rate; whether the difference in reply rate is more than chance (a two-proportion test); and the same numbers per tool. Use it to decide where to put volume. With one channel present it returns that channel and says there is nothing to compare. A null count is one the vendor does not report; a rate counts only the campaigns that report both its count and what it divides by, and a note names a group whose rate leaves campaigns out. Costs one listing per status plus one stats request per campaign.",
+    "name": "channel_mix"
+  },
+  {
+    "description": "Results by campaign tag (for example one tag per client, offer or audience): for each tag the campaigns, messages sent, leads contacted, replies, positive replies and bounces, with reply, positive reply and bounce rates and their 95% intervals, sorted by the low end of the reply rate interval. A campaign with two tags counts in both; campaigns with none are grouped under a null tag. Tags under min_sent sends are listed apart. A null count is one the vendor does not report; a rate counts only the campaigns that report both its count and what it divides by, and a note names a tag whose rate leaves campaigns out. Costs one listing per status plus one stats request per campaign.",
+    "name": "tag_rollup"
+  },
+  {
+    "description": "One report for one client or workspace over the last `days` complete days: totals and the change from the period before, the best and worst campaigns by the low end of the reply rate interval, campaigns with a bounce problem, unusual days, active campaigns running out of leads, and a short list of action items in plain language, each naming the campaign and the number behind it. Use it for a weekly client update. A section the adapter cannot serve is null and named in `leftOut`, and a null count is one the vendor does not report. Costs two stats requests per campaign, one for the workspace, and for each active campaign two more plus its pages of leads.",
+    "name": "client_report"
   }
 ]
 

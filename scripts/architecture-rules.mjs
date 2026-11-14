@@ -24,6 +24,7 @@ export const layers = {
     "budget",
     "cache",
     "cards",
+    "identity",
     "insights",
     "internal",
     "loader",

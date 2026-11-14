@@ -93,7 +93,7 @@ For any other plugin, or for a plugin's options, pass `--config` with the path t
 
 - A `.mjs` or `.js` file works on every supported Node. A `.ts` file needs a Node version that runs TypeScript files directly. A file with no types, like the one above, can be named `.mjs`.
 - The path is resolved from the folder the client starts the command in. Use an absolute path.
-- The plugins are placed in this order, outermost first: `redact()`, the file's plugins, `cache()` from `--cache`, then `budget()` from `--max-requests`. To place a cache or a budget elsewhere, list it in the file instead of using its flag.
+- The plugins are placed in this order, outermost first: `redact()`, the file's plugins, `cache()` from `--cache`, `budget()` from `--max-requests`, then `identity()`, which the CLI always adds unless the file lists it. To place a cache or a budget elsewhere, list it in the file instead of using its flag.
 - A `redact()` in the file replaces the default one, with the options you gave it. Setting `--no-redact` as well is refused.
 - A file that cannot be loaded, has no default export, or exports something other than a list of plugins stops the command with exit code 1 before the server answers anything.
 
@@ -131,7 +131,7 @@ There are no resources, prompts, sampling or list-change notifications. `PROTOCO
 That is 9 built-in tools and 26 insights on the in-memory adapter. Three things change the list on a real setup:
 
 - A real adapter also serves `vendor_read`, because it has [native reads](/docs/native), but only with `--no-redact`: a native read returns the vendor's payload unmasked, so `redact` turns native reads off.
-- `outbound mcp` serves `compare_clients` only with the `clients` plugin from a config file, and `cross_channel_lead` only with the `identity` plugin and `--no-redact`, because `redact` masks the identifiers it matches on.
+- `outbound mcp` serves `compare_clients` only with the `clients` plugin from a config file, and `cross_channel_lead` only with `--no-redact`, because `redact` masks the identifiers it matches on. The CLI always installs the `identity` plugin it needs.
 - A built-in tool or an insight whose adapter lacks a capability it needs is left out. On HeyReach that removes `winning_steps` and `campaign_setup`.
 
 The `instructions` string repeats the rule about reply text once for the whole server, then names the plugins that are on. It is a label for the model, not a safeguard. See [untrusted content](/docs/tools/untrusted-content).

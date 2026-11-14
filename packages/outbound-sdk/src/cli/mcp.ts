@@ -52,9 +52,10 @@ const describePlugins = (outbound: OutboundApi): string => {
     return "No plugins are on: personal fields such as emails and names are not masked.";
   }
 
+  // Without redact the model is told plainly that nothing is masked, whatever else is on.
   const masked = names.includes("redact")
     ? ` redact masks personal fields such as emails and names${outbound.capabilities["messages.body"] ? "" : ", and reply text is not available"}.`
-    : "";
+    : " Personal fields such as emails and names are not masked.";
 
   return `Plugins on: ${names.join(", ")}.${masked}`;
 };
