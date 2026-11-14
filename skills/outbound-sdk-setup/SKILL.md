@@ -11,7 +11,13 @@ Before you start, confirm what the user has. Do not assume a published package o
 
 ## 1. Install it
 
-**The package is not on npm.** `npm install outbound-sdk` does not install it, and `npx outbound-sdk …` does not work, because the package has not been published. Check [installation](https://outbound-sdk.dev/docs/installation) for the current state before saying otherwise. Until it says the package is published, the install is a tarball built from a clone of the repository, which is public (https://github.com/orchidautomation/outbound-sdk), so anyone can build it:
+**The package is not on npm.** `npm install outbound-sdk` does not install it, and `npx outbound-sdk …` does not work, because the package has not been published. Check [installation](https://outbound-sdk.dev/docs/installation) for the current state before saying otherwise. Until it says the package is published, install the tarball attached to the GitHub release, by URL. It needs no clone and no build:
+
+```sh
+npm install https://github.com/orchidautomation/outbound-sdk/releases/download/v0.1.0/outbound-sdk-0.1.0.tgz
+```
+
+If that URL fails (no network to GitHub, or the user wants to build from source), build the tarball from a clone of the repository, which is public (https://github.com/orchidautomation/outbound-sdk):
 
 ```sh
 # needs Node 24.15 or later to build
@@ -19,15 +25,15 @@ git clone https://github.com/orchidautomation/outbound-sdk.git
 cd outbound-sdk
 npm ci
 npm run build
-cd packages/outbound-sdk && npm pack   # writes outbound-sdk-0.0.0.tgz
+cd packages/outbound-sdk && npm pack   # writes outbound-sdk-0.1.0.tgz
 
 # in the user's project (the built package runs on Node 22 or later)
-npm install /absolute/path/to/outbound-sdk-0.0.0.tgz
+npm install /absolute/path/to/outbound-sdk-0.1.0.tgz
 ```
 
 The package is ESM only. In a project without `"type": "module"`, name TypeScript files `.mts`.
 
-If the user cannot build it (no Node 24.15 or later, or no git), say so and stop: there is no other install until the package is published.
+If neither works (no access to GitHub, and no Node 24.15 or later or no git to build), say so and stop: there is no other install until the package is published.
 
 ## 2. Pick the adapter and the key
 
