@@ -17,3 +17,15 @@ export const mapPage = <Item>(
   items: page.items.map((raw) => toItem(raw)),
   next: page.next,
 });
+
+/**
+ * `mapPage` for a mapper that may skip a row: a row that maps to nothing,
+ * such as a block entry with no value, is left out and not returned empty.
+ */
+export const flatMapPage = <Item>(
+  page: RawPage,
+  toItems: (raw: JsonObject) => readonly Item[]
+): Page<Item> => ({
+  items: page.items.flatMap((raw) => toItems(raw)),
+  next: page.next,
+});

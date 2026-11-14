@@ -20,13 +20,13 @@ import {
   emailAddress,
   field,
   flag,
-  isJsonArray,
   isJsonObject,
   isString,
   objects,
   stringMap,
   text,
   timestamp,
+  withoutKeys,
 } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
 import { recordBase, refTo } from "../internal/record.ts";
@@ -48,21 +48,8 @@ const SECRET_KEY = /password|secret|token/iu;
  * A copy without any key that holds a credential. Email accounts come back
  * with their SMTP and IMAP passwords, and webhooks with their shared secret.
  */
-export const withoutSecrets = (value: Json): Json => {
-  if (isJsonArray(value)) {
-    return value.map(withoutSecrets);
-  }
-
-  if (!isJsonObject(value)) {
-    return value;
-  }
-
-  return Object.fromEntries(
-    Object.entries(value).flatMap(([key, entry]) =>
-      SECRET_KEY.test(key) ? [] : [[key, withoutSecrets(entry)] as const]
-    )
-  );
-};
+export const withoutSecrets = (value: Json): Json =>
+  withoutKeys(value, SECRET_KEY);
 
 // The union of the values the three documentation sources list. STOPPED is
 // "stopped for good", which has no equivalent here.

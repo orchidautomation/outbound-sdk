@@ -220,15 +220,20 @@ export const toList = (identity: Identity, raw: JsonObject): LeadList => ({
 export const toBlockEntry = (
   identity: Identity,
   raw: JsonObject
-): BlockEntry => {
-  const value = (text(raw.email_or_domain) ?? "").toLowerCase();
+): BlockEntry[] => {
+  const value = text(raw.email_or_domain)?.toLowerCase();
 
-  return {
-    ...recordBase(identity, text(raw.id) ?? "", raw),
-    createdAt: timestamp(raw.created_at),
-    kind: value.includes("@") ? "email" : "domain",
-    value,
-  };
+  // An entry with no value blocks nothing that can be named, so it is skipped.
+  return value === undefined
+    ? []
+    : [
+        {
+          ...recordBase(identity, text(raw.id) ?? "", raw),
+          createdAt: timestamp(raw.created_at),
+          kind: value.includes("@") ? "email" : "domain",
+          value,
+        },
+      ];
 };
 
 /** One item of `GET /email-accounts/tags`. Smartlead tags have no description. */

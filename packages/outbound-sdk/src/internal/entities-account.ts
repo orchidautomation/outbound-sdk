@@ -109,8 +109,8 @@ export const blockEntrySchema = z.object({
   ...baseFields,
   createdAt: isoDateTime,
   kind: z.enum(["company", "domain", "email", "linkedin", "other"]),
-  /** Lowercased for emails and domains. */
-  value: z.string(),
+  /** Lowercased for emails and domains. Never empty. */
+  value: z.string().min(1),
 });
 
 export type BlockEntry = z.infer<typeof blockEntrySchema>;

@@ -21,6 +21,7 @@ import {
   objects,
   text,
   timestamp,
+  withoutKeys,
 } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
 import { eventTypesOf, recordBase, refTo, refsTo } from "../internal/record.ts";
@@ -237,16 +238,27 @@ const blockKind = (raw: JsonObject): BlockEntry["kind"] => {
   return isDomain ? "domain" : "email";
 };
 
-/** `GET /block-lists-entries`: an address or a whole domain. */
+/**
+ * `GET /block-lists-entries`: an address or a whole domain. An entry with no
+ * value blocks nothing that can be named, so it is skipped.
+ */
 export const toBlockEntry = (
   identity: Identity,
   raw: JsonObject
-): BlockEntry => ({
-  ...recordBase(identity, text(raw.id) ?? "", raw),
-  createdAt: timestamp(raw.timestamp_created),
-  kind: blockKind(raw),
-  value: (text(raw.bl_value) ?? "").toLowerCase(),
-});
+): BlockEntry[] => {
+  const value = text(raw.bl_value)?.toLowerCase();
+
+  return value === undefined
+    ? []
+    : [
+        {
+          ...recordBase(identity, text(raw.id) ?? "", raw),
+          createdAt: timestamp(raw.timestamp_created),
+          kind: blockKind(raw),
+          value,
+        },
+      ];
+};
 
 /** `GET /custom-tags`: a tag for mailboxes and campaigns. */
 export const toTag = (identity: Identity, raw: JsonObject): Tag => {
@@ -272,10 +284,8 @@ const webhookActive = (raw: JsonObject): boolean | null => {
 
 // The headers Instantly sends with each delivery can carry a credential, so
 // they are left out of the payload kept on the record.
-const withoutHeaders = (raw: JsonObject): JsonObject =>
-  Object.fromEntries(
-    Object.entries(raw).filter(([key]) => key.toLowerCase() !== "headers")
-  );
+const withoutHeaders = (raw: JsonObject): Json =>
+  withoutKeys(raw, /^headers$/iu);
 
 /** `GET /webhooks`: one webhook listens for one event type, or `all_events`. */
 export const toWebhook = (

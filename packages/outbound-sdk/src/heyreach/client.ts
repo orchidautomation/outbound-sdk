@@ -2,16 +2,15 @@
 // sends it. Auth is the `X-API-KEY` header. Most reads are POST with a JSON body.
 
 import type {
-  AdapterContext,
   HttpMethod,
   RawDescriptor,
   RequestSpec,
 } from "../internal/adapter.ts";
+import { createVendorClient } from "../internal/client.ts";
+import type { VendorClient } from "../internal/client.ts";
 import { requireObject } from "../internal/errors.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
 import type { Identity } from "../internal/record.ts";
-import { buildUrl } from "../internal/url.ts";
-import type { QueryValue } from "../internal/url.ts";
 import { BASE_URL } from "./capabilities.ts";
 
 export interface ClientOptions {
@@ -20,19 +19,9 @@ export interface ClientOptions {
   readonly identity: Identity;
 }
 
-export interface HeyReachClient {
+export interface HeyReachClient extends VendorClient {
   readonly identity: Identity;
   readonly raw: RawDescriptor;
-  readonly get: (
-    ctx: AdapterContext,
-    path: string,
-    query?: Readonly<Record<string, QueryValue>>
-  ) => Promise<Json>;
-  readonly post: (
-    ctx: AdapterContext,
-    path: string,
-    body: JsonObject
-  ) => Promise<Json>;
   /** Narrows a response to one object, or throws a `Provider` error. */
   readonly object: (body: Json, path: string) => JsonObject;
 }
@@ -120,13 +109,7 @@ export const createClient = (options: ClientOptions): HeyReachClient => {
   });
 
   return {
-    get: async (ctx, path, query) => {
-      const response = await ctx.request(
-        authorize({ method: "GET", url: buildUrl(baseUrl, path, query) })
-      );
-
-      return response.body;
-    },
+    ...createVendorClient(baseUrl, authorize),
     identity: options.identity,
     object: (body, path) =>
       requireObject(
@@ -134,13 +117,6 @@ export const createClient = (options: ClientOptions): HeyReachClient => {
         options.identity.provider,
         `HeyReach returned no object for ${path}`
       ),
-    post: async (ctx, path, body) => {
-      const response = await ctx.request(
-        authorize({ body, method: "POST", url: buildUrl(baseUrl, path) })
-      );
-
-      return response.body;
-    },
     raw: { authorize, baseUrl, isRead, isSecret },
   };
 };

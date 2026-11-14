@@ -3,7 +3,7 @@
 
 import type { Adapter } from "../internal/adapter.ts";
 import { count, emailAddress, field } from "../internal/json.ts";
-import { mapPage } from "../internal/page.ts";
+import { flatMapPage, mapPage } from "../internal/page.ts";
 import type { InstantlyClient } from "./client.ts";
 import {
   toBlockEntry,
@@ -74,7 +74,7 @@ export const accountReaders = (client: InstantlyClient): AccountReaders => {
     listBlocklist: async (query, ctx) => {
       const page = await listPage(client, ctx, "/block-lists-entries", query);
 
-      return mapPage(page, (item) => toBlockEntry(identity, item));
+      return flatMapPage(page, (item) => toBlockEntry(identity, item));
     },
     listLists: async (query, ctx) => {
       const page = await listPage(client, ctx, "/lead-lists", query);

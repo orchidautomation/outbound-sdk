@@ -101,7 +101,7 @@ export const accountReaders = (client: HeyReachClient): AccountReaders => ({
       client.identity,
       client.object(
         await client.get(ctx, path, {
-          listId: numericId(client, id, "list"),
+          query: { listId: numericId(client, id, "list") },
         }),
         path
       )
@@ -115,7 +115,7 @@ export const accountReaders = (client: HeyReachClient): AccountReaders => ({
       client.identity,
       client.object(
         await client.get(ctx, path, {
-          webhookId: numericId(client, id, "webhook"),
+          query: { webhookId: numericId(client, id, "webhook") },
         }),
         path
       )
@@ -188,7 +188,7 @@ const campaignAccountIds = async (
 
   const campaign = client.object(
     await client.get(ctx, path, {
-      campaignId: numericId(client, query.campaignId, "campaign"),
+      query: { campaignId: numericId(client, query.campaignId, "campaign") },
     }),
     path
   );

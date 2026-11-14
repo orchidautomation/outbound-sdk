@@ -160,3 +160,25 @@ export const unknownKey = (
     ? undefined
     : `"${stray}" is not an input. It takes: ${known.toSorted().join(", ") || "nothing"}`;
 };
+
+/**
+ * A copy of `value` without any key that matches `secret`, at any depth. A
+ * vendor payload kept on a record's `raw` can carry a mailbox password, a
+ * webhook's signing secret or the headers it sends, and none of them belongs
+ * in a record a caller logs or stores.
+ */
+export const withoutKeys = (value: Json, secret: RegExp): Json => {
+  if (isJsonArray(value)) {
+    return value.map((entry) => withoutKeys(entry, secret));
+  }
+
+  if (!isJsonObject(value)) {
+    return value;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).flatMap(([key, entry]) =>
+      secret.test(key) ? [] : [[key, withoutKeys(entry, secret)] as const]
+    )
+  );
+};

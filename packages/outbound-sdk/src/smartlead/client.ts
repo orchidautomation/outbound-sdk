@@ -3,15 +3,13 @@
 // nowhere else, so the key is part of every URL and must stay in `secrets`.
 
 import type {
-  AdapterContext,
   HttpMethod,
   RawDescriptor,
   RequestSpec,
 } from "../internal/adapter.ts";
-import type { Json, JsonObject } from "../internal/json.ts";
+import { createVendorClient } from "../internal/client.ts";
+import type { VendorClient } from "../internal/client.ts";
 import type { Identity } from "../internal/record.ts";
-import { buildUrl } from "../internal/url.ts";
-import type { QueryValue } from "../internal/url.ts";
 import { BASE_URL } from "./capabilities.ts";
 import { NATIVE_READ_POSTS } from "./native.ts";
 
@@ -21,26 +19,11 @@ export interface ClientOptions {
   readonly identity: Identity;
 }
 
-export interface RequestOptions {
-  readonly query?: Readonly<Record<string, QueryValue>> | undefined;
-  readonly lane?: string | undefined;
-}
+export type { RequestOptions } from "../internal/client.ts";
 
-export interface SmartleadClient {
+export interface SmartleadClient extends VendorClient {
   readonly identity: Identity;
   readonly raw: RawDescriptor;
-  readonly get: (
-    ctx: AdapterContext,
-    path: string,
-    options?: RequestOptions
-  ) => Promise<Json>;
-  /** Only for the reads Smartlead serves over POST; see `READ_POSTS`. */
-  readonly post: (
-    ctx: AdapterContext,
-    path: string,
-    body: JsonObject,
-    options?: RequestOptions
-  ) => Promise<Json>;
 }
 
 // The reads Smartlead serves over POST: the master inbox replies, which
@@ -102,30 +85,8 @@ export const createClient = (options: ClientOptions): SmartleadClient => {
   };
 
   return {
-    get: async (ctx, path, request = {}) => {
-      const response = await ctx.request(
-        authorize({
-          lane: request.lane,
-          method: "GET",
-          url: buildUrl(baseUrl, path, request.query),
-        })
-      );
-
-      return response.body;
-    },
+    ...createVendorClient(baseUrl, authorize),
     identity: options.identity,
-    post: async (ctx, path, body, request = {}) => {
-      const response = await ctx.request(
-        authorize({
-          body,
-          lane: request.lane,
-          method: "POST",
-          url: buildUrl(baseUrl, path, request.query),
-        })
-      );
-
-      return response.body;
-    },
     raw: { authorize, baseUrl, isRead, isSecret },
   };
 };

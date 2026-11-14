@@ -303,3 +303,23 @@ test("instantly: one webhook by id is the same record the list returns, without 
     "delivery headers can carry a credential and are not kept"
   );
 });
+
+test("instantly: a block entry with no value is left out, not returned empty", async () => {
+  const { outbound, settle } = harness(suite, (request) =>
+    new URL(request.url).pathname.endsWith("/block-lists-entries")
+      ? Response.json({
+          items: [
+            { bl_value: "  ", id: "b1", is_domain: false },
+            { bl_value: "Example.COM", id: "b2", is_domain: true },
+            { id: "b3" },
+          ],
+        })
+      : undefined
+  );
+
+  const page = await settle(outbound.blocklist.list());
+  assert.deepEqual(
+    page.items.map((entry) => [entry.sourceId, entry.kind, entry.value]),
+    [["b2", "domain", "example.com"]]
+  );
+});

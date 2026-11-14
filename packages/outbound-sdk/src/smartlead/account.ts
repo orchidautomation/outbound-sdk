@@ -11,7 +11,7 @@ import type {
 import type { WebhookSubscription } from "../internal/entities-account.ts";
 import type { Sequence } from "../internal/entities.ts";
 import { count, field, isJsonObject, objects, text } from "../internal/json.ts";
-import { mapPage } from "../internal/page.ts";
+import { flatMapPage, mapPage } from "../internal/page.ts";
 import { BLOCKLIST_PAGE_SIZE } from "./capabilities.ts";
 import type { SmartleadClient } from "./client.ts";
 import {
@@ -184,7 +184,7 @@ export const accountReaders = (client: SmartleadClient): AccountReaders => {
         }
       );
 
-      return mapPage(page, (entry) => toBlockEntry(identity, entry));
+      return flatMapPage(page, (entry) => toBlockEntry(identity, entry));
     },
     listLists: async (query, ctx) => {
       const page = await offsetPage(client, ctx, "/lead-list/", {

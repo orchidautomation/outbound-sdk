@@ -122,7 +122,10 @@ export const readers = (client: HeyReachClient): Readers => {
 
       return toCampaign(
         identity,
-        client.object(await client.get(ctx, path, { campaignId: id }), path)
+        client.object(
+          await client.get(ctx, path, { query: { campaignId: id } }),
+          path
+        )
       );
     },
     getSender: async (id, ctx) => {
@@ -130,7 +133,10 @@ export const readers = (client: HeyReachClient): Readers => {
 
       return toSender(
         identity,
-        client.object(await client.get(ctx, path, { accountId: id }), path)
+        client.object(
+          await client.get(ctx, path, { query: { accountId: id } }),
+          path
+        )
       );
     },
     getSequence: async (id, ctx) =>
@@ -138,7 +144,7 @@ export const readers = (client: HeyReachClient): Readers => {
         identity,
         id,
         await client.get(ctx, "/campaign/GetCampaignSequence", {
-          campaignId: id,
+          query: { campaignId: id },
         })
       ),
     listCampaigns: async (query, ctx) => {

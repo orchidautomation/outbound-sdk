@@ -340,3 +340,45 @@ test("smartlead: an event switched off in a webhook's map is not one of its even
   assert.deepEqual(hook.events, ["EMAIL_REPLY"]);
   assert.deepEqual(hook.campaignRefs, [], "it names no campaign");
 });
+
+test("smartlead: a block entry with no value is left out, not returned empty", async () => {
+  const { outbound, settle } = harness(suite, (request) =>
+    new URL(request.url).pathname.endsWith("/get-domain-block-list")
+      ? Response.json([
+          { email_or_domain: null, id: 1 },
+          { email_or_domain: "Person9@Example.com", id: 2 },
+        ])
+      : undefined
+  );
+
+  const page = await settle(outbound.blocklist.list());
+  assert.deepEqual(
+    page.items.map((entry) => [entry.sourceId, entry.kind, entry.value]),
+    [["2", "email", "person9@example.com"]]
+  );
+});
+
+test("smartlead: a mailbox's passwords are stripped from raw at every depth", async () => {
+  const account = fixture("smartlead", "getEmailAccount.json") as Record<
+    string,
+    unknown
+  >;
+
+  const { outbound, settle } = harness(suite, (request) =>
+    new URL(request.url).pathname.endsWith("/email-accounts/123/")
+      ? Response.json({
+          ...account,
+          imap: { imap_password: "nested-secret", host: "imap.example.com" },
+          oauth: [{ refresh_token: "another-secret", scope: "mail" }],
+        })
+      : undefined
+  );
+
+  const sender = await settle(outbound.senders.get("123"));
+  const kept = JSON.stringify(sender.raw);
+
+  assert.equal(kept.includes("nested-secret"), false);
+  assert.equal(kept.includes("another-secret"), false);
+  assert.equal(/password|token/iu.test(kept), false);
+  assert.ok(kept.includes("imap.example.com"), "the rest is kept");
+});
