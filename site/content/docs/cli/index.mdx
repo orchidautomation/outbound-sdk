@@ -37,10 +37,11 @@ Every command shown in this section went through `run`, the function the `outbou
 
 A command that reads data needs an adapter. The CLI builds one from the environment:
 
-1. `--provider <id>` if given, otherwise the `OUTBOUND_SDK_PROVIDER` environment variable. Either takes one id, or several separated by commas.
-2. An id is one of `instantly`, `smartlead`, `heyreach` or `memory`.
-3. With neither set, every vendor whose key is set is used: `INSTANTLY_API_KEY`, `SMARTLEAD_API_KEY` or `HEYREACH_API_KEY`. One key gives that vendor. Two or more give one [combined](/docs/adapters/combine) instance, where every record keeps its own provider, so `outbound person` looks a person up in all of them. With no key either, the command exits 1 and names the variables.
-4. Each adapter reads its own key from the environment. `outbound providers` lists the variables each one reads.
+1. `--provider <id>` if given, otherwise the `OUTBOUND_SDK_PROVIDER` environment variable.
+2. An id is one of `instantly`, `smartlead`, `heyreach` or `memory`, or `all`.
+3. `all` builds every provider whose key is set (`INSTANTLY_API_KEY`, `SMARTLEAD_API_KEY`, `HEYREACH_API_KEY`), with no list to maintain: one key gives that provider alone, several give one [combined](/docs/adapters/combine) instance, where every record keeps its own provider, so `outbound person` looks a person up in all of them. Set another key and its tool is included the next time the command starts. `memory` is never part of `all`.
+4. With neither `--provider` nor `OUTBOUND_SDK_PROVIDER` set, the CLI does the same as `all`. With no key set either, the command exits with code 1 and names the variables.
+5. Each adapter reads its own key from the environment. `outbound providers` lists the variables each one reads.
 
 `memory` needs no key. It runs on a small built-in demo data set, the same one behind `demoData()` in `outbound-sdk/memory`: two campaigns, three leads, a few messages. Use it to try a command before pointing the CLI at a real account.
 

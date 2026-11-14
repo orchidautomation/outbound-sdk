@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 
+import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { BlockEntry } from "../../internal/entities-account.ts";
 import type { Campaign, Lead } from "../../internal/entities.ts";
 import { profileSlug } from "../../internal/url.ts";
@@ -208,14 +209,16 @@ export const suppressionCheck = defineInsight({
     const violations: SuppressionViolation[] = [];
     const byCampaign: SuppressionCampaign[] = [];
 
-    for (const campaign of campaigns) {
-      // oxlint-disable-next-line no-await-in-loop -- one campaign at a time keeps the rate budget predictable.
-      const leads = await leadsOf(
+    const read = await mapConcurrent(campaigns, async (campaign) => ({
+      campaign,
+      leads: await leadsOf(
         context,
         campaign.ref,
         values.max_leads_per_campaign
-      );
+      ),
+    }));
 
+    for (const { campaign, leads } of read) {
       const found = leads.flatMap((lead) => {
         const hit = matchLead(lead, blocked);
 

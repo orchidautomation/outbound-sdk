@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 
+import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Campaign, MetricRow, Sender } from "../../internal/entities.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
@@ -184,16 +185,13 @@ const dailyRows = async (
     return null;
   }
 
-  const rows: MetricRow[] = [];
+  const perCampaign = await mapConcurrent(campaigns, async (campaign) =>
+    context.rows(
+      await outbound.campaign(campaign.ref).stats({ ...range, by: "day" })
+    )
+  );
 
-  for (const campaign of campaigns) {
-    rows.push(
-      ...context.rows(
-        // oxlint-disable-next-line no-await-in-loop -- one campaign at a time keeps the rate budget predictable.
-        await outbound.campaign(campaign.ref).stats({ ...range, by: "day" })
-      )
-    );
-  }
+  const rows: MetricRow[] = perCampaign.flat();
 
   context.note(
     "Average daily sends cover the active campaigns read, not the whole workspace."
@@ -336,12 +334,10 @@ export const senderCapacity = defineInsight({
     );
 
     const campaigns = await readCampaigns(context, ["active"], maxCampaigns);
-    const reads: CampaignRead[] = [];
 
-    for (const campaign of campaigns) {
-      // oxlint-disable-next-line no-await-in-loop -- one campaign at a time keeps the rate budget predictable.
-      reads.push(await readOne(context, campaign, maxSenders));
-    }
+    const reads: CampaignRead[] = await mapConcurrent(campaigns, (campaign) =>
+      readOne(context, campaign, maxSenders)
+    );
 
     const hasSettings = capabilities["campaigns.settings"];
     const canCompare = hasSettings && capabilities["senders.byCampaign"];

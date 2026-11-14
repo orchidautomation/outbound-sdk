@@ -1,9 +1,8 @@
 // outbound-sdk/loader: picks the adapter from the environment, so the same
 // code runs against any vendor. Each adapter is imported only when chosen.
 //
-// With no provider named, every vendor whose key is set is used: one key gives
-// that adapter, two or more give one combined instance over all of them, so
-// someone with an Instantly and a HeyReach key gets both without choosing.
+// With no provider named it behaves as `all`: someone who sets an Instantly
+// and a HeyReach key gets both, behind one instance, without choosing.
 
 import type { Adapter } from "../internal/adapter.ts";
 import { readEnv } from "../internal/env.ts";
@@ -11,7 +10,7 @@ import { OutboundError } from "../internal/errors.ts";
 import { PROVIDER_ENV, providers } from "../providers/index.ts";
 
 export interface FromEnvOptions {
-  /** Overrides `OUTBOUND_SDK_PROVIDER`. One id, or several separated by commas. */
+  /** Overrides `OUTBOUND_SDK_PROVIDER`. A provider id, or `all`, which is also the default. */
   readonly provider?: string | undefined;
 }
 
@@ -53,82 +52,53 @@ const LOADERS = new Map<string, () => Promise<Adapter>>([
 /** The provider ids `fromEnv` can load. */
 export const loadableProviders = (): string[] => [...LOADERS.keys()].toSorted();
 
-/** The vendors whose required key variables are all set, in catalog order. */
-export const configuredProviders = (): string[] =>
-  providers.flatMap((provider) => {
-    const required = provider.envVars.filter((variable) => variable.required);
-
-    return required.length > 0 &&
-      required.every((variable) => readEnv(variable.name) !== undefined)
-      ? [provider.id]
-      : [];
-  });
-
-const keyNames = (): string =>
-  providers
-    .flatMap((provider) =>
-      provider.envVars
-        .filter((variable) => variable.required)
-        .map((variable) => variable.name)
-    )
-    .join(", ");
-
-const chosen = (options: FromEnvOptions): string[] => {
-  const named = options.provider ?? readEnv(PROVIDER_ENV);
-
-  if (named !== undefined) {
-    return [
-      ...new Set(
-        named
-          .split(",")
-          .map((id) => id.trim())
-          .filter((id) => id !== "")
-      ),
-    ];
-  }
-
-  const configured = configuredProviders();
-
-  if (configured.length === 0) {
-    throw new OutboundError(
-      "Invalid",
-      `No vendor key is set. Set at least one of ${keyNames()}, or set ${PROVIDER_ENV} to one of: ${providers.map((provider) => provider.id).join(", ")}`
-    );
-  }
-
-  return configured;
-};
-
-const load = async (id: string): Promise<Adapter> => {
-  const loader = LOADERS.get(id);
-
-  if (loader === undefined) {
-    throw new OutboundError(
-      "Invalid",
-      `Unknown provider "${id}". Known providers: ${loadableProviders().join(", ")}`
-    );
-  }
-
-  return await loader();
-};
+/**
+ * In place of a provider id: every provider whose key is set, behind one
+ * instance. A key added to the environment adds its tool; no code changes.
+ */
+export const ALL_PROVIDERS = "all";
 
 /**
- * Builds the adapter named by `OUTBOUND_SDK_PROVIDER` (one id, or several
- * separated by commas). Without it, uses every vendor whose key is set.
- * Several vendors become one combined instance, where each record keeps its
- * own provider.
+ * The providers whose every required variable is set, in catalog order. A
+ * provider that needs no key, such as `memory`, is never among them.
  */
-export const fromEnv = async (
-  options: FromEnvOptions = {}
-): Promise<Adapter> => {
-  const ids = chosen(options);
-  const adapters = await Promise.all(ids.map(load));
+export const configuredProviders = (): string[] =>
+  providers
+    .filter((provider) => {
+      const required = provider.envVars.filter((variable) => variable.required);
+
+      return (
+        LOADERS.has(provider.id) &&
+        required.length > 0 &&
+        required.every((variable) => readEnv(variable.name) !== undefined)
+      );
+    })
+    .map((provider) => provider.id);
+
+const keyNames = (): string[] =>
+  providers.flatMap((provider) =>
+    provider.envVars
+      .filter((variable) => variable.required)
+      .map((variable) => variable.name)
+  );
+
+const loadEvery = async (named: boolean): Promise<Adapter> => {
+  const adapters = await Promise.all(
+    configuredProviders().flatMap((id) => {
+      const load = LOADERS.get(id);
+
+      return load === undefined ? [] : [load()];
+    })
+  );
+
   const [only] = adapters;
 
   if (only === undefined) {
     throw new OutboundError(
       "Invalid",
-      `${PROVIDER_ENV} names no provider. Known providers: ${loadableProviders().join(", ")}`
+      named
+        ? `No provider key is set, so "${ALL_PROVIDERS}" has nothing to build. Set at least one of: ${keyNames().join(", ")}`
+        : `No provider key is set. Set at least one of: ${keyNames().join(", ")}, or set ${PROVIDER_ENV} to one of: ${providers.map((provider) => provider.id).join(", ")}`
     );
   }
 
@@ -139,4 +109,31 @@ export const fromEnv = async (
   const { combine } = await import("../combine/index.ts");
 
   return combine(adapters);
+};
+
+/**
+ * Builds the adapter named by `OUTBOUND_SDK_PROVIDER`, reading its key from
+ * that adapter's own environment variables. `all` builds every provider whose
+ * key is set: one adapter alone, or several combined. With no provider named,
+ * it does the same as `all`.
+ */
+export const fromEnv = async (
+  options: FromEnvOptions = {}
+): Promise<Adapter> => {
+  const id = options.provider ?? readEnv(PROVIDER_ENV);
+
+  if (id === undefined || id === ALL_PROVIDERS) {
+    return await loadEvery(id !== undefined);
+  }
+
+  const load = LOADERS.get(id);
+
+  if (load === undefined) {
+    throw new OutboundError(
+      "Invalid",
+      `Unknown provider "${id}". Known providers: ${loadableProviders().join(", ")}, or ${ALL_PROVIDERS}`
+    );
+  }
+
+  return await load();
 };

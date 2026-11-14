@@ -3,6 +3,7 @@
 
 import { z } from "zod";
 
+import { mapConcurrent } from "../internal/concurrency.ts";
 import type { SenderHealth } from "../internal/entities-account.ts";
 import { OutboundError } from "../internal/errors.ts";
 import { toJson } from "../internal/json.ts";
@@ -109,9 +110,12 @@ export const deliverabilityCheck: ToolDefinition<
     const rows: { readonly problems: string[]; readonly row: Json }[] = [];
     let requests = 1;
 
-    for (const sender of senders) {
-      // oxlint-disable-next-line no-await-in-loop -- one sender at a time keeps the rate budget predictable.
-      const health = await outbound.sender(sender.ref).health();
+    const checks = await mapConcurrent(senders, async (sender) => ({
+      health: await outbound.sender(sender.ref).health(),
+      sender,
+    }));
+
+    for (const { health, sender } of checks) {
       const problems = problemsOf(health);
       requests += health.meta.requests;
       rows.push({

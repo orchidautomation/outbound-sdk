@@ -9,7 +9,12 @@ import {
   envVars as instantlyEnvVars,
   instantly,
 } from "../src/instantly/index.ts";
-import { fromEnv, loadableProviders } from "../src/loader/index.ts";
+import {
+  ALL_PROVIDERS,
+  configuredProviders,
+  fromEnv,
+  loadableProviders,
+} from "../src/loader/index.ts";
 import {
   findProvider,
   PROVIDER_ENV,
@@ -129,4 +134,92 @@ test("fromEnv builds the adapter named by the environment", async () => {
       }
     }
   }
+});
+
+const KEY_VARS = [
+  "INSTANTLY_API_KEY",
+  "SMARTLEAD_API_KEY",
+  "HEYREACH_API_KEY",
+] as const;
+
+/** Runs `body` with exactly these provider keys set, then restores the environment. */
+const withKeys = async (
+  keys: Partial<Record<(typeof KEY_VARS)[number], string>>,
+  body: () => Promise<void>
+): Promise<void> => {
+  const names = [...KEY_VARS, PROVIDER_ENV];
+  const saved = names.map((name) => [name, process.env[name]] as const);
+
+  for (const name of names) {
+    Reflect.deleteProperty(process.env, name);
+  }
+
+  Object.assign(process.env, keys);
+
+  try {
+    await body();
+  } finally {
+    for (const [name, value] of saved) {
+      if (value === undefined) {
+        Reflect.deleteProperty(process.env, name);
+      } else {
+        process.env[name] = value;
+      }
+    }
+  }
+};
+
+test("`all` combines every provider whose key is set, and no other", async () => {
+  await withKeys(
+    {
+      HEYREACH_API_KEY: "hr_env_key_for_loader_test",
+      INSTANTLY_API_KEY: "inst_env_key_for_loader_test",
+    },
+    async () => {
+      assert.deepEqual(configuredProviders(), ["instantly", "heyreach"]);
+
+      const adapter = await fromEnv({ provider: ALL_PROVIDERS });
+
+      assert.deepEqual(
+        adapter.members?.map((member) => member.name),
+        ["instantly", "heyreach"],
+        "Smartlead has no key and memory needs none, so neither is included"
+      );
+
+      // The environment variable works like the option.
+      process.env[PROVIDER_ENV] = "all";
+      assert.equal((await fromEnv()).members?.length, 2);
+    }
+  );
+});
+
+test("`all` with one key is that provider alone, not a combined instance", async () => {
+  await withKeys(
+    { SMARTLEAD_API_KEY: "sl_env_key_for_loader_test" },
+    async () => {
+      const adapter = await fromEnv({ provider: "all" });
+
+      assert.equal(adapter.name, "smartlead");
+      assert.equal(adapter.members, undefined);
+    }
+  );
+});
+
+test("`all` with no key set says which variables to set, and an empty key does not count", async () => {
+  await withKeys({ INSTANTLY_API_KEY: "  " }, async () => {
+    assert.deepEqual(configuredProviders(), []);
+
+    await assert.rejects(
+      fromEnv({ provider: "all" }),
+      (error) =>
+        OutboundError.is(error) &&
+        error.code === "Invalid" &&
+        KEY_VARS.every((name) => error.message.includes(name))
+    );
+  });
+});
+
+test("no provider is named `all`, so the word can never pick one tool", () => {
+  assert.equal(findProvider(ALL_PROVIDERS), undefined);
+  assert.ok(!loadableProviders().includes(ALL_PROVIDERS));
 });

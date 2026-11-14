@@ -6,6 +6,7 @@
 // matches decides; anything matching no rule is `unassigned`, never placed
 // in a client by guesswork.
 
+import { mapConcurrent } from "../internal/concurrency.ts";
 import type { OperationOptions } from "../internal/engine/engine.ts";
 import type { Campaign } from "../internal/entities.ts";
 import { emptyCounts, sumCounts } from "../internal/metrics.ts";
@@ -173,10 +174,12 @@ const clientStats = async (
   const campaigns = await outbound.campaigns.listAll(options).toArray();
   const byClient = new Map<string, MetricCounts[]>();
 
-  for (const campaign of campaigns) {
-    // oxlint-disable-next-line no-await-in-loop -- one campaign at a time keeps the rate budget predictable.
-    const stats = await outbound.campaign(campaign.ref).stats(options);
+  const read = await mapConcurrent(campaigns, async (campaign) => ({
+    campaign,
+    stats: await outbound.campaign(campaign.ref).stats(options),
+  }));
 
+  for (const { campaign, stats } of read) {
     // SAFETY: this plugin's wrap adds `client` to every record, campaigns included.
     const { client } = campaign as typeof campaign & {
       readonly client: string;

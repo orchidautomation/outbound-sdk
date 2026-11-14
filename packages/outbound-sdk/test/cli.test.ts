@@ -224,7 +224,7 @@ test("without an adapter, a key or OUTBOUND_SDK_PROVIDER it says what to set", a
     });
 
     assert.equal(code, 1);
-    assert.match(err.join(""), /No vendor key is set/u);
+    assert.match(err.join(""), /No provider key is set/u);
     assert.match(err.join(""), /INSTANTLY_API_KEY/u);
     const viaFlag: string[] = [];
     assert.equal(

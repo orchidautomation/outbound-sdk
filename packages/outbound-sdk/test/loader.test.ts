@@ -69,7 +69,7 @@ test("one key set gives that adapter alone, not a combined one", async () => {
   });
 });
 
-test("a named provider wins over the keys that are set, and a comma list combines", async () => {
+test("a named provider wins over the keys that are set", async () => {
   await withEnv(
     {
       HEYREACH_API_KEY: "hr-test",
@@ -79,9 +79,6 @@ test("a named provider wins over the keys that are set, and a comma list combine
     async () => {
       assert.equal((await fromEnv()).name, "instantly");
       assert.equal((await fromEnv({ provider: "heyreach" })).name, "heyreach");
-
-      const listed = await fromEnv({ provider: "heyreach, memory" });
-      assert.deepEqual(memberNames(listed), ["heyreach", "memory"]);
     }
   );
 });
@@ -97,17 +94,8 @@ test("with no key and no provider it names the variables to set", async () => {
         error.code === "Invalid" &&
         error.message.includes("INSTANTLY_API_KEY") &&
         error.message.includes("HEYREACH_API_KEY") &&
-        error.message.includes("OUTBOUND_SDK_PROVIDER")
+        error.message.includes("OUTBOUND_SDK_PROVIDER") &&
+        !error.message.includes('"all"')
     );
-  });
-});
-
-test("a named provider that is unknown, or a list of only commas, is refused", async () => {
-  await withEnv({}, async () => {
-    await assert.rejects(
-      fromEnv({ provider: "mailchimp" }),
-      /Unknown provider "mailchimp"/u
-    );
-    await assert.rejects(fromEnv({ provider: " , " }), /names no provider/u);
   });
 });

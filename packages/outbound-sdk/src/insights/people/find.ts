@@ -1,6 +1,7 @@
 // Finding one person's lead records across campaigns and tools, by exact
 // identifier. Shared by the people insights.
 
+import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Lead } from "../../internal/entities.ts";
 import { OutboundError } from "../../internal/errors.ts";
 import { profileSlug } from "../../internal/url.ts";
@@ -99,28 +100,38 @@ export const findPerson = async (
   const records = new Map<string, Lead>();
 
   for (
-    let next = [...keys].find((key) => !asked.has(key));
-    next !== undefined;
-    next = [...keys].find((key) => !asked.has(key))
+    let round = [...keys].filter((key) => !asked.has(key));
+    round.length > 0;
+    round = [...keys].filter((key) => !asked.has(key))
   ) {
-    asked.add(next);
+    for (const key of round) {
+      asked.add(key);
+    }
 
-    // oxlint-disable-next-line no-await-in-loop -- each answer can add the next identifier to ask for.
-    const leads = await context.all(
-      context.outbound.leads.listAll({ ...filterFor(next), max: maxRecords }),
-      `${maxRecords} records of the person`
+    // Every identifier known so far is asked for at once; an answer can name
+    // another identifier, which the next round asks for.
+    // oxlint-disable-next-line no-await-in-loop -- each round depends on the identifiers the previous one found.
+    const answers = await mapConcurrent(round, (key) =>
+      context.all(
+        context.outbound.leads.listAll({ ...filterFor(key), max: maxRecords }),
+        `${maxRecords} records of the person`
+      )
     );
 
-    for (const lead of leads) {
-      const leadKeys = keysOfLead(lead);
+    for (const [index, leads] of answers.entries()) {
+      const asking = round[index];
 
-      // Only an exact identifier links two records; the vendor's own matching is not trusted.
-      if (leadKeys.includes(next)) {
-        // One record per campaign: a vendor can use one lead id in all of them.
-        records.set(`${lead.ref} ${lead.campaignRef ?? ""}`, lead);
+      for (const lead of leads) {
+        const leadKeys = keysOfLead(lead);
 
-        for (const key of leadKeys) {
-          keys.add(key);
+        // Only an exact identifier links two records; the vendor's own matching is not trusted.
+        if (asking !== undefined && leadKeys.includes(asking)) {
+          // One record per campaign: a vendor can use one lead id in all of them.
+          records.set(`${lead.ref} ${lead.campaignRef ?? ""}`, lead);
+
+          for (const key of leadKeys) {
+            keys.add(key);
+          }
         }
       }
     }

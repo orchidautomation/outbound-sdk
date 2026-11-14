@@ -26,6 +26,8 @@ Give each adapter a `workspaceId`: your own label for the client the key belongs
   ../../_examples/adapters-combine/production.out.txt
 </include>
 
+To skip the list, `fromEnv({ provider: "all" })` from `outbound-sdk/loader` combines every provider whose key is set in the environment. Each member takes its label from its own `*_WORKSPACE_ID` variable. For several keys of one vendor, write the list yourself.
+
 That sample constructs real adapters and makes no request. It shows three things:
 
 - **Maturity is the weakest member's.** One `unverified` member makes the instance `unverified`. See [what is verified](/docs/status).
@@ -63,6 +65,8 @@ Three keys do not follow the weakest member:
 A listing reads the first member to its end, then the second, and so on, in the order you passed them. The cursor records which member the walk is in, so a saved cursor resumes in the right place. Records are not merged or sorted across members.
 
 A listing filtered to one campaign or one saved list goes straight to the member that owns it.
+
+A person lookup, a lead listing filtered by `email` or `linkedinUrl`, is the exception: it asks every member at the same time, because each answers with a record or two. Records still come back in member order, and the cursor holds only the members with more to give. Each request still counts against its own vendor's rate budget.
 
 ### Lookups need a ref
 

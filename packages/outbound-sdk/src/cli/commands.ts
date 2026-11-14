@@ -387,7 +387,7 @@ export const helpText = (): string =>
     "  mcp                      start a local MCP server on stdio (redact is on)",
     "",
     "Options:",
-    "  --provider <id>          the adapter to use (default: OUTBOUND_SDK_PROVIDER)",
+    "  --provider <id>          the adapter to use, or all for every provider whose key is set (default: OUTBOUND_SDK_PROVIDER)",
     "  --compact                print JSON on one line",
     "  --config <file>          load plugins from a file whose default export is defineConfig({ plugins })",
     "  --redact                 mask personal fields (on by default for mcp)",
