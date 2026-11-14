@@ -448,3 +448,41 @@ Not requested: `GET /li_account/GetAccountProxy/{accountId}` and `GET /managemen
 - Through the adapter: 827 messages with 827 distinct ids; a `since` at the 90th percentile and an `until` at the 10th each returned exactly the messages the unfiltered listing has in that range, and replies matched the inbound messages (302).
 
 This closes open question 4 for V3 (cursor paging has no deep-paging ceiling, and list items carry the whole thread up to at least 40 messages) and question 5 (`type`, `messageId` and the voice fields are returned).
+
+## Lookup by profile and by email: `leads.lookup` (2026-11-14)
+
+Sources: `https://docs.heyreach.io/openapi.json` fetched again on 2026-11-14 (operations `campaigns_GetCampaignsForLead`, `leads_GetLead`, `lists_GetListsForLead`, `lists_GetLeadsFromList`), and read-only requests to one live workspace with a workspace API key. Nothing from a response is recorded here beyond counts, key names, enum values and status codes.
+
+### What the reference documents
+
+- `POST /campaign/GetCampaignsForLead` takes `email`, `linkedinId`, `profileUrl` (each optional), `offset` and `limit`, and returns `{ leadFullName, totalCount, items[{ campaignId, campaignName, campaignStatus, creationTime, leadStatus }] }`. `leadStatus` is `Pending`, `InSequence`, `Finished`, `Paused`, `Failed`, `Excluded` or `PendingOrExcludedToBeCalculated`. Only a 200 answer is documented.
+- `POST /lead/GetLead` takes `profileUrl`, which is required, and returns the profile. No read returns a profile for an email address.
+- `POST /list/GetListsForLead` takes the same three keys and returns `{ totalCount, items[{ listId, listName }] }`.
+- `POST /list/GetLeadsFromList` takes `keyword` ("a search term to filter leads by name or other relevant fields") and `leadProfileUrl`.
+
+### Seen live
+
+- `GetCampaignsForLead` answered 200 with exactly the documented keys for a profile URL, for an email address and for a `linkedinId`. `campaignId` is an integer. An item's `creationTime` equalled the campaign's own `creationTime` from `POST /campaign/GetAll` and not the lead's row in that campaign, so it is not when the lead was added.
+- With none of the three keys it answered 400 `Email, Linkedin Id or ProfileUrl must be specified.`
+- A person HeyReach does not know: 404 `{ errorMessage: "There is no lead matching your search criteria" }`, from `GetCampaignsForLead` (by profile URL and by email), from `GetLead` and from `GetListsForLead`.
+- `limit` must be between 1 and 100 (1000 is refused with 400). An `offset` past the end answered 200 with no items and the same `totalCount`. The lead was in one campaign, so a second page was not seen.
+- Both `GetCampaignsForLead` and `GetLead` matched the stored profile for `http://`, no `www.`, a trailing slash and a query string, and answered 404 when the slug was sent in upper case. The stored slug was lowercase. An email address matched in either case.
+- `GetLead` accepts nothing but `profileUrl`: with `email` or `linkedinId` alone it answered 400 `The ProfileUrl field is required.`
+- `GetLead` returned `customEmailAddress`, which the reference does not list, and held the lead's address in `emailAddress` while the same lead's rows in `GetLeadsFromCampaign` and `GetLeadsFromList` had all three email keys null. No campaign or list row in the workspace (692 list rows and 159 campaign rows read) carried an address.
+- `GetLeadsFromCampaign` ignores `keyword`, `leadProfileUrl`, `profileUrl`, `email`, `leadLinkedInId` and `searchString`: each returned the whole campaign. A campaign cannot be searched for one person.
+- `GetLeadsFromList` with `keyword` set to the lead's full name, first name or last name returned that lead; with the email address it returned nothing; with `leadProfileUrl` it returned that lead alone.
+
+### How the adapter looks a person up
+
+By profile URL, two requests in parallel: `GetCampaignsForLead` and `GetLead`, both with `https://www.linkedin.com/in/<slug>`, the slug lowercased. The profile is kept only when its own URL has the same slug.
+
+By email, four requests in the usual case: `GetCampaignsForLead` (which names the person), `GetListsForLead` for one list the address is in, `GetLeadsFromList` with the name as `keyword` (5 rows at most), then `GetLead` for each row until one profile carries the address in `emailAddress`, `enrichedEmailAddress`, `customEmailAddress` or `emailEnrichments`. A later page of campaigns carries the profile URL in its page marker and costs two requests.
+
+Each campaign gives one record with that campaign's ref and the lead's status in it. A lead's id is its profile URL, which is the same in every campaign, so a looked-up record's id is the profile URL followed by `#campaign=<campaignId>`; `leads.get` and the timeline drop that part before asking HeyReach. A known person in no campaign is one record with no campaign and the plain profile URL as its id.
+
+### Not confirmed
+
+- A person in more than one campaign, and so a second page, was not seen live.
+- A known person in no campaign was not seen: whether `GetCampaignsForLead` then answers 200 with no items or 404 is not known, and both are read as no campaigns.
+- Which of the email fields `GetCampaignsForLead` and `GetListsForLead` match on is not documented.
+- How HeyReach stores a slug with upper-case or non-ASCII letters is not known.

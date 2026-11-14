@@ -28,6 +28,7 @@ import { stableId } from "../internal/sha256.ts";
 import { normalizeBody } from "../internal/text.ts";
 import { PAGE_SIZE } from "./capabilities.ts";
 import type { HeyReachClient } from "./client.ts";
+import { profileUrlOf } from "./map.ts";
 
 export const CONVERSATIONS_PATH = "/inbox/GetConversationsV3";
 
@@ -128,7 +129,8 @@ const readConversations = async (
   }
 
   if ("leadId" in query && query.leadId !== undefined) {
-    filters.leadProfileUrl = query.leadId;
+    // A looked-up lead's id also names its campaign; the filter takes the URL.
+    filters.leadProfileUrl = profileUrlOf(query.leadId);
   }
 
   const request: JsonObject = {

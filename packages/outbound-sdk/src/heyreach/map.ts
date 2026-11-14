@@ -97,10 +97,15 @@ const LEAD_STATUS = new Map<string, LeadStatus>([
   ["Pending", "active"],
 ]);
 
+// Excluded and PendingOrExcludedToBeCalculated, which only
+// GetCampaignsForLead reports, have no equivalent and stay unknown.
+const campaignLeadStatus = (value: Json | undefined): LeadStatus =>
+  LEAD_STATUS.get(text(value) ?? "") ?? "unknown";
+
 const leadStatus = (raw: JsonObject): LeadStatus =>
   text(raw.leadMessageStatus) === "MessageReply"
     ? "replied"
-    : (LEAD_STATUS.get(text(raw.leadCampaignStatus) ?? "") ?? "unknown");
+    : campaignLeadStatus(raw.leadCampaignStatus);
 
 /** A lead's manual tags: `tags` is an array of names. */
 export const tagNames = (value: Json | undefined): string[] =>
@@ -196,6 +201,55 @@ export const toCampaignLead = (
   createdAt: timestamp(raw.creationTime),
   status: leadStatus(raw),
 });
+
+// A looked-up lead is one record per campaign, and a lead's id is its profile
+// URL, so the campaign is added as a URL fragment to keep the records apart.
+const CAMPAIGN_MARK = /#campaign=\d+$/u;
+
+/** The profile URL in a lead id: a looked-up lead's id also names its campaign. */
+export const profileUrlOf = (leadId: string): string =>
+  leadId.replace(CAMPAIGN_MARK, "");
+
+/** Every address a `POST /lead/GetLead` profile carries, lowercased. */
+export const profileEmails = (profile: JsonObject): string[] =>
+  [
+    profile.emailAddress,
+    profile.enrichedEmailAddress,
+    profile.customEmailAddress,
+    ...list(profile.emailEnrichments),
+  ].flatMap((value) => emailAddress(value) ?? []);
+
+/**
+ * A `POST /lead/GetLead` profile beside one row of
+ * `POST /campaign/GetCampaignsForLead`, or beside `null` for a person who is
+ * in no campaign. The row's `creationTime` is the campaign's, so the lead has
+ * none. `email` is the address the lead was looked up by, which the profile
+ * may hold in any of its email fields.
+ */
+export const toLookupLead = (
+  identity: Identity,
+  profile: JsonObject,
+  campaign: JsonObject | null,
+  email?: string | undefined
+): Lead => {
+  const raw: JsonObject = { campaign, lead: profile };
+  const lead = profileFields(identity, profile, raw);
+  const campaignId = text(campaign?.campaignId);
+
+  const id =
+    campaignId === null
+      ? lead.sourceId
+      : `${lead.sourceId}#campaign=${campaignId}`;
+
+  return {
+    ...lead,
+    ...recordBase(identity, id, raw),
+    campaignRef: refTo(identity, campaignId),
+    createdAt: null,
+    email: email ?? lead.email,
+    status: campaignLeadStatus(campaign?.leadStatus),
+  };
+};
 
 export interface ListEnvelope {
   readonly items: JsonObject[];

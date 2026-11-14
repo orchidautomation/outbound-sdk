@@ -95,6 +95,16 @@ export const suite: AdapterSuite = {
       path: "/api/public/campaign/GetCampaignSequence",
     },
     {
+      fixture: paged("getCampaignsForLead"),
+      method: "POST",
+      path: "/api/public/campaign/GetCampaignsForLead",
+    },
+    {
+      fixture: "getListsForLead.json",
+      method: "POST",
+      path: "/api/public/list/GetListsForLead",
+    },
+    {
       fixture: paged("getLeadsFromCampaign"),
       method: "POST",
       path: "/api/public/campaign/GetLeadsFromCampaign",

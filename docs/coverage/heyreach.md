@@ -6,6 +6,8 @@ The five `/management/organizations` reads belong to the Organization Management
 
 Two of the excluded rows return secrets. The third, a voice message's audio file, fits none of the three accepted reasons: it is left out because the request engine reads every response as text, so a binary body cannot be returned intact. It becomes a native read once the engine can hand back bytes.
 
+Two reads stay in the native catalog and are also used by a normalized read: lookup by profile or email (`leads.lookup`) asks `POST /campaign/GetCampaignsForLead` for the campaigns and, for an email address, `POST /list/GetListsForLead` for a list to find the profile in.
+
 | Method | Path | Reads | Coverage | Through |
 | --- | --- | --- | --- | --- |
 | `GET` | `/auth/CheckApiKey` | Whether the API key works | native | `checkApiKey` |
@@ -47,7 +49,7 @@ Two of the excluded rows return secrets. The third, a voice message's audio file
 | `POST` | `/inbox/SendMessage` | Sends a message in a conversation | write |  |
 | `POST` | `/inbox/SetSeenStatus` | Marks a conversation seen or unseen | write |  |
 | `POST` | `/lead/AddTags` | Adds tags to a lead | write |  |
-| `POST` | `/lead/GetLead` | One lead's profile, by profile URL | normalized | `leads.get` |
+| `POST` | `/lead/GetLead` | One lead's profile, by profile URL | normalized | `leads.get`, `leads.lookup` |
 | `POST` | `/lead/GetTags` | One lead's tags | normalized | `leads.get` |
 | `POST` | `/lead/ReplaceTags` | Replaces a lead's tags | write |  |
 | `POST` | `/lead_tags/CreateTags` | Creates workspace tags | write |  |
@@ -74,7 +76,7 @@ Two of the excluded rows return secrets. The third, a voice message's audio file
 | `POST` | `/list/GetAll` | Lead and company lists | normalized | `lists.list` |
 | `GET` | `/list/GetById` | One lead or company list | native | `listById` |
 | `POST` | `/list/GetCompaniesFromList` | The companies in a company list | native | `companiesFromList` |
-| `POST` | `/list/GetLeadsFromList` | The leads in a lead list | normalized | `lists.leads`, `leads.since` |
+| `POST` | `/list/GetLeadsFromList` | The leads in a lead list | normalized | `lists.leads`, `leads.since`, `leads.lookup` |
 | `POST` | `/list/GetListsForLead` | The lists one lead is in | native | `listsForLead` |
 | `PATCH` | `/list/UpdateLeadCustomFields/lists/{listId}/leads/custom-fields` | Changes a list lead's custom fields | write |  |
 | `GET` | `/management/organizations/api-keys/workspaces/{workspaceId}` | A workspace's API and integration keys | excluded | It returns secrets: every API and integration key of the workspace. |

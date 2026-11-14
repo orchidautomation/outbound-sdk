@@ -15,10 +15,12 @@ import { accountReaders, campaignSenders } from "./account.ts";
 import { LIST_LEADS_PAGE_SIZE } from "./capabilities.ts";
 import type { HeyReachClient } from "./client.ts";
 import { inboxReaders } from "./inbox.ts";
+import { lookupLeads } from "./lookup.ts";
 import { toSequence } from "./map-sequence.ts";
 import { dailyRows, totalRow } from "./map-stats.ts";
 import {
   listEnvelope,
+  profileUrlOf,
   toCampaign,
   toCampaignLead,
   toLead,
@@ -154,13 +156,15 @@ const leadReaders = (
   client: HeyReachClient
 ): Pick<Readers, "getLead" | "listLeads"> => ({
   // The lead's id is its LinkedIn profile URL, the only key GetLead takes.
-  // GetLead carries no tags, so they are read beside it.
+  // GetLead carries no tags, so they are read beside it. A looked-up lead's
+  // id also names its campaign, which is dropped here.
   getLead: async (id, ctx) => {
     const path = "/lead/GetLead";
+    const profileUrl = profileUrlOf(id);
 
     const [lead, tags] = await Promise.all([
-      client.post(ctx, path, { profileUrl: id }),
-      client.post(ctx, "/lead/GetTags", { profileUrl: id }),
+      client.post(ctx, path, { profileUrl }),
+      client.post(ctx, "/lead/GetTags", { profileUrl }),
     ]);
 
     return toLead(
@@ -170,6 +174,10 @@ const leadReaders = (
     );
   },
   listLeads: async (query, ctx) => {
+    if (query.email !== undefined || query.linkedinUrl !== undefined) {
+      return await lookupLeads(client, ctx, query);
+    }
+
     const offset = offsetOf(query.next);
     const { campaignId, listId } = query;
 

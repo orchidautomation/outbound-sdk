@@ -46,3 +46,10 @@ Every file below was built by hand. Field names and types come from the API refe
 - `getLeadTags.json` (`POST /lead/GetTags`): the documented shape; live it returned an empty `tags` array.
 - `getChatroom.json` (`GET /inbox/GetChatroom/{accountId}/{conversationId}`): the first conversation of `getConversations.json` with one more message. Live, a chatroom has the same shape as a conversation in the list.
 - `getCampaignSequence.branching.json`: a made-up tree that uses every branching node at once. The `CHECK_IS_CONNECTION` and `CONNECTION_REQUEST` layouts, a `VIEW_PROFILE` on the not-accepted branch and a null `conditionalNode` were seen live; `CHECK_IS_OPEN_PROFILE`, `INMAIL` and `FOLLOW` are from the documented node types.
+
+## Added 2026-11-14 for lookup by profile and by email
+
+Built by hand. Field names and types were seen live in read-only requests to one real workspace on 2026-11-14 and agree with the API reference; every value is made up.
+
+- `getCampaignsForLead.json`, `getCampaignsForLead.page2.json` (`POST /campaign/GetCampaignsForLead`): `{ leadFullName, totalCount, items }`, each item `campaignId` (integer), `campaignName`, `creationTime`, `campaignStatus`, `leadStatus`. Only the lead status `Finished` was seen live; `InSequence` and `Excluded` are from the documented enum. The live lead was in one campaign, so a second page was not seen.
+- `getListsForLead.json` (`POST /list/GetListsForLead`): `{ totalCount, items }`, each item `listId` (integer) and `listName`. Seen live.

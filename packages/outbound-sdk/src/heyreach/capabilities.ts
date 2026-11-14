@@ -36,6 +36,9 @@ export const capabilities: CapabilityDeclaration = {
   "leads.get": true,
   // HeyReach has no list of every lead: leads are read per campaign or per list.
   "leads.list": false,
+  // POST /campaign/GetCampaignsForLead takes an email or a profile URL, and
+  // POST /lead/GetLead gives the profile.
+  "leads.lookup": true,
   // GetLeadsFromCampaign and GetLeadsFromList both filter by creation time.
   "leads.since": "server",
   // Messages live inside conversations (POST /inbox/GetConversationsV3). A
@@ -102,6 +105,11 @@ export const costs = {
   "leads.get": { perPage: 2 },
   // A campaign's leads. A saved list's leads come up to 1000 a page.
   "leads.list": { pageSize: PAGE_SIZE, perPage: 1 },
+  // One person by profile URL: the campaigns and the profile, two requests.
+  // By email it is three (campaigns, the lists the address is in, a name
+  // search in one list) and one more per profile read to find the address,
+  // five at most; a later page is two again.
+  "leads.lookup": { pageSize: PAGE_SIZE, perPage: 2 },
   "lists.list": { pageSize: PAGE_SIZE, perPage: 1 },
   // One conversation by thread id is a single request.
   "messages.list": { pageSize: PAGE_SIZE, perPage: 1 },
@@ -127,6 +135,11 @@ export const caveats: readonly string[] = [
   "A sender's status is derived from two undefined booleans: authIsValid false is disconnected, otherwise isActive true is active and false is paused.",
   "A sender's dailyLimit is null: accountLimits holds several limit pairs and the docs do not say which are daily or what Limit and Max mean. They stay in raw.",
   "A lead's id is its LinkedIn profile URL, the only key GetLead accepts and the only one present in every lead shape. The docs do not say the URL has one canonical form.",
+  "A lead is looked up by profile URL with two requests (GetCampaignsForLead and GetLead) and returned once per campaign it is in. A lead's id is its profile URL in every campaign, so a looked-up record's id is the profile URL followed by #campaign=<campaignId>, and it differs from the id the same lead has in a campaign's lead list; leads.get and the timeline accept both. The timeline is the lead's whole conversation history, the same on each of its records.",
+  "A looked-up lead's status follows leadStatus and never says replied, because GetCampaignsForLead reports no message status; Excluded and PendingOrExcludedToBeCalculated are unknown. createdAt is null (the creationTime beside a campaign is the campaign's), tags are empty and interest is null. A lookup cannot be combined with a saved list or a date range.",
+  "HeyReach matches a profile URL whatever its scheme, www prefix, trailing slash or query, but by exact case: seen live, a slug sent in upper case is not found. The lookup sends the slug lowercased, so a profile HeyReach stores with upper-case letters would not be found. A slug with non-ASCII letters is sent percent-encoded; how HeyReach stores one is not known.",
+  "No HeyReach read returns a profile for an email address. An email lookup asks for the campaigns (which names the person), then one saved list the address is in, searches that list for the name (5 rows at most) and reads each match's profile until one carries the address: four requests in the usual case. An address that is in no saved list, or whose profile is not among those rows, gives an empty page although HeyReach knows it. The record's email is the address asked for, which the profile may hold as its enriched or custom address.",
+  "Lookup was checked against one live lead in one campaign. A person in several campaigns (and so a second page of campaigns) and a known person in no campaign were not seen; an empty campaign answer and a 404 from GetCampaignsForLead are both read as no campaigns.",
   "HeyReach has no list of every lead. Leads are read per campaign or per saved list: outbound.campaign(id).leads and outbound.list(id).leads work, and outbound.leads.list() is refused. Walking every list would repeat a lead that sits in several lists, drop its campaign and status, and miss leads whose list was deleted, so it is not offered as a complete list.",
   "A saved list's leads carry tags, custom fields and the auto-tag but no status, campaign or creation time, although the list can be filtered by when a lead was added. A company list's rows are companies, not leads, and are not mapped: read them with outbound.native.reads.companiesFromList.",
   "A lead's interest is the name of its newest auto-tag (Interested, Not interested and Generic were seen live; the API reference does not list the names). It is present on a list's leads and absent from a campaign's leads and from lead lookup, where it is null.",

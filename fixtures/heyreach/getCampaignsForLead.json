@@ -1,0 +1,20 @@
+{
+  "leadFullName": "Alex Example",
+  "totalCount": 3,
+  "items": [
+    {
+      "campaignId": 274079,
+      "campaignName": "Example campaign one",
+      "creationTime": "2024-09-30T21:00:00.000000Z",
+      "campaignStatus": "FINISHED",
+      "leadStatus": "Finished"
+    },
+    {
+      "campaignId": 274080,
+      "campaignName": "Example campaign two",
+      "creationTime": "2024-10-05T09:30:00.000000Z",
+      "campaignStatus": "IN_PROGRESS",
+      "leadStatus": "InSequence"
+    }
+  ]
+}
