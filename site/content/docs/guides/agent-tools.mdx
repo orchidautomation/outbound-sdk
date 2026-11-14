@@ -124,7 +124,7 @@ A tool spends vendor requests only when called. The descriptions tell the model 
 - `deliverability_check`: one or more requests per sender, up to `limit` (default 10, at most 25).
 - `compare_clients`: one request per campaign.
 - `vendor_read`: one request per call, none to list the reads on offer.
-- An insight tool reports its own cost in its description, for example `campaign_ranking` reads one stats request per campaign up to `max_campaigns`.
+- An insight tool reports its own cost in its description, for example `campaign_ranking` reads one stats request per campaign up to `max_campaigns`, or one for all of them on a vendor that reports every campaign in one call with every count.
 
 ## When it cannot answer
 

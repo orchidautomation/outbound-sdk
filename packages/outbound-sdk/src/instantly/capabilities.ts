@@ -76,7 +76,8 @@ export const capabilities: CapabilityDeclaration = {
   "stats.bySender": "derived",
   "stats.byStep": "exact",
   // GET /campaigns/analytics with no id: a row per campaign, totals only.
-  "stats.allCampaigns": "exact",
+  // Partial: it has no count of interested leads and no total of opens.
+  "stats.allCampaigns": "partial",
   "stats.campaign": "exact",
   "stats.workspace": "exact",
   tags: true,

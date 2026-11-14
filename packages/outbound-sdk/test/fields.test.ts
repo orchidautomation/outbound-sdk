@@ -11,6 +11,8 @@ import {
   outboundEventSchema,
   resolveFields,
 } from "../src/index.ts";
+import type { OutboundPlugin } from "../src/index.ts";
+import { insights } from "../src/insights/index.ts";
 import { instantly } from "../src/instantly/index.ts";
 import { memory } from "../src/memory/index.ts";
 
@@ -298,4 +300,70 @@ test("events: the shared keys of an event's data are checked, and a vendor's ext
       `${JSON.stringify(wrong)} is not what the key means`
     );
   }
+});
+
+test("insights: campaign totals come from one stats request when the vendor's report is full, with the same answer", async () => {
+  const data = {
+    campaigns: [{ id: "c1" }, { id: "c2" }, { id: "c3" }],
+    stats: [
+      {
+        campaignId: "c1",
+        counts: { contacted: 100, replied: 9, sent: 120 },
+        date: "2026-10-01",
+      },
+      {
+        campaignId: "c2",
+        counts: { contacted: 200, replied: 4, sent: 260 },
+        date: "2026-10-01",
+      },
+    ],
+  };
+
+  const run = async (grade: "full" | "partial" | false) => {
+    const statsCalls: (string | undefined)[] = [];
+
+    const counter: OutboundPlugin = {
+      name: "count",
+      wrap: (operation, next) => {
+        if (operation.kind === "stats") {
+          statsCalls.push(operation.query.scopeId);
+        }
+
+        return next(operation);
+      },
+    };
+
+    const outbound = createOutbound({
+      adapter: memory({
+        capabilities: { "stats.allCampaigns": grade },
+        data,
+      }),
+      fetch: offline,
+      plugins: [insights(), counter],
+    });
+
+    const answer = await outbound.insights.campaignRanking({ min_sent: 1 });
+
+    return { answer, statsCalls };
+  };
+
+  const full = await run("full");
+  const partial = await run("partial");
+  const off = await run(false);
+
+  assert.deepEqual(
+    full.statsCalls,
+    [undefined, "memory:default:c3"],
+    "one request for every campaign, and the campaign the report left out read on its own"
+  );
+  assert.equal(partial.statsCalls.length, 3, "one request per campaign");
+  assert.equal(off.statsCalls.length, 3);
+  assert.deepEqual(full.answer.data, off.answer.data);
+  assert.deepEqual(full.answer.data, partial.answer.data);
+  assert.equal(
+    full.answer.data.ranked.length + full.answer.data.tooFewSends.length,
+    2,
+    "the two campaigns with counts"
+  );
+  assert.equal(full.answer.data.unknown.length, 1, "c3 has no counts");
 });

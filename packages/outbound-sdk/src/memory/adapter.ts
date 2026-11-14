@@ -76,7 +76,7 @@ const FULL_CAPABILITIES: CapabilityDeclaration = {
   "stats.byDay": "exact",
   "stats.bySender": "exact",
   "stats.byStep": "exact",
-  "stats.allCampaigns": "exact",
+  "stats.allCampaigns": "full",
   "stats.campaign": "exact",
   "stats.workspace": "exact",
   tags: true,

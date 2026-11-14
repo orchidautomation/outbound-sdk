@@ -225,7 +225,7 @@ Which campaigns are best, ranked so a small sample cannot win on luck.
 - `gap`: `top` (the rate of the campaign ranked first), `median` and `difference`.
 
 - **Needs:** `stats.campaign`.
-- **Costs:** one listing per status, plus one stats request per campaign.
+- **Costs:** one listing per status, plus one stats request per campaign (one for all of them on a vendor that reports every campaign in one call with every count).
 - **Notes it can add:** a cap was reached.
 - **Does not:** rank by the raw rate. It ranks by the low end of the 95% interval, or for a bounce rate by the high end, lowest first. A campaign with a `null` rate is in `unknown`, never ranked last.
 
@@ -257,7 +257,7 @@ Email against LinkedIn, from campaign totals added up per channel.
 - `byProvider`: the same numbers for each tool and channel.
 
 - **Needs:** `stats.campaign`.
-- **Costs:** one listing per status, plus one stats request per campaign.
+- **Costs:** one listing per status, plus one stats request per campaign (one for all of them on a vendor that reports every campaign in one call with every count).
 - **Notes it can add:** a channel's rate leaves out campaigns that do not report one side of it; a cap was reached.
 - **Does not:** make the two channels comparable. A rate counts only the campaigns that report both its count and what it is divided by, so its `count` and `of` can be smaller than the channel's totals beside it. A LinkedIn reply and an email reply are counted the same way, but the audiences usually differ. With one channel present it returns that channel and says there is nothing to compare.
 
@@ -287,7 +287,7 @@ Results grouped by campaign tag, for example one tag per client, offer or audien
 - `tooFewSends`: tags under `min_sent`.
 
 - **Needs:** `stats.campaign`.
-- **Costs:** one listing per status, plus one stats request per campaign.
+- **Costs:** one listing per status, plus one stats request per campaign (one for all of them on a vendor that reports every campaign in one call with every count).
 - **Notes it can add:** a tag's rate leaves out campaigns that do not report one side of it, naming the rate and how many campaigns are counted; a cap was reached.
 - **Does not:** split a campaign between its tags. A campaign with two tags counts in full in both, so the tags do not add up to the workspace. A rate counts only the campaigns that report both its count and what it is divided by, so its `count` and `of` can be smaller than the tag's totals beside it.
 

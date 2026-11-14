@@ -84,8 +84,9 @@ export const capabilities: CapabilityDeclaration = {
   // GetOverallStats filtered to one account id.
   "stats.bySender": "exact",
   "stats.byStep": false,
-  // POST /stats/GetOverallStatsByCampaign.
-  "stats.allCampaigns": "exact",
+  // POST /stats/GetOverallStatsByCampaign: the counts of GetOverallStats,
+  // a row per campaign.
+  "stats.allCampaigns": "full",
   "stats.campaign": "exact",
   "stats.workspace": "exact",
   // Tags can be created (POST /lead_tags/CreateTags) and read per lead

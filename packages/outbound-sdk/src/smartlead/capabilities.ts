@@ -94,7 +94,8 @@ export const capabilities: CapabilityDeclaration = {
   "stats.bySender": "exact",
   "stats.byStep": "exact",
   // GET /analytics/campaign/overall-stats: a row per campaign, totals only.
-  "stats.allCampaigns": "exact",
+  // Partial: it has no clicks and no unsubscribes.
+  "stats.allCampaigns": "partial",
   "stats.campaign": "exact",
   "stats.workspace": "exact",
   // GET /email-accounts/tags: one tag space for mailboxes, leads and campaigns.

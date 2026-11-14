@@ -100,7 +100,7 @@ Listing campaigns and reading one need no key. Every adapter can.
 | --- | --- | --- |
 | `stats.workspace` | `exact`, `derived`, `false` | `outbound.stats()` |
 | `stats.campaign` | `exact`, `derived`, `false` | `campaign(id).stats()` |
-| `stats.allCampaigns` | `exact`, `derived`, `false` | `stats({ scope: "campaign" })` with no `scopeId`: a row per campaign in one call |
+| `stats.allCampaigns` | `full`, `partial`, `false` | `stats({ scope: "campaign" })` with no `scopeId`: a row per campaign in one call. `full` when each row has every count the read of one campaign has, `partial` when the vendor's report has fewer. |
 | `stats.byStep` | `exact`, `derived`, `false` | `campaign(id).stats({ scope: "step" })` |
 | `stats.bySender` | `exact`, `derived`, `false` | `sender(id).stats()` |
 | `stats.byDay` | `exact`, `derived`, `false` | `by: "day"` on any of the four, in addition to the scope's own key |

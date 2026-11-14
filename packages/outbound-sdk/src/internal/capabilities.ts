@@ -61,8 +61,12 @@ export interface Capabilities {
   "replies.unread": FilterGrade;
   "stats.workspace": StatGrade;
   "stats.campaign": StatGrade;
-  /** One row per campaign in a single call: `stats({ scope: "campaign" })` with no campaign named. */
-  "stats.allCampaigns": StatGrade;
+  /**
+   * One row per campaign in a single call: `stats({ scope: "campaign" })` with
+   * no campaign named. `full` when each row carries every count the read of
+   * one campaign does, `partial` when the vendor's report has fewer.
+   */
+  "stats.allCampaigns": "full" | "partial" | false;
   "stats.byDay": StatGrade;
   "stats.byStep": StatGrade;
   "stats.bySender": StatGrade;
@@ -143,6 +147,7 @@ const RANK = new Map<string, number>([
   ["exact", 2],
   ["false", 0],
   ["full", 2],
+  ["partial", 1],
   ["sampled", 1],
   ["secret", 1],
   ["server", 2],
