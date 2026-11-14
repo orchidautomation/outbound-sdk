@@ -4,11 +4,6 @@
 import type {
   Campaign,
   CampaignStatus,
-  Lead,
-  LeadStatus,
-  Message,
-  Reply,
-  ReplyCategory,
   Sender,
   SenderStatus,
   Sequence,
@@ -19,10 +14,8 @@ import {
   count,
   emailAddress,
   field,
-  flag,
   isJsonObject,
   objects,
-  stringMap,
   text,
   timestamp,
 } from "../internal/json.ts";
@@ -30,7 +23,6 @@ import type { Json, JsonObject } from "../internal/json.ts";
 import { recordBase, refTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
 import { stableId } from "../internal/sha256.ts";
-import { normalizeBody } from "../internal/text.ts";
 
 // 4 is "Running Subsequences": the campaign is still sending. The negative
 // values are Instantly pausing the campaign itself (account suspended,
@@ -46,24 +38,29 @@ const CAMPAIGN_STATUS = new Map<number, CampaignStatus>([
   [4, "active"],
 ]);
 
-/** The Instantly status number for one of our statuses, when it has one. */
+/**
+ * The status Instantly can filter for us. Active and paused each cover
+ * several Instantly statuses, so they have no single number.
+ */
 export const campaignStatusCode = (
   status: CampaignStatus
 ): number | undefined =>
   new Map<CampaignStatus, number>([
-    ["active", 1],
     ["completed", 3],
     ["draft", 0],
-    ["paused", 2],
   ]).get(status);
 
-export const toCampaign = (identity: Identity, raw: JsonObject): Campaign => ({
+export const toCampaign = (
+  identity: Identity,
+  raw: JsonObject,
+  tags: readonly string[] = []
+): Campaign => ({
   ...recordBase(identity, text(raw.id) ?? "", raw),
   channel: "email",
   createdAt: timestamp(raw.timestamp_created),
   name: text(raw.name) ?? "",
   status: CAMPAIGN_STATUS.get(count(raw.status) ?? Number.NaN) ?? "unknown",
-  tags: [],
+  tags: [...tags],
 });
 
 const DELAY_DAYS = new Map([
@@ -72,9 +69,12 @@ const DELAY_DAYS = new Map([
   ["minutes", 1 / 1440],
 ]);
 
-const delayDays = (step: JsonObject): number | null => {
-  const delay = count(step.delay);
-  const perUnit = DELAY_DAYS.get(text(step.delay_unit) ?? "days");
+const days = (
+  value: Json | undefined,
+  unit: Json | undefined
+): number | null => {
+  const delay = count(value);
+  const perUnit = DELAY_DAYS.get(text(unit) ?? "days");
 
   return delay === null || perUnit === undefined ? null : delay * perUnit;
 };
@@ -83,38 +83,73 @@ const delayDays = (step: JsonObject): number | null => {
 export const variantKey = (index: number): string =>
   String.fromCodePoint(65 + index);
 
-const toStep = (step: JsonObject, index: number): SequenceStep => ({
-  action: text(step.type) ?? "email",
-  branch: null,
-  delayDays: delayDays(step),
-  index,
-  parentIndex: index === 0 ? null : index - 1,
-  variants: objects(step.variants).map((variant, variantIndex) => {
-    const subject = text(variant.subject);
-    const body = text(variant.body);
+// `delay` is the wait before the NEXT email, so a step waits for the delay
+// of the step before it. Only a subsequence's first step has a wait of its
+// own (`pre_delay`); a campaign's first step goes out at once.
+const waitBefore = (
+  step: JsonObject,
+  previous: JsonObject | undefined,
+  subsequence: boolean
+): number | null => {
+  if (previous !== undefined) {
+    return days(previous.delay, previous.delay_unit);
+  }
 
-    return {
-      body,
-      contentHash: stableId(subject, body),
-      subject,
-      variantKey: variantKey(variantIndex),
-    };
-  }),
-});
+  return subsequence ? days(step.pre_delay, step.pre_delay_unit) : 0;
+};
+
+/** Only the first entry of `sequences` is used, as the reference says. */
+const toSteps = (
+  sequences: Json | undefined,
+  subsequence: boolean
+): SequenceStep[] => {
+  const steps = objects(objects(sequences)[0]?.steps);
+
+  return steps.map((step, index) => ({
+    action: text(step.type) ?? "email",
+    branch: null,
+    delayDays: waitBefore(step, steps[index - 1], subsequence),
+    index,
+    parentIndex: index === 0 ? null : index - 1,
+    variants: objects(step.variants).map((variant, variantIndex) => {
+      const subject = text(variant.subject);
+      const body = text(variant.body);
+
+      return {
+        body,
+        contentHash: stableId(subject, body),
+        subject,
+        variantKey: variantKey(variantIndex),
+      };
+    }),
+  }));
+};
 
 /** A campaign's steps live inside the campaign object; there is no sequence endpoint. */
 export const toSequence = (identity: Identity, raw: JsonObject): Sequence => {
   const id = text(raw.id) ?? "";
-  const [first] = objects(raw.sequences);
 
   return {
     ...recordBase(identity, id, raw.sequences ?? null),
     campaignRef: refTo(identity, id) ?? "",
     kind: "main",
     name: null,
-    steps: objects(first?.steps).map(toStep),
+    steps: toSteps(raw.sequences, false),
   };
 };
+
+/** `GET /subsequences`: a follow-up path a lead enters when its conditions are met. */
+export const toSubsequence = (
+  identity: Identity,
+  raw: JsonObject,
+  campaignId: string
+): Sequence => ({
+  ...recordBase(identity, text(raw.id) ?? "", raw),
+  campaignRef: refTo(identity, text(raw.parent_campaign) ?? campaignId) ?? "",
+  kind: "subsequence",
+  name: text(raw.name),
+  steps: toSteps(raw.sequences, true),
+});
 
 const SENDER_STATUS = new Map<number, SenderStatus>([
   [-3, "error"],
@@ -153,120 +188,6 @@ export const toSender = (identity: Identity, raw: JsonObject): Sender => {
             enabled: warmupStatus === null ? null : warmupStatus === 1,
             score: count(raw.stat_warmup_score),
           },
-  };
-};
-
-// -3 is "Skipped", which has no equivalent here.
-const LEAD_STATUS = new Map<number, LeadStatus>([
-  [-2, "unsubscribed"],
-  [-1, "bounced"],
-  [1, "active"],
-  [2, "paused"],
-  [3, "completed"],
-]);
-
-export const toLead = (identity: Identity, raw: JsonObject): Lead => ({
-  ...recordBase(identity, text(raw.id) ?? "", raw),
-  campaignRef: refTo(identity, text(raw.campaign)),
-  company: text(raw.company_name),
-  createdAt: timestamp(raw.timestamp_created),
-  custom: stringMap(raw.payload),
-  email: emailAddress(raw.email),
-  engagement: null,
-  firstName: text(raw.first_name),
-  interest: null,
-  tags: [],
-  lastName: text(raw.last_name),
-  linkedinUrl: null,
-  status: LEAD_STATUS.get(count(raw.status) ?? Number.NaN) ?? "unknown",
-  title: text(raw.job_title),
-});
-
-/** `ue_type`: 1 sent from a campaign, 2 received, 3 sent by hand, 4 scheduled. */
-export const SCHEDULED = 4;
-const RECEIVED = 2;
-
-const stepIndex = (value: Json | undefined): number | null => {
-  const step = text(value);
-
-  return step !== null && /^\d+$/u.test(step) && Number(step) >= 1
-    ? Number(step) - 1
-    : null;
-};
-
-const messageFields = (
-  identity: Identity,
-  raw: JsonObject,
-  includeBody: boolean
-) => {
-  const body = field(raw.body, "html") ?? field(raw.body, "text");
-
-  return {
-    ...recordBase(identity, text(raw.id) ?? "", raw),
-    ...normalizeBody(text(body), includeBody),
-    campaignRef: refTo(identity, text(raw.campaign_id)),
-    channel: "email" as const,
-    leadRef: refTo(identity, text(raw.lead_id)),
-    senderRef: refTo(identity, emailAddress(raw.eaccount)),
-    sentAt: timestamp(raw.timestamp_email) ?? timestamp(raw.timestamp_created),
-    stepIndex: stepIndex(raw.step),
-    subject: text(raw.subject),
-    threadId: text(raw.thread_id),
-    variantKey: null,
-  };
-};
-
-export const isScheduled = (raw: JsonObject): boolean =>
-  count(raw.ue_type) === SCHEDULED;
-
-export const toMessage = (
-  identity: Identity,
-  raw: JsonObject,
-  includeBody: boolean
-): Message => ({
-  ...messageFields(identity, raw, includeBody),
-  direction: count(raw.ue_type) === RECEIVED ? "in" : "out",
-});
-
-// The lead interest status values. Custom labels use other numbers and stay unknown.
-const CATEGORY = new Map<number, ReplyCategory>([
-  [-4, "negative"],
-  [-3, "negative"],
-  [-2, "negative"],
-  [-1, "negative"],
-  [0, "ooo"],
-  [1, "positive"],
-  [2, "positive"],
-  [3, "positive"],
-  [4, "positive"],
-]);
-
-/** The interest status numbers that mean one of our categories. */
-export const interestCodes = (category: ReplyCategory): number[] =>
-  [...CATEGORY.entries()].flatMap(([code, mapped]) =>
-    mapped === category ? [code] : []
-  );
-
-const isAuto = (raw: JsonObject): boolean | null => {
-  const value = raw.is_auto_reply;
-
-  return flag(value) ?? (count(value) === null ? null : count(value) === 1);
-};
-
-export const toReply = (
-  identity: Identity,
-  raw: JsonObject,
-  includeBody: boolean
-): Reply => {
-  const interest = count(raw.i_status);
-  const category = interest === null ? undefined : CATEGORY.get(interest);
-
-  return {
-    ...messageFields(identity, raw, includeBody),
-    category: category ?? "unknown",
-    categorySource: category === undefined ? null : "vendor",
-    direction: "in",
-    isAuto: isAuto(raw),
   };
 };
 

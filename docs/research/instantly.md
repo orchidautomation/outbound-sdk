@@ -276,6 +276,99 @@ Instantly publishes no API changelog. `developer.instantly.ai` has no changelog 
 
 Signs of recent API changes visible in the spec text itself: accounts cursor changed to `timestamp_created&email` ("Legacy ISO date-time cursor is still supported"); lead ordering by id guaranteed only for leads created on or after 2025-10-15; `delay_unit` added to steps ("Defaults to days for backward compatibility"); `body_fallback_reason` on emails; `lead_no_show` and `supersearch_enrichment_completed` webhook events. None of these is dated. The spec is regenerated continuously (example timestamps inside it are today's date), so it should be re-fetched rather than vendored once.
 
+## 11. Read parity (added 2026-11-14)
+
+Re-read on 2026-11-14 from `https://api.instantly.ai/openapi/api_v2.json` (`info.version` 2.0.0, 198 paths) and `https://developer.instantly.ai/llms.txt`. No API key was available, so nothing below was observed live. Each section names the endpoint, the fields the adapter reads and what is not confirmed.
+
+### Campaign settings (`campaigns.settings`)
+
+- `GET /api/v2/campaigns/{id}`. The settings are fields of the campaign object.
+- Read: `daily_limit` (dailyLimit), `daily_max_leads` (dailyNewLeads), `email_gap` in minutes (gapMinutes), `text_only` (plainText), `stop_on_reply`, `stop_on_auto_reply`, `open_tracking`, `link_tracking`, `campaign_schedule.start_date`, `.end_date`, and each `campaign_schedule.schedules[]`: `name`, `timing.from`, `timing.to`, `timezone`, `days` (an object keyed `"0"` to `"6"` with a boolean each).
+- Unconfirmed: which weekday `0` is. The adapter assumes 0 is Sunday. `timezone` is an IANA-style name from a fixed enum (for example `America/Chicago`, `Etc/GMT+12`).
+- Not read, no place in the model: `random_wait_max`, `first_email_text_only`, `prioritize_new_leads`, `match_lead_esp`, `stop_for_company`, `insert_unsubscribe_header`, `allow_risky_contacts`, `disable_bounce_protect`, `limit_emails_per_company_override`, `cc_list`, `bcc_list`, `auto_variant_select`, `provider_routing_rules`.
+
+### Campaign tags
+
+- `GET /api/v2/custom-tag-mappings?resource_ids=<campaign ids, comma separated>` gives `tag_id` and `resource_id` per assignment (`resource_type` 1 account, 2 campaign, 3 workspace). `GET /api/v2/custom-tags?tag_ids=<ids>` gives each tag's `label`.
+- A page of campaigns therefore costs three requests, one campaign two or three. Both lookups page at 100; the adapter follows up to 10 pages each and refuses (Provider error) beyond that instead of returning tags that are cut off.
+- Scopes: `custom_tag_mappings:read` and `custom_tags:read`, or `all:read`. A key limited to `campaigns:read` cannot read tags; setting the `tags` capability to `false` skips both lookups.
+- Unconfirmed: that `resource_id` is the campaign's uuid for campaigns (the schema says uuid; the search endpoint's example for accounts is an email address).
+
+### Sequence delays (corrected)
+
+- A step's `delay` is "the delay value before sending the NEXT email". The adapter used to report it on the step itself. Now a step's `delayDays` is the `delay` (in `delay_unit`) of the step before it, the first step of a campaign waits 0, and the first step of a subsequence waits its `pre_delay` (in `pre_delay_unit`), which the reference says is ignored for campaigns.
+
+### Subsequences (`sequence.subsequences`)
+
+- `GET /api/v2/subsequences?parent_campaign=<campaign id>`, cursor-paged (`limit` max 100, `starting_after`).
+- Read: `id`, `name`, `parent_campaign`, `sequences[0].steps[]` (same step shape as a campaign).
+- Not read, no place in the model: `conditions` (`crm_status`, `lead_activity`, `reply_contains`), `status`, `subsequence_schedule`, `daily_limit_mode`, `daily_limit`. They stay in `raw`.
+
+### Campaign status filter (corrected)
+
+- `GET /api/v2/campaigns?status=` takes one status number. Active covers 1 and 4 (running subsequences) and paused covers 2, -1, -2 and -99, so the adapter no longer sends a number for those two: it reads the page and keeps the matching campaigns. Draft (0) and completed (3) are still filtered by Instantly.
+
+### A campaign's senders (`senders.byCampaign`)
+
+- `GET /api/v2/campaigns/{id}` gives `email_list` (addresses) and `email_tag_list` (tag ids).
+- `GET /api/v2/accounts` has `tag_ids` ("accounts that have any of the specified tags") and `include_tags` (adds `tags[]: { id, label, description }` to each account). It has no filter by a list of addresses.
+- The adapter reads the campaign, then one page of accounts: with tags only it sends `tag_ids`; otherwise it reads every account (with `include_tags` when the campaign also names tags) and keeps those in `email_list` or carrying one of the tags. Two requests per page.
+- Unconfirmed: that `email_tag_list` holds custom tag ids that match `tags[].id`.
+
+### Sender health (`senders.health`)
+
+- `GET /api/v2/accounts/{email}`: `status` (1 Active, 2 Paused, 3 temporarily paused for maintenance, -1 Connection Error, -2 Soft Bounce Error, -3 Sending Error), `warmup_status` (0 Paused, 1 Active, -1 Banned, -2 Spam Folder Unknown, -3 Permanent Suspension), `status_message.response`, `status_message.e_message`.
+- `POST /api/v2/accounts/test/vitals` with `{ accounts: [email] }` (scope `accounts:read`): `success_list[]` and `failure_list[]` of `{ domain, allPass, mx, spf, dkim, dmarc, indeterminate[] }`. `indeterminate` names records "that could not be verified because the DNS resolver kept failing. They are reported as not passing, but the records may exist", so the adapter reports those as null.
+- `POST /api/v2/accounts/warmup-analytics` with `{ emails: [email] }`: `aggregate_data[<email>]` = `{ sent, received, landed_inbox, landed_spam, health_score, health_score_label }`.
+- connected is true for status 1, false for -1 and null otherwise. issues are the documented names of a failing status plus the two status message texts.
+- Unconfirmed: the warmup analytics time window; whether the vitals test is throttled; whether `status_message` is cleared when an account recovers. blacklisted and checkedAt are not reported by any of the three.
+
+### Lead engagement and interest (`leads.engagement`)
+
+- On the lead object (`POST /api/v2/leads/list`, `GET /api/v2/leads/{id}`): `email_open_count`, `email_reply_count`, `email_click_count`, `timestamp_last_contact`, `timestamp_last_open`, `timestamp_last_reply`, `lt_interest_status`.
+- `lt_interest_status`: 0 Out of Office, 1 Interested, 2 Meeting Booked, 3 Meeting Completed, 4 Won, -1 Not Interested, -2 Wrong Person, -3 Lost, -4 No Show, or the `interest_status` of a custom label. For any other number the adapter reads `GET /api/v2/lead-labels` (one page of 100) and uses that label's `label`; a reply with such an `i_status` takes its category from the label's `interest_status_label` (positive, negative, neutral).
+- stepIndex is null: `last_step_id` is documented as a uuid, and `email_opened_step`, `email_replied_step` and `email_clicked_step` are the last step opened, replied to or clicked, not the last step sent.
+
+### Lead lists (`lists.list`, `lists.leads`)
+
+- `GET /api/v2/lead-lists`, cursor-paged: `id`, `name`, `timestamp_created`.
+- `POST /api/v2/leads/list` with `list_id` lists a list's leads.
+- size is null. `GET /api/v2/lead-lists/{id}/verification-stats` has `total_leads`, but it is one request per list and documents no scope, so it is not read.
+
+### Block list (`blocklist`)
+
+- `GET /api/v2/block-lists-entries`, cursor-paged: `id`, `bl_value`, `is_domain`, `timestamp_created`. kind is domain or email from `is_domain`, and other when the flag is missing.
+
+### Tags (`tags`)
+
+- `GET /api/v2/custom-tags`, cursor-paged: `id`, `label`, `description`. Tags apply to accounts, campaigns and workspaces.
+
+### Webhook subscriptions (`webhooks.list`)
+
+- `GET /api/v2/webhooks`, cursor-paged, optional `campaign` filter: `id`, `name`, `target_hook_url`, `event_type`, `campaign`, `status` (1 active, -1 disabled after delivery failures), `timestamp_created`.
+- One webhook has one `event_type` (or `all_events`). For a custom lead label it is null and `custom_interest_value` holds the label's number; events is then empty.
+- `headers` (the static headers Instantly sends, which can hold a credential) is part of the payload and so of `raw`.
+
+### Messages by thread (`messages.byThread`)
+
+- `GET /api/v2/emails?search=thread:<thread id>`: "a special string that starts with \"thread:\" to search for emails in a specific thread".
+
+### Message bodies (`messages.body`: full)
+
+- In a list, `body_fallback_reason` (`too_large` or `unavailable`) marks a body that is only an excerpt: "Get the full body from `GET /api/v2/emails/{id}`". When bodies are asked for, the adapter reads each such email on its own.
+- Unconfirmed: whether `GET /api/v2/emails/{id}` shares the 20-per-minute limit of the list. The adapter counts it against that limit.
+
+### Not available from the API
+
+- `leads.since` stays `client`: `POST /api/v2/leads/list` has no creation-date filter. Its `queries[]` filter only on how many days ago an activity happened.
+- `stats.bySender` stays `derived`: `GET /api/v2/accounts/analytics/daily` is the only per-mailbox analytics and it is per day; there is no total.
+- Lead tags: custom tags attach to accounts, campaigns and workspaces only.
+- A lead's last step position (`engagement.stepIndex`): only an id is given.
+- A lead list's size (see above) and company lists: `supersearch-enrichment/company-lists` is a list-building job of the lead finder, not a saved list campaigns draw from.
+- Sender health: block list status per mailbox (inbox placement reports are per test) and the time of the last check.
+- `deletionDetection`: no list reveals deleted records.
+- Webhook signature verification: Instantly does not sign webhooks.
+
 ## Unverified / unclear
 
 1. **End of pagination.** How the last page is signalled (missing `next_starting_after`, null, or empty `items`) is not documented.

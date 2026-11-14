@@ -50,14 +50,9 @@
       "autofix_failed": false,
       "tags": [
         {
-          "id": "01a1d77f-95e3-789f-872a-c1b1e20b710d",
-          "label": "Important tag",
-          "description": null
-        },
-        {
-          "id": "01a1d77f-95e3-789f-872a-c1b1e20b710d",
-          "label": "Important tag",
-          "description": null
+          "id": "01a1d77f-5e57-7861-bab6-41dac7e7804a",
+          "label": "Important",
+          "description": "Used for marking important items"
         }
       ]
     }

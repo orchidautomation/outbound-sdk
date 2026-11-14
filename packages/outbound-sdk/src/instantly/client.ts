@@ -21,6 +21,7 @@ export interface ClientOptions {
   /** A sub workspace to act as, for an agency's admin workspace key. */
   readonly asWorkspace: string | undefined;
   readonly identity: Identity;
+  readonly readTags: boolean;
 }
 
 export interface GetOptions {
@@ -41,6 +42,8 @@ export interface InstantlyClient {
     path: string,
     body: JsonObject
   ) => Promise<Json>;
+  /** `false` when the caller turned the `tags` capability off. */
+  readonly readTags: boolean;
   /** `get`, for an endpoint that returns one object. */
   readonly getObject: (
     ctx: AdapterContext,
@@ -49,8 +52,14 @@ export interface InstantlyClient {
   ) => Promise<JsonObject>;
 }
 
-// Instantly lists leads and reads warmup analytics with POST.
-const READ_POSTS = new Set(["/leads/list", "/accounts/warmup-analytics"]);
+// Instantly lists leads, reads warmup analytics, tests a mailbox's DNS records
+// and looks up the tags of resources with POST. None of them changes data.
+const READ_POSTS = new Set([
+  "/accounts/test/vitals",
+  "/accounts/warmup-analytics",
+  "/custom-tags/search",
+  "/leads/list",
+]);
 
 const normalizePath = (path: string): string =>
   `/${path.replace(/^\/+/u, "").replace(/\/+$/u, "")}`.replace(
@@ -118,5 +127,6 @@ export const createClient = (options: ClientOptions): InstantlyClient => {
       return response.body;
     },
     raw: { authorize, baseUrl, isRead },
+    readTags: options.readTags,
   };
 };

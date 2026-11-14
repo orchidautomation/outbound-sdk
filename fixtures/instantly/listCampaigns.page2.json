@@ -2,9 +2,9 @@
   "items": [
     {
       "id": "01a1d77f-5e23-7a9a-9112-a6f7089f3291",
-      "name": "My First Campaign",
+      "name": "Third Campaign",
       "pl_value": 100,
-      "status": 1,
+      "status": -1,
       "is_evergreen": false,
       "campaign_schedule": {
         "start_date": "2025-09-25",

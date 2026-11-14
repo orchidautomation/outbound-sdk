@@ -1,0 +1,19 @@
+{
+  "items": [
+    {
+      "id": "01a1d77f-5e51-7a11-9c3e-5f2b6a000001",
+      "timestamp_created": "2026-09-01T10:00:00.000Z",
+      "organization_id": "01a1d77f-5e23-7a9a-9112-a6f7089f3200",
+      "bl_value": "Blocked.Example.com",
+      "is_domain": true
+    },
+    {
+      "id": "01a1d77f-5e51-7a11-9c3e-5f2b6a000002",
+      "timestamp_created": "2026-09-02T10:00:00.000Z",
+      "organization_id": "01a1d77f-5e23-7a9a-9112-a6f7089f3200",
+      "bl_value": " Person9@Example.org ",
+      "is_domain": false
+    }
+  ],
+  "next_starting_after": "01a1d77f-5e51-7a11-9c3e-5f2b6a000002"
+}

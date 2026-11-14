@@ -4,6 +4,9 @@ import type { AdapterSuite, RouteRequest } from "../helpers/adapter-suite.ts";
 export const KEY = "inst_test_key_0123456789abcdef";
 export const CAMPAIGN = "01a1d77f-5e23-7a9a-9112-a6f7089f329f";
 export const LEAD = "01a1d77f-5156-7723-b616-dca4fb991449";
+export const LIST = "01a1d77f-5e53-7eb1-ad45-7031e944ef51";
+export const THREAD = "01a1d77f-5e65-78a7-8eb0-021717740220";
+export const SENDER = "person1@example.com";
 
 // A request that carries a cursor gets the last page.
 const paged = (name: string) => (request: RouteRequest) => {
@@ -16,7 +19,13 @@ const paged = (name: string) => (request: RouteRequest) => {
 };
 
 export const suite: AdapterSuite = {
-  ids: { campaign: CAMPAIGN, lead: LEAD, sender: "person1@example.com" },
+  ids: {
+    campaign: CAMPAIGN,
+    lead: LEAD,
+    list: LIST,
+    sender: SENDER,
+    thread: THREAD,
+  },
   isAuthorized: (request) => request.headers.authorization === `Bearer ${KEY}`,
   make: () => instantly({ apiKey: KEY, workspaceId: "client-a" }),
   origin: "https://api.instantly.ai",
@@ -75,13 +84,74 @@ export const suite: AdapterSuite = {
       path: "/api/v2/emails",
     },
     {
+      fixture: "getEmail.json",
+      method: "GET",
+      path: /^\/api\/v2\/emails\/[\w-]+$/u,
+    },
+    {
+      fixture: "listCustomTagMappings.json",
+      method: "GET",
+      path: "/api/v2/custom-tag-mappings",
+    },
+    {
+      fixture: paged("listCustomTags"),
+      method: "GET",
+      path: "/api/v2/custom-tags",
+    },
+    {
+      fixture: "listLeadLabels.json",
+      method: "GET",
+      path: "/api/v2/lead-labels",
+    },
+    {
+      fixture: paged("listSubsequences"),
+      method: "GET",
+      path: "/api/v2/subsequences",
+    },
+    {
+      fixture: paged("listLeadLists"),
+      method: "GET",
+      path: "/api/v2/lead-lists",
+    },
+    {
+      fixture: paged("listBlockListEntries"),
+      method: "GET",
+      path: "/api/v2/block-lists-entries",
+    },
+    {
+      fixture: paged("listWebhooks"),
+      method: "GET",
+      path: "/api/v2/webhooks",
+    },
+    {
+      fixture: "testAccountVitals.json",
+      method: "POST",
+      path: "/api/v2/accounts/test/vitals",
+    },
+    {
+      fixture: "getAccountWarmupAnalytics.json",
+      method: "POST",
+      path: "/api/v2/accounts/warmup-analytics",
+    },
+    {
       fixture: "getCurrentWorkspace.json",
       method: "GET",
       path: "/api/v2/workspaces/current",
     },
   ],
   secret: KEY,
-  totals: { campaigns: 3, leads: 3, messages: 3, replies: 3, senders: 3 },
+  totals: {
+    blocklist: 3,
+    campaigns: 3,
+    leads: 3,
+    lists: 3,
+    messages: 3,
+    replies: 3,
+    senders: 3,
+    subsequences: 3,
+    tags: 3,
+    webhooks: 3,
+  },
   webhooks: {
     "webhook.account_error.json": "sender.status_changed",
     "webhook.campaign_completed.json": "campaign.status_changed",

@@ -42,16 +42,19 @@ export const instantly = (options: InstantlyOptions = {}): Adapter => {
     PROVIDER
   );
 
+  const declared = { ...capabilities, ...options.capabilities };
+
   const client = createClient({
     apiKey,
     asWorkspace: options.asWorkspace,
     baseUrl: options.baseUrl,
     identity: { provider: PROVIDER, workspaceId },
+    readTags: declared.tags === true,
   });
 
   return {
     ...readers(client),
-    capabilities: { ...capabilities, ...options.capabilities },
+    capabilities: declared,
     caveats,
     costs,
     events: instantlyEvents(PROVIDER),

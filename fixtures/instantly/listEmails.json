@@ -12,8 +12,7 @@
       "bcc_address_email_list": "person4@example.com",
       "reply_to": "person5@example.com",
       "body": {
-        "text": "This is a test email",
-        "html": "This is a test email.<br/><br/>Second line."
+        "text": "This is a test email, cut"
       },
       "organization_id": "01a1d77f-5e65-78a7-8eb0-0212308950a6",
       "campaign_id": "01a1d77f-5e65-78a7-8eb0-0213c3e7d6dc",
@@ -90,7 +89,7 @@
       "i_status": 0,
       "thread_id": "01a1d77f-5e65-78a7-8eb0-021717740221",
       "content_preview": "This is a preview of the email content.",
-      "body_fallback_reason": "too_large",
+      "body_fallback_reason": null,
       "attachment_json": {
         "files": [
           {
