@@ -15,8 +15,9 @@ import {
   nameOf,
   noteEngagement,
   positiveLabelsField,
-  readCapped,
+  readCappedFlag,
 } from "./read.ts";
+import type { Capped } from "./read.ts";
 
 const input = z.object({
   allow_free_domains: z
@@ -122,6 +123,11 @@ export interface AccountSummary {
     readonly leadsRead: number;
     /** Leads with no email address, which a domain cannot match. */
     readonly leadsWithoutEmail: number;
+    /**
+     * `true` when `max_leads` or `max_campaigns` stopped the read with more
+     * leads left, so people at the company may be missing.
+     */
+    readonly moreLeadsExist: boolean;
   };
   /** The most recent reply with a known time. `null` when no reply has one. */
   readonly lastReply: {
@@ -158,11 +164,11 @@ const parseDomain = (text: string, provider: string): string => {
 const readLeads = async (
   context: InsightContext,
   { max_campaigns: maxCampaigns, max_leads: maxLeads }: Input
-): Promise<Lead[]> => {
+): Promise<Capped<Lead>> => {
   const { outbound } = context;
 
   if (outbound.capabilities["leads.list"]) {
-    return await readCapped(
+    return await readCappedFlag(
       context,
       (cap) => outbound.leads.listAll({ max: cap }),
       maxLeads,
@@ -178,7 +184,7 @@ const readLeads = async (
     );
   }
 
-  const campaigns = await readCapped(
+  const campaigns = await readCappedFlag(
     context,
     (cap) => outbound.campaigns.listAll({ max: cap }),
     maxCampaigns,
@@ -186,20 +192,28 @@ const readLeads = async (
   );
 
   const leads: Lead[] = [];
+  let { capped } = campaigns;
 
-  for (const campaign of campaigns) {
+  for (const campaign of campaigns.items) {
     if (leads.length >= maxLeads) {
       context.partial(`Stopped at ${maxLeads} leads; more campaigns remain.`);
+      capped = true;
       break;
     }
 
     // oxlint-disable-next-line no-await-in-loop -- each campaign reads only the leads left under max_leads.
-    const found = await leadsOf(context, campaign.ref, maxLeads - leads.length);
+    const found = await readCappedFlag(
+      context,
+      (cap) => outbound.campaign(campaign.ref).leads.listAll({ max: cap }),
+      maxLeads - leads.length,
+      "leads of a campaign"
+    );
 
-    leads.push(...found);
+    leads.push(...found.items);
+    capped ||= found.capped;
   }
 
-  return leads;
+  return { capped, items: leads };
 };
 
 const toRecord = (lead: Lead): AccountRecord => ({
@@ -299,7 +313,8 @@ export const accountSummary = defineInsight({
       );
     }
 
-    const leads = await readLeads(context, values);
+    const read = await readLeads(context, values);
+    const leads = read.items;
 
     noteEngagement(context, leads, "those are null");
     const byEmail = new Map<string, Lead[]>();
@@ -326,6 +341,7 @@ export const accountSummary = defineInsight({
           .length,
         leadsRead: leads.length,
         leadsWithoutEmail: leads.filter((lead) => lead.email === null).length,
+        moreLeadsExist: read.capped,
         people: people.length,
         records: people.reduce((sum, each) => sum + each.records.length, 0),
         replied: people.filter((person) => person.replied).length,

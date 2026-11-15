@@ -11,8 +11,7 @@ import { tally } from "../stats.ts";
 import {
   campaignsIn,
   domainOf,
-  leadsOf,
-  readCapped,
+  readCappedFlag,
   statusesField,
 } from "./read.ts";
 
@@ -86,8 +85,17 @@ export interface SuppressionCheck {
     readonly campaignsRead: number;
     readonly leadsRead: number;
     readonly blockEntriesRead: number;
-    /** Entries of a kind that cannot be matched to a lead: a company name or the vendor's `other`. */
-    readonly blockEntriesNotChecked: number;
+    /**
+     * Entries that were not matched to leads: those of a kind that cannot be
+     * (a company name or the vendor's `other`). `null` when
+     * `moreBlockEntriesExist`, since the entries left unread were not
+     * checked either and their number is unknown.
+     */
+    readonly blockEntriesNotChecked: number | null;
+    /** `true` when `max_block_entries` stopped the read with more entries left: a lead on those was not found. */
+    readonly moreBlockEntriesExist: boolean;
+    /** `true` when `max_leads_per_campaign` stopped a campaign's read with more leads left. */
+    readonly moreLeadsExist: boolean;
   };
 }
 
@@ -211,14 +219,16 @@ export const suppressionCheck = defineInsight({
 
     const read = await mapConcurrent(campaigns, async (campaign) => ({
       campaign,
-      leads: await leadsOf(
+      ...(await readCappedFlag(
         context,
-        campaign.ref,
-        values.max_leads_per_campaign
-      ),
+        (cap) =>
+          context.outbound.campaign(campaign.ref).leads.listAll({ max: cap }),
+        values.max_leads_per_campaign,
+        "leads of a campaign"
+      )),
     }));
 
-    for (const { campaign, leads } of read) {
+    for (const { campaign, items: leads } of read) {
       const found = leads.flatMap((lead) => {
         const hit = matchLead(lead, blocked);
 
@@ -243,7 +253,7 @@ export const suppressionCheck = defineInsight({
           left.campaign.localeCompare(right.campaign)
       ),
       totals: {
-        blockEntriesNotChecked: blocked.notChecked,
+        blockEntriesNotChecked: listed.capped ? null : blocked.notChecked,
         blockEntriesRead: entries.length,
         byMatch: {
           domain: matches.get("domain") ?? 0,
@@ -252,6 +262,8 @@ export const suppressionCheck = defineInsight({
         },
         campaignsRead: campaigns.length,
         leadsRead: byCampaign.reduce((sum, each) => sum + each.leadsRead, 0),
+        moreBlockEntriesExist: listed.capped,
+        moreLeadsExist: read.some((each) => each.capped),
         violations: violations.length,
       },
       violations: violations.toSorted(activeFirst),

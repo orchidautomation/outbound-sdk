@@ -22,6 +22,7 @@ const NOTHING = "⚪ Nothing had enough data to check.";
 const person = (found: boolean): PersonSummary => ({
   campaigns: [
     {
+      autoReplied: false,
       campaign: "instantly:acme:c1",
       campaignName: "Founders Q4",
       campaignStatus: "active",
@@ -90,6 +91,7 @@ const account = (lastReply: AccountSummary["lastReply"]): AccountSummary => ({
     interested: 1,
     leadsRead: 40,
     leadsWithoutEmail: 0,
+    moreLeadsExist: false,
     people: 1,
     records: 2,
     replied: 1,
@@ -173,6 +175,8 @@ const check = (found: number): SuppressionCheck => ({
     byMatch: { domain: found, email: 0, linkedin: 0 },
     campaignsRead: 2,
     leadsRead: 300,
+    moreBlockEntriesExist: false,
+    moreLeadsExist: false,
     violations: found,
   },
   violations: Array.from({ length: found }, (_, index) => ({
@@ -228,6 +232,7 @@ const dropped = (count: number, repliesRead: number): DroppedReplies => ({
     answered: 5,
     conversations: 5 + count,
     dropped: count,
+    moreRepliesExist: false,
     repliesRead,
     skippedAuto: 0,
     skippedByCategory: 0,
@@ -284,6 +289,7 @@ test("hot_leads ranks who to call, and falls back from name to email", () => {
       hot: 3,
       leadsRead: 50,
       moreLeadsExist: false,
+      negative: 0,
       scored: 12,
       withoutData: 0,
     },

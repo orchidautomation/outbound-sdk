@@ -12,6 +12,25 @@ import type {
 import type { BulkResult, ListAll } from "../../internal/outbound/api.ts";
 import type { InsightContext } from "../define.ts";
 
+export interface Capped<Item> {
+  readonly items: Item[];
+  /** `true` when `max` stopped the read with more records left. */
+  readonly capped: boolean;
+}
+
+/** Reads at most `max` records, says so in a note when more exist, and says whether they did. */
+export const readCappedFlag = async <Item>(
+  context: InsightContext,
+  open: (max: number) => ListAll<Item>,
+  max: number,
+  what: string
+): Promise<Capped<Item>> => {
+  const walk = open(max);
+  const items = await context.all(walk, `${max} ${what}`);
+
+  return { capped: walk.truncated, items };
+};
+
 /** Reads at most `max` records, and says so in a note when more exist. */
 export const readCapped = <Item>(
   context: InsightContext,

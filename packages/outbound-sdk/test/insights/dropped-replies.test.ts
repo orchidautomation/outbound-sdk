@@ -203,6 +203,7 @@ test("dropped_replies reports unanswered replies longest waiting first, and coun
     // t1, t2, the timeline of l4, t3 and the reply with nothing to read.
     conversations: 5,
     dropped: 2,
+    moreRepliesExist: false,
     // The ten inbound messages but the one from October.
     repliesRead: 9,
     skippedAuto: 1,
@@ -377,6 +378,7 @@ test("dropped_replies finds nothing when there are no replies", async () => {
     answered: 0,
     conversations: 0,
     dropped: 0,
+    moreRepliesExist: false,
     repliesRead: 0,
     skippedAuto: 0,
     skippedByCategory: 0,
@@ -394,6 +396,7 @@ test("dropped_replies says the answer is partial when max_replies stops the read
 
   // The two replies of t1.
   assert.equal(result.data.totals.repliesRead, 2);
+  assert.equal(result.data.totals.moreRepliesExist, true);
   assert.equal(result.data.dropped.length, 1);
   assert.equal(result.meta.complete, false);
   assert.deepEqual(result.meta.notes, ["Stopped at 2 replies; more exist."]);

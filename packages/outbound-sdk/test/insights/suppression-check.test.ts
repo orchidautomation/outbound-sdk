@@ -145,6 +145,8 @@ test("suppression_check reports each lead on the block list with the entry and h
     byMatch: { domain: 1, email: 1, linkedin: 2 },
     campaignsRead: 3,
     leadsRead: 8,
+    moreBlockEntriesExist: false,
+    moreLeadsExist: false,
     violations: 4,
   });
   assert.equal(result.meta.complete, true);
@@ -184,6 +186,8 @@ test("suppression_check finds nothing with an empty block list, no campaigns or 
       byMatch: { domain: 0, email: 0, linkedin: 0 },
       campaignsRead: 0,
       leadsRead: 0,
+      moreBlockEntriesExist: false,
+      moreLeadsExist: false,
       violations: 0,
     },
     violations: [],
@@ -202,6 +206,9 @@ test("suppression_check says the answer is partial when a cap stops a read", asy
     ["memory:agency:l1"]
   );
   assert.equal(fewEntries.data.totals.blockEntriesRead, 1);
+  // The entries left unread were not checked, and how many there are is unknown.
+  assert.equal(fewEntries.data.totals.moreBlockEntriesExist, true);
+  assert.equal(fewEntries.data.totals.blockEntriesNotChecked, null);
   assert.equal(fewEntries.meta.complete, false);
   assert.deepEqual(fewEntries.meta.notes, [
     "Stopped at 1 block list entries; more exist.",
@@ -221,6 +228,8 @@ test("suppression_check says the answer is partial when a cap stops a read", asy
   // l1 and l2 in c1, l5 in c2.
   assert.equal(fewLeads.data.totals.violations, 3);
   assert.equal(fewLeads.data.totals.leadsRead, 6);
+  assert.equal(fewLeads.data.totals.moreLeadsExist, true);
+  assert.equal(fewLeads.data.totals.moreBlockEntriesExist, false);
   assert.equal(fewLeads.meta.complete, false);
 });
 

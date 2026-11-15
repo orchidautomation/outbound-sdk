@@ -162,6 +162,7 @@ test("account_summary lists everyone at the domain with their campaigns, counts 
     interested: 1,
     leadsRead: 8,
     leadsWithoutEmail: 1,
+    moreLeadsExist: false,
     people: 4,
     // Ann has two records, the other three one each.
     records: 5,
@@ -227,6 +228,7 @@ test("account_summary answers with nobody when the domain matches no lead or the
     interested: 0,
     leadsRead: 0,
     leadsWithoutEmail: 0,
+    moreLeadsExist: false,
     people: 0,
     records: 0,
     replied: 0,

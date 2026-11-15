@@ -161,7 +161,7 @@ Leads sitting in campaigns although they are on the block list.
 
 - `violations`: one entry per lead, with `lead`, `email`, `linkedinUrl`, `leadStatus`, `campaign`, `campaignName`, `entry`, `entryValue`, `matchedBy` (`email`, `domain` or `linkedin`), `sameTool` and a `finding` sentence. Leads still `active` first.
 - `byCampaign`: every campaign checked with `leadsRead` and `violations`, most violations first.
-- `totals`: `violations`, `byMatch`, `campaignsRead`, `leadsRead`, `blockEntriesRead` and `blockEntriesNotChecked`.
+- `totals`: `violations`, `byMatch`, `campaignsRead`, `leadsRead`, `blockEntriesRead`, `blockEntriesNotChecked`, `moreBlockEntriesExist` (`true` when `max_block_entries` left entries unread; a lead on one of those was not found, and `blockEntriesNotChecked` is then `null`) and `moreLeadsExist` (`true` when `max_leads_per_campaign` left a campaign's leads unread).
 
 - **Needs:** `blocklist`, `leads.byCampaign`.
 - **Costs:** one request per page of block entries, plus one per page of each campaign's leads.
@@ -201,12 +201,12 @@ Replies from prospects that nobody answered, longest waiting first.
 `data` (`DroppedReplies`):
 
 - `dropped`: one entry per conversation, with `reply` (the oldest unanswered reply), `lead` and the person's `name`, `email` and `linkedinUrl`, `campaign` and its `campaignName`, `channel`, `provider`, `category`, `subject`, `receivedAt`, `hoursWaiting`, `unansweredReplies`, `checkedBy` (`thread` or `timeline`) and a `finding` sentence.
-- `totals`: `repliesRead`, `skippedByCategory`, `skippedAuto`, `conversations`, `answered`, `dropped`, `tooRecent` and `unchecked`.
+- `totals`: `repliesRead`, `skippedByCategory`, `skippedAuto`, `conversations`, `answered`, `dropped`, `tooRecent`, `unchecked` and `moreRepliesExist` (`true` when `max_replies` left replies unread, so dropped ones may be missing).
 - `since` and `olderThanHours`: what was used.
 
 - **Needs:** `replies.list`. To check a conversation it also needs `messages.list` with `messages.byThread` or `leads.timeline`.
 - **Costs:** one request per page of replies, one per conversation checked, and one read of each listed lead and campaign to name them. About `max_replies` requests plus two per listed reply.
-- **Notes it can add:** the adapter cannot filter replies by date, so the newest were read and filtered here; the adapter cannot read one lead, so the names are `null`; a lead or campaign could not be read, so its names are `null`; the adapter can read neither a conversation nor a timeline, so no reply could be checked; a cap was reached.
+- **Notes it can add:** the adapter cannot filter replies by date, so the newest were read and filtered here; the adapter cannot read one lead, so the names are `null`; a reply carries no lead ref (Smartlead ties a reply to no lead), so its names are `null`; a lead or campaign could not be read, so its names are `null`; the adapter can read neither a conversation nor a timeline, so no reply could be checked; a cap was reached.
 - **Does not:** report a reply it could not check as dropped. Those are counted in `totals.unchecked`. "Answered" means a message was sent after the reply in the same conversation. It does not read what the message said.
 
 <include meta='title="dropped-replies.ts"'>
