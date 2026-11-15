@@ -55,14 +55,27 @@ test("person_summary reads the lead once for a ref, and counts it in meta.reques
   assert.equal(seen.filter((kind) => kind === "leads.get").length, 1);
 });
 
-test("person_summary refuses a lead ref under redact, and needs leads.get for one", async () => {
-  const masked = createOutbound({
-    adapter: memory({ data: EMAIL_TOOL, workspaceId: "agency" }),
-    plugins: [redact({ fields: ["email"] }), insights()],
+test("person_summary looks a lead ref up by what redact leaves, refuses it when nothing is left, and needs leads.get for one", async () => {
+  const under = (fields: readonly ("email" | "linkedin")[]) =>
+    createOutbound({
+      adapter: memory({ data: EMAIL_TOOL, workspaceId: "agency" }),
+      plugins: [redact({ fields }), insights()],
+    });
+
+  // l1 has a LinkedIn profile too, which is left unmasked.
+  const byProfile = await under(["email"]).insights.personSummary({
+    person: "memory:agency:l1",
   });
 
+  assert.equal(byProfile.data.found, true);
+  assert.ok(
+    byProfile.data.identifiers.every((key) => key.startsWith("linkedin:"))
+  );
+
   await assert.rejects(
-    masked.insights.personSummary({ person: "memory:agency:l1" }),
+    under(["email", "linkedin"]).insights.personSummary({
+      person: "memory:agency:l1",
+    }),
     (error) =>
       OutboundError.is(error) &&
       error.code === "Unsupported" &&
