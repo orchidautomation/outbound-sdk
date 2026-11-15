@@ -14,10 +14,15 @@ const html = () =>
     headers: { "content-type": "text/html" },
   });
 
-const noList = (expected: RegExp) => (error: unknown) =>
+// A Provider error for an answer that is not JSON or not an object.
+const notRead = (expected: RegExp) => (error: unknown) =>
   OutboundError.is(error) &&
   error.code === "Provider" &&
   expected.test(error.message);
+
+// The vendor answered 200 with no list, so the error carries that status.
+const noList = (expected: RegExp) => (error: unknown) =>
+  notRead(expected)(error) && OutboundError.is(error) && error.status === 200;
 
 const on =
   (path: string, answer: () => Response) =>
@@ -96,6 +101,6 @@ test("heyreach: GetTags stays lenient, except for a body that is not JSON", asyn
 
   await assert.rejects(
     async () => await broken.settle(broken.outbound.leads.get(LEAD)),
-    noList(/no JSON for \/lead\/GetTags/u)
+    notRead(/no JSON for \/lead\/GetTags/u)
   );
 });

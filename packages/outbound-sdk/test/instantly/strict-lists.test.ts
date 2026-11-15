@@ -14,9 +14,11 @@ const html = () =>
     headers: { "content-type": "text/html" },
   });
 
+// The vendor answered 200, so the error carries that status.
 const noList = (expected: RegExp) => (error: unknown) =>
   OutboundError.is(error) &&
   error.code === "Provider" &&
+  error.status === 200 &&
   expected.test(error.message);
 
 const on =

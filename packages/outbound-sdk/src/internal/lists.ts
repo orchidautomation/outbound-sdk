@@ -6,14 +6,17 @@ import { OutboundError } from "./errors.ts";
 import { isJsonArray, isJsonObject } from "./json.ts";
 import type { Json } from "./json.ts";
 
-/** A vendor list that must be a JSON array. Anything else is a `Provider` error. */
+/**
+ * A vendor list that must be a JSON array. Anything else is a `Provider`
+ * error with `status: 200`, the answer it was found in.
+ */
 export const requireList = (
   value: Json | undefined,
   provider: string,
   message: string
 ): Json[] => {
   if (!isJsonArray(value)) {
-    throw new OutboundError("Provider", message, { provider });
+    throw new OutboundError("Provider", message, { provider, status: 200 });
   }
 
   return value;
