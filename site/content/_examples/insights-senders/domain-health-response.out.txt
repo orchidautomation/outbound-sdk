@@ -47,6 +47,11 @@
         ],
         "risk": "high",
         "warmup": {
+          "count": 30,
+          "high": 0.2061,
+          "low": 0.1071,
+          "of": 200,
+          "rate": 0.15,
           "interval": {
             "high": 0.2061,
             "low": 0.1071
@@ -86,6 +91,11 @@
         "reasons": [],
         "risk": "low",
         "warmup": {
+          "count": 10,
+          "high": 0.0454,
+          "low": 0.0136,
+          "of": 400,
+          "rate": 0.025,
           "interval": {
             "high": 0.0454,
             "low": 0.0136
@@ -124,6 +134,11 @@
         "reasons": [],
         "risk": "unknown",
         "warmup": {
+          "count": null,
+          "high": null,
+          "low": null,
+          "of": null,
+          "rate": null,
           "interval": null,
           "mailboxes": 0,
           "sent": null,

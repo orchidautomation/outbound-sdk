@@ -69,6 +69,7 @@ campaign_ranking {"metric":"reply_rate"}
       "ranked": [
         {
           "campaign": "memory:acme:cmp_founders",
+          "campaignName": "SaaS founders",
           "channel": "email",
           "name": "SaaS founders",
           "provider": "memory",
@@ -83,6 +84,7 @@ campaign_ranking {"metric":"reply_rate"}
         },
         {
           "campaign": "memory:acme:cmp_agencies",
+          "campaignName": "Agency owners",
           "channel": "email",
           "name": "Agency owners",
           "provider": "memory",

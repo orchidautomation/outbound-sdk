@@ -57,6 +57,8 @@ export type CampaignSenderIssue =
 
 export interface CampaignSenderRisk {
   readonly campaign: string;
+  readonly campaignName: string;
+  /** @deprecated Use `campaignName`. Removed in 0.4.0. */
   readonly name: string;
   readonly senders: number;
   readonly issues: readonly CampaignSenderIssue[];
@@ -111,6 +113,7 @@ const riskOf = (
 
   return {
     campaign: campaign.ref,
+    campaignName: campaign.name,
     finding:
       inactive.length > 0
         ? `${campaign.name} has ${count}, ${inactive.length} of them not active.`

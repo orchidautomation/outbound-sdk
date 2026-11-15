@@ -3,6 +3,7 @@
     "campaigns": [
       {
         "campaign": "memory:acme:agencies",
+        "campaignName": "Agency owners",
         "finding": "Agency owners has 3 senders, 1 of them not active.",
         "inactive": [
           {
@@ -21,6 +22,7 @@
       },
       {
         "campaign": "memory:acme:ecom",
+        "campaignName": "Ecommerce ops",
         "finding": "Ecommerce ops has 1 sender.",
         "inactive": [],
         "issues": [
@@ -31,6 +33,7 @@
       },
       {
         "campaign": "memory:acme:linkedin",
+        "campaignName": "LinkedIn founders",
         "finding": "LinkedIn founders has 1 sender.",
         "inactive": [],
         "issues": [

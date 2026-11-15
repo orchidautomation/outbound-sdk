@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { cardFor } from "../../src/cards/index.ts";
@@ -28,6 +29,7 @@ const NOTHING = "⚪ Nothing had enough data to check.";
 
 const label = (name: string): CampaignLabel => ({
   campaign: `instantly:acme:${name}`,
+  campaignName: name,
   channel: "email",
   name,
   provider: "instantly",
@@ -43,13 +45,19 @@ const rate = (count: number | null, of: number | null): Measured => ({
 });
 
 const bounce = (over: number, clean: number): BounceWatch => ({
+  maxBounceRate: 0.03,
   minSent: 100,
   over: Array.from({ length: over }, () => ({
     bounced: 40,
     campaign: "c1",
+    campaignName: "Founders Q4",
+    count: 40,
     finding: "Founders Q4 bounces at 8.0%, above the 3.0% limit.",
+    high: 0.1,
     interval: { high: 0.1, low: 0.06 },
+    low: 0.06,
     name: "Founders Q4",
+    of: 500,
     rate: 0.08,
     senders: null,
     sent: 500,
@@ -69,6 +77,59 @@ const bounce = (over: number, clean: number): BounceWatch => ({
     unknown: 0,
   },
   unknown: [],
+});
+
+test("bounce_watch draws from campaignName, maxBounceRate and low and high", () => {
+  const [row] = bounce(1, 0).over;
+  assert.ok(row);
+
+  const renamed: BounceWatch = {
+    ...bounce(1, 0),
+    maxBounceRate: 0.04,
+    over: [
+      { ...row, campaignName: "New name", high: 0.11, low: 0.05, name: "Old" },
+    ],
+    threshold: 0.09,
+  };
+
+  const text = read(cardFor("bounce_watch", insight(renamed)));
+
+  includes(
+    text,
+    "🔴 Above the 4.0% bounce limit: 1 campaign.",
+    "New name | 500  | 40      | 8.0% (5.0–11.0%)"
+  );
+  excludes(text, "Old", "9.0%");
+});
+
+test("bounce_watch still draws a result stored before campaignName and low and high", () => {
+  const old = {
+    minSent: 100,
+    over: [
+      {
+        bounced: 40,
+        campaign: "c1",
+        finding: "",
+        interval: { high: 0.1, low: 0.06 },
+        name: "Founders Q4",
+        rate: 0.08,
+        senders: null,
+        sent: 500,
+        status: "active",
+      },
+    ],
+    sendersRead: null,
+    threshold: 0.03,
+    tooFewSends: [],
+    totals: { campaigns: 1, clean: 0, over: 1, rate: 0.08 },
+    unknown: [],
+  };
+
+  includes(
+    read(cardFor("bounce_watch", insight(old))),
+    "🔴 Above the 3.0% bounce limit: 1 campaign.",
+    "Founders Q4 | 500  | 40      | 8.0% (6.0–10.0%)"
+  );
 });
 
 test("bounce_watch flags campaigns over the limit", () => {
@@ -105,8 +166,13 @@ const domain = (name: string, risk: DomainReport["risk"]): DomainReport => ({
   reasons: risk === "low" ? ["nothing wrong"] : ["DKIM and DMARC fail"],
   risk,
   warmup: {
+    count: 12,
+    high: null,
     interval: null,
+    low: null,
     mailboxes: 1,
+    of: 100,
+    rate: risk === "high" ? 0.12 : null,
     sent: 100,
     spam: 12,
     spamRate: risk === "high" ? 0.12 : null,
@@ -247,6 +313,7 @@ const load = (problems: boolean, senders: number): SenderLoad => ({
     ? [
         {
           campaign: "c1",
+          campaignName: "Founders Q4",
           finding: "Founders Q4 has one sender.",
           inactive: [],
           issues: ["single_sender"],
@@ -543,6 +610,34 @@ test("campaign_ranking ranks by the measured rate with its interval", () => {
   includes(
     read(cardFor("campaign_ranking", insight(ranking([], 0)))),
     "No campaign has enough sends to rank."
+  );
+});
+
+test("the ops cards name a campaign by campaignName, or by name in an older result", () => {
+  const fresh = ranking(["Founders"], 0);
+  const [first] = fresh.ranked;
+  assert.ok(first);
+
+  const renamed = read(
+    cardFor(
+      "campaign_ranking",
+      insight({
+        ...fresh,
+        ranked: [{ ...first, campaignName: "New name", name: "Old" }],
+      })
+    )
+  );
+
+  includes(renamed, "New name ranks first at 6.0%.");
+  excludes(renamed, "Old");
+
+  // A result stored before `campaignName` has only `name`.
+  const { campaignName: _dropped, ...old } = first;
+
+  includes(
+    read(cardFor("campaign_ranking", insight({ ...fresh, ranked: [old] }))),
+    "Founders ranks first at 6.0%.",
+    "1 | Founders | 500  | 6.0% (4.0–8.0%)"
   );
 });
 

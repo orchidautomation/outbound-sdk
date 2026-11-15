@@ -3,6 +3,7 @@
 import { z } from "zod";
 
 import { defineInsight } from "../define.ts";
+import { refOf } from "../ref.ts";
 import { mean, round, spoken, zScore } from "../stats.ts";
 import { descending, lastDays, readDaily, shiftDay } from "./shared.ts";
 import type { DayCounts, DayRange } from "./shared.ts";
@@ -268,7 +269,10 @@ export const anomalies = defineInsight({
         threshold: options.threshold,
       }),
       period,
-      scope: options.campaign ?? "workspace",
+      scope:
+        options.campaign === null
+          ? "workspace"
+          : refOf(context.outbound, options.campaign),
       threshold: options.threshold,
     };
 

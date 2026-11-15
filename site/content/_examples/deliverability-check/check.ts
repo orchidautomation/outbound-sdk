@@ -33,11 +33,11 @@ export const deliverabilityCheck = async (
 
   lines.push(
     "",
-    `Campaigns over a ${percent(bounces.data.threshold)} bounce rate:`
+    `Campaigns over a ${percent(bounces.data.maxBounceRate)} bounce rate:`
   );
 
   for (const campaign of bounces.data.over) {
-    lines.push(`  ${campaign.name}: ${campaign.finding}`);
+    lines.push(`  ${campaign.campaignName}: ${campaign.finding}`);
 
     for (const sender of campaign.senders ?? []) {
       lines.push(

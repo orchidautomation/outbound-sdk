@@ -97,6 +97,10 @@ const input = z.object({
 type Options = z.infer<typeof input>;
 
 export interface BounceProblem extends CampaignLabel {
+  /** Bounces. The same as `bounced`. */
+  readonly count: number | null;
+  /** Messages sent, which the rate divides by. The same as `sent`. */
+  readonly of: number | null;
   readonly bounced: number | null;
   readonly sent: number | null;
   readonly rate: number;
@@ -167,7 +171,18 @@ const bounceProblems = (
       return rate !== null &&
         rate > options.max_bounce_rate &&
         (volumeOf(current) ?? -1) >= options.min_sent
-        ? [{ ...labelOf(campaign), bounced: count, high, low, rate, sent: of }]
+        ? [
+            {
+              ...labelOf(campaign),
+              bounced: count,
+              count,
+              high,
+              low,
+              of,
+              rate,
+              sent: of,
+            },
+          ]
         : [];
     })
     .toSorted((left, right) => right.rate - left.rate);
@@ -260,19 +275,19 @@ const actionsOf = (report: Sections): ActionItem[] => {
 
   return [
     ...report.bounceProblems.map((problem) => ({
-      action: `Fix the bounces of ${problem.name}: its bounce rate is ${percent(problem.rate)} (${problem.bounced} of ${problem.sent} sends).`,
+      action: `Fix the bounces of ${problem.campaignName}: its bounce rate is ${percent(problem.rate)} (${problem.count} of ${problem.of} sends).`,
       campaign: problem.campaign,
-      campaignName: problem.name,
+      campaignName: problem.campaignName,
       kind: "fix_bounces" as const,
       number: problem.rate,
     })),
     ...(report.runningOutOfLeads ?? []).map((runway) => ({
       action:
         runway.remaining === 0
-          ? `Add leads to ${runway.name}: no leads are left to contact, so it is not sending.`
-          : `Add leads to ${runway.name}: ${runway.remaining} ${runway.remaining === 1 ? "lead remains" : "leads remain"}, about ${spoken(runway.daysLeft)} days of sending.`,
+          ? `Add leads to ${runway.campaignName}: no leads are left to contact, so it is not sending.`
+          : `Add leads to ${runway.campaignName}: ${runway.remaining} ${runway.remaining === 1 ? "lead remains" : "leads remain"}, about ${spoken(runway.daysLeft)} days of sending.`,
       campaign: runway.campaign,
-      campaignName: runway.name,
+      campaignName: runway.campaignName,
       kind: "add_leads" as const,
       number: runway.daysLeft,
     })),
@@ -291,9 +306,9 @@ const actionsOf = (report: Sections): ActionItem[] => {
       ? []
       : [
           {
-            action: `Review the copy and the audience of ${worst.name}: it has the fewest replies per message sent, ${percent(worst.rate)} (${worst.count} of ${worst.of}).`,
+            action: `Review the copy and the audience of ${worst.campaignName}: it has the fewest replies per message sent, ${percent(worst.rate)} (${worst.count} of ${worst.of}).`,
             campaign: worst.campaign,
-            campaignName: worst.name,
+            campaignName: worst.campaignName,
             kind: "review_campaign" as const,
             number: worst.rate,
           },

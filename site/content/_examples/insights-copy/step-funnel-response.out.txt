@@ -9,6 +9,16 @@
         "delayDays": null,
         "earnsPlace": true,
         "inSequence": true,
+        "rates": {
+          "replyRate": {
+            "basis": "sent",
+            "count": 60,
+            "high": 0.0765,
+            "low": 0.0469,
+            "of": 1000,
+            "rate": 0.06
+          }
+        },
         "replies": 60,
         "replyRate": 0.06,
         "replyRateBasis": "sent",
@@ -21,6 +31,16 @@
         "variants": [
           {
             "contentHash": "731acea1c4f447bf4082393883bf01b1",
+            "rates": {
+              "replyRate": {
+                "basis": "sent",
+                "count": 40,
+                "high": 0.1071,
+                "low": 0.0593,
+                "of": 500,
+                "rate": 0.08
+              }
+            },
             "replies": 40,
             "replyRate": 0.08,
             "replyRateInterval": {
@@ -32,6 +52,16 @@
           },
           {
             "contentHash": "f309c4aadd809dcb492f402fe0410709",
+            "rates": {
+              "replyRate": {
+                "basis": "sent",
+                "count": 20,
+                "high": 0.061,
+                "low": 0.026,
+                "of": 500,
+                "rate": 0.04
+              }
+            },
             "replies": 20,
             "replyRate": 0.04,
             "replyRateInterval": {
@@ -51,6 +81,16 @@
         "delayDays": 3,
         "earnsPlace": true,
         "inSequence": true,
+        "rates": {
+          "replyRate": {
+            "basis": "sent",
+            "count": 16,
+            "high": 0.0322,
+            "low": 0.0123,
+            "of": 800,
+            "rate": 0.02
+          }
+        },
         "replies": 16,
         "replyRate": 0.02,
         "replyRateBasis": "sent",
@@ -63,6 +103,16 @@
         "variants": [
           {
             "contentHash": "c06dbc8ddc1b8e6751f540a41c95f51c",
+            "rates": {
+              "replyRate": {
+                "basis": "sent",
+                "count": 10,
+                "high": 0.0454,
+                "low": 0.0136,
+                "of": 400,
+                "rate": 0.025
+              }
+            },
             "replies": 10,
             "replyRate": 0.025,
             "replyRateInterval": {
@@ -74,6 +124,16 @@
           },
           {
             "contentHash": "f564ac3c2594d92756261e78c34458db",
+            "rates": {
+              "replyRate": {
+                "basis": "sent",
+                "count": 6,
+                "high": 0.0323,
+                "low": 0.0069,
+                "of": 400,
+                "rate": 0.015
+              }
+            },
             "replies": 6,
             "replyRate": 0.015,
             "replyRateInterval": {
@@ -93,6 +153,16 @@
         "delayDays": 5,
         "earnsPlace": false,
         "inSequence": true,
+        "rates": {
+          "replyRate": {
+            "basis": "sent",
+            "count": 1,
+            "high": 0.0094,
+            "low": 0.0003,
+            "of": 600,
+            "rate": 0.0017
+          }
+        },
         "replies": 1,
         "replyRate": 0.0017,
         "replyRateBasis": "sent",

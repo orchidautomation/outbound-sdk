@@ -53,6 +53,10 @@ export const str = (value: Json | undefined, key: string): string | null => {
 export const show = (value: Json | undefined, key: string): string =>
   str(value, key) ?? DASH;
 
+/** A campaign's name: `campaignName`, or `name` in a result stored before it. */
+export const campaignNameOf = (value: Json | undefined): string =>
+  str(value, "campaignName") ?? show(value, "name");
+
 export const num = (value: Json | undefined, key: string): number | null =>
   count(field(value, key));
 

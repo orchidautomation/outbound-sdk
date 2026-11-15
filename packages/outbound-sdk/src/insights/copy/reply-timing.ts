@@ -7,6 +7,7 @@ import { confirmCampaign } from "../campaign.ts";
 import { readCapped } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
+import { refOf } from "../ref.ts";
 import { median, percent, percentile, rate, round } from "../stats.ts";
 
 const DAY_MS = 86_400_000;
@@ -339,7 +340,8 @@ export const replyTiming = defineInsight({
     noteGaps(context, unpaired, received.length);
 
     const timing: ReplyTiming = {
-      campaign: args.campaign,
+      campaign:
+        args.campaign === null ? null : refOf(context.outbound, args.campaign),
       counts: {
         followOnReplies: paired.followOn,
         messagesRead: messages.length,

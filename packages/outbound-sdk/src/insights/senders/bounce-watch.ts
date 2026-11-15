@@ -9,6 +9,8 @@ import { rangeOf } from "../copy/shared.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { rangeFields, statusesInput } from "../fields.ts";
+import { measure } from "../ops/shared.ts";
+import type { Measured } from "../ops/shared.ts";
 import { percent, rate, total, wilson } from "../stats.ts";
 import type { Interval } from "../stats.ts";
 import { readCampaigns, readCampaignSenders } from "./read.ts";
@@ -52,12 +54,12 @@ const input = z.object({
   statuses: statusesInput(["active"]),
 });
 
-export interface BounceCounts {
+export interface BounceCounts extends Measured {
   readonly bounced: number;
   readonly sent: number;
-  /** Bounced divided by sent. `null` when nothing was sent. */
+  /** Bounced (`count`) divided by sent (`of`). `null` when nothing was sent. */
   readonly rate: number | null;
-  /** The Wilson interval of the rate; wide on few sends. */
+  /** @deprecated Use `low` and `high`, the Wilson interval of the rate. Removed in 0.4.0. */
   readonly interval: Interval | null;
 }
 
@@ -69,6 +71,8 @@ export interface BounceSender extends BounceCounts {
 
 export interface BounceCampaign extends BounceCounts {
   readonly campaign: string;
+  readonly campaignName: string;
+  /** @deprecated Use `campaignName`. Removed in 0.4.0. */
   readonly name: string;
   readonly status: string;
   readonly finding: string;
@@ -82,6 +86,8 @@ export interface BounceCampaign extends BounceCounts {
 
 export interface BounceUnknown {
   readonly campaign: string;
+  readonly campaignName: string;
+  /** @deprecated Use `campaignName`. Removed in 0.4.0. */
   readonly name: string;
   readonly status: string;
   readonly reason: string;
@@ -105,6 +111,9 @@ export interface BounceWatch {
     readonly sent: number | null;
     readonly rate: number | null;
   };
+  /** The `max_bounce_rate` the campaigns were held to. */
+  readonly maxBounceRate: number;
+  /** @deprecated Use `maxBounceRate`. Removed in 0.4.0. */
   readonly threshold: number;
   readonly minSent: number;
   /**
@@ -120,9 +129,9 @@ interface Range {
 }
 
 const countsOf = (bounced: number, sent: number): BounceCounts => ({
+  ...measure(bounced, sent),
   bounced,
   interval: wilson(bounced, sent),
-  rate: rate(bounced, sent),
   sent,
 });
 
@@ -283,6 +292,7 @@ export const bounceWatch = defineInsight({
 
       const entry = {
         campaign: campaign.ref,
+        campaignName: campaign.name,
         name: campaign.name,
         status: campaign.status,
       };
@@ -344,6 +354,7 @@ export const bounceWatch = defineInsight({
       (right.rate ?? -1) - (left.rate ?? -1);
 
     const answer: BounceWatch = {
+      maxBounceRate: threshold,
       minSent,
       over: over.toSorted(byRate),
       sendersRead: withSenders ? seen.read.size : null,

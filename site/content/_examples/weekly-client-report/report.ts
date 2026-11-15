@@ -27,7 +27,7 @@ export const weeklyReport = async (
     "Best campaigns:",
     ...data.top.map(
       (campaign) =>
-        `  ${campaign.rank}. ${campaign.name}: ${percent(campaign.rate)} (${campaign.count} replies to ${campaign.of} messages)`
+        `  ${campaign.rank}. ${campaign.campaignName}: ${percent(campaign.rate)} (${campaign.count} replies to ${campaign.of} messages)`
     ),
     "",
     "To do:",

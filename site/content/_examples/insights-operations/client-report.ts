@@ -4,7 +4,10 @@ const { data, meta } = await outbound.insights.clientReport({});
 
 console.log(data.totals.finding);
 
-console.log("top:", data.top.map((campaign) => campaign.name).join(", "));
+console.log(
+  "top:",
+  data.top.map((campaign) => campaign.campaignName).join(", ")
+);
 
 console.log("bottom:", data.bottom.map((campaign) => campaign.name).join(", "));
 

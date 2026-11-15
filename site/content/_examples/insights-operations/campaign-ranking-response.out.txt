@@ -8,6 +8,7 @@
     "ranked": [
       {
         "campaign": "memory:acme:linkedin",
+        "campaignName": "LinkedIn founders",
         "channel": "linkedin",
         "name": "LinkedIn founders",
         "provider": "memory",
@@ -22,6 +23,7 @@
       },
       {
         "campaign": "memory:acme:agencies",
+        "campaignName": "Agency owners",
         "channel": "email",
         "name": "Agency owners",
         "provider": "memory",
@@ -36,6 +38,7 @@
       },
       {
         "campaign": "memory:acme:founders",
+        "campaignName": "SaaS founders",
         "channel": "email",
         "name": "SaaS founders",
         "provider": "memory",
@@ -50,6 +53,7 @@
       },
       {
         "campaign": "memory:acme:pilot",
+        "campaignName": "Pilot test",
         "channel": "email",
         "name": "Pilot test",
         "provider": "memory",
@@ -64,6 +68,7 @@
       },
       {
         "campaign": "memory:acme:ecom",
+        "campaignName": "Ecommerce ops",
         "channel": "email",
         "name": "Ecommerce ops",
         "provider": "memory",

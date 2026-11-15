@@ -6,6 +6,7 @@ import { pieChart, seriesChart } from "./content.ts";
 import type { Stat } from "./content.ts";
 import {
   bool,
+  campaignNameOf,
   child,
   DASH,
   int,
@@ -85,7 +86,7 @@ const campaignDiagnosis: CardBuilder = (data) => ({
     ...totalStats(child(data, "totals")),
     ...rateStats(child(data, "rates")),
   ],
-  subtitle: `${show(data, "name")} · ${show(data, "status")} · ${show(data, "channel")}`,
+  subtitle: `${campaignNameOf(data)} · ${show(data, "status")} · ${show(data, "channel")}`,
   title: "Campaign diagnosis",
 });
 
@@ -102,14 +103,14 @@ const campaignRanking: CardBuilder = (data) => {
       `${metric} by campaign (%)`,
       `${metric} %`,
       ranked.map((campaign) => [
-        show(campaign, "name"),
+        campaignNameOf(campaign),
         percentPoint(num(campaign, "rate")),
       ])
     ),
     finding:
       first === undefined
         ? "No campaign has enough sends to rank."
-        : `${show(first, "name")} ranks first at ${pct(num(first, "rate"))}.`,
+        : `${campaignNameOf(first)} ranks first at ${pct(num(first, "rate"))}.`,
     notes:
       rows(data, "tooFewSends").length > 0
         ? [
@@ -127,7 +128,7 @@ const campaignRanking: CardBuilder = (data) => {
       headers: ["#", "Campaign", "Sent", metric],
       rows: ranked.map((campaign) => [
         int(num(campaign, "rank")),
-        show(campaign, "name"),
+        campaignNameOf(campaign),
         int(num(campaign, "sent")),
         measured(campaign),
       ]),
@@ -216,7 +217,7 @@ const periodComparison: CardBuilder = (data) => {
       align: [LEFT, RIGHT, RIGHT, LEFT],
       headers: ["Campaign", "Replies per send now", "Before", "Change"],
       rows: rows(data, "campaigns").map((campaign) => [
-        show(campaign, "name"),
+        campaignNameOf(campaign),
         pct(num(child(campaign, "current"), "replyRate")),
         pct(num(child(campaign, "previous"), "replyRate")),
         changeOf(campaign),
@@ -248,7 +249,7 @@ const pipelineForecast: CardBuilder = (data) => {
       ["Expected positive", estimate(child(data, "expectedPositive"))],
       ["Reply rate so far", measured(child(data, "replyRate"))],
     ],
-    subtitle: show(data, "name"),
+    subtitle: campaignNameOf(data),
     title: "Pipeline forecast",
   };
 };
@@ -311,7 +312,7 @@ const clientReport: CardBuilder = (data) => {
       headers: ["#", "Top campaigns", "Sent", "Replies per send"],
       rows: rows(data, "top").map((campaign) => [
         int(num(campaign, "rank")),
-        show(campaign, "name"),
+        campaignNameOf(campaign),
         int(num(campaign, "sent")),
         measured(campaign),
       ]),

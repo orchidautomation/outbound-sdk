@@ -102,7 +102,13 @@ test("domain_health groups mailboxes by domain and ranks the domains worst first
   assert.equal(bad?.blacklisted, 1);
   assert.equal(bad?.disconnected, 0);
   assert.deepEqual(bad?.warmup, {
+    // The Measured shape: spam over sent, the same as spamRate and interval.
+    count: 30,
+    high: 0.2061,
     interval: { high: 0.2061, low: 0.1071 },
+    low: 0.1071,
+    of: 200,
+    rate: 0.15,
     mailboxes: 2,
     sent: 200,
     spam: 30,
@@ -136,7 +142,12 @@ test("domain_health groups mailboxes by domain and ranks the domains worst first
   ]);
   // 5 of 50 is exactly the threshold, which is not over it.
   assert.deepEqual(mid?.warmup, {
+    count: 5,
+    high: 0.2136,
     interval: { high: 0.2136, low: 0.0435 },
+    low: 0.0435,
+    of: 50,
+    rate: 0.1,
     mailboxes: 1,
     sent: 50,
     spam: 5,
@@ -176,7 +187,12 @@ test("domain_health keeps what the vendor does not report as null, and a silent 
   const quiet = result.data.domains.at(-1);
 
   assert.deepEqual(quiet?.warmup, {
+    count: null,
+    high: null,
     interval: null,
+    low: null,
+    of: null,
+    rate: null,
     mailboxes: 0,
     sent: null,
     spam: null,

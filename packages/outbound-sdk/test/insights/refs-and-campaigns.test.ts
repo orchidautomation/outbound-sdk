@@ -10,7 +10,7 @@ import type { OutboundPlugin } from "../../src/index.ts";
 import { INSIGHTS, insights } from "../../src/insights/index.ts";
 import { demoData, memory } from "../../src/memory/index.ts";
 import { redact } from "../../src/redact/index.ts";
-import { EMAIL_TOOL, NOW, single } from "./helpers.ts";
+import { agency, EMAIL_TOOL, NOW, single } from "./helpers.ts";
 
 test("person_summary takes a lead ref from hot_leads, at the cost of one lead read", async () => {
   const outbound = single(EMAIL_TOOL);
@@ -139,4 +139,50 @@ test("a known campaign with nothing in it is still answered, not refused", async
 
   assert.equal(hot.data.totals.leadsRead, 0);
   assert.equal(timing.data.counts.messagesRead, 0);
+});
+
+// The campaign an answer names: `scope` for anomalies, `campaign` otherwise.
+const answered = (data: unknown): unknown =>
+  typeof data === "object" && data !== null && "scope" in data
+    ? data.scope
+    : (data as { campaign?: unknown }).campaign;
+
+test("an insight answers with the campaign's ref when given its bare vendor id, at no extra request", async () => {
+  const demo = createOutbound({
+    adapter: memory({ data: demoData({ now: NOW }) }),
+    plugins: [insights()],
+  });
+
+  const ref = "memory:default:cmp_founders";
+
+  for (const name of [
+    "anomalies",
+    "copy_audit",
+    "personalization_gaps",
+    "reply_timing",
+    "step_funnel",
+    "variant_test",
+  ]) {
+    const definition = INSIGHTS.find((each) => each.name === name);
+    assert.ok(definition, name);
+
+    // oxlint-disable-next-line no-await-in-loop -- one insight at a time keeps the failing one in the message.
+    const [bare, full] = await Promise.all([
+      definition.execute(demo, { campaign: "cmp_founders" }, { now: NOW }),
+      definition.execute(demo, { campaign: ref }, { now: NOW }),
+    ]);
+
+    assert.equal(answered(bare.data), ref, name);
+    assert.deepEqual(bare.data, full.data, name);
+    assert.equal(bare.meta.requests, full.meta.requests, name);
+  }
+});
+
+test("a combined instance keeps the campaign ref it was given", async () => {
+  const result = await agency().insights.stepFunnel(
+    { campaign: "mailtool:agency:c1" },
+    { now: NOW }
+  );
+
+  assert.equal(result.data.campaign, "mailtool:agency:c1");
 });

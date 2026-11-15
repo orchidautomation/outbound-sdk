@@ -374,6 +374,16 @@ const step = (index: number, replies: number | null) => ({
   delayDays: 3,
   earnsPlace: replies === null ? null : replies > 2,
   inSequence: true,
+  rates: {
+    replyRate: {
+      basis: "sent" as const,
+      count: replies,
+      high: replies === null ? null : 0.08,
+      low: replies === null ? null : 0.04,
+      of: 400,
+      rate: replies === null ? null : replies / 400,
+    },
+  },
   replies,
   replyRate: replies === null ? null : replies / 400,
   replyRateBasis: "sent" as const,
@@ -409,6 +419,26 @@ test("step_funnel charts replies by step and repeats the insight's finding", () 
   );
 });
 
+test("step_funnel still draws a result stored before rates.replyRate", () => {
+  const { rates: _dropped, ...old } = step(0, 24);
+
+  includes(
+    read(
+      cardFor(
+        "step_funnel",
+        insight({
+          campaign: "c1",
+          finding: "Step 1 brings the most replies.",
+          steps: [old],
+          totals: { replies: 24, sent: 400 },
+          unattributed: { replies: null, rows: 0, sent: null },
+        })
+      )
+    ),
+    "1    | 400  | 24      | 6.0% (4.0–8.0%)"
+  );
+});
+
 const tested = (reported: boolean | null): VariantTest => ({
   alpha: 0.05,
   campaign: "c1",
@@ -424,7 +454,10 @@ const tested = (reported: boolean | null): VariantTest => ({
         basis: "sent" as const,
         count: 10 + index * 20,
         enoughData: true,
+        high: 0.07,
         interval: { high: 0.07, low: 0.01 },
+        low: 0.01,
+        of: 500,
         pValueVsLeader: null,
         rate: (10 + index * 20) / 500,
         sent: 500,
@@ -527,6 +560,16 @@ test("copy_reuse names the best copy and each reused piece", () => {
     bodyPreview: "Saw you are hiring",
     campaigns: 2,
     contentHash: "abc",
+    rates: {
+      replyRate: {
+        basis: "sent" as const,
+        count: 30,
+        high: 0.08,
+        low: 0.04,
+        of: 500,
+        rate: 0.06,
+      },
+    },
     replies: 30,
     replyRate: 0.06,
     replyRateInterval: { high: 0.08, low: 0.04 },

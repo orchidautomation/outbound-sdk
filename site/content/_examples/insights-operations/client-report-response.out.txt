@@ -38,6 +38,7 @@
     "bottom": [
       {
         "campaign": "memory:acme:agencies",
+        "campaignName": "Agency owners",
         "channel": "email",
         "name": "Agency owners",
         "provider": "memory",
@@ -54,13 +55,16 @@
     "bounceProblems": [
       {
         "campaign": "memory:acme:ecom",
+        "campaignName": "Ecommerce ops",
         "channel": "email",
         "name": "Ecommerce ops",
         "provider": "memory",
         "status": "active",
         "bounced": 26,
+        "count": 26,
         "high": 0.0672,
         "low": 0.0319,
+        "of": 560,
         "rate": 0.0464,
         "sent": 560
       }
@@ -68,6 +72,7 @@
     "runningOutOfLeads": [
       {
         "campaign": "memory:acme:founders",
+        "campaignName": "SaaS founders",
         "channel": "email",
         "name": "SaaS founders",
         "provider": "memory",
@@ -178,6 +183,7 @@
     "top": [
       {
         "campaign": "memory:acme:linkedin",
+        "campaignName": "LinkedIn founders",
         "channel": "linkedin",
         "name": "LinkedIn founders",
         "provider": "memory",
@@ -192,6 +198,7 @@
       },
       {
         "campaign": "memory:acme:founders",
+        "campaignName": "SaaS founders",
         "channel": "email",
         "name": "SaaS founders",
         "provider": "memory",
@@ -206,6 +213,7 @@
       },
       {
         "campaign": "memory:acme:ecom",
+        "campaignName": "Ecommerce ops",
         "channel": "email",
         "name": "Ecommerce ops",
         "provider": "memory",

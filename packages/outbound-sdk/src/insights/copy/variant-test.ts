@@ -8,6 +8,7 @@ import { noun, plural } from "../../internal/plural.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { rangeFields } from "../fields.ts";
+import { refOf } from "../ref.ts";
 import { compareRates, percent } from "../stats.ts";
 import type { Interval } from "../stats.ts";
 import {
@@ -61,10 +62,16 @@ export interface TestedVariant {
   /** The metric's count. `null` when the vendor does not report it. */
   readonly count: number | null;
   /** What the rate is divided by. */
-  readonly trials: number | null;
-  /** What `trials` counts. The same for every variant of a step unless they report no base in common, and then the step is not compared. */
+  readonly of: number | null;
+  /** What `of` counts. The same for every variant of a step unless they report no base in common, and then the step is not compared. */
   readonly basis: RateBasis | null;
   readonly rate: number | null;
+  /** The 95% Wilson interval of the rate. `null` when the rate is unknown. */
+  readonly low: number | null;
+  readonly high: number | null;
+  /** @deprecated Use `of`. Removed in 0.4.0. */
+  readonly trials: number | null;
+  /** @deprecated Use `low` and `high`. Removed in 0.4.0. */
   readonly interval: Interval | null;
   /** `false` when the base is under `min_sent` or the rate is unknown; such a variant is not compared. */
   readonly enoughData: boolean;
@@ -386,7 +393,7 @@ export const variantTest = defineInsight({
 
     const result: VariantTest = {
       alpha,
-      campaign,
+      campaign: refOf(context.outbound, campaign),
       metric,
       steps,
       totals: {

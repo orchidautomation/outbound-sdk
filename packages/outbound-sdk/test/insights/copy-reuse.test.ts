@@ -132,6 +132,17 @@ test("copy_reuse compares the same copy across campaigns and names the best copy
     high: 0.0765,
     low: 0.0469,
   });
+  // `rates.replyRate` holds the same numbers as the older fields.
+  assert.deepEqual(x.uses[0]?.rates.replyRate, {
+    basis: x.uses[0]?.basis,
+    count: x.uses[0]?.replies,
+    high: 0.0765,
+    low: 0.0469,
+    of: x.uses[0]?.trials,
+    rate: x.uses[0]?.replyRate,
+  });
+  assert.equal(x.rates.replyRate.rate, x.replyRate);
+  assert.equal(x.rates.replyRate.of, x.trials);
   // 0.06 - 0.02; 60/1000 against 20/1000 is z = 4.5644, p rounds to 0.
   assert.deepEqual(
     [x.spread, x.best, x.worst, x.spreadPValue, x.spreadIsReal],
@@ -237,6 +248,16 @@ test("copy_reuse moves the spread and the best copy with min_sent, and the campa
     campaignName: "Not started",
     places: ["0:B"],
     provider: "memory",
+    rates: {
+      replyRate: {
+        basis: null,
+        count: null,
+        high: null,
+        low: null,
+        of: null,
+        rate: null,
+      },
+    },
     replies: null,
     replyRate: null,
     replyRateInterval: null,

@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import type { Lead, Sequence } from "../../internal/entities.ts";
 import { defineInsight } from "../define.ts";
+import { refOf } from "../ref.ts";
 import { rate } from "../stats.ts";
 import { leadsOf } from "./read.ts";
 
@@ -287,7 +288,7 @@ export const personalizationGaps = defineInsight({
       );
 
     const answer: PersonalizationGaps = {
-      campaign: values.campaign,
+      campaign: refOf(context.outbound, values.campaign),
       leads: affected.slice(0, values.limit),
       totals: {
         affectedRate: rate(affected.length, leads.length),

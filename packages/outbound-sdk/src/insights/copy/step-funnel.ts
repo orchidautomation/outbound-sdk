@@ -6,10 +6,18 @@ import type { MetricRow, Sequence } from "../../internal/entities.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
 import { defineInsight } from "../define.ts";
 import { rangeFields } from "../fields.ts";
+import { refOf } from "../ref.ts";
 import { rate, total } from "../stats.ts";
 import type { Interval } from "../stats.ts";
-import { measure, perLead, rangeOf, splitStats, sumRows } from "./shared.ts";
-import type { RateBasis, StepStats } from "./shared.ts";
+import {
+  measure,
+  perLead,
+  rangeOf,
+  replyRateOf,
+  splitStats,
+  sumRows,
+} from "./shared.ts";
+import type { BasedRate, RateBasis, StepStats } from "./shared.ts";
 
 const input = z.object({
   campaign: z
@@ -33,7 +41,10 @@ export interface FunnelVariant {
   readonly contentHash: string | null;
   readonly sent: number | null;
   readonly replies: number | null;
+  readonly rates: { readonly replyRate: BasedRate };
+  /** @deprecated Use `rates.replyRate.rate`. Removed in 0.4.0. */
   readonly replyRate: number | null;
+  /** @deprecated Use `rates.replyRate.low` and `.high`. Removed in 0.4.0. */
   readonly replyRateInterval: Interval | null;
 }
 
@@ -46,9 +57,13 @@ export interface FunnelStep {
   readonly inSequence: boolean;
   readonly sent: number | null;
   readonly replies: number | null;
-  /** Replies divided by `replyRateBasis`. `null` when either count is unknown. */
+  /** Replies divided by leads contacted, or messages sent, as `basis` says. */
+  readonly rates: { readonly replyRate: BasedRate };
+  /** @deprecated Use `rates.replyRate.rate`. Removed in 0.4.0. */
   readonly replyRate: number | null;
+  /** @deprecated Use `rates.replyRate.low` and `.high`. Removed in 0.4.0. */
   readonly replyRateInterval: Interval | null;
+  /** @deprecated Use `rates.replyRate.basis`. Removed in 0.4.0. */
   readonly replyRateBasis: RateBasis | null;
   /** This step's replies divided by every reply in the campaign, unattributed ones included. */
   readonly shareOfReplies: number | null;
@@ -99,6 +114,7 @@ const variantsOf = (
       contentHash:
         step?.variants.find((variant) => variant.variantKey === variantKey)
           ?.contentHash ?? null,
+      rates: { replyRate: replyRateOf(measured) },
       replies: counts.replied,
       replyRate: measured.rate,
       replyRateInterval: measured.interval,
@@ -126,6 +142,7 @@ const draftOf = (
     earnsPlace: interval === null ? null : interval.low > minReplyRate,
     inSequence: step !== undefined,
     parent: step === undefined ? null : step.parentIndex,
+    rates: { replyRate: replyRateOf(measured) },
     replies: counts?.replied ?? null,
     replyRate: measured?.rate ?? null,
     replyRateBasis: measured?.basis ?? null,
@@ -259,7 +276,7 @@ export const stepFunnel = defineInsight({
     }
 
     const funnel: StepFunnel = {
-      campaign,
+      campaign: refOf(context.outbound, campaign),
       finding: describe(steps, top, last, allReplies),
       lastStepEarningPlace: last?.step ?? null,
       steps,

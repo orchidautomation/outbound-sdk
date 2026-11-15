@@ -17,7 +17,7 @@ export const diagnose = async (
     campaign,
   });
 
-  const lines = [`${data.name} (${data.status}): ${data.summary}`, ""];
+  const lines = [`${data.campaignName} (${data.status}): ${data.summary}`, ""];
 
   for (const finding of data.findings) {
     lines.push(
