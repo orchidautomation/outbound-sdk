@@ -169,9 +169,9 @@ for (const skill of skills) {
 const INSTALL =
   /(?:npm (?:i|install|add)|pnpm add|yarn add|bun add|npx(?: -y)?) +(?:-\S+ +)*outbound-sdk(?![\w/-]*\.tgz)/u;
 
-// Set by hand with the same constant in site/test/site-truth.test.ts, in the
-// pull request that first publishes to npm.
-const unpublished = true;
+// 0.1.0 was published to npm on 2026-11-15. Kept in step with the same
+// constant in site/test/site-truth.test.ts.
+const unpublished = false;
 
 test("while the package is unpublished, no skill shows an install command for it", () => {
   if (!unpublished) {

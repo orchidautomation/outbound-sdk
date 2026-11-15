@@ -7,33 +7,30 @@ description: Set up outbound-sdk in a project and connect it to an agent, either
 
 outbound-sdk is a read-only TypeScript SDK over Instantly, Smartlead and HeyReach. `outbound mcp` serves its tools to an agent client over stdio. It stores nothing and calls no model, and the vendor key stays in the environment of the process the client starts.
 
-Before you start, confirm what the user has. Do not assume a published package or a working key.
+Before you start, confirm what the user has. Do not assume a working key.
 
 ## 1. Install it
 
-**The package is not on npm.** `npm install outbound-sdk` does not install it, and `npx outbound-sdk …` does not work, because the package has not been published. Check [installation](https://outbound-sdk.dev/docs/installation) for the current state before saying otherwise. Until it says the package is published, install the tarball attached to the GitHub release, by URL. It needs no clone and no build:
+Install it from npm in the user's project. 0.1.0 is the first release; the built package runs on Node 22 or later:
 
 ```sh
-npm install https://github.com/orchidautomation/outbound-sdk/releases/download/v0.1.0/outbound-sdk-0.1.0.tgz
+npm install outbound-sdk
 ```
 
-If that URL fails (no network to GitHub, or the user wants to build from source), build the tarball from a clone of the repository, which is public (https://github.com/orchidautomation/outbound-sdk):
+To run an unreleased commit instead, build a tarball from a clone of the public repository (https://github.com/orchidautomation/outbound-sdk). That needs Node 24.15 or later:
 
 ```sh
-# needs Node 24.15 or later to build
 git clone https://github.com/orchidautomation/outbound-sdk.git
 cd outbound-sdk
 npm ci
 npm run build
-cd packages/outbound-sdk && npm pack   # writes outbound-sdk-0.1.0.tgz
+cd packages/outbound-sdk && npm pack   # writes outbound-sdk-<version>.tgz
 
-# in the user's project (the built package runs on Node 22 or later)
-npm install /absolute/path/to/outbound-sdk-0.1.0.tgz
+# in the user's project
+npm install /absolute/path/to/outbound-sdk-<version>.tgz
 ```
 
 The package is ESM only. In a project without `"type": "module"`, name TypeScript files `.mts`.
-
-If neither works (no access to GitHub, and no Node 24.15 or later or no git to build), say so and stop: there is no other install until the package is published.
 
 ## 2. Pick the adapter and the key
 
@@ -60,16 +57,16 @@ Tell the user what the maturity means for their vendor: `unverified` means expec
 
 ## 3. Connect an MCP client
 
-The package is not published, so the client cannot fetch it with `npx`. Point the client at the installed file, by absolute path, because a client may not start the command in the project folder. In Claude Code:
+The client starts the server with `npx`, which fetches the package from npm, so nothing needs a path. In Claude Code:
 
 ```sh
-claude mcp add outbound --env OUTBOUND_SDK_PROVIDER=memory -- node /absolute/path/to/project/node_modules/outbound-sdk/dist/cli/bin.js mcp
+claude mcp add outbound --env OUTBOUND_SDK_PROVIDER=memory -- npx -y outbound-sdk mcp
 claude mcp get outbound
 ```
 
 Swap `memory` for the user's vendor and add its key with another `--env`, once the demo works. `claude mcp add` stores the server, key included, in the user's local Claude Code configuration. With `--scope project` it is written to `.mcp.json` in the project instead, which is a file that may get committed: keep keys out of it. Cursor (`.cursor/mcp.json`) and Claude Desktop (`claude_desktop_config.json`) take the same `command`, `args` and `env`. The [MCP server guide](https://outbound-sdk.dev/docs/guides/mcp-server) has the JSON form.
 
-On 2026-11-14 a tarball install was checked this way: Claude Code 2.1.325 reported the server as connected, and it answered `initialize` with 35 tools on `memory`. No model was run against it.
+On 2026-11-14 a tarball install was checked in Claude Code: version 2.1.325 reported the server as connected, and it answered `initialize` with 35 tools on `memory`. On 2026-11-15 `npx -y outbound-sdk mcp` answered `initialize` and `ping` from npm; that form was not run in a client. No model was run against either.
 
 To check the server without a client, send it a line on standard input:
 
@@ -106,7 +103,7 @@ Add the insights with `extra: insightTools(outbound)` from `outbound-sdk/insight
 | `Invalid: Set OUTBOUND_SDK_PROVIDER to one of: instantly, smartlead, heyreach, memory`, exit 1 | The variable is not set in the environment the client starts | Add it to the client's `env` |
 | `Unauthorized: instantly needs an API key: pass apiKey or set INSTANTLY_API_KEY`, exit 1 | The adapter's key is missing (the message names your vendor's variable) | Add the key to `env`, or set it where the client inherits it |
 | `Cannot use import statement outside a module` | A `.ts` file in a CommonJS project | Rename it `.mts`, or set `"type": "module"` |
-| `npm error 404` for `outbound-sdk` | The package is not published | Install the tarball (step 1) |
+| `npm error 404` for `outbound-sdk` | The registry is unreachable or a mirror lags npm | Check `npm view outbound-sdk version`, or install the tarball (step 1) |
 | Tools are missing from the list | The adapter cannot serve them, or a plugin turned them off | Expected. Run `npx outbound capabilities` to see what is declared |
 
 [Troubleshooting](https://outbound-sdk.dev/docs/troubleshooting) has the rest, with the exact messages.
