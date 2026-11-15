@@ -39,6 +39,8 @@ export interface InsightMeta {
 export interface Masking {
   readonly fields: readonly string[];
   readonly strategy: "hash" | "mask";
+  /** The token the plugin writes in place of a value in a masked field. */
+  readonly hash?: ((value: string) => string) | undefined;
 }
 
 /**

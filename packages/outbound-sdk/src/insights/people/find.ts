@@ -54,21 +54,36 @@ type Identifier = "email" | "linkedin";
 const kindOf = (key: string): Identifier =>
   key.startsWith("email:") ? "email" : "linkedin";
 
-/** The person identifiers the redact plugin masks here. */
-const maskedIdentifiers = (outbound: Outbound): Identifier[] =>
-  (maskingOf(outbound)?.fields ?? []).flatMap((field) =>
-    field === "email" || field === "linkedin" ? [field] : []
-  );
+/** What the redact plugin masks here, and how a masked value can still be matched. */
+interface Lookup {
+  readonly masked: readonly Identifier[];
+  /** The token redact writes for a value under `hash`; `undefined` when a masked value cannot be matched. */
+  readonly hash: ((value: string) => string) | undefined;
+}
+
+const lookupOf = (outbound: Outbound): Lookup => {
+  const masking = maskingOf(outbound);
+
+  return {
+    hash: masking?.strategy === "hash" ? masking.hash : undefined,
+    masked: (masking?.fields ?? []).flatMap((field) =>
+      field === "email" || field === "linkedin" ? [field] : []
+    ),
+  };
+};
 
 const WORDS: Readonly<Record<Identifier, string>> = {
   email: "email addresses",
   linkedin: "LinkedIn profiles",
 };
 
-const refuse = (outbound: Outbound, masked: readonly Identifier[]) =>
+const maskedWords = (masked: readonly Identifier[]): string =>
+  masked.map((kind) => WORDS[kind]).join(" and ");
+
+const refuse = (outbound: Outbound, masked: readonly Identifier[], why: string) =>
   new OutboundError(
     "Unsupported",
-    `A person cannot be looked up while the redact plugin masks ${masked.map((kind) => WORDS[kind]).join(" and ")}: the records could not be matched to the identifier`,
+    `A person cannot be looked up while the redact plugin masks ${maskedWords(masked)}: ${why}`,
     { provider: outbound.provider }
   );
 
@@ -76,28 +91,67 @@ const refuse = (outbound: Outbound, masked: readonly Identifier[]) =>
 export const isLeadRef = (identifier: string): boolean =>
   personKey(identifier) === null && parseRef(identifier.trim()) !== null;
 
+const PROFILE = "https://www.linkedin.com/in/";
+
+/**
+ * The forms a record's field may hold an identifier in, to hash: the address,
+ * or a profile as given and in its usual URL forms. The first is the one shown.
+ */
+const formsOf = (key: string, given: string): string[] => {
+  const value = key.slice(key.indexOf(":") + 1);
+
+  return kindOf(key) === "email"
+    ? [value]
+    : [
+        `${PROFILE}${value}`,
+        `${PROFILE}${value}/`,
+        `https://linkedin.com/in/${value}`,
+        given.trim(),
+      ];
+};
+
 interface Start {
   readonly keys: readonly string[];
   readonly records: readonly Lead[];
+  /** The tokens a hashed record holds for the identifier given, and the key to show for it. */
+  readonly hashed: { readonly tokens: ReadonlySet<string>; readonly shown: string } | null;
 }
 
 /** The identifiers to look the person up by, and the lead a ref names. */
 const startFrom = async (
   context: InsightContext,
   identifier: string,
-  masked: readonly Identifier[]
+  { hash, masked }: Lookup
 ): Promise<Start> => {
   const { outbound } = context;
   const key = personKey(identifier);
 
   if (key !== null) {
-    // The records come back masked, so an identifier of a masked kind would
-    // match none of them: refuse instead of reporting a known person as not found.
-    if (masked.includes(kindOf(key))) {
-      throw refuse(outbound, masked);
+    if (!masked.includes(kindOf(key))) {
+      return { hashed: null, keys: [key], records: [] };
     }
 
-    return { keys: [key], records: [] };
+    // The records come back masked, so an identifier of a masked kind would
+    // match none of them: refuse instead of reporting a known person as not
+    // found. A hashed record is matched by hashing the identifier the same way.
+    if (hash === undefined) {
+      throw refuse(
+        outbound,
+        masked,
+        "the records could not be matched to the identifier"
+      );
+    }
+
+    const tokens = formsOf(key, identifier).map(hash);
+
+    return {
+      hashed: {
+        shown: `${kindOf(key)}:${tokens[0] ?? ""}`,
+        tokens: new Set(tokens),
+      },
+      keys: [key],
+      records: [],
+    };
   }
 
   if (!isLeadRef(identifier)) {
@@ -108,13 +162,49 @@ const startFrom = async (
     );
   }
 
-  if (masked.length > 0) {
-    throw refuse(outbound, masked);
+  const instead =
+    hash === undefined
+      ? null
+      : "a lead's identifiers are hashed on its record, so give the email address or LinkedIn profile URL instead";
+
+  if (masked.length === 2) {
+    throw refuse(
+      outbound,
+      masked,
+      instead ?? "a lead ref has no identifier left to look the person up by"
+    );
   }
 
   const lead = context.one(await outbound.leads.get(identifier.trim()));
 
-  return { keys: keysOfLead(lead), records: [lead] };
+  // A ref is looked up by the lead's address, or else its profile, whichever is not masked.
+  const keys = keysOfLead(lead).filter((each) => !masked.includes(kindOf(each)));
+
+  if (keys.length === 0 && masked.length > 0) {
+    const [other] = (["email", "linkedin"] as const).filter(
+      (kind) => !masked.includes(kind)
+    );
+
+    throw refuse(
+      outbound,
+      masked,
+      instead ??
+        `the lead has no ${other === "email" ? "email address" : "LinkedIn profile"} to look it up by`
+    );
+  }
+
+  return { hashed: null, keys, records: [lead] };
+};
+
+/** Whether a record carries the identifier asked for: exactly, or as its hash. */
+const carries = (lead: Lead, key: string, start: Start): boolean => {
+  if (start.hashed !== null && start.keys.includes(key)) {
+    const field = kindOf(key) === "email" ? lead.email : lead.linkedinUrl;
+
+    return field !== null && start.hashed.tokens.has(field);
+  }
+
+  return keysOfLead(lead).includes(key);
 };
 
 /**
@@ -123,19 +213,21 @@ const startFrom = async (
  * lead to a LinkedIn record. A lead ref is read first (`leads.get`) for its
  * identifiers. Needs `leads.lookup`. While redact masks one kind of
  * identifier the person is looked up by the other, and records found only
- * under the masked one are missed, which the answer says.
+ * under the masked one are missed, which the answer says. Under a hashing
+ * redact the identifier given is hashed the same way to match the records.
  */
 export const findPerson = async (
   context: InsightContext,
   identifier: string,
   maxRecords: number
 ): Promise<FoundPerson> => {
-  const masked = maskedIdentifiers(context.outbound);
-  const start = await startFrom(context, identifier, masked);
+  const lookup = lookupOf(context.outbound);
+  const { masked } = lookup;
+  const start = await startFrom(context, identifier, lookup);
 
   if (masked.length > 0) {
     context.partial(
-      `The redact plugin masks ${masked.map((kind) => WORDS[kind]).join(" and ")}, so records found only under that identifier were not linked.`
+      `The redact plugin masks ${maskedWords(masked)}, so records found only under that identifier were not linked.`
     );
   }
 
@@ -176,7 +268,7 @@ export const findPerson = async (
         const leadKeys = keysOfLead(lead);
 
         // Only an exact identifier links two records; the vendor's own matching is not trusted.
-        if (asking !== undefined && leadKeys.includes(asking)) {
+        if (asking !== undefined && carries(lead, asking, start)) {
           // One record per campaign: a vendor can use one lead id in all of them.
           records.set(`${lead.ref} ${lead.campaignRef ?? ""}`, lead);
 
@@ -191,8 +283,13 @@ export const findPerson = async (
     }
   }
 
+  // A hashed identifier is shown as the records show it, never as given.
+  const shown = [...keys].map((key) =>
+    start.hashed !== null && start.keys.includes(key) ? start.hashed.shown : key
+  );
+
   return {
-    keys: [...keys].toSorted(),
+    keys: shown.toSorted(),
     records: [...records.values()].slice(0, maxRecords),
   };
 };

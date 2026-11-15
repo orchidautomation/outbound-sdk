@@ -64,6 +64,13 @@ export interface RedactExtension {
   readonly redacted: {
     readonly fields: readonly RedactField[];
     readonly strategy: "hash" | "mask";
+    /**
+     * What this redact writes in place of `value` in a masked field: the
+     * stable token under `hash`, so a caller can find a known address among
+     * hashed records without the records holding it; `[redacted]` under
+     * `mask`.
+     */
+    readonly hash: (value: string) => string;
   };
 }
 
@@ -325,7 +332,13 @@ export const redact = (
         data: redactEventData(masks, event.data),
         raw: null,
       }),
-    extend: () => ({ redacted: { fields: [...fields].toSorted(), strategy } }),
+    extend: () => ({
+      redacted: {
+        fields: [...fields].toSorted(),
+        hash: (value) => masks.replace(value) ?? MASK,
+        strategy,
+      },
+    }),
     name: "redact",
     wrap: async (operation, next): Promise<OperationOutput> => {
       const output = await next(operation);

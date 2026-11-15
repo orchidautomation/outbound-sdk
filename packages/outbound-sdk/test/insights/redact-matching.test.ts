@@ -143,7 +143,7 @@ test("insightTools leaves out what redact keeps from working, and no hint names 
   // A hash still matches an exact address; a domain is gone.
   assert.deepEqual(
     names({ strategy: "hash" }).filter((name) => people.includes(name)),
-    ["lead_collisions", "suppression_check"]
+    ["person_summary", "lead_collisions", "suppression_check"]
   );
 
   const tools = insightTools(build({}).outbound);
@@ -210,4 +210,71 @@ test("a hashing redact still finds an address on the block list", async () => {
 
   assert.equal(result.data.totals.violations, 1);
   assert.equal(result.data.violations[0]?.matchedBy, "email");
+});
+
+test("person_summary takes a lead ref while the identifier it is looked up by is left unmasked", async () => {
+  // lead_1 has an email address and no LinkedIn profile: with only LinkedIn
+  // masked it is looked up by its address, in both campaigns.
+  const byRef = await build({ fields: ["linkedin"] }).outbound.insights.personSummary(
+    { person: "memory:default:lead_1" }
+  );
+
+  assert.equal(byRef.data.found, true);
+  assert.deepEqual(byRef.data.identifiers, ["email:person1@example.com"]);
+  assert.equal(byRef.data.totals.campaigns, 2);
+
+  // With its address masked nothing is left to look it up by.
+  await assert.rejects(
+    build({ fields: ["email"] }).outbound.insights.personSummary({
+      person: "memory:default:lead_1",
+    }),
+    (error) =>
+      OutboundError.is(error) &&
+      error.code === "Unsupported" &&
+      /redact plugin masks email addresses/u.test(error.message) &&
+      /no LinkedIn profile/u.test(error.message)
+  );
+});
+
+test("a hashing redact keeps person_summary working by hashing the address given, and account_summary says a hash keeps no domain", async () => {
+  const { outbound } = build({ strategy: "hash" });
+
+  assert.ok(
+    insightTools(outbound).some((tool) => tool.name === "person_summary")
+  );
+
+  const person = await outbound.insights.personSummary({
+    person: "person1@example.com",
+  });
+
+  assert.equal(person.data.found, true);
+  assert.equal(person.data.totals.campaigns, 2);
+  // The address is shown as redact shows it on the records.
+  const lead = await outbound.leads.get("lead_1");
+
+  assert.match(lead.email ?? "", /^redacted:[0-9a-f]{16}$/u);
+  assert.deepEqual(person.data.identifiers, [`email:${lead.email}`]);
+
+  const nobody = await outbound.insights.personSummary({
+    person: "nobody@example.com",
+  });
+
+  assert.equal(nobody.data.found, false);
+
+  // A lead ref's identifiers are hashed on the record, so there is nothing to look up.
+  await assert.rejects(
+    outbound.insights.personSummary({ person: "memory:default:lead_1" }),
+    (error) =>
+      OutboundError.is(error) &&
+      error.code === "Unsupported" &&
+      /email address or LinkedIn profile URL instead/u.test(error.message)
+  );
+
+  await assert.rejects(
+    outbound.insights.accountSummary({ domain: "example.com" }),
+    (error) =>
+      OutboundError.is(error) &&
+      error.code === "Unsupported" &&
+      /a hashed address keeps no domain/u.test(error.message)
+  );
 });
