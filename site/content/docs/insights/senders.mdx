@@ -94,7 +94,7 @@ Whether the senders can send what the campaigns ask.
 - `uncheckedCampaigns`: campaigns left out of `shortCampaigns` because a limit is not reported.
 
 - **Needs:** `senders.list`. It reads more when the adapter has `campaigns.settings`, `senders.byCampaign` and `stats.byDay`.
-- **Costs:** one listing of senders and one of active campaigns, then up to 2 requests per campaign and 1 for daily stats, plus 1 request per inactive sender or sender with no daily limit, to keep what they sent out of `utilization`. Without workspace stats it reads daily stats per campaign: up to 3 per campaign.
+- **Costs:** one listing of senders and one of active campaigns, then up to 2 requests per campaign and 1 for daily stats, plus, with `split_uncounted: true`, 1 request per inactive sender or sender with no daily limit, to keep what they sent out of `utilization`. Off (the default), `utilization` is `null` when such a sender exists. Without workspace stats it reads daily stats per campaign: up to 3 per campaign.
 - **Notes it can add:** the daily ask and the short campaigns were left out because the adapter cannot read campaign settings; the short campaigns were left out because it cannot list a campaign's senders; average daily sends were left out, or cover only the active campaigns read; capacity in use was left out because the sends of senders not counted in capacity could not be told apart.
 - **Does not:** count a sender or campaign with no reported limit as 0. They are counted apart, in `withoutLimit`. In `shortCampaigns`, a sender shared with another campaign is counted in full for each, so a campaign can look covered while its senders are oversubscribed: `askRatio` shows that. Only active campaigns are read.
 

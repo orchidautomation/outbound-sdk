@@ -1,7 +1,11 @@
 no limits: null - No active sender reports a daily limit, so capacity is unknown.
 no settings: null [
-  'The daily ask and the campaigns short of senders were left out: the adapter cannot read campaign settings.'
+  'The daily ask and the campaigns short of senders were left out: the adapter cannot read campaign settings.',
+  'Capacity in use left out: 1 inactive or unlimited sender may have sent some of these messages. Pass split_uncounted: true to read their sends (1 request each).'
 ]
-capped: false 40 [ 'Stopped at 1 campaigns (max_campaigns); more exist.' ]
+capped: false 40 [
+  'Stopped at 1 campaigns (max_campaigns); more exist.',
+  'Capacity in use left out: 1 inactive or unlimited sender may have sent some of these messages. Pass split_uncounted: true to read their sends (1 request each).'
+]
 bad input: Invalid - sender_capacity: days Too small: expected number to be >=1
 no senders: Unsupported - sender_capacity is not available: the memory adapter does not support senders.list

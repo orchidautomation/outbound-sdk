@@ -91,6 +91,8 @@ const uncountedSends = async (
     readonly scope: string;
     /** What the window's rows add up to, all senders together. */
     readonly sent: number;
+    /** Whether to spend a request per uncounted sender to read its sends. */
+    readonly split: boolean;
   }
 ): Promise<number | null> => {
   const others = senders.items.filter(
@@ -102,22 +104,32 @@ const uncountedSends = async (
   }
 
   // A sender's stats cover all its campaigns, so they split workspace totals only.
-  const each =
+  const untold =
     senders.capped ||
     window.scope !== "workspace" ||
-    context.outbound.capabilities["stats.bySender"] === false
-      ? [null]
-      : await mapConcurrent(others, async (sender) =>
-          total(
-            context
-              .rows(
-                await context.outbound
-                  .sender(sender.ref)
-                  .stats({ from: window.from, to: window.to })
-              )
-              .map((row) => row.sent)
-          )
-        );
+    context.outbound.capabilities["stats.bySender"] === false;
+
+  if (!untold && !window.split) {
+    context.note(
+      `Capacity in use left out: ${others.length} inactive or unlimited ${others.length === 1 ? "sender" : "senders"} may have sent some of these messages. Pass split_uncounted: true to read their sends (1 request each).`
+    );
+
+    return null;
+  }
+
+  const each = untold
+    ? [null]
+    : await mapConcurrent(others, async (sender) =>
+        total(
+          context
+            .rows(
+              await context.outbound
+                .sender(sender.ref)
+                .stats({ from: window.from, to: window.to })
+            )
+            .map((row) => row.sent)
+        )
+      );
 
   const sent = total(each) ?? 0;
 
@@ -135,7 +147,8 @@ export const readSends = async (
   context: InsightContext,
   campaigns: readonly Campaign[],
   days: number,
-  senders: Capped<Sender>
+  senders: Capped<Sender>,
+  split: boolean
 ): Promise<CapacitySends | null> => {
   const range = {
     from: dayFrom(context.now, -days),
@@ -163,6 +176,7 @@ export const readSends = async (
           ...range,
           scope: read.scope,
           sent,
+          split,
         });
 
   const reported = rows.flatMap((row) =>

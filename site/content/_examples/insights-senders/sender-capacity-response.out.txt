@@ -47,7 +47,7 @@
     "complete": true,
     "evidence": "exact",
     "notes": [
-      "Capacity in use left out: some sends may come from senders not counted in capacity (inactive, with no daily limit, or past max_senders), and they could not be told apart."
+      "Capacity in use left out: 2 inactive or unlimited senders may have sent some of these messages. Pass split_uncounted: true to read their sends (1 request each)."
     ],
     "requests": 0,
     "computedAt": "2026-11-14T12:00:00.000Z",

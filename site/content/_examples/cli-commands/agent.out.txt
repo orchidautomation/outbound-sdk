@@ -93,7 +93,7 @@ $ outbound tools
     "name": "domain_health"
   },
   {
-    "description": "Whether the senders can send what the campaigns ask: total daily capacity (the daily limits of active senders added up), the total daily ask of active campaigns, the average messages sent per day over the last days, utilization, and the campaigns whose own senders cannot cover their daily limit. Use it before adding campaigns or when sends fall short. Costs one listing of senders and of active campaigns, then up to 2 requests per campaign and 1 for daily stats, plus 1 per inactive or unlimited sender. Utilization counts only the sends of the senders in capacity. A null means the vendor does not report the number; a sender or campaign with no reported limit is counted apart, never as 0.",
+    "description": "Whether the senders can send what the campaigns ask: total daily capacity (the daily limits of active senders added up), the total daily ask of active campaigns, the average messages sent per day over the last days, utilization, and the campaigns whose own senders cannot cover their daily limit. Use it before adding campaigns or when sends fall short. Costs one listing of senders and of active campaigns, then up to 2 requests per campaign and 1 for daily stats, plus 1 per inactive or unlimited sender with split_uncounted. Utilization counts only the sends of the senders in capacity. A null means the vendor does not report the number; a sender or campaign with no reported limit is counted apart, never as 0.",
     "name": "sender_capacity"
   },
   {

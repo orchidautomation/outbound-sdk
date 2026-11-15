@@ -490,6 +490,13 @@ export interface InsightInputs {
      * A whole number from 1 to 1000. Defaults to `200`.
      */
     readonly max_senders?: number | undefined;
+
+    /**
+     * Read the stats of each inactive or unlimited sender (1 request each) so utilization can leave their sends out. Off, utilization is null whenever such a sender exists.
+     *
+     * Defaults to `false`.
+     */
+    readonly split_uncounted?: boolean | undefined;
   };
   /** The input of `bounceWatch` (the `bounce_watch` tool). */
   readonly bounceWatch: {

@@ -37,6 +37,12 @@ const input = z.object({
     .describe(
       "The most senders to read for the workspace, and for each campaign"
     ),
+  split_uncounted: z
+    .boolean()
+    .default(false)
+    .describe(
+      "Read the stats of each inactive or unlimited sender (1 request each) so utilization can leave their sends out. Off, utilization is null whenever such a sender exists."
+    ),
 });
 
 export type { CapacitySends } from "./capacity-sends.ts";
@@ -226,7 +232,7 @@ const findingOf = (
 
 export const senderCapacity = defineInsight({
   description:
-    "Whether the senders can send what the campaigns ask: total daily capacity (the daily limits of active senders added up), the total daily ask of active campaigns, the average messages sent per day over the last days, utilization, and the campaigns whose own senders cannot cover their daily limit. Use it before adding campaigns or when sends fall short. Costs one listing of senders and of active campaigns, then up to 2 requests per campaign and 1 for daily stats, plus 1 per inactive or unlimited sender. Utilization counts only the sends of the senders in capacity. A null means the vendor does not report the number; a sender or campaign with no reported limit is counted apart, never as 0.",
+    "Whether the senders can send what the campaigns ask: total daily capacity (the daily limits of active senders added up), the total daily ask of active campaigns, the average messages sent per day over the last days, utilization, and the campaigns whose own senders cannot cover their daily limit. Use it before adding campaigns or when sends fall short. Costs one listing of senders and of active campaigns, then up to 2 requests per campaign and 1 for daily stats, plus 1 per inactive or unlimited sender with split_uncounted. Utilization counts only the sends of the senders in capacity. A null means the vendor does not report the number; a sender or campaign with no reported limit is counted apart, never as 0.",
   inputSchema: input,
   key: "senderCapacity",
   name: "sender_capacity",
@@ -234,7 +240,12 @@ export const senderCapacity = defineInsight({
   next: "Use sender_load to see which senders are shared by too many campaigns, or warmup_readiness before raising a sender's limit.",
   run: async (
     context,
-    { days, max_campaigns: maxCampaigns, max_senders: maxSenders }
+    {
+      days,
+      max_campaigns: maxCampaigns,
+      max_senders: maxSenders,
+      split_uncounted: split,
+    }
   ) => {
     const { outbound } = context;
     const { capabilities } = outbound;
@@ -263,7 +274,7 @@ export const senderCapacity = defineInsight({
 
     const capacity = capacityOf(senders);
     const ask = hasSettings ? askOf(reads) : null;
-    const sends = await readSends(context, campaigns, days, listed);
+    const sends = await readSends(context, campaigns, days, listed, split);
     const shortfalls = reads.map(shortfallOf);
 
     const answer: SenderCapacity = {

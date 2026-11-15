@@ -69,7 +69,11 @@ const DATA: MemoryData = {
 };
 
 test("sender_capacity adds up capacity, ask and recent sends, and names the campaigns short of senders", async () => {
-  const result = await single(DATA).insights.senderCapacity({}, { now: NOW });
+  const result = await single(DATA).insights.senderCapacity(
+    { split_uncounted: true },
+    { now: NOW }
+  );
+
   const { data } = result;
 
   assert.equal(result.insight, "sender_capacity");
@@ -155,9 +159,23 @@ const PAUSED: MemoryData = {
   ],
 };
 
-test("sender_capacity compares sends and capacity over the same senders", async () => {
+test("sender_capacity leaves capacity in use out by default when a sender is not counted, and says how to split it", async () => {
   const { data, meta } = await single(PAUSED).insights.senderCapacity(
     {},
+    { now: NOW }
+  );
+
+  assert.equal(data.sends?.total, 350);
+  assert.equal(data.sends?.fromUncounted, null);
+  assert.equal(data.utilization, null);
+  assert.deepEqual(meta.notes, [
+    "Capacity in use left out: 1 inactive or unlimited sender may have sent some of these messages. Pass split_uncounted: true to read their sends (1 request each).",
+  ]);
+});
+
+test("sender_capacity compares sends and capacity over the same senders", async () => {
+  const { data, meta } = await single(PAUSED).insights.senderCapacity(
+    { split_uncounted: true },
     { now: NOW }
   );
 
@@ -174,7 +192,7 @@ test("sender_capacity leaves capacity in use out when it cannot tell whose sends
 
   const noSenderStats = await single(PAUSED, {
     "stats.bySender": false,
-  }).insights.senderCapacity({}, { now: NOW });
+  }).insights.senderCapacity({ split_uncounted: true }, { now: NOW });
 
   assert.equal(noSenderStats.data.sends?.total, 350);
   assert.equal(noSenderStats.data.sends?.fromUncounted, null);
@@ -196,7 +214,7 @@ test("sender_capacity leaves capacity in use out when it cannot tell whose sends
       sent("c1", "2026-11-10", 20),
       { ...sent("c1", "2026-11-10", 301), senderId: "off" },
     ],
-  }).insights.senderCapacity({}, { now: NOW });
+  }).insights.senderCapacity({ split_uncounted: true }, { now: NOW });
 
   assert.equal(mismatched.data.sends?.fromUncounted, null);
   assert.equal(mismatched.data.utilization, null);
@@ -240,7 +258,7 @@ test("sender_capacity keeps unknown limits and unknown sent counts as null", asy
       { address: "b@example.com", id: "b", status: "error" },
     ],
     stats: [{ campaignId: "c1", counts: { replied: 3 }, date: "2026-11-12" }],
-  }).insights.senderCapacity({}, { now: NOW });
+  }).insights.senderCapacity({ split_uncounted: true }, { now: NOW });
 
   assert.deepEqual(result.data.capacity, {
     activeSenders: 1,
@@ -281,7 +299,7 @@ test("sender_capacity says the ask fits when it does, and handles an empty works
         id: "a",
       },
     ],
-  }).insights.senderCapacity({}, { now: NOW });
+  }).insights.senderCapacity({ split_uncounted: true }, { now: NOW });
 
   assert.equal(
     fits.data.finding,
@@ -344,7 +362,7 @@ test("sender_capacity is refused when the adapter cannot list senders", async ()
 test("sender_capacity leaves out the ask and the shortfalls when settings or campaign senders cannot be read", async () => {
   const noSettings = await single(DATA, {
     "campaigns.settings": false,
-  }).insights.senderCapacity({}, { now: NOW });
+  }).insights.senderCapacity({ split_uncounted: true }, { now: NOW });
 
   assert.equal(noSettings.data.ask, null);
   assert.equal(noSettings.data.askRatio, null);
@@ -361,7 +379,7 @@ test("sender_capacity leaves out the ask and the shortfalls when settings or cam
 
   const noCampaignSenders = await single(DATA, {
     "senders.byCampaign": false,
-  }).insights.senderCapacity({}, { now: NOW });
+  }).insights.senderCapacity({ split_uncounted: true }, { now: NOW });
 
   assert.equal(noCampaignSenders.data.ask?.daily, 200);
   assert.equal(noCampaignSenders.data.shortCampaigns, null);
@@ -373,7 +391,7 @@ test("sender_capacity leaves out the ask and the shortfalls when settings or cam
 test("sender_capacity falls back to campaign stats, then to no sends, as daily stats go away", async () => {
   const perCampaign = await single(DATA, {
     "stats.workspace": false,
-  }).insights.senderCapacity({}, { now: NOW });
+  }).insights.senderCapacity({ split_uncounted: true }, { now: NOW });
 
   assert.deepEqual(perCampaign.data.sends, {
     // Active campaigns only: 40 + 30 + 14 + 7; the paused campaign's 9 is out.
@@ -396,7 +414,7 @@ test("sender_capacity falls back to campaign stats, then to no sends, as daily s
   const noScope = await single(DATA, {
     "stats.campaign": false,
     "stats.workspace": false,
-  }).insights.senderCapacity({}, { now: NOW });
+  }).insights.senderCapacity({ split_uncounted: true }, { now: NOW });
 
   assert.equal(noScope.data.sends, null);
   assert.equal(noScope.data.utilization, null);
@@ -406,7 +424,7 @@ test("sender_capacity falls back to campaign stats, then to no sends, as daily s
 
   const noDays = await single(DATA, {
     "stats.byDay": false,
-  }).insights.senderCapacity({}, { now: NOW });
+  }).insights.senderCapacity({ split_uncounted: true }, { now: NOW });
 
   assert.equal(noDays.data.sends, null);
   assert.deepEqual(noDays.meta.notes, [
@@ -417,7 +435,7 @@ test("sender_capacity falls back to campaign stats, then to no sends, as daily s
 test("sender_capacity reads campaigns without a status filter when the vendor has none", async () => {
   const result = await single(DATA, {
     "campaigns.status": false,
-  }).insights.senderCapacity({}, { now: NOW });
+  }).insights.senderCapacity({ split_uncounted: true }, { now: NOW });
 
   assert.equal(result.data.ask?.daily, 200);
   assert.equal(result.data.ask?.campaigns, 5);
