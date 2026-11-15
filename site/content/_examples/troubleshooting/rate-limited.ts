@@ -31,7 +31,7 @@ const attempt = async (
     if (OutboundError.is(error)) {
       console.log(`${label}: ${error.code} - ${error.message}`);
       console.log(
-        `  requests ${vendor.count()}, timedOut ${error.timedOut}, retryAfterMs ${error.retryAfterMs}`
+        `  limit ${error.limit}, permanent ${error.permanent}, requests ${vendor.count()}, timedOut ${error.timedOut}, retryAfterMs ${error.retryAfterMs}`
       );
     }
   }

@@ -178,6 +178,7 @@ test("throws RateLimited with retryAfterMs once the retry budget is spent", asyn
   assert.equal(error.retryAfterMs, 30_000);
   assert.equal(error.status, 429);
   assert.equal(error.permanent, false, "a job queue can reschedule it");
+  assert.equal(error.limit, "vendor");
   assert.equal(http.requests.length, 3);
 });
 
@@ -342,6 +343,8 @@ test("fails with RateLimited instead of waiting past the deadline", async () => 
   assert.equal(error.code, "RateLimited");
   assert.equal(error.timedOut, true);
   assert.equal(error.retryAfterMs, 60_000);
+  assert.equal(error.limit, "deadline");
+  assert.equal(error.permanent, false, "room frees up, so it can work later");
   assert.equal(http.requests.length, 1, "nothing was sent for the second call");
 });
 

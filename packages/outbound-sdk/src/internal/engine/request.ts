@@ -30,6 +30,11 @@ export interface CallState {
   /** Stop after this many vendor requests. A plugin may lower it. */
   maxRequests: number | undefined;
   /**
+   * The setting to raise when `maxRequests` stops the call, named in the
+   * error. Defaults to "maxRequests". A plugin that lowers the cap sets it.
+   */
+  maxRequestsSetBy: string | undefined;
+  /**
    * Runs as each vendor request is about to be sent, after any wait, with no
    * other request able to slip in between. A plugin that caps requests across
    * calls counts the request here, or throws to stop it. A plugin chains onto
@@ -254,10 +259,12 @@ const assertRequestBudget = (environment: RequestEnvironment): void => {
   const { adapter, state } = environment;
 
   if (state.maxRequests !== undefined && state.requests >= state.maxRequests) {
+    const setBy = state.maxRequestsSetBy ?? "maxRequests";
+
     throw new OutboundError(
       "RateLimited",
-      `The call used its budget of ${state.maxRequests} request(s) to ${adapter.name}`,
-      { provider: adapter.name }
+      `The call used its budget of ${state.maxRequests} request(s) to ${adapter.name}. Raise ${setBy} or ask for less in one call.`,
+      { limit: "call", provider: adapter.name }
     );
   }
 };
@@ -266,6 +273,7 @@ const exhausted = (error: OutboundError, timedOut: boolean): OutboundError =>
   timedOut
     ? new OutboundError(error.code, error.message, {
         cause: error.cause,
+        limit: error.limit,
         provider: error.provider,
         retryAfterMs: error.retryAfterMs,
         status: error.status,

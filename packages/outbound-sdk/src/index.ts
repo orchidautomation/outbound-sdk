@@ -67,6 +67,7 @@ export type {
   HttpFailure,
   OutboundErrorCode,
   OutboundErrorOptions,
+  RequestLimit,
 } from "./internal/errors.ts";
 
 // oxlint-disable-next-line oxc/no-barrel-file -- this file is the package's one public entry by design, and records.ts names every export it adds.
