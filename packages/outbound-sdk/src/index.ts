@@ -67,6 +67,7 @@ export type {
   HttpFailure,
   OutboundErrorCode,
   OutboundErrorOptions,
+  PartialWalk,
   RequestLimit,
 } from "./internal/errors.ts";
 

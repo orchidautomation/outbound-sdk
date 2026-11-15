@@ -46,6 +46,7 @@ What "retried" covers, and how to change it, is on the [retries](/docs/retries) 
 | `timedOut` | `boolean` | `true` when time ran out: every attempt hit `timeout`, or the `deadline` would pass before the next retry or before the rate budget frees up. |
 | `aborted` | `boolean` | `true` when your `signal` stopped the call. |
 | `limit` | `"vendor"`, `"deadline"`, `"call"`, `"run"` or `undefined` | What stopped a `RateLimited` call. See [below](#limit). `undefined` on every other code. |
+| `partial` | `{ items, cursor, requests }` or `undefined` | Set when `listAll().toArray()` stopped part way: the records it fetched and where to resume. See [pagination](/docs/api/pagination#when-a-walk-stops-part-way). |
 | `permanent` | `boolean` | `true` when sending the same call again cannot succeed. |
 | `cause` | `unknown` | The original error, when there was one: the network error, or the HTTP failure with its `status` and `body`. |
 | `name` | `"OutboundError"` |  |
