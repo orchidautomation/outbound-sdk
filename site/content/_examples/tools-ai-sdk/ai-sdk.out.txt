@@ -1,5 +1,5 @@
 [ 'campaign_overview', 'sender_health' ]
-How every campaign is doing right now: sends, replies, positive replies, bounces and reply rate for each campaign with the given status. One vendor request per campaign. Rates are computed from counts; a null means the vendor does not report that count. truncated: true means more campaigns have the status than limit let in.
+How every campaign is doing right now: sends, replies, positive replies, bounces and reply rate for each campaign with the given status. One vendor request per campaign. Rates are computed from counts; a null means the vendor does not report that count. truncated: true means limit cut the list.
 {
   "data": {
     "campaigns": [

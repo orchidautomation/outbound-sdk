@@ -1,5 +1,5 @@
 13 tools; the first one:
-{"description":"How every campaign is doing right now: sends, replies, positive replies, bounces and reply rate for each campaign with the given status. One vendor request per campaign. Rates are computed from counts; a null means the vendor does not report that count. truncated: true means more campaigns have the status than limit let in.","name":"campaign_overview","parameters":"(JSON Schema)","strict":false,"type":"function"}
+{"description":"How every campaign is doing right now: sends, replies, positive replies, bounces and reply rate for each campaign with the given status. One vendor request per campaign. Rates are computed from counts; a null means the vendor does not report that count. truncated: true means limit cut the list.","name":"campaign_overview","parameters":"(JSON Schema)","strict":false,"type":"function"}
 function, type
 
 winning_steps {"campaign":"cmp_founders"}

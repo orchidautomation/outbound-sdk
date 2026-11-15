@@ -6,13 +6,18 @@ only: campaign_overview, reply_samples
 
 every insight as a tool: 26
 
-campaign_overview: How every campaign is doing right now: sends, replies, positive replies, bounces and reply rate for each campaign with the given status. One vendor request per campaign. Rates are computed from counts; a null means the vendor does not report that count. truncated: true means more campaigns have the status than limit let in.
+campaign_overview: How every campaign is doing right now: sends, replies, positive replies, bounces and reply rate for each campaign with the given status. One vendor request per campaign. Rates are computed from counts; a null means the vendor does not report that count. truncated: true means limit cut the list.
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
     "from": {
       "description": "First day, YYYY-MM-DD. Leave out for the whole history. Do not guess the date: every result gives today as meta.today",
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "to": {
+      "description": "Last day, YYYY-MM-DD. Leave out for up to today",
       "type": "string",
       "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
     },
@@ -35,11 +40,6 @@ campaign_overview: How every campaign is doing right now: sends, replies, positi
         "paused",
         "unknown"
       ]
-    },
-    "to": {
-      "description": "Last day, YYYY-MM-DD. Leave out for up to today",
-      "type": "string",
-      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
     }
   }
 }
