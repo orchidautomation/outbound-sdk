@@ -403,3 +403,54 @@ test("instantly: a campaign's progress is its lead count and its finished leads,
     /was not found/u
   );
 });
+
+test("instantly: placement tests are listed page by page, with status, kind and campaign", async () => {
+  const { outbound, requests, settle } = harness(suite);
+  const tests = await settle(outbound.placementTests.listAll().toArray());
+
+  assert.equal(
+    new URL(requests[0]?.url ?? "").pathname,
+    "/api/v2/inbox-placement-tests"
+  );
+  assert.deepEqual(
+    tests.map((each) => [
+      each.name,
+      each.status,
+      each.kind,
+      each.campaignRef,
+      each.createdAt,
+      each.nextRunAt,
+    ]),
+    [
+      [
+        "Weekly placement check",
+        "active",
+        "automated",
+        "instantly:client-a:01a1d77f-5e23-7a9a-9112-a6f7089f329f",
+        "2026-11-01T09:00:00.000Z",
+        "2026-11-15T09:00:00.000Z",
+      ],
+      [
+        "Launch check",
+        "completed",
+        "one_time",
+        null,
+        "2026-11-02T09:00:00.000Z",
+        null,
+      ],
+      [
+        "Paused check",
+        "paused",
+        "automated",
+        null,
+        "2026-11-03T09:00:00.000Z",
+        null,
+      ],
+    ]
+  );
+  assert.equal(
+    tests[0]?.startsAt,
+    null,
+    "Instantly gives a test no start date"
+  );
+});

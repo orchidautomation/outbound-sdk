@@ -63,6 +63,7 @@ const FULL_CAPABILITIES: CapabilityDeclaration = {
   "messages.byThread": true,
   "messages.list": true,
   "messages.since": "server",
+  "placementTests.list": true,
   "replies.category": "vendor",
   "replies.list": true,
   "replies.since": "server",

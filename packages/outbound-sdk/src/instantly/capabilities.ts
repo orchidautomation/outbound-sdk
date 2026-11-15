@@ -49,6 +49,8 @@ export const capabilities: CapabilityDeclaration = {
   // POST /leads/list has no date filter, so the wrapper filters after fetching.
   "leads.since": "client",
   "leads.timeline": true,
+  // GET /inbox-placement-tests.
+  "placementTests.list": true,
   // GET /lead-lists/{id}, then its verification-stats for the size.
   "lists.get": true,
   "lists.leads": true,
@@ -114,6 +116,8 @@ export const fields: FieldDeclaration = {
     inmailsSent: false,
     timezone: false,
   },
+  // A test has a creation time and a next run, and no start or end date.
+  placementTest: { endsAt: false, startsAt: false },
   sender: { linkedinUrl: false },
   senderHealth: { blacklisted: false, checkedAt: false },
 };
@@ -163,6 +167,7 @@ export const caveats: readonly string[] = [
   "The reads were run once, read-only, against one live workspace on 2026-11-14. Fixtures are still built from the API V2 documentation, and subsequences, a campaign's own webhooks and a second page of most lists were not exercised because that workspace had none or too few.",
   "Added from the API reference after that live run and not run against a live workspace: stats for every campaign (GET /campaigns/analytics with no id, where open_count is leads and no interested count exists), a mailbox's campaigns (GET /account-campaign-mappings), the unread filter (is_unread), lists.get with its size from verification-stats, webhooks.get, and a sender's tags and mailProvider.",
   "A lead's progress is its status when that is 1 (active), 2 (paused) or 3 (completed). Status -1 is bounced and -2 unsubscribed: they say what came back, so progress is then unknown. replied is email_reply_count above 0, and a lead that replied has the status replied whatever its progress.",
+  "A placement test's kind reads type 1 as a one-time test and 2 as an automated one: the reference names the two kinds in that order and gives the numbers no names. A test's results stay native, because Instantly reports them as one row per test email.",
   "Instantly sends next_starting_after on a last page too (seen live), and the page after it is empty. A listing therefore ends one request late; the small lookups for tags and labels stop at the first page that is not full.",
   "A reply's category is read from the email's i_status using the lead interest status values (seen live: 0, 1, -1 and -2). A received email carries the lead's address but no lead id, so a reply's leadRef is null; a sent message has one. Instantly does not mark an email as automatic, so isAuto is null.",
   "An email's step and a lead's last step are ids of the form sequence_step_variant, each counted from 0 (seen live, not documented); any other form gives a null step. Step analytics count steps from 0 too, and can hold a row with no step for counts Instantly could not tie to one.",

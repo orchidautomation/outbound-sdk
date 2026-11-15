@@ -8,6 +8,7 @@ import type {
   CampaignProgress,
   CampaignSettings,
   LeadList,
+  PlacementTest,
   SenderHealth,
   Tag,
   WebhookSubscription,
@@ -301,6 +302,10 @@ export interface Adapter<Native extends NativeCatalog = NoNative> {
     query: PageQuery,
     ctx: AdapterContext
   ) => Promise<Page<BlockEntry>>;
+  readonly listPlacementTests?: (
+    query: PageQuery,
+    ctx: AdapterContext
+  ) => Promise<Page<PlacementTest>>;
   readonly listTags?: (
     query: PageQuery,
     ctx: AdapterContext

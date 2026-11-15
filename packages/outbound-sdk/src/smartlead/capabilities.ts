@@ -61,6 +61,8 @@ export const capabilities: CapabilityDeclaration = {
   // sent and the wrapper filters after fetching.
   "leads.since": "client",
   "leads.timeline": true,
+  // SmartDelivery's POST /spam-test/report, on its own host.
+  "placementTests.list": true,
   // GET /lead-list/{id}.
   "lists.get": true,
   // GET /lead-list/. lists.leads is left off: no endpoint returns the leads
@@ -124,6 +126,8 @@ export const fields: FieldDeclaration = {
     // total_reply_count less non_ooo_reply_count.
     repliedAuto: "derived",
   },
+  // SmartDelivery's list gives a test's schedule and nothing else about it.
+  placementTest: { campaignRef: false, createdAt: false, nextRunAt: false },
   reply: {
     // The lead's category, not a label on the message.
     category: "derived",
@@ -222,5 +226,6 @@ export const caveats: readonly string[] = [
   "Lead tags cost a request per lead (GET /crm/leads/tags), so only leads.get fills them. engagement is null: no JSON response documents per-lead counts.",
   "Tags come from GET /email-accounts/tags; whether campaign tags share that list is unconfirmed.",
   "Webhooks are listed per campaign; without one the adapter walks the campaigns and returns each once. User-level or client-level webhooks may appear under none.",
+  "Placement tests are read from SmartDelivery (smartdelivery.smartlead.ai) with the same key: an account without the product is refused. The list is documented without pages, and manual is read as a one-time test. A test's results stay native, because SmartDelivery reports them as rates.",
   "Block list entries with an @ are emails, the rest domains.",
 ];

@@ -75,6 +75,8 @@ export interface Capabilities {
   workspaces: boolean;
   /** The addresses, domains and profiles the account never contacts. */
   blocklist: boolean;
+  /** List the inbox placement tests the account has set up. */
+  "placementTests.list": boolean;
   tags: boolean;
   /** The webhooks registered with the vendor. */
   "webhooks.list": boolean;
@@ -120,6 +122,7 @@ export const NO_CAPABILITIES: Capabilities = {
   "messages.list": false,
   "messages.since": false,
   native: false,
+  "placementTests.list": false,
   "replies.category": false,
   "replies.list": false,
   "replies.since": false,

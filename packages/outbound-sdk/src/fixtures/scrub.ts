@@ -7,6 +7,7 @@ import type {
   CampaignProgress,
   CampaignSettings,
   LeadList,
+  PlacementTest,
   SenderHealth,
   Tag,
   WebhookSubscription,
@@ -58,6 +59,7 @@ type AccountRecord =
   | CampaignProgress
   | CampaignSettings
   | LeadList
+  | PlacementTest
   | SenderHealth
   | Sequence
   | Tag
@@ -67,6 +69,7 @@ const isAccountRecord = (record: OutboundRecord): record is AccountRecord =>
   "steps" in record ||
   "description" in record ||
   "inProgress" in record ||
+  "nextRunAt" in record ||
   "schedule" in record ||
   "dns" in record ||
   "value" in record ||
@@ -86,6 +89,15 @@ const accountRecord = (
     return {
       ...base(record),
       campaignRef: scrubRef(record.campaignRef) ?? record.campaignRef,
+    };
+  }
+
+  // A placement test names its campaign, and its own name is the account's.
+  if ("nextRunAt" in record) {
+    return {
+      ...base(record),
+      campaignRef: scrubRef(record.campaignRef),
+      name: placeholder("value", record.name) ?? record.name,
     };
   }
 

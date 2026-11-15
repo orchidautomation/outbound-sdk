@@ -477,3 +477,44 @@ test("smartlead: a campaign's progress is the lead counts of its analytics", asy
     "each count from its own field"
   );
 });
+
+test("smartlead: placement tests come from SmartDelivery, on its own host with the same key", async () => {
+  const { outbound, requests, settle } = harness(suite);
+  const page = await settle(outbound.placementTests.list());
+  const url = urlOfLast(requests);
+
+  assert.equal(url.origin, "https://smartdelivery.smartlead.ai");
+  assert.equal(url.pathname, "/api/v1/spam-test/report");
+  assert.equal(url.searchParams.get("api_key"), KEY);
+  assert.equal(requests.at(-1)?.method, "POST");
+  assert.deepEqual(
+    page.items.map((each) => [
+      each.sourceId,
+      each.name,
+      each.status,
+      each.kind,
+      each.startsAt,
+      each.endsAt,
+    ]),
+    [
+      [
+        "test_001",
+        "Gmail Inbox Placement Test",
+        "active",
+        "automated",
+        "2026-03-10T09:00:00.000Z",
+        "2026-06-10T09:00:00.000Z",
+      ],
+      [
+        "test_002",
+        "Outlook Spam Filter Test",
+        "completed",
+        "one_time",
+        "2026-03-14T14:00:00.000Z",
+        "2026-03-20T14:00:00.000Z",
+      ],
+    ],
+    "manual is a one-time test"
+  );
+  assert.equal(page.items[0]?.campaignRef, null, "the list names no campaign");
+});

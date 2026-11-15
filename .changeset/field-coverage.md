@@ -19,3 +19,4 @@ Say which fields each adapter fills, and normalize more of what the three vendor
 - A lead carries `progress` (where it is in its sequence) and `replied`, `bounced` and `unsubscribed` (what came back) as separate fields. `status` is the headline made from them the same way on every vendor, so a lead that replied reads `replied` on Instantly and Smartlead as it already did on HeyReach.
 - `redact` masks a lead's `phone` (a new `"phone"` field), and its `website` and `companyLinkedinUrl` with `company`.
 - `outbound.campaign(id).progress()` returns a `CampaignProgress`: how many of the campaign's leads are waiting, in progress, finished, stopped, failed or blocked (`campaigns.progress`).
+- `outbound.placementTests.list()` lists the inbox placement tests on Instantly and Smartlead as `PlacementTest` records (`placementTests.list`). Their results stay native reads.

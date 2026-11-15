@@ -11,6 +11,7 @@ import {
   toCampaignProgress,
   toCampaignSettings,
   toLeadList,
+  toPlacementTest,
   toSenderHealth,
   toTag,
   toWebhook,
@@ -27,6 +28,7 @@ type AccountReaders = Pick<
   | "getWebhook"
   | "listBlocklist"
   | "listLists"
+  | "listPlacementTests"
   | "listSubsequences"
   | "listTags"
   | "listWebhooks"
@@ -99,6 +101,11 @@ export const accountReaders = (client: InstantlyClient): AccountReaders => {
       const page = await listPage(client, ctx, "/lead-lists", query);
 
       return mapPage(page, (item) => toLeadList(identity, item));
+    },
+    listPlacementTests: async (query, ctx) => {
+      const page = await listPage(client, ctx, "/inbox-placement-tests", query);
+
+      return mapPage(page, (item) => toPlacementTest(identity, item));
     },
     listSubsequences: async (query, ctx) => {
       const page = await listPage(client, ctx, "/subsequences", query, {

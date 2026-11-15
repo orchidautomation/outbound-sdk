@@ -33,6 +33,11 @@ export const suite: AdapterSuite = {
   provider: "instantly",
   routes: [
     {
+      fixture: paged("listInboxPlacementTests"),
+      method: "GET",
+      path: "/api/v2/inbox-placement-tests",
+    },
+    {
       fixture: "getLeadListVerificationStats.json",
       method: "GET",
       path: /^\/api\/v2\/lead-lists\/[^/]+\/verification-stats$/u,

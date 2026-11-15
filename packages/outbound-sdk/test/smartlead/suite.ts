@@ -51,7 +51,14 @@ export const suite: AdapterSuite = {
   make: () => smartlead({ apiKey: KEY, workspaceId: "client-a" }),
   origin: "https://server.smartlead.ai",
   provider: "smartlead",
+  // SmartDelivery serves the placement tests on its own host.
+  sisterOrigins: ["https://smartdelivery.smartlead.ai"],
   routes: [
+    {
+      fixture: "listSpamTests.json",
+      method: "POST",
+      path: `${API}/spam-test/report`,
+    },
     {
       fixture: "getLeadList.json",
       method: "GET",

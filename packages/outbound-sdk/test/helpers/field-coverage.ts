@@ -113,6 +113,7 @@ const samplers = (ids: Ids): Record<RecordName, Sampler[]> => {
         ? []
         : [(outbound: Outbound) => rows(outbound.sender(sender).stats())]),
     ],
+    placementTest: [(outbound) => outbound.placementTests.listAll().toArray()],
     reply: [
       (outbound) => outbound.replies.listAll(BODY).toArray(),
       (outbound) => outbound.campaign(campaign).replies.listAll(BODY).toArray(),

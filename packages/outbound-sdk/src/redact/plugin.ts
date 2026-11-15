@@ -235,6 +235,7 @@ const redactFields = (masks: Masks, record: OutboundRecord): OutboundRecord => {
   if (
     "steps" in record ||
     "inProgress" in record ||
+    "nextRunAt" in record ||
     "schedule" in record ||
     "dns" in record ||
     "size" in record ||

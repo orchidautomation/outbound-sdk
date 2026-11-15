@@ -493,3 +493,55 @@ test("combined: a campaign's progress and one list are read from the member that
     "a bare id names no member"
   );
 });
+
+test("placement tests: listed in memory and across a combined instance", async () => {
+  const data = {
+    campaigns: [{ id: "c1" }],
+    placementTests: [
+      {
+        campaignId: "c1",
+        id: "t1",
+        kind: "automated" as const,
+        name: "Weekly",
+      },
+      { id: "t2", status: "completed" as const },
+    ],
+  };
+
+  const outbound = createOutbound({
+    adapter: memory({ data }),
+    fetch: offline,
+  });
+
+  const page = await outbound.placementTests.list();
+
+  assert.deepEqual(
+    page.items.map((each) => [
+      each.name,
+      each.status,
+      each.kind,
+      each.campaignRef,
+    ]),
+    [
+      ["Weekly", "active", "automated", "memory:default:c1"],
+      ["t2", "completed", null, null],
+    ]
+  );
+
+  const both = createOutbound({
+    adapter: combine([
+      memory({ data, workspaceId: "acme" }),
+      memory({
+        data: { placementTests: [{ id: "t9" }] },
+        workspaceId: "globex",
+      }),
+    ]),
+    fetch: offline,
+  });
+
+  const all = await both.placementTests.listAll().toArray();
+  assert.deepEqual(
+    all.map((each) => each.ref),
+    ["memory:acme:t1", "memory:acme:t2", "memory:globex:t9"]
+  );
+});

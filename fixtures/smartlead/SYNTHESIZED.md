@@ -83,3 +83,4 @@ The docs examples behind `getLeadById.json`, `getBulkLeadMessageHistory.json`, `
 | `analyticsCampaignOverallStats.json` | The documented example of `GET /analytics/campaign/overall-stats` has one campaign; its id was changed to a campaign of the other fixtures and a second campaign was added. |
 | `getLeadList.json` | The documented example of `GET /lead-list/{id}`, unchanged. |
 | `getWebhook.json` | The documented example of `GET /webhook/{webhook_id}`, with the URL replaced by `hooks.example.com`. |
+| `listSpamTests.json` | The documented example of SmartDelivery's `POST /spam-test/report`, unchanged. |

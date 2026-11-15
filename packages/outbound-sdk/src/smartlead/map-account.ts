@@ -8,6 +8,7 @@ import type {
   CampaignProgress,
   CampaignSettings,
   LeadList,
+  PlacementTest,
   SenderHealth,
   SendingWindow,
   Tag,
@@ -231,6 +232,40 @@ export const toHealth = (
     ].flatMap((issue) => text(issue) ?? []),
     senderRef: refTo(identity, id) ?? "",
     warmup: warmupTraffic(stats, account.warmup_details),
+  };
+};
+
+const TEST_STATUS = new Map<string, PlacementTest["status"]>([
+  ["active", "active"],
+  ["completed", "completed"],
+  ["paused", "paused"],
+]);
+
+const TEST_KIND = new Map<string, NonNullable<PlacementTest["kind"]>>([
+  ["automated", "automated"],
+  ["manual", "one_time"],
+]);
+
+/**
+ * One item of SmartDelivery's `POST /spam-test/report`. The list gives a
+ * test's schedule and no creation time, next run or campaign.
+ */
+export const toPlacementTest = (
+  identity: Identity,
+  raw: JsonObject
+): PlacementTest => {
+  const id = text(raw.spam_test_id) ?? text(raw.id) ?? "";
+
+  return {
+    ...recordBase(identity, id, raw),
+    campaignRef: null,
+    createdAt: null,
+    endsAt: timestamp(raw.test_end_date),
+    kind: TEST_KIND.get(text(raw.test_type)?.toLowerCase() ?? "") ?? null,
+    name: text(raw.test_name) ?? id,
+    nextRunAt: null,
+    startsAt: timestamp(raw.schedule_start_time),
+    status: TEST_STATUS.get(text(raw.status)?.toLowerCase() ?? "") ?? "unknown",
   };
 };
 

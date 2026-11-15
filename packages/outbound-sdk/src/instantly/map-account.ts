@@ -7,6 +7,7 @@ import type {
   CampaignProgress,
   CampaignSettings,
   LeadList,
+  PlacementTest,
   SenderHealth,
   SendingWindow,
   Tag,
@@ -290,6 +291,39 @@ export const toTag = (identity: Identity, raw: JsonObject): Tag => {
     ...recordBase(identity, id, raw),
     description: text(raw.description),
     name: text(raw.label) ?? id,
+  };
+};
+
+const TEST_STATUS = new Map<number, PlacementTest["status"]>([
+  [1, "active"],
+  [2, "paused"],
+  [3, "completed"],
+]);
+
+// `type` is documented as "a one-time test or an automated test" with the
+// values 1 and 2 and no names beside them, so they are read in that order.
+const TEST_KIND = new Map<number, NonNullable<PlacementTest["kind"]>>([
+  [1, "one_time"],
+  [2, "automated"],
+]);
+
+/** `GET /inbox-placement-tests`. Instantly gives a test no start or end date. */
+export const toPlacementTest = (
+  identity: Identity,
+  raw: JsonObject
+): PlacementTest => {
+  const id = text(raw.id) ?? "";
+
+  return {
+    ...recordBase(identity, id, raw),
+    campaignRef: refTo(identity, text(raw.campaign_id)),
+    createdAt: timestamp(raw.timestamp_created),
+    endsAt: null,
+    kind: TEST_KIND.get(count(raw.type) ?? Number.NaN) ?? null,
+    name: text(raw.name) ?? id,
+    nextRunAt: timestamp(raw.timestamp_next_run),
+    startsAt: null,
+    status: TEST_STATUS.get(count(raw.status) ?? Number.NaN) ?? "unknown",
   };
 };
 

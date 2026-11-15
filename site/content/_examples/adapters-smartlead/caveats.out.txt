@@ -64,5 +64,7 @@
 
 - Webhooks are listed per campaign; without one the adapter walks the campaigns and returns each once. User-level or client-level webhooks may appear under none.
 
+- Placement tests are read from SmartDelivery (smartdelivery.smartlead.ai) with the same key: an account without the product is refused. The list is documented without pages, and manual is read as a one-time test. A test's results stay native, because SmartDelivery reports them as rates.
+
 - Block list entries with an @ are emails, the rest domains.
 

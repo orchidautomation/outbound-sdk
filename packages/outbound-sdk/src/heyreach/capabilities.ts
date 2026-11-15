@@ -132,6 +132,8 @@ export const fields: FieldDeclaration = {
     unsubscribed: false,
     variantKey: false,
   },
+  // LinkedIn has no inbox placement.
+  placementTest: false,
   reply: {
     bodyHtml: false,
     // The lead's newest auto-tag, not a label on the message.

@@ -96,6 +96,7 @@ $ outbound capabilities
     "messages.list": true,
     "messages.since": "server",
     "native": false,
+    "placementTests.list": true,
     "replies.category": "vendor",
     "replies.list": true,
     "replies.since": "server",

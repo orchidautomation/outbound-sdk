@@ -11,6 +11,7 @@ import type { Runtime } from "../engine/runtime.ts";
 import type {
   BlockEntry,
   LeadList,
+  PlacementTest,
   Tag,
   WebhookSubscription,
 } from "../entities-account.ts";
@@ -73,6 +74,7 @@ import {
   blocklistList,
   listGet,
   listList,
+  placementTestList,
   tagList,
   webhookGet,
   webhookList,
@@ -145,6 +147,7 @@ export class Outbound<
   readonly lists: Collection<LeadList, Record<never, never>>;
   readonly blocklist: ReadCollection<BlockEntry, Record<never, never>>;
   readonly tags: ReadCollection<Tag, Record<never, never>>;
+  readonly placementTests: ReadCollection<PlacementTest, Record<never, never>>;
   readonly webhooks: Collection<WebhookSubscription, WebhookFilters>;
   readonly raw: RawClient;
   readonly native: NativeClient<Native>;
@@ -204,6 +207,10 @@ export class Outbound<
     );
     this.blocklist = makeReadCollection(this.#core, blocklistList(this.#core));
     this.tags = makeReadCollection(this.#core, tagList(this.#core));
+    this.placementTests = makeReadCollection(
+      this.#core,
+      placementTestList(this.#core)
+    );
     this.webhooks = makeCollection(
       this.#core,
       webhookList(this.#core),

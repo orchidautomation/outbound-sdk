@@ -46,6 +46,8 @@ export interface AdapterSuite {
   readonly secret: string;
   /** Every request must go to this origin. */
   readonly origin: string;
+  /** A sister service the vendor serves on another host with the same key. */
+  readonly sisterOrigins?: readonly string[];
   readonly routes: readonly FixtureRoute[];
   readonly isAuthorized: (request: RecordedRequest) => boolean;
   /** Ids that exist in the fixtures. */
@@ -129,7 +131,12 @@ export const fixtureHandler =
   (suites: readonly AdapterSuite[], unrouted: string[] = []): Handler =>
   (recorded) => {
     const url = new URL(recorded.url);
-    const suite = suites.find((candidate) => candidate.origin === url.origin);
+
+    const suite = suites.find(
+      (candidate) =>
+        candidate.origin === url.origin ||
+        (candidate.sisterOrigins ?? []).includes(url.origin)
+    );
 
     const file =
       suite === undefined
@@ -230,6 +237,7 @@ const PROBES: Partial<Record<CapabilityKey, Probe>> = {
   "messages.body": (outbound) => outbound.messages.list({ include: ["body"] }),
   "messages.list": (outbound) => outbound.messages.list(),
   "messages.since": (outbound) => outbound.messages.list({ since: SINCE }),
+  "placementTests.list": (outbound) => outbound.placementTests.list(),
   "replies.category": (outbound) =>
     outbound.replies.list({ category: "positive" }),
   "replies.list": (outbound) => outbound.replies.list(),
@@ -397,7 +405,10 @@ const requestTests = (suite: AdapterSuite): void => {
 
     for (const request of requests) {
       const url = new URL(request.url);
-      assert.equal(url.origin, suite.origin);
+      assert.ok(
+        [suite.origin, ...(suite.sisterOrigins ?? [])].includes(url.origin),
+        `${url.origin} is not the vendor's`
+      );
       assert.ok(
         suite.isAuthorized(request),
         `unauthorized request: ${request.method} ${url.pathname}`

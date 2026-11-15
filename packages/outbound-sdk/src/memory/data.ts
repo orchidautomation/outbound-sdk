@@ -29,6 +29,7 @@ import type {
   MemoryBlockEntry,
   MemoryHealth,
   MemoryList,
+  MemoryPlacementTest,
   MemorySettings,
   MemoryTag,
   MemoryWebhook,
@@ -155,6 +156,7 @@ export interface MemoryData {
   readonly blocklist?: readonly MemoryBlockEntry[];
   readonly tags?: readonly MemoryTag[];
   readonly webhooks?: readonly MemoryWebhook[];
+  readonly placementTests?: readonly MemoryPlacementTest[];
 }
 
 const base = (identity: Identity, sourceId: string) =>

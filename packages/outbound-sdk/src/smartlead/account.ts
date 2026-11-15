@@ -19,6 +19,7 @@ import {
   toCampaignProgress,
   toHealth,
   toList,
+  toPlacementTest,
   toSettings,
   toTag,
   toWebhook,
@@ -43,6 +44,7 @@ type AccountReaders = Pick<
   | "getWebhook"
   | "listBlocklist"
   | "listLists"
+  | "listPlacementTests"
   | "listSubsequences"
   | "listTags"
   | "listWebhooks"
@@ -206,6 +208,12 @@ export const accountReaders = (client: SmartleadClient): AccountReaders => {
 
       return mapPage(page, (row) => toList(identity, row));
     },
+    // SmartDelivery answers with every test at once: no pages are documented.
+    listPlacementTests: async (_query, ctx) => ({
+      items: objects(
+        unwrap(await client.delivery.post(ctx, "/spam-test/report", {}))
+      ).map((test) => toPlacementTest(identity, test)),
+    }),
     listSubsequences: (query, ctx) => listSubsequences(client, ctx, query),
     // One response holds every tag of the account; there are no pages.
     listTags: async (_query, ctx) => ({

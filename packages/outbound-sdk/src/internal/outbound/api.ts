@@ -9,6 +9,7 @@ import type {
   CampaignProgress,
   CampaignSettings,
   LeadList,
+  PlacementTest,
   SenderHealth,
   Tag,
   WebhookSubscription,
@@ -378,6 +379,8 @@ export interface OutboundApi {
   /** The addresses, domains and profiles the account never contacts. */
   readonly blocklist: ReadCollection<BlockEntry, Record<never, never>>;
   readonly tags: ReadCollection<Tag, Record<never, never>>;
+  /** The inbox placement tests the account has set up. Their results are native reads. */
+  readonly placementTests: ReadCollection<PlacementTest, Record<never, never>>;
   /** The webhooks registered with the vendor. */
   readonly webhooks: Collection<WebhookSubscription, WebhookFilters>;
   readonly raw: RawClient;

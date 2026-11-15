@@ -248,6 +248,22 @@ A saved list that campaigns draw from.
 | `size`      | count or `null`            | How many records the list holds. |
 | `createdAt` | ISO timestamp or `null`    |                                  |
 
+## PlacementTest
+
+An inbox placement test: the vendor sends a campaign's email to seed mailboxes and reports where it landed. This is the test itself. Its results stay [native reads](/docs/native), because Instantly reports them as a row per email and Smartlead as rates, and the SDK reads counts, never rates.
+
+| Field | Type | Holds |
+| --- | --- | --- |
+| `name` | `string` |  |
+| `status` | `"active"`, `"paused"`, `"completed"`, `"unknown"` |  |
+| `kind` | `"one_time"`, `"automated"` or `null` | A test run once, or one on a schedule. |
+| `campaignRef` | `string` or `null` | The campaign whose email the test sends. |
+| `createdAt` | ISO timestamp or `null` |  |
+| `nextRunAt` | ISO timestamp or `null` | When an automated test runs next. |
+| `startsAt`, `endsAt` | ISO timestamp or `null` | When a scheduled test starts and stops running. |
+
+Instantly gives a test a creation time, a next run and a campaign. Smartlead's list gives its start and end and none of those.
+
 ## Tag
 
 | Field         | Type               | Holds |

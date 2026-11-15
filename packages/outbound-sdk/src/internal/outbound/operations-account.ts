@@ -17,6 +17,7 @@ export type AccountOperation =
   | { readonly kind: "campaigns.settings"; readonly id: string }
   | { readonly kind: "lists.get"; readonly id: string }
   | { readonly kind: "lists.list"; readonly query: PageQuery }
+  | { readonly kind: "placementTests.list"; readonly query: PageQuery }
   | { readonly kind: "senders.health"; readonly id: string }
   | { readonly kind: "sequence.subsequences"; readonly query: SubsequenceQuery }
   | { readonly kind: "tags.list"; readonly query: PageQuery }
@@ -29,6 +30,7 @@ const ACCOUNT_KINDS: ReadonlySet<string> = new Set<AccountOperation["kind"]>([
   "campaigns.settings",
   "lists.get",
   "lists.list",
+  "placementTests.list",
   "senders.health",
   "sequence.subsequences",
   "tags.list",
@@ -138,6 +140,14 @@ export const dispatchAccount = async (
       }
 
       return output(await adapter.listLists(operation.query, ctx));
+    }
+
+    case "placementTests.list": {
+      if (adapter.listPlacementTests === undefined) {
+        throw unsupported(adapter, operation.kind);
+      }
+
+      return output(await adapter.listPlacementTests(operation.query, ctx));
     }
 
     case "tags.list": {

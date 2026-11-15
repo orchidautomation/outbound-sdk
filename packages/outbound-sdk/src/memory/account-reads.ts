@@ -8,6 +8,7 @@ import {
   toBlockEntry,
   toHealth,
   toList,
+  toPlacementTest,
   toSettings,
   toTag,
   toWebhook,
@@ -25,6 +26,7 @@ type AccountReads = Pick<
   | "getWebhook"
   | "listBlocklist"
   | "listLists"
+  | "listPlacementTests"
   | "listSubsequences"
   | "listTags"
   | "listWebhooks"
@@ -98,6 +100,13 @@ export const accountReads = (store: Store): AccountReads => {
       page(
         (data.lists ?? []).map((seed) =>
           toList(identity, seed, sizeOf(seed.id))
+        ),
+        query
+      ),
+    listPlacementTests: (query) =>
+      page(
+        (data.placementTests ?? []).map((seed) =>
+          toPlacementTest(identity, seed)
         ),
         query
       ),

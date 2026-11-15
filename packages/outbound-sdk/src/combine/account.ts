@@ -14,6 +14,7 @@ type AccountReads = Pick<
   | "getWebhook"
   | "listBlocklist"
   | "listLists"
+  | "listPlacementTests"
   | "listSubsequences"
   | "listTags"
   | "listWebhooks"
@@ -73,6 +74,10 @@ export const accountReads = (members: readonly Adapter[]): AccountReads => ({
   listLists: (query, ctx) =>
     pageAcross(members, ctx, query, (member, memberCtx, next) =>
       need(member, "listLists")({ ...query, next }, memberCtx)
+    ),
+  listPlacementTests: (query, ctx) =>
+    pageAcross(members, ctx, query, (member, memberCtx, next) =>
+      need(member, "listPlacementTests")({ ...query, next }, memberCtx)
     ),
   listSubsequences: (query, ctx) => {
     const routed = routeRef(members, ctx, query.campaignId, "Campaign");

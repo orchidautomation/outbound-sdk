@@ -148,6 +148,31 @@ export const tagSchema = z.object({
 
 export type Tag = z.infer<typeof tagSchema>;
 
+/**
+ * An inbox placement test: the vendor sends a campaign's email to seed
+ * mailboxes and reports where it landed. This is the test itself. Its
+ * results stay native, because one vendor reports them as a row per email
+ * and another as rates.
+ */
+export const placementTestSchema = z.object({
+  ...baseFields,
+  /** The campaign whose email the test sends. */
+  campaignRef: z.string().nullable(),
+  createdAt: isoDateTime,
+  /** When a scheduled test stops running. */
+  endsAt: isoDateTime,
+  /** `one_time` for a test run once, `automated` for one on a schedule. */
+  kind: z.enum(["automated", "one_time"]).nullable(),
+  name: z.string().min(1),
+  /** When an automated test runs next. */
+  nextRunAt: isoDateTime,
+  /** When a scheduled test starts running. */
+  startsAt: isoDateTime,
+  status: z.enum(["active", "completed", "paused", "unknown"]),
+});
+
+export type PlacementTest = z.infer<typeof placementTestSchema>;
+
 /** A webhook registered with the vendor. */
 export const webhookSubscriptionSchema = z.object({
   ...baseFields,
@@ -178,6 +203,7 @@ export type Entity =
   | Lead
   | LeadList
   | Message
+  | PlacementTest
   | Reply
   | Sender
   | SenderHealth

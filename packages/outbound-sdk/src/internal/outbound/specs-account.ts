@@ -6,6 +6,7 @@ import {
   campaignProgressSchema,
   campaignSettingsSchema,
   leadListSchema,
+  placementTestSchema,
   senderHealthSchema,
   tagSchema,
   webhookSubscriptionSchema,
@@ -15,6 +16,7 @@ import type {
   CampaignProgress,
   CampaignSettings,
   LeadList,
+  PlacementTest,
   SenderHealth,
   Tag,
   WebhookSubscription,
@@ -137,6 +139,27 @@ export const blocklistList = (core: Core): ListSpec<BlockEntry, NoFilters> => ({
   },
   schema: blockEntrySchema,
   toOperation: (_filters, page) => ({ kind: "blocklist.list", query: page }),
+});
+
+export const placementTestList = (
+  core: Core
+): ListSpec<PlacementTest, NoFilters> => ({
+  action: "placementTests.list",
+  keyOf: refOf,
+  prepare: () => {
+    requireCapability(
+      core.gate,
+      "placementTests.list",
+      "Listing inbox placement tests"
+    );
+
+    return {};
+  },
+  schema: placementTestSchema,
+  toOperation: (_filters, page) => ({
+    kind: "placementTests.list",
+    query: page,
+  }),
 });
 
 export const tagList = (core: Core): ListSpec<Tag, NoFilters> => ({

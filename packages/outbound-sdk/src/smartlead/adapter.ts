@@ -47,6 +47,7 @@ type Readers = Pick<
   | "listLeads"
   | "listLists"
   | "listMessages"
+  | "listPlacementTests"
   | "listReplies"
   | "listSenders"
   | "listSubsequences"

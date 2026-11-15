@@ -11,6 +11,7 @@ import { createVendorClient } from "../internal/client.ts";
 import type { VendorClient } from "../internal/client.ts";
 import type { Identity } from "../internal/record.ts";
 import { BASE_URL } from "./capabilities.ts";
+import { DELIVERY_URL } from "./native-params.ts";
 import { NATIVE_READ_POSTS } from "./native.ts";
 
 export interface ClientOptions {
@@ -24,6 +25,8 @@ export type { RequestOptions } from "../internal/client.ts";
 export interface SmartleadClient extends VendorClient {
   readonly identity: Identity;
   readonly raw: RawDescriptor;
+  /** SmartDelivery, the placement-test service: its own host, the same key. */
+  readonly delivery: VendorClient;
 }
 
 // The reads Smartlead serves over POST: the master inbox replies, which
@@ -86,6 +89,7 @@ export const createClient = (options: ClientOptions): SmartleadClient => {
 
   return {
     ...createVendorClient(baseUrl, authorize),
+    delivery: createVendorClient(DELIVERY_URL, authorize),
     identity: options.identity,
     raw: { authorize, baseUrl, isRead, isSecret },
   };

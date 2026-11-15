@@ -395,3 +395,13 @@ test("heyreach: a campaign's progress counts its leads by how far they got", asy
   );
   assert.equal(progress.campaignRef, `heyreach:client-a:${CAMPAIGN}`);
 });
+
+test("heyreach: placement tests are refused before any request, because LinkedIn has none", async () => {
+  const { outbound, requests } = harness(suite);
+
+  await assert.rejects(
+    async () => await outbound.placementTests.list(),
+    /placementTests\.list/u
+  );
+  assert.equal(requests.length, 0);
+});
