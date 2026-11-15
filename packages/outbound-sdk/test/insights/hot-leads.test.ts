@@ -108,9 +108,10 @@ test("hot_leads ranks leads by a score whose parts are returned, and leaves out 
     ["h2", 85],
     // 3 clicks x 5 + 2 opens.
     ["h3", 17],
-    // h4 is marked Not Interested, so its reply earns nothing and it is not hot.
     // 10 for the reply the status reports.
     ["h5", 10],
+    // h4 is marked Not Interested: it earns nothing and comes last.
+    ["h4", 0],
   ]);
   assert.deepEqual(data.leads[0], {
     campaign: "memory:agency:c1",
@@ -156,7 +157,7 @@ test("hot_leads ranks leads by a score whose parts are returned, and leaves out 
     hot: 4,
     leadsRead: 10,
     moreLeadsExist: false,
-    // h4, marked Not Interested, whose reply earned nothing.
+    // h4, marked Not Interested, which earned nothing.
     negative: 1,
     // The four above, h4 and h10, whose counts are all a known 0.
     scored: 6,
@@ -178,6 +179,7 @@ test("hot_leads moves with every weight, the count cap, the recency window and t
     ["h2", 35],
     ["h3", 17],
     ["h5", 10],
+    ["h4", 0],
   ]);
   // One reply, one click and one open at most: h1 is 50 + 10 + 5 + 1 + 10, h2 is 50 + 10 + 1 + 20.
   // h3 drops to 1 click x 5 + 1 open, under the two leads with one reply.
@@ -186,6 +188,7 @@ test("hot_leads moves with every weight, the count cap, the recency window and t
     ["h1", 76],
     ["h5", 10],
     ["h3", 6],
+    ["h4", 0],
   ]);
   // A 7-day-old reply earns nothing in a 7-day window.
   assert.deepEqual((await run({ recency_days: 7 })).slice(0, 2), [
@@ -210,11 +213,13 @@ test("hot_leads moves with every weight, the count cap, the recency window and t
     ["h3", 302],
     ["h1", 183],
   ]);
-  // Without reply and recency points h5 scores 0 and are not hot.
+  // Without reply and recency points h5 scores 0 and is not hot; h4 still
+  // fills the room left, as a lead who said no.
   assert.deepEqual(await run({ weight_recency: 0, weight_reply: 0 }), [
     ["h1", 58],
     ["h2", 55],
     ["h3", 17],
+    ["h4", 0],
   ]);
   assert.deepEqual(await run({ limit: 2 }), [
     ["h1", 88],

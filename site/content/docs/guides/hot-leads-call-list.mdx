@@ -50,7 +50,7 @@ The score is the sum of five parts, with these defaults:
 Read the output above against that table:
 
 - **Ava** scores 95: 50 for the label, 20 for two replies, 15 because her last reply was 3.5 of 14 days ago, 5 for a click and 5 for opens. She has six opens; the cap counts five.
-- **Cara** is last although she replied: the vendor labelled her `Not Interested`, so her reply and its recency earn nothing, and her reason says so. Only her opens count. A lead labelled out-of-office or bounced is treated the same way; the [`hotLeads` reference](/docs/insights/people#hotleads) lists the labels. The ranking does not read what a reply says.
+- **Cara** is last although she replied: the vendor labelled her `Not Interested`, so nothing she did earns points, not her reply, its recency or her opens, and her reason says so. She is listed only because there is room after everyone who scored. A lead labelled out-of-office or bounced loses only its reply points; the [`hotLeads` reference](/docs/insights/people#hotleads) lists the labels. The ranking does not read what a reply says.
 - **Dev** has 40 opens and 5 points. The cap is there so opens cannot outrank a reply.
 - **A part that is `null` is unknown, not zero.** Ben has no label, so `parts.interest` is `null`. The function prints "unknown".
 

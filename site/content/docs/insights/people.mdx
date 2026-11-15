@@ -252,12 +252,12 @@ Who to call first: leads ranked by a score built from what the vendor reports.
 
 `data` (`HotLeads`):
 
-- `leads`: highest score first, only leads that scored above 0. Each has `lead`, `email`, `linkedinUrl`, `name`, `title`, `company`, `campaign`, `status`, `interest`, `score`, `parts` (the points per signal: `interest`, `replies`, `clicks`, `opens`, `recency`), the raw `replies`, `clicks` and `opens`, `lastRepliedAt` and a `reason` sentence.
-- `totals`: `leadsRead`, `scored`, `hot`, `withoutData`, `excluded`, `moreLeadsExist` (`true` when `max_leads` stopped the listing with leads left unscored), `fromReplies` (leads past the cap read because they replied), `autoReplied` (leads labelled out-of-office or bounced, whose replies earned nothing) and `negative` (leads labelled negative, whose replies earned nothing).
+- `leads`: highest score first: the leads that scored above 0, then, while `limit` leaves room, the leads labelled negative, which score 0. Each has `lead`, `email`, `linkedinUrl`, `name`, `title`, `company`, `campaign`, `status`, `interest`, `score`, `parts` (the points per signal: `interest`, `replies`, `clicks`, `opens`, `recency`), the raw `replies`, `clicks` and `opens`, `lastRepliedAt` and a `reason` sentence.
+- `totals`: `leadsRead`, `scored`, `hot`, `withoutData`, `excluded`, `moreLeadsExist` (`true` when `max_leads` stopped the listing with leads left unscored), `fromReplies` (leads past the cap read because they replied), `autoReplied` (leads labelled out-of-office or bounced, whose replies earned nothing) and `negative` (leads labelled negative, which earned no points at all).
 
 A lead listing comes in the vendor's order, usually the order leads were added, not by engagement. So when `max_leads` stops it with more leads left, `hotLeads` also reads up to 100 replies from the last `recency_days` days and reads the lead behind each one the listing missed, at most `limit` of them. Engaged leads past the cap are still ranked; the cold ones past it are not, and `moreLeadsExist` says so in the answer itself.
 
-Some labels discount a lead's replies: it earns no reply or recency points and no "replied" reason, and its `reason` names the label, for example "marked Not Interested, so replies earn nothing". Clicks, opens and a positive label still count.
+Some labels discount a lead. An automatic one discounts its replies: it earns no reply or recency points and no "replied" reason, and its `reason` names the label, "marked Out of office, so replies earn nothing". Its clicks and opens still count. A negative one discounts everything: the lead earns no points at all, from clicks and opens either, so it never outranks a lead that engaged; it is listed after every lead with a score above 0 while `limit` leaves room, and its `reason` reads "marked Not Interested, so it earns no points".
 
 | Discounted as | `interestCategory` | Or, where the vendor gives no category, a label that reads |
 | --- | --- | --- |

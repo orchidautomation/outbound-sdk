@@ -114,7 +114,11 @@ export interface HotLead {
 }
 
 export interface HotLeads {
-  /** Highest score first, then most recent reply. Only leads that scored above 0. */
+  /**
+   * Highest score first, then most recent reply: the leads that scored above
+   * 0, then, while `limit` leaves room, the leads labelled negative, which
+   * score 0.
+   */
   readonly leads: readonly HotLead[];
   readonly totals: {
     readonly leadsRead: number;
@@ -135,7 +139,7 @@ export interface HotLeads {
     readonly fromReplies: number;
     /** Leads the vendor labels out-of-office or bounced, whose replies earned no points. */
     readonly autoReplied: number;
-    /** Leads the vendor labels negative, such as not interested or wrong person, whose replies earned no points. A label in `positive_labels` is not counted here. */
+    /** Leads the vendor labels negative, such as not interested or wrong person, which earn no points at all and are listed after every lead with a score above 0. A label in `positive_labels` is not counted here. */
     readonly negative: number;
   };
 }
@@ -147,19 +151,27 @@ const capped = (
 ): number | null => (count === null ? null : Math.min(count, cap) * points);
 
 /**
+ * A person the vendor labels negative, who asked not to hear more: nothing
+ * they did earns points. A label the caller lists as positive is not.
+ */
+const saidNo = (lead: Lead, labels: readonly string[]): boolean =>
+  !isAutoReplied(lead) &&
+  isNegative(lead) &&
+  isPositive(lead.interest, labels) !== true;
+
+/**
  * Replies that earn nothing: an automatic one (out-of-office, bounce), the
- * way dropped_replies leaves those out, or one from a person the vendor
- * labels negative, who asked not to hear more. A label the caller lists as
- * positive is not discounted.
+ * way dropped_replies leaves those out, or one from a person who said no.
  */
 const repliesDiscounted = (lead: Lead, labels: readonly string[]): boolean =>
-  isAutoReplied(lead) ||
-  (isNegative(lead) && isPositive(lead.interest, labels) !== true);
+  isAutoReplied(lead) || saidNo(lead, labels);
 
 const partsOf = (lead: Lead, values: Input, now: number): HotLeadParts => {
   const engagement = lead.engagement ?? null;
   const positive = isPositive(lead.interest, values.positive_labels);
   const automatic = repliesDiscounted(lead, values.positive_labels);
+  // A click or open from a person who said no earns nothing either.
+  const unwanted = saidNo(lead, values.positive_labels);
 
   // A vendor that only sets the status still says the lead replied once.
   const counted = engagement?.replies ?? (lead.replied === true ? 1 : null);
@@ -178,14 +190,14 @@ const partsOf = (lead: Lead, values: Input, now: number): HotLeadParts => {
   return {
     clicks: capped(
       engagement?.clicks ?? null,
-      values.weight_click,
+      unwanted ? 0 : values.weight_click,
       values.count_cap
     ),
     interest:
       positive === null ? null : Number(positive) * values.weight_interest,
     opens: capped(
       engagement?.opens ?? null,
-      values.weight_open,
+      unwanted ? 0 : values.weight_open,
       values.count_cap
     ),
     recency:
@@ -196,12 +208,11 @@ const partsOf = (lead: Lead, values: Input, now: number): HotLeadParts => {
   };
 };
 
-/** Names the label that made the lead's replies earn nothing. */
-const discountedReason = (lead: Lead): string => {
-  const fallback = isAutoReplied(lead) ? "out of office" : "not interested";
-
-  return `marked ${lead.interest ?? fallback}, so replies earn nothing`;
-};
+/** Names the label that made the lead's replies, or everything it did, earn nothing. */
+const discountedReason = (lead: Lead): string =>
+  isAutoReplied(lead)
+    ? `marked ${lead.interest ?? "out of office"}, so replies earn nothing`
+    : `marked ${lead.interest ?? "not interested"}, so it earns no points`;
 
 /** `2 clicks` when the count earned points, otherwise nothing. */
 const counted = (
@@ -380,7 +391,7 @@ const hottestFirst = (left: HotLead, right: HotLead): number =>
 
 export const hotLeads = defineInsight({
   description:
-    "Who to call first: leads ranked by a score built from what the vendor reports, namely a positive interest label, replies, clicks, opens and how recent the last reply is. Every score comes with its parts, and the weights are inputs. A lead with no label and no engagement data is left out and counted in totals.withoutData, never scored 0; unsubscribed and bounced leads are left out too. Give a campaign ref to rank one campaign (an unknown one is refused with NotFound), or none to rank every lead the tool lists. A lead the vendor labels out-of-office or bounced (its interest category, or a label reading out of office) earns no reply or recency points, since a vendor's reply count may include automatic replies; nor does a lead it labels negative (the negative or unsubscribe category, or a label reading not interested, wrong person, unsubscribed or do not contact), and its reason names the label. Costs one request per page of leads read (max_leads sets the ceiling). When max_leads stops the listing with more leads left, totals.moreLeadsExist is true and it also reads up to 100 replies from the last recency_days days and one request per replied lead the listing missed, at most limit of them, so engaged leads past the cap are still ranked. A part that is null means the vendor does not report that signal.",
+    "Who to call first: leads ranked by a score built from what the vendor reports, namely a positive interest label, replies, clicks, opens and how recent the last reply is. Every score comes with its parts, and the weights are inputs. A lead with no label and no engagement data is left out and counted in totals.withoutData, never scored 0; unsubscribed and bounced leads are left out too. Give a campaign ref to rank one campaign (an unknown one is refused with NotFound), or none to rank every lead the tool lists. A lead the vendor labels out-of-office or bounced (its interest category, or a label reading out of office) earns no reply or recency points, since a vendor's reply count may include automatic replies; a lead it labels negative (the negative or unsubscribe category, or a label reading not interested, wrong person, unsubscribed or do not contact) earns no points at all, from clicks and opens either, and is listed after every lead with a score above 0 while limit leaves room; its reason names the label. Costs one request per page of leads read (max_leads sets the ceiling). When max_leads stops the listing with more leads left, totals.moreLeadsExist is true and it also reads up to 100 replies from the last recency_days days and one request per replied lead the listing missed, at most limit of them, so engaged leads past the cap are still ranked. A part that is null means the vendor does not report that signal.",
   inputSchema: input,
   key: "hotLeads",
   name: "hot_leads",
@@ -409,8 +420,18 @@ export const hotLeads = defineInsight({
 
     const hot = scored.filter((lead) => lead.score > 0).toSorted(hottestFirst);
 
+    const negative = open.filter((lead) =>
+      saidNo(lead, values.positive_labels)
+    );
+
+    // Leads who said no score 0 and fill what room `limit` leaves.
+    const refused = new Set(negative.map((lead) => lead.ref));
+    const after = scored
+      .filter((lead) => lead.score <= 0 && refused.has(lead.lead))
+      .toSorted(hottestFirst);
+
     const answer: HotLeads = {
-      leads: hot.slice(0, values.limit),
+      leads: [...hot, ...after].slice(0, values.limit),
       totals: {
         autoReplied: open.filter(
           (lead) => isAutoReplied(lead) && repliesOf(lead) > 0
@@ -419,12 +440,7 @@ export const hotLeads = defineInsight({
         fromReplies: extra.length,
         hot: hot.length,
         moreLeadsExist: listed.capped,
-        negative: open.filter(
-          (lead) =>
-            !isAutoReplied(lead) &&
-            repliesDiscounted(lead, values.positive_labels) &&
-            repliesOf(lead) > 0
-        ).length,
+        negative: negative.length,
         leadsRead: leads.length,
         scored: scored.length,
         withoutData: open.length - scored.length,

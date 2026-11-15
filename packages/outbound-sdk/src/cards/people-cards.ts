@@ -227,6 +227,8 @@ const hotLeads: CardBuilder = (data) => {
   const totals = child(data, "totals");
   const leads = rows(data, "leads");
   const fromReplies = num(totals, "fromReplies") ?? 0;
+  // Leads labelled negative score 0 and fill the room left, so they are not hot.
+  const hot = num(totals, "hot") ?? leads.length;
 
   return {
     bullets:
@@ -236,9 +238,9 @@ const hotLeads: CardBuilder = (data) => {
           ]
         : [],
     finding:
-      leads.length === 0
+      leads.length === 0 || hot === 0
         ? "No lead scores as hot yet."
-        : `${plural(num(totals, "hot") ?? leads.length, "lead")} to call first.`,
+        : `${plural(hot, "lead")} to call first.`,
     stats: [
       ["Hot", int(num(totals, "hot"))],
       ["Scored", int(num(totals, "scored"))],

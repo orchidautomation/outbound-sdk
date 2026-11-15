@@ -51,7 +51,7 @@ const RANKED: MemoryData = {
   ],
 };
 
-test("hot_leads gives a lead labelled negative no reply or recency points, and its reason names the label", async () => {
+test("hot_leads gives a lead labelled negative no points at all, lists it after every engaged lead, and its reason names the label", async () => {
   const result = await single(RANKED).insights.hotLeads({}, { now: NOW });
 
   assert.deepEqual(
@@ -59,17 +59,19 @@ test("hot_leads gives a lead labelled negative no reply or recency points, and i
     [
       // 50 for the label and 1 open.
       ["Keen", 51],
-      // 3 clicks x 5 and 5 opens, now above the lead who said no.
+      // 3 clicks x 5 and 5 opens.
       ["Warm", 20],
-      // Only its click counts.
-      ["Angry", 5],
+      // The two who said no score nothing and come last, latest reply first.
+      [null, 0],
+      ["Angry", 0],
     ]
   );
 
   const angry = result.data.leads.find((each) => each.name === "Angry");
 
+  // Its click earns nothing either; an open count it lacks stays unknown.
   assert.deepEqual(angry?.parts, {
-    clicks: 5,
+    clicks: 0,
     interest: 0,
     opens: null,
     recency: 0,
@@ -77,12 +79,54 @@ test("hot_leads gives a lead labelled negative no reply or recency points, and i
   });
   assert.equal(
     angry?.reason,
-    "marked Not Interested, so replies earn nothing, 1 click."
+    "marked Not Interested, so it earns no points."
   );
-  // The wrong person scores 0 and is not hot.
   assert.equal(result.data.totals.negative, 2);
   assert.equal(result.data.totals.autoReplied, 0);
-  assert.equal(result.data.totals.hot, 3);
+  // Only the leads with a score above 0.
+  assert.equal(result.data.totals.hot, 2);
+});
+
+test("hot_leads ranks a negative lead with many clicks and opens below a lead that replied once, and only when there is room", async () => {
+  const data: MemoryData = {
+    campaigns: [{ id: "c1" }],
+    leads: [
+      {
+        campaignId: "c1",
+        email: "person1@example.com",
+        engagement: { clicks: 3, opens: 20 },
+        firstName: "Clicky",
+        id: "clicky",
+        interest: "Not interested",
+      },
+      {
+        campaignId: "c1",
+        email: "person2@example.com",
+        engagement: { replies: 1 },
+        firstName: "Once",
+        id: "once",
+      },
+    ],
+  };
+  const outbound = single(data);
+
+  const all = await outbound.insights.hotLeads({}, { now: NOW });
+
+  // 1 reply x 10; the negative lead's 3 clicks and 20 opens earn nothing.
+  assert.deepEqual(
+    all.data.leads.map((each) => [each.name, each.score, each.reason]),
+    [
+      ["Once", 10, "replied 1 time."],
+      ["Clicky", 0, "marked Not interested, so it earns no points."],
+    ]
+  );
+
+  const one = await outbound.insights.hotLeads({ limit: 1 }, { now: NOW });
+
+  assert.deepEqual(
+    one.data.leads.map((each) => each.name),
+    ["Once"]
+  );
 });
 
 test("hot_leads scores a negative label the caller lists as positive", async () => {
