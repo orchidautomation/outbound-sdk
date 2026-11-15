@@ -8,7 +8,7 @@ import { instantly } from "outbound-sdk/instantly";
 export const outbound = createOutbound({
   adapter: combine([instantly(), heyreach()]),
   // The most vendor requests one call may make before it fails.
-  maxRequests: 200,
+  maxRequestsPerCall: 200,
   plugins: [insights()],
 });
 

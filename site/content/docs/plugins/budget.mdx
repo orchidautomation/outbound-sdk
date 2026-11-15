@@ -34,7 +34,7 @@ The first walk spent two requests. The second walk got its first page with the t
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `maxRequests` | `number` | required | The most vendor requests allowed. A positive integer. |
-| `per` | `"call" \| "run"` | `"call"` | `call` allows `maxRequests` for each SDK call. `run` allows it in total across every call on the instance, until `reset()`. An [MCP server](/docs/cli/mcp#a-request-cap-per-tool-call) resets it before each tool call. |
+| `per` | `"run" \| "call"` | `"run"` | `run` allows `maxRequests` in total across every call on the instance, until `reset()`. `call` allows it for each SDK call. An [MCP server](/docs/cli/mcp#a-request-cap-per-tool-call) resets it before each tool call. |
 
 One SDK call is one `list`, one `get`, one `stats`, or one whole `listAll` walk. A walk over ten pages is one call.
 
@@ -62,7 +62,7 @@ The count lives in the plugin object, in this process. `outbound.workspace(id)` 
 
 It changes no capability and nothing in `meta`. With `per: "call"` it lowers the request cap of each call it sees. With `per: "run"` it counts each request as it is sent, so calls running side by side, such as an insight reading several campaigns at once, share one allowance and the run stops at the cap exactly. A tighter `maxRequests` passed to the call itself, or set on the instance, still applies: the lower of the two wins.
 
-`per: "call"` has the same effect as `maxRequests` on `createOutbound`. The plugin is the way to get a run-wide cap and a counter.
+A budget is a total unless you ask for `per: "call"`, which has the same effect as `maxRequestsPerCall` on `createOutbound`. `per` used to default to `"call"`: add `per: "call"` to keep that behaviour.
 
 ## With other plugins
 

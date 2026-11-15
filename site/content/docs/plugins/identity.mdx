@@ -73,7 +73,7 @@ A `Person` has:
 
 On paths 2 and 3, a record that links a new key causes one more full walk, to catch records seen earlier under the other key.
 
-Paths 2 and 3 read every lead they cover. On a large account that is many requests: pass `campaignIds`, or set `maxRequests` on the instance.
+Paths 2 and 3 read every lead they cover. On a large account that is many requests: pass `campaignIds`, or set `maxRequestsPerCall` on the instance.
 
 The timeline is one `lead(ref).timeline()` read per matching record, all started together.
 

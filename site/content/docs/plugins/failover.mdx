@@ -49,7 +49,7 @@ The stored answer is served only when the layers inside throw an `OutboundError`
 
 So does a `RateLimited` the SDK raised itself, which carries no `status` and a `limit` of `"call"`, `"run"` or `"deadline"`. Those are your own caps, not an outage, and a stored answer is never served for them:
 
-- `maxRequests` on a call or on the instance.
+- `maxRequests` on a call, or `maxRequestsPerCall` on the instance.
 - The [`budget`](/docs/plugins/budget) plugin.
 - A `deadline` that would pass while the SDK's own [rate budget](/docs/rate-limits) for the vendor is full.
 

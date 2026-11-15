@@ -94,8 +94,20 @@ import { readStats } from "./stats.ts";
 
 export interface OutboundOptions<
   Native extends NativeCatalog = NoNative,
-> extends OperationOptions {
+> extends Omit<OperationOptions, "maxRequests"> {
   readonly adapter: Adapter<Native>;
+  /**
+   * The most vendor requests each SDK call may send, retries included. It is
+   * not a total for the instance: for that, use `budget({ maxRequests })`.
+   * A `maxRequests` on one call replaces it for that call.
+   */
+  readonly maxRequestsPerCall?: number | undefined;
+  /**
+   * @deprecated Use `maxRequestsPerCall`. On `createOutbound` this caps each
+   * call, not the whole run. It keeps working, with a warning, until a later
+   * minor version removes it.
+   */
+  readonly maxRequests?: number | undefined;
   /** `plugins[0]` is the outermost layer. */
   readonly plugins?: readonly OutboundPlugin[] | undefined;
   readonly hooks?: OutboundHooks | undefined;
@@ -111,11 +123,37 @@ export interface OutboundOptions<
   readonly runtime?: Partial<Runtime> | undefined;
 }
 
+let warnedMaxRequests = false;
+
+/** `maxRequestsPerCall`, or the deprecated `maxRequests` with a warning, once per process. */
+const perCallCap = (options: OutboundOptions): number | undefined => {
+  if (options.maxRequests === undefined) {
+    return options.maxRequestsPerCall;
+  }
+
+  if (options.maxRequestsPerCall !== undefined) {
+    throw new OutboundError(
+      "Invalid",
+      "Set maxRequestsPerCall or maxRequests on createOutbound, not both. maxRequests is the old name."
+    );
+  }
+
+  if (!warnedMaxRequests) {
+    warnedMaxRequests = true;
+    // oxlint-disable-next-line no-console -- a deprecation must reach the developer, and the SDK has no logger.
+    console.warn(
+      "outbound-sdk: maxRequests on createOutbound is deprecated. Rename it to maxRequestsPerCall: it caps each call, not the whole run. For a total, use budget({ maxRequests })."
+    );
+  }
+
+  return options.maxRequests;
+};
+
 const engineFor = (options: OutboundOptions): RequestEngine =>
   new RequestEngine({
     defaults: {
       deadline: options.deadline,
-      maxRequests: options.maxRequests,
+      maxRequests: perCallCap(options),
       retries: options.retries,
       signal: options.signal,
       timeout: options.timeout,

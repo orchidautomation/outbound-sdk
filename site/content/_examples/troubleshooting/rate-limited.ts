@@ -41,7 +41,7 @@ const attempt = async (
 await attempt("deadline", { deadline: 30_000 });
 
 // The call may spend three requests. The fourth is never sent.
-await attempt("maxRequests", { maxRequests: 3 });
+await attempt("maxRequestsPerCall", { maxRequestsPerCall: 3 });
 
 // Neither is set: the SDK waits and retries four times, then gives up.
 await attempt("retries used up", {});

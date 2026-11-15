@@ -13,8 +13,9 @@ export interface BudgetOptions {
   /** The most vendor requests allowed. */
   readonly maxRequests: number;
   /**
-   * `call` allows `maxRequests` for each SDK call. `run` allows it in total
-   * across every call on the instance, until `reset()`.
+   * `run` (the default) allows `maxRequests` in total across every call on
+   * the instance, until `reset()`. `call` allows it for each SDK call, as
+   * `maxRequestsPerCall` on `createOutbound` does.
    */
   readonly per?: "call" | "run" | undefined;
 }
@@ -40,7 +41,7 @@ export const budget = (
     );
   }
 
-  const perRun = options.per === "run";
+  const perRun = options.per !== "call";
   let used = 0;
   const remaining = (): number => Math.max(0, options.maxRequests - used);
   // Requests counted live for each call, as the engine sends them.

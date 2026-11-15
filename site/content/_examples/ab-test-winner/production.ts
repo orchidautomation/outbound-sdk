@@ -7,6 +7,6 @@ import { instantly } from "outbound-sdk/instantly";
 export const outbound = createOutbound({
   adapter: instantly({ workspaceId: "acme" }),
   // The two insights spend 3 reads between them.
-  maxRequests: 10,
+  maxRequestsPerCall: 10,
   plugins: [insights()],
 });

@@ -118,7 +118,7 @@ test("a deadline that stops a walk on a full rate budget leaves the records in e
 });
 
 test("a walk that fails on its first page has nothing to keep and no cursor", async () => {
-  const { clock, outbound } = vendor({ maxRequests: 1, retries: 0 });
+  const { clock, outbound } = vendor({ maxRequestsPerCall: 1, retries: 0 });
 
   // One request is allowed, so a cap can only stop a later page. Fail the first instead.
   const error = await stopped(
@@ -133,7 +133,7 @@ test("a walk that fails on its first page has nothing to keep and no cursor", as
 });
 
 test("for await is unchanged: the error carries no partial, and the records already yielded stay with the caller", async () => {
-  const { clock, outbound } = vendor({ maxRequests: 2 });
+  const { clock, outbound } = vendor({ maxRequestsPerCall: 2 });
   const walk = outbound.campaigns.listAll();
   const seen: string[] = [];
 

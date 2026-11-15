@@ -70,7 +70,7 @@ Every read an insight makes has a cap you can set. The defaults keep one call to
 
 The range of each cap is on the insight's own section. Thresholds (a bounce rate that is too high, a warmup score that is too low) are inputs with defaults too.
 
-`maxRequests` on `createOutbound` is a different limit. It is the most vendor requests one call may make, and a call that reaches it fails with `RateLimited` instead of returning part of an answer.
+`maxRequestsPerCall` on `createOutbound` is a different limit. It is the most vendor requests one call may make, and a call that reaches it fails with `RateLimited` instead of returning part of an answer.
 
 ## Counts that are null
 

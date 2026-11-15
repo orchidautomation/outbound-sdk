@@ -4,8 +4,8 @@ timeout: 2 request(s), Provider
 deadline: 2 request(s), Provider
   instantly responded 503
   timedOut true, aborted false, permanent false
-maxRequests: 2 request(s), RateLimited
-  The call used its budget of 2 request(s) to instantly. Raise maxRequests or ask for less in one call.
+maxRequestsPerCall: 2 request(s), RateLimited
+  The call used its budget of 2 request(s) to instantly. Raise maxRequestsPerCall or ask for less in one call.
   timedOut false, aborted false, permanent true
 retries: 0: 1 request(s), Provider
   instantly responded 503
