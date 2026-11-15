@@ -47,6 +47,7 @@ export const campaignList = (
   core: Core
 ): ListSpec<Campaign, CampaignFilters> => ({
   action: "campaigns.list",
+  takes: { senderId: true, status: true },
   keyOf: refOf,
   prepare: (filters) => {
     if (filters.status !== undefined) {
@@ -96,6 +97,7 @@ export const sequenceGet = (core: Core): GetSpec<Sequence> => ({
 
 export const senderList = (core: Core): ListSpec<Sender, SenderFilters> => ({
   action: "senders.list",
+  takes: { campaignId: true },
   keyOf: refOf,
   prepare: (filters) => {
     // Some vendors list senders only per campaign, so the scoped listing
@@ -131,6 +133,14 @@ export const senderGet = (core: Core): GetSpec<Sender> => ({
 
 export const leadList = (core: Core): ListSpec<Lead, LeadFilters> => ({
   action: "leads.list",
+  takes: {
+    campaignId: true,
+    email: true,
+    linkedinUrl: true,
+    listId: true,
+    since: true,
+    until: true,
+  },
   // A lookup returns one record per campaign the person is in. On a vendor
   // whose lead id is the same in every campaign those records share a ref,
   // so the campaign is part of what tells them apart.
@@ -202,6 +212,14 @@ export const leadGet = (core: Core): GetSpec<Lead> => ({
 
 export const messageList = (core: Core): ListSpec<Message, MessageFilters> => ({
   action: "messages.list",
+  takes: {
+    campaignId: true,
+    include: true,
+    leadId: true,
+    since: true,
+    threadId: true,
+    until: true,
+  },
   keyOf: refOf,
   prepare: (filters) => {
     requireCapability(core.gate, "messages.list", "Listing messages");
@@ -251,6 +269,14 @@ export const messageList = (core: Core): ListSpec<Message, MessageFilters> => ({
 
 export const replyList = (core: Core): ListSpec<Reply, ReplyFilters> => ({
   action: "replies.list",
+  takes: {
+    campaignId: true,
+    category: true,
+    include: true,
+    since: true,
+    unread: true,
+    until: true,
+  },
   keyOf: refOf,
   prepare: (filters) => {
     requireCapability(core.gate, "replies.list", "Listing replies");
@@ -310,6 +336,7 @@ export const workspaceList = (
   core: Core
 ): ListSpec<Workspace, Record<never, never>> => ({
   action: "workspaces.list",
+  takes: {},
   keyOf: refOf,
   prepare: () => {
     requireCapability(core.gate, "workspaces", "Listing workspaces");

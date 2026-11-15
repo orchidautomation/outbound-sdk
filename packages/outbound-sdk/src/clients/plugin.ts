@@ -179,7 +179,17 @@ const clientStats = async (
   outbound: OutboundApi,
   options: ClientStatsOptions
 ): Promise<ClientStatsRead> => {
-  const walk = outbound.campaigns.listAll(options);
+  // `from` and `to` are for the stats reads, not the campaign listing.
+  const { deadline, maxRequests, retries, signal, timeout } = options;
+
+  const walk = outbound.campaigns.listAll({
+    deadline,
+    maxRequests,
+    retries,
+    signal,
+    timeout,
+  });
+
   const campaigns = await walk.toArray();
   const byClient = new Map<string, MetricCounts[]>();
   let requests = walk.meta?.requests ?? 0;

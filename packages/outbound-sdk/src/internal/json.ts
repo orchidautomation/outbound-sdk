@@ -143,23 +143,27 @@ export const toJson = <Value>(value: Value): Json =>
   parseJson(JSON.stringify(value) ?? "null") ?? null;
 
 /**
- * Says which key of `input` is not one of `known`, or `undefined` when every
- * key is. Used so an input that would be ignored is refused instead.
+ * Says which of the `given` keys is not one of `known`, or `undefined` when
+ * every one is. Used so an input that would be ignored is refused instead.
  */
-export const unknownKey = (
+export const strayKey = (
   known: readonly string[],
-  input: Json | undefined
+  given: readonly string[],
+  noun = "an input"
 ): string | undefined => {
-  if (!isJsonObject(input)) {
-    return undefined;
-  }
-
-  const stray = Object.keys(input).find((key) => !known.includes(key));
+  const stray = given.find((key) => !known.includes(key));
 
   return stray === undefined
     ? undefined
-    : `"${stray}" is not an input. It takes: ${known.toSorted().join(", ") || "nothing"}`;
+    : `"${stray}" is not ${noun}. It takes: ${known.toSorted().join(", ") || "nothing"}`;
 };
+
+/** `strayKey` for a JSON input: which key of `input` is not one of `known`. */
+export const unknownKey = (
+  known: readonly string[],
+  input: Json | undefined
+): string | undefined =>
+  strayKey(known, isJsonObject(input) ? Object.keys(input) : []);
 
 /**
  * A copy of `value` without any key that matches `secret`, at any depth. A

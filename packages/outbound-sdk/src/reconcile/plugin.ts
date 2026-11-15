@@ -132,12 +132,15 @@ const checkDeletions = async (
   outbound: OutboundApi,
   check: DeletionCheck
 ): Promise<DeletionReport> => {
-  const { campaignId } = check;
+  // Only what a listing takes: `collection` and `known` are not filters.
+  const { campaignId, deadline, maxRequests, retries, signal, timeout } = check;
+
+  const options = { deadline, maxRequests, retries, signal, timeout };
 
   const walks = {
-    campaigns: () => outbound.campaigns.listAll(check),
-    leads: () => outbound.leads.listAll({ ...check, campaignId }),
-    senders: () => outbound.senders.listAll({ ...check, campaignId }),
+    campaigns: () => outbound.campaigns.listAll(options),
+    leads: () => outbound.leads.listAll({ ...options, campaignId }),
+    senders: () => outbound.senders.listAll({ ...options, campaignId }),
   };
 
   const listed = new Set<string>();

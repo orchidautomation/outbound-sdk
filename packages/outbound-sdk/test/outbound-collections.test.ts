@@ -45,6 +45,11 @@ const counting = (
   return { adapter: counted, calls: () => calls };
 };
 
+// SAFETY: a plain JavaScript caller can pass any key; this is what the check is for.
+const loose = (
+  options: Readonly<Record<string, string | number | undefined>>
+) => options as Record<string, never>;
+
 const failure = async (action: () => unknown): Promise<OutboundError> => {
   try {
     await action();
@@ -321,6 +326,41 @@ test("a date-only until covers that whole UTC day; one with a time is kept", asy
   assert.ok(
     messages.every((message) => message.sentAt?.startsWith("2026-11-11"))
   );
+});
+
+test("a list option the collection does not take is refused before any request", async () => {
+  const spy = counting(
+    memory({ data: demoData({ now: "2026-10-08T12:00:00.000Z" }) })
+  );
+
+  const outbound = createOutbound({ adapter: spy.adapter });
+
+  const status = await failure(() =>
+    outbound.leads.list(loose({ status: "replied" }))
+  );
+
+  assert.equal(status.code, "Invalid");
+  assert.equal(
+    status.message,
+    'leads.list: "status" is not an option. It takes: campaignId, cursor, deadline, email, limit, linkedinUrl, listId, maxRequests, retries, signal, since, timeout, until'
+  );
+
+  for (const action of [
+    () => outbound.leads.listAll(loose({ campaign: "cmp_founders" })),
+    () => outbound.campaigns.list(loose({ max: 2 })),
+    () => outbound.replies.listAll(loose({ sentiment: "positive" })),
+    () => outbound.campaign("cmp_founders").leads.list(loose({ stauts: "x" })),
+  ]) {
+    const error = await failure(action);
+    assert.equal(error.code, "Invalid");
+    assert.match(error.message, /is not an option\. It takes: /u);
+  }
+
+  // A key left undefined changes nothing, so it is not refused.
+  await outbound.campaigns.list(
+    loose({ status: undefined, unknown: undefined })
+  );
+  assert.equal(spy.calls(), 1);
 });
 
 test("filters campaigns by status", async () => {

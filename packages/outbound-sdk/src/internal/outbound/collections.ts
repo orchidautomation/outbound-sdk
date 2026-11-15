@@ -7,6 +7,7 @@ import type { OperationOptions } from "../engine/engine.ts";
 import type { CallState } from "../engine/request.ts";
 import { OutboundError } from "../errors.ts";
 import type { Json } from "../json.ts";
+import { strayKey } from "../json.ts";
 import type {
   BulkOptions,
   BulkResult,
@@ -36,6 +37,8 @@ export interface PageRequest {
 export interface ListSpec<Item, Filters> {
   readonly action: OperationKind;
   readonly schema: ZodType<Item>;
+  /** Every filter the listing takes. Any other key is refused, so a misspelt filter cannot widen the answer. */
+  readonly takes: { readonly [Key in keyof Filters]-?: true };
   /** Checks the filters and the capabilities they need. Returns clean filters. */
   readonly prepare: (filters: Filters) => Filters;
   readonly toOperation: (filters: Filters, page: PageRequest) => Operation;
@@ -53,6 +56,42 @@ export interface GetSpec<Item> {
 }
 
 const DEFAULT_BULK_CONCURRENCY = 4;
+
+// The options every listing takes besides its filters. `satisfies` keeps the
+// list in step with the option types.
+const LIST_ALL_KEYS = Object.keys({
+  cursor: true,
+  deadline: true,
+  limit: true,
+  max: true,
+  maxRequests: true,
+  retries: true,
+  signal: true,
+  timeout: true,
+} satisfies Record<keyof ListAllOptions, true>);
+
+const LIST_KEYS = LIST_ALL_KEYS.filter((key) => key !== "max");
+
+const refuseUnknown = (
+  spec: { readonly action: string; readonly takes: object },
+  options: ListAllOptions | undefined,
+  optionKeys: readonly string[]
+): void => {
+  // A key left `undefined` changes nothing, so it is not refused.
+  const given = Object.entries(options ?? {})
+    .filter(([, value]) => value !== undefined)
+    .map(([key]) => key);
+
+  const stray = strayKey(
+    [...Object.keys(spec.takes), ...optionKeys],
+    given,
+    "an option"
+  );
+
+  if (stray !== undefined) {
+    throw new OutboundError("Invalid", `${spec.action}: ${stray}`);
+  }
+};
 
 const cursorScope = (core: Core, action: string) => ({
   action,
@@ -115,6 +154,7 @@ export const makeReadCollection = <Item, Filters>(
   spec: ListSpec<Item, Filters>
 ): ReadCollection<Item, Filters> => ({
   list: async (options) => {
+    refuseUnknown(spec, options, LIST_KEYS);
     // SAFETY: with no options every filter is absent, which every Filters type allows.
     const filters = spec.prepare((options ?? {}) as Filters);
     const limit = assertLimit(options?.limit);
@@ -129,6 +169,7 @@ export const makeReadCollection = <Item, Filters>(
     return page;
   },
   listAll: (options) => {
+    refuseUnknown(spec, options, LIST_ALL_KEYS);
     // SAFETY: with no options every filter is absent, which every Filters type allows.
     const filters = spec.prepare((options ?? {}) as Filters);
     const limit = assertLimit(options?.limit);

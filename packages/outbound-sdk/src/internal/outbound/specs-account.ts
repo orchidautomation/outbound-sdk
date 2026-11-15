@@ -74,6 +74,7 @@ export const subsequenceList = (
   core: Core
 ): ListSpec<Sequence, { readonly campaignId?: string | undefined }> => ({
   action: "sequence.subsequences",
+  takes: { campaignId: true },
   keyOf: refOf,
   prepare: (filters) => {
     requireCapability(
@@ -99,6 +100,7 @@ export const subsequenceList = (
 
 export const listList = (core: Core): ListSpec<LeadList, NoFilters> => ({
   action: "lists.list",
+  takes: {},
   keyOf: refOf,
   prepare: () => {
     requireCapability(core.gate, "lists.list", "Listing lead lists");
@@ -131,6 +133,7 @@ export const webhookGet = (core: Core): GetSpec<WebhookSubscription> => ({
 
 export const blocklistList = (core: Core): ListSpec<BlockEntry, NoFilters> => ({
   action: "blocklist.list",
+  takes: {},
   keyOf: refOf,
   prepare: () => {
     requireCapability(core.gate, "blocklist", "Listing the block list");
@@ -145,6 +148,7 @@ export const placementTestList = (
   core: Core
 ): ListSpec<PlacementTest, NoFilters> => ({
   action: "placementTests.list",
+  takes: {},
   keyOf: refOf,
   prepare: () => {
     requireCapability(
@@ -164,6 +168,7 @@ export const placementTestList = (
 
 export const tagList = (core: Core): ListSpec<Tag, NoFilters> => ({
   action: "tags.list",
+  takes: {},
   keyOf: refOf,
   prepare: () => {
     requireCapability(core.gate, "tags", "Listing tags");
@@ -178,6 +183,7 @@ export const webhookList = (
   core: Core
 ): ListSpec<WebhookSubscription, WebhookFilters> => ({
   action: "webhooks.list",
+  takes: { campaignId: true },
   keyOf: refOf,
   prepare: (filters) => {
     requireCapability(core.gate, "webhooks.list", "Listing webhooks");

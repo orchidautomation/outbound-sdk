@@ -21,7 +21,7 @@ A collection is a kind of record you can list: `outbound.campaigns`, `outbound.l
 | `exists(id, options?)` | `Promise<boolean>` | `false` for a missing record. Any other failure still throws. |
 | `getMany(ids, options?)` | `Promise<BulkResult<Item>>` | Several records at once. A record that fails is listed, not thrown. |
 
-`options` on `list` and `listAll` holds the collection's filters, the paging options (`limit`, `cursor`, and `max` on `listAll`) and the per-call options (`timeout`, `retries`, `deadline`, `maxRequests`, `signal`). Paging is covered on the [pagination](/docs/api/pagination) page and the per-call options on the [retries](/docs/retries) page.
+`options` on `list` and `listAll` holds the collection's filters, the paging options (`limit`, `cursor`, and `max` on `listAll`) and the per-call options (`timeout`, `retries`, `deadline`, `maxRequests`, `signal`). Paging is covered on the [pagination](/docs/api/pagination) page and the per-call options on the [retries](/docs/retries) page. Any other key, such as `status` on `leads` or a misspelt filter, is refused with `Invalid` before any request, and the message names the key and every option the collection takes. A key set to `undefined` is not refused.
 
 An `id` is the vendor's own id or the `ref` of a record. On a [combined](/docs/adapters/combine) instance it must be a ref.
 
