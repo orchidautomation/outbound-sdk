@@ -145,6 +145,7 @@ test("account_summary lists everyone at the domain with their campaigns, counts 
   const [ann] = data.people;
   assert.deepEqual(ann?.campaigns, ["memory:agency:c1", "memory:agency:c2"]);
   assert.deepEqual(ann?.records[1], {
+    autoReplied: false,
     campaign: "memory:agency:c2",
     clicks: 1,
     interest: "Not Interested",

@@ -6,6 +6,7 @@ no data: 0 {
   fromReplies: 0,
   hot: 0,
   moreLeadsExist: false,
+  negative: 0,
   leadsRead: 1,
   scored: 0,
   withoutData: 1

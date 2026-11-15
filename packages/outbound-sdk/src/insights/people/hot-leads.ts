@@ -8,6 +8,8 @@ import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { round, total } from "../stats.ts";
 import {
+  isAutoReplied,
+  isNegative,
   isPositive,
   nameOf,
   noteEngagement,
@@ -19,9 +21,6 @@ const DAY = 86_400_000;
 
 /** The most recent replies read to find replied leads the lead listing missed. */
 const RECENT_REPLIES = 100;
-
-/** An interest label that says the lead's reply was an out-of-office. */
-const OUT_OF_OFFICE = /\bout[\s-]+of[\s-]+(?:the\s+)?office\b/iu;
 
 /** Reply categories that do not make a lead worth calling. */
 const NOT_ENGAGED: ReadonlySet<ReplyCategory> = new Set<ReplyCategory>([
@@ -132,8 +131,10 @@ export interface HotLeads {
     readonly moreLeadsExist: boolean;
     /** Leads past the cap, read because they replied within `recency_days`. Counted in `leadsRead`. */
     readonly fromReplies: number;
-    /** Leads the vendor labels out-of-office, whose replies earned no points. */
+    /** Leads the vendor labels out-of-office or bounced, whose replies earned no points. */
     readonly autoReplied: number;
+    /** Leads the vendor labels negative, such as not interested or wrong person, whose replies earned no points. A label in `positive_labels` is not counted here. */
+    readonly negative: number;
   };
 }
 
@@ -144,19 +145,19 @@ const capped = (
 ): number | null => (count === null ? null : Math.min(count, cap) * points);
 
 /**
- * The vendor labels the lead out-of-office: its reply was an automatic one.
- * A vendor's per-lead reply count may include such replies, so they earn no
- * points, the way dropped_replies leaves automatic replies out.
+ * Replies that earn nothing: an automatic one (out-of-office, bounce), the
+ * way dropped_replies leaves those out, or one from a person the vendor
+ * labels negative, who asked not to hear more. A label the caller lists as
+ * positive is not discounted.
  */
-const isAutoReplied = (lead: Lead): boolean =>
-  lead.interestCategory === "ooo" ||
-  // A label the vendor did not map to a category is read by a fixed rule.
-  (lead.interestCategory === null && OUT_OF_OFFICE.test(lead.interest ?? ""));
+const repliesDiscounted = (lead: Lead, labels: readonly string[]): boolean =>
+  isAutoReplied(lead) ||
+  (isNegative(lead) && isPositive(lead.interest, labels) !== true);
 
 const partsOf = (lead: Lead, values: Input, now: number): HotLeadParts => {
   const engagement = lead.engagement ?? null;
   const positive = isPositive(lead.interest, values.positive_labels);
-  const automatic = isAutoReplied(lead);
+  const automatic = repliesDiscounted(lead, values.positive_labels);
 
   // A vendor that only sets the status still says the lead replied once.
   const counted = engagement?.replies ?? (lead.replied === true ? 1 : null);
@@ -193,16 +194,26 @@ const partsOf = (lead: Lead, values: Input, now: number): HotLeadParts => {
   };
 };
 
-const reasonOf = (lead: Lead, parts: HotLeadParts, now: number): string => {
+/** Names the label that made the lead's replies earn nothing. */
+const discountedReason = (lead: Lead): string => {
+  const fallback = isAutoReplied(lead) ? "out of office" : "not interested";
+
+  return `marked ${lead.interest ?? fallback}, so replies earn nothing`;
+};
+
+const reasonOf = (
+  lead: Lead,
+  parts: HotLeadParts,
+  now: number,
+  labels: readonly string[]
+): string => {
   const engagement = lead.engagement ?? null;
-  const automatic = isAutoReplied(lead);
+  const automatic = repliesDiscounted(lead, labels);
   const repliedAt = automatic ? null : (engagement?.lastRepliedAt ?? null);
 
   const facts = [
     (parts.interest ?? 0) > 0 ? `marked ${lead.interest}` : null,
-    automatic
-      ? `marked ${lead.interest ?? "out of office"}, so replies earn nothing`
-      : null,
+    automatic ? discountedReason(lead) : null,
     (parts.replies ?? 0) > 0
       ? `replied ${engagement?.replies ?? 1} time(s)`
       : null,
@@ -235,7 +246,7 @@ const toHotLead = (lead: Lead, values: Input, now: number): HotLead[] => {
           name: nameOf(lead),
           opens: lead.engagement?.opens ?? null,
           parts,
-          reason: reasonOf(lead, parts, now),
+          reason: reasonOf(lead, parts, now, values.positive_labels),
           replies: lead.engagement?.replies ?? null,
           score: round(score) ?? 0,
           status: lead.status,
@@ -340,6 +351,9 @@ const repliedPastCap = async (
   return [...found.values()];
 };
 
+const repliesOf = (lead: Lead): number =>
+  lead.engagement?.replies ?? (lead.replied === true ? 1 : 0);
+
 const hottestFirst = (left: HotLead, right: HotLead): number =>
   right.score - left.score ||
   (right.lastRepliedAt ?? "").localeCompare(left.lastRepliedAt ?? "") ||
@@ -380,14 +394,18 @@ export const hotLeads = defineInsight({
       leads: hot.slice(0, values.limit),
       totals: {
         autoReplied: open.filter(
-          (lead) =>
-            isAutoReplied(lead) &&
-            (lead.engagement?.replies ?? (lead.replied === true ? 1 : 0)) > 0
+          (lead) => isAutoReplied(lead) && repliesOf(lead) > 0
         ).length,
         excluded: leads.length - open.length,
         fromReplies: extra.length,
         hot: hot.length,
         moreLeadsExist: listed.capped,
+        negative: open.filter(
+          (lead) =>
+            !isAutoReplied(lead) &&
+            repliesDiscounted(lead, values.positive_labels) &&
+            repliesOf(lead) > 0
+        ).length,
         leadsRead: leads.length,
         scored: scored.length,
         withoutData: open.length - scored.length,

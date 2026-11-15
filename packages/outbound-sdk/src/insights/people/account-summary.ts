@@ -9,9 +9,9 @@ import type { InsightContext } from "../define.ts";
 import { total } from "../stats.ts";
 import {
   domainOf,
-  hasReplied,
+  hasHumanReply,
+  isAutoReplied,
   isPositive,
-  leadsOf,
   nameOf,
   noteEngagement,
   positiveLabelsField,
@@ -88,6 +88,11 @@ export interface AccountRecord {
   readonly replies: number | null;
   readonly lastContactedAt: string | null;
   readonly lastRepliedAt: string | null;
+  /**
+   * `true` when the vendor labels the record out-of-office or bounced: its
+   * replies were automatic, so they do not count as the person replying.
+   */
+  readonly autoReplied: boolean;
 }
 
 export interface AccountPerson {
@@ -97,13 +102,16 @@ export interface AccountPerson {
   readonly company: string | null;
   /** The campaigns the person is in, as refs. */
   readonly campaigns: readonly string[];
+  /** `true` when a record shows a reply that was not automatic. */
   readonly replied: boolean;
   /** `true` when one of their labels is a positive one. `null` when they carry no label. */
   readonly interested: boolean | null;
   /** Added up over their records. `null` when the vendor reports none. */
   readonly opens: number | null;
   readonly clicks: number | null;
+  /** Replies on records that are not `autoReplied`. */
   readonly replies: number | null;
+  /** The last reply on a record that is not `autoReplied`. */
   readonly lastRepliedAt: string | null;
   /** One entry per campaign the person is in. */
   readonly records: readonly AccountRecord[];
@@ -226,6 +234,7 @@ const toRecord = (lead: Lead): AccountRecord => ({
   opens: lead.engagement?.opens ?? null,
   provider: lead.provider,
   replies: lead.engagement?.replies ?? null,
+  autoReplied: isAutoReplied(lead),
   status: lead.status,
 });
 
@@ -241,6 +250,7 @@ const toPerson = (
   labels: readonly string[]
 ): AccountPerson => {
   const records = leads.map(toRecord);
+  const human = records.filter((record) => !record.autoReplied);
   const verdicts = leads.map((lead) => isPositive(lead.interest, labels));
 
   const pick = <Value>(read: (lead: Lead) => Value | null): Value | null =>
@@ -260,12 +270,12 @@ const toPerson = (
     interested: verdicts.includes(true)
       ? true
       : (verdicts.find((verdict) => verdict !== null) ?? null),
-    lastRepliedAt: latest(records.map((record) => record.lastRepliedAt)),
+    lastRepliedAt: latest(human.map((record) => record.lastRepliedAt)),
     name: pick(nameOf),
     opens: total(records.map((record) => record.opens)),
     records,
-    replied: leads.some(hasReplied),
-    replies: total(records.map((record) => record.replies)),
+    replied: leads.some(hasHumanReply),
+    replies: total(human.map((record) => record.replies)),
     title: pick((lead) => lead.title),
   };
 };

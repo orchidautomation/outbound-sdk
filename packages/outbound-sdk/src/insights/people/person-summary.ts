@@ -34,8 +34,14 @@ export interface PersonCampaign {
   /** The vendor's own label, for example `Interested`. */
   readonly interest: string | null;
   readonly messagesSent: number;
+  /** Replies from the person. 0 when the vendor labels the lead out-of-office or bounced. */
   readonly replies: number;
   readonly replied: boolean;
+  /**
+   * `true` when the vendor labels the lead out-of-office or bounced: its
+   * replies were automatic, so they are not counted as the person replying.
+   */
+  readonly autoReplied: boolean;
   /** Steps the person replied to, counted from 0. Empty when the vendor does not tie a reply to a step. */
   readonly repliedSteps: readonly number[];
   /** The last step sent, counted from 0. */
@@ -171,7 +177,20 @@ const summarize = async (
       : outbound.campaigns.get(lead.campaignRef).then(context.one),
   ]);
 
-  const { threadIsShort, ...activity } = activityOf(lead, messages);
+  const { threadIsShort, ...counted } = activityOf(lead, messages);
+
+  // The same rule hot_leads uses: an automatic reply is not the person replying.
+  const autoReplied = isAutoReplied(lead);
+
+  const activity = autoReplied
+    ? { ...counted, lastRepliedAt: null, replies: 0 }
+    : counted;
+
+  if (autoReplied && counted.replies > 0) {
+    context.note(
+      "A record the vendor labels out-of-office or bounced had replies; they were automatic, so they are not counted as replies."
+    );
+  }
 
   if (threadIsShort) {
     context.note(
@@ -189,8 +208,9 @@ const summarize = async (
     lead: lead.ref,
     leadStatus: lead.status,
     provider: lead.provider,
-    replied: activity.replies > 0 || lead.replied === true,
-    repliedSteps: repliedSteps(lead, messages),
+    autoReplied,
+    replied: !autoReplied && (activity.replies > 0 || lead.replied === true),
+    repliedSteps: autoReplied ? [] : repliedSteps(lead, messages),
   };
 };
 

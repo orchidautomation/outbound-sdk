@@ -50,7 +50,7 @@ The score is the sum of five parts, with these defaults:
 Read the output above against that table:
 
 - **Ava** scores 95: 50 for the label, 20 for two replies, 15 because her last reply was 3.5 of 14 days ago, 5 for a click and 5 for opens. She has six opens; the cap counts five.
-- **Cara** is third although the vendor labelled her `Not Interested`. A label that is not positive earns 0 points, and her reply and its recency still count. The ranking does not read what a reply says.
+- **Cara** is last although she replied: the vendor labelled her `Not Interested`, so her reply and its recency earn nothing, and her reason says so. Only her opens count. A lead labelled out-of-office or bounced is treated the same way; the [`hotLeads` reference](/docs/insights/people#hotleads) lists the labels. The ranking does not read what a reply says.
 - **Dev** has 40 opens and 5 points. The cap is there so opens cannot outrank a reply.
 - **A part that is `null` is unknown, not zero.** Ben has no label, so `parts.interest` is `null`. The function prints "unknown".
 
@@ -86,7 +86,7 @@ Every weight is an input. This run makes a recent reply worth most, shortens the
   ../../_examples/hot-leads-call-list/weights.out.txt
 </include>
 
-Ben is now seven points behind Ava, and Dev is gone: with opens worth nothing he scores 0.
+Ben is now seven points behind Ava, and Dev and Cara are gone: with opens worth nothing they score 0.
 
 ## Point it at your vendor
 

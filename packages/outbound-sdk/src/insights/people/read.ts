@@ -8,6 +8,7 @@ import type {
   Campaign,
   CampaignStatus,
   Lead,
+  ReplyCategory,
 } from "../../internal/entities.ts";
 import type { BulkResult, ListAll } from "../../internal/outbound/api.ts";
 import type { InsightContext } from "../define.ts";
@@ -187,6 +188,43 @@ export const hasReplied = (lead: Lead): boolean =>
   lead.replied === true ||
   (lead.engagement?.replies ?? 0) > 0 ||
   (lead.engagement?.lastRepliedAt ?? null) !== null;
+
+/** An interest label that says the lead's reply was an out-of-office. */
+const OUT_OF_OFFICE = /\bout[\s-]+of[\s-]+(?:the\s+)?office\b/iu;
+
+/** Interest categories that say the reply came from a machine, not the person. */
+const AUTOMATIC: ReadonlySet<ReplyCategory> = new Set<ReplyCategory>([
+  "bounce",
+  "ooo",
+]);
+
+/**
+ * The vendor labels the lead out-of-office or bounced: its reply was an
+ * automatic one. A vendor's per-lead reply count may include such replies,
+ * so they are not counted as the person replying.
+ */
+export const isAutoReplied = (lead: Lead): boolean =>
+  (lead.interestCategory !== null && AUTOMATIC.has(lead.interestCategory)) ||
+  // A label the vendor did not map to a category is read by a fixed rule.
+  (lead.interestCategory === null && OUT_OF_OFFICE.test(lead.interest ?? ""));
+
+/** Whether the lead replied, not counting a reply that was automatic. */
+export const hasHumanReply = (lead: Lead): boolean =>
+  hasReplied(lead) && !isAutoReplied(lead);
+
+/** Interest categories that say the person does not want to hear more. */
+export const NEGATIVE_CATEGORIES: ReadonlySet<ReplyCategory> =
+  new Set<ReplyCategory>(["negative", "unsubscribe"]);
+
+/** Labels read as negative when the vendor maps the label to no category. */
+const NEGATIVE_LABEL =
+  /\b(?:not[\s-]+interested|wrong[\s-]+person|unsubscribed?|do[\s-]+not[\s-]+contact)\b/iu;
+
+/** The vendor labels the lead negative: not interested, wrong person, unsubscribed, do not contact. */
+export const isNegative = (lead: Lead): boolean =>
+  (lead.interestCategory !== null &&
+    NEGATIVE_CATEGORIES.has(lead.interestCategory)) ||
+  (lead.interestCategory === null && NEGATIVE_LABEL.test(lead.interest ?? ""));
 
 const COUNTS = "no per-lead open, click or reply counts";
 
