@@ -37,6 +37,7 @@ The design authority is the Outbound SDK spec and the Linear document "Tech stac
 | `npm run check` | `check:fast`, tests, build, dist smoke test, size budget |
 | `npm run check:changed` | only the checks a change touches |
 | `npm run fix` | formatter and lint autofixes (run it twice) |
+| `npm run test:workers` | tests inside Cloudflare's Workers runtime, except those that need Node |
 | `npm run test:live` | read-only checks against real keys; needs `LIVE_TESTS=1` |
 
 Node is pinned in `.node-version`. Install with `npm ci`.
