@@ -4,6 +4,7 @@
 
 import type { Campaign, CampaignStatus } from "../internal/entities.ts";
 import type { ListAll } from "../internal/outbound/api.ts";
+import { capNote } from "./define.ts";
 import type { Cap, InsightContext } from "./define.ts";
 
 export interface Capped<Item> {
@@ -11,37 +12,6 @@ export interface Capped<Item> {
   /** `true` when the cap stopped the read with more records left. */
   readonly capped: boolean;
 }
-
-/**
- * A walk with no room left: `max` must be at least 1, so it reads one record
- * to learn whether any exist, keeps none, and is truncated when one did.
- */
-const probe = <Item>(walk: ListAll<Item>): ListAll<Item> => {
-  let found = false;
-
-  const toArray = async (): Promise<Item[]> => {
-    const read = await walk.toArray();
-    found = read.length > 0;
-
-    return [];
-  };
-
-  return {
-    async *[Symbol.asyncIterator]() {
-      yield* await toArray();
-    },
-    get cursor() {
-      return walk.cursor;
-    },
-    get meta() {
-      return walk.meta;
-    },
-    toArray,
-    get truncated() {
-      return found;
-    },
-  };
-};
 
 /**
  * Reads up to `room` records, which is the cap unless less is left under it,
@@ -53,10 +23,24 @@ export const readCapped = async <Item>(
   cap: Cap,
   room = cap.max
 ): Promise<Capped<Item>> => {
-  const walk = room < 1 ? probe(open(1)) : open(room);
-  const items = await context.all(walk, cap);
+  if (room >= 1) {
+    const walk = open(room);
+    const items = await context.all(walk, cap);
 
-  return { capped: walk.truncated, items };
+    return { capped: walk.truncated, items };
+  }
+
+  // No room left: `max` must be at least 1, so read one record to learn
+  // whether any were left out, and keep none. With two or more left, `all`
+  // already notes the cap.
+  const probe = open(1);
+  const left = await context.all(probe, cap);
+
+  if (left.length > 0 && !probe.truncated) {
+    context.partial(capNote(cap));
+  }
+
+  return { capped: left.length > 0, items: [] };
 };
 
 /** How many campaigns an insight read, and whether its cap left some unread. */
