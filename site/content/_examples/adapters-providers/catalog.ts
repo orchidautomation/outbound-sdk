@@ -18,7 +18,7 @@ console.log(loadableProviders());
 
 // A name from a flag or a variable arrives as a string. isProviderId()
 // checks it against the catalog and narrows it to a ProviderId.
-const flag: string = "memory";
+const flag = process.env.DEMO_PROVIDER ?? "memory";
 
 for (const name of ["heyreach", "nope", ALL_PROVIDERS]) {
   console.log(name, isProviderId(name));
