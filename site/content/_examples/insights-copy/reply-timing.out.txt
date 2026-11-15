@@ -15,5 +15,6 @@ counts: {
   paired: 5,
   received: 7,
   sent: 5,
-  unpaired: 1
+  unpaired: 1,
+  unpairedShare: 0.1429
 }

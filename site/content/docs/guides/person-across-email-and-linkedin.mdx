@@ -144,7 +144,7 @@ One lookup per identifier, on each tool, then up to two requests per campaign th
 | --- | --- | --- |
 | A name, or other text that is neither an address nor a profile URL | `Invalid`, before any request | Pass an email address or a LinkedIn profile URL. |
 | No record carries the identifier | `data.found` is `false`, `campaigns` is empty | Try the person's other identifier. The two sides may not be linked. |
-| The person is in more campaigns than `max_campaigns` | `meta.complete` is `false` and a note says where it stopped: "Stopped at 1 records of the person; more exist." | Raise `max_campaigns`. |
+| The person is in more campaigns than `max_campaigns` | `meta.complete` is `false` and a note says where it stopped: "Stopped at 1 records of the person (max_campaigns); more exist." | Raise `max_campaigns`. |
 | The adapter cannot look a lead up by identifier | `Unsupported`, before any request | Use an adapter that declares `leads.lookup`. |
 | A rejected key | `Unauthorized`. It is not retried. | Check the key and its scope. |
 

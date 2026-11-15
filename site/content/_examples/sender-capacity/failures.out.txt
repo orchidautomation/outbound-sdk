@@ -2,6 +2,6 @@ no limits: null - No active sender reports a daily limit, so capacity is unknown
 no settings: null [
   'The daily ask and the campaigns short of senders were left out: the adapter cannot read campaign settings.'
 ]
-capped: false 40 [ 'Stopped at 1 campaigns; more exist.' ]
+capped: false 40 [ 'Stopped at 1 campaigns (max_campaigns); more exist.' ]
 bad input: Invalid - sender_capacity: days Too small: expected number to be >=1
 no senders: Unsupported - sender_capacity is not available: the memory adapter does not support senders.list

@@ -79,6 +79,8 @@
     ],
     "tooFewSends": [],
     "unknown": [],
+    "campaignsRead": 5,
+    "moreCampaignsExist": false,
     "better": "higher",
     "metric": "reply_rate",
     "period": {

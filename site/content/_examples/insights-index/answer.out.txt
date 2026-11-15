@@ -3,7 +3,7 @@ data.ranked: [ '1. Agency owners', '2. SaaS founders' ]
 meta: {
   complete: false,
   evidence: 'exact',
-  notes: [ 'A listing was cut off at its cap; more records exist.' ],
+  notes: [ 'Stopped at 2 campaigns (max_campaigns); more exist.' ],
   requests: 0,
   computedAt: '2026-11-14T12:00:00.000Z',
   provider: 'memory'

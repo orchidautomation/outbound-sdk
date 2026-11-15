@@ -98,6 +98,8 @@ campaign_ranking {"metric":"reply_rate"}
       ],
       "tooFewSends": [],
       "unknown": [],
+      "campaignsRead": 2,
+      "moreCampaignsExist": false,
       "better": "higher",
       "metric": "reply_rate",
       "period": {

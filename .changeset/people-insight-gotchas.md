@@ -8,3 +8,9 @@
 - `personSummary` accepts a lead ref. A missing required input reads "`<name>` is required".
 - `hotLeads` and `replyTiming` throw `NotFound` for an unknown campaign.
 - `droppedReplies` notes a reply that carries no lead ref.
+- Every cap note names the input to raise: "Stopped at 25 campaigns (max_campaigns); more exist." `InsightContext.all` takes the cap as `{ max, what, input }`. `campaignRanking`, `clientReport`, `periodComparison`, `tagRollup`, `channelMix` and `copyReuse` report `campaignsRead` and `moreCampaignsExist`, and their cards say when the cap was hit.
+- `pipelineForecast` gives a campaign with no leads left `daysLeft: 0` and says to add leads; `clientReport` lists it first in `runningOutOfLeads` with the `add_leads` action.
+- `variantTest` and `copyReuse` divide every rate they compare by the same base, and do not compare variants or campaigns with no base in common. `copyReuse` names the base in `basis`, at the top and per use. `variantTest.variantStatsReported` is `null` for a date range with no step stats.
+- `copyAudit` counts `<a href="X">X</a>` as one link.
+- `replyTiming` reports `counts.unpairedShare`, marks the answer partial when over a quarter of the replies are unpaired, and notes that automatic replies are counted.
+- `tagRollup` is `Unsupported`, and left out of `insightTools`, where campaigns carry no tags. A custom insight can name such a gap with `lacks`. `memory()` takes a `fields` declaration.

@@ -1,4 +1,6 @@
-capped: 6 2 false [ 'Stopped at 2 leads of a campaign; more exist.' ]
+capped: 6 2 false [
+  'Stopped at 2 leads of a campaign (max_leads_per_campaign); more exist.'
+]
 no shared identifier: {
   acrossTools: 0,
   campaignsRead: 2,

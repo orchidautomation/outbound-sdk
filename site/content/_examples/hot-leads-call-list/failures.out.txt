@@ -1,4 +1,4 @@
-capped: 3 false [ 'Stopped at 3 leads; more exist.' ]
+capped: 3 false [ 'Stopped at 3 leads (max_leads); more exist.' ]
 limit 1: 1 of 5 true
 no data: 0 {
   autoReplied: 0,

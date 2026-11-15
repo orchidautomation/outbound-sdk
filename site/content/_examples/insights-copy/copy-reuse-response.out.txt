@@ -1,6 +1,8 @@
 {
   "data": {
+    "basis": "sent",
     "bestCopy": {
+      "basis": "sent",
       "bodyPreview": "Hi {{firstName}}, I saw {{company}} is hiring two account executives. Worth a short call next week?",
       "campaigns": 2,
       "contentHash": "731acea1c4f447bf4082393883bf01b1",
@@ -15,9 +17,11 @@
       "trials": 1100
     },
     "campaignsRead": 2,
+    "moreCampaignsExist": false,
     "piecesOfCopy": 5,
     "reused": [
       {
+        "basis": "sent",
         "bodyPreview": "Hi {{firstName}}, I saw {{company}} is hiring two account executives. Worth a short call next week?",
         "campaigns": 2,
         "contentHash": "731acea1c4f447bf4082393883bf01b1",
@@ -43,6 +47,7 @@
             "places": [
               "0:A"
             ],
+            "basis": "sent",
             "provider": "memory",
             "replies": 40,
             "replyRate": 0.08,
@@ -59,6 +64,7 @@
             "places": [
               "0:A"
             ],
+            "basis": "sent",
             "provider": "memory",
             "replies": 12,
             "replyRate": 0.02,
@@ -72,6 +78,7 @@
         ]
       },
       {
+        "basis": "sent",
         "bodyPreview": "Hi {{firstName}}, did my note reach you?",
         "campaigns": 2,
         "contentHash": "c06dbc8ddc1b8e6751f540a41c95f51c",
@@ -97,6 +104,7 @@
             "places": [
               "1:A"
             ],
+            "basis": "sent",
             "provider": "memory",
             "replies": 10,
             "replyRate": 0.025,
@@ -113,6 +121,7 @@
             "places": [
               "1:A"
             ],
+            "basis": "sent",
             "provider": "memory",
             "replies": 9,
             "replyRate": 0.02,

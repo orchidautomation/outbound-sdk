@@ -73,7 +73,7 @@ $ outbound tools
     "name": "step_funnel"
   },
   {
-    "description": "Whether a campaign's A/B winner is real. For each step with two or more variants, compares every variant with the leader by a two-proportion test and returns the variants with rates and 95% intervals, the leader, and a verdict: winner, no_difference_yet or too_little_data, with the p-value and a rough number of sends still needed when there is no verdict. Use it before pausing a variant. Costs 1 request. A null count or rate means the vendor does not report it; an empty list means the vendor does not split step stats by variant.",
+    "description": "Whether a campaign's A/B winner is real. For each step with two or more variants, compares every variant with the leader by a two-proportion test and returns the variants with rates and 95% intervals, the leader, and a verdict: winner, no_difference_yet or too_little_data, with the p-value and a rough number of sends still needed when there is no verdict. Use it before pausing a variant. Costs 1 request. A null count or rate means the vendor does not report it; an empty list means the vendor does not split step stats by variant (variantStatsReported false) or reported no step stats in the date range (null). Variants of a step are divided by the same base; variants with no base in common are not compared.",
     "name": "variant_test"
   },
   {
@@ -81,11 +81,11 @@ $ outbound tools
     "name": "copy_audit"
   },
   {
-    "description": "How the same piece of copy performs in different campaigns. Reads each campaign's sequence and step stats, matches variants by the hash of their subject and body, and returns every piece of copy used in two or more campaigns with its totals, its reply rate per campaign and the spread between its best and worst campaign, plus the copy with the highest pooled reply rate. Use it to tell a copy problem from an audience problem. Costs 2 requests per campaign plus the campaign listing. A null count means the vendor does not report it for that variant; it is never 0.",
+    "description": "How the same piece of copy performs in different campaigns. Reads each campaign's sequence and step stats, matches variants by the hash of their subject and body, and returns every piece of copy used in two or more campaigns with its totals, its reply rate per campaign and the spread between its best and worst campaign, plus the copy with the highest pooled reply rate. Use it to tell a copy problem from an audience problem. Every rate is divided by the same base, leads contacted when every campaign counts them and messages sent otherwise; campaigns with no base in common are listed but not compared. Costs 2 requests per campaign plus the campaign listing. A null count means the vendor does not report it for that variant; it is never 0.",
     "name": "copy_reuse"
   },
   {
-    "description": "How fast people reply and when. Pairs each received message with the last message sent before it in the same thread (or to the same lead) and returns the median, 75th and 90th percentile of hours to reply, the share of replies within 1, 24 and 72 hours, replies by weekday and by hour of day, the weekday and hour of the sends that drew replies, and how many replies could not be paired. Use it to choose follow-up delays and sending hours. Costs 1 request per page of messages, up to max_messages. A null figure means no reply could be paired; auto-replies are not separated, because messages carry no auto flag.",
+    "description": "How fast people reply and when. Pairs each received message with the last message sent before it in the same thread (or to the same lead) and returns the median, 75th and 90th percentile of hours to reply, the share of replies within 1, 24 and 72 hours, replies by weekday and by hour of day, the weekday and hour of the sends that drew replies, and how many replies could not be paired; over a quarter unpaired, the answer is marked partial, since a reply to a send from before `since` cannot pair and those are the slow ones. Use it to choose follow-up delays and sending hours. Costs 1 request per page of messages, up to max_messages. A null figure means no reply could be paired; auto-replies are not separated, because messages carry no auto flag.",
     "name": "reply_timing"
   },
   {
@@ -188,6 +188,8 @@ $ outbound insight
 $ outbound insight channel_mix --input '{"max_campaigns":5}'
 {
   "data": {
+    "campaignsRead": 2,
+    "moreCampaignsExist": false,
     "comparison": null,
     "finding": "Only email campaigns were found, so there is nothing to compare.",
     "byProvider": [

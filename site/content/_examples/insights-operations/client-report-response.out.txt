@@ -116,6 +116,8 @@
       },
       "verdict": "down"
     },
+    "campaignsRead": 5,
+    "moreCampaignsExist": false,
     "actions": [
       {
         "action": "Fix the bounces of Ecommerce ops: its bounce rate is 4.6% (26 of 560 sends).",

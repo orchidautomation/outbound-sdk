@@ -11,7 +11,7 @@ Best campaigns:
 
 To do:
   - Fix the bounces of Ecommerce ops: its bounce rate is 10% (63 of 630 sends).
-  - Add leads to Ecommerce ops: 0 leads remain, about 0 days of sending.
+  - Add leads to Ecommerce ops: no leads are left to contact, so it is not sending.
   - Add leads to SaaS founders: 40 leads remain, about 2 days of sending.
   - Check what happened on 2026-11-08: replied was 10 on 2026-11-08, against an average of 7.2 over the 14 days with data before it (z = 3.5).
   - Check what happened on 2026-11-08: bounced was 11 on 2026-11-08, against an average of 3.6 over the 14 days with data before it (z = 3.5).
