@@ -3,9 +3,9 @@
 import { z } from "zod";
 
 import { mapConcurrent } from "../../internal/concurrency.ts";
-import { campaignStatusSchema } from "../../internal/entities.ts";
 import type { Campaign, Sequence } from "../../internal/entities.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
+import { campaignStatusSchema } from "../../internal/vocabulary.ts";
 import { readCampaignsIn } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";

@@ -4,7 +4,6 @@
 import { z } from "zod";
 
 import type { SenderHealth } from "../../internal/entities-account.ts";
-import { campaignStatusSchema } from "../../internal/entities.ts";
 import type {
   Campaign,
   CampaignStatus,
@@ -12,6 +11,7 @@ import type {
 } from "../../internal/entities.ts";
 import { OutboundError } from "../../internal/errors.ts";
 import type { ListAll } from "../../internal/outbound/api.ts";
+import { campaignStatusSchema } from "../../internal/vocabulary.ts";
 import { readCampaignsIn, readCapped as readUpTo } from "../capped.ts";
 import type { Capped } from "../capped.ts";
 import type { InsightContext } from "../define.ts";
@@ -150,3 +150,14 @@ export const warmupSpam = (health: SenderHealth): WarmupSpam | null => {
 /** Today in UTC, plus or minus whole days, as `YYYY-MM-DD`. */
 export const dayFrom = (now: number, offsetDays: number): string =>
   new Date(now + offsetDays * 86_400_000).toISOString().slice(0, 10);
+
+/** A count for every key, in the keys' alphabetical order. */
+export const countEach = <Key extends string>(
+  keys: readonly Key[],
+  count: (key: Key) => number
+): Readonly<Record<Key, number>> =>
+  // SAFETY: the entries cover every key of the record.
+  Object.fromEntries(keys.toSorted().map((key) => [key, count(key)])) as Record<
+    Key,
+    number
+  >;

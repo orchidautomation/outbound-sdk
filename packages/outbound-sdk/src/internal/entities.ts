@@ -9,8 +9,17 @@
 
 import { z } from "zod";
 
-/** Bumped only for a breaking change to the shapes below. */
-export const SCHEMA_VERSION = 1 as const;
+import {
+  campaignStatusSchema,
+  replyCategorySchema,
+  SCHEMA_VERSION,
+} from "./vocabulary.ts";
+
+export {
+  campaignStatusSchema,
+  replyCategorySchema,
+  SCHEMA_VERSION,
+} from "./vocabulary.ts";
 
 /** The fields every entity carries. */
 export const baseFields = {
@@ -30,15 +39,6 @@ export const isoDateTime = z.iso.datetime({ offset: true }).nullable();
 export const channelSchema = z.enum(["email", "linkedin"]);
 
 export type Channel = z.infer<typeof channelSchema>;
-
-export const campaignStatusSchema = z.enum([
-  "active",
-  "archived",
-  "completed",
-  "draft",
-  "paused",
-  "unknown",
-]);
 
 export type CampaignStatus = z.infer<typeof campaignStatusSchema>;
 
@@ -135,16 +135,6 @@ export const senderSchema = z.object({
 });
 
 export type Sender = z.infer<typeof senderSchema>;
-
-export const replyCategorySchema = z.enum([
-  "bounce",
-  "negative",
-  "neutral",
-  "ooo",
-  "positive",
-  "unknown",
-  "unsubscribe",
-]);
 
 export type ReplyCategory = z.infer<typeof replyCategorySchema>;
 

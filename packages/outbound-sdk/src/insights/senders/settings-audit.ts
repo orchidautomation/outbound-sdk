@@ -11,6 +11,7 @@ import type { Campaign, Sender } from "../../internal/entities.ts";
 import { defineInsight } from "../define.ts";
 import { spoken } from "../stats.ts";
 import {
+  countEach,
   dayFrom,
   readCampaigns,
   readCampaignSenders,
@@ -299,27 +300,15 @@ const worstFirst = (left: AuditedCampaign, right: AuditedCampaign): number =>
 
 const countChecks = (
   campaigns: readonly AuditedCampaign[]
-): SettingsCheckCounts => {
-  const count = (check: SettingsCheck): number =>
-    campaigns.filter((campaign) =>
-      campaign.findings.some((finding) => finding.check === check)
-    ).length;
-
-  return {
-    click_tracking: count("click_tracking"),
-    end_date_passed: count("end_date_passed"),
-    gap_short: count("gap_short"),
-    limit_over_senders: count("limit_over_senders"),
-    no_daily_limit: count("no_daily_limit"),
-    no_timezone: count("no_timezone"),
-    no_window: count("no_window"),
-    open_tracking: count("open_tracking"),
-    reply_does_not_stop: count("reply_does_not_stop"),
-    weekend: count("weekend"),
-    window_long: count("window_long"),
-    window_short: count("window_short"),
-  };
-};
+): SettingsCheckCounts =>
+  countEach(
+    // SAFETY: SEVERITY has exactly one key per check.
+    Object.keys(SEVERITY) as SettingsCheck[],
+    (check) =>
+      campaigns.filter((campaign) =>
+        campaign.findings.some((finding) => finding.check === check)
+      ).length
+  );
 
 export const settingsAudit = defineInsight({
   description:

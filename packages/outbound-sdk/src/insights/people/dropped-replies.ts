@@ -3,13 +3,13 @@
 import { z } from "zod";
 
 import { mapConcurrent } from "../../internal/concurrency.ts";
-import { replyCategorySchema } from "../../internal/entities.ts";
 import type {
   Campaign,
   Lead,
   Message,
   Reply,
 } from "../../internal/entities.ts";
+import { replyCategorySchema } from "../../internal/vocabulary.ts";
 import type { Capped } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";

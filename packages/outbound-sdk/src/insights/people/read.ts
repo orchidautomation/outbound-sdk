@@ -3,7 +3,6 @@
 
 import { z } from "zod";
 
-import { campaignStatusSchema } from "../../internal/entities.ts";
 import type {
   Campaign,
   CampaignStatus,
@@ -11,6 +10,7 @@ import type {
   ReplyCategory,
 } from "../../internal/entities.ts";
 import type { BulkResult, ListAll } from "../../internal/outbound/api.ts";
+import { campaignStatusSchema } from "../../internal/vocabulary.ts";
 import { readCampaignsIn, readCapped } from "../capped.ts";
 import type { Capped } from "../capped.ts";
 import type { InsightContext } from "../define.ts";

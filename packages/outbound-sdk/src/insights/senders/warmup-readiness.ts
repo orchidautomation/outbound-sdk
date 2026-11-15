@@ -7,7 +7,13 @@ import type { SenderHealth } from "../../internal/entities-account.ts";
 import type { Sender } from "../../internal/entities.ts";
 import { defineInsight } from "../define.ts";
 import { percent, rate, spoken } from "../stats.ts";
-import { failingDns, readHealth, readSenders, warmupSpam } from "./read.ts";
+import {
+  countEach,
+  failingDns,
+  readHealth,
+  readSenders,
+  warmupSpam,
+} from "./read.ts";
 
 const input = z.object({
   check_health: z
@@ -165,20 +171,12 @@ const judge = (
   };
 };
 
-const countReasons = (judged: readonly UnreadySender[]): ReadinessCounts => {
-  const count = (reason: ReadinessReason): number =>
-    judged.filter((sender) => sender.reasons.includes(reason)).length;
-
-  return {
-    dns_failing: count("dns_failing"),
-    no_daily_limit: count("no_daily_limit"),
-    not_active: count("not_active"),
-    score_low: count("score_low"),
-    score_unknown: count("score_unknown"),
-    warmup_off: count("warmup_off"),
-    warmup_spam_high: count("warmup_spam_high"),
-  };
-};
+const countReasons = (judged: readonly UnreadySender[]): ReadinessCounts =>
+  countEach(
+    READINESS_REASONS,
+    (reason) =>
+      judged.filter((sender) => sender.reasons.includes(reason)).length
+  );
 
 export const warmupReadiness = defineInsight({
   description:

@@ -2,10 +2,10 @@
 // computes a reply rate the same way. Vendor percentages are never trusted:
 // rates are always recomputed from counts.
 
-import { SCHEMA_VERSION } from "./entities.ts";
 import type { MetricRow, MetricScope } from "./entities.ts";
 import type { Identity } from "./record.ts";
 import { makeRef } from "./ref.ts";
+import { SCHEMA_VERSION } from "./vocabulary.ts";
 
 export interface MetricDefinition {
   readonly name: string;

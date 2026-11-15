@@ -5,10 +5,10 @@
 import { z } from "zod";
 
 import { mapConcurrent } from "../../internal/concurrency.ts";
-import { campaignStatusSchema } from "../../internal/entities.ts";
 import type { Campaign, CampaignStatus } from "../../internal/entities.ts";
 import { sumCounts } from "../../internal/metrics.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
+import { campaignStatusSchema } from "../../internal/vocabulary.ts";
 import { campaignsReadOf, readCampaignsIn } from "../capped.ts";
 import type { CampaignsRead } from "../capped.ts";
 import type { InsightContext } from "../define.ts";
