@@ -15,6 +15,7 @@ import type { OutboundPlugin } from "../src/index.ts";
 import { insights } from "../src/insights/index.ts";
 import { instantly } from "../src/instantly/index.ts";
 import { memory } from "../src/memory/index.ts";
+import { redact } from "../src/redact/index.ts";
 
 const offline: typeof fetch = () =>
   Promise.reject(new Error("no request is expected"));
@@ -366,4 +367,44 @@ test("insights: campaign totals come from one stats request when the vendor's re
     "the two campaigns with counts"
   );
   assert.equal(full.answer.data.unknown.length, 1, "c3 has no counts");
+});
+
+test("redact: a lead's phone, website and company LinkedIn page are masked with the rest", async () => {
+  const data = {
+    leads: [
+      {
+        company: "Example Co",
+        companyLinkedinUrl: "https://www.linkedin.com/company/example-co",
+        email: "person1@example.com",
+        id: "l1",
+        location: "Example City",
+        phone: "+15550000000",
+        website: "https://example.com",
+      },
+    ],
+  };
+
+  const masked = createOutbound({
+    adapter: memory({ data }),
+    fetch: offline,
+    plugins: [redact()],
+  });
+
+  const lead = await masked.leads.get("l1");
+  assert.equal(lead.phone, "[redacted]");
+  assert.equal(lead.website, "[redacted]");
+  assert.equal(lead.companyLinkedinUrl, "[redacted]");
+  assert.equal(lead.email, "[redacted]");
+  assert.equal(lead.location, "Example City", "left as it is, like a title");
+  assert.equal(JSON.stringify(lead).includes("+1555"), false);
+
+  const partly = createOutbound({
+    adapter: memory({ data }),
+    fetch: offline,
+    plugins: [redact({ fields: ["email"] })],
+  });
+
+  const kept = await partly.leads.get("l1");
+  assert.equal(kept.phone, "+15550000000", "not masked unless asked");
+  assert.equal(kept.website, "https://example.com");
 });
