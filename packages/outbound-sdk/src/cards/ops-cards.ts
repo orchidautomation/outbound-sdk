@@ -90,6 +90,30 @@ const campaignDiagnosis: CardBuilder = (data) => ({
   title: "Campaign diagnosis",
 });
 
+// What each ranked rate divides by: one heading when every row shares it,
+// otherwise the count and its basis in each row.
+const BASIS_HEADINGS = new Map([
+  ["contacted", "Contacted"],
+  ["sent", "Sent"],
+]);
+
+const sharedBasis = (ranked: readonly JsonObject[]): string | undefined => {
+  const bases = new Set(ranked.map((campaign) => show(campaign, "basis")));
+
+  return bases.size === 1 ? [...bases][0] : undefined;
+};
+
+const baseHeading = (ranked: readonly JsonObject[]): string =>
+  BASIS_HEADINGS.get(sharedBasis(ranked) ?? "") ?? "Divided by";
+
+const baseCell = (
+  ranked: readonly JsonObject[],
+  campaign: JsonObject
+): string =>
+  sharedBasis(ranked) === undefined
+    ? `${int(num(campaign, "of"))} ${show(campaign, "basis")}`
+    : int(num(campaign, "of"));
+
 const campaignRanking: CardBuilder = (data) => {
   const ranked = rows(data, "ranked");
   const gap = child(data, "gap");
@@ -125,11 +149,11 @@ const campaignRanking: CardBuilder = (data) => {
     subtitle: `${metric}, ${show(data, "better")} is better`,
     table: {
       align: [RIGHT, LEFT, RIGHT, RIGHT],
-      headers: ["#", "Campaign", "Sent", metric],
+      headers: ["#", "Campaign", baseHeading(ranked), metric],
       rows: ranked.map((campaign) => [
         int(num(campaign, "rank")),
         campaignNameOf(campaign),
-        int(num(campaign, "sent")),
+        baseCell(ranked, campaign),
         measured(campaign),
       ]),
     },
@@ -185,11 +209,16 @@ const versus = (comparison: JsonObject, key: string, write: Write): string => {
     : `${write(now)} (was ${write(before)})`;
 };
 
+// What a period's replies are divided by (`replyRateBasis`), as a heading.
+const perWhat = (data: Json | undefined): string =>
+  show(data, "replyRateBasis") === "contacted"
+    ? "Replies per lead"
+    : "Replies per send";
+
 const comparisonStats = (comparison: JsonObject): Stat[] => [
   ["Sent", versus(comparison, "sent", int)],
   ["Replies", versus(comparison, "replied", int)],
-  // A period's replies are divided by messages sent (`replyRateBasis`).
-  ["Replies per send", versus(comparison, "replyRate", pct)],
+  [perWhat(comparison), versus(comparison, "replyRate", pct)],
   ["Positive", versus(comparison, "positive", int)],
   ["Bounce rate", versus(comparison, "bounceRate", pct)],
 ];
@@ -215,7 +244,7 @@ const periodComparison: CardBuilder = (data) => {
     subtitle: `${range(child(data, "current"))}, against ${range(child(data, "previous"))}`,
     table: {
       align: [LEFT, RIGHT, RIGHT, LEFT],
-      headers: ["Campaign", "Replies per send now", "Before", "Change"],
+      headers: ["Campaign", "Reply rate now", "Before", "Change"],
       rows: rows(data, "campaigns").map((campaign) => [
         campaignNameOf(campaign),
         pct(num(child(campaign, "current"), "replyRate")),
@@ -309,11 +338,16 @@ const clientReport: CardBuilder = (data) => {
     subtitle: `${plural(num(data, "campaigns") ?? 0, "campaign")} · ${range(child(data, "period"))}`,
     table: {
       align: [RIGHT, LEFT, RIGHT, RIGHT],
-      headers: ["#", "Top campaigns", "Sent", "Replies per send"],
+      headers: [
+        "#",
+        "Top campaigns",
+        show(data, "replyRateBasis") === "contacted" ? "Contacted" : "Sent",
+        perWhat(data),
+      ],
       rows: rows(data, "top").map((campaign) => [
         int(num(campaign, "rank")),
         campaignNameOf(campaign),
-        int(num(campaign, "sent")),
+        int(num(campaign, "of")),
         measured(campaign),
       ]),
     },

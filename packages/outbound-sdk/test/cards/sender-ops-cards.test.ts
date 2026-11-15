@@ -583,6 +583,7 @@ const ranking = (names: string[], thin: number): CampaignRanking => ({
   ranked: names.map((name, index) => ({
     ...label(name),
     ...rate(30 - index * 10, 500),
+    basis: "sent" as const,
     rank: index + 1,
     sent: 500,
   })),
@@ -724,10 +725,10 @@ test("period_comparison shows each number now and before", () => {
     "Sent: 1,200 (was 1,000)",
     "Replies per send: 4.2% (was 6.0%)",
     "Positive: —",
-    "Founders | 4.2%                 | 6.0%   | 🔻 down",
-    "Agencies | 4.2%                 | 6.0%   | 🔺 up",
-    "Steady   | 4.2%                 | 6.0%   | ▪️ no real change",
-    "Blank    | 4.2%                 | 6.0%   | ⚪ unknown"
+    "Founders | 4.2%           | 6.0%   | 🔻 down",
+    "Agencies | 4.2%           | 6.0%   | 🔺 up",
+    "Steady   | 4.2%           | 6.0%   | ▪️ no real change",
+    "Blank    | 4.2%           | 6.0%   | ⚪ unknown"
   );
 });
 
@@ -823,7 +824,15 @@ const report = (withActions: boolean): ClientReport => ({
   previousPeriod: { from: "2026-10-31", to: "2026-11-06" },
   replyRateBasis: "sent",
   runningOutOfLeads: null,
-  top: [{ ...label("Founders Q4"), ...rate(30, 500), rank: 1, sent: 500 }],
+  top: [
+    {
+      ...label("Founders Q4"),
+      ...rate(30, 500),
+      basis: "sent",
+      rank: 1,
+      sent: 500,
+    },
+  ],
   totals: comparison("down"),
 });
 

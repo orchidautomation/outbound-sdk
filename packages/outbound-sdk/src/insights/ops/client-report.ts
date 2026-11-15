@@ -19,13 +19,13 @@ import { forecastCampaign } from "./pipeline-forecast.ts";
 import {
   labelOf,
   listFields,
-  perMessageBase,
+  RATE_WORDS,
   ratesOf,
   readDaily,
   shiftDay,
   volumeOf,
 } from "./shared.ts";
-import type { CampaignLabel, DayRange } from "./shared.ts";
+import type { CampaignLabel, DayRange, ReplyBasis } from "./shared.ts";
 
 const limit = z.number().int().min(1).max(20);
 
@@ -152,11 +152,11 @@ export interface ClientReport extends CampaignsRead {
   readonly totals: Comparison;
   /**
    * What `top`, `bottom` and `totals` divide replies by: messages sent in
-   * the period, never leads contacted, since a period's replies also answer
-   * leads contacted before it.
+   * the period when both periods report them, since a period's replies also
+   * answer leads contacted before it, and otherwise leads contacted.
    */
-  readonly replyRateBasis: "sent";
-  /** Best campaigns by the low end of the interval of replies per message sent. */
+  readonly replyRateBasis: ReplyBasis;
+  /** Best campaigns by the low end of the interval of the reply rate, over `replyRateBasis`. */
   readonly top: readonly RankedCampaign[];
   /** Worst campaigns, worst first. Never repeats one in `top`. */
   readonly bottom: readonly RankedCampaign[];
@@ -283,7 +283,8 @@ type Sections = Pick<
 
 const actionsOf = (report: Sections): ActionItem[] => {
   const [worst] = report.bottom;
-  const { current, previous } = report.totals;
+  const { current, previous, replyRateBasis } = report.totals;
+  const perWhat = RATE_WORDS[replyRateBasis].toLowerCase();
 
   return [
     ...report.bounceProblems.map((problem) => ({
@@ -306,7 +307,7 @@ const actionsOf = (report: Sections): ActionItem[] => {
     ...(report.totals.verdict === "down"
       ? [
           {
-            action: `Find out what changed: replies per message sent fell from ${percent(previous.replyRate)} to ${percent(current.replyRate)}, more than chance would give.`,
+            action: `Find out what changed: ${perWhat} fell from ${percent(previous.replyRate)} to ${percent(current.replyRate)}, more than chance would give.`,
             campaign: null,
             campaignName: null,
             kind: "reply_rate_fell" as const,
@@ -318,7 +319,7 @@ const actionsOf = (report: Sections): ActionItem[] => {
       ? []
       : [
           {
-            action: `Review the copy and the audience of ${worst.campaignName}: it has the fewest replies per message sent, ${percent(worst.rate)} (${worst.count} of ${worst.of}).`,
+            action: `Review the copy and the audience of ${worst.campaignName}: it has the fewest ${perWhat}, ${percent(worst.rate)} (${worst.count} of ${worst.of}).`,
             campaign: worst.campaign,
             campaignName: worst.campaignName,
             kind: "review_campaign" as const,
@@ -337,7 +338,7 @@ const actionsOf = (report: Sections): ActionItem[] => {
 
 export const clientReport = defineInsight({
   description:
-    "One report for one client or workspace over the last `days` complete days: totals and the change from the period before, the best and worst campaigns by the low end of the interval of replies per message sent, campaigns with a bounce problem, unusual days, active campaigns running out of leads, and a short list of action items in plain language, each naming the campaign and the number behind it. Reply rates divide by messages sent (`replyRateBasis`), not leads contacted, since a period's replies also answer leads contacted before it. Use it for a weekly client update. A section the adapter cannot serve is null and named in `leftOut`, and a null count is one the vendor does not report. Costs two stats requests per campaign, one for the workspace, and for each active campaign two more plus its pages of leads.",
+    "One report for one client or workspace over the last `days` complete days: totals and the change from the period before, the best and worst campaigns by the low end of the interval of the reply rate, campaigns with a bounce problem, unusual days, active campaigns running out of leads, and a short list of action items in plain language, each naming the campaign and the number behind it. Reply rates divide by messages sent (`replyRateBasis`), since a period's replies also answer leads contacted before it, and by leads contacted for both periods only when a period does not report messages sent. Use it for a weekly client update. A section the adapter cannot serve is null and named in `leftOut`, and a null count is one the vendor does not report. Costs two stats requests per campaign, one for the workspace, and for each active campaign two more plus its pages of leads.",
   inputSchema: input,
   key: "clientReport",
   name: "client_report",
@@ -346,6 +347,13 @@ export const clientReport = defineInsight({
   run: async (context, options) => {
     const periods = await readPeriods(context, options);
 
+    const totals = noted(
+      context,
+      "Totals",
+      totalOf(periods.campaigns, options.alpha)
+    );
+
+    // Campaigns are ranked on the base the totals use.
     const ranking = rankCampaigns(
       periods.campaigns.map((entry) => ({
         campaign: entry.campaign,
@@ -353,7 +361,7 @@ export const clientReport = defineInsight({
       })),
       "reply_rate",
       options.min_sent,
-      perMessageBase
+      totals.replyRateBasis
     );
 
     const sections: Sections = {
@@ -364,11 +372,7 @@ export const clientReport = defineInsight({
         .toReversed(),
       bounceProblems: bounceProblems(periods.campaigns, options),
       runningOutOfLeads: await readRunways(context, periods.campaigns, options),
-      totals: noted(
-        context,
-        "Totals",
-        totalOf(periods.campaigns, options.alpha)
-      ),
+      totals,
     };
 
     const leftOut = [
@@ -395,7 +399,7 @@ export const clientReport = defineInsight({
       leftOut,
       period: periods.current,
       previousPeriod: periods.previous,
-      replyRateBasis: "sent",
+      replyRateBasis: totals.replyRateBasis,
       top: ranking.ranked.slice(0, options.limit),
     };
 

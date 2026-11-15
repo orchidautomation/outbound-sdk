@@ -378,3 +378,34 @@ test("period_comparison divides a period's replies by messages sent, so a rate n
     /^Replies per message sent went from 2% to 2\.7%; /u
   );
 });
+
+test("period_comparison falls back to leads contacted for both periods when a period does not report messages sent", async () => {
+  // A vendor that counts leads contacted but not messages: 2 of 100 before,
+  // 8 of 50 now. The current week reports sends, the earlier one does not, so
+  // both periods are divided by leads contacted rather than mixing bases.
+  const result = await single({
+    campaigns: [{ id: "k", name: "Seats" }],
+    stats: [
+      row("k", "2026-11-02", { contacted: 100, replied: 2 }),
+      row("k", "2026-11-09", { contacted: 50, replied: 8, sent: 200 }),
+    ],
+  }).insights.periodComparison({}, { now: NOW });
+
+  const [seats] = result.data.campaigns;
+
+  assert.deepEqual(
+    [
+      seats?.replyRateBasis,
+      seats?.previous.replyRate,
+      seats?.current.replyRate,
+      result.data.total.replyRateBasis,
+      result.data.total.current.replyRate,
+    ],
+    ["contacted", 0.02, 0.16, "contacted", 0.16]
+  );
+  assert.notEqual(seats?.verdict, "unknown");
+  assert.match(
+    seats?.finding ?? "",
+    /^Replies per lead contacted went from 2% to 16%; /u
+  );
+});

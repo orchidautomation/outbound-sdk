@@ -118,21 +118,42 @@ export const measure = (count: number | null, of: number | null): Measured => {
   };
 };
 
-/** What a per-lead rate divides by: leads contacted, or messages sent when the vendor does not count leads. */
-export const perLeadBase = (counts: Totals): number | null =>
-  counts.contacted !== null && counts.contacted > 0
-    ? counts.contacted
-    : counts.sent;
-
-/**
- * What a rate over a time window divides replies by: messages sent. Replies
- * in a week answer messages sent that week to leads first contacted weeks
- * before, so a week's leads contacted can be far fewer than its replies.
- */
-export const perMessageBase = (counts: Totals): number | null => counts.sent;
+/** What a reply rate divides by: leads contacted or messages sent. */
+export type ReplyBasis = "contacted" | "sent";
 
 /** What a rate's replies are divided by. */
 export type Base = (counts: Totals) => number | null;
+
+/** The base of one basis: `baseIn("sent")` divides by messages sent. */
+export const baseIn =
+  (basis: ReplyBasis): Base =>
+  (counts) =>
+    counts[basis];
+
+/** What a per-lead rate divides by: leads contacted, or messages sent when the vendor does not count leads. */
+export const perLeadBasis = (counts: Totals): ReplyBasis =>
+  counts.contacted !== null && counts.contacted > 0 ? "contacted" : "sent";
+
+export const perLeadBase: Base = (counts) => counts[perLeadBasis(counts)];
+
+/**
+ * What two periods divide replies by, the same for both: messages sent when
+ * both report them, since replies in a week answer messages sent that week
+ * to leads first contacted weeks before, so a week's leads contacted can be
+ * far fewer than its replies. Otherwise leads contacted for both, so the
+ * two rates are never over different bases.
+ */
+export const periodBasis = (
+  current: Totals,
+  previous: Totals
+): ReplyBasis =>
+  current.sent !== null && previous.sent !== null ? "sent" : "contacted";
+
+/** The rate's name, to start a sentence: "Replies per message sent". */
+export const RATE_WORDS: Readonly<Record<ReplyBasis, string>> = {
+  contacted: "Replies per lead contacted",
+  sent: "Replies per message sent",
+};
 
 export interface Rates {
   /** Replies divided by the base: leads contacted (or messages sent when contacted is unknown) unless the caller passes another. */

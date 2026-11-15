@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import { cardFor } from "../../src/cards/index.ts";
 import type { MemoryData } from "../../src/memory/index.ts";
+import { read } from "../cards/helpers.ts";
 import { NOW, single } from "./helpers.ts";
 import { pair, row, unsupported } from "./ops-helpers.ts";
 
@@ -52,6 +54,7 @@ test("campaign_ranking ranks by the low end of the interval, so a lucky small ca
   // of 11.83% and 150 of 1,000 has 12.92%.
   assert.deepEqual(result.data.ranked, [
     {
+      basis: "contacted",
       campaign: "memory:agency:a",
       channel: "email",
       count: 150,
@@ -67,6 +70,7 @@ test("campaign_ranking ranks by the low end of the interval, so a lucky small ca
       status: "active",
     },
     {
+      basis: "contacted",
       campaign: "memory:agency:b",
       channel: "email",
       count: 12,
@@ -262,4 +266,41 @@ test("campaign_ranking ranks campaigns of two tools together", async () => {
     ]
   );
   assert.equal(result.meta.provider, "combined");
+});
+
+test("campaign_ranking names what each rate divides by, and its card shows that count", async () => {
+  // Follow-ups sent 300 messages to 5 new leads: the reply rate is per lead
+  // contacted, so the row names `contacted` and the card shows 5, not 300.
+  const outbound = single({
+    campaigns: [
+      { id: "w", name: "Follow-ups" },
+      { id: "s", name: "Seats" },
+    ],
+    stats: [
+      row("w", "2026-11-09", { contacted: 60, replied: 8, sent: 300 }),
+      row("s", "2026-11-09", { replied: 4, sent: 80 }),
+    ],
+  });
+  const result = await outbound.insights.campaignRanking(NOVEMBER, {
+    now: NOW,
+  });
+
+  assert.deepEqual(
+    result.data.ranked.map((each) => [
+      each.campaignName,
+      each.basis,
+      each.of,
+      each.sent,
+    ]),
+    [
+      ["Follow-ups", "contacted", 60, 300],
+      ["Seats", "sent", 80, 80],
+    ]
+  );
+
+  const text = read(cardFor("campaign_ranking", result));
+
+  assert.match(text, /Divided by/u);
+  assert.match(text, /60 contacted/u);
+  assert.match(text, /80 sent/u);
 });

@@ -15,7 +15,7 @@ Eight insights computed from campaign stats. Each is a method on `outbound.insig
 Three things hold for all of them:
 
 - **A reply rate is replies divided by leads contacted**, or by messages sent when the vendor does not count leads. A bounce rate is bounces divided by messages sent.
-- **A rate over a time window is per message sent.** `periodComparison` and `clientReport` divide replies and positive replies by messages sent in the period, never by leads contacted, and say so in `replyRateBasis: "sent"`. A week's replies also answer leads first contacted weeks before, so a week that contacted 5 new leads and sent 300 follow-ups could otherwise show 8 replies as 160%.
+- **A rate over a time window is per message sent.** `periodComparison` and `clientReport` divide replies and positive replies by messages sent in the period, and say so in `replyRateBasis: "sent"`. A week's replies also answer leads first contacted weeks before, so a week that contacted 5 new leads and sent 300 follow-ups could otherwise show 8 replies as 160%. Where a period does not report messages sent, as some vendors do not, both periods are divided by leads contacted instead, with `replyRateBasis: "contacted"` and a sentence that reads "Replies per lead contacted went from …". The two periods are never on different bases.
 - **A rate comes with its count, its base and its 95% interval** as `count`, `of`, `rate`, `low` and `high`.
 - **"The last N days" means N complete UTC days ending yesterday.** Today is left out because it is not over.
 - **Every campaign row has `campaign`, its ref, and `campaignName`.** `name` holds the same name and is deprecated until 0.5.0.
@@ -215,7 +215,7 @@ The last `days` complete days against the `days` before, per campaign and in tot
 
 - `days`, `current`, `previous`: the two periods as `from` and `to`.
 - `campaignsRead`, `moreCampaignsExist`.
-- `campaigns`: one entry per campaign, with `current` and `previous` (counts and the three rates; replies and positive replies per message sent), `replyRateBasis` (`"sent"`), `change` (current minus previous; rates change in points, so 0.02 is two points), `replyRateTest` (`z`, `pValue`, `significant`), `verdict` (`up`, `down`, `no_real_change` or `unknown`) and a `finding` sentence ("Replies per message sent went from 6% to 12%; ..."). Largest change in reply rate first.
+- `campaigns`: one entry per campaign, with `current` and `previous` (counts and the three rates; replies and positive replies per message sent, or per lead contacted when a period does not report sends), `replyRateBasis` (`"sent"` or `"contacted"`, the same for both periods), `change` (current minus previous; rates change in points, so 0.02 is two points), `replyRateTest` (`z`, `pValue`, `significant`), `verdict` (`up`, `down`, `no_real_change` or `unknown`) and a `finding` sentence ("Replies per message sent went from 6% to 12%; ..."). Largest change in reply rate first.
 - `tooFewSends`: campaigns under `min_sent` in either period, with `currentSent` and `previousSent`.
 - `total`: the same comparison for every campaign read, added together. Each rate counts only the campaigns that report both its count and what it is divided by, so the bounces of the campaigns that report them are never divided by every campaign's sends.
 - `workspace`: the same for the vendor's own workspace totals, or `null` when the adapter has none. On a combined instance the tools' rows are added up by the same rule.
@@ -256,7 +256,7 @@ Which campaigns are best, ranked so a small sample cannot win on luck.
 `data` (`CampaignRanking`):
 
 - `metric`, `better` (`higher` or `lower`), `period`, `campaignsRead`, `moreCampaignsExist`.
-- `ranked`: best first, each with `rank`, `sent`, and the rate as `count`, `of`, `rate`, `low` and `high`.
+- `ranked`: best first, each with `rank`, `sent` (messages sent, `null` when not reported), and the rate as `count`, `of`, `rate`, `low` and `high`, with `basis` saying what `of` counts: `contacted` (leads contacted) or `sent`, which it is for a campaign that does not count leads and always for bounce rate.
 - `tooFewSends`: campaigns under `min_sent`, with the `reason`.
 - `unknown`: campaigns whose count for this metric the vendor does not report, with the `reason`.
 - `gap`: `top` (the rate of the campaign ranked first), `median` and `difference`.
@@ -383,9 +383,9 @@ One report for one client or workspace over the last `days` complete days, compo
 `data` (`ClientReport`):
 
 - `days`, `period`, `previousPeriod`, `campaigns` (campaigns read), `campaignsRead` (the same number) and `moreCampaignsExist`.
-- `replyRateBasis`: `"sent"`. `totals`, `top` and `bottom` divide replies by messages sent in the period, as `periodComparison` does.
+- `replyRateBasis`: `"sent"`, or `"contacted"` when a period does not report messages sent. `totals`, `top` and `bottom` divide replies by it, as `periodComparison` does.
 - `totals`: every campaign added together, as in `periodComparison`: `current`, `previous`, `change`, `replyRateBasis`, `replyRateTest`, `verdict` and `finding`. A rate counts only the campaigns that report both sides of it.
-- `top`, `bottom`: the best and worst campaigns by the low end of the interval of replies per message sent. `bottom` never repeats a campaign in `top`.
+- `top`, `bottom`: the best and worst campaigns by the low end of the interval of the reply rate, over `replyRateBasis`. `bottom` never repeats a campaign in `top`.
 - `bounceProblems`: campaigns over `max_bounce_rate`, worst first, with the rate as `count`, `of`, `rate`, `low` and `high`, and `bounced` and `sent`, the same counts under their older names.
 - `anomalies`: unusual days in the period, workspace-wide. `null` when the adapter cannot serve them.
 - `runningOutOfLeads`: active campaigns with `runway_days` of leads or fewer, with `remaining`, `dailyContactRate` and `daysLeft`, soonest first. A campaign with no leads left has `daysLeft` 0, so it comes first and gets an `add_leads` action. `null` when the adapter cannot serve them.

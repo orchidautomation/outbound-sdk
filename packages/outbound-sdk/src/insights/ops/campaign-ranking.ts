@@ -9,18 +9,20 @@ import { rangeFields } from "../fields.ts";
 import { median, round } from "../stats.ts";
 import {
   descending,
+  baseIn,
   labelOf,
   listFields,
+  perLeadBasis,
   ratesOf,
   readCampaignTotals,
   volumeOf,
 } from "./shared.ts";
 import type {
-  Base,
   CampaignLabel,
   CampaignTotals,
   Measured,
   OpenRange,
+  ReplyBasis,
   Totals,
 } from "./shared.ts";
 
@@ -49,6 +51,9 @@ const input = z.object({
 export interface RankedCampaign extends CampaignLabel, Measured {
   /** 1 is the best. */
   readonly rank: number;
+  /** What `of` counts: leads contacted or messages sent. Always `sent` for bounce rate. */
+  readonly basis: ReplyBasis;
+  /** Messages sent. `null` when the vendor does not report them. */
   readonly sent: number | null;
 }
 
@@ -84,9 +89,9 @@ export interface CampaignRanking extends Ranking, CampaignsRead {
 const measured = (
   counts: Totals,
   metric: RankingMetric,
-  base?: Base
+  basis: ReplyBasis
 ): Measured => {
-  const rates = ratesOf(counts, base);
+  const rates = ratesOf(counts, baseIn(basis));
 
   if (metric === "bounce_rate") {
     return rates.bounceRate;
@@ -105,13 +110,14 @@ const order = (metric: RankingMetric) => (left: Scored, right: Scored) =>
 
 /**
  * Ranks campaigns that sent enough, and sets the rest aside with the reason.
- * `base` is what replies are divided by; leads contacted by default.
+ * `replyBasis` is what replies are divided by; by default leads contacted,
+ * or messages sent for a campaign that does not count leads.
  */
 export const rankCampaigns = (
   entries: readonly CampaignTotals[],
   metric: RankingMetric,
   minSent: number,
-  base?: Base
+  replyBasis?: ReplyBasis
 ): Ranking => {
   const scored: Scored[] = [];
   const tooFewSends: UnrankedCampaign[] = [];
@@ -120,7 +126,11 @@ export const rankCampaigns = (
   for (const { campaign, counts } of entries) {
     const label = labelOf(campaign);
     const volume = volumeOf(counts);
-    const result = measured(counts, metric, base);
+    const basis =
+      metric === "bounce_rate"
+        ? "sent"
+        : (replyBasis ?? perLeadBasis(counts));
+    const result = measured(counts, metric, basis);
 
     if (volume === null) {
       unknown.push({
@@ -141,7 +151,7 @@ export const rankCampaigns = (
         sent: volume,
       });
     } else {
-      scored.push({ ...label, ...result, sent: volume });
+      scored.push({ ...label, ...result, basis, sent: counts.sent });
     }
   }
 
