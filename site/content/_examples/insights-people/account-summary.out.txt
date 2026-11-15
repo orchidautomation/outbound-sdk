@@ -5,6 +5,7 @@ totals: {
   interested: 1,
   leadsRead: 12,
   leadsWithoutEmail: 2,
+  moreLeadsExist: false,
   people: 2,
   records: 4,
   replied: 1

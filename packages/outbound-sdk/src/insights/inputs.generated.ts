@@ -16,7 +16,7 @@ export interface InsightInputs {
     readonly max_campaigns?: number | undefined;
 
     /**
-     * The person's email address or LinkedIn profile URL
+     * The person's email address or LinkedIn profile URL, or a lead ref as the other people insights return
      *
      * At least 3 characters. Required.
      */
@@ -425,7 +425,7 @@ export interface InsightInputs {
   /** The input of `replyTiming` (the `reply_timing` tool). */
   readonly replyTiming: {
     /**
-     * A campaign's ref to look at one campaign. null looks at every campaign.
+     * A campaign's ref to look at one campaign; an unknown one is refused with NotFound. null looks at every campaign.
      *
      * Not empty. Defaults to `null`.
      */

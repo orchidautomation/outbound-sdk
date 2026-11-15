@@ -30,6 +30,8 @@
       },
       "campaignsRead": 3,
       "leadsRead": 11,
+      "moreBlockEntriesExist": false,
+      "moreLeadsExist": false,
       "violations": 3
     },
     "violations": [

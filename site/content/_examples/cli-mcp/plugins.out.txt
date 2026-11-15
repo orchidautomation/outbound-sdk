@@ -1,6 +1,6 @@
 $ outbound mcp
   plugins:      Plugins on: redact, identity. redact masks personal fields such as emails and names, and reply text is not available.
-  tools:        35
+  tools:        31
   reply text:   refused (Reading reply bodies is not available: the redact plugin turned it off (messages.body))
 
 $ outbound mcp --no-redact
@@ -10,6 +10,6 @@ $ outbound mcp --no-redact
 
 $ outbound mcp --config outbound.config.ts --cache 300 --max-requests 50
   plugins:      Plugins on: redact, clients, cache, budget, identity. redact masks personal fields such as emails and names, and reply text is not available.
-  tools:        36
+  tools:        32
   reply text:   refused (Reading reply bodies is not available: the redact plugin turned it off (messages.body))
 

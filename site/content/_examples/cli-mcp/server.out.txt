@@ -19,7 +19,7 @@ initialize
   }
 }
 
-tools/list: 35 tools
+tools/list: 31 tools
 campaign_overview
 campaign_trend
 winning_steps
@@ -29,10 +29,6 @@ lead_runway
 campaign_setup
 deliverability_check
 audience_lists
-person_summary
-account_summary
-lead_collisions
-suppression_check
 dropped_replies
 hot_leads
 personalization_gaps

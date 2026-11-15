@@ -1,4 +1,4 @@
-a name: Invalid - Give an email address or a LinkedIn profile URL
+a name: Invalid - Give an email address, a LinkedIn profile URL or a lead ref
 nobody: false 0
 capped: 1 false [ 'Stopped at 1 records of the person; more exist.' ]
 no lookup: Unsupported - person_summary is not available: the memory adapter does not support leads.lookup

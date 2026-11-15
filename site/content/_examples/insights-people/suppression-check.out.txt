@@ -7,5 +7,7 @@ totals: {
   byMatch: { domain: 1, email: 1, linkedin: 1 },
   campaignsRead: 3,
   leadsRead: 11,
+  moreBlockEntriesExist: false,
+  moreLeadsExist: false,
   violations: 3
 }

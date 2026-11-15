@@ -111,6 +111,6 @@ campaign_ranking {"metric":"reply_rate"}
     "provider": "memory",
     "requests": 0
   },
-  "next": "Use campaign_diagnosis on the campaign ranked last to see why it is behind.",
+  "next": "Pick another of the listed tools to go further.",
   "ok": true
 }
