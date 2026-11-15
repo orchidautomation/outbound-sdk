@@ -87,6 +87,9 @@ const DATA: MemoryData = {
   messages: MESSAGES,
 };
 
+const AUTO_NOTE =
+  "Automatic replies such as out-of-office messages are counted as replies: messages carry no auto flag, so they cannot be told apart. A fast median can be auto-replies.";
+
 const counted = <Entry extends { readonly count: number }>(
   entries: readonly Entry[]
 ): Entry[] => entries.filter((entry) => entry.count > 0);
@@ -122,6 +125,8 @@ test("reply_timing times each reply from the send it answers and says when repli
     received: 9,
     sent: 7,
     unpaired: 2,
+    // Under a quarter, so the answer is not marked partial.
+    unpairedShare: 0.2222,
   });
 
   // All nine replies: Monday 3, Tuesday 2, Wednesday 2, Thursday 1, Saturday 1.
@@ -302,6 +307,7 @@ test("reply_timing with no messages returns unknowns, not zeros", async () => {
     received: 0,
     sent: 0,
     unpaired: 0,
+    unpairedShare: null,
   });
 });
 
@@ -357,6 +363,7 @@ test("reply_timing stops at max_messages and says the answer is partial", async 
   assert.equal(result.meta.complete, false);
   assert.deepEqual(result.meta.notes, [
     "Stopped at 5 messages (max_messages); more exist.",
+    AUTO_NOTE,
   ]);
 });
 
@@ -392,6 +399,7 @@ test("reply_timing is refused without messages, and filters by date itself when 
   );
   assert.deepEqual(unfiltered.meta.notes, [
     "This tool cannot filter messages by date, so the cap applies to all messages and older ones were dropped after reading.",
+    AUTO_NOTE,
   ]);
 });
 
@@ -447,4 +455,92 @@ test("reply_timing reads email and LinkedIn together on a combined instance", as
     [linkedin.data.timeToReply.sample, linkedin.data.timeToReply.medianHours],
     [1, 2]
   );
+});
+
+test("reply_timing says automatic replies are not told apart (OUT-75)", async () => {
+  // 8 out-of-office replies two minutes after the send, 2 people two days later.
+  const messages: MemoryMessage[] = Array.from({ length: 10 }, (_, index) => {
+    const day = String(2 + index).padStart(2, "0");
+    const sent = `2026-11-${day}T09:00:00.000Z`;
+
+    return [
+      { direction: "out", id: `o${index}`, leadId: `l${index}`, sentAt: sent },
+      {
+        direction: "in",
+        id: `i${index}`,
+        isAuto: index < 8,
+        leadId: `l${index}`,
+        sentAt:
+          index < 8
+            ? `2026-11-${day}T09:02:00.000Z`
+            : `2026-11-${String(4 + index).padStart(2, "0")}T15:00:00.000Z`,
+      },
+    ] as const;
+  }).flat();
+
+  const result = await single({
+    campaigns: [{ id: "c1" }],
+    messages: messages.map((each) => ({ ...each, campaignId: "c1" })),
+  }).insights.replyTiming({}, { now: NOW });
+
+  assert.equal(result.data.timeToReply.within1Hour, 0.8);
+  assert.deepEqual(result.meta.notes, [AUTO_NOTE]);
+  assert.equal(result.meta.complete, true);
+});
+
+test("reply_timing marks the answer partial when many replies answer a send from before since (OUT-75)", async () => {
+  // Four people emailed on 10-10, before the 30 days read, replied 11-01 to
+  // 11-04; one more was emailed and replied within the hour on 11-10.
+  const messages: MemoryMessage[] = [
+    ...[1, 2, 3, 4].flatMap((person) => [
+      {
+        direction: "out" as const,
+        id: `o${person}`,
+        leadId: `l${person}`,
+        sentAt: "2026-10-10T09:00:00.000Z",
+      },
+      {
+        direction: "in" as const,
+        id: `i${person}`,
+        leadId: `l${person}`,
+        sentAt: `2026-11-0${person}T09:00:00.000Z`,
+      },
+    ]),
+    {
+      direction: "out",
+      id: "o9",
+      leadId: "l9",
+      sentAt: "2026-11-10T09:00:00.000Z",
+    },
+    {
+      direction: "in",
+      id: "i9",
+      leadId: "l9",
+      sentAt: "2026-11-10T10:00:00.000Z",
+    },
+  ];
+
+  const result = await single({
+    campaigns: [{ id: "c" }],
+    messages,
+  }).insights.replyTiming({}, { now: NOW });
+
+  assert.equal(result.data.timeToReply.sample, 1);
+  assert.equal(result.data.counts.unpaired, 4);
+  assert.equal(result.data.counts.unpairedShare, 0.8);
+  assert.equal(result.meta.complete, false);
+  assert.deepEqual(result.meta.notes, [
+    "4 of 5 replies (80%) were not paired with a send, often because the send went out before since. Time to reply leaves them out, so it may look faster than it is; set since earlier to pair more.",
+    AUTO_NOTE,
+  ]);
+
+  // From 10-01 every reply pairs, and the slow ones count.
+  const earlier = await single({
+    campaigns: [{ id: "c" }],
+    messages,
+  }).insights.replyTiming({ since: "2026-10-01T00:00:00Z" }, { now: NOW });
+
+  assert.equal(earlier.data.counts.unpaired, 0);
+  assert.equal(earlier.data.counts.unpairedShare, 0);
+  assert.equal(earlier.meta.complete, true);
 });

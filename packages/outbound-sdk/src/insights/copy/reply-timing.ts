@@ -7,9 +7,16 @@ import { confirmCampaign } from "../campaign.ts";
 import { readCapped } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
-import { median, percentile, rate, round } from "../stats.ts";
+import { median, percent, percentile, rate, round } from "../stats.ts";
 
 const DAY_MS = 86_400_000;
+
+/**
+ * Over this share of replies left unpaired, the answer is partial. A reply
+ * to a send from before `since` cannot pair, and those are the slow ones, so
+ * leaving many out makes replies look faster than they are.
+ */
+export const MAX_UNPAIRED_SHARE = 0.25;
 const HOUR_MS = 3_600_000;
 const MINUTE_MS = 60_000;
 
@@ -110,6 +117,8 @@ export interface ReplyTiming {
     readonly followOnReplies: number;
     /** Replies with no earlier send in what was read, no thread or lead to match on, or no time. */
     readonly unpaired: number;
+    /** `unpaired` over `received`. Over 0.25 the answer is marked partial. `null` with no reply. */
+    readonly unpairedShare: number | null;
   };
 }
 
@@ -274,9 +283,30 @@ const readMessages = async (
   );
 };
 
+/** Says when unpaired replies may skew the answer, and that auto-replies count. */
+const noteGaps = (
+  context: InsightContext,
+  unpaired: number,
+  received: number
+): void => {
+  const share = rate(unpaired, received);
+
+  if (share !== null && share > MAX_UNPAIRED_SHARE) {
+    context.partial(
+      `${unpaired} of ${received} replies (${percent(share)}) were not paired with a send, often because the send went out before since. Time to reply leaves them out, so it may look faster than it is; set since earlier to pair more.`
+    );
+  }
+
+  if (received > 0) {
+    context.note(
+      "Automatic replies such as out-of-office messages are counted as replies: messages carry no auto flag, so they cannot be told apart. A fast median can be auto-replies."
+    );
+  }
+};
+
 export const replyTiming = defineInsight({
   description:
-    "How fast people reply and when. Pairs each received message with the last message sent before it in the same thread (or to the same lead) and returns the median, 75th and 90th percentile of hours to reply, the share of replies within 1, 24 and 72 hours, replies by weekday and by hour of day, the weekday and hour of the sends that drew replies, and how many replies could not be paired. Use it to choose follow-up delays and sending hours. Costs 1 request per page of messages, up to max_messages. A null figure means no reply could be paired; auto-replies are not separated, because messages carry no auto flag.",
+    "How fast people reply and when. Pairs each received message with the last message sent before it in the same thread (or to the same lead) and returns the median, 75th and 90th percentile of hours to reply, the share of replies within 1, 24 and 72 hours, replies by weekday and by hour of day, the weekday and hour of the sends that drew replies, and how many replies could not be paired; over a quarter unpaired, the answer is marked partial, since a reply to a send from before `since` cannot pair and those are the slow ones. Use it to choose follow-up delays and sending hours. Costs 1 request per page of messages, up to max_messages. A null figure means no reply could be paired; auto-replies are not separated, because messages carry no auto flag.",
   inputSchema: input,
   key: "replyTiming",
   name: "reply_timing",
@@ -304,6 +334,9 @@ export const replyTiming = defineInsight({
     const received = messages.filter((message) => message.direction === "in");
     // A reply with no time cannot be placed after any send.
     const untimed = received.length - paired.replyTimes.length;
+    const unpaired = paired.unpaired + untimed;
+
+    noteGaps(context, unpaired, received.length);
 
     const timing: ReplyTiming = {
       campaign: args.campaign,
@@ -313,7 +346,8 @@ export const replyTiming = defineInsight({
         paired: paired.pairs.length,
         received: received.length,
         sent: messages.length - received.length,
-        unpaired: paired.unpaired + untimed,
+        unpaired,
+        unpairedShare: rate(unpaired, received.length),
       },
       replies: tableOf(paired.replyTimes, args.timezone_offset_minutes),
       sendsThatDrewReplies: tableOf(

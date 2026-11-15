@@ -576,6 +576,7 @@ const timing = (topWeekday: string | null): ReplyTiming => ({
     received: 22,
     sent: 68,
     unpaired: 2,
+    unpairedShare: 0.0909,
   },
   replies: {
     byHour: [],
