@@ -15,6 +15,7 @@ export default defineMeta({
     "sync",
     "reconcile",
     "alerts",
+    "checks",
     // Context, files and bad days.
     "benchmarks",
     "fixtures",

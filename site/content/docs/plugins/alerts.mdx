@@ -4,6 +4,7 @@ description: Check fixed rules on the records each read returns and call your ow
 sidebar:
   label: alerts
 related:
+  - /docs/plugins/checks
   - /docs/guides/deliverability-check
   - /docs/insights/operations
   - /docs/api/stats
@@ -57,6 +58,8 @@ An `Alert` is:
 | `value` | `number \| string \| null` | What was measured. |
 | `threshold` | `number \| string \| null` | What it was compared with. |
 | `day` | `string \| null` | The day of the stats row, `YYYY-MM-DD`, for an alert about one day's counts. `null` for a row that totals a range. Absent from an alert about another record. |
+
+A rule can also be written as data, a JSON object that can be stored and edited: see [checks as data](/docs/plugins/checks), and `checkRule(check)` to run one here.
 
 An `AlertRule` is `{ name, check, state? }`, where `check(record)` returns an `Alert` or `null`. It receives every kind of record the instance returns, so it starts by telling them apart, as `untaggedCampaign` does in the sample. A rule sees one record at a time. Anything that needs two records, or a change since last week, is not a rule: see [insights](/docs/insights). Set `state: true` on a rule about a state, such as a status, so that `dedupe` tells you when the value changes.
 

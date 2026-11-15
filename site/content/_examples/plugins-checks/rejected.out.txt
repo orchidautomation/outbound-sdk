@@ -1,0 +1,17 @@
+{"metric":"bounceRate","op":"gt","threshold":5}
+metric: must be one of blocked_leads, bounce_rate, broken_variable_leads, lead_runway_days, positive_reply_waiting_hours, reply_rate, sender_status, sent. Did you mean bounce_rate?
+op: must be one of > >= < <= == !=. Write > for gt
+value: is required: what to compare with, such as 0.03 for a 3% rate
+threshold: threshold is not a check field: write value
+
+{"metric":"bounce_rate","op":">","value":5,"scope":{"campaign":"Ecommerce ops"}}
+scope.campaign: must be the campaign's ref, like "instantly:ws_1:abc123" (provider:workspaceId:id), not its name or address
+value: bounce_rate is a fraction from 0 to 1: write 0.05 for 5%
+
+{"metric":"lead_runway_days","op":"<","value":7,"window":{"days":7}}
+window: lead_runway_days takes no window: the pipelineForecast read you pass sets its period
+
+{"metric":"sender_status","op":">","value":"down"}
+value: sender_status compares a status: one of active, disconnected, error, paused, unknown
+op: sender_status takes == or !=, not >
+
