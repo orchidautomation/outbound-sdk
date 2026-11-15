@@ -2,13 +2,14 @@
 // Seeds are short on purpose: only an id is required and everything else has
 // a default, so a test or demo states only what it cares about.
 
-import { SCHEMA_VERSION } from "../internal/entities.ts";
+import { leadProgressSchema, SCHEMA_VERSION } from "../internal/entities.ts";
 import type {
   Campaign,
   CampaignStatus,
   Channel,
   Lead,
   LeadEngagement,
+  LeadProgress,
   LeadStatus,
   MailProvider,
   Message,
@@ -91,7 +92,12 @@ export interface MemoryLead {
   readonly lastName?: string;
   readonly company?: string;
   readonly title?: string;
+  /** The headline. `progress` and the outcome flags follow from it unless given. */
   readonly status?: LeadStatus;
+  readonly progress?: LeadProgress;
+  readonly replied?: boolean;
+  readonly bounced?: boolean;
+  readonly unsubscribed?: boolean;
   readonly custom?: Readonly<Record<string, string>>;
   readonly createdAt?: string;
   readonly engagement?: Partial<LeadEngagement>;
@@ -236,8 +242,33 @@ const toEngagement = (seed: Partial<LeadEngagement>): LeadEngagement => ({
   stepIndex: seed.stepIndex ?? null,
 });
 
+const PROGRESS: ReadonlySet<string> = new Set([
+  "active",
+  "completed",
+  "paused",
+]);
+
+// A seed states its headline; the parts follow from it unless given.
+const standingOf = (seed: MemoryLead) => {
+  const status = seed.status ?? "active";
+
+  const flagOf = (given: boolean | undefined, outcome: LeadStatus) =>
+    given ?? (status === outcome ? true : null);
+
+  return {
+    bounced: flagOf(seed.bounced, "bounced"),
+    progress:
+      seed.progress ??
+      leadProgressSchema.parse(PROGRESS.has(status) ? status : "unknown"),
+    replied: flagOf(seed.replied, "replied"),
+    status,
+    unsubscribed: flagOf(seed.unsubscribed, "unsubscribed"),
+  };
+};
+
 export const toLead = (identity: Identity, seed: MemoryLead): Lead => ({
   ...base(identity, seed.id),
+  ...standingOf(seed),
   campaignRef: refOrNull(identity, seed.campaignId),
   company: seed.company ?? null,
   companyLinkedinUrl: seed.companyLinkedinUrl ?? null,
@@ -254,7 +285,6 @@ export const toLead = (identity: Identity, seed: MemoryLead): Lead => ({
   linkedinUrl: seed.linkedinUrl ?? null,
   location: seed.location ?? null,
   phone: seed.phone ?? null,
-  status: seed.status ?? "active",
   title: seed.title ?? null,
   website: seed.website ?? null,
 });

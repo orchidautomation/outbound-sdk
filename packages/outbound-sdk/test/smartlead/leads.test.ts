@@ -195,7 +195,9 @@ test("smartlead: one lead is read by id, and an empty answer is not found", asyn
   assert.equal(lead.sourceId, "789");
   assert.equal(lead.email, "person1@example.com");
   assert.equal(lead.company, "Example Co");
-  assert.equal(lead.status, "active", "INPROGRESS");
+  assert.equal(lead.progress, "active", "INPROGRESS");
+  assert.equal(lead.replied, true, "email_stats.is_replied");
+  assert.equal(lead.status, "replied", "a reply is the headline");
   assert.equal(lead.campaignRef, null);
   assert.deepEqual(lead.custom, { job_title: "CEO" });
   assert.equal(lead.interest, "Interested", "category_name");

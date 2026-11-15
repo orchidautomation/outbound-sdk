@@ -5,7 +5,7 @@ import type {
   Campaign,
   CampaignStatus,
   Lead,
-  LeadStatus,
+  LeadProgress,
   ReplyCategory,
   Sender,
   SenderStatus,
@@ -23,6 +23,7 @@ import {
   timestamp,
 } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
+import { leadStanding } from "../internal/lead-status.ts";
 import { recordBase, refTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
 
@@ -87,7 +88,7 @@ export const toSender = (identity: Identity, raw: JsonObject): Sender => ({
   warmup: null,
 });
 
-const LEAD_STATUS = new Map<string, LeadStatus>([
+const LEAD_PROGRESS = new Map<string, LeadProgress>([
   ["Finished", "completed"],
   ["InSequence", "active"],
   ["Paused", "paused"],
@@ -96,13 +97,20 @@ const LEAD_STATUS = new Map<string, LeadStatus>([
 
 // Excluded and PendingOrExcludedToBeCalculated, which only
 // GetCampaignsForLead reports, have no equivalent and stay unknown.
-const campaignLeadStatus = (value: Json | undefined): LeadStatus =>
-  LEAD_STATUS.get(text(value) ?? "") ?? "unknown";
+const campaignProgress = (value: Json | undefined): LeadProgress =>
+  LEAD_PROGRESS.get(text(value) ?? "") ?? "unknown";
 
-const leadStatus = (raw: JsonObject): LeadStatus =>
-  text(raw.leadMessageStatus) === "MessageReply"
-    ? "replied"
-    : campaignLeadStatus(raw.leadCampaignStatus);
+// LinkedIn has no bounce and no unsubscribe. A campaign's lead row says
+// whether the lead replied (`leadMessageStatus`); no other lead shape does.
+const standing = (progress: LeadProgress, messageStatus?: Json | undefined) => {
+  const said = text(messageStatus);
+
+  return leadStanding(progress, {
+    bounced: null,
+    replied: said === null ? null : said === "MessageReply",
+    unsubscribed: null,
+  });
+};
 
 /** A lead's manual tags: `tags` is an array of names. */
 export const tagNames = (value: Json | undefined): string[] =>
@@ -201,9 +209,9 @@ export const toLead = (
 
   return {
     ...lead,
+    ...standing("unknown"),
     campaignRef: null,
     createdAt: null,
-    status: "unknown",
     tags: tags === undefined ? lead.tags : tagNames(tags),
   };
 };
@@ -215,9 +223,12 @@ export const toCampaignLead = (
   campaignId: string
 ): Lead => ({
   ...profileFields(identity, raw.linkedInUserProfile, raw),
+  ...standing(
+    campaignProgress(raw.leadCampaignStatus),
+    raw.leadMessageStatus ?? null
+  ),
   campaignRef: refTo(identity, campaignId),
   createdAt: timestamp(raw.creationTime),
-  status: leadStatus(raw),
 });
 
 /** Every address a `POST /lead/GetLead` profile carries, lowercased. */
@@ -249,10 +260,10 @@ export const toLookupLead = (
   // The core tells looked-up records apart by their campaign.
   return {
     ...lead,
+    ...standing(campaignProgress(campaign?.leadStatus)),
     campaignRef: refTo(identity, text(campaign?.campaignId)),
     createdAt: null,
     email: email ?? lead.email,
-    status: campaignLeadStatus(campaign?.leadStatus),
   };
 };
 

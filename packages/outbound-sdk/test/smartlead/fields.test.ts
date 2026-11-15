@@ -382,3 +382,55 @@ test("smartlead: a mailbox's passwords are stripped from raw at every depth", as
   assert.equal(/password|token/iu.test(kept), false);
   assert.ok(kept.includes("imap.example.com"), "the rest is kept");
 });
+
+test("smartlead: a lead's progress and what came back from it are separate", async () => {
+  const page = fixture("smartlead", "listCampaignLeads.json") as {
+    data: { lead: Record<string, unknown>; status: string }[];
+  };
+
+  const [row] = page.data;
+  assert.ok(row);
+
+  const cases = [
+    { is_unsubscribed: false, status: "INPROGRESS" },
+    { is_unsubscribed: false, status: "BLOCKED" },
+    { is_unsubscribed: true, status: "COMPLETED" },
+    { is_unsubscribed: false, status: "SOMETHING_NEW" },
+  ];
+
+  const { outbound, settle } = harness(suite, (request) =>
+    /\/campaigns\/\d+\/leads$/u.test(new URL(request.url).pathname)
+      ? Response.json({
+          ...page,
+          data: cases.map((each, index) => ({
+            ...row,
+            lead: {
+              ...row.lead,
+              id: index + 1,
+              is_unsubscribed: each.is_unsubscribed,
+            },
+            status: each.status,
+          })),
+          total_leads: cases.length,
+        })
+      : undefined
+  );
+
+  const leads = await settle(outbound.campaign(CAMPAIGN).leads.list());
+  assert.deepEqual(
+    leads.items.map((each) => [
+      each.status,
+      each.progress,
+      each.bounced,
+      each.unsubscribed,
+      each.replied,
+    ]),
+    [
+      ["active", "active", false, false, null],
+      ["bounced", "unknown", true, false, null],
+      ["unsubscribed", "completed", false, true, null],
+      ["unknown", "unknown", false, false, null],
+    ],
+    "a campaign's lead row does not say whether the lead replied"
+  );
+});

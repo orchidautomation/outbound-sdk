@@ -5,7 +5,7 @@ import type {
   Campaign,
   CampaignStatus,
   Lead,
-  LeadStatus,
+  LeadProgress,
   MailProvider,
   ReplyCategory,
   Sender,
@@ -29,6 +29,7 @@ import {
   withoutKeys,
 } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
+import { leadStanding } from "../internal/lead-status.ts";
 import { recordBase, refTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
 import { fromOne, toVariant, variantKey } from "../internal/sequence.ts";
@@ -217,9 +218,9 @@ export const toSender = (identity: Identity, raw: JsonObject): Sender => ({
 });
 
 // STARTED is scheduled with nothing sent yet; INPROGRESS has at least one
-// email sent. BLOCKED is "bounced or on the block list".
-const LEAD_STATUS = new Map<string, LeadStatus>([
-  ["BLOCKED", "bounced"],
+// email sent. BLOCKED is "bounced or on the block list": it says what came
+// back, not where the lead is.
+const LEAD_PROGRESS = new Map<string, LeadProgress>([
   ["COMPLETED", "completed"],
   ["INPROGRESS", "active"],
   ["PAUSED", "paused"],
@@ -227,10 +228,16 @@ const LEAD_STATUS = new Map<string, LeadStatus>([
   ["STOPPED", "paused"],
 ]);
 
-const leadStatus = (status: Json | undefined, lead: JsonObject): LeadStatus =>
-  flag(lead.is_unsubscribed) === true
-    ? "unsubscribed"
-    : (LEAD_STATUS.get(text(status) ?? "") ?? "unknown");
+// `email_stats.is_replied` is on the single lead only.
+const standing = (status: Json | undefined, lead: JsonObject) => {
+  const said = text(status);
+
+  return leadStanding(LEAD_PROGRESS.get(said ?? "") ?? "unknown", {
+    bounced: said === null ? null : said === "BLOCKED",
+    replied: flag(field(lead.email_stats, "is_replied")),
+    unsubscribed: flag(lead.is_unsubscribed),
+  });
+};
 
 /**
  * The account's lead categories, from `GET /leads/fetch-categories`: each
@@ -261,6 +268,7 @@ const leadRecord = (
   place: LeadPlace
 ): Lead => ({
   ...recordBase(identity, text(lead.id) ?? "", place.raw),
+  ...standing(place.status, lead),
   campaignRef: refTo(identity, place.campaignId),
   company: text(lead.company_name),
   // `linkedin_profile` is the person's; `company_url` is a website.
@@ -277,7 +285,6 @@ const leadRecord = (
   linkedinUrl: text(lead.linkedin_profile),
   location: text(lead.location),
   phone: text(lead.phone_number),
-  status: leadStatus(place.status, lead),
   tags: [...place.tags],
   // Smartlead has no job title field; a title lives in the custom fields.
   title: null,

@@ -323,3 +323,54 @@ test("instantly: a block entry with no value is left out, not returned empty", a
     [["b2", "domain", "example.com"]]
   );
 });
+
+test("instantly: a lead's status code is its progress or its outcome, and replies are their own flag", async () => {
+  const [lead] = (
+    fixture("instantly", "listLeads.json") as {
+      items: Record<string, unknown>[];
+    }
+  ).items;
+
+  const cases = [
+    { email_reply_count: 0, status: 1 },
+    { email_reply_count: 0, status: 3 },
+    { email_reply_count: 2, status: 3 },
+    { email_reply_count: 0, status: -1 },
+    { email_reply_count: 1, status: -2 },
+    { email_reply_count: 0, status: -3 },
+    { email_reply_count: null, status: null },
+  ];
+
+  const { outbound, settle } = harness(suite, (request) =>
+    new URL(request.url).pathname.endsWith("/leads/list")
+      ? Response.json({
+          items: cases.map((each, index) => ({
+            ...lead,
+            ...each,
+            id: `lead-${index}`,
+          })),
+        })
+      : undefined
+  );
+
+  const page = await settle(outbound.leads.list());
+  assert.deepEqual(
+    page.items.map((each) => [
+      each.status,
+      each.progress,
+      each.replied,
+      each.bounced,
+      each.unsubscribed,
+    ]),
+    [
+      ["active", "active", false, false, false],
+      ["completed", "completed", false, false, false],
+      ["replied", "completed", true, false, false],
+      ["bounced", "unknown", false, true, false],
+      ["unsubscribed", "unknown", true, false, true],
+      ["unknown", "unknown", false, false, false],
+      ["unknown", "unknown", null, null, null],
+    ],
+    "an unsubscribe outranks a reply, and a missing code is unknown, not false"
+  );
+});

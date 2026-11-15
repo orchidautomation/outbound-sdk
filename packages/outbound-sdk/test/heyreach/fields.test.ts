@@ -315,3 +315,51 @@ test("heyreach: one list and one webhook are read by id, the webhook without its
     /list ids are whole numbers/u
   );
 });
+
+test("heyreach: a campaign's lead says whether it replied, apart from where it is in the sequence", async () => {
+  const page = fixture("heyreach", "getLeadsFromCampaign.json") as {
+    items: Record<string, unknown>[];
+  };
+
+  const [row] = page.items;
+
+  const cases = [
+    { leadCampaignStatus: "InSequence", leadMessageStatus: "MessageSent" },
+    { leadCampaignStatus: "Finished", leadMessageStatus: "MessageReply" },
+    { leadCampaignStatus: "Failed", leadMessageStatus: "None" },
+    { leadCampaignStatus: "Paused", leadMessageStatus: null },
+  ];
+
+  const { outbound, settle } = harness(suite, () =>
+    Response.json({
+      items: cases.map((each, index) => ({
+        ...row,
+        ...each,
+        id: index + 1,
+        linkedInUserProfile: {
+          ...(row?.linkedInUserProfile as object),
+          profileUrl: `https://www.linkedin.com/in/example-person-${index + 40}`,
+        },
+      })),
+      totalCount: cases.length,
+    })
+  );
+
+  const leads = await settle(outbound.campaign(CAMPAIGN).leads.list());
+  assert.deepEqual(
+    leads.items.map((each) => [
+      each.status,
+      each.progress,
+      each.replied,
+      each.bounced,
+      each.unsubscribed,
+    ]),
+    [
+      ["active", "active", false, null, null],
+      ["replied", "completed", true, null, null],
+      ["unknown", "unknown", false, null, null],
+      ["paused", "paused", null, null, null],
+    ],
+    "LinkedIn has no bounce and no unsubscribe, and no message status is unknown"
+  );
+});

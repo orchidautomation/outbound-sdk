@@ -16,3 +16,4 @@ Say which fields each adapter fills, and normalize more of what the three vendor
 - An event's `data` has a checked shape for the keys every vendor shares, as part of `outboundEventSchema`; a vendor's extras still ride along.
 - A block entry the vendor gave no value is skipped, and `value` is never empty.
 - `stats.allCampaigns` is `full` or `partial`: `full` when each per-campaign row has every count the read of one campaign has. `campaign_ranking`, `channel_mix` and `tag_rollup` read every campaign's totals in one request on a `full` vendor.
+- A lead carries `progress` (where it is in its sequence) and `replied`, `bounced` and `unsubscribed` (what came back) as separate fields. `status` is the headline made from them the same way on every vendor, so a lead that replied reads `replied` on Instantly and Smartlead as it already did on HeyReach.

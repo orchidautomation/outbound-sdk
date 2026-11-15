@@ -16,7 +16,7 @@
 
 - A lead's status, campaign and creation time are per campaign; leads.get returns no campaign and its example looks illustrative.
 
-- STOPPED maps to paused; lead status BLOCKED maps to bounced.
+- STOPPED maps to paused. A lead's status BLOCKED, which Smartlead describes as bounced or on the block list, sets bounced and leaves progress unknown. unsubscribed is is_unsubscribed. replied is email_stats.is_replied, which only leads.get carries, so a listed lead's replied is null.
 
 - Messages come from GET /campaigns/all-leads-activities (10 requests per 60 s, no campaign filter, pages of leads): campaign(id).messages reads the whole feed, and thread_replies is not read.
 

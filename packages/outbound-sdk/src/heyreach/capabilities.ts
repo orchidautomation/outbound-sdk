@@ -107,7 +107,14 @@ export const capabilities: CapabilityDeclaration = {
 export const fields: FieldDeclaration = {
   campaign: { tags: false },
   campaignSettings: false,
-  lead: { engagement: false, phone: false, website: false },
+  lead: {
+    // LinkedIn has no bounce and no unsubscribe.
+    bounced: false,
+    engagement: false,
+    phone: false,
+    unsubscribed: false,
+    website: false,
+  },
   message: { bodyHtml: false, stepIndex: false, variantKey: false },
   metricRow: {
     bounced: false,

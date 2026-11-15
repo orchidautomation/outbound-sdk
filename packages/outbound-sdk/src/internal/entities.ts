@@ -160,6 +160,16 @@ export const leadStatusSchema = z.enum([
 
 export type LeadStatus = z.infer<typeof leadStatusSchema>;
 
+/** Where a lead is in its sequence, whatever came back from it. */
+export const leadProgressSchema = z.enum([
+  "active",
+  "completed",
+  "paused",
+  "unknown",
+]);
+
+export type LeadProgress = z.infer<typeof leadProgressSchema>;
+
 /** What a lead did with the campaign's messages, as the vendor counts it. */
 export const leadEngagementSchema = z.object({
   clicks: count,
@@ -178,6 +188,8 @@ export type LeadEngagement = z.infer<typeof leadEngagementSchema>;
 
 export const leadSchema = z.object({
   ...base,
+  /** `true` once a message to the lead bounced. `null` when the vendor does not say. */
+  bounced: z.boolean().nullable(),
   campaignRef: z.string().nullable(),
   company: z.string().nullable(),
   /** The company's LinkedIn page. */
@@ -202,9 +214,19 @@ export const leadSchema = z.object({
   /** Where the lead is, in the vendor's own words. */
   location: z.string().nullable(),
   phone: z.string().nullable(),
+  /** Where the lead is in its sequence, whatever came back from it. */
+  progress: leadProgressSchema,
+  /** `true` once the lead replied. `null` when the vendor does not say. */
+  replied: z.boolean().nullable(),
+  /**
+   * The headline: `unsubscribed`, `bounced` or `replied` when one of them is
+   * known to be true, in that order, and `progress` otherwise.
+   */
   status: leadStatusSchema,
   tags: z.array(z.string()),
   title: z.string().nullable(),
+  /** `true` once the lead unsubscribed. `null` when the vendor does not say. */
+  unsubscribed: z.boolean().nullable(),
   /** The company's website or domain, as the vendor stores it. */
   website: z.string().nullable(),
 });

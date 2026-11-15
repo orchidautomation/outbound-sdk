@@ -127,7 +127,7 @@ const partsOf = (lead: Lead, values: Input, now: number): HotLeadParts => {
   const positive = isPositive(lead.interest, values.positive_labels);
 
   // A vendor that only sets the status still says the lead replied once.
-  const replies = engagement?.replies ?? (lead.status === "replied" ? 1 : null);
+  const replies = engagement?.replies ?? (lead.replied === true ? 1 : null);
 
   const repliedAt = engagement?.lastRepliedAt ?? null;
 
@@ -251,7 +251,7 @@ export const hotLeads = defineInsight({
     );
 
     const open = leads.filter(
-      (lead) => lead.status !== "unsubscribed" && lead.status !== "bounced"
+      (lead) => lead.unsubscribed !== true && lead.bounced !== true
     );
 
     const scored = open.flatMap((lead) => toHotLead(lead, values, context.now));
