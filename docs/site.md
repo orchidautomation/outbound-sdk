@@ -9,7 +9,7 @@ The site at [outbound-sdk.dev](https://outbound-sdk.dev) is built from `site/` w
 | `site/pages/index.astro` | The home page at `/`, a custom Astro page. Its samples are files in `content/_examples`; its adapter badges come from `outbound-sdk/providers` |
 | `site/content/docs/` | The pages (`.mdx`), guides under `docs/guides/`. The folder is the route, so everything is under `/docs` |
 | `site/content/_examples/<name>/` | Every code sample, and the output each one printed (`.out.txt`) |
-| `site/content/_snippets/status.mdx` | The "not published yet" notice the guides include |
+| `site/content/_snippets/status.mdx` | The preview notice the guides include |
 | `site/blume.config.ts` | Title, banner, tabs, the text of `llms.txt`, the Vercel adapter |
 | `site/test/` | The tests that run the samples and hold the site's claims to the code |
 | `scripts/examples-loader.mjs` | Lets a sample import `outbound-sdk` from source, refuses the network, fixes the clock |
@@ -93,6 +93,6 @@ RECORD_LIVE=1 npm run site:live          # also rewrites the two live-run.json t
 
 `AI_GATEWAY_API_KEY` works in place of the token. `LIVE_MODEL` picks another model.
 
-## When the package is published
+## The published package
 
-`site/test/site-truth.test.ts` and `skills/test/skills.test.ts` enforce "no install command" while their `unpublished` constant is `true`. A GitHub Release is not npm: set both to `false` in the pull request that first publishes to npm, and in it remove the banner in `site/blume.config.ts`, rewrite `site/content/_snippets/status.mdx` and `site/content/docs/installation.mdx`, and update `site/content/docs/status.mdx`. A new public subpath needs a page before the same test passes.
+0.1.0 was published to npm on 2026-11-15. `site/test/site-truth.test.ts` and `skills/test/skills.test.ts` keep their "no install command while unpublished" rule behind an `unpublished` constant, now `false`. A new public subpath needs a page before the site test passes.

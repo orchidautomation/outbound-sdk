@@ -14,7 +14,7 @@ for await (const campaign of outbound.campaigns.listAll({ status: "active" })) {
 }
 ```
 
-> Status: not published to npm yet; 0.1.0 installs from its [GitHub release](https://github.com/orchidautomation/outbound-sdk/releases/tag/v0.1.0) ([installation](https://outbound-sdk.dev/docs/installation)). HeyReach and Instantly are `beta` (their reads were run against a live workspace each). Smartlead ships untested (`unverified`): it has never been run against a live account, and is written from public documentation and tested offline only.
+> Status: a 0.x preview on npm (`npm install outbound-sdk`). HeyReach and Instantly are `beta` (their reads were run against a live workspace each). Smartlead ships untested (`unverified`): it has never been run against a live account, and is written from public documentation and tested offline only.
 
 The documentation is at [outbound-sdk.dev](https://outbound-sdk.dev). It is built from `site/` in this repository, and every code sample on it is a file the test suite runs.
 

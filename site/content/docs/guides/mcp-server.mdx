@@ -19,7 +19,7 @@ The server calls no model. It stores nothing and nothing is hosted: the vendor k
 ## Before you start
 
 - Node 22 or later.
-- The package installed from a tarball. It is not on npm, so `npx outbound-sdk mcp` does not work today. See [installation](/docs/installation).
+- Nothing else to install: the client runs the server with `npx outbound-sdk mcp`, which downloads the package from npm. See [installation](/docs/installation).
 - An Instantly, Smartlead or HeyReach API key. Give the server a read-only key where the vendor offers one.
 - An MCP client that starts local servers over stdio.
 
@@ -39,26 +39,22 @@ Three things to notice:
 
 ## Connect a client
 
-The package is not published, so the configuration cannot name it for `npx` to download. Point the client at the file the tarball installed. This was run on 2026-11-14 from a tarball installed in an empty project: the command below answered `initialize` and `ping` with `OUTBOUND_SDK_PROVIDER=memory`.
+On 2026-11-15 the command below, run from an empty folder, downloaded 0.1.0 from npm and answered `initialize` and `ping` with `OUTBOUND_SDK_PROVIDER=memory`.
 
 ```sh
-# in the project where you installed the tarball
-OUTBOUND_SDK_PROVIDER=memory node node_modules/outbound-sdk/dist/cli/bin.js mcp
+OUTBOUND_SDK_PROVIDER=memory npx -y outbound-sdk mcp
 ```
 
 It waits for JSON-RPC lines on standard input and exits when input closes. `memory` serves built-in demo data, so you can try a client before you give it a key.
 
-The client configuration is the same shape in Claude Code (`.mcp.json` in the project), Cursor (`.cursor/mcp.json`) and Claude Desktop (`claude_desktop_config.json`). Use an absolute path: a client may not start the command in your project folder. This JSON is not run by the test suite, and no client was run against the server for this page. Check your client's documentation for where the file lives.
+The client configuration is the same shape in Claude Code (`.mcp.json` in the project), Cursor (`.cursor/mcp.json`) and Claude Desktop (`claude_desktop_config.json`). This JSON is not run by the test suite, and no client was run against the server for this page. Check your client's documentation for where the file lives.
 
 ```json
 {
   "mcpServers": {
     "outbound": {
-      "command": "node",
-      "args": [
-        "/absolute/path/to/your-project/node_modules/outbound-sdk/dist/cli/bin.js",
-        "mcp"
-      ],
+      "command": "npx",
+      "args": ["-y", "outbound-sdk", "mcp"],
       "env": {
         "OUTBOUND_SDK_PROVIDER": "instantly",
         "INSTANTLY_API_KEY": "your-read-only-key"
@@ -69,8 +65,6 @@ The client configuration is the same shape in Claude Code (`.mcp.json` in the pr
 ```
 
 `OUTBOUND_SDK_PROVIDER` is `instantly`, `smartlead`, `heyreach` or `memory`, or `all` for every provider whose key is set, behind one combined instance. The adapter reads its own key variable: `INSTANTLY_API_KEY`, `SMARTLEAD_API_KEY` or `HEYREACH_API_KEY`. Without `OUTBOUND_SDK_PROVIDER` the server does the same as `all`; with no key set either, the command exits with code 1 and names the variables.
-
-Once the package is published the command will be `npx` with the arguments `outbound-sdk` and `mcp`. Until [installation](/docs/installation) says so, that form fails.
 
 ## Keys
 

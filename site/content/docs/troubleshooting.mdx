@@ -173,7 +173,7 @@ The same error for a subpath, `Package subpath './something' is not defined by "
 
 ## Something else
 
-- **`Cannot find package 'outbound-sdk'`**: the package is not on npm yet. See [installation](/docs/installation).
+- **`Cannot find package 'outbound-sdk'`**: it is not installed in this project. Run `npm install outbound-sdk`; see [installation](/docs/installation).
 - **A number is `null` where you expected 0**: the vendor did not report it. See [null is not zero](/docs/api/records#null-is-not-zero).
 - **A page has fewer records than `limit`**: go by `cursor`. See [pagination](/docs/api/pagination#limit).
 - **A call hangs**: the default `timeout` is 30 seconds per attempt with four retries. Set `deadline`. See [retries](/docs/retries).
