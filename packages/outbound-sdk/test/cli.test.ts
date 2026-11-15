@@ -87,10 +87,11 @@ test("lists and reads through the SDK and prints JSON", async () => {
     await cli("campaign", "cmp_founders", "--stats", "--by", "day")
   ).json() as { rows: unknown[] };
 
-  assert.equal(stats.rows.length, 4);
+  // Three weeks of days.
+  assert.equal(stats.rows.length, 21);
   assert.equal(
     ((await cli("stats")).json() as { rows: { sent: number }[] }).rows[0]?.sent,
-    295
+    943 + 1050
   );
   assert.equal(
     ((await cli("senders", "--limit", "1")).json() as unknown[]).length,

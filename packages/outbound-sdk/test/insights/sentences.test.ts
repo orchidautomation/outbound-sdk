@@ -110,13 +110,16 @@ test("the numbers behind a sentence keep their precision", async () => {
     actions: { action: string; number: number | null }[];
   };
 
-  const runway = actions.find((each) => each.action.startsWith("Add leads"));
-
-  assert.equal(
-    runway?.action,
-    "Add leads to Q4 SaaS founders: 1 lead remains, about 0.1 days of sending."
+  const bounces = actions.find((each) =>
+    each.action.startsWith("Fix the bounces of Agency owners")
   );
-  assert.equal(runway?.number, 0.0778);
+
+  // 18 bounces from 350 sends in the demo's last seven days.
+  assert.equal(
+    bounces?.action,
+    "Fix the bounces of Agency owners: its bounce rate is 5.1% (18 of 350 sends)."
+  );
+  assert.equal(bounces?.number, 0.0514);
 });
 
 // What a person reads must not look like machine output: no "(s)", a count of

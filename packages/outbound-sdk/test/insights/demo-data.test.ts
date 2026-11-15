@@ -25,8 +25,10 @@ test("a seven-day client report over the demo data has both periods", async () =
 
   const { current, previous } = report.data.totals;
 
-  assert.equal(current.sent, 150);
-  assert.equal(previous.sent, 145);
+  // The seven days before LATER, and the seven before those: 314 sends in
+  // "Q4 SaaS founders" and 350 in "Agency owners" each week.
+  assert.equal(current.sent, 314 + 350);
+  assert.equal(previous.sent, 314 + 350);
   assert.notEqual(report.data.totals.verdict, "unknown");
 });
 

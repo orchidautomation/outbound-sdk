@@ -1,4 +1,5 @@
 import type { MemoryData } from "./data.ts";
+import { demoStats } from "./demo-stats.ts";
 
 const DAY = 86_400_000;
 
@@ -27,7 +28,7 @@ const campaigns = ({
   day,
 }: Clock): NonNullable<MemoryData["campaigns"]> => [
   {
-    createdAt: at(16, "09:00"),
+    createdAt: at(23, "09:00"),
     id: "cmp_founders",
     name: "Q4 SaaS founders",
     settings: {
@@ -43,7 +44,7 @@ const campaigns = ({
           to: "17:00",
         },
       ],
-      startDate: day(12),
+      startDate: day(21),
       stopOnAutoReply: false,
       stopOnReply: true,
       trackClicks: false,
@@ -67,14 +68,14 @@ const campaigns = ({
       {
         delayDays: 3,
         variants: [
-          { body: "Following up on my note.", subject: "Re: Quick question" },
+          { body: "Following up on my note.", subject: "Following up" },
         ],
       },
     ],
     tags: ["client-a"],
   },
   {
-    createdAt: at(26, "09:00"),
+    createdAt: at(30, "09:00"),
     id: "cmp_agencies",
     name: "Agency owners",
     status: "paused",
@@ -83,6 +84,13 @@ const campaigns = ({
         delayDays: 0,
         variants: [
           { body: "Hello {{firstName}}.", subject: "Idea for {{company}}" },
+        ],
+      },
+      // The same follow-up as "Q4 SaaS founders", so copy_reuse has copy to compare.
+      {
+        delayDays: 4,
+        variants: [
+          { body: "Following up on my note.", subject: "Following up" },
         ],
       },
     ],
@@ -215,88 +223,6 @@ const senders = ({ at }: Clock): NonNullable<MemoryData["senders"]> => [
   },
 ];
 
-const stats = ({ day }: Clock): NonNullable<MemoryData["stats"]> => [
-  {
-    campaignId: "cmp_founders",
-    counts: {
-      bounced: 1,
-      contacted: 50,
-      delivered: 49,
-      opened: 30,
-      positive: 2,
-      replied: 4,
-      sent: 50,
-    },
-    date: day(3),
-  },
-  {
-    campaignId: "cmp_founders",
-    counts: {
-      bounced: 0,
-      contacted: 40,
-      delivered: 40,
-      opened: 22,
-      positive: 1,
-      replied: 3,
-      sent: 40,
-    },
-    date: day(2),
-  },
-  {
-    campaignId: "cmp_agencies",
-    counts: {
-      bounced: 4,
-      contacted: 60,
-      delivered: 56,
-      opened: 18,
-      positive: 0,
-      replied: 1,
-      sent: 60,
-    },
-    date: day(3),
-  },
-  // The week before, so a seven-day report has a period to compare with.
-  {
-    campaignId: "cmp_founders",
-    counts: {
-      bounced: 1,
-      contacted: 45,
-      delivered: 44,
-      opened: 25,
-      positive: 1,
-      replied: 2,
-      sent: 45,
-    },
-    date: day(10),
-  },
-  {
-    campaignId: "cmp_founders",
-    counts: {
-      bounced: 0,
-      contacted: 45,
-      delivered: 45,
-      opened: 24,
-      positive: 0,
-      replied: 2,
-      sent: 45,
-    },
-    date: day(9),
-  },
-  {
-    campaignId: "cmp_agencies",
-    counts: {
-      bounced: 2,
-      contacted: 55,
-      delivered: 53,
-      opened: 20,
-      positive: 1,
-      replied: 2,
-      sent: 55,
-    },
-    date: day(10),
-  },
-];
-
 export interface DemoDataOptions {
   /**
    * The moment the data is built for: every date is counted back from its
@@ -307,10 +233,12 @@ export interface DemoDataOptions {
 
 /**
  * A small made-up dataset for demos and docs: two campaigns, two mailboxes,
- * three leads, three messages, two weeks of stats, and one list, tag, webhook
- * and block list entry. No real people or companies. Its dates sit in the two
- * weeks before `now`, so the reports over the last seven or fourteen days
- * find data on any day it is called.
+ * three leads, three messages, three weeks of daily stats split by step and
+ * variant, and one list, tag, webhook and block list entry. No real people
+ * or companies. Its dates sit in the weeks before `now`, so the reports over
+ * the last seven or fourteen days find data on any day it is called. Step 0
+ * of "Q4 SaaS founders" runs an A/B test, both campaigns share a follow-up,
+ * and four days before `now` bounces spike.
  */
 export const demoData = (options: DemoDataOptions = {}): MemoryData => {
   const now =
@@ -328,14 +256,14 @@ export const demoData = (options: DemoDataOptions = {}): MemoryData => {
     leads: leads(clock),
     lists: [
       {
-        createdAt: clock.at(17, "09:00"),
+        createdAt: clock.at(24, "09:00"),
         id: "lst_founders",
         name: "SaaS founders",
       },
     ],
     messages: messages(clock),
     senders: senders(clock),
-    stats: stats(clock),
+    stats: demoStats(clock.day),
     tags: [{ description: "Work for client A", id: "tag_a", name: "client-a" }],
     webhooks: [
       {
