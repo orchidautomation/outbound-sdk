@@ -65,7 +65,9 @@ The campaign's two day rows sum to 120 sent and 8 replied. `delivered` was never
 
 ## Demo data
 
-`demoData()` returns a small made-up data set: two campaigns, two mailboxes, three leads, three messages, two days of stats, and one list, tag, webhook and block list entry. Its dates are in September and October 2026. Use it when the numbers do not matter; write a seed when they do.
+`demoData()` returns a small made-up data set: two campaigns, two mailboxes, three leads, three messages, two weeks of stats, and one list, tag, webhook and block list entry. Use it when the numbers do not matter; write a seed when they do.
+
+Its dates are counted back from the moment you call it and sit in the two weeks before it, so a seven-day `clientReport` has a period and a period before it, and `droppedReplies` finds a reply waiting. Pass `demoData({ now })` with a fixed date, string or timestamp when the output must not change from one day to the next, as in a test. The samples on this site run with the clock set to 14 November 2026.
 
 ## Limit it to what a vendor can do
 

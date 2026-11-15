@@ -26,3 +26,5 @@ export type {
 } from "./data.ts";
 
 export { demoData } from "./demo.ts";
+
+export type { DemoDataOptions } from "./demo.ts";

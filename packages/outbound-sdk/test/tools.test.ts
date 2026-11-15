@@ -21,12 +21,12 @@ import type { ToolResult } from "../src/tools/index.ts";
 
 const plain = () =>
   createOutbound({
-    adapter: memory({ data: demoData(), workspaceId: "acme" }),
+    adapter: memory({ data: demoData({ now: "2026-10-08T12:00:00.000Z" }), workspaceId: "acme" }),
   });
 
 const full = () =>
   createOutbound({
-    adapter: memory({ data: demoData(), workspaceId: "acme" }),
+    adapter: memory({ data: demoData({ now: "2026-10-08T12:00:00.000Z" }), workspaceId: "acme" }),
     plugins: [clients(), identity()],
   });
 
@@ -103,20 +103,20 @@ test("campaign_overview reports each active campaign with rates computed from co
   assert.equal(campaigns.length, 1);
   assert.equal(campaigns[0]?.campaign, "memory:acme:cmp_founders");
   assert.equal(campaigns[0]?.name, "Q4 SaaS founders");
-  // Demo data: 90 sent to 90 contacted, 7 replies, 3 positive, 1 bounce.
+  // Demo data, both weeks: 180 sent to 180 contacted, 11 replies, 4 positive, 2 bounces.
   assert.deepEqual(campaigns[0]?.metrics, {
     bounce_rate: 0.0111,
-    bounced: 1,
+    bounced: 2,
     connections_accepted: null,
     connections_sent: null,
-    contacted: 90,
-    opened: 52,
-    positive: 3,
-    positive_reply_rate: 0.0333,
-    replied: 7,
-    reply_rate: 0.0778,
+    contacted: 180,
+    opened: 101,
+    positive: 4,
+    positive_reply_rate: 0.0222,
+    replied: 11,
+    reply_rate: 0.0611,
     reply_rate_basis: "contacted",
-    sent: 90,
+    sent: 180,
   });
   assert.ok(result.ok && result.meta.evidence === "exact");
   // A model does not know the date, so every result carries it.
@@ -342,7 +342,7 @@ test("compare_clients and cross_channel_lead work once their plugins are on the 
       client.sent,
       client.replied,
     ]),
-    [["acme", 2, 150, 8]]
+    [["acme", 2, 295, 14]]
   );
 
   const person = data(
@@ -389,7 +389,7 @@ test("a tool never throws: bad input, a missing record and an unsupported read a
     createOutbound({
       adapter: memory({
         capabilities: { "replies.category": false },
-        data: demoData(),
+        data: demoData({ now: "2026-10-08T12:00:00.000Z" }),
       }),
     }),
     "reply_samples",
@@ -400,7 +400,7 @@ test("a tool never throws: bad input, a missing record and an unsupported read a
   assert.equal(unsupported.error.code, "Unsupported");
   assert.match(unsupported.next, /not available with the current adapter/u);
 
-  const base = memory({ data: demoData() });
+  const base = memory({ data: demoData({ now: "2026-10-08T12:00:00.000Z" }) });
 
   const broken = createOutbound({
     adapter: {
@@ -416,7 +416,7 @@ test("a tool never throws: bad input, a missing record and an unsupported read a
 
 test("tools respect a redact plugin: bodies are refused, not leaked", async () => {
   const outbound = createOutbound({
-    adapter: memory({ data: demoData() }),
+    adapter: memory({ data: demoData({ now: "2026-10-08T12:00:00.000Z" }) }),
     plugins: [redact()],
   });
 

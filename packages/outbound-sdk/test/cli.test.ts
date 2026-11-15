@@ -7,7 +7,7 @@ import { createMcpServer, PROTOCOL_VERSIONS, run } from "../src/cli/index.ts";
 import { createOutbound } from "../src/index.ts";
 import { demoData, memory } from "../src/memory/index.ts";
 
-const adapter = () => memory({ data: demoData(), workspaceId: "acme" });
+const adapter = () => memory({ data: demoData({ now: "2026-10-08T12:00:00.000Z" }), workspaceId: "acme" });
 
 const cli = async (...argv: string[]) => {
   const out: string[] = [];
@@ -83,10 +83,10 @@ test("lists and reads through the SDK and prints JSON", async () => {
     await cli("campaign", "cmp_founders", "--stats", "--by", "day")
   ).json() as { rows: unknown[] };
 
-  assert.equal(stats.rows.length, 2);
+  assert.equal(stats.rows.length, 4);
   assert.equal(
     ((await cli("stats")).json() as { rows: { sent: number }[] }).rows[0]?.sent,
-    150
+    295
   );
   assert.equal(
     ((await cli("senders", "--limit", "1")).json() as unknown[]).length,
