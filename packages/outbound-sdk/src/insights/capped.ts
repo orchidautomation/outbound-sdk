@@ -13,6 +13,37 @@ export interface Capped<Item> {
 }
 
 /**
+ * A walk with no room left: `max` must be at least 1, so it reads one record
+ * to learn whether any exist, keeps none, and is truncated when one did.
+ */
+const probe = <Item>(walk: ListAll<Item>): ListAll<Item> => {
+  let found = false;
+
+  const toArray = async (): Promise<Item[]> => {
+    const read = await walk.toArray();
+    found = read.length > 0;
+
+    return [];
+  };
+
+  return {
+    async *[Symbol.asyncIterator]() {
+      yield* await toArray();
+    },
+    get cursor() {
+      return walk.cursor;
+    },
+    get meta() {
+      return walk.meta;
+    },
+    toArray,
+    get truncated() {
+      return found;
+    },
+  };
+};
+
+/**
  * Reads up to `room` records, which is the cap unless less is left under it,
  * and says so in a note naming the cap's input when more exist.
  */
@@ -22,7 +53,7 @@ export const readCapped = async <Item>(
   cap: Cap,
   room = cap.max
 ): Promise<Capped<Item>> => {
-  const walk = open(Math.max(0, room));
+  const walk = room < 1 ? probe(open(1)) : open(room);
   const items = await context.all(walk, cap);
 
   return { capped: walk.truncated, items };

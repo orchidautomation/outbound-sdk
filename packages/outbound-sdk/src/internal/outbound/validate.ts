@@ -69,8 +69,27 @@ export const assertLimit = (limit: number | undefined): number | undefined => {
   return limit;
 };
 
+/** `max` for `listAll`: a positive integer, like `limit`. */
+export const assertMax = (max: number | undefined): number | undefined => {
+  if (max !== undefined && (!Number.isInteger(max) || max < 1)) {
+    throw invalid(`max must be a positive integer, got ${max}`);
+  }
+
+  return max;
+};
+
+/** A plain JavaScript caller can pass anything as an id. */
+export const assertIdIsString = (id: string, what: string): string => {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- `id` is a public argument a plain JavaScript caller can pass as anything
+  if (typeof id !== "string") {
+    throw invalid(`${what} id must be a string, got ${String(id)}`);
+  }
+
+  return id;
+};
+
 export const assertId = (id: string, what: string): string => {
-  if (id.trim() === "") {
+  if (assertIdIsString(id, what).trim() === "") {
     throw invalid(`${what} id must not be empty`);
   }
 

@@ -20,7 +20,12 @@ import type {
 import { checked, infoFor, metaFor, perform, toOutboundError } from "./core.ts";
 import type { Core } from "./core.ts";
 import type { Operation, OperationKind } from "./operations.ts";
-import { assertId, assertLimit } from "./validate.ts";
+import {
+  assertId,
+  assertIdIsString,
+  assertLimit,
+  assertMax,
+} from "./validate.ts";
 import { PageWalker } from "./walker.ts";
 
 export interface PageRequest {
@@ -127,6 +132,7 @@ export const makeReadCollection = <Item, Filters>(
     // SAFETY: with no options every filter is absent, which every Filters type allows.
     const filters = spec.prepare((options ?? {}) as Filters);
     const limit = assertLimit(options?.limit);
+    assertMax(options?.max);
     const walkOptions: ListAllOptions | undefined = options;
 
     return new PageWalker<Item>({
@@ -202,38 +208,57 @@ const getMany = async <Item>(
   options: BulkOptions | undefined
 ): Promise<BulkResult<Item>> => {
   spec.prepare();
+
+  // A wrong type refuses the whole call; an empty id is that id's error.
+  for (const id of ids) {
+    assertIdIsString(id, spec.what);
+  }
+
   const state = core.engine.begin(options);
-  const results: { id: string; value: WithMeta<Item> }[] = [];
-  const errors: { id: string; error: OutboundError }[] = [];
-  const queue = [...ids];
+
+  // Each distinct id is read once; a repeated id gets the same answer.
+  const distinct = [...new Set(ids)];
+
+  const answers = new Map<
+    string,
+    { value: WithMeta<Item> } | { error: OutboundError }
+  >();
+
+  const queue = [...distinct];
 
   const worker = async (): Promise<void> => {
     for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
       try {
         // oxlint-disable-next-line no-await-in-loop -- each worker takes one id at a time.
         const value = await getOne(core, spec, id, options, state, true);
-        results.push({ id, value });
+        answers.set(id, { value });
       } catch (error) {
-        errors.push({ error: toOutboundError(core, error), id });
+        answers.set(id, { error: toOutboundError(core, error) });
       }
     }
   };
 
   const workers = Math.max(
     1,
-    Math.min(options?.concurrency ?? DEFAULT_BULK_CONCURRENCY, ids.length)
+    Math.min(options?.concurrency ?? DEFAULT_BULK_CONCURRENCY, distinct.length)
   );
 
   await Promise.all(Array.from({ length: workers }, worker));
-  const order = new Map(ids.map((id, index) => [id, index]));
+  const results: { id: string; value: WithMeta<Item> }[] = [];
+  const errors: { id: string; error: OutboundError }[] = [];
 
-  const byOrder = (left: { id: string }, right: { id: string }): number =>
-    (order.get(left.id) ?? 0) - (order.get(right.id) ?? 0);
+  // In the order of the ids passed, repeats included.
+  for (const id of ids) {
+    const answer = answers.get(id);
 
-  return {
-    errors: errors.toSorted(byOrder),
-    results: results.toSorted(byOrder),
-  };
+    if (answer !== undefined && "value" in answer) {
+      results.push({ id, value: answer.value });
+    } else if (answer !== undefined) {
+      errors.push({ error: answer.error, id });
+    }
+  }
+
+  return { errors, results };
 };
 
 export const makeCollection = <Item, Filters>(
