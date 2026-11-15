@@ -367,6 +367,31 @@ test("toSlackMessage adds the text a notification shows", () => {
   );
 });
 
+test("a digest section counts every checked sender in its more line", () => {
+  const text = read(
+    digest({
+      sections: [
+        {
+          name: "sender_health",
+          result: tool({
+            all_checked: true,
+            checked: 70,
+            senders: Array.from({ length: 50 }, (_, index) => ({
+              address: `s${index}@example.com`,
+              status: "active",
+            })),
+            unhealthy: 0,
+          }),
+        },
+      ],
+      title: "Digest",
+    })
+  );
+
+  // 3 shown of the 70 checked.
+  includes(text, "… and 67 more");
+});
+
 test("digest puts several results in one message, each cut to its headline", () => {
   const spec = digest({
     links: [{ label: "Open dashboard", url: "https://app.example.com" }],

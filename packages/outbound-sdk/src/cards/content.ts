@@ -14,6 +14,12 @@ import type {
 
 export type Stat = readonly [label: string, value: string];
 
+/** A table, and how many rows it stands for when the data holds fewer. */
+export interface ContentTable extends TableData {
+  /** Every row the answer counted, shown or not, for "… and 62 more". Defaults to `rows.length`. */
+  readonly total?: number | undefined;
+}
+
 export interface CardContent {
   readonly title: string;
   readonly subtitle?: string | null | undefined;
@@ -21,7 +27,7 @@ export interface CardContent {
   readonly finding?: string | null | undefined;
   readonly stats?: readonly Stat[] | undefined;
   readonly bullets?: readonly string[] | undefined;
-  readonly table?: TableData | undefined;
+  readonly table?: ContentTable | undefined;
   readonly chart?: ChartData | null | undefined;
   /** What to know before trusting the numbers. */
   readonly notes?: readonly string[] | undefined;
@@ -68,10 +74,14 @@ const textNode = (
 const more = (shown: number, total: number): string[] =>
   total > shown ? [`… and ${int(total - shown)} more`] : [];
 
-const bulletText = (bullets: readonly string[], max: number): string =>
+const bulletText = (
+  bullets: readonly string[],
+  max: number,
+  total = bullets.length
+): string =>
   [
     ...bullets.slice(0, max).map((line) => `• ${clip(line, MAX_BULLET)}`),
-    ...more(max, bullets.length),
+    ...more(Math.min(max, bullets.length), Math.max(total, bullets.length)),
   ].join("\n");
 
 const statNodes = (stats: readonly Stat[], max: number): CardNode[] => {
@@ -89,7 +99,7 @@ const statNodes = (stats: readonly Stat[], max: number): CardNode[] => {
 };
 
 const tableNodes = (
-  table: TableData,
+  table: ContentTable,
   caption: string,
   max: number
 ): CardNode[] => {
@@ -109,7 +119,10 @@ const tableNodes = (
 
   return [
     { table: shown, type: "Table" },
-    ...more(max, table.rows.length).map((line) => textNode(line, "muted")),
+    ...more(
+      Math.min(max, table.rows.length),
+      Math.max(table.total ?? 0, table.rows.length)
+    ).map((line) => textNode(line, "muted")),
   ];
 };
 
@@ -162,15 +175,15 @@ const rowLines = (table: TableData | undefined): string[] =>
 
 /** A short form for one section of a digest: no table and no chart. */
 export const compact = (content: CardContent): CardNode[] => {
-  const lines = content.bullets?.length
-    ? content.bullets
-    : rowLines(content.table);
+  const fromTable = !content.bullets?.length;
+  const lines = fromTable ? rowLines(content.table) : (content.bullets ?? []);
+  const total = fromTable ? content.table?.total : undefined;
 
   return [
     ...(content.finding ? [textNode(content.finding, "plain")] : []),
     ...statNodes(content.stats ?? [], COMPACT_STATS),
     ...(lines.length > 0
-      ? [textNode(bulletText(lines, COMPACT_ROWS), "plain")]
+      ? [textNode(bulletText(lines, COMPACT_ROWS, total), "plain")]
       : []),
   ];
 };

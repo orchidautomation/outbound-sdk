@@ -195,7 +195,8 @@ test("sender_health counts every checked sender, names each by address, and says
     "🔴 10 of 100 senders need attention.",
     "jo@example.com | mailbox | disconnected",
     "s-active       | mailbox | active",
-    "2 of the 100 senders checked are listed, problems first.",
+    "… and 98 more",
+    "2 of the 100 senders checked are in the answer, problems first. Raise limit to list more.",
     "The account has more senders than the 100 checked."
   );
 
@@ -214,6 +215,33 @@ test("sender_health counts every checked sender, names each by address, and says
     ),
     "🟢 No sender needs attention (70 checked)."
   );
+});
+
+test("sender_health's more count covers every checked sender the card does not show", () => {
+  // 70 senders checked, 50 in the answer, 8 drawn: 62 are not shown.
+  const text = read(
+    cardFor(
+      "sender_health",
+      tool({
+        all_checked: true,
+        checked: 70,
+        senders: Array.from({ length: 50 }, (_, index) => ({
+          ...sender(index < 10 ? "disconnected" : "active", {}),
+          address: `s${index}@example.com`,
+        })),
+        truncated: true,
+        unhealthy: 10,
+      })
+    )
+  );
+
+  includes(
+    text,
+    "🔴 10 of 70 senders need attention.",
+    "… and 62 more",
+    "50 of the 70 senders checked are in the answer, problems first. Raise limit to list more."
+  );
+  excludes(text, "… and 42 more");
 });
 
 test("campaign_overview and reply_samples say when the list was cut at limit", () => {

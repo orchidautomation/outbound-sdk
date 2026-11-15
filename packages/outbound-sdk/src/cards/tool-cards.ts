@@ -205,7 +205,7 @@ const senderHealth: CardBuilder = (data) => {
     notes: [
       ...(checked > senders.length
         ? [
-            `${int(senders.length)} of the ${int(checked)} senders checked are listed, problems first.`,
+            `${int(senders.length)} of the ${int(checked)} senders checked are in the answer, problems first. Raise limit to list more.`,
           ]
         : []),
       ...(bool(data, "all_checked") === false
@@ -226,6 +226,8 @@ const senderHealth: CardBuilder = (data) => {
         int(num(sender, "daily_limit")),
         warmup(sender),
       ]),
+      // The more count covers every sender checked, not only those in the answer.
+      total: checked,
     },
     title: "Sender health",
   };
