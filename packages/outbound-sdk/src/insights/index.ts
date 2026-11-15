@@ -6,6 +6,8 @@ export { insights, listInsights, runInsightByName } from "./plugin.ts";
 
 export type { Insights, InsightsExtension } from "./plugin.ts";
 
+export type { InsightInputs } from "./inputs.generated.ts";
+
 export { insightTools } from "./tools.ts";
 
 export type { InsightToolsOptions } from "./tools.ts";

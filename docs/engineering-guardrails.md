@@ -52,6 +52,10 @@ Ultracite on Oxlint and Oxfmt, with the `core` and `anti-slop` presets (`oxlint.
 
 `scripts/build.mjs` builds one ESM file per public subpath with esbuild and type declarations with `tsc`. The package's `exports` map is the only list of public subpaths. `scripts/smoke-dist.mjs` loads every subpath; CI runs it on Node 22 and Bun. `scripts/check-size.mjs` checks what a consumer's bundler ships for each subpath: the built entry is bundled on its own with tree-shaking and minification, then gzipped. Code behind a dynamic `import()` is left out. Budgets are in `size-budget.json`; the core is held to 18 kB, the CLI, which carries the MCP server and the tools, to 22 kB, each vendor adapter with its native catalog to 30 kB, and the insights to 45 kB. `dist/` itself is not minified.
 
+## Generated source
+
+`packages/outbound-sdk/src/insights/inputs.generated.ts` holds the input type of every built-in insight, with each field's description, default and range as JSDoc, read from the insight's Zod schema. After changing an insight's input, run `node scripts/generate-insight-inputs.mjs`. `npm test` fails while the file is stale, and the type check fails if a generated input stops matching its schema.
+
 ## Differences from the plan
 
 - TypeScript is pinned to 6.0.3. TypeScript 7 has no JavaScript compiler API, and dependency-cruiser needs that API to read TypeScript imports.
