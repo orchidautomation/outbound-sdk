@@ -12,16 +12,18 @@ agent/
 ├── instructions.md                  who it is, and how to report numbers honestly
 ├── instructions/client-scope.ts     tells the model which client a channel belongs to
 ├── lib/
-│   ├── clients.ts                   the client roster: vendor, key, Slack channel
+│   ├── clients.ts                   the client roster, the team's channels and teammates
+│   ├── roster.ts                    refuses a roster that puts two clients in one channel
 │   ├── outbound.ts                  one outbound-sdk instance for the whole agency
-│   ├── scope.ts                     which client a conversation may see
+│   ├── scope.ts                     what a conversation may see; fails closed
+│   ├── cards.ts                     the numbers behind a reply, as outbound-sdk cards
 │   └── demo.ts                      made-up data for trying it without a key
 ├── tools/
 │   ├── outbound.ts                  every outbound-sdk tool and insight, as eve tools
 │   └── no_reply.ts                  lets a quiet morning post nothing
 ├── skills/weekly-client-report/     the Monday report, step by step
 ├── channels/
-│   ├── slack.ts                     Slack mentions, DMs and threads
+│   ├── slack.ts                     Slack mentions, DMs and threads, with the cards renderer
 │   └── eve.ts                       the HTTP API and the dev TUI
 └── schedules/
     ├── weekly-client-reports.ts     Monday 08:00 New York, one thread per client
@@ -61,13 +63,29 @@ The channel was added with `eve add channel/slack`, using portable credentials:
 1. Create a Slack app. Add the bot scopes `app_mentions:read`, `chat:write`, `channels:history`, `groups:history`, `im:history`, `mpim:history`, `files:read` and `files:write`.
 2. Install it, then set `SLACK_BOT_TOKEN` and `SLACK_SIGNING_SECRET`.
 3. Under **Event Subscriptions** and **Interactivity**, set the request URL to `https://<your-deployment>/eve/v1/slack`, and subscribe to `app_mention`, `message.channels`, `message.groups`, `message.im` and `message.mpim`.
-4. Invite the app to each client's shared channel and to the team's channel, and set `OUTBOUND_OPS_CHANNEL_ID` to the team's.
+4. Invite the app to each client's shared channel and to the team's channels. Set `OUTBOUND_OPS_CHANNEL_ID` to the one the morning check posts in, `OUTBOUND_INTERNAL_CHANNEL_IDS` to any other team channels, and `OUTBOUND_TEAM_USER_IDS` to the teammates who may DM the agent.
 
 To let Vercel hold the token and verify requests instead, run `eve add channel/slack` again and choose **Vercel Connect**.
 
-### One client per shared channel
+### Who sees what
 
-In a channel listed in `clients.ts`, the agent's tools are built on `outbound.workspace(clientId)`: the same instance scoped to that client. Whatever anyone in the channel asks, the tools cannot read another client's campaigns, and the instructions tell the model it may be talking to the client. Everywhere else — the team's channels, DMs, the TUI — it sees every client.
+`agent/lib/scope.ts` decides, before every model call, what the conversation may read. It fails closed: a Slack conversation gets data only when the configuration says whose it is.
+
+| Conversation | Sees |
+| --- | --- |
+| A client's shared channel (`slackChannelId` in `clients.ts`) | That client only. The tools are built on `outbound.workspace(clientId)`, so they cannot read another client whatever anyone asks |
+| A channel in `OUTBOUND_OPS_CHANNEL_ID` or `OUTBOUND_INTERNAL_CHANNEL_IDS` | Every client |
+| A DM from a user in `OUTBOUND_TEAM_USER_IDS` | Every client |
+| The eve HTTP API and the dev TUI | Every client. Their callers are authenticated in `channels/eve.ts` |
+| Anything else: an unlisted channel, a DM from anyone else, a group DM | Nothing. The agent has no outbound tools there and says the channel isn't set up |
+
+DMs need the teammate list because Slack identifies a Slack Connect guest by the agency's own workspace, so a DM alone can't tell a client's user from a teammate.
+
+The roster is checked when the agent loads, so `eve build` fails on a roster that gives one channel to two clients or two channels to one client. A client on two sending tools is two entries with the same `id` and channel.
+
+### Cards under every answer
+
+After a reply posts, a renderer in `channels/slack.ts` posts the numbers behind it as outbound-sdk cards (`cardFor` and `toSlackMessage` from `outbound-sdk/cards`): a header, the finding with a 🔴/🟡/🟢 light, a grid of number tiles, a table that sorts as numbers, a chart where there is a series, and a footer with the vendor and request count. A count the vendor didn't report shows as `—`. Slack draws one table per message, so each tool gets its own card; past three, the rest share one digest. The thread status names the work as it runs, such as _Bounce watch for Acme_.
 
 ## How it uses outbound-sdk
 
