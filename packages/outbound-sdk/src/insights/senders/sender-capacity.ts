@@ -3,16 +3,13 @@
 import { z } from "zod";
 
 import { mapConcurrent } from "../../internal/concurrency.ts";
-import type { Campaign, MetricRow, Sender } from "../../internal/entities.ts";
+import type { Campaign, Sender } from "../../internal/entities.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
-import { rate, round, spoken, total } from "../stats.ts";
-import {
-  dayFrom,
-  readCampaigns,
-  readCampaignSenders,
-  readSenders,
-} from "./read.ts";
+import { rate, spoken, total } from "../stats.ts";
+import { readSends } from "./capacity-sends.ts";
+import type { CapacitySends } from "./capacity-sends.ts";
+import { readCampaigns, readCampaignSenders, readSenders } from "./read.ts";
 
 const input = z.object({
   days: z
@@ -42,6 +39,8 @@ const input = z.object({
     ),
 });
 
+export type { CapacitySends } from "./capacity-sends.ts";
+
 export interface CapacityTotals {
   /** The sum of the daily limits of active senders. `null` when no active sender reports one. */
   readonly daily: number | null;
@@ -63,19 +62,6 @@ export interface CapacityAsk {
   readonly withoutLimit: number;
 }
 
-export interface CapacitySends {
-  /** Messages sent in the window divided by its days. A day the vendor has no row for counts as no sends. */
-  readonly averageDaily: number | null;
-  readonly total: number | null;
-  readonly days: number;
-  /** Days in the window the vendor reported a sent count for. */
-  readonly daysWithData: number;
-  readonly from: string;
-  readonly to: string;
-  /** `campaigns` when the sends were added up over the active campaigns read. */
-  readonly scope: "campaigns" | "workspace";
-}
-
 export interface ShortCampaign {
   readonly campaign: string;
   readonly name: string;
@@ -95,7 +81,7 @@ export interface SenderCapacity {
   readonly ask: CapacityAsk | null;
   /** `null` when the adapter has no daily stats. */
   readonly sends: CapacitySends | null;
-  /** Average daily sends divided by daily capacity. */
+  /** Average daily sends of the senders counted in capacity, divided by daily capacity. */
   readonly utilization: number | null;
   /** The daily ask divided by daily capacity. Over 1 means the campaigns ask for more than the senders can send. */
   readonly askRatio: number | null;
@@ -156,84 +142,6 @@ const readOne = async (
             "max_senders"
           )
         : null,
-  };
-};
-
-const dailyRows = async (
-  context: InsightContext,
-  campaigns: readonly Campaign[],
-  range: { readonly from: string; readonly to: string }
-): Promise<{ rows: MetricRow[]; scope: CapacitySends["scope"] } | null> => {
-  const { outbound } = context;
-  const { capabilities } = outbound;
-
-  if (capabilities["stats.byDay"] === false) {
-    context.note(
-      "Average daily sends left out: the adapter has no daily stats."
-    );
-
-    return null;
-  }
-
-  if (capabilities["stats.workspace"] !== false) {
-    return {
-      rows: [...context.rows(await outbound.stats({ ...range, by: "day" }))],
-      scope: "workspace",
-    };
-  }
-
-  if (capabilities["stats.campaign"] === false) {
-    context.note(
-      "Average daily sends left out: the adapter has no workspace or campaign stats."
-    );
-
-    return null;
-  }
-
-  const perCampaign = await mapConcurrent(campaigns, async (campaign) =>
-    context.rows(
-      await outbound.campaign(campaign.ref).stats({ ...range, by: "day" })
-    )
-  );
-
-  const rows: MetricRow[] = perCampaign.flat();
-
-  context.note(
-    "Average daily sends cover the active campaigns read, not the whole workspace."
-  );
-
-  return { rows, scope: "campaigns" };
-};
-
-const readSends = async (
-  context: InsightContext,
-  campaigns: readonly Campaign[],
-  days: number
-): Promise<CapacitySends | null> => {
-  const range = {
-    from: dayFrom(context.now, -days),
-    to: dayFrom(context.now, -1),
-  };
-
-  const read = await dailyRows(context, campaigns, range);
-
-  if (read === null) {
-    return null;
-  }
-
-  const sent = total(read.rows.map((row) => row.sent));
-
-  const reported = read.rows.flatMap((row) =>
-    row.date === null || row.sent === null ? [] : [row.date]
-  );
-
-  return {
-    ...range,
-    averageDaily: sent === null ? null : round(sent / days),
-    days,
-    daysWithData: new Set(reported).size,
-    scope: read.scope,
-    total: sent,
   };
 };
 
@@ -309,7 +217,7 @@ const findingOf = (
 
   if (sends !== null && sends.averageDaily !== null) {
     parts.push(
-      `${spoken(sends.averageDaily)} a day were sent on average over the last ${sends.days} days.`
+      `${spoken(sends.averageDaily)} a day were sent on average over the last ${sends.days} days${(sends.fromUncounted ?? 0) > 0 ? `; senders not counted in capacity sent ${sends.fromUncounted} of the ${sends.total}` : ""}.`
     );
   }
 
@@ -318,7 +226,7 @@ const findingOf = (
 
 export const senderCapacity = defineInsight({
   description:
-    "Whether the senders can send what the campaigns ask: total daily capacity (the daily limits of active senders added up), the total daily ask of active campaigns, the average messages sent per day over the last days, utilization, and the campaigns whose own senders cannot cover their daily limit. Use it before adding campaigns or when sends fall short. Costs one listing of senders and of active campaigns, then up to 2 requests per campaign and 1 for daily stats. A null means the vendor does not report the number; a sender or campaign with no reported limit is counted apart, never as 0.",
+    "Whether the senders can send what the campaigns ask: total daily capacity (the daily limits of active senders added up), the total daily ask of active campaigns, the average messages sent per day over the last days, utilization, and the campaigns whose own senders cannot cover their daily limit. Use it before adding campaigns or when sends fall short. Costs one listing of senders and of active campaigns, then up to 2 requests per campaign and 1 for daily stats, plus 1 per inactive or unlimited sender. Utilization counts only the sends of the senders in capacity. A null means the vendor does not report the number; a sender or campaign with no reported limit is counted apart, never as 0.",
   inputSchema: input,
   key: "senderCapacity",
   name: "sender_capacity",
@@ -331,7 +239,8 @@ export const senderCapacity = defineInsight({
     const { outbound } = context;
     const { capabilities } = outbound;
 
-    const senders = await readSenders(context, maxSenders);
+    const listed = await readSenders(context, maxSenders);
+    const senders = listed.items;
 
     const campaigns = await readCampaigns(context, ["active"], maxCampaigns);
 
@@ -354,7 +263,7 @@ export const senderCapacity = defineInsight({
 
     const capacity = capacityOf(senders);
     const ask = hasSettings ? askOf(reads) : null;
-    const sends = await readSends(context, campaigns, days);
+    const sends = await readSends(context, campaigns, days, listed);
     const shortfalls = reads.map(shortfallOf);
 
     const answer: SenderCapacity = {
@@ -373,7 +282,14 @@ export const senderCapacity = defineInsight({
       uncheckedCampaigns: canCompare
         ? shortfalls.filter((each) => each === "unchecked").length
         : null,
-      utilization: rate(sends?.averageDaily ?? null, capacity.daily),
+      utilization: rate(
+        sends?.total === null ||
+          sends?.total === undefined ||
+          sends.fromUncounted === null
+          ? null
+          : (sends.total - sends.fromUncounted) / sends.days,
+        capacity.daily
+      ),
     };
 
     return answer;

@@ -62,6 +62,9 @@ const DATA: MemoryData = {
     sent("c2", "2026-11-13", 7),
     sent("c5", "2026-11-09", 9),
     sent("c1", "2026-11-14", 300),
+    // The paused m4 sent 14 of Agencies' sends; m3, with no limit, sent none.
+    { ...sent("c2", "2026-11-10", 14), senderId: "m4" },
+    { ...sent("c3", "2026-11-10", 0), senderId: "m3" },
   ],
 };
 
@@ -93,11 +96,13 @@ test("sender_capacity adds up capacity, ask and recent sends, and names the camp
     days: 7,
     daysWithData: 4,
     from: "2026-11-07",
+    fromUncounted: 14,
     scope: "workspace",
     to: "2026-11-13",
     total: 100,
   });
-  assert.equal(data.utilization, 0.1429);
+  // Only the 86 the counted senders sent, over 7 days, against their 100 a day.
+  assert.equal(data.utilization, 0.1229);
   assert.equal(data.askRatio, 2);
   assert.deepEqual(data.shortCampaigns, [
     {
@@ -126,10 +131,76 @@ test("sender_capacity adds up capacity, ask and recent sends, and names the camp
   assert.equal(data.uncheckedCampaigns, 2);
   assert.equal(
     data.finding,
-    "The 3 active senders that report a daily limit can send 100 a day; 1 more reports no limit and is not counted. Active campaigns ask for 200, which is 100 more than that. 14.3 a day were sent on average over the last 7 days."
+    "The 3 active senders that report a daily limit can send 100 a day; 1 more reports no limit and is not counted. Active campaigns ask for 200, which is 100 more than that. 14.3 a day were sent on average over the last 7 days; senders not counted in capacity sent 14 of the 100."
   );
   assert.equal(result.meta.complete, true);
   assert.deepEqual(result.meta.notes, []);
+});
+
+// One active sender with room for 10 a day; a paused one sent most of the mail.
+const PAUSED: MemoryData = {
+  senders: [
+    { address: "on@example.com", dailyLimit: 10, id: "on" },
+    {
+      address: "off@example.com",
+      dailyLimit: 50,
+      id: "off",
+      status: "paused",
+    },
+  ],
+  stats: [
+    sent("c1", "2026-11-10", 350),
+    { ...sent("c1", "2026-11-10", 49), senderId: "on" },
+    { ...sent("c1", "2026-11-10", 301), senderId: "off" },
+  ],
+};
+
+test("sender_capacity compares sends and capacity over the same senders", async () => {
+  const { data, meta } = await single(PAUSED).insights.senderCapacity(
+    {},
+    { now: NOW }
+  );
+
+  // 350 sent over 7 days is 50 a day, against 10 a day of capacity: 500%.
+  // Only the active sender's 49 count: 7 a day, 70% of its 10.
+  assert.equal(data.sends?.fromUncounted, 301);
+  assert.equal(data.utilization, 0.7);
+  assert.deepEqual(meta.notes, []);
+});
+
+test("sender_capacity leaves capacity in use out when it cannot tell whose sends they were", async () => {
+  const note =
+    "Capacity in use left out: some sends may come from senders not counted in capacity (inactive, with no daily limit, or past max_senders), and they could not be told apart.";
+
+  const noSenderStats = await single(PAUSED, {
+    "stats.bySender": false,
+  }).insights.senderCapacity({}, { now: NOW });
+
+  assert.equal(noSenderStats.data.sends?.total, 350);
+  assert.equal(noSenderStats.data.sends?.fromUncounted, null);
+  assert.equal(noSenderStats.data.utilization, null);
+  assert.deepEqual(noSenderStats.meta.notes, [note]);
+
+  const capped = await single(PAUSED).insights.senderCapacity(
+    { max_senders: 1 },
+    { now: NOW }
+  );
+
+  assert.equal(capped.data.utilization, null);
+  assert.ok(capped.meta.notes.includes(note));
+
+  // The paused sender's own stats say it sent more than the whole workspace.
+  const mismatched = await single({
+    ...PAUSED,
+    stats: [
+      sent("c1", "2026-11-10", 20),
+      { ...sent("c1", "2026-11-10", 301), senderId: "off" },
+    ],
+  }).insights.senderCapacity({}, { now: NOW });
+
+  assert.equal(mismatched.data.sends?.fromUncounted, null);
+  assert.equal(mismatched.data.utilization, null);
+  assert.deepEqual(mismatched.meta.notes, [note]);
 });
 
 test("sender_capacity averages over the days asked for", async () => {
@@ -143,11 +214,13 @@ test("sender_capacity averages over the days asked for", async () => {
     days: 1,
     daysWithData: 1,
     from: "2026-11-13",
+    // m3 and m4 have no stats for 11-13, so whose sends these were is not known.
+    fromUncounted: null,
     scope: "workspace",
     to: "2026-11-13",
     total: 7,
   });
-  assert.equal(one.data.utilization, 0.07);
+  assert.equal(one.data.utilization, null);
 
   const four = await single(DATA).insights.senderCapacity(
     { days: 4 },
@@ -283,7 +356,7 @@ test("sender_capacity leaves out the ask and the shortfalls when settings or cam
   ]);
   assert.equal(
     noSettings.data.finding,
-    "The 3 active senders that report a daily limit can send 100 a day; 1 more reports no limit and is not counted. 14.3 a day were sent on average over the last 7 days."
+    "The 3 active senders that report a daily limit can send 100 a day; 1 more reports no limit and is not counted. 14.3 a day were sent on average over the last 7 days; senders not counted in capacity sent 14 of the 100."
   );
 
   const noCampaignSenders = await single(DATA, {
@@ -308,13 +381,16 @@ test("sender_capacity falls back to campaign stats, then to no sends, as daily s
     days: 7,
     daysWithData: 3,
     from: "2026-11-07",
+    // A sender's own stats cover every campaign it sends for, so they cannot split these.
+    fromUncounted: null,
     scope: "campaigns",
     to: "2026-11-13",
     total: 91,
   });
-  assert.equal(perCampaign.data.utilization, 0.13);
+  assert.equal(perCampaign.data.utilization, null);
   assert.deepEqual(perCampaign.meta.notes, [
     "Average daily sends cover the active campaigns read, not the whole workspace.",
+    "Capacity in use left out: some sends may come from senders not counted in capacity (inactive, with no daily limit, or past max_senders), and they could not be told apart.",
   ]);
 
   const noScope = await single(DATA, {

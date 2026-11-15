@@ -258,7 +258,7 @@ export const domainHealth = defineInsight({
     context,
     { max_senders: maxSenders, spam_rate_threshold: threshold }
   ) => {
-    const senders = await readSenders(context, maxSenders);
+    const { items: senders } = await readSenders(context, maxSenders);
 
     const byDomain = new Map<string, Checked[]>();
     const linkedinSeats: LinkedinSeat[] = [];

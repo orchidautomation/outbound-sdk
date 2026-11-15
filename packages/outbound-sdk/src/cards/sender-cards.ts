@@ -136,6 +136,7 @@ const domainHealth: CardBuilder = (data) => {
 
 const senderCapacity: CardBuilder = (data) => {
   const capacity = child(data, "capacity");
+  const sends = child(data, "sends");
 
   return {
     bullets: rows(data, "shortCampaigns").map(
@@ -145,7 +146,8 @@ const senderCapacity: CardBuilder = (data) => {
     stats: [
       ["Daily capacity", int(num(capacity, "daily"))],
       ["Campaigns ask for", int(num(child(data, "ask"), "daily"))],
-      ["Average sent per day", int(num(child(data, "sends"), "averageDaily"))],
+      ["Average sent per day", int(num(sends, "averageDaily"))],
+      ["Sent by senders not counted", int(num(sends, "fromUncounted"))],
       ["Capacity in use", pct(num(data, "utilization"))],
       ["Active senders", int(num(capacity, "activeSenders"))],
       ["Inactive senders", int(num(capacity, "inactiveSenders"))],

@@ -196,7 +196,7 @@ export const warmupReadiness = defineInsight({
       minScore: options.min_score,
     };
 
-    const senders = await readSenders(context, options.max_senders);
+    const { items: senders } = await readSenders(context, options.max_senders);
 
     const healthChecked =
       options.check_health && outbound.capabilities["senders.health"];

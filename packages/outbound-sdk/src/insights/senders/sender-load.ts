@@ -137,7 +137,7 @@ export const senderLoad = defineInsight({
   run: async (context, options) => {
     const allowed = options.max_campaigns_per_sender;
 
-    const senders = await readSenders(context, options.max_senders);
+    const { items: senders } = await readSenders(context, options.max_senders);
 
     const campaigns = await readCampaigns(
       context,

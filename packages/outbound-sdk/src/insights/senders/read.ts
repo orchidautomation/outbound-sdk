@@ -13,6 +13,7 @@ import type {
 import { OutboundError } from "../../internal/errors.ts";
 import type { ListAll } from "../../internal/outbound/api.ts";
 import { readCampaignsIn, readCapped as readUpTo } from "../capped.ts";
+import type { Capped } from "../capped.ts";
 import type { InsightContext } from "../define.ts";
 
 export const statusesInput = z
@@ -72,18 +73,16 @@ export const readCampaignSenders = (
     input
   );
 
-/** Every sender of the workspace, up to `max_senders`. */
+/** Every sender of the workspace, up to `max_senders`, and whether more exist. */
 export const readSenders = (
   context: InsightContext,
   max: number
-): Promise<Sender[]> =>
-  readCapped(
-    context,
-    (cap) => context.outbound.senders.listAll({ max: cap }),
+): Promise<Capped<Sender>> =>
+  readUpTo(context, (cap) => context.outbound.senders.listAll({ max: cap }), {
+    input: "max_senders",
     max,
-    "senders",
-    "max_senders"
-  );
+    what: "senders",
+  });
 
 /**
  * One sender's health, or `null` when the vendor no longer finds the sender,

@@ -19,6 +19,7 @@ import { createFetch, json } from "../helpers/http.ts";
 import type { RecordedRequest } from "../helpers/http.ts";
 import { suite as instantly } from "../instantly/suite.ts";
 import { suite as smartlead } from "../smartlead/suite.ts";
+import { NOW } from "./helpers.ts";
 
 const GONE = "person11@example.com";
 
@@ -85,6 +86,19 @@ test("settings_audit on Instantly holds a daily limit against what the senders c
 
   assert.deepEqual(unrouted, []);
   assert.equal(result.data.byCheck.limit_over_senders, 0);
+});
+
+test("sender_capacity on Instantly counts only the days in its window", async () => {
+  const { outbound, settle } = over(instantly);
+
+  // The recorded daily stats are all dated 2025-03-01, outside the window.
+  const result = await settle(
+    outbound.insights.senderCapacity({}, { now: NOW })
+  );
+
+  assert.equal(result.data.sends?.daysWithData, 0);
+  assert.equal(result.data.sends?.total, null);
+  assert.equal(result.data.utilization, null);
 });
 
 test("domain_health and warmup_readiness leave out a mailbox the vendor no longer finds", async () => {

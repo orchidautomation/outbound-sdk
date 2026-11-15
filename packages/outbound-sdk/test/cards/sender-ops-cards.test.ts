@@ -201,6 +201,7 @@ test("sender_capacity repeats the finding and lists short campaigns", () => {
       days: 7,
       daysWithData: 7,
       from: "2026-11-07",
+      fromUncounted: 93,
       scope: "workspace",
       to: "2026-11-13",
       total: 2173,
@@ -228,6 +229,7 @@ test("sender_capacity repeats the finding and lists short campaigns", () => {
     "Campaigns ask for: 500",
     "Average sent per day: 310.5",
     "Capacity in use: 77.6%",
+    "Sent by senders not counted: 93",
     "• 🟡 Founders Q4 asks for 200 a day from senders that can do 80."
   );
 });
