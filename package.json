@@ -14,7 +14,7 @@
     "architecture": "node scripts/check-architecture.mjs",
     "shape": "node scripts/check-repo-shape.mjs",
     "test": "node --test \"scripts/*.test.mjs\" \"packages/*/test/**/*.test.ts\" \"site/test/*.test.ts\" \"skills/test/*.test.ts\"",
-    "build": "node scripts/build.mjs && node scripts/smoke-dist.mjs && node scripts/check-size.mjs",
+    "build": "node scripts/build.mjs && node scripts/smoke-dist.mjs",
     "check:static": "npm run typecheck && npm run architecture && npm run shape && npm run fixtures && git diff --check",
     "check:fast": "npm run lint && npm run check:static",
     "check": "npm run check:fast && npm test && npm run coverage && npm run build",

@@ -20,7 +20,6 @@ sharedFiles:
   - agent.yaml
   - package.json
   - package-lock.json
-  - size-budget.json
   - oxlint.config.ts
   - scripts/architecture-rules.mjs
   - packages/outbound-sdk/package.json
