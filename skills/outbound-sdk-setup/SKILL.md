@@ -37,9 +37,9 @@ The package is ESM only. In a project without `"type": "module"`, name TypeScrip
 Try it on demo data first, with no key and no network:
 
 ```sh
-npx outbound providers
-OUTBOUND_SDK_PROVIDER=memory npx outbound capabilities
-OUTBOUND_SDK_PROVIDER=memory npx outbound tool sender_health --input '{"limit":1}'
+npx outbound-sdk providers
+OUTBOUND_SDK_PROVIDER=memory npx outbound-sdk capabilities
+OUTBOUND_SDK_PROVIDER=memory npx outbound-sdk tool sender_health --input '{"limit":1}'
 ```
 
 `providers` lists each adapter with its maturity and the variables it reads, and needs no adapter. `capabilities` prints what the chosen adapter can read, plus its maturity and caveats, without making a request.
@@ -119,7 +119,7 @@ Add the insights with `extra: insightTools(outbound)` from `outbound-sdk/insight
 | `Unauthorized: instantly needs an API key: pass apiKey or set INSTANTLY_API_KEY`, exit 1 | The adapter's key is missing (the message names your vendor's variable) | Add the key to `env`, or set it where the client inherits it |
 | `Cannot use import statement outside a module` | A `.ts` file in a CommonJS project | Rename it `.mts`, or set `"type": "module"` |
 | `npm error 404` for `outbound-sdk` | The registry is unreachable or a mirror lags npm | Check `npm view outbound-sdk version`, or install the tarball (step 1) |
-| Tools are missing from the list | The adapter cannot serve them, or a plugin turned them off | Expected. Run `npx outbound capabilities` to see what is declared |
+| Tools are missing from the list | The adapter cannot serve them, or a plugin turned them off | Expected. Run `npx outbound-sdk capabilities` to see what is declared |
 
 [Troubleshooting](https://outbound-sdk.dev/docs/troubleshooting) has the rest, with the exact messages.
 

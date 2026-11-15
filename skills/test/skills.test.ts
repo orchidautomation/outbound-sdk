@@ -249,7 +249,11 @@ const blockCommands = (file: string, body: string): Command[] => {
       parts.shift();
     }
 
-    if (parts[0] === "outbound" && parts[1] !== "mcp") {
+    // The package installs one executable under both names.
+    if (
+      (parts[0] === "outbound" || parts[0] === "outbound-sdk") &&
+      parts[1] !== "mcp"
+    ) {
       found.push({ argv: parts.slice(1), env, file, line });
     }
   }
@@ -257,7 +261,7 @@ const blockCommands = (file: string, body: string): Command[] => {
   return found;
 };
 
-/** Every `outbound …` or `npx outbound …` line in a `sh` block. */
+/** Every `outbound …` or `npx outbound-sdk …` line in a `sh` block. */
 const commands = (file: string): Command[] =>
   [
     ...readFileSync(file, "utf-8").matchAll(

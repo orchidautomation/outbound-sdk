@@ -22,7 +22,8 @@
     "directory": "packages/outbound-sdk"
   },
   "bin": {
-    "outbound": "./dist/cli/bin.js"
+    "outbound": "./dist/cli/bin.js",
+    "outbound-sdk": "./dist/cli/bin.js"
   },
   "files": [
     "dist"

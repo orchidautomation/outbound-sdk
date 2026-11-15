@@ -531,6 +531,8 @@ export const helpText = (): string =>
     "  providers",
     ...[...COMMANDS.values()].map((command) => `  ${command.help}`),
     "  mcp                      start a local MCP server on stdio (redact is on)",
+    "  version                  print the installed version (also --version, -v)",
+    "  update                   check npm for a newer version and say how to get it",
     "",
     ...GLOBAL_HELP,
   ].join("\n");

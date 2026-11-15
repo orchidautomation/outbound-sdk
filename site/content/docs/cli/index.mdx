@@ -9,9 +9,9 @@ related:
   - /docs/installation
 ---
 
-The package ships one binary, `outbound`. It is a thin shell over the SDK: each command makes the same read you would make in code and prints the result as JSON. It adds no behaviour of its own, and like the SDK it only reads.
+The package ships one binary, installed under two names: `outbound` and `outbound-sdk`. It is a thin shell over the SDK: each command makes the same read you would make in code and prints the result as JSON. It adds no behaviour of its own, and like the SDK it only reads.
 
-Run it without installing with `npx outbound-sdk <command>`, or install the package and run `npx outbound <command>` in that project.
+Run it with `npx outbound-sdk <command>`. That works with or without the package installed: npx uses the project's copy when there is one and downloads the package otherwise. Inside a project that has the package, `outbound <command>` from a package script, or `node_modules/.bin/outbound`, runs the same binary. Do not type `npx outbound` outside such a project: `outbound` on npm is an unrelated package, and npx would download it.
 
 <include lang="text" meta='title="Output"'>
   ../../_examples/cli-index/help.out.txt

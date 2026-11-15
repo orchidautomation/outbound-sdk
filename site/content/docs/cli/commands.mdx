@@ -39,6 +39,8 @@ The output shows what the CLI does with the demo data. It does not show what a v
 | `native [name]` | Lists the vendor's [own reads](/docs/native), or runs one | `outbound.native` |
 | `mcp` | Starts the [MCP server](/docs/cli/mcp) on stdio | `createMcpServer` |
 | `help` | The usage text. Also `--help`, `-h`, or no command. |  |
+| `version` | The installed version. Also `--version` or `-v`. Needs no adapter. | the package's `package.json` |
+| `update` | Whether npm has a newer version, and how to get it. Needs no adapter. | `npm view outbound-sdk version` |
 
 ## Flags
 
@@ -172,6 +174,18 @@ A person who is in no campaign is an answer, `found: false`, with exit code 0. W
 </include>
 
 The last command constructed the Instantly adapter with a placeholder key and listed its catalog. No request was made. A native read on a real adapter was not run by this sample.
+
+## version and update
+
+`outbound version` prints the installed version and nothing else, so a script can read it. `outbound --version` and `outbound -v` do the same.
+
+`outbound update` asks npm for the newest published version, through the `npm` on your `PATH`. If you already have it, the command says so and changes nothing. Otherwise what it does depends on how the package was installed:
+
+- **Global install** (`npm install --global outbound-sdk`): it runs `npm install --global outbound-sdk@latest`.
+- **Installed in a project**: it prints `npm install outbound-sdk@latest` for you to run. It does not run it, because that would rewrite the project's `package.json` and lockfile.
+- **Run through npx**: it prints `npx outbound-sdk@latest <command>`, since npx keeps its own copy.
+
+If npm cannot be reached, the command exits with code 1 and prints npm's error.
 
 ## mcp
 
