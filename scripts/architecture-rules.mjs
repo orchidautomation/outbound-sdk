@@ -8,7 +8,13 @@ import path from "node:path";
 export const sourceRoot = "packages/outbound-sdk/src";
 export const testRoot = "packages/outbound-sdk/test";
 
-export const adapters = ["heyreach", "instantly", "memory", "smartlead"];
+export const adapters = [
+  "emailbison",
+  "heyreach",
+  "instantly",
+  "memory",
+  "smartlead",
+];
 
 // Folder -> the other src/ folders it may import. "internal" holds the request
 // engine and core types; an adapter may import it and nothing else.

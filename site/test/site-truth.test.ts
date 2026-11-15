@@ -128,6 +128,7 @@ test("every public subpath has a page", () => {
     "./cards": "docs/cards.mdx",
     "./cli": "docs/cli/index.mdx",
     "./combine": "docs/adapters/combine.mdx",
+    "./emailbison": "docs/adapters/emailbison.mdx",
     "./heyreach": "docs/adapters/heyreach.mdx",
     "./insights": "docs/insights/index.mdx",
     "./instantly": "docs/adapters/instantly.mdx",

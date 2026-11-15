@@ -1,0 +1,22 @@
+{
+  "data": [
+    {
+      "id": 3,
+      "email": "blocked3@example.com",
+      "created_at": "2025-04-14T16:59:21.000000Z",
+      "updated_at": "2025-05-18T12:53:32.000000Z"
+    }
+  ],
+  "links": {
+    "first": null,
+    "last": null,
+    "prev": null,
+    "next": null
+  },
+  "meta": {
+    "path": "https://dedi.emailbison.com/api/blacklisted-emails",
+    "per_page": 15,
+    "next_cursor": null,
+    "prev_cursor": null
+  }
+}

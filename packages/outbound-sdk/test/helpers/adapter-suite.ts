@@ -507,7 +507,8 @@ const webhookTests = (suite: AdapterSuite): void => {
     }
 
     const rawBody = fixtureText(suite.provider, file).replace(
-      /(?<key>"(?:event_type|eventType|event)"\s*:\s*")[^"]+(?<quote>")/u,
+      // The name is a string, or the `type` of an `event` object (EmailBison).
+      /(?<key>"(?:event_type|eventType|event)"\s*:\s*(?:\{\s*"type"\s*:\s*)?")[^"]+(?<quote>")/u,
       "$<key>something_new_the_vendor_added$<quote>"
     );
 

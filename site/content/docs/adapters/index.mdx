@@ -1,6 +1,6 @@
 ---
 title: Adapters
-description: What an adapter is, the four that ship, what each can and cannot do in one table checked against the code, and how much of each vendor's API is covered.
+description: What an adapter is, the five that ship, what each can and cannot do in one table checked against the code, and how much of each vendor's API is covered.
 sidebar:
   label: Overview
 related:
@@ -20,6 +20,7 @@ Each vendor adapter has two layers: normalized reads that mean the same thing on
 | Instantly (API V2) | `outbound-sdk/instantly` | email | `INSTANTLY_API_KEY` | [Instantly](/docs/adapters/instantly) |
 | Smartlead | `outbound-sdk/smartlead` | email | `SMARTLEAD_API_KEY` | [Smartlead](/docs/adapters/smartlead) |
 | HeyReach | `outbound-sdk/heyreach` | LinkedIn | `HEYREACH_API_KEY` | [HeyReach](/docs/adapters/heyreach) |
+| EmailBison | `outbound-sdk/emailbison` | email | `EMAILBISON_API_KEY` | [EmailBison](/docs/adapters/emailbison) |
 | In-memory | `outbound-sdk/memory` | both | none | [In-memory](/docs/adapters/memory) |
 
 [`combine`](/docs/adapters/combine) from `outbound-sdk/combine` puts several of them, or several keys for one of them, behind one instance.
@@ -43,6 +44,7 @@ One line each, from [what is verified](/docs/status), which is the page to read 
 - **Instantly** is `beta`: its reads were run, read-only, against one live workspace on 2026-11-14.
 - **HeyReach** is `beta`: its reads were run, read-only, against one live workspace on 2026-11-14.
 - **Smartlead** is `unverified`: written from Smartlead's public documentation and tested offline only.
+- **EmailBison** is `unverified`: written from EmailBison's API reference and tested offline only. No EmailBison account is available to the project.
 - **In-memory** is `stable`: it has no vendor behind it.
 
 `outbound.maturity` reports this at run time, and `outbound.caveats` lists what the adapter assumes and has not confirmed. Each adapter's page shows its caveats in full.
@@ -51,53 +53,53 @@ One line each, from [what is verified](/docs/status), which is the page to read 
 
 A filter is `server` (the vendor filters), `client` (the SDK filters after fetching and marks the result `derived`) or `no`. A stat is `exact`, `derived` or `no`. A call that needs a `no` is refused as `Unsupported` before any request leaves. The repository's test suite checks this table against the adapters' own declarations (`packages/outbound-sdk/test/adapters-doc.test.ts`). See [capabilities](/docs/capabilities) for what each key gates and how to branch on it.
 
-| Capability              | Instantly | Smartlead | HeyReach |
-| ----------------------- | --------- | --------- | -------- |
-| `blocklist`             | yes       | yes       | yes      |
-| `campaigns.bySender`    | yes       | yes       | yes      |
-| `campaigns.progress`    | yes       | yes       | yes      |
-| `campaigns.settings`    | yes       | yes       | no       |
-| `campaigns.status`      | server    | client    | server   |
-| `deletionDetection`     | no        | no        | no       |
-| `events.parse`          | yes       | yes       | yes      |
-| `events.verify`         | secret    | signature | secret   |
-| `leads.byCampaign`      | yes       | yes       | yes      |
-| `leads.engagement`      | yes       | no        | no       |
-| `leads.get`             | yes       | yes       | yes      |
-| `leads.list`            | yes       | yes       | yes      |
-| `leads.lookup`          | yes       | yes       | yes      |
-| `leads.since`           | client    | client    | server   |
-| `leads.timeline`        | yes       | yes       | yes      |
-| `lists.get`             | yes       | yes       | yes      |
-| `lists.leads`           | yes       | no        | yes      |
-| `lists.list`            | yes       | yes       | yes      |
-| `messages.body`         | full      | full      | full     |
-| `messages.byThread`     | yes       | yes       | yes      |
-| `messages.list`         | yes       | yes       | yes      |
-| `messages.since`        | server    | client    | server   |
-| `native`                | yes       | yes       | yes      |
-| `placementTests.list`   | yes       | yes       | no       |
-| `replies.category`      | vendor    | vendor    | vendor   |
-| `replies.list`          | yes       | yes       | yes      |
-| `replies.since`         | server    | client    | server   |
-| `replies.unread`        | server    | client    | server   |
-| `senders.byCampaign`    | yes       | yes       | yes      |
-| `senders.get`           | yes       | yes       | yes      |
-| `senders.health`        | yes       | yes       | yes      |
-| `senders.list`          | yes       | yes       | yes      |
-| `senders.warmup`        | yes       | yes       | no       |
-| `sequence`              | yes       | yes       | yes      |
-| `sequence.subsequences` | yes       | yes       | no       |
-| `stats.allCampaigns`    | partial   | partial   | full     |
-| `stats.byDay`           | exact     | exact     | exact    |
-| `stats.bySender`        | derived   | exact     | exact    |
-| `stats.byStep`          | exact     | exact     | no       |
-| `stats.campaign`        | exact     | exact     | exact    |
-| `stats.workspace`       | exact     | exact     | exact    |
-| `tags`                  | yes       | yes       | no       |
-| `webhooks.get`          | yes       | yes       | yes      |
-| `webhooks.list`         | yes       | yes       | yes      |
-| `workspaces`            | yes       | yes       | no       |
+| Capability              | Instantly | Smartlead | HeyReach | EmailBison |
+| ----------------------- | --------- | --------- | -------- | ---------- |
+| `blocklist`             | yes       | yes       | yes      | yes        |
+| `campaigns.bySender`    | yes       | yes       | yes      | yes        |
+| `campaigns.progress`    | yes       | yes       | yes      | no         |
+| `campaigns.settings`    | yes       | yes       | no       | yes        |
+| `campaigns.status`      | server    | client    | server   | client     |
+| `deletionDetection`     | no        | no        | no       | no         |
+| `events.parse`          | yes       | yes       | yes      | yes        |
+| `events.verify`         | secret    | signature | secret   | secret     |
+| `leads.byCampaign`      | yes       | yes       | yes      | yes        |
+| `leads.engagement`      | yes       | no        | no       | yes        |
+| `leads.get`             | yes       | yes       | yes      | yes        |
+| `leads.list`            | yes       | yes       | yes      | yes        |
+| `leads.lookup`          | yes       | yes       | yes      | yes        |
+| `leads.since`           | client    | client    | server   | client     |
+| `leads.timeline`        | yes       | yes       | yes      | yes        |
+| `lists.get`             | yes       | yes       | yes      | yes        |
+| `lists.leads`           | yes       | no        | yes      | no         |
+| `lists.list`            | yes       | yes       | yes      | yes        |
+| `messages.body`         | full      | full      | full     | full       |
+| `messages.byThread`     | yes       | yes       | yes      | yes        |
+| `messages.list`         | yes       | yes       | yes      | yes        |
+| `messages.since`        | server    | client    | server   | client     |
+| `native`                | yes       | yes       | yes      | yes        |
+| `placementTests.list`   | yes       | yes       | no       | no         |
+| `replies.category`      | vendor    | vendor    | vendor   | vendor     |
+| `replies.list`          | yes       | yes       | yes      | yes        |
+| `replies.since`         | server    | client    | server   | client     |
+| `replies.unread`        | server    | client    | server   | server     |
+| `senders.byCampaign`    | yes       | yes       | yes      | yes        |
+| `senders.get`           | yes       | yes       | yes      | yes        |
+| `senders.health`        | yes       | yes       | yes      | yes        |
+| `senders.list`          | yes       | yes       | yes      | yes        |
+| `senders.warmup`        | yes       | yes       | no       | yes        |
+| `sequence`              | yes       | yes       | yes      | yes        |
+| `sequence.subsequences` | yes       | yes       | no       | no         |
+| `stats.allCampaigns`    | partial   | partial   | full     | no         |
+| `stats.byDay`           | exact     | exact     | exact    | exact      |
+| `stats.bySender`        | derived   | exact     | exact    | exact      |
+| `stats.byStep`          | exact     | exact     | no       | exact      |
+| `stats.campaign`        | exact     | exact     | exact    | exact      |
+| `stats.workspace`       | exact     | exact     | exact    | exact      |
+| `tags`                  | yes       | yes       | no       | yes        |
+| `webhooks.get`          | yes       | yes       | yes      | yes        |
+| `webhooks.list`         | yes       | yes       | yes      | yes        |
+| `workspaces`            | yes       | yes       | no       | yes        |
 
 The in-memory adapter declares everything except `native`, `events.parse`, `events.verify` and `deletionDetection`.
 
@@ -112,6 +114,7 @@ What a vendor's API cannot answer stays `no`. The SDK does not fill the gap with
 - **HeyReach cannot list workspaces** with a workspace key.
 - **Smartlead cannot list the leads of a saved list**, and its per-lead counts are documented only as a placeholder response.
 - **Instantly's per-mailbox stats are `derived`:** its mailbox analytics exist per day only, so the adapter sums them.
+- **EmailBison has no campaign progress, follow-up sequences, row per campaign or placement tests**, and no read returns the leads of a lead list.
 - **No adapter reveals deleted records.** The [reconcile plugin](/docs/plugins/reconcile) compares what you stored with what the vendor still lists.
 
 ## How much of each vendor's API is covered
@@ -123,6 +126,7 @@ Every endpoint in each vendor's API reference is listed on its [coverage](/docs/
 | [Instantly](/docs/coverage/instantly) | 268 | 22 | 105 | 4 | 137 |
 | [Smartlead](/docs/coverage/smartlead) | 230 | 27 | 78 | 20 | 105 |
 | [HeyReach](/docs/coverage/heyreach) | 106 | 17 | 25 | 3 | 61 |
+| [EmailBison](/docs/coverage/emailbison) | 180 | 28 | 32 | 5 | 115 |
 
 A read is excluded only when it returns secrets (API keys, mailbox passwords, proxy credentials), duplicates another endpoint's data exactly, reports nothing about campaigns, leads, senders or results (billing, marketplace pricing, search filter lists), or returns a file the SDK cannot carry. Reads that spend vendor credits are listed as writes.
 
@@ -133,6 +137,7 @@ A read is excluded only when it returns secrets (API keys, mailbox passwords, pr
 | Instantly | 100 per second and 6,000 per minute, per workspace | `GET /emails`: 20 per minute |
 | Smartlead | 60 per minute (the limit of a client key; an admin key is documented at 200) | three endpoints at 10 per minute |
 | HeyReach | 15 per 2 seconds (seen live, not documented) and 300 per minute | the organization API: 300 per minute |
+| EmailBison | 3,000 per minute (from a marketing page; the reference documents none) | none |
 
 The SDK spends `share` (default 0.5) of these numbers, because the vendor's limit is shared with the customer's other tools. [Rate limits](/docs/rate-limits) explains the budget, and [what is verified](/docs/status) says which of these numbers were measured.
 

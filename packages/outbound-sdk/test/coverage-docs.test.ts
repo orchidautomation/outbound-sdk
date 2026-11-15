@@ -7,6 +7,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 
+import { emailbison } from "../src/emailbison/index.ts";
 import { heyreach } from "../src/heyreach/index.ts";
 import { CAPABILITY_KEYS } from "../src/index.ts";
 import type { Adapter, NativeCatalog } from "../src/index.ts";
@@ -18,13 +19,19 @@ const NAME = "site/content/docs/coverage";
 const FOLDER = path.resolve(import.meta.dirname, "../../..", NAME);
 
 const ADAPTERS: Readonly<Record<string, () => Adapter<NativeCatalog>>> = {
+  emailbison: () => emailbison({ apiKey: "test-key" }),
   heyreach: () => heyreach({ apiKey: "test-key" }),
   instantly: () => instantly({ apiKey: "test-key" }),
   smartlead: () => smartlead({ apiKey: "test-key" }),
 };
 
 /** Vendors that must have a coverage file. */
-const REQUIRED: readonly string[] = ["heyreach", "instantly", "smartlead"];
+const REQUIRED: readonly string[] = [
+  "emailbison",
+  "heyreach",
+  "instantly",
+  "smartlead",
+];
 
 const METHODS = new Set(["DELETE", "GET", "PATCH", "POST", "PUT"]);
 

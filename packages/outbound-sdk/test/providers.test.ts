@@ -3,6 +3,10 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 
+import {
+  emailbison,
+  envVars as emailbisonEnvVars,
+} from "../src/emailbison/index.ts";
 import { envVars as heyreachEnvVars, heyreach } from "../src/heyreach/index.ts";
 import { OutboundError } from "../src/index.ts";
 import {
@@ -34,6 +38,10 @@ const adapters: Record<
   string,
   { envVars: readonly string[]; maturity: string }
 > = {
+  emailbison: {
+    envVars: emailbisonEnvVars,
+    maturity: emailbison({ apiKey: "eb_key_for_catalog_test" }).maturity,
+  },
   heyreach: {
     envVars: heyreachEnvVars,
     maturity: heyreach({ apiKey: "hr_key_for_catalog_test" }).maturity,

@@ -40,6 +40,14 @@ const LOADERS = new Map<string, () => Promise<Adapter>>([
     },
   ],
   [
+    "emailbison",
+    async () => {
+      const { emailbison } = await import("../emailbison/index.ts");
+
+      return emailbison();
+    },
+  ],
+  [
     "memory",
     async () => {
       const { demoData, memory } = await import("../memory/index.ts");

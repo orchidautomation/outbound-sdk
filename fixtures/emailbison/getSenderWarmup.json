@@ -1,0 +1,16 @@
+{
+  "data": {
+    "id": 1,
+    "email": "sender1@example.com",
+    "name": "Sam Sender",
+    "domain": "Example.com",
+    "tags": [],
+    "warmup_emails_sent": 140,
+    "warmup_replies_received": 52,
+    "warmup_emails_saved_from_spam": 6,
+    "warmup_score": 97,
+    "warmup_bounces_received_count": 1,
+    "warmup_bounces_caused_count": 0,
+    "warmup_disabled_for_bouncing_count": 0
+  }
+}

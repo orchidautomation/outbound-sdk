@@ -22,4 +22,4 @@ no normalized type: [
     vendorEvent: 'MANUAL_STEP_REACHED'
   }
 ]
-Invalid - No webhook parser for "mailchimp". Known providers: heyreach, instantly, smartlead
+Invalid - No webhook parser for "mailchimp". Known providers: emailbison, heyreach, instantly, smartlead

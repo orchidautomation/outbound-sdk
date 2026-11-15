@@ -4,6 +4,7 @@
   "description": "One small, typed, read-only API over outbound sending tools.",
   "keywords": [
     "cold-email",
+    "emailbison",
     "heyreach",
     "instantly",
     "linkedin",
@@ -50,6 +51,10 @@
     "./heyreach": {
       "types": "./dist/heyreach/index.d.ts",
       "import": "./dist/heyreach/index.js"
+    },
+    "./emailbison": {
+      "types": "./dist/emailbison/index.d.ts",
+      "import": "./dist/emailbison/index.js"
     },
     "./providers": {
       "types": "./dist/providers/index.d.ts",

@@ -1,0 +1,18 @@
+{
+  "data": {
+    "emails_sent": "1200",
+    "total_leads_contacted": "640",
+    "opened": "410",
+    "opened_percentage": "64",
+    "unique_opens_per_contact": "300",
+    "unique_opens_per_contact_percentage": "47",
+    "unique_replies_per_contact": "48",
+    "unique_replies_per_contact_percentage": "8",
+    "bounced": "21",
+    "bounced_percentage": "3",
+    "unsubscribed": "9",
+    "unsubscribed_percentage": "1",
+    "interested": "17",
+    "interested_percentage": "3"
+  }
+}

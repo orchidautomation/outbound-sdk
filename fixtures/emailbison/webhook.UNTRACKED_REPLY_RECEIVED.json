@@ -1,0 +1,85 @@
+{
+  "event": {
+    "type": "UNTRACKED_REPLY_RECEIVED",
+    "name": "Untracked Reply Received",
+    "instance_url": "https://dedi.emailbison.com",
+    "workspace_id": 1,
+    "workspace_name": "Example Agency"
+  },
+  "data": {
+    "reply": {
+      "id": 65300,
+      "uuid": "9f4251c7-1831-4ec4-a96d-b7bdb8ca7900",
+      "email_subject": "Re: Quick question",
+      "interested": false,
+      "automated_reply": false,
+      "html_body": "<p>Yes, let's talk.</p>",
+      "text_body": "Yes, let's talk.",
+      "raw_body": null,
+      "headers": null,
+      "date_received": "2025-11-26T09:10:42.000000Z",
+      "type": "Untracked Reply",
+      "folder": "Inbox",
+      "raw_message_id": "<reply-65300@example.com>",
+      "from_name": "Alex Example",
+      "from_email_address": "person1@example.com",
+      "primary_to_email_address": "sender1@example.com",
+      "to": [
+        {
+          "name": "Sam Sender",
+          "address": "sender1@example.com"
+        }
+      ],
+      "cc": null,
+      "bcc": null,
+      "parent_id": null,
+      "created_at": "2025-06-28T00:51:26.000000Z",
+      "updated_at": "2025-09-05T01:36:39.000000Z",
+      "attachments": []
+    },
+    "campaign_event": null,
+    "lead": {
+      "id": 101,
+      "uuid": "9f7a2718-aa56-43k2-a52b-a44dc183a622",
+      "email": "Person1@Example.com",
+      "first_name": "Alex",
+      "last_name": "Example",
+      "status": "unverified",
+      "title": "CEO",
+      "company": "Example Co",
+      "custom_variables": [
+        {
+          "name": "phone number",
+          "value": "15555550100"
+        }
+      ],
+      "emails_sent": 1,
+      "opens": 0,
+      "unique_opens": 0,
+      "replies": 0,
+      "unique_replies": 0,
+      "bounces": 0
+    },
+    "campaign": null,
+    "scheduled_email": null,
+    "sender_email": {
+      "id": 1,
+      "name": "Sam Sender",
+      "email": "sender1@example.com",
+      "status": "connected",
+      "type": "google_workspace_oauth",
+      "daily_limit": 10,
+      "emails_sent": 1,
+      "replied": 0,
+      "opened": 0,
+      "unsubscribed": 0,
+      "bounced": 0,
+      "unique_replies": 0,
+      "unique_opens": 0,
+      "total_leads_contacted": 1,
+      "interested": 0,
+      "created_at": "2024-08-02T06:06:40.000000Z",
+      "updated_at": "2024-08-02T06:08:38.000000Z"
+    }
+  }
+}

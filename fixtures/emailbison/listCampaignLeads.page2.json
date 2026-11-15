@@ -1,0 +1,54 @@
+{
+  "data": [
+    {
+      "id": 102,
+      "uuid": "9f7a2718-aa56-43k2-a52b-a44dc183a6102",
+      "first_name": "Jamie",
+      "last_name": "Example",
+      "email": "person2@example.com",
+      "title": "Engineer",
+      "company": "Example Co",
+      "notes": "Important client",
+      "status": "bounced",
+      "custom_variables": [
+        {
+          "name": "company_website",
+          "value": "https://www.example.com"
+        },
+        {
+          "name": "linkedin_url",
+          "value": "https://www.linkedin.com/in/example-person-1"
+        }
+      ],
+      "lead_campaign_data": {
+        "status": "stopped",
+        "status_reason": "stopped_manually",
+        "emails_sent": 1,
+        "replies": 0,
+        "opens": 0,
+        "interested": false
+      },
+      "overall_stats": {
+        "emails_sent": 1,
+        "opens": 0,
+        "replies": 0,
+        "unique_replies": 0,
+        "unique_opens": 0
+      },
+      "created_at": "2025-04-14T16:59:21.000000Z",
+      "updated_at": "2025-05-18T12:53:32.000000Z"
+    }
+  ],
+  "links": {
+    "first": null,
+    "last": null,
+    "prev": null,
+    "next": null
+  },
+  "meta": {
+    "path": "https://dedi.emailbison.com/api/campaigns/1/leads",
+    "per_page": 15,
+    "next_cursor": null,
+    "prev_cursor": null
+  }
+}

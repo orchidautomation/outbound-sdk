@@ -1,6 +1,6 @@
 import { defineMeta } from "blume";
 
 export default defineMeta({
-  pages: ["instantly", "smartlead", "heyreach"],
+  pages: ["instantly", "smartlead", "heyreach", "emailbison"],
   title: "Coverage",
 });

@@ -2,7 +2,7 @@
 
 # outbound-sdk
 
-One small, typed, read-only TypeScript API over outbound sending tools: Instantly, Smartlead and HeyReach. What the three share is normalized; everything else each one can report is still there through a typed native catalog, so nothing readable is dropped. It never writes to a vendor tool, stores nothing and calls no AI model.
+One small, typed, read-only TypeScript API over outbound sending tools: Instantly, Smartlead, HeyReach and EmailBison. What they share is normalized; everything else each one can report is still there through a typed native catalog, so nothing readable is dropped. It never writes to a vendor tool, stores nothing and calls no AI model.
 
 ```ts
 import { createOutbound } from "outbound-sdk";
@@ -14,7 +14,7 @@ for await (const campaign of outbound.campaigns.listAll({ status: "active" })) {
 }
 ```
 
-> Status: a 0.x preview on npm (`npm install outbound-sdk`). HeyReach and Instantly are `beta` (their reads were run against a live workspace each). Smartlead ships untested (`unverified`): it has never been run against a live account, and is written from public documentation and tested offline only.
+> Status: a 0.x preview on npm (`npm install outbound-sdk`). HeyReach and Instantly are `beta` (their reads were run against a live workspace each). Smartlead ships untested (`unverified`): it has never been run against a live account, and is written from public documentation and tested offline only. EmailBison (`outbound-sdk/emailbison`, added after 0.4.0 and not yet in a published release) is `unverified` too: no EmailBison account or key is available, so it is written from EmailBison's API reference and tested offline only. Its rate limit is a guess.
 
 The documentation is at [outbound-sdk.dev](https://outbound-sdk.dev). It is built from `site/` in this repository, and every code sample on it is a file the test suite runs.
 

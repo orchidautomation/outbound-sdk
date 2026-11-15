@@ -20,6 +20,7 @@ This page is the one place that says how far each part has been checked. Other p
 | Instantly | `beta` | Its reads were run, read-only, against one live workspace on 2026-11-14. |
 | HeyReach | `beta` | Its reads were run, read-only, against one live workspace on 2026-11-14. |
 | Smartlead | `unverified` | Untested. It has never been run against a live account. It is written from Smartlead's public documentation, which contradicts itself in places, and tested offline only. Expect mappings to be wrong until someone runs the live checks with a Smartlead key. |
+| EmailBison | `unverified` | Untested. It has never been run against a live account, and no EmailBison account or key is available to the project. It is written from EmailBison's API reference, whose response examples are hand-written and often not valid JSON, and tested offline only. Its rate limit is a guess. Added after 0.4.0, so it is in no published version until the next release. Expect mappings to be wrong until someone runs the live checks with an EmailBison key. |
 | In-memory | `stable` | It has no vendor behind it. |
 
 `beta` means one workspace, once. It does not mean every plan, every account shape or every edge of the vendor's API. Both live runs fixed things the vendors' documentation got wrong or left out, so expect an `unverified` adapter to need the same. `outbound.maturity` and `outbound.caveats` report this at run time: the caveats list what each adapter assumes and has not confirmed.
@@ -28,7 +29,7 @@ No adapter is `stable`. An adapter becomes `stable` once its fixtures are captur
 
 ## Insights
 
-Run against one live workspace each on 2026-11-14: Instantly served all 26 insights. HeyReach served 22 and refused four as `Unsupported`: `stepFunnel`, `variantTest` and `copyReuse` (its API has no per-step stats) and `settingsAudit` (its API cannot read campaign settings). No insight has been run on a live Smartlead account.
+Run against one live workspace each on 2026-11-14: Instantly served all 26 insights. HeyReach served 22 and refused four as `Unsupported`: `stepFunnel`, `variantTest` and `copyReuse` (its API has no per-step stats) and `settingsAudit` (its API cannot read campaign settings). No insight has been run on a live Smartlead or EmailBison account.
 
 ## Rate limits
 
@@ -37,6 +38,7 @@ Measured on live workspaces on 2026-11-14:
 - **Instantly:** 300 reads fired at once all succeeded, with no 429 and no retry (1,505 HTTP requests in 30 seconds).
 - **HeyReach:** 100 reads fired at once all succeeded, with no 429 (33 seconds). HeyReach's real burst limit, 15 requests per 2 seconds, is not in its documentation; it was read from the live API's 429 response and is now declared by the adapter.
 - **Smartlead:** not load-tested.
+- **EmailBison:** not load-tested. Its reference documents no rate limit; the adapter assumes 3,000 requests per minute from a marketing page.
 - **The Redis store** that shares one budget between processes was checked by hand against a real Redis 7 server, including two workers on one budget. It has not been run in production by anyone, nor on Valkey or Upstash.
 
 See [rate limits](/docs/rate-limits).
@@ -49,6 +51,7 @@ See [rate limits](/docs/rate-limits).
 
 - **Webhooks.** Parsing and verification are tested against each vendor's documented payloads. No parser has received a real delivery from a vendor.
 - **Smartlead, end to end.** See above.
+- **EmailBison, end to end.** See above. Only three of its 23 webhook events have documented payloads, and how it signs deliveries is undocumented.
 - **Cloudflare Workers.** The package uses web standards outside the CLI, the exporter and the fixtures plugin, but no CI job runs it on Workers.
 - **The samples on this site** run on the in-memory adapter. They prove the code runs and what the SDK does with the data given. They do not prove what a vendor's API returns.
 

@@ -9,6 +9,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import { emailbison } from "../../src/emailbison/index.ts";
 import { heyreach } from "../../src/heyreach/index.ts";
 import { createOutbound, OutboundError } from "../../src/index.ts";
 import type { Adapter, NativeCatalog } from "../../src/index.ts";
@@ -31,6 +32,7 @@ const providers: readonly {
   { env: "INSTANTLY_API_KEY", make: () => instantly(), name: "instantly" },
   { env: "SMARTLEAD_API_KEY", make: () => smartlead(), name: "smartlead" },
   { env: "HEYREACH_API_KEY", make: () => heyreach(), name: "heyreach" },
+  { env: "EMAILBISON_API_KEY", make: () => emailbison(), name: "emailbison" },
 ];
 
 for (const provider of providers) {

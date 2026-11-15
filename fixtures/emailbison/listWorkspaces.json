@@ -1,0 +1,26 @@
+{
+  "data": [
+    {
+      "id": 1,
+      "name": "Example Agency",
+      "personal_team": true,
+      "main": true,
+      "parent_id": null,
+      "warmup_filter_phrase": "bbgmw2lk",
+      "webhooks_secret_key": "webhooks_sig_example-placeholder",
+      "created_at": "2025-04-14T16:59:21.000000Z",
+      "updated_at": "2025-05-18T12:53:32.000000Z"
+    },
+    {
+      "id": 2,
+      "name": "Example Client",
+      "personal_team": false,
+      "main": false,
+      "parent_id": 1,
+      "warmup_filter_phrase": "bbgmw2lk",
+      "webhooks_secret_key": "webhooks_sig_example-placeholder",
+      "created_at": "2025-04-14T16:59:21.000000Z",
+      "updated_at": "2025-05-18T12:53:32.000000Z"
+    }
+  ]
+}

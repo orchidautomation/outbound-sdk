@@ -1,0 +1,49 @@
+{
+  "data": {
+    "sequence_id": 293,
+    "sequence_steps": [
+      {
+        "id": 760,
+        "active": true,
+        "email_subject": "Quick question",
+        "order": "1",
+        "email_body": "<p>Hi {FIRST_NAME},</p>",
+        "wait_in_days": "1",
+        "variant": false,
+        "variant_from_step_id": null,
+        "attachments": [],
+        "thread_reply": false,
+        "created_at": "2025-04-14T16:59:21.000000Z",
+        "updated_at": "2025-05-18T12:53:32.000000Z"
+      },
+      {
+        "id": 761,
+        "active": true,
+        "email_subject": "Re: Quick question",
+        "order": "2",
+        "email_body": "Following up.",
+        "wait_in_days": "3",
+        "variant": false,
+        "variant_from_step_id": null,
+        "attachments": [],
+        "thread_reply": true,
+        "created_at": "2025-04-14T16:59:21.000000Z",
+        "updated_at": "2025-05-18T12:53:32.000000Z"
+      },
+      {
+        "id": 762,
+        "active": true,
+        "email_subject": "Re: Quick question",
+        "order": "2",
+        "email_body": "Circling back.",
+        "wait_in_days": "3",
+        "variant": true,
+        "variant_from_step_id": null,
+        "attachments": [],
+        "thread_reply": true,
+        "created_at": "2025-04-14T16:59:21.000000Z",
+        "updated_at": "2025-05-18T12:53:32.000000Z"
+      }
+    ]
+  }
+}

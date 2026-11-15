@@ -1,6 +1,6 @@
 wrong secret, verify: false
 wrong secret, parse: Unauthorized - The webhook does not carry the shared secret
-unknown provider: Invalid - No webhook parser for "mailchimp". Known providers: heyreach, instantly, smartlead
+unknown provider: Invalid - No webhook parser for "mailchimp". Known providers: emailbison, heyreach, instantly, smartlead
 unrecognised body: unknown {"hello":"world"}
 claimed, then the handler crashed: first 1, retry 0
 window starts after the event: matched 0, unmatched 1

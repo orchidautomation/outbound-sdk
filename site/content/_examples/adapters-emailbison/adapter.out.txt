@@ -1,0 +1,8 @@
+emailbison unverified acme
+webhook check: secret
+native reads: 32
+default: 1500 per 60s
+campaigns.list - 17 pages of 15 at 1 request each, plus 0 per record
+campaigns.settings - 2 requests per page
+senders.health - 2 requests per page
+leads.list - 17 pages of 15 at 1 request each, plus 0 per record

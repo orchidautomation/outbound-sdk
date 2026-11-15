@@ -85,6 +85,32 @@ const CATALOG = [
     note: "Its reads were run, read-only, against one live workspace. Fixtures are built from the documentation.",
   },
   {
+    channels: ["email"],
+    docsUrl: "https://dedi.emailbison.com/api/reference",
+    envVars: [
+      {
+        description: "API key (an api-user key is scoped to one workspace).",
+        name: "EMAILBISON_API_KEY",
+        required: true,
+      },
+      {
+        description:
+          "The URL you log in to EmailBison with. Defaults to https://dedi.emailbison.com.",
+        name: "EMAILBISON_BASE_URL",
+        required: false,
+      },
+      {
+        description: "A label for this client or workspace.",
+        name: "EMAILBISON_WORKSPACE_ID",
+        required: false,
+      },
+    ],
+    id: "emailbison",
+    maturity: "unverified",
+    name: "EmailBison",
+    note: "Never run against a live account. Written from the public documentation and tested offline only.",
+  },
+  {
     channels: ["email", "linkedin"],
     docsUrl: null,
     envVars: [],
@@ -95,7 +121,7 @@ const CATALOG = [
   },
 ] as const satisfies readonly ProviderInfo[];
 
-/** The id of a provider in the catalog: `instantly`, `smartlead`, `heyreach` or `memory`. */
+/** The id of a provider in the catalog: `instantly`, `smartlead`, `heyreach`, `emailbison` or `memory`. */
 export type ProviderId = (typeof CATALOG)[number]["id"];
 
 export const providers: readonly ProviderInfo[] = CATALOG;

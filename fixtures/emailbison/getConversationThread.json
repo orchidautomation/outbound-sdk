@@ -1,0 +1,176 @@
+{
+  "data": {
+    "current_reply": {
+      "id": 45,
+      "uuid": "9f7a2718-aa56-43k2-a52b-a44dc183a645",
+      "folder": "Inbox",
+      "subject": "Re: Quick question",
+      "read": false,
+      "interested": true,
+      "automated_reply": false,
+      "html_body": "<div dir=\"ltr\">Yes, let's talk on Tuesday.\n\nOn Tue, Nov 25, 2025 at 2:12 PM Sam Sender wrote:\n> Worth a quick chat?</div>",
+      "text_body": "Yes, let's talk on Tuesday.\n\nOn Tue, Nov 25, 2025 at 2:12 PM Sam Sender wrote:\n> Worth a quick chat?",
+      "raw_body": null,
+      "headers": null,
+      "date_received": "2025-11-26T09:10:42.000000Z",
+      "type": "Untracked Reply",
+      "tracked_reply": false,
+      "scheduled_email_id": 5001,
+      "campaign_id": 1,
+      "lead_id": 101,
+      "lead": {
+        "id": 101,
+        "first_name": "Alex",
+        "last_name": "Example",
+        "email": "person1@example.com",
+        "title": "Engineer",
+        "company": "Example Co",
+        "notes": null,
+        "status": "verified",
+        "custom_variables": [],
+        "overall_stats": {
+          "emails_sent": 3,
+          "opens": 2,
+          "replies": 1,
+          "unique_replies": 1,
+          "unique_opens": 1
+        },
+        "created_at": "2025-04-14T16:59:21.000000Z",
+        "updated_at": "2025-05-18T12:53:32.000000Z"
+      },
+      "sender_email_id": 1,
+      "raw_message_id": "<reply-45@example.com>",
+      "from_name": "Alex Example",
+      "from_email_address": "person1@example.com",
+      "primary_to_email_address": "sender1@example.com",
+      "to": [
+        {
+          "name": "Sam Sender",
+          "address": "sender1@example.com"
+        }
+      ],
+      "cc": null,
+      "bcc": null,
+      "parent_id": 44,
+      "attachments": [],
+      "created_at": "2025-11-26T09:10:42.000000Z",
+      "updated_at": "2025-11-26T09:10:42.000000Z"
+    },
+    "older_messages": [
+      {
+        "id": 44,
+        "uuid": "9f7a2718-aa56-43k2-a52b-a44dc183a644",
+        "folder": "Sent",
+        "subject": "Re: Quick question",
+        "read": true,
+        "interested": false,
+        "automated_reply": false,
+        "html_body": "<div dir=\"ltr\">Happy to share more. Does Tuesday work?</div>",
+        "text_body": "Happy to share more. Does Tuesday work?",
+        "raw_body": null,
+        "headers": null,
+        "date_received": "2025-11-26T08:00:00.000000Z",
+        "type": "Outgoing Email",
+        "tracked_reply": false,
+        "scheduled_email_id": null,
+        "campaign_id": 1,
+        "lead_id": 101,
+        "lead": {
+          "id": 101,
+          "first_name": "Alex",
+          "last_name": "Example",
+          "email": "person1@example.com",
+          "title": "Engineer",
+          "company": "Example Co",
+          "notes": null,
+          "status": "verified",
+          "custom_variables": [],
+          "overall_stats": {
+            "emails_sent": 3,
+            "opens": 2,
+            "replies": 1,
+            "unique_replies": 1,
+            "unique_opens": 1
+          },
+          "created_at": "2025-04-14T16:59:21.000000Z",
+          "updated_at": "2025-05-18T12:53:32.000000Z"
+        },
+        "sender_email_id": 1,
+        "raw_message_id": "<reply-44@example.com>",
+        "from_name": "Sam Sender",
+        "from_email_address": "sender1@example.com",
+        "primary_to_email_address": "person1@example.com",
+        "to": [
+          {
+            "name": "Alex Example",
+            "address": "person1@example.com"
+          }
+        ],
+        "cc": null,
+        "bcc": null,
+        "parent_id": null,
+        "attachments": [],
+        "created_at": "2025-11-26T08:00:00.000000Z",
+        "updated_at": "2025-11-26T08:00:00.000000Z"
+      }
+    ],
+    "newer_messages": [
+      {
+        "id": 48,
+        "uuid": "9f7a2718-aa56-43k2-a52b-a44dc183a648",
+        "folder": "Sent",
+        "subject": "Re: Quick question",
+        "read": true,
+        "interested": false,
+        "automated_reply": false,
+        "html_body": "<div dir=\"ltr\">Great, sending an invite.</div>",
+        "text_body": "Great, sending an invite.",
+        "raw_body": null,
+        "headers": null,
+        "date_received": "2025-11-26T10:00:00.000000Z",
+        "type": "Outgoing Email",
+        "tracked_reply": false,
+        "scheduled_email_id": 5001,
+        "campaign_id": 1,
+        "lead_id": 101,
+        "lead": {
+          "id": 101,
+          "first_name": "Alex",
+          "last_name": "Example",
+          "email": "person1@example.com",
+          "title": "Engineer",
+          "company": "Example Co",
+          "notes": null,
+          "status": "verified",
+          "custom_variables": [],
+          "overall_stats": {
+            "emails_sent": 3,
+            "opens": 2,
+            "replies": 1,
+            "unique_replies": 1,
+            "unique_opens": 1
+          },
+          "created_at": "2025-04-14T16:59:21.000000Z",
+          "updated_at": "2025-05-18T12:53:32.000000Z"
+        },
+        "sender_email_id": 1,
+        "raw_message_id": "<reply-48@example.com>",
+        "from_name": "Alex Example",
+        "from_email_address": "sender1@example.com",
+        "primary_to_email_address": "sender1@example.com",
+        "to": [
+          {
+            "name": "Sam Sender",
+            "address": "sender1@example.com"
+          }
+        ],
+        "cc": null,
+        "bcc": null,
+        "parent_id": 45,
+        "attachments": [],
+        "created_at": "2025-11-26T10:00:00.000000Z",
+        "updated_at": "2025-11-26T10:00:00.000000Z"
+      }
+    ]
+  }
+}

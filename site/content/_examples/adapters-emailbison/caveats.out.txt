@@ -1,0 +1,46 @@
+- Nothing is checked against a live account: no EmailBison workspace or key was available. Mappings follow the API reference read on 2026-11-15, whose response examples are hand-written and often not valid JSON.
+
+- Each customer has their own instance: pass baseUrl (or set EMAILBISON_BASE_URL) to the URL you log in with. The default is https://dedi.emailbison.com, the reference's server.
+
+- The rate limit is undocumented in the reference. The adapter assumes 3,000 requests per minute per key, from a marketing page, and uses half of it.
+
+- Every list returns 15 records per page and cannot be asked for more. Lists that document cursor pagination are read by cursor, so the 1,000-page cap of page numbers does not apply to them.
+
+- outbound.raw refuses the workspace reads (they carry webhooks_secret_key) and a mailbox's OAuth access token; normalized records drop webhooks_secret_key from raw.
+
+- Campaign status: active, launching and queued are active; stopped and completed are completed; failed, pending deletion and deleted are unknown.
+
+- A lead's status is its email verification status: bounced sets bounced, unsubscribed sets unsubscribed. replied is overall_stats.replies above 0. progress comes from lead_campaign_data.status, documented only as stopped (read as paused), so it is unknown on a lead read outside a campaign.
+
+- Lead engagement is overall_stats across every campaign: opens and replies as total counts, no clicks and no dates.
+
+- interest is Interested when a campaign's lead is marked interested; EmailBison's lead tags are not in any lead payload.
+
+- messages.list reads sent campaign emails (GET /api/scheduled-emails?status=sent), whose ids are prefixed scheduled- to keep them apart from replies. A lead's timeline adds its master inbox messages (folder all).
+
+- threadId is a reply id: GET /api/replies/{id}/conversation-thread returns the messages before and after it. A message in folder Sent is outgoing.
+
+- The unread filter is sent as read=0 or read=1, assuming the API takes booleans the way a Laravel app does; the reference does not say.
+
+- Replies are the master inbox's inbox folder. category is positive when interested, ooo when automated_reply, otherwise unknown; only positive and ooo are filtered by EmailBison.
+
+- Dated statistics need both dates: a missing end is today (UTC), a missing start 2000-01-01 for totals and 30 days before the end for daily rows. No read says which timezone its days are in.
+
+- Workspace and campaign totals: opened is unique opens per contact and openedTotal total opens, replied unique replies per contact, positive interested. No clicks and no automatic-reply count are reported.
+
+- A sender's totals without dates are its lifetime counts; with dates they are its daily events summed (derived). Step rows come from sequence_step_stats, one per step and variant.
+
+- Sequence variants are steps with variant true, placed under variant_from_step_id or, when that is null, the step with the same order.
+
+- Settings: dailyLimit is max_emails_per_day, dailyNewLeads max_new_leads_per_day, one sending window from the campaign schedule. Stop rules, dates and send gaps are not reported.
+
+- Sender health: connected from the sender status, warmup from GET /api/warmup/sender-emails/{id} over the last 7 days. No DNS records or block list state are reported.
+
+- Webhooks: only EMAIL_SENT, MANUAL_EMAIL_SENT and TAG_ATTACHED have documented payloads. The others are read with the same data keys. Payloads carry no event id, so the id is derived from the event type and the ids in data.
+
+- Webhook signatures are not verified: the signing scheme behind webhooks_secret_key is undocumented. Put a secret in the webhook URL.
+
+- Block list entries come from two lists: emails first, then domains.
+
+- A lead list's size is leads_succeeded.
+
