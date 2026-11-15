@@ -330,7 +330,8 @@ test("variant_test reads the campaign's tool on a combined instance", async () =
     { now: NOW }
   );
 
-  assert.equal(linkedin.data.variantStatsReported, false);
+  // The LinkedIn tool reported no step stats, which cannot tell either way.
+  assert.equal(linkedin.data.variantStatsReported, null);
 });
 
 test("variant_test is NotFound for a campaign that does not exist, as step_funnel is", async () => {
@@ -430,4 +431,88 @@ test("the in-memory adapter holds step stats per variant, so variant_test runs o
     ]),
     [[0, "winner", "A", 0.0012]]
   );
+});
+
+test("variant_test divides every variant by the same base, so a variant that also counts leads does not win (OUT-58)", async () => {
+  // The same 50 replies on 1,000 sends; A also reports 500 leads contacted.
+  const mixed = await withRows(DATA, [
+    row(0, "A", { contacted: 500, replied: 50, sent: 1000 }),
+    row(0, "B", { replied: 50, sent: 1000 }),
+  ]).insights.variantTest({ campaign: ref("c1") }, { now: NOW });
+
+  const [step] = mixed.data.steps;
+
+  assert.equal(step?.verdict, "no_difference_yet");
+  assert.deepEqual(
+    step?.variants.map((each) => [each.variantKey, each.basis, each.rate]),
+    [
+      ["A", "sent", 0.05],
+      ["B", "sent", 0.05],
+    ]
+  );
+
+  // With no base every variant reports, they are not compared at all.
+  const apart = await withRows(DATA, [
+    row(0, "A", { contacted: 500, replied: 50 }),
+    row(0, "B", { replied: 50, sent: 1000 }),
+  ]).insights.variantTest({ campaign: ref("c1") }, { now: NOW });
+
+  const [unlike] = apart.data.steps;
+
+  assert.equal(unlike?.verdict, "too_little_data");
+  assert.equal(unlike?.leader, null);
+  assert.equal(unlike?.moreSendsNeeded, null);
+  assert.equal(
+    unlike?.reason,
+    "The variants of this step report different bases (A per lead contacted, B per message sent), so their rates cannot be compared."
+  );
+  assert.deepEqual(
+    unlike?.variants.map((each) => [each.variantKey, each.basis]),
+    [
+      ["A", "contacted"],
+      ["B", "sent"],
+    ]
+  );
+});
+
+test("variant_test tells a date range with no rows from a vendor that does not split by variant (OUT-57)", async () => {
+  const data: MemoryData = {
+    campaigns: [{ id: "c1" }],
+    stats: [
+      {
+        campaignId: "c1",
+        counts: { replied: 5, sent: 100 },
+        date: "2026-11-01",
+        stepIndex: 0,
+        variantKey: "A",
+      },
+      {
+        campaignId: "c1",
+        counts: { replied: 9, sent: 100 },
+        date: "2026-11-01",
+        stepIndex: 0,
+        variantKey: "B",
+      },
+    ],
+  };
+
+  const empty = await single(data).insights.variantTest(
+    { campaign: ref("c1"), from: "2026-11-05" },
+    { now: NOW }
+  );
+
+  assert.deepEqual(empty.data.steps, []);
+  // Nothing in the range says whether the vendor splits by variant.
+  assert.equal(empty.data.variantStatsReported, null);
+  assert.deepEqual(empty.meta.notes, [
+    "The vendor reported no step stats for this campaign in the date range, so there is nothing to compare.",
+  ]);
+
+  const whole = await single(data).insights.variantTest(
+    { campaign: ref("c1") },
+    { now: NOW }
+  );
+
+  assert.equal(whole.data.variantStatsReported, true);
+  assert.equal(whole.data.steps.length, 1);
 });

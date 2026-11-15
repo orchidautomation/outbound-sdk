@@ -9,10 +9,12 @@ import type { MetricCounts } from "../../internal/metrics.ts";
 import { readCampaignsIn } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
-import { compareRates, percent, round, total } from "../stats.ts";
+import { compareRates, percent, round } from "../stats.ts";
 import type { Interval } from "../stats.ts";
-import { groupBy, measure, perLead, splitStats } from "./shared.ts";
-import type { Measured, SplitStats } from "./shared.ts";
+import { pooled, sharedBaseOf } from "./reuse-base.ts";
+import type { BaseOf } from "./reuse-base.ts";
+import { groupBy, splitStats } from "./shared.ts";
+import type { RateBasis, SplitStats } from "./shared.ts";
 
 const input = z.object({
   max_campaigns: z
@@ -49,6 +51,8 @@ export interface CopyUse {
   readonly replies: number | null;
   /** What the rate is divided by. `null` when the vendor reports no counts for this copy. */
   readonly trials: number | null;
+  /** What `trials` counts: leads contacted or messages sent. */
+  readonly basis: RateBasis | null;
   readonly replyRate: number | null;
   readonly replyRateInterval: Interval | null;
 }
@@ -62,6 +66,7 @@ export interface CopyPiece {
   readonly sent: number | null;
   readonly replies: number | null;
   readonly trials: number | null;
+  readonly basis: RateBasis | null;
   /** Replies over the base, added up across campaigns. */
   readonly replyRate: number | null;
   readonly replyRateInterval: Interval | null;
@@ -84,8 +89,14 @@ export interface ReusedCopy extends CopyPiece {
 export interface CopyReuse {
   /** Copy used in two or more campaigns, widest spread first. */
   readonly reused: readonly ReusedCopy[];
-  /** The copy with the highest pooled reply rate among those with a base of `min_sent`. `null` when none has. */
+  /** The copy with the highest pooled reply rate among those with a base of `min_sent`. `null` when none has, or the campaigns report no base in common. */
   readonly bestCopy: CopyPiece | null;
+  /**
+   * What every reply rate is divided by: leads contacted when every
+   * campaign counts them, otherwise messages sent. `null` when the campaigns
+   * report no base in common, so their rates are listed but not compared.
+   */
+  readonly basis: RateBasis | null;
   readonly campaignsRead: number;
   /** `true` when `max_campaigns` stopped the read with more campaigns left. */
   readonly moreCampaignsExist: boolean;
@@ -136,38 +147,24 @@ const placementsOf = (
     });
   });
 
-const pooled = (counts: readonly (MetricCounts | null)[]) => {
-  // Only a use with both counts known enters the pooled rate, so a missing
-  // reply count never drags the rate down.
-  const measured: Measured[] = counts.flatMap((each) => {
-    const one = each === null ? null : measure(each.replied, perLead(each));
-
-    return one === null || one.rate === null ? [] : [one];
-  });
-
-  const replies = total(measured.map((each) => each.count));
-  const trials = total(measured.map((each) => each.trials));
-
-  return {
-    ...measure(replies, { basis: null, trials }),
-    sent: total(counts.map((each) => each?.sent ?? null)),
-  };
-};
-
-const useOf = (placements: readonly Placement[]): CopyUse[] => {
+const useOf = (placements: readonly Placement[], baseOf: BaseOf): CopyUse[] => {
   const [first] = placements;
 
   if (first === undefined) {
     return [];
   }
 
-  const sum = pooled(placements.map((placement) => placement.counts));
+  const sum = pooled(
+    placements.map((placement) => placement.counts),
+    baseOf
+  );
 
   return [
     {
       campaign: first.campaign.ref,
       campaignName: first.campaign.name,
       places: placements.map((placement) => placement.place),
+      basis: sum.basis,
       provider: first.campaign.provider,
       replies: sum.count,
       replyRate: sum.rate,
@@ -180,7 +177,8 @@ const useOf = (placements: readonly Placement[]): CopyUse[] => {
 
 const pieceOf = (
   placements: readonly Placement[],
-  uses: readonly CopyUse[]
+  uses: readonly CopyUse[],
+  baseOf: BaseOf
 ): CopyPiece[] => {
   const [first] = placements;
 
@@ -188,10 +186,14 @@ const pieceOf = (
     return [];
   }
 
-  const sum = pooled(placements.map((placement) => placement.counts));
+  const sum = pooled(
+    placements.map((placement) => placement.counts),
+    baseOf
+  );
 
   return [
     {
+      basis: sum.basis,
       bodyPreview: first.body?.slice(0, PREVIEW) ?? null,
       campaigns: uses.length,
       contentHash: first.contentHash,
@@ -215,7 +217,11 @@ const byRate = (left: Rated, right: Rated): number =>
   (right.replyRate ?? -1) - (left.replyRate ?? -1) ||
   (right.trials ?? 0) - (left.trials ?? 0);
 
-const spreadOf = (uses: readonly CopyUse[], minSent: number) => {
+const spreadOf = (
+  uses: readonly CopyUse[],
+  minSent: number,
+  comparable: boolean
+) => {
   const judged = uses.filter(
     (use) => use.replyRate !== null && (use.trials ?? 0) >= minSent
   );
@@ -223,10 +229,17 @@ const spreadOf = (uses: readonly CopyUse[], minSent: number) => {
   const [best] = judged;
   const worst = judged.at(-1);
 
-  if (best === undefined || worst === undefined || judged.length < 2) {
+  if (
+    !comparable ||
+    best === undefined ||
+    worst === undefined ||
+    judged.length < 2
+  ) {
     return {
       best: null,
-      finding: `Fewer than two campaigns have a base of ${minSent}, so the spread is not judged.`,
+      finding: comparable
+        ? `Fewer than two campaigns have a base of ${minSent}, so the spread is not judged.`
+        : "The campaigns report different bases, so the spread is not judged.",
       spread: null,
       spreadIsReal: null,
       spreadPValue: null,
@@ -277,7 +290,7 @@ const readPlacements = async (
 
 export const copyReuse = defineInsight({
   description:
-    "How the same piece of copy performs in different campaigns. Reads each campaign's sequence and step stats, matches variants by the hash of their subject and body, and returns every piece of copy used in two or more campaigns with its totals, its reply rate per campaign and the spread between its best and worst campaign, plus the copy with the highest pooled reply rate. Use it to tell a copy problem from an audience problem. Costs 2 requests per campaign plus the campaign listing. A null count means the vendor does not report it for that variant; it is never 0.",
+    "How the same piece of copy performs in different campaigns. Reads each campaign's sequence and step stats, matches variants by the hash of their subject and body, and returns every piece of copy used in two or more campaigns with its totals, its reply rate per campaign and the spread between its best and worst campaign, plus the copy with the highest pooled reply rate. Use it to tell a copy problem from an audience problem. Every rate is divided by the same base, leads contacted when every campaign counts them and messages sent otherwise; campaigns with no base in common are listed but not compared. Costs 2 requests per campaign plus the campaign listing. A null count means the vendor does not report it for that variant; it is never 0.",
   inputSchema: input,
   key: "copyReuse",
   name: "copy_reuse",
@@ -295,19 +308,30 @@ export const copyReuse = defineInsight({
       );
     }
 
+    const { baseOf, basis, comparable } = sharedBaseOf(
+      context,
+      placements.flatMap((each) =>
+        each.counts === null
+          ? []
+          : [{ campaign: each.campaign, counts: each.counts }]
+      )
+    );
+
     const pieces = [...groupBy(placements, (each) => each.contentHash)].flatMap(
       ([, group]) => {
         const uses = [...groupBy(group, (each) => each.campaign.ref).values()]
-          .flatMap(useOf)
+          .flatMap((each) => useOf(each, baseOf))
           .toSorted(byRate);
 
-        return pieceOf(group, uses).map((piece) => ({ piece, uses }));
+        return pieceOf(group, uses, baseOf).map((piece) => ({ piece, uses }));
       }
     );
 
     const reused: ReusedCopy[] = pieces
       .flatMap(({ piece, uses }) =>
-        uses.length < 2 ? [] : [{ ...piece, ...spreadOf(uses, min_sent), uses }]
+        uses.length < 2
+          ? []
+          : [{ ...piece, ...spreadOf(uses, min_sent, comparable), uses }]
       )
       .toSorted(
         (left, right) =>
@@ -317,13 +341,16 @@ export const copyReuse = defineInsight({
 
     const [bestCopy] = pieces
       .flatMap(({ piece }) =>
-        piece.replyRate !== null && (piece.trials ?? 0) >= min_sent
+        comparable &&
+        piece.replyRate !== null &&
+        (piece.trials ?? 0) >= min_sent
           ? [piece]
           : []
       )
       .toSorted(byRate);
 
     const result: CopyReuse = {
+      basis,
       bestCopy: bestCopy ?? null,
       campaignsRead: campaigns.length,
       moreCampaignsExist: listed.capped,

@@ -86,13 +86,14 @@ Whether a step's A/B leader is ahead by more than chance.
 `data` (`VariantTest`):
 
 - `campaign`, `metric`, `alpha`: what was asked.
-- `variantStatsReported`: `false` when the vendor's step stats carry no variant rows at all.
+- `variantStatsReported`: `false` when the vendor's step stats carry no variant rows at all, and `null` when it reported no step stats in the date range, which says nothing either way.
 - `steps`: one entry per step with two or more variants, with `verdict` (`winner`, `no_difference_yet` or `too_little_data`), `leader`, `pValue` (the leader against its closest rival), `moreSendsNeeded`, a `reason` sentence, and `variants` (each with `sent`, `count`, `trials`, `basis`, `rate`, `interval`, `enoughData` and `pValueVsLeader`). Winners first.
+- Every variant of a step is divided by the same base, named in `basis`: leads contacted when they all count them, otherwise messages sent (for opens and clicks, messages delivered, otherwise sent). Variants with no base in common are `too_little_data`, with the reason and each variant's own `basis`.
 - `totals`: `stepsTested`, `winners`, `noDifferenceYet` and `tooLittleData`.
 
 - **Needs:** `stats.byStep`.
 - **Costs:** 1 request.
-- **Notes it can add:** the step stats carry no variant rows, so there is nothing to compare.
+- **Notes it can add:** the vendor reported no step stats in the date range, so there is nothing to compare; the step stats carry no variant rows, so there is nothing to compare.
 - **Does not:** correct for comparing three or more variants. A leader must beat every other variant with enough data to be called a winner. `moreSendsNeeded` is rough: it assumes both rates stay as they are. It pauses nothing.
 
 <include meta='title="variant-test.ts"'>
@@ -188,13 +189,14 @@ How the same piece of copy performs in different campaigns. Variants are matched
 
 `data` (`CopyReuse`):
 
-- `reused`: every piece of copy used in two or more campaigns, with `contentHash`, `subject`, `bodyPreview` (the first 120 characters), `campaigns`, pooled `sent`, `replies`, `trials`, `replyRate` and `replyRateInterval`, `uses` (per campaign: `places` as `step:variant`, counts and rate), `spread` (best minus worst reply rate), `best`, `worst`, `spreadPValue`, `spreadIsReal` and a `finding` sentence. Widest spread first.
+- `basis`: what every reply rate is divided by: `contacted` (leads contacted) when every campaign counts them, otherwise `sent` (messages sent). `null` when the campaigns report no base in common; their rates are then listed with their own `basis` but not compared, so every `spread` and `bestCopy` is `null`.
+- `reused`: every piece of copy used in two or more campaigns, with `contentHash`, `subject`, `bodyPreview` (the first 120 characters), `campaigns`, pooled `sent`, `replies`, `trials`, `basis`, `replyRate` and `replyRateInterval`, `uses` (per campaign: `places` as `step:variant`, counts, `basis` and rate), `spread` (best minus worst reply rate), `best`, `worst`, `spreadPValue`, `spreadIsReal` and a `finding` sentence. Widest spread first.
 - `bestCopy`: the copy with the highest pooled reply rate among those with a base of `min_sent`, or `null`.
 - `campaignsRead`, `moreCampaignsExist` (`true` when `max_campaigns` stopped the listing with campaigns left), `piecesOfCopy`, `variantsWithoutStats`.
 
 - **Needs:** `sequence`, `stats.byStep`.
 - **Costs:** 2 requests per campaign, plus the campaign listing.
-- **Notes it can add:** some variants have no counts of their own, because the vendor reports their step as a whole or not at all, so their copy is listed without numbers.
+- **Notes it can add:** some variants have no counts of their own, because the vendor reports their step as a whole or not at all, so their copy is listed without numbers; the campaigns report different bases, naming each one's, so no spread is judged and no best copy is named; a cap was reached.
 - **Does not:** match copy that differs by one character: the hash is of the exact subject and body. The spread test is always at the 0.05 bar. When a step has several variants and the vendor does not split them, those variants have no numbers.
 
 <include meta='title="copy-reuse.ts"'>

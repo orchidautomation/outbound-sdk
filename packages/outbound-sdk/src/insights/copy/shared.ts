@@ -62,6 +62,67 @@ export const perMessage = (counts: MetricCounts): Base =>
     ["sent", counts.sent],
   ]);
 
+/** The counts' base of one kind, or no base when they do not report it. */
+export const baseIn = (counts: MetricCounts, basis: RateBasis): Base =>
+  firstKnown([[basis, counts[basis]]]);
+
+const ORDER = {
+  lead: ["contacted", "sent"],
+  message: ["delivered", "sent"],
+} as const satisfies Record<string, readonly RateBasis[]>;
+
+export interface SharedBases {
+  /** One base per entry of counts, in order. */
+  readonly bases: readonly Base[];
+  /** The base every entry is divided by. `null` when they are not comparable or none reports a base. */
+  readonly basis: RateBasis | null;
+  /** `false` when no one base is reported by every entry, so each has its own and they cannot be compared. */
+  readonly comparable: boolean;
+}
+
+/**
+ * One base for counts that are compared with each other: the first in the
+ * usual order that every entry with a base reports. One variant divided by
+ * leads contacted and another by messages sent would differ for no reason
+ * but the base.
+ */
+export const sharedBases = (
+  counts: readonly MetricCounts[],
+  per: keyof typeof ORDER
+): SharedBases => {
+  const own = counts.map(per === "lead" ? perLead : perMessage);
+  const based = counts.filter((_, index) => own[index]?.basis !== null);
+
+  for (const basis of ORDER[per]) {
+    if (based.every((each) => (each[basis] ?? 0) > 0)) {
+      return {
+        bases: counts.map((each) => baseIn(each, basis)),
+        basis: based.length === 0 ? null : basis,
+        comparable: true,
+      };
+    }
+  }
+
+  return { bases: own, basis: null, comparable: false };
+};
+
+const BASIS_WORDS: Readonly<Record<RateBasis, string>> = {
+  contacted: "per lead contacted",
+  delivered: "per message delivered",
+  sent: "per message sent",
+};
+
+/** `A per lead contacted, B per message sent`, for a note that bases differ. */
+export const basesInWords = (
+  named: readonly { readonly name: string; readonly basis: RateBasis | null }[]
+): string =>
+  named
+    .map(
+      ({ basis, name }) =>
+        `${name} ${basis === null ? "with no base" : BASIS_WORDS[basis]}`
+    )
+    .join(", ");
+
 export interface Measured {
   readonly count: number | null;
   readonly trials: number | null;

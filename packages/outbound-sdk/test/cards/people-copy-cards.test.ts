@@ -409,7 +409,7 @@ test("step_funnel charts replies by step and repeats the insight's finding", () 
   );
 });
 
-const tested = (reported: boolean): VariantTest => ({
+const tested = (reported: boolean | null): VariantTest => ({
   alpha: 0.05,
   campaign: "c1",
   metric: "replied",
@@ -465,6 +465,10 @@ test("variant_test stars the leader and says why", () => {
     read(cardFor("variant_test", insight(tested(false)))),
     "The vendor does not report results by variant for this campaign."
   );
+  includes(
+    read(cardFor("variant_test", insight(tested(null)))),
+    "No step stats in this date range."
+  );
 });
 
 const audit = (clean: boolean, variantsChecked: number): CopyAudit => ({
@@ -517,6 +521,7 @@ test("copy_audit marks each finding by severity", () => {
 
 test("copy_reuse names the best copy and each reused piece", () => {
   const piece = {
+    basis: "sent" as const,
     bodyPreview: "Saw you are hiring",
     campaigns: 2,
     contentHash: "abc",
@@ -529,6 +534,7 @@ test("copy_reuse names the best copy and each reused piece", () => {
   };
 
   const reuse = (withBest: boolean): CopyReuse => ({
+    basis: "sent",
     bestCopy: withBest ? piece : null,
     campaignsRead: 4,
     moreCampaignsExist: false,

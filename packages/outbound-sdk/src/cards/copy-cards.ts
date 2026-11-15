@@ -1,6 +1,7 @@
 // Cards for the copy and sequence insights.
 
-import type { JsonObject } from "../internal/json.ts";
+import { field } from "../internal/json.ts";
+import type { Json, JsonObject } from "../internal/json.ts";
 import { seriesChart } from "./content.ts";
 import {
   bool,
@@ -80,18 +81,28 @@ const verdictLine = (step: JsonObject): string =>
     "step"
   )}**: ${show(step, "reason")}`;
 
+const variantFinding = (data: Json | undefined): string => {
+  const totals = child(data, "totals");
+
+  // `null` is a date range with no step stats, which says nothing of variants.
+  if (field(data, "variantStatsReported") === null) {
+    return "No step stats in this date range.";
+  }
+
+  return bool(data, "variantStatsReported") === false
+    ? "The vendor does not report results by variant for this campaign."
+    : `${plural(num(totals, "winners") ?? 0, "step")} with a real winner out of ${int(
+        num(totals, "stepsTested")
+      )} tested.`;
+};
+
 const variantTest: CardBuilder = (data) => {
   const totals = child(data, "totals");
   const steps = rows(data, "steps");
 
   return {
     bullets: steps.map((step) => verdictLine(step)),
-    finding:
-      bool(data, "variantStatsReported") === false
-        ? "The vendor does not report results by variant for this campaign."
-        : `${plural(num(totals, "winners") ?? 0, "step")} with a real winner out of ${int(
-            num(totals, "stepsTested")
-          )} tested.`,
+    finding: variantFinding(data),
     stats: [
       ["Winners", int(num(totals, "winners"))],
       ["No difference yet", int(num(totals, "noDifferenceYet"))],
