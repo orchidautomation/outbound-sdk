@@ -84,7 +84,8 @@ test("period_comparison sets the last days against the days before, per campaign
       replyRate: 0.12,
       sent: 500,
     },
-    finding: "Reply rate went from 6% to 12%; more than chance (p = 0.0009).",
+    finding:
+      "Replies per message sent went from 6% to 12%; more than chance (p = 0.0009).",
     name: "Rising",
     previous: {
       bounceRate: 0.02,
@@ -97,6 +98,7 @@ test("period_comparison sets the last days against the days before, per campaign
       sent: 500,
     },
     provider: "memory",
+    replyRateBasis: "sent",
     // Pooled 90 of 1,000 = 0.09; error = sqrt(0.09 x 0.91 x 2/500) = 0.0181;
     // z = 0.06 / 0.0181 = 3.31.
     replyRateTest: { pValue: 0.0009, significant: true, z: 3.315 },
@@ -117,7 +119,7 @@ test("period_comparison sets the last days against the days before, per campaign
   );
   assert.match(
     flat?.finding ?? "",
-    /^Reply rate went from 4\.5% to 5%; within what chance would give/u
+    /^Replies per message sent went from 4\.5% to 5%; within what chance would give/u
   );
   // New has no sends in the earlier period: unknown, not zero.
   assert.deepEqual(result.data.tooFewSends, [
@@ -336,4 +338,41 @@ test("period_comparison compares campaigns of two tools and adds their workspace
   // Both workspaces, the archived email campaign included: 1,800 + 200.
   assert.equal(result.data.workspace?.current.sent, 2000);
   assert.equal(result.meta.provider, "combined");
+});
+
+test("period_comparison divides a period's replies by messages sent, so a rate never passes 100%", async () => {
+  // A week that sent 300 messages to 5 new leads: replies to follow-ups come
+  // from leads contacted before the period, so leads contacted is no base.
+  const result = await single({
+    campaigns: [{ id: "w", name: "Follow-ups" }],
+    stats: [
+      row("w", "2026-11-02", { contacted: 5, replied: 6, sent: 300 }),
+      row("w", "2026-11-09", {
+        contacted: 5,
+        positive: 4,
+        replied: 8,
+        sent: 300,
+      }),
+    ],
+  }).insights.periodComparison({}, { now: NOW });
+
+  const [weekly] = result.data.campaigns;
+
+  assert.deepEqual(
+    [
+      weekly?.replyRateBasis,
+      weekly?.current.replyRate,
+      weekly?.current.positiveRate,
+      weekly?.previous.replyRate,
+      result.data.total.replyRateBasis,
+      result.data.total.current.replyRate,
+      result.data.workspace?.current.replyRate,
+    ],
+    ["sent", 0.0267, 0.0133, 0.02, "sent", 0.0267, 0.0267]
+  );
+  assert.ok((weekly?.current.replyRate ?? 2) <= 1);
+  assert.match(
+    weekly?.finding ?? "",
+    /^Replies per message sent went from 2% to 2\.7%; /u
+  );
 });

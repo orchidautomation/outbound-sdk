@@ -125,7 +125,7 @@ $ outbound tools
     "name": "anomalies"
   },
   {
-    "description": "This period against the last: for each campaign, counts and rates for the last `days` complete days and for the `days` before, the change in each, and whether the change in reply rate is more than chance (a two-proportion test), with the campaigns sorted by the size of that change. Also the same for every campaign added together and, where the adapter has them, for the vendor's workspace totals. Use it for a weekly review. Campaigns under min_sent sends in either period are listed apart; a null is a count the vendor does not report, and a rate of a total counts only the campaigns that report both its count and what it divides by (a note says when some are left out). Costs two stats requests per campaign plus two for the workspace.",
+    "description": "This period against the last: for each campaign, counts and rates for the last `days` complete days and for the `days` before, the change in each, and whether the change in replies per message sent is more than chance (a two-proportion test), with the campaigns sorted by the size of that change. Also the same for every campaign added together and, where the adapter has them, for the vendor's workspace totals. Reply and positive reply rates divide by messages sent (`replyRateBasis`), not leads contacted, since a period's replies also answer leads contacted before it. Use it for a weekly review. Campaigns under min_sent sends in either period are listed apart; a null is a count the vendor does not report, and a rate of a total counts only the campaigns that report both its count and what it divides by (a note says when some are left out). Costs two stats requests per campaign plus two for the workspace.",
     "name": "period_comparison"
   },
   {
@@ -141,7 +141,7 @@ $ outbound tools
     "name": "tag_rollup"
   },
   {
-    "description": "One report for one client or workspace over the last `days` complete days: totals and the change from the period before, the best and worst campaigns by the low end of the reply rate interval, campaigns with a bounce problem, unusual days, active campaigns running out of leads, and a short list of action items in plain language, each naming the campaign and the number behind it. Use it for a weekly client update. A section the adapter cannot serve is null and named in `leftOut`, and a null count is one the vendor does not report. Costs two stats requests per campaign, one for the workspace, and for each active campaign two more plus its pages of leads.",
+    "description": "One report for one client or workspace over the last `days` complete days: totals and the change from the period before, the best and worst campaigns by the low end of the interval of replies per message sent, campaigns with a bounce problem, unusual days, active campaigns running out of leads, and a short list of action items in plain language, each naming the campaign and the number behind it. Reply rates divide by messages sent (`replyRateBasis`), not leads contacted, since a period's replies also answer leads contacted before it. Use it for a weekly client update. A section the adapter cannot serve is null and named in `leftOut`, and a null count is one the vendor does not report. Costs two stats requests per campaign, one for the workspace, and for each active campaign two more plus its pages of leads.",
     "name": "client_report"
   }
 ]

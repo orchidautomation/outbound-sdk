@@ -330,6 +330,6 @@ test("a finding prints a p-value too small to round as p < 0.0001, never as p = 
 
   assert.equal(
     periods.data.total.finding,
-    "Reply rate went from 1% to 20%; more than chance (p < 0.0001)."
+    "Replies per message sent went from 1% to 20%; more than chance (p < 0.0001)."
   );
 });

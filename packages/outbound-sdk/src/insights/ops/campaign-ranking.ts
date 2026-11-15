@@ -16,6 +16,7 @@ import {
   volumeOf,
 } from "./shared.ts";
 import type {
+  Base,
   CampaignLabel,
   CampaignTotals,
   Measured,
@@ -80,8 +81,12 @@ export interface CampaignRanking extends Ranking, CampaignsRead {
   readonly period: OpenRange;
 }
 
-const measured = (counts: Totals, metric: RankingMetric): Measured => {
-  const rates = ratesOf(counts);
+const measured = (
+  counts: Totals,
+  metric: RankingMetric,
+  base?: Base
+): Measured => {
+  const rates = ratesOf(counts, base);
 
   if (metric === "bounce_rate") {
     return rates.bounceRate;
@@ -98,11 +103,15 @@ const order = (metric: RankingMetric) => (left: Scored, right: Scored) =>
     : descending(left.low, right.low) || descending(left.rate, right.rate)) ||
   left.name.localeCompare(right.name);
 
-/** Ranks campaigns that sent enough, and sets the rest aside with the reason. */
+/**
+ * Ranks campaigns that sent enough, and sets the rest aside with the reason.
+ * `base` is what replies are divided by; leads contacted by default.
+ */
 export const rankCampaigns = (
   entries: readonly CampaignTotals[],
   metric: RankingMetric,
-  minSent: number
+  minSent: number,
+  base?: Base
 ): Ranking => {
   const scored: Scored[] = [];
   const tooFewSends: UnrankedCampaign[] = [];
@@ -111,7 +120,7 @@ export const rankCampaigns = (
   for (const { campaign, counts } of entries) {
     const label = labelOf(campaign);
     const volume = volumeOf(counts);
-    const result = measured(counts, metric);
+    const result = measured(counts, metric, base);
 
     if (volume === null) {
       unknown.push({

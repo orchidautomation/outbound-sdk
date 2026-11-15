@@ -18,6 +18,7 @@ import {
   lastDays,
   listFields,
   partialNote,
+  perMessageBase,
   ratesAcross,
   ratesOf,
   readTotals,
@@ -51,7 +52,10 @@ const input = z.object({
     ),
 });
 
-/** Counts and rates for one period, or the change between two. `null` is unknown. */
+/**
+ * Counts and rates for one period, or the change between two. `null` is
+ * unknown. The reply and positive reply rates are per message sent.
+ */
 export interface PeriodNumbers extends Totals {
   readonly replyRate: number | null;
   readonly positiveRate: number | null;
@@ -61,6 +65,12 @@ export interface PeriodNumbers extends Totals {
 export interface Comparison {
   readonly current: PeriodNumbers;
   readonly previous: PeriodNumbers;
+  /**
+   * What replies and positive replies are divided by: messages sent, never
+   * leads contacted, since a period's replies also answer leads contacted
+   * before it.
+   */
+  readonly replyRateBasis: "sent";
   /** `current` minus `previous`, field by field. Rates change in points: 0.02 is two points. */
   readonly change: PeriodNumbers;
   /** The two-proportion test on the reply rate. `null` when it cannot be run. */
@@ -140,7 +150,7 @@ const compare = (
     alpha
   );
 
-  const moved = `Reply rate went from ${percent(before.rate)} to ${percent(now.rate)}`;
+  const moved = `Replies per message sent went from ${percent(before.rate)} to ${percent(now.rate)}`;
   const numbers = numbersOf(current.counts, current.rates);
   const earlier = numbersOf(previous.counts, previous.rates);
 
@@ -149,13 +159,14 @@ const compare = (
     current: numbers,
     finding:
       test === null
-        ? "Reply rate cannot be compared: a period has no reply or volume counts, or neither has a reply."
+        ? "Replies per message sent cannot be compared: a period has no reply or send counts, or neither has a reply."
         : `${moved}; ${
             test.significant
               ? "more than chance"
               : "within what chance would give"
           } (${pText(test.pValue)}).`,
     previous: earlier,
+    replyRateBasis: "sent",
     replyRateTest: test,
     verdict: verdictOf(test),
   };
@@ -168,8 +179,8 @@ export const comparePeriods = (
   alpha: number
 ): Comparison =>
   compare(
-    { counts: current, rates: ratesOf(current) },
-    { counts: previous, rates: ratesOf(previous) },
+    { counts: current, rates: ratesOf(current, perMessageBase) },
+    { counts: previous, rates: ratesOf(previous, perMessageBase) },
     alpha
   );
 
@@ -189,8 +200,8 @@ export const compareAcross = (
   previous: readonly MetricCounts[],
   alpha: number
 ): ComparedAcross => {
-  const now = ratesAcross(current);
-  const before = ratesAcross(previous);
+  const now = ratesAcross(current, perMessageBase);
+  const before = ratesAcross(previous, perMessageBase);
 
   return {
     comparison: compare(
@@ -305,7 +316,7 @@ const workspaceOf = async (
 
 export const periodComparison = defineInsight({
   description:
-    "This period against the last: for each campaign, counts and rates for the last `days` complete days and for the `days` before, the change in each, and whether the change in reply rate is more than chance (a two-proportion test), with the campaigns sorted by the size of that change. Also the same for every campaign added together and, where the adapter has them, for the vendor's workspace totals. Use it for a weekly review. Campaigns under min_sent sends in either period are listed apart; a null is a count the vendor does not report, and a rate of a total counts only the campaigns that report both its count and what it divides by (a note says when some are left out). Costs two stats requests per campaign plus two for the workspace.",
+    "This period against the last: for each campaign, counts and rates for the last `days` complete days and for the `days` before, the change in each, and whether the change in replies per message sent is more than chance (a two-proportion test), with the campaigns sorted by the size of that change. Also the same for every campaign added together and, where the adapter has them, for the vendor's workspace totals. Reply and positive reply rates divide by messages sent (`replyRateBasis`), not leads contacted, since a period's replies also answer leads contacted before it. Use it for a weekly review. Campaigns under min_sent sends in either period are listed apart; a null is a count the vendor does not report, and a rate of a total counts only the campaigns that report both its count and what it divides by (a note says when some are left out). Costs two stats requests per campaign plus two for the workspace.",
   inputSchema: input,
   key: "periodComparison",
   name: "period_comparison",

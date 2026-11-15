@@ -138,8 +138,18 @@ export const perLeadBase = (counts: Totals): number | null =>
     ? counts.contacted
     : counts.sent;
 
+/**
+ * What a rate over a time window divides replies by: messages sent. Replies
+ * in a week answer messages sent that week to leads first contacted weeks
+ * before, so a week's leads contacted can be far fewer than its replies.
+ */
+export const perMessageBase = (counts: Totals): number | null => counts.sent;
+
+/** What a rate's replies are divided by. */
+export type Base = (counts: Totals) => number | null;
+
 export interface Rates {
-  /** Replies divided by leads contacted (or messages sent when contacted is unknown). */
+  /** Replies divided by the base: leads contacted (or messages sent when contacted is unknown) unless the caller passes another. */
   readonly replyRate: Measured;
   /** Positive replies on the same base as the reply rate. */
   readonly positiveRate: Measured;
@@ -147,10 +157,10 @@ export interface Rates {
   readonly bounceRate: Measured;
 }
 
-export const ratesOf = (counts: Totals): Rates => ({
+export const ratesOf = (counts: Totals, base: Base = perLeadBase): Rates => ({
   bounceRate: measure(counts.bounced, counts.sent),
-  positiveRate: measure(counts.positive, perLeadBase(counts)),
-  replyRate: measure(counts.replied, perLeadBase(counts)),
+  positiveRate: measure(counts.positive, base(counts)),
+  replyRate: measure(counts.replied, base(counts)),
 });
 
 /** How many of the rows added up are behind a rate. */
@@ -208,9 +218,12 @@ export const partialRate = (name: string, across: RateCoverage): string[] =>
     : [];
 
 /** The three rates over several rows of counts, each over the rows that report it. */
-export const ratesAcross = (rows: readonly Totals[]): RatesAcross => {
-  const reply = measureAcross(rows, (row) => row.replied, perLeadBase);
-  const positive = measureAcross(rows, (row) => row.positive, perLeadBase);
+export const ratesAcross = (
+  rows: readonly Totals[],
+  base: Base = perLeadBase
+): RatesAcross => {
+  const reply = measureAcross(rows, (row) => row.replied, base);
+  const positive = measureAcross(rows, (row) => row.positive, base);
 
   const bounce = measureAcross(
     rows,

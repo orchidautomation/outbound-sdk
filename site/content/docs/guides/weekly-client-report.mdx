@@ -40,7 +40,7 @@ The full response of `clientReport` is in the **Response** tab on [`clientReport
 Three things in it are worth copying:
 
 - **A count can be `null`.** A vendor that does not report a number gets `null`, never `0`, and a rate built on it is `null` too. Print "not reported", not a zero.
-- **`data.totals.finding` is a sentence.** It already says whether the reply rate moved by more than chance, from a two-proportion test at `alpha` (default 0.05).
+- **`data.totals.finding` is a sentence.** It already says whether replies per message sent moved by more than chance, from a two-proportion test at `alpha` (default 0.05).
 - **`meta.complete` and `meta.notes` travel with the report.** When a cap stopped a read early, the report covers part of the data and a note says which part.
 
 "The last 7 days" means seven complete UTC days ending yesterday, so a half-finished today cannot read as a drop.

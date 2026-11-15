@@ -596,8 +596,9 @@ const numbers = (
 const comparison = (verdict: Comparison["verdict"]): Comparison => ({
   change: numbers(200, -10),
   current: numbers(1200, 50),
-  finding: "Reply rate fell from 6.0% to 4.2%, more than chance.",
+  finding: "Replies per message sent fell from 6.0% to 4.2%, more than chance.",
   previous: numbers(1000, 60),
+  replyRateBasis: "sent",
   replyRateTest: null,
   verdict,
 });
@@ -624,14 +625,14 @@ test("period_comparison shows each number now and before", () => {
     read(cardFor("period_comparison", insight(periods))),
     "Last 7 days against the 7 before",
     "2026-11-07 to 2026-11-13, against 2026-10-31 to 2026-11-06",
-    "Reply rate fell from 6.0% to 4.2%, more than chance.",
+    "Replies per message sent fell from 6.0% to 4.2%, more than chance.",
     "Sent: 1,200 (was 1,000)",
-    "Reply rate: 4.2% (was 6.0%)",
+    "Replies per send: 4.2% (was 6.0%)",
     "Positive: —",
-    "Founders | 4.2%           | 6.0%   | 🔻 down",
-    "Agencies | 4.2%           | 6.0%   | 🔺 up",
-    "Steady   | 4.2%           | 6.0%   | ▪️ no real change",
-    "Blank    | 4.2%           | 6.0%   | ⚪ unknown"
+    "Founders | 4.2%                 | 6.0%   | 🔻 down",
+    "Agencies | 4.2%                 | 6.0%   | 🔺 up",
+    "Steady   | 4.2%                 | 6.0%   | ▪️ no real change",
+    "Blank    | 4.2%                 | 6.0%   | ⚪ unknown"
   );
 });
 
@@ -725,6 +726,7 @@ const report = (withActions: boolean): ClientReport => ({
   moreCampaignsExist: false,
   period: { from: "2026-11-07", to: "2026-11-13" },
   previousPeriod: { from: "2026-10-31", to: "2026-11-06" },
+  replyRateBasis: "sent",
   runningOutOfLeads: null,
   top: [{ ...label("Founders Q4"), ...rate(30, 500), rank: 1, sent: 500 }],
   totals: comparison("down"),
@@ -736,7 +738,7 @@ test("client_report leads with the change and lists what to do", () => {
   includes(
     text,
     "3 campaigns · 2026-11-07 to 2026-11-13",
-    "Reply rate fell from 6.0% to 4.2%, more than chance.",
+    "Replies per message sent fell from 6.0% to 4.2%, more than chance.",
     "Replies: 50 (was 60)",
     "• 👉 Add leads to Founders Q4: 4 days left.",
     "1 | Founders Q4   | 500  | 6.0% (4.0–8.0%)",

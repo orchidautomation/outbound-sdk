@@ -1,13 +1,13 @@
 Outbound report for acme: 2026-11-07 to 2026-11-13
 
 Sent 1610, replies 70, bounces 77
-Reply rate 13.3% (the week before: 9.3%)
-Reply rate went from 9.3% to 13.3%; more than chance (p = 0.0409).
+Replies per message sent 4.4% (the week before: 3%)
+Replies per message sent went from 3% to 4.4%; more than chance (p = 0.0498).
 
 Best campaigns:
-  1. Agency owners: 24.0% reply rate (42 of 175)
-  2. SaaS founders: 15.0% reply rate (21 of 140)
-  3. Ecommerce ops: 3.3% reply rate (7 of 210)
+  1. Agency owners: 7.5% (42 replies to 560 messages)
+  2. SaaS founders: 5% (21 replies to 420 messages)
+  3. Ecommerce ops: 1.1% (7 replies to 630 messages)
 
 To do:
   - Fix the bounces of Ecommerce ops: its bounce rate is 10% (63 of 630 sends).

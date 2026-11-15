@@ -187,7 +187,8 @@ const versus = (comparison: JsonObject, key: string, write: Write): string => {
 const comparisonStats = (comparison: JsonObject): Stat[] => [
   ["Sent", versus(comparison, "sent", int)],
   ["Replies", versus(comparison, "replied", int)],
-  ["Reply rate", versus(comparison, "replyRate", pct)],
+  // A period's replies are divided by messages sent (`replyRateBasis`).
+  ["Replies per send", versus(comparison, "replyRate", pct)],
   ["Positive", versus(comparison, "positive", int)],
   ["Bounce rate", versus(comparison, "bounceRate", pct)],
 ];
@@ -213,7 +214,7 @@ const periodComparison: CardBuilder = (data) => {
     subtitle: `${range(child(data, "current"))}, against ${range(child(data, "previous"))}`,
     table: {
       align: [LEFT, RIGHT, RIGHT, LEFT],
-      headers: ["Campaign", "Reply rate now", "Before", "Change"],
+      headers: ["Campaign", "Replies per send now", "Before", "Change"],
       rows: rows(data, "campaigns").map((campaign) => [
         show(campaign, "name"),
         pct(num(child(campaign, "current"), "replyRate")),
@@ -307,7 +308,7 @@ const clientReport: CardBuilder = (data) => {
     subtitle: `${plural(num(data, "campaigns") ?? 0, "campaign")} · ${range(child(data, "period"))}`,
     table: {
       align: [RIGHT, LEFT, RIGHT, RIGHT],
-      headers: ["#", "Top campaigns", "Sent", "Reply rate"],
+      headers: ["#", "Top campaigns", "Sent", "Replies per send"],
       rows: rows(data, "top").map((campaign) => [
         int(num(campaign, "rank")),
         show(campaign, "name"),
