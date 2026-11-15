@@ -73,3 +73,19 @@ test("the demo data's dates sit before the moment it is built for", () => {
 test("demoData refuses a now that is not a date", () => {
   assert.throws(() => demoData({ now: "next tuesday" }), TypeError);
 });
+
+test("a runway shorter than a day reads as less than a day, not 0 days", async () => {
+  const report = await instanceAt(LATER).insights.clientReport(
+    {},
+    { now: LATER }
+  );
+
+  const runway = report.data.actions.find((action) =>
+    action.action.startsWith("Add leads to")
+  );
+
+  // One lead left in "Q4 SaaS founders" at about 30 contacted a day.
+  assert.ok(runway, "the demo campaign close to running dry gets an action");
+  assert.match(runway.action, /less than a day of sending\.$/u);
+  assert.doesNotMatch(runway.action, /about 0 days/u);
+});

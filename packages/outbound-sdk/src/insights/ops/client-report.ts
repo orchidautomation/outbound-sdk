@@ -98,6 +98,18 @@ const input = z.object({
 
 type Options = z.infer<typeof input>;
 
+// How long the leads last, for a sentence: "less than a day" when it rounds to
+// nothing, so a runway of 0.03 days does not read as 0 days.
+const sendingLeft = (daysLeft: number | null): string => {
+  if (daysLeft !== null && daysLeft < 0.05) {
+    return "less than a day of sending";
+  }
+
+  const days = spoken(daysLeft);
+
+  return `about ${days} ${days === "1" ? "day" : "days"} of sending`;
+};
+
 export interface BounceProblem extends CampaignLabel {
   readonly bounced: number | null;
   readonly sent: number | null;
@@ -272,7 +284,7 @@ const actionsOf = (report: Sections): ActionItem[] => {
       action:
         runway.remaining === 0
           ? `Add leads to ${runway.name}: no leads are left to contact, so it is not sending.`
-          : `Add leads to ${runway.name}: ${runway.remaining} ${runway.remaining === 1 ? "lead remains" : "leads remain"}, about ${spoken(runway.daysLeft)} days of sending.`,
+          : `Add leads to ${runway.name}: ${runway.remaining} ${runway.remaining === 1 ? "lead remains" : "leads remain"}, ${sendingLeft(runway.daysLeft)}.`,
       campaign: runway.campaign,
       campaignName: runway.name,
       kind: "add_leads" as const,
