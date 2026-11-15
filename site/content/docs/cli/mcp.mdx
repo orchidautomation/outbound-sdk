@@ -18,13 +18,6 @@ related:
 - **Keys from the environment.** The adapter reads its key from an environment variable. The server takes no key as an argument and the protocol never carries one.
 - **Masks personal data by default.** It runs with the [`redact`](/docs/plugins/redact) plugin unless you start it with `--no-redact`. See [plugins](#plugins).
 
-<Callout type="warning" title="Not on npm yet">
-  `outbound-sdk` is not published, so a client configuration that runs `npx
-  outbound-sdk mcp` does not work today. Install the package from a tarball
-  first and point the client at the installed binary. See
-  [installation](/docs/installation).
-</Callout>
-
 ## Configure a client
 
 Most clients take a JSON entry with a command, its arguments and its environment. Use the path to the `outbound` binary in the project where you installed the package.
