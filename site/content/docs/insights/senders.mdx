@@ -143,7 +143,7 @@ The campaigns whose bounce rate (bounced divided by sent) is over a threshold, a
 - **Needs:** `stats.campaign`. Checking senders also needs `stats.bySender` and `senders.byCampaign`.
 - **Costs:** one listing of campaigns and 1 request per campaign, plus 1 listing and up to 1 request per sender for each campaign over the threshold.
 - **Notes it can add:** senders were not checked because the adapter needs stats per sender and the list of a campaign's senders; the senders whose sent or bounce count could not be read, by address; a cap was reached.
-- **Does not:** flag a sender with fewer sends than `min_sent`. Nor does it judge a sender within one campaign. A sender's rate is over everything it sent in the period, because no vendor reports one sender within one campaign. Only campaigns in `statuses` are read, active by default. To read every campaign, as it did before 0.3.0, pass `statuses: ["active", "paused", "completed", "draft", "archived", "unknown"]`. A campaign in `tooFewSends` or `unknown` is not clean.
+- **Does not:** flag a sender with fewer sends than `min_sent`. Nor does it judge a sender within one campaign. A sender's rate is over everything it sent in the period, because no vendor reports one sender within one campaign. Only campaigns in `statuses` are read, active by default. To read every campaign, as it did before 0.4.0, pass `statuses: ["active", "paused", "completed", "draft", "archived", "unknown"]`. A campaign in `tooFewSends` or `unknown` is not clean.
 
 <include meta='title="bounce-watch.ts"'>
   ../../_examples/insights-senders/bounce-watch.ts
