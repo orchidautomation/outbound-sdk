@@ -19,6 +19,7 @@ import { demoData, memory } from "../src/memory/index.ts";
 import type { MemoryOptions } from "../src/memory/index.ts";
 import { isProviderId, providers } from "../src/providers/index.ts";
 import type { ProviderId } from "../src/providers/index.ts";
+import { redact } from "../src/redact/index.ts";
 import { smartlead } from "../src/smartlead/index.ts";
 import { createTools } from "../src/tools/index.ts";
 
@@ -207,4 +208,25 @@ test("export takes an array or any iterable as well as a listing", async () => {
 
   // @ts-expect-error -- a single record is not a listing
   await assert.rejects(outbound.export(leads[0], options));
+});
+
+test("a plugin list with a conditional spread compiles and keeps each plugin's methods", async () => {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- a flag the compiler cannot fold, as an option from the environment would be
+  const useRedact = typeof process.env.OUTBOUND_TEST_REDACT === "string";
+
+  const outbound = createOutbound({
+    adapter: memory({ data: demoData({ now: NOW }) }),
+    plugins: [...(useRedact ? [redact()] : []), insights()],
+  });
+
+  // Two whole lists, one chosen by the flag.
+  const chosen = createOutbound({
+    adapter: memory({ data: demoData({ now: NOW }) }),
+    plugins: useRedact ? [redact(), insights()] : [insights()],
+  });
+
+  const hot = await outbound.insights.hotLeads({}, { now: NOW });
+  assert.equal(hot.insight, "hot_leads");
+  assert.equal(typeof chosen.insights.hotLeads, "function");
+  assert.equal("redacted" in outbound, useRedact);
 });

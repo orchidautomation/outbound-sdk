@@ -61,7 +61,9 @@ export const createOutbound = <
 >(
   options: Omit<OutboundOptions, "adapter"> & {
     readonly adapter: Given;
-    readonly plugins?: Plugins | undefined;
+    // The array form accepts a list TypeScript infers as a tuple but types
+    // as an array, such as one with a conditional spread.
+    readonly plugins?: Plugins | readonly Plugins[number][] | undefined;
   }
 ): NoInfer<OutboundWith<Plugins, NativeOf<Given>>> => {
   const outbound = new Outbound<NativeCatalog>(options);
