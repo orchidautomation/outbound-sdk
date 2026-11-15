@@ -7,7 +7,8 @@ import type { Lead, Message } from "../../internal/entities.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { rate } from "../stats.ts";
-import { findPerson } from "./find.ts";
+import { findPerson, isLeadRef } from "./find.ts";
+import { isAutoReplied } from "./read.ts";
 
 const input = z.object({
   max_campaigns: z
@@ -20,7 +21,9 @@ const input = z.object({
   person: z
     .string()
     .min(3)
-    .describe("The person's email address or LinkedIn profile URL"),
+    .describe(
+      "The person's email address or LinkedIn profile URL, or a lead ref as the other people insights return"
+    ),
 });
 
 export interface PersonCampaign {
@@ -34,8 +37,14 @@ export interface PersonCampaign {
   /** The vendor's own label, for example `Interested`. */
   readonly interest: string | null;
   readonly messagesSent: number;
+  /** Replies from the person. 0 when the vendor labels the lead out-of-office or bounced. */
   readonly replies: number;
   readonly replied: boolean;
+  /**
+   * `true` when the vendor labels the lead out-of-office or bounced: its
+   * replies were automatic, so they are not counted as the person replying.
+   */
+  readonly autoReplied: boolean;
   /** Steps the person replied to, counted from 0. Empty when the vendor does not tie a reply to a step. */
   readonly repliedSteps: readonly number[];
   /** The last step sent, counted from 0. */
@@ -171,7 +180,20 @@ const summarize = async (
       : outbound.campaigns.get(lead.campaignRef).then(context.one),
   ]);
 
-  const { threadIsShort, ...activity } = activityOf(lead, messages);
+  const { threadIsShort, ...counted } = activityOf(lead, messages);
+
+  // The same rule hot_leads uses: an automatic reply is not the person replying.
+  const autoReplied = isAutoReplied(lead);
+
+  const activity = autoReplied
+    ? { ...counted, lastRepliedAt: null, replies: 0 }
+    : counted;
+
+  if (autoReplied && counted.replies > 0) {
+    context.note(
+      "A record the vendor labels out-of-office or bounced had replies; they were automatic, so they are not counted as replies."
+    );
+  }
 
   if (threadIsShort) {
     context.note(
@@ -189,8 +211,9 @@ const summarize = async (
     lead: lead.ref,
     leadStatus: lead.status,
     provider: lead.provider,
-    replied: activity.replies > 0 || lead.replied === true,
-    repliedSteps: repliedSteps(lead, messages),
+    autoReplied,
+    replied: !autoReplied && (activity.replies > 0 || lead.replied === true),
+    repliedSteps: autoReplied ? [] : repliedSteps(lead, messages),
   };
 };
 
@@ -215,11 +238,23 @@ const byChannel = (campaigns: readonly PersonCampaign[]) => {
 
 export const personSummary = defineInsight({
   description:
-    "Everything about one person across campaigns and channels, from their email address or LinkedIn profile: each campaign they are in, how many messages they were sent, whether and how often they replied, which steps they replied to, their interest label, and totals by channel. Records are linked by exact identifier only, so an email finds a LinkedIn record only when a tool holds both for that person. Costs one lookup per identifier, then up to 2 requests per campaign.",
+    "Everything about one person across campaigns and channels, from their email address, LinkedIn profile or a lead ref: each campaign they are in, how many messages they were sent, whether and how often they replied, which steps they replied to, their interest label, and totals by channel. Records are linked by exact identifier only, so an email finds a LinkedIn record only when a tool holds both for that person. A record the vendor labels out-of-office or bounced counts no replies, since they were automatic. Costs one lookup per identifier, one request to read a lead ref, then up to 2 requests per campaign.",
   inputSchema: input,
   key: "personSummary",
   name: "person_summary",
+  maskedOut: (masking) => {
+    // With one kind masked the person is looked up by the other, and a
+    // hashed identifier is matched by hashing the one given.
+    const masked = new Set(masking.fields);
+
+    return masked.has("email") &&
+      masked.has("linkedin") &&
+      masking.strategy === "mask"
+      ? "email addresses and LinkedIn profiles, which it looks a person up by"
+      : null;
+  },
   needs: ["leads.lookup", "leads.timeline"],
+  needsFor: ({ person }) => (isLeadRef(person) ? ["leads.get"] : []),
   next: "Use account_summary with their email domain to see everyone at the same company.",
   run: async (context, { max_campaigns: maxCampaigns, person }) => {
     const found = await findPerson(context, person, maxCampaigns);

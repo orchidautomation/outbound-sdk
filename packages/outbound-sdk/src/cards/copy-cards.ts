@@ -1,6 +1,7 @@
 // Cards for the copy and sequence insights.
 
-import type { JsonObject } from "../internal/json.ts";
+import { field } from "../internal/json.ts";
+import type { Json, JsonObject } from "../internal/json.ts";
 import { seriesChart } from "./content.ts";
 import {
   bool,
@@ -13,12 +14,21 @@ import {
   plural,
   rows,
   show,
+  stepOf,
   str,
   waiting,
   words,
   yesNo,
 } from "./format.ts";
-import { flagged, LEFT, RIGHT, verdict, withInterval } from "./parts.ts";
+import {
+  campaignsCapped,
+  flagged,
+  LEFT,
+  replyRate,
+  RIGHT,
+  verdict,
+  withInterval,
+} from "./parts.ts";
 import type { CardBuilder } from "./tool-cards.ts";
 
 const stepFunnel: CardBuilder = (data) => {
@@ -30,7 +40,10 @@ const stepFunnel: CardBuilder = (data) => {
       "bar",
       "Replies by step",
       "Replies",
-      steps.map((step) => [`Step ${show(step, "step")}`, num(step, "replies")])
+      steps.map((each) => [
+        `Step ${stepOf(each, "step")}`,
+        num(each, "replies"),
+      ])
     ),
     finding: str(data, "finding"),
     notes:
@@ -48,13 +61,13 @@ const stepFunnel: CardBuilder = (data) => {
         "Share of replies",
         "Earns its place",
       ],
-      rows: steps.map((step) => [
-        show(step, "step"),
-        int(num(step, "sent")),
-        int(num(step, "replies")),
-        withInterval(step, "replyRate", "replyRateInterval"),
-        pct(num(step, "shareOfReplies")),
-        yesNo(bool(step, "earnsPlace")),
+      rows: steps.map((each) => [
+        stepOf(each, "step"),
+        int(num(each, "sent")),
+        int(num(each, "replies")),
+        replyRate(each),
+        pct(num(each, "shareOfReplies")),
+        yesNo(bool(each, "earnsPlace")),
       ]),
     },
     title: "Step funnel",
@@ -67,11 +80,26 @@ const VERDICT_MARKS = new Map([
   ["winner", "🟢"],
 ]);
 
-const verdictLine = (step: JsonObject): string =>
-  `${VERDICT_MARKS.get(show(step, "verdict")) ?? "⚪"} **Step ${show(
-    step,
+const verdictLine = (tested: JsonObject): string =>
+  `${VERDICT_MARKS.get(show(tested, "verdict")) ?? "⚪"} **Step ${stepOf(
+    tested,
     "step"
-  )}**: ${show(step, "reason")}`;
+  )}**: ${show(tested, "reason")}`;
+
+const variantFinding = (data: Json | undefined): string => {
+  const totals = child(data, "totals");
+
+  // `null` is a date range with no step stats, which says nothing of variants.
+  if (field(data, "variantStatsReported") === null) {
+    return "No step stats in this date range.";
+  }
+
+  return bool(data, "variantStatsReported") === false
+    ? "The vendor does not report results by variant for this campaign."
+    : `${plural(num(totals, "winners") ?? 0, "step")} with a real winner out of ${int(
+        num(totals, "stepsTested")
+      )} tested.`;
+};
 
 const variantTest: CardBuilder = (data) => {
   const totals = child(data, "totals");
@@ -79,12 +107,7 @@ const variantTest: CardBuilder = (data) => {
 
   return {
     bullets: steps.map((step) => verdictLine(step)),
-    finding:
-      bool(data, "variantStatsReported") === false
-        ? "The vendor does not report results by variant for this campaign."
-        : `${plural(num(totals, "winners") ?? 0, "step")} with a real winner out of ${int(
-            num(totals, "stepsTested")
-          )} tested.`,
+    finding: variantFinding(data),
     stats: [
       ["Winners", int(num(totals, "winners"))],
       ["No difference yet", int(num(totals, "noDifferenceYet"))],
@@ -95,14 +118,14 @@ const variantTest: CardBuilder = (data) => {
     table: {
       align: [LEFT, LEFT, RIGHT, RIGHT],
       headers: ["Step", "Variant", "Sent", "Rate"],
-      rows: steps.flatMap((step) =>
-        rows(step, "variants").map((variant) => [
-          show(step, "step"),
+      rows: steps.flatMap((tested) =>
+        rows(tested, "variants").map((variant) => [
+          stepOf(tested, "step"),
           `${show(variant, "variantKey")}${
-            str(step, "leader") === str(variant, "variantKey") ? " ★" : ""
+            str(tested, "leader") === str(variant, "variantKey") ? " ★" : ""
           }`,
           int(num(variant, "sent")),
-          withInterval(variant, "rate", "interval"),
+          withInterval(variant),
         ])
       ),
     },
@@ -117,7 +140,7 @@ const copyAudit: CardBuilder = (data) => {
     bullets: rows(data, "findings").map((finding) =>
       flagged(
         finding,
-        `Step ${show(finding, "step")} ${show(finding, "variantKey")}: `
+        `Step ${stepOf(finding, "step")} ${show(finding, "variantKey")}: `
       )
     ),
     finding: verdict(
@@ -134,7 +157,7 @@ const copyAudit: CardBuilder = (data) => {
       ["Steps checked", int(num(data, "stepsChecked"))],
       ["Variants checked", int(num(data, "variantsChecked"))],
     ],
-    subtitle: show(data, "campaign"),
+    subtitle: str(data, "campaignName") ?? show(data, "campaign"),
     title: "Copy audit",
   };
 };
@@ -147,15 +170,14 @@ const copyReuse: CardBuilder = (data) => {
   const bestCopy = child(data, "bestCopy");
 
   return {
-    bullets: reused.map((piece) => show(piece, "finding")),
+    bullets: [
+      ...campaignsCapped(data),
+      ...reused.map((piece) => show(piece, "finding")),
+    ],
     finding:
       str(bestCopy, "contentHash") === null
         ? "No copy has enough results to name a best one."
-        : `Best copy: "${copyLabel(bestCopy)}" at ${withInterval(
-            bestCopy,
-            "replyRate",
-            "replyRateInterval"
-          )}.`,
+        : `Best copy: "${copyLabel(bestCopy)}" at ${replyRate(bestCopy)}.`,
     stats: [
       ["Copy used more than once", int(reused.length)],
       ["Pieces of copy", int(num(data, "piecesOfCopy"))],

@@ -3,10 +3,12 @@
 import type { JsonObject } from "../internal/json.ts";
 import {
   bool,
+  campaignNameOf,
   child,
   DASH,
   int,
   mark,
+  noun,
   num,
   pct,
   plural,
@@ -29,10 +31,13 @@ import type { CardBuilder } from "./tool-cards.ts";
 const senderName = (sender: JsonObject): string =>
   str(sender, "address") ?? str(sender, "name") ?? show(sender, "sender");
 
+const warmupRate = (warmup: JsonObject): number | null =>
+  num(warmup, "rate") ?? num(warmup, "spamRate");
+
 const bounceWatch: CardBuilder = (data) => {
   const totals = child(data, "totals");
   const over = rows(data, "over");
-  const threshold = pct(num(data, "threshold"));
+  const threshold = pct(num(data, "maxBounceRate") ?? num(data, "threshold"));
 
   return {
     finding: verdict(
@@ -53,10 +58,10 @@ const bounceWatch: CardBuilder = (data) => {
       align: [LEFT, RIGHT, RIGHT, RIGHT],
       headers: ["Campaign", "Sent", "Bounced", "Bounce rate"],
       rows: over.map((campaign) => [
-        show(campaign, "name"),
+        campaignNameOf(campaign),
         int(num(campaign, "sent")),
         int(num(campaign, "bounced")),
-        withInterval(campaign, "rate", "interval"),
+        withInterval(campaign),
       ]),
     },
     title: "Bounce watch",
@@ -69,9 +74,16 @@ const RISK_ORDER = ["high", "medium", "unknown", "low"];
 const riskMark = (risk: string | null): string =>
   risk === "low" ? mark("ok") : mark(risk);
 
+// Silence about DNS is not good news, so it is not told as "no high risk".
+const unknownRisk = (unknown: number): string | null =>
+  unknown === 0
+    ? null
+    : `⚪ ${plural(unknown, "sending domain")} of unknown risk: the vendor reports none of SPF, DKIM, DMARC and MX for ${unknown === 1 ? "it" : "them"}. No domain is at high risk on what it reports.`;
+
 const domainHealth: CardBuilder = (data) => {
   const totals = child(data, "totals");
   const high = num(totals, "high") ?? 0;
+  const unknown = num(totals, "unknown") ?? 0;
 
   const domains = rows(data, "domains").toSorted(
     (left, right) =>
@@ -91,7 +103,9 @@ const domainHealth: CardBuilder = (data) => {
     }),
     finding: verdict(
       num(totals, "domains"),
-      high === 0 ? null : `🔴 ${plural(high, "sending domain")} at high risk.`,
+      high > 0
+        ? `🔴 ${plural(high, "sending domain")} at high risk.`
+        : unknownRisk(unknown),
       "No sending domain is at high risk."
     ),
     stats: [
@@ -99,17 +113,26 @@ const domainHealth: CardBuilder = (data) => {
       ["High risk", int(high)],
       ["Medium risk", int(num(totals, "medium"))],
       ["Low risk", int(num(totals, "low"))],
+      ["Unknown risk", int(unknown)],
       ["LinkedIn seats", int(num(totals, "linkedinSeats"))],
     ],
     table: {
-      align: [LEFT, LEFT, RIGHT, LEFT, RIGHT],
-      headers: ["Domain", "Risk", "Mailboxes", "Failing DNS", "Warmup spam"],
+      align: [LEFT, LEFT, RIGHT, LEFT, RIGHT, LEFT],
+      headers: [
+        "Domain",
+        "Risk",
+        "Mailboxes",
+        "Failing DNS",
+        "Warmup spam",
+        "Not reported",
+      ],
       rows: domains.map((domain) => [
         show(domain, "domain"),
         `${riskMark(str(domain, "risk"))} ${show(domain, "risk")}`,
         int(rows(domain, "mailboxes").length),
         strings(domain, "failingDns").join(" ").toUpperCase() || DASH,
-        pct(num(child(domain, "warmup"), "spamRate")),
+        pct(warmupRate(child(domain, "warmup"))),
+        strings(domain, "notReported").join(", ") || DASH,
       ]),
     },
     title: "Domain health",
@@ -118,6 +141,7 @@ const domainHealth: CardBuilder = (data) => {
 
 const senderCapacity: CardBuilder = (data) => {
   const capacity = child(data, "capacity");
+  const sends = child(data, "sends");
 
   return {
     bullets: rows(data, "shortCampaigns").map(
@@ -127,7 +151,8 @@ const senderCapacity: CardBuilder = (data) => {
     stats: [
       ["Daily capacity", int(num(capacity, "daily"))],
       ["Campaigns ask for", int(num(child(data, "ask"), "daily"))],
-      ["Average sent per day", int(num(child(data, "sends"), "averageDaily"))],
+      ["Average sent per day", int(num(sends, "averageDaily"))],
+      ["Sent by senders not counted", int(num(sends, "fromUncounted"))],
       ["Capacity in use", pct(num(data, "utilization"))],
       ["Active senders", int(num(capacity, "activeSenders"))],
       ["Inactive senders", int(num(capacity, "inactiveSenders"))],
@@ -205,19 +230,20 @@ const settingsAudit: CardBuilder = (data) => {
 
 const warmupReadiness: CardBuilder = (data) => {
   const notReady = rows(data, "notReady");
+  // Without sender health, "ready" rests on warmup and status alone.
+  const checked = bool(data, "healthChecked") !== false;
+  const ready = checked ? "ready to send" : "ready on warmup alone";
+
+  const unchecked = checked ? "" : "; DNS and warmup spam were not checked";
 
   return {
     finding: verdict(
       num(data, "total"),
       notReady.length === 0
         ? null
-        : `🟡 ${int(num(data, "ready"))} of ${int(num(data, "total"))} senders are ready to send.`,
-      `Every sender is ready to send (${int(num(data, "total"))} checked).`
+        : `🟡 ${int(num(data, "ready"))} of ${plural(num(data, "total") ?? 0, "sender")} ${noun(num(data, "ready") ?? 0, "is", "are")} ${ready}${unchecked}.`,
+      `Every sender is ${ready} (${int(num(data, "total"))} checked)${unchecked}.`
     ),
-    notes:
-      bool(data, "healthChecked") === false
-        ? ["Sender health was not read, so DNS and sign-in were not checked."]
-        : [],
     stats: [
       ["Ready", int(num(data, "ready"))],
       ["Not ready", int(notReady.length)],

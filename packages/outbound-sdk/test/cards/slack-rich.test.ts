@@ -170,7 +170,7 @@ test("a rate with its interval, and a number in the first column, keep their tex
     value: 1,
   });
   assert.deepEqual(table.rows[1]?.[3], {
-    text: "6.0% (4.0–8.0%)",
+    text: "6% (4–8%)",
     type: "raw_text",
   });
 });

@@ -61,5 +61,15 @@ export const seed: MemoryData = {
       warmup: { enabled: true, score: 97 },
     },
   ],
-  stats: [...week("cmp_founders", 38), ...week("cmp_ecom", 55)],
+  stats: [
+    ...week("cmp_founders", 38),
+    ...week("cmp_ecom", 55),
+    // dan sent 60 of Ecommerce ops' sends before it was paused.
+    {
+      campaignId: "cmp_ecom",
+      counts: { sent: 60 },
+      date: "2026-11-08",
+      senderId: "snd_dan",
+    },
+  ],
 };

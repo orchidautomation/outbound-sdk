@@ -93,7 +93,7 @@ test("domain_health groups mailboxes by domain and ranks the domains worst first
   const [bad, mid, good, part, quiet] = domains;
 
   assert.deepEqual(bad?.reasons, [
-    "1 of 2 mailboxes are on a block list",
+    "1 of 2 mailboxes is on a block list",
     "SPF failing",
     // 5 + 25 spam of 100 + 100 sent.
     "30 of 200 warmup emails landed in spam (15%, over 10%)",
@@ -102,7 +102,13 @@ test("domain_health groups mailboxes by domain and ranks the domains worst first
   assert.equal(bad?.blacklisted, 1);
   assert.equal(bad?.disconnected, 0);
   assert.deepEqual(bad?.warmup, {
+    // The Measured shape: spam over sent, the same as spamRate and interval.
+    count: 30,
+    high: 0.2061,
     interval: { high: 0.2061, low: 0.1071 },
+    low: 0.1071,
+    of: 200,
+    rate: 0.15,
     mailboxes: 2,
     sent: 200,
     spam: 30,
@@ -132,11 +138,16 @@ test("domain_health groups mailboxes by domain and ranks the domains worst first
 
   assert.deepEqual(mid?.reasons, [
     "DMARC failing",
-    "1 of 1 mailboxes are disconnected",
+    "1 of 1 mailbox is disconnected",
   ]);
   // 5 of 50 is exactly the threshold, which is not over it.
   assert.deepEqual(mid?.warmup, {
+    count: 5,
+    high: 0.2136,
     interval: { high: 0.2136, low: 0.0435 },
+    low: 0.0435,
+    of: 50,
+    rate: 0.1,
     mailboxes: 1,
     sent: 50,
     spam: 5,
@@ -148,6 +159,7 @@ test("domain_health groups mailboxes by domain and ranks the domains worst first
   assert.deepEqual(good?.reasons, []);
   assert.equal(good?.mailboxes[0]?.address, "d@good.example");
 
+  assert.equal(part?.blacklisted, null);
   assert.deepEqual(part?.notReported, [
     "dkim",
     "dmarc",
@@ -175,7 +187,12 @@ test("domain_health keeps what the vendor does not report as null, and a silent 
   const quiet = result.data.domains.at(-1);
 
   assert.deepEqual(quiet?.warmup, {
+    count: null,
+    high: null,
     interval: null,
+    low: null,
+    of: null,
+    rate: null,
     mailboxes: 0,
     sent: null,
     spam: null,
@@ -199,7 +216,32 @@ test("domain_health keeps what the vendor does not report as null, and a silent 
     sender: ref("s5"),
     status: "active",
   });
-  assert.equal(quiet?.blacklisted, 0);
+  // No mailbox reports a block list status, so the count is unknown, not 0.
+  assert.equal(quiet?.blacklisted, null);
+});
+
+test("domain_health calls a domain unknown, not low, when the vendor reports none of its DNS records", async () => {
+  const result = await single({
+    senders: [
+      {
+        address: "a@nodns.example",
+        health: {
+          blacklisted: false,
+          connected: true,
+          warmup: { sent: 100, spam: 1 },
+        },
+        id: "s1",
+      },
+    ],
+  }).insights.domainHealth({});
+
+  const [domain] = result.data.domains;
+
+  assert.equal(domain?.risk, "unknown");
+  assert.deepEqual(domain?.reasons, []);
+  assert.equal(domain?.blacklisted, 0);
+  assert.deepEqual(domain?.notReported, ["spf", "dkim", "dmarc", "mx"]);
+  assert.equal(result.data.totals.unknown, 1);
 });
 
 test("domain_health lists LinkedIn seats apart, disconnected first, and mailboxes with no domain", async () => {
@@ -237,7 +279,7 @@ test("domain_health lists LinkedIn seats apart, disconnected first, and mailboxe
 test("domain_health moves a domain to high risk when the spam threshold drops under its rate", async () => {
   const risks = async (threshold: number) => {
     const { data } = await single(DATA).insights.domainHealth({
-      spam_rate_threshold: threshold,
+      max_spam_rate: threshold,
     });
 
     return Object.fromEntries(
@@ -256,11 +298,11 @@ test("domain_health moves a domain to high risk when the spam threshold drops un
   assert.equal((await risks(0.02))["good.example"], "high");
 
   const loose = await single(DATA).insights.domainHealth({
-    spam_rate_threshold: 0.2,
+    max_spam_rate: 0.2,
   });
 
   assert.deepEqual(loose.data.domains[0]?.reasons, [
-    "1 of 2 mailboxes are on a block list",
+    "1 of 2 mailboxes is on a block list",
     "SPF failing",
   ]);
 });
@@ -294,7 +336,11 @@ test("domain_health says so when max_senders stops the read", async () => {
     ["bad.example", "good.example"]
   );
   assert.equal(result.meta.complete, false);
-  assert.ok(result.meta.notes.includes("Stopped at 3 senders; more exist."));
+  assert.ok(
+    result.meta.notes.includes(
+      "Stopped at 3 senders (max_senders); more exist."
+    )
+  );
 
   const exact = await single(DATA).insights.domainHealth({ max_senders: 10 });
   assert.equal(
@@ -351,7 +397,7 @@ test("domain_health pools one domain's mailboxes across two tools", async () => 
   assert.equal(shared?.risk, "high");
   assert.deepEqual(shared?.reasons, [
     "12 of 100 warmup emails landed in spam (12%, over 10%)",
-    "1 of 2 mailboxes are disconnected",
+    "1 of 2 mailboxes is disconnected",
   ]);
   assert.equal(data.linkedinSeats[0]?.sender, "lntool:agency:seat");
   assert.equal(meta.provider, "combined");

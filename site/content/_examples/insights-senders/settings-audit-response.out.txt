@@ -20,7 +20,7 @@
         "findings": [
           {
             "check": "limit_over_senders",
-            "finding": "The daily limit of 200 is over 50 a day for each of its 3 senders (150).",
+            "finding": "The daily limit of 200 is over the 100 a day its 3 senders can send.",
             "severity": "high",
             "value": 200
           },

@@ -23,6 +23,7 @@
       "averageDaily": 115,
       "days": 7,
       "daysWithData": 7,
+      "fromUncounted": null,
       "scope": "workspace",
       "total": 805
     },
@@ -39,13 +40,15 @@
       }
     ],
     "uncheckedCampaigns": 1,
-    "utilization": 0.8846
+    "utilization": null
   },
   "insight": "sender_capacity",
   "meta": {
     "complete": true,
     "evidence": "exact",
-    "notes": [],
+    "notes": [
+      "Capacity in use left out: 2 inactive or unlimited senders may have sent some of these messages. Pass split_uncounted: true to read their sends (1 request each)."
+    ],
     "requests": 0,
     "computedAt": "2026-11-14T12:00:00.000Z",
     "provider": "memory"

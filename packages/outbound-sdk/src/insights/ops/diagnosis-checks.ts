@@ -3,6 +3,8 @@
 
 import type { CampaignSettings } from "../../internal/entities-account.ts";
 import type { Campaign, Sender } from "../../internal/entities.ts";
+import { plural } from "../../internal/numbers.ts";
+import { noun } from "../../internal/plural.ts";
 import { percent, round, spoken } from "../stats.ts";
 import { measure, volumeOf } from "./shared.ts";
 import type { Rates, Totals } from "./shared.ts";
@@ -227,7 +229,7 @@ const senders: Check = (facts) => {
     : [
         {
           code: "inactive_sender",
-          finding: `${inactive.length} of ${all.length} senders are not active: ${inactive
+          finding: `${inactive.length} of ${plural(all.length, "sender")} ${noun(inactive.length, "is", "are")} not active: ${inactive
             .map(
               (sender) =>
                 `${sender.address ?? sender.name ?? sender.ref} (${sender.status})`

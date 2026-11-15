@@ -3,20 +3,29 @@
 import { z } from "zod";
 
 import { mapConcurrent } from "../../internal/concurrency.ts";
-import { replyCategorySchema } from "../../internal/entities.ts";
 import type {
   Campaign,
   Lead,
   Message,
   Reply,
 } from "../../internal/entities.ts";
+import { plural } from "../../internal/numbers.ts";
+import { replyCategorySchema } from "../../internal/vocabulary.ts";
+import type { Capped } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { round } from "../stats.ts";
-import { nameOf, readByRef, readCapped } from "./read.ts";
+import { nameOf, readByRef, readCappedFlag } from "./read.ts";
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
+
+/** A wait as a person says it: in hours under two days, in whole days after. */
+const waited = (hours: number): string =>
+  hours >= 48
+    ? plural(Math.floor(hours / 24), "day")
+    : plural(Math.floor(hours), "hour");
+
 const DEFAULT_DAYS = 14;
 
 const input = z.object({
@@ -99,6 +108,8 @@ export interface DroppedReplies {
     readonly tooRecent: number;
     /** Could not be checked: no thread or lead to read, or no time on the reply. Not counted as dropped. */
     readonly unchecked: number;
+    /** `true` when `max_replies` stopped the read with more replies left, so dropped ones may be missing. */
+    readonly moreRepliesExist: boolean;
   };
   readonly since: string;
   readonly olderThanHours: number;
@@ -196,7 +207,7 @@ const toDropped = (
       category: first.category,
       channel: first.channel,
       checkedBy: by,
-      finding: `${/^[aeiou]/u.test(first.category) ? "An" : "A"} ${first.category} reply has waited ${Math.floor(hoursWaiting)} hours with nothing sent after it.`,
+      finding: `${/^[aeiou]/u.test(first.category) ? "An" : "A"} ${first.category} reply has waited ${waited(hoursWaiting)} with nothing sent after it.`,
       hoursWaiting,
       email: null,
       lead: first.leadRef,
@@ -233,19 +244,27 @@ const named = async (
     );
   }
 
+  const unlinked = dropped.filter((each) => each.lead === null).length;
+
+  if (unlinked > 0) {
+    context.note(
+      `${unlinked} dropped ${unlinked === 1 ? "reply carries" : "replies carry"} no lead ref, since the vendor does not tie a reply to its lead, so name, email and linkedinUrl are null there.`
+    );
+  }
+
   const [leads, campaigns] = await Promise.all([
     readByRef<Lead>(
       context,
       leadRefs,
       (refs) => outbound.leads.getMany(refs),
-      "lead(s)",
+      ["lead", "leads"],
       "names are null"
     ),
     readByRef<Campaign>(
       context,
       refsOf(dropped.map((each) => each.campaign)),
       (refs) => outbound.campaigns.getMany(refs),
-      "campaign(s)",
+      ["campaign", "campaigns"],
       "names are null"
     ),
   ]);
@@ -270,7 +289,7 @@ const readReplies = (
   context: InsightContext,
   since: string,
   max: number
-): Promise<Reply[]> => {
+): Promise<Capped<Reply>> => {
   const { outbound } = context;
   const filtered = outbound.capabilities["replies.since"] !== false;
 
@@ -280,23 +299,24 @@ const readReplies = (
     );
   }
 
-  return readCapped(
+  return readCappedFlag(
     context,
     (cap) =>
       outbound.replies.listAll(filtered ? { max: cap, since } : { max: cap }),
     max,
-    "replies"
+    "replies",
+    "max_replies"
   );
 };
 
 export const droppedReplies = defineInsight({
   description:
-    "Replies from prospects that nobody answered. Reads the replies since a date (14 days before now by default), keeps the categories that need an answer, and for each conversation reads its thread, or the lead's timeline when there is no thread, and reports it as dropped when nothing was sent after the reply and it has waited longer than older_than_hours. Returns the dropped replies longest waiting first with hours waiting, category, the campaign and its name, and the lead with their name, email and LinkedIn profile. A reply that could not be checked is counted in totals.unchecked, never reported as dropped. Costs one request per page of replies, one per conversation checked, and one per lead and per campaign among the dropped replies to name them, so at most about three times max_replies requests.",
+    "Replies from prospects that nobody answered. Reads the replies since a date (14 days before now by default), keeps the categories that need an answer, and for each conversation reads its thread, or the lead's timeline when there is no thread, and reports it as dropped when nothing was sent after the reply and it has waited longer than older_than_hours. Returns the dropped replies longest waiting first with hours waiting, category, the campaign and its name, and the lead with their name, email and LinkedIn profile. A reply that could not be checked is counted in totals.unchecked, never reported as dropped. Costs one request per page of replies, one per conversation checked, and one per lead and per campaign among the dropped replies to name them, so at most about three times max_replies requests. totals.moreRepliesExist is true when max_replies left replies unread.",
   inputSchema: input,
   key: "droppedReplies",
   name: "dropped_replies",
   needs: ["replies.list"],
-  next: "Use person_summary with the lead's email address to read what was sent before answering, or hot_leads to see who else to contact first.",
+  next: "Use person_summary with the lead's ref or email address to read what was sent before answering. Use hot_leads to see who else to contact first.",
   run: async (context, values) => {
     const since = new Date(
       values.since === null
@@ -312,7 +332,8 @@ export const droppedReplies = defineInsight({
       );
     }
 
-    const read = await readReplies(context, since, values.max_replies);
+    const listed = await readReplies(context, since, values.max_replies);
+    const read = listed.items;
 
     // A reply with no time is kept: it is counted as unchecked below.
     const replies = read.filter(
@@ -382,6 +403,7 @@ export const droppedReplies = defineInsight({
         answered,
         conversations: conversations.length,
         dropped: dropped.length,
+        moreRepliesExist: listed.capped,
         repliesRead: read.length,
         skippedAuto: wanted.length - kept.length,
         skippedByCategory: replies.length - wanted.length,

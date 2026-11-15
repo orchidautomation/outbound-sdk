@@ -3,7 +3,7 @@
 {"text":"*Hot leads*","type":"mrkdwn"}
 {"text":"1 lead to call first.","type":"mrkdwn"}
 [{"items":[{"block":{"text":{"text":"Hot\n*1*","type":"mrkdwn"},"type":"section"}},{"block":{"text":{"text":"Scored\n*1*","type":"mrkdwn"},"type":"section"}}]}]
-{"text":"• Alex Example · Example Co · 78.99 · marked Interested, replied 1 time(s), last reply 2 day(s) ago, 2 open(s).","type":"mrkdwn"}
+{"text":"• Alex Example · Example Co · 78.99 · marked Interested, replied 1 time, last reply 2 days ago, 2 opens.","type":"mrkdwn"}
 "divider"
 {"text":"*Domain health*","type":"mrkdwn"}
 {"text":"🔴 1 sending domain at high risk.","type":"mrkdwn"}
@@ -11,7 +11,7 @@
 {"text":"• 🔴 *example.com*: DKIM failing; 29 of 200 warmup emails landed in spam (14.5%, over 10%)","type":"mrkdwn"}
 "divider"
 {"text":"*Warmup readiness*","type":"mrkdwn"}
-{"text":"🟡 1 of 2 senders are ready to send.","type":"mrkdwn"}
+{"text":"🟡 1 of 2 senders is ready on warmup alone; DNS and warmup spam were not checked.","type":"mrkdwn"}
 [{"items":[{"block":{"text":{"text":"Ready\n*1*","type":"mrkdwn"},"type":"section"}},{"block":{"text":{"text":"Not ready\n*1*","type":"mrkdwn"},"type":"section"}}]}]
 {"text":"• outreach2@example.com · active · 88 · score low","type":"mrkdwn"}
 [{"text":"memory · 0 requests","type":"mrkdwn"}]

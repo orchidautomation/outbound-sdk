@@ -20,6 +20,7 @@ const EMAIL: MemoryData = {
   campaigns: [
     {
       id: "c1",
+      name: "Founders Q4",
       steps: [
         {
           variants: [
@@ -84,6 +85,8 @@ test("copy_audit finds each problem, with its severity and the text behind it, w
   );
 
   assert.equal(result.insight, "copy_audit");
+  // The campaign record is read anyway, so its name comes back with the ref.
+  assert.equal(result.data.campaignName, "Founders Q4");
   assert.equal(result.data.channel, "email");
   assert.equal(result.data.clean, false);
   assert.deepEqual(
@@ -176,7 +179,7 @@ test("copy_audit finds each problem, with its severity and the text behind it, w
     [3, 5, 1]
   );
   assert.deepEqual(result.meta.notes, [
-    "1 variant(s) have no body in the vendor's answer, so their body checks were skipped.",
+    "1 variant has no body in the vendor's answer, so its body checks were skipped.",
   ]);
 });
 
@@ -377,5 +380,46 @@ test("copy_audit picks the channel's checks per campaign on a combined instance"
   assert.deepEqual(
     [linkedin.data.channel, linkedin.data.findings.length],
     ["linkedin", 2]
+  );
+});
+
+const linksIn = async (body: string): Promise<string | null> => {
+  const result = await single({
+    campaigns: [
+      {
+        id: "c1",
+        steps: [{ variants: [{ body, subject: "Quick question" }] }],
+      },
+    ],
+  }).insights.copyAudit({ campaign: ref("c1"), max_links: 0 }, { now: NOW });
+
+  return (
+    result.data.findings.find((each) => each.check === "too_many_links")
+      ?.finding ?? null
+  );
+};
+
+test("copy_audit counts a linked URL in an HTML body as one link (OUT-59)", async () => {
+  const href = "https://x.example/demo";
+
+  // The way most editors write a link: the address is also the link text.
+  assert.equal(
+    await linksIn(`<p>See <a href="${href}">${href}</a></p>`),
+    "The body has 1 link; the limit is 0."
+  );
+  assert.equal(
+    await linksIn(
+      `<a href="${href}">${href}</a> and <a href='https://y.example'>the other one</a>`
+    ),
+    "The body has 2 links; the limit is 0."
+  );
+  assert.equal(
+    await linksIn(`See ${href} for more.`),
+    "The body has 1 link; the limit is 0."
+  );
+  // A link and a bare address beside it are two.
+  assert.equal(
+    await linksIn(`<a href="${href}">the demo</a> or https://y.example`),
+    "The body has 2 links; the limit is 0."
   );
 });

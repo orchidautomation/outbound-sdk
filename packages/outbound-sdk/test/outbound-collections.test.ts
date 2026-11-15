@@ -45,6 +45,11 @@ const counting = (
   return { adapter: counted, calls: () => calls };
 };
 
+// SAFETY: a plain JavaScript caller can pass any key; this is what the check is for.
+const loose = (
+  options: Readonly<Record<string, string | number | undefined>>
+) => options as Record<string, never>;
+
 const failure = async (action: () => unknown): Promise<OutboundError> => {
   try {
     await action();
@@ -226,6 +231,136 @@ test("getMany returns partial failure as data, in request order", async () => {
     result.errors.map((entry) => [entry.id, entry.error.code]),
     [["nope", "NotFound"]]
   );
+});
+
+test("getMany returns values in the order of the ids and reads each distinct id once", async () => {
+  const spy = counting(
+    memory({ data: demoData({ now: "2026-10-08T12:00:00.000Z" }) })
+  );
+
+  const outbound = createOutbound({ adapter: spy.adapter });
+
+  const result = await outbound.campaigns.getMany(
+    ["cmp_agencies", "nope", "cmp_founders", "cmp_agencies"],
+    { concurrency: 2 }
+  );
+
+  assert.deepEqual(
+    result.results.map((entry) => [entry.id, entry.value.sourceId]),
+    [
+      ["cmp_agencies", "cmp_agencies"],
+      ["cmp_founders", "cmp_founders"],
+      ["cmp_agencies", "cmp_agencies"],
+    ]
+  );
+  assert.deepEqual(
+    result.errors.map((entry) => [entry.id, entry.error.code]),
+    [["nope", "NotFound"]]
+  );
+  assert.equal(spy.calls(), 3, "the repeated id is read once");
+  assert.equal(result.results[0]?.value, result.results[2]?.value);
+});
+
+test("getMany refuses an id that is not a string before any request", async () => {
+  const spy = counting(
+    memory({ data: demoData({ now: "2026-10-08T12:00:00.000Z" }) })
+  );
+
+  const outbound = createOutbound({ adapter: spy.adapter });
+
+  for (const id of [undefined, 7, null]) {
+    const error = await failure(() =>
+      outbound.campaigns.getMany(
+        // SAFETY: a plain JavaScript caller can pass anything; this is what the check is for.
+        [id as unknown as string, "cmp_founders"],
+        { concurrency: 1 }
+      )
+    );
+
+    assert.equal(error.code, "Invalid");
+    assert.match(error.message, /Campaign id must be a string/u);
+  }
+
+  assert.equal(spy.calls(), 0);
+});
+
+test("listAll refuses a max that is not a positive integer", async () => {
+  const spy = counting(memory({ data: campaigns(3) }));
+  const outbound = createOutbound({ adapter: spy.adapter });
+
+  for (const max of [0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+    const error = await failure(() =>
+      outbound.campaigns.listAll({ max }).toArray()
+    );
+
+    assert.equal(error.code, "Invalid");
+    assert.match(error.message, /max must be a positive integer/u);
+  }
+
+  assert.equal(spy.calls(), 0);
+});
+
+test("a date-only until covers that whole UTC day; one with a time is kept", async () => {
+  const outbound = client(demoData({ now: "2026-11-14T12:00:00Z" }));
+
+  const sameDay = await outbound.replies
+    .listAll({ since: "2026-11-12", until: "2026-11-12" })
+    .toArray();
+
+  assert.deepEqual(
+    sameDay.map((reply) => reply.sentAt),
+    ["2026-11-12T09:30:00.000Z"]
+  );
+
+  const beforeIt = await outbound.replies
+    .listAll({ since: "2026-11-12", until: "2026-11-12T09:00:00Z" })
+    .toArray();
+
+  assert.deepEqual(beforeIt, []);
+
+  const messages = await outbound.messages
+    .listAll({ since: "2026-11-11", until: "2026-11-11" })
+    .toArray();
+
+  assert.ok(messages.length > 0, "messages take the same rule");
+  assert.ok(
+    messages.every((message) => message.sentAt?.startsWith("2026-11-11"))
+  );
+});
+
+test("a list option the collection does not take is refused before any request", async () => {
+  const spy = counting(
+    memory({ data: demoData({ now: "2026-10-08T12:00:00.000Z" }) })
+  );
+
+  const outbound = createOutbound({ adapter: spy.adapter });
+
+  const status = await failure(() =>
+    outbound.leads.list(loose({ status: "replied" }))
+  );
+
+  assert.equal(status.code, "Invalid");
+  assert.equal(
+    status.message,
+    'leads.list: "status" is not an option. It takes: campaignId, cursor, deadline, email, limit, linkedinUrl, listId, maxRequests, retries, signal, since, timeout, until'
+  );
+
+  for (const action of [
+    () => outbound.leads.listAll(loose({ campaign: "cmp_founders" })),
+    () => outbound.campaigns.list(loose({ max: 2 })),
+    () => outbound.replies.listAll(loose({ sentiment: "positive" })),
+    () => outbound.campaign("cmp_founders").leads.list(loose({ stauts: "x" })),
+  ]) {
+    const error = await failure(action);
+    assert.equal(error.code, "Invalid");
+    assert.match(error.message, /is not an option\. It takes: /u);
+  }
+
+  // A key left undefined changes nothing, so it is not refused.
+  await outbound.campaigns.list(
+    loose({ status: undefined, unknown: undefined })
+  );
+  assert.equal(spy.calls(), 1);
 });
 
 test("filters campaigns by status", async () => {

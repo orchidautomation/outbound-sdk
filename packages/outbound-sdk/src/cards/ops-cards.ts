@@ -6,6 +6,7 @@ import { pieChart, seriesChart } from "./content.ts";
 import type { Stat } from "./content.ts";
 import {
   bool,
+  campaignNameOf,
   child,
   DASH,
   int,
@@ -19,6 +20,7 @@ import {
   words,
 } from "./format.ts";
 import {
+  campaignsCapped,
   flagged,
   LEFT,
   measured,
@@ -54,7 +56,16 @@ const anomalies: CardBuilder = (data) => {
     notes: untested.map(
       (metric) => `${words(show(metric, "metric"))}: ${show(metric, "reason")}`
     ),
-    subtitle: `${show(data, "scope")} · ${range(child(data, "period"))}`,
+    // The answer names a campaign by its ref only, so the ref is a value, not a heading.
+    stats: [
+      [
+        "Scope",
+        str(data, "scope") === "workspace"
+          ? "Whole workspace"
+          : show(data, "scope"),
+      ],
+    ],
+    subtitle: range(child(data, "period")),
     title: "Anomalies",
   };
 };
@@ -75,9 +86,33 @@ const campaignDiagnosis: CardBuilder = (data) => ({
     ...totalStats(child(data, "totals")),
     ...rateStats(child(data, "rates")),
   ],
-  subtitle: `${show(data, "name")} · ${show(data, "status")} · ${show(data, "channel")}`,
+  subtitle: `${campaignNameOf(data)} · ${show(data, "status")} · ${show(data, "channel")}`,
   title: "Campaign diagnosis",
 });
+
+// What each ranked rate divides by: one heading when every row shares it,
+// otherwise the count and its basis in each row.
+const BASIS_HEADINGS = new Map([
+  ["contacted", "Contacted"],
+  ["sent", "Sent"],
+]);
+
+const sharedBasis = (ranked: readonly JsonObject[]): string | undefined => {
+  const bases = new Set(ranked.map((campaign) => show(campaign, "basis")));
+
+  return bases.size === 1 ? [...bases][0] : undefined;
+};
+
+const baseHeading = (ranked: readonly JsonObject[]): string =>
+  BASIS_HEADINGS.get(sharedBasis(ranked) ?? "") ?? "Divided by";
+
+const baseCell = (
+  ranked: readonly JsonObject[],
+  campaign: JsonObject
+): string =>
+  sharedBasis(ranked) === undefined
+    ? `${int(num(campaign, "of"))} ${show(campaign, "basis")}`
+    : int(num(campaign, "of"));
 
 const campaignRanking: CardBuilder = (data) => {
   const ranked = rows(data, "ranked");
@@ -86,19 +121,20 @@ const campaignRanking: CardBuilder = (data) => {
   const [first] = ranked;
 
   return {
+    bullets: campaignsCapped(data),
     chart: seriesChart(
       "bar",
       `${metric} by campaign (%)`,
       `${metric} %`,
       ranked.map((campaign) => [
-        show(campaign, "name"),
+        campaignNameOf(campaign),
         percentPoint(num(campaign, "rate")),
       ])
     ),
     finding:
       first === undefined
         ? "No campaign has enough sends to rank."
-        : `${show(first, "name")} ranks first at ${pct(num(first, "rate"))}.`,
+        : `${campaignNameOf(first)} ranks first at ${pct(num(first, "rate"))}.`,
     notes:
       rows(data, "tooFewSends").length > 0
         ? [
@@ -113,11 +149,11 @@ const campaignRanking: CardBuilder = (data) => {
     subtitle: `${metric}, ${show(data, "better")} is better`,
     table: {
       align: [RIGHT, LEFT, RIGHT, RIGHT],
-      headers: ["#", "Campaign", "Sent", metric],
+      headers: ["#", "Campaign", baseHeading(ranked), metric],
       rows: ranked.map((campaign) => [
         int(num(campaign, "rank")),
-        show(campaign, "name"),
-        int(num(campaign, "sent")),
+        campaignNameOf(campaign),
+        baseCell(ranked, campaign),
         measured(campaign),
       ]),
     },
@@ -129,6 +165,7 @@ const channelMix: CardBuilder = (data) => {
   const channels = rows(data, "channels");
 
   return {
+    bullets: campaignsCapped(data),
     chart: pieChart(
       "Replies by channel",
       channels.map((channel) => [
@@ -172,10 +209,16 @@ const versus = (comparison: JsonObject, key: string, write: Write): string => {
     : `${write(now)} (was ${write(before)})`;
 };
 
+// What a period's replies are divided by (`replyRateBasis`), as a heading.
+const perWhat = (data: Json | undefined): string =>
+  show(data, "replyRateBasis") === "contacted"
+    ? "Replies per lead"
+    : "Replies per send";
+
 const comparisonStats = (comparison: JsonObject): Stat[] => [
   ["Sent", versus(comparison, "sent", int)],
   ["Replies", versus(comparison, "replied", int)],
-  ["Reply rate", versus(comparison, "replyRate", pct)],
+  [perWhat(comparison), versus(comparison, "replyRate", pct)],
   ["Positive", versus(comparison, "positive", int)],
   ["Bounce rate", versus(comparison, "bounceRate", pct)],
 ];
@@ -195,6 +238,7 @@ const periodComparison: CardBuilder = (data) => {
   const total = child(data, "total");
 
   return {
+    bullets: campaignsCapped(data),
     finding: str(total, "finding"),
     stats: comparisonStats(total),
     subtitle: `${range(child(data, "current"))}, against ${range(child(data, "previous"))}`,
@@ -202,7 +246,7 @@ const periodComparison: CardBuilder = (data) => {
       align: [LEFT, RIGHT, RIGHT, LEFT],
       headers: ["Campaign", "Reply rate now", "Before", "Change"],
       rows: rows(data, "campaigns").map((campaign) => [
-        show(campaign, "name"),
+        campaignNameOf(campaign),
         pct(num(child(campaign, "current"), "replyRate")),
         pct(num(child(campaign, "previous"), "replyRate")),
         changeOf(campaign),
@@ -234,7 +278,7 @@ const pipelineForecast: CardBuilder = (data) => {
       ["Expected positive", estimate(child(data, "expectedPositive"))],
       ["Reply rate so far", measured(child(data, "replyRate"))],
     ],
-    subtitle: show(data, "name"),
+    subtitle: campaignNameOf(data),
     title: "Pipeline forecast",
   };
 };
@@ -245,6 +289,7 @@ const tagRollup: CardBuilder = (data) => {
   const tags = rows(data, "tags");
 
   return {
+    bullets: campaignsCapped(data),
     chart: seriesChart(
       "bar",
       "Reply rate by tag (%)",
@@ -283,18 +328,26 @@ const clientReport: CardBuilder = (data) => {
   const actions = rows(data, "actions");
 
   return {
-    bullets: actions.map((action) => `👉 ${show(action, "action")}`),
+    bullets: [
+      ...campaignsCapped(data),
+      ...actions.map((action) => `👉 ${show(action, "action")}`),
+    ],
     finding: str(totals, "finding"),
     notes: strings(data, "leftOut").map((part) => `Left out: ${part}`),
     stats: comparisonStats(totals),
     subtitle: `${plural(num(data, "campaigns") ?? 0, "campaign")} · ${range(child(data, "period"))}`,
     table: {
       align: [RIGHT, LEFT, RIGHT, RIGHT],
-      headers: ["#", "Top campaigns", "Sent", "Reply rate"],
+      headers: [
+        "#",
+        "Top campaigns",
+        show(data, "replyRateBasis") === "contacted" ? "Contacted" : "Sent",
+        perWhat(data),
+      ],
       rows: rows(data, "top").map((campaign) => [
         int(num(campaign, "rank")),
-        show(campaign, "name"),
-        int(num(campaign, "sent")),
+        campaignNameOf(campaign),
+        int(num(campaign, "of")),
         measured(campaign),
       ]),
     },

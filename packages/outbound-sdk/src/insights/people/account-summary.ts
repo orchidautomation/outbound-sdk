@@ -4,18 +4,20 @@ import { z } from "zod";
 
 import type { Lead } from "../../internal/entities.ts";
 import { OutboundError } from "../../internal/errors.ts";
+import { plural } from "../../internal/numbers.ts";
+import type { Capped } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { total } from "../stats.ts";
 import {
   domainOf,
-  hasReplied,
+  hasHumanReply,
+  isAutoReplied,
   isPositive,
-  leadsOf,
   nameOf,
   noteEngagement,
   positiveLabelsField,
-  readCapped,
+  readCappedFlag,
 } from "./read.ts";
 
 const input = z.object({
@@ -87,6 +89,11 @@ export interface AccountRecord {
   readonly replies: number | null;
   readonly lastContactedAt: string | null;
   readonly lastRepliedAt: string | null;
+  /**
+   * `true` when the vendor labels the record out-of-office or bounced: its
+   * replies were automatic, so they do not count as the person replying.
+   */
+  readonly autoReplied: boolean;
 }
 
 export interface AccountPerson {
@@ -96,13 +103,16 @@ export interface AccountPerson {
   readonly company: string | null;
   /** The campaigns the person is in, as refs. */
   readonly campaigns: readonly string[];
+  /** `true` when a record shows a reply that was not automatic. */
   readonly replied: boolean;
   /** `true` when one of their labels is a positive one. `null` when they carry no label. */
   readonly interested: boolean | null;
   /** Added up over their records. `null` when the vendor reports none. */
   readonly opens: number | null;
   readonly clicks: number | null;
+  /** Replies on records that are not `autoReplied`. */
   readonly replies: number | null;
+  /** The last reply on a record that is not `autoReplied`. */
   readonly lastRepliedAt: string | null;
   /** One entry per campaign the person is in. */
   readonly records: readonly AccountRecord[];
@@ -122,6 +132,11 @@ export interface AccountSummary {
     readonly leadsRead: number;
     /** Leads with no email address, which a domain cannot match. */
     readonly leadsWithoutEmail: number;
+    /**
+     * `true` when `max_leads` or `max_campaigns` stopped the read with more
+     * leads left, so people at the company may be missing.
+     */
+    readonly moreLeadsExist: boolean;
   };
   /** The most recent reply with a known time. `null` when no reply has one. */
   readonly lastReply: {
@@ -158,15 +173,16 @@ const parseDomain = (text: string, provider: string): string => {
 const readLeads = async (
   context: InsightContext,
   { max_campaigns: maxCampaigns, max_leads: maxLeads }: Input
-): Promise<Lead[]> => {
+): Promise<Capped<Lead>> => {
   const { outbound } = context;
 
   if (outbound.capabilities["leads.list"]) {
-    return await readCapped(
+    return await readCappedFlag(
       context,
       (cap) => outbound.leads.listAll({ max: cap }),
       maxLeads,
-      "leads"
+      "leads",
+      "max_leads"
     );
   }
 
@@ -178,28 +194,40 @@ const readLeads = async (
     );
   }
 
-  const campaigns = await readCapped(
+  const campaigns = await readCappedFlag(
     context,
     (cap) => outbound.campaigns.listAll({ max: cap }),
     maxCampaigns,
-    "campaigns"
+    "campaigns",
+    "max_campaigns"
   );
 
   const leads: Lead[] = [];
+  let { capped } = campaigns;
 
-  for (const campaign of campaigns) {
+  for (const campaign of campaigns.items) {
     if (leads.length >= maxLeads) {
-      context.partial(`Stopped at ${maxLeads} leads; more campaigns remain.`);
+      context.partial(
+        `Stopped at ${plural(maxLeads, "lead")} (max_leads); more campaigns remain.`
+      );
+      capped = true;
       break;
     }
 
     // oxlint-disable-next-line no-await-in-loop -- each campaign reads only the leads left under max_leads.
-    const found = await leadsOf(context, campaign.ref, maxLeads - leads.length);
+    const found = await readCappedFlag(
+      context,
+      (cap) => outbound.campaign(campaign.ref).leads.listAll({ max: cap }),
+      maxLeads - leads.length,
+      "leads of a campaign",
+      "max_leads"
+    );
 
-    leads.push(...found);
+    leads.push(...found.items);
+    capped ||= found.capped;
   }
 
-  return leads;
+  return { capped, items: leads };
 };
 
 const toRecord = (lead: Lead): AccountRecord => ({
@@ -212,6 +240,7 @@ const toRecord = (lead: Lead): AccountRecord => ({
   opens: lead.engagement?.opens ?? null,
   provider: lead.provider,
   replies: lead.engagement?.replies ?? null,
+  autoReplied: isAutoReplied(lead),
   status: lead.status,
 });
 
@@ -227,6 +256,7 @@ const toPerson = (
   labels: readonly string[]
 ): AccountPerson => {
   const records = leads.map(toRecord);
+  const human = records.filter((record) => !record.autoReplied);
   const verdicts = leads.map((lead) => isPositive(lead.interest, labels));
 
   const pick = <Value>(read: (lead: Lead) => Value | null): Value | null =>
@@ -246,12 +276,12 @@ const toPerson = (
     interested: verdicts.includes(true)
       ? true
       : (verdicts.find((verdict) => verdict !== null) ?? null),
-    lastRepliedAt: latest(records.map((record) => record.lastRepliedAt)),
+    lastRepliedAt: latest(human.map((record) => record.lastRepliedAt)),
     name: pick(nameOf),
     opens: total(records.map((record) => record.opens)),
     records,
-    replied: leads.some(hasReplied),
-    replies: total(records.map((record) => record.replies)),
+    replied: leads.some(hasHumanReply),
+    replies: total(human.map((record) => record.replies)),
     title: pick((lead) => lead.title),
   };
 };
@@ -282,12 +312,23 @@ const lastReplyOf = (
 
 export const accountSummary = defineInsight({
   description:
-    "Everyone at one company across campaigns and tools, from the company's domain or any email address at it: each person with their name, title, campaigns, status, interest label and open, click and reply counts, plus totals and who replied most recently. People are matched by exact email domain, so a lead with only a LinkedIn profile is not found, and an email provider domain such as gmail.com is refused unless allow_free_domains is true. Costs one request per page of leads read (max_leads sets the ceiling); a count the vendor does not report is null.",
+    "Everyone at one company across campaigns and tools, from the company's domain or any email address at it: each person with their name, title, campaigns, status, interest label and open, click and reply counts, plus totals and who replied most recently. People are matched by exact email domain, so a lead with only a LinkedIn profile is not found, and an email provider domain such as gmail.com is refused unless allow_free_domains is true. A record the vendor labels out-of-office or bounced is marked autoReplied and its replies do not count as the person replying. Costs one request per page of leads read (max_leads sets the ceiling); totals.moreLeadsExist is true when that ceiling left leads unread. A count the vendor does not report is null.",
   inputSchema: input,
   key: "accountSummary",
+  // Every address is masked, so no lead's domain can be read. A hash keeps
+  // exact matching but not the domain.
+  maskedOut: ({ fields, strategy }) => {
+    if (!fields.includes("email")) {
+      return null;
+    }
+
+    return strategy === "hash"
+      ? 'email addresses, whose domain it matches people by (under strategy "hash" too: a hashed address keeps no domain)'
+      : "email addresses, whose domain it matches people by";
+  },
   name: "account_summary",
   needs: [],
-  next: "Use person_summary with one person's email address for their full history, message by message.",
+  next: "Use person_summary with one person's email address or lead ref for their full history, message by message.",
   run: async (context, values) => {
     const domain = parseDomain(values.domain, context.outbound.provider);
 
@@ -299,7 +340,8 @@ export const accountSummary = defineInsight({
       );
     }
 
-    const leads = await readLeads(context, values);
+    const read = await readLeads(context, values);
+    const leads = read.items;
 
     noteEngagement(context, leads, "those are null");
     const byEmail = new Map<string, Lead[]>();
@@ -326,6 +368,7 @@ export const accountSummary = defineInsight({
           .length,
         leadsRead: leads.length,
         leadsWithoutEmail: leads.filter((lead) => lead.email === null).length,
+        moreLeadsExist: read.capped,
         people: people.length,
         records: people.reduce((sum, each) => sum + each.records.length, 0),
         replied: people.filter((person) => person.replied).length,

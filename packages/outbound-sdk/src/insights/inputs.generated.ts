@@ -16,7 +16,7 @@ export interface InsightInputs {
     readonly max_campaigns?: number | undefined;
 
     /**
-     * The person's email address or LinkedIn profile URL
+     * The person's email address or LinkedIn profile URL, or a lead ref as the other people insights return
      *
      * At least 3 characters. Required.
      */
@@ -76,7 +76,7 @@ export interface InsightInputs {
     readonly max_leads_per_campaign?: number | undefined;
 
     /**
-     * Campaign statuses to consider, for example active or paused
+     * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
      *
      * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active"]`.
      */
@@ -108,7 +108,7 @@ export interface InsightInputs {
     readonly max_leads_per_campaign?: number | undefined;
 
     /**
-     * Campaign statuses to consider, for example active or paused
+     * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
      *
      * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active"]`.
      */
@@ -275,11 +275,18 @@ export interface InsightInputs {
     readonly campaign: string;
 
     /**
-     * First day to count, YYYY-MM-DD. null counts from the start.
+     * First day counted, YYYY-MM-DD. null for the whole history.
      *
-     * Defaults to `null`.
+     * An ISO 8601 date, `YYYY-MM-DD`, or `null`. Defaults to `null`.
      */
     readonly from?: string | null | undefined;
+
+    /**
+     * Last day counted, YYYY-MM-DD. null for up to today.
+     *
+     * An ISO 8601 date, `YYYY-MM-DD`, or `null`. Defaults to `null`.
+     */
+    readonly to?: string | null | undefined;
 
     /**
      * A step earns its place when the low end of its reply rate interval is above this. 0 asks only that the rate is reliably above zero.
@@ -287,13 +294,6 @@ export interface InsightInputs {
      * A number from 0 to 1. Defaults to `0`.
      */
     readonly min_reply_rate?: number | undefined;
-
-    /**
-     * Last day to count, YYYY-MM-DD. null counts to today.
-     *
-     * Defaults to `null`.
-     */
-    readonly to?: string | null | undefined;
   };
   /** The input of `variantTest` (the `variant_test` tool). */
   readonly variantTest: {
@@ -312,11 +312,18 @@ export interface InsightInputs {
     readonly campaign: string;
 
     /**
-     * First day to count, YYYY-MM-DD. null counts from the start.
+     * First day counted, YYYY-MM-DD. null for the whole history.
      *
-     * Defaults to `null`.
+     * An ISO 8601 date, `YYYY-MM-DD`, or `null`. Defaults to `null`.
      */
     readonly from?: string | null | undefined;
+
+    /**
+     * Last day counted, YYYY-MM-DD. null for up to today.
+     *
+     * An ISO 8601 date, `YYYY-MM-DD`, or `null`. Defaults to `null`.
+     */
+    readonly to?: string | null | undefined;
 
     /**
      * What a variant is judged on. Replies and positive replies are divided by leads contacted (or sends); opens and clicks by messages delivered (or sends).
@@ -331,13 +338,6 @@ export interface InsightInputs {
      * A whole number from 1 to 9,007,199,254,740,991. Defaults to `100`.
      */
     readonly min_sent?: number | undefined;
-
-    /**
-     * Last day to count, YYYY-MM-DD. null counts to today.
-     *
-     * Defaults to `null`.
-     */
-    readonly to?: string | null | undefined;
   };
   /** The input of `copyAudit` (the `copy_audit` tool). */
   readonly copyAudit: {
@@ -414,7 +414,7 @@ export interface InsightInputs {
     readonly min_sent?: number | undefined;
 
     /**
-     * The campaign statuses to read.
+     * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
      *
      * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active","paused","completed"]`.
      */
@@ -425,7 +425,7 @@ export interface InsightInputs {
   /** The input of `replyTiming` (the `reply_timing` tool). */
   readonly replyTiming: {
     /**
-     * A campaign's ref to look at one campaign. null looks at every campaign.
+     * A campaign's ref to look at one campaign; an unknown one is refused with NotFound. null looks at every campaign.
      *
      * Not empty. Defaults to `null`.
      */
@@ -466,6 +466,13 @@ export interface InsightInputs {
      *
      * A number from 0 to 1. Defaults to `0.1`.
      */
+    readonly max_spam_rate?: number | undefined;
+
+    /**
+     * @deprecated Renamed to `max_spam_rate`. Removed in 0.5.0.
+     *
+     * A number from 0 to 1.
+     */
     readonly spam_rate_threshold?: number | undefined;
   };
   /** The input of `senderCapacity` (the `sender_capacity` tool). */
@@ -490,15 +497,29 @@ export interface InsightInputs {
      * A whole number from 1 to 1000. Defaults to `200`.
      */
     readonly max_senders?: number | undefined;
+
+    /**
+     * Read the stats of each inactive or unlimited sender (1 request each) so utilization can leave their sends out. Off, utilization is null whenever such a sender exists.
+     *
+     * Defaults to `false`.
+     */
+    readonly split_uncounted?: boolean | undefined;
   };
   /** The input of `bounceWatch` (the `bounce_watch` tool). */
   readonly bounceWatch: {
     /**
-     * First day to count, as YYYY-MM-DD. Leave out for the vendor's whole history.
+     * First day counted, YYYY-MM-DD. null for the whole history.
      *
-     * Defaults to `null`.
+     * An ISO 8601 date, `YYYY-MM-DD`, or `null`. Defaults to `null`.
      */
-    readonly from?: string | undefined;
+    readonly from?: string | null | undefined;
+
+    /**
+     * Last day counted, YYYY-MM-DD. null for up to today.
+     *
+     * An ISO 8601 date, `YYYY-MM-DD`, or `null`. Defaults to `null`.
+     */
+    readonly to?: string | null | undefined;
 
     /**
      * Also check the senders of each campaign over the threshold. Costs 1 listing per such campaign and 1 request per sender.
@@ -506,6 +527,13 @@ export interface InsightInputs {
      * Defaults to `true`.
      */
     readonly include_senders?: boolean | undefined;
+
+    /**
+     * The bounce rate, bounced divided by sent, that is too high
+     *
+     * A number from 0 to 1. Defaults to `0.03`.
+     */
+    readonly max_bounce_rate?: number | undefined;
 
     /**
      * The most campaigns to check. Each costs 1 request.
@@ -522,25 +550,27 @@ export interface InsightInputs {
     readonly max_senders_per_campaign?: number | undefined;
 
     /**
-     * A campaign with fewer sends than this is too small to judge
+     * A campaign or sender with fewer sends than this is too small to judge
      *
      * A whole number from 0 to 9,007,199,254,740,991. Defaults to `100`.
      */
     readonly min_sent?: number | undefined;
 
     /**
-     * The bounce rate, bounced divided by sent, that is too high
+     * @deprecated Renamed to `max_bounce_rate`. Removed in 0.5.0.
      *
-     * A number from 0 to 1. Defaults to `0.03`.
+     * A number from 0 to 1.
      */
     readonly threshold?: number | undefined;
 
     /**
-     * Last day to count, as YYYY-MM-DD. Leave out for the vendor's whole history.
+     * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
      *
-     * Defaults to `null`.
+     * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active"]`.
      */
-    readonly to?: string | undefined;
+    readonly statuses?:
+      | ("active" | "archived" | "completed" | "draft" | "paused" | "unknown")[]
+      | undefined;
   };
   /** The input of `warmupReadiness` (the `warmup_readiness` tool). */
   readonly warmupReadiness: {
@@ -596,7 +626,7 @@ export interface InsightInputs {
     readonly max_senders?: number | undefined;
 
     /**
-     * Campaign statuses to look at: active, paused, draft, completed, archived or unknown
+     * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
      *
      * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active"]`.
      */
@@ -614,7 +644,7 @@ export interface InsightInputs {
     readonly max_campaigns?: number | undefined;
 
     /**
-     * A campaign's daily limit should not exceed this many sends per attached sender
+     * The sends a day assumed for an attached sender when the senders' own daily limits are not reported
      *
      * A number, 1 or more. Defaults to `50`.
      */
@@ -649,7 +679,7 @@ export interface InsightInputs {
     readonly min_window_hours?: number | undefined;
 
     /**
-     * Campaign statuses to look at: active, paused, draft, completed, archived or unknown
+     * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
      *
      * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active"]`.
      */
@@ -679,6 +709,13 @@ export interface InsightInputs {
      * At least 3 characters. Required.
      */
     readonly campaign: string;
+
+    /**
+     * The days, ending yesterday, held against the same number before
+     *
+     * A whole number from 1 to 30. Defaults to `7`.
+     */
+    readonly days?: number | undefined;
 
     /**
      * Average daily sends at or over this share of the daily limit mean the limit holds volume back
@@ -725,7 +762,7 @@ export interface InsightInputs {
     /**
      * Under this many sends, rates are not judged
      *
-     * A whole number from 0 to 9,007,199,254,740,991. Defaults to `100`.
+     * A whole number from 0 to 9,007,199,254,740,991. Defaults to `50`.
      */
     readonly min_sent?: number | undefined;
 
@@ -737,9 +774,9 @@ export interface InsightInputs {
     readonly min_weekly_hours?: number | undefined;
 
     /**
-     * The days, ending yesterday, held against the same number before
+     * @deprecated Renamed to `days`. Removed in 0.5.0.
      *
-     * A whole number from 1 to 30. Defaults to `7`.
+     * A whole number from 1 to 30.
      */
     readonly recent_days?: number | undefined;
   };
@@ -831,7 +868,7 @@ export interface InsightInputs {
     readonly max_campaigns?: number | undefined;
 
     /**
-     * Only campaigns in one of these states are read
+     * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
      *
      * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active","paused","completed"]`.
      */
@@ -884,7 +921,7 @@ export interface InsightInputs {
     readonly max_campaigns?: number | undefined;
 
     /**
-     * Only campaigns in one of these states are read
+     * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
      *
      * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active","paused","completed"]`.
      */
@@ -934,7 +971,7 @@ export interface InsightInputs {
     readonly max_campaigns?: number | undefined;
 
     /**
-     * Only campaigns in one of these states are read
+     * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
      *
      * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active","paused","completed"]`.
      */
@@ -973,7 +1010,7 @@ export interface InsightInputs {
     readonly max_campaigns?: number | undefined;
 
     /**
-     * Only campaigns in one of these states are read
+     * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
      *
      * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active","paused","completed"]`.
      */
@@ -998,7 +1035,7 @@ export interface InsightInputs {
     readonly max_campaigns?: number | undefined;
 
     /**
-     * Only campaigns in one of these states are read
+     * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
      *
      * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active","paused","completed"]`.
      */
@@ -1033,6 +1070,13 @@ export interface InsightInputs {
      * A whole number from 1 to 90. Defaults to `7`.
      */
     readonly days?: number | undefined;
+
+    /**
+     * How many best and worst campaigns to show
+     *
+     * A whole number from 1 to 20. Defaults to `3`.
+     */
+    readonly limit?: number | undefined;
 
     /**
      * A campaign bounce rate over this is a bounce problem
@@ -1070,9 +1114,9 @@ export interface InsightInputs {
     readonly runway_days?: number | undefined;
 
     /**
-     * How many best and worst campaigns to show
+     * @deprecated Renamed to `limit`. Removed in 0.5.0.
      *
-     * A whole number from 1 to 20. Defaults to `3`.
+     * A whole number from 1 to 20.
      */
     readonly top?: number | undefined;
   };

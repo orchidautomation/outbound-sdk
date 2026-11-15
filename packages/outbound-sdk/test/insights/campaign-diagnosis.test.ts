@@ -132,8 +132,7 @@ test("campaign_diagnosis lists what is wrong with a campaign, most serious first
     },
     {
       code: "inactive_sender",
-      finding:
-        "1 of 2 senders are not active: two@send.example (disconnected).",
+      finding: "1 of 2 senders is not active: two@send.example (disconnected).",
       next: "Reconnect or replace them; warmup_readiness shows which mailboxes are fit to send.",
       numbers: { inactive: 1, senders: 2 },
       severity: "high",
@@ -280,7 +279,7 @@ test("campaign_diagnosis moves with each threshold", async () => {
   ]);
 
   // The last 3 days, 11-11 to 11-13, have no sends at all.
-  assert.deepEqual(await run({ recent_days: 3 }), [
+  assert.deepEqual(await run({ days: 3 }), [
     "high_bounce_rate",
     "no_recent_sends",
     "inactive_sender",
@@ -337,7 +336,7 @@ test("campaign_diagnosis words each finding from its own numbers", async () => {
   );
 
   const stopped = await outbound.insights.campaignDiagnosis(
-    { ...BAD, recent_days: 3 },
+    { ...BAD, days: 3 },
     { now: NOW }
   );
 
@@ -404,7 +403,7 @@ test("campaign_diagnosis keeps unknown counts unknown and says what it could not
     "The vendor reports no sends for this period, so no rate can be judged."
   );
   assert.deepEqual(blank.data.findings[1]?.numbers, {
-    minSent: 100,
+    minSent: 50,
     sent: null,
   });
 });
@@ -488,11 +487,23 @@ test("campaign_diagnosis reads a campaign of either tool on a combined instance"
   assert.deepEqual(
     result.data.findings.map((each) => [each.code, each.finding]),
     [
-      ["inactive_sender", "1 of 1 senders are not active: Seat one (paused)."],
+      ["inactive_sender", "1 of 1 sender is not active: Seat one (paused)."],
       [
         "short_sequence",
         "The sequence has 2 steps; follow-ups usually bring a large share of the replies.",
       ],
     ]
   );
+});
+
+test("campaign_diagnosis judges a campaign with 60 sends, as the other ops insights do", async () => {
+  const result = await single({
+    campaigns: [{ id: "few", name: "Few" }],
+    stats: [row("few", "2026-11-10", { contacted: 60, replied: 0, sent: 60 })],
+  }).insights.campaignDiagnosis({ campaign: "few" }, { now: NOW });
+
+  const found = result.data.findings.map((each) => each.code);
+
+  assert.ok(!found.includes("too_little_volume"), found.join(", "));
+  assert.ok(found.includes("low_reply_rate"), found.join(", "));
 });

@@ -37,30 +37,35 @@
     ],
     "bottom": [
       {
-        "campaign": "memory:acme:ecom",
+        "campaign": "memory:acme:agencies",
+        "campaignName": "Agency owners",
         "channel": "email",
-        "name": "Ecommerce ops",
+        "name": "Agency owners",
         "provider": "memory",
         "status": "active",
         "count": 7,
-        "high": 0.0407,
-        "low": 0.0097,
-        "of": 350,
-        "rate": 0.02,
-        "sent": 560,
+        "high": 0.0205,
+        "low": 0.0049,
+        "of": 700,
+        "rate": 0.01,
+        "basis": "sent",
+        "sent": 700,
         "rank": 4
       }
     ],
     "bounceProblems": [
       {
         "campaign": "memory:acme:ecom",
+        "campaignName": "Ecommerce ops",
         "channel": "email",
         "name": "Ecommerce ops",
         "provider": "memory",
         "status": "active",
         "bounced": 26,
+        "count": 26,
         "high": 0.0672,
         "low": 0.0319,
+        "of": 560,
         "rate": 0.0464,
         "sent": 560
       }
@@ -68,6 +73,7 @@
     "runningOutOfLeads": [
       {
         "campaign": "memory:acme:founders",
+        "campaignName": "SaaS founders",
         "channel": "email",
         "name": "SaaS founders",
         "provider": "memory",
@@ -83,9 +89,9 @@
         "bounced": 13,
         "contacted": 0,
         "positive": -7,
-        "positiveRate": -0.0065,
+        "positiveRate": -0.0032,
         "replied": -21,
-        "replyRate": -0.0193,
+        "replyRate": -0.0097,
         "sent": 0
       },
       "current": {
@@ -95,10 +101,10 @@
         "replied": 49,
         "sent": 2170,
         "bounceRate": 0.0204,
-        "positiveRate": 0.0129,
-        "replyRate": 0.0452
+        "positiveRate": 0.0065,
+        "replyRate": 0.0226
       },
-      "finding": "Reply rate went from 6.5% to 4.5%; more than chance (p = 0.0477).",
+      "finding": "Replies per message sent went from 3.2% to 2.3%; within what chance would give (p = 0.0509).",
       "previous": {
         "bounced": 27,
         "contacted": 1085,
@@ -106,16 +112,19 @@
         "replied": 70,
         "sent": 2170,
         "bounceRate": 0.0138,
-        "positiveRate": 0.0194,
-        "replyRate": 0.0645
+        "positiveRate": 0.0097,
+        "replyRate": 0.0323
       },
+      "replyRateBasis": "sent",
       "replyRateTest": {
-        "pValue": 0.0477,
-        "significant": true,
-        "z": -1.9801
+        "pValue": 0.0509,
+        "significant": false,
+        "z": -1.952
       },
-      "verdict": "down"
+      "verdict": "no_real_change"
     },
+    "campaignsRead": 5,
+    "moreCampaignsExist": false,
     "actions": [
       {
         "action": "Fix the bounces of Ecommerce ops: its bounce rate is 4.6% (26 of 560 sends).",
@@ -132,18 +141,11 @@
         "number": 2
       },
       {
-        "action": "Find out what changed: the reply rate fell from 6.5% to 4.5%, more than chance would give.",
-        "campaign": null,
-        "campaignName": null,
-        "kind": "reply_rate_fell",
-        "number": -0.0193
-      },
-      {
-        "action": "Review the copy and the audience of Ecommerce ops: it has the weakest reply rate, 2% (7 of 350).",
-        "campaign": "memory:acme:ecom",
-        "campaignName": "Ecommerce ops",
+        "action": "Review the copy and the audience of Agency owners: it has the fewest replies per message sent, 1% (7 of 700).",
+        "campaign": "memory:acme:agencies",
+        "campaignName": "Agency owners",
         "kind": "review_campaign",
-        "number": 0.02
+        "number": 0.01
       },
       {
         "action": "Check what happened on 2026-11-11: bounced was 16 on 2026-11-11, against an average of 4 over the 14 days with data before it (z = 11.6).",
@@ -178,47 +180,54 @@
       "from": "2026-10-31",
       "to": "2026-11-06"
     },
+    "replyRateBasis": "sent",
     "top": [
       {
         "campaign": "memory:acme:linkedin",
+        "campaignName": "LinkedIn founders",
         "channel": "linkedin",
         "name": "LinkedIn founders",
         "provider": "memory",
         "status": "active",
         "count": 14,
-        "high": 0.2114,
-        "low": 0.0811,
-        "of": 105,
-        "rate": 0.1333,
+        "high": 0.1088,
+        "low": 0.0401,
+        "of": 210,
+        "rate": 0.0667,
+        "basis": "sent",
         "sent": 210,
         "rank": 1
       },
       {
         "campaign": "memory:acme:founders",
+        "campaignName": "SaaS founders",
         "channel": "email",
         "name": "SaaS founders",
         "provider": "memory",
         "status": "active",
         "count": 21,
-        "high": 0.09,
-        "low": 0.0396,
-        "of": 350,
-        "rate": 0.06,
+        "high": 0.0454,
+        "low": 0.0197,
+        "of": 700,
+        "rate": 0.03,
+        "basis": "sent",
         "sent": 700,
         "rank": 2
       },
       {
-        "campaign": "memory:acme:agencies",
+        "campaign": "memory:acme:ecom",
+        "campaignName": "Ecommerce ops",
         "channel": "email",
-        "name": "Agency owners",
+        "name": "Ecommerce ops",
         "provider": "memory",
         "status": "active",
         "count": 7,
-        "high": 0.0507,
-        "low": 0.0122,
-        "of": 280,
-        "rate": 0.025,
-        "sent": 700,
+        "high": 0.0256,
+        "low": 0.0061,
+        "of": 560,
+        "rate": 0.0125,
+        "basis": "sent",
+        "sent": 560,
         "rank": 3
       }
     ]

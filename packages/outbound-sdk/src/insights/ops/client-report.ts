@@ -4,6 +4,8 @@
 import { z } from "zod";
 
 import { mapConcurrent } from "../../internal/concurrency.ts";
+import { renamed } from "../../internal/renamed.ts";
+import type { CampaignsRead } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { percent, spoken } from "../stats.ts";
@@ -17,12 +19,15 @@ import { forecastCampaign } from "./pipeline-forecast.ts";
 import {
   labelOf,
   listFields,
+  RATE_WORDS,
   ratesOf,
   readDaily,
   shiftDay,
   volumeOf,
 } from "./shared.ts";
-import type { CampaignLabel, DayRange } from "./shared.ts";
+import type { CampaignLabel, DayRange, ReplyBasis } from "./shared.ts";
+
+const limit = z.number().int().min(1).max(20);
 
 const input = z.object({
   ...listFields(
@@ -53,6 +58,7 @@ const input = z.object({
     .max(90)
     .default(7)
     .describe("The length of the period, in complete days ending yesterday"),
+  limit: limit.default(3).describe("How many best and worst campaigns to show"),
   max_bounce_rate: z
     .number()
     .min(0)
@@ -85,18 +91,28 @@ const input = z.object({
     .describe(
       "A campaign with this many days of leads left or fewer is flagged"
     ),
-  top: z
-    .number()
-    .int()
-    .min(1)
-    .max(20)
-    .default(3)
-    .describe("How many best and worst campaigns to show"),
+  top: renamed("limit", limit),
 });
 
 type Options = z.infer<typeof input>;
 
+// How long the leads last, for a sentence: "less than a day" when it rounds to
+// nothing, so a runway of 0.03 days does not read as 0 days.
+const sendingLeft = (daysLeft: number | null): string => {
+  if (daysLeft !== null && daysLeft < 0.05) {
+    return "less than a day of sending";
+  }
+
+  const days = spoken(daysLeft);
+
+  return `about ${days} ${days === "1" ? "day" : "days"} of sending`;
+};
+
 export interface BounceProblem extends CampaignLabel {
+  /** Bounces. The same as `bounced`. */
+  readonly count: number | null;
+  /** Messages sent, which the rate divides by. The same as `sent`. */
+  readonly of: number | null;
   readonly bounced: number | null;
   readonly sent: number | null;
   readonly rate: number;
@@ -108,7 +124,7 @@ export interface LeadRunway extends CampaignLabel {
   /** Leads still active in the campaign. */
   readonly remaining: number;
   readonly dailyContactRate: number | null;
-  /** An estimate: `remaining` at the recent daily pace. */
+  /** An estimate: `remaining` at the recent daily pace. `0` when no lead is left. */
   readonly daysLeft: number;
 }
 
@@ -127,14 +143,20 @@ export interface ActionItem {
   readonly number: number | null;
 }
 
-export interface ClientReport {
+export interface ClientReport extends CampaignsRead {
   readonly days: number;
   readonly period: DayRange;
   readonly previousPeriod: DayRange;
   readonly campaigns: number;
   /** Every campaign read, added together: this period, the one before and the change. */
   readonly totals: Comparison;
-  /** Best campaigns by the low end of the reply rate interval. */
+  /**
+   * What `top`, `bottom` and `totals` divide replies by: messages sent in
+   * the period when both periods report them, since a period's replies also
+   * answer leads contacted before it, and otherwise leads contacted.
+   */
+  readonly replyRateBasis: ReplyBasis;
+  /** Best campaigns by the low end of the interval of the reply rate, over `replyRateBasis`. */
   readonly top: readonly RankedCampaign[];
   /** Worst campaigns, worst first. Never repeats one in `top`. */
   readonly bottom: readonly RankedCampaign[];
@@ -161,7 +183,18 @@ const bounceProblems = (
       return rate !== null &&
         rate > options.max_bounce_rate &&
         (volumeOf(current) ?? -1) >= options.min_sent
-        ? [{ ...labelOf(campaign), bounced: count, high, low, rate, sent: of }]
+        ? [
+            {
+              ...labelOf(campaign),
+              bounced: count,
+              count,
+              high,
+              low,
+              of,
+              rate,
+              sent: of,
+            },
+          ]
         : [];
     })
     .toSorted((left, right) => right.rate - left.rate);
@@ -218,6 +251,8 @@ const readRunways = async (
     campaign,
     forecast: await forecastCampaign(context, campaign, {
       days: options.days,
+      leadsInput: "max_leads_per_campaign",
+      leadsWhat: "leads of a campaign",
       maxLeads: options.max_leads_per_campaign,
     }),
   }));
@@ -237,6 +272,7 @@ const readRunways = async (
       : []
   );
 
+  // A campaign with no leads left is first: it has stopped sending already.
   return runways.toSorted((left, right) => left.daysLeft - right.daysLeft);
 };
 
@@ -247,27 +283,31 @@ type Sections = Pick<
 
 const actionsOf = (report: Sections): ActionItem[] => {
   const [worst] = report.bottom;
-  const { current, previous } = report.totals;
+  const { current, previous, replyRateBasis } = report.totals;
+  const perWhat = RATE_WORDS[replyRateBasis].toLowerCase();
 
   return [
     ...report.bounceProblems.map((problem) => ({
-      action: `Fix the bounces of ${problem.name}: its bounce rate is ${percent(problem.rate)} (${problem.bounced} of ${problem.sent} sends).`,
+      action: `Fix the bounces of ${problem.campaignName}: its bounce rate is ${percent(problem.rate)} (${problem.count} of ${problem.of} sends).`,
       campaign: problem.campaign,
-      campaignName: problem.name,
+      campaignName: problem.campaignName,
       kind: "fix_bounces" as const,
       number: problem.rate,
     })),
     ...(report.runningOutOfLeads ?? []).map((runway) => ({
-      action: `Add leads to ${runway.name}: ${runway.remaining} ${runway.remaining === 1 ? "lead remains" : "leads remain"}, about ${spoken(runway.daysLeft)} days of sending.`,
+      action:
+        runway.remaining === 0
+          ? `Add leads to ${runway.campaignName}: no leads are left to contact, so it is not sending.`
+          : `Add leads to ${runway.campaignName}: ${runway.remaining} ${runway.remaining === 1 ? "lead remains" : "leads remain"}, ${sendingLeft(runway.daysLeft)}.`,
       campaign: runway.campaign,
-      campaignName: runway.name,
+      campaignName: runway.campaignName,
       kind: "add_leads" as const,
       number: runway.daysLeft,
     })),
     ...(report.totals.verdict === "down"
       ? [
           {
-            action: `Find out what changed: the reply rate fell from ${percent(previous.replyRate)} to ${percent(current.replyRate)}, more than chance would give.`,
+            action: `Find out what changed: ${perWhat} fell from ${percent(previous.replyRate)} to ${percent(current.replyRate)}, more than chance would give.`,
             campaign: null,
             campaignName: null,
             kind: "reply_rate_fell" as const,
@@ -279,9 +319,9 @@ const actionsOf = (report: Sections): ActionItem[] => {
       ? []
       : [
           {
-            action: `Review the copy and the audience of ${worst.name}: it has the weakest reply rate, ${percent(worst.rate)} (${worst.count} of ${worst.of}).`,
+            action: `Review the copy and the audience of ${worst.campaignName}: it has the fewest ${perWhat}, ${percent(worst.rate)} (${worst.count} of ${worst.of}).`,
             campaign: worst.campaign,
-            campaignName: worst.name,
+            campaignName: worst.campaignName,
             kind: "review_campaign" as const,
             number: worst.rate,
           },
@@ -298,37 +338,41 @@ const actionsOf = (report: Sections): ActionItem[] => {
 
 export const clientReport = defineInsight({
   description:
-    "One report for one client or workspace over the last `days` complete days: totals and the change from the period before, the best and worst campaigns by the low end of the reply rate interval, campaigns with a bounce problem, unusual days, active campaigns running out of leads, and a short list of action items in plain language, each naming the campaign and the number behind it. Use it for a weekly client update. A section the adapter cannot serve is null and named in `leftOut`, and a null count is one the vendor does not report. Costs two stats requests per campaign, one for the workspace, and for each active campaign two more plus its pages of leads.",
+    "One report for one client or workspace over the last `days` complete days: totals and the change from the period before, the best and worst campaigns by the low end of the interval of the reply rate, campaigns with a bounce problem, unusual days, active campaigns running out of leads, and a short list of action items in plain language, each naming the campaign and the number behind it. Reply rates divide by messages sent (`replyRateBasis`), since a period's replies also answer leads contacted before it, and by leads contacted for both periods only when a period does not report messages sent. Use it for a weekly client update. A section the adapter cannot serve is null and named in `leftOut`, and a null count is one the vendor does not report. Costs two stats requests per campaign, one for the workspace, and for each active campaign two more plus its pages of leads.",
   inputSchema: input,
   key: "clientReport",
   name: "client_report",
   needs: ["stats.campaign"],
-  next: "Use campaign_diagnosis on a campaign an action item names, or period_comparison for every campaign's change.",
+  next: "Use campaign_diagnosis on a campaign an action item names, with from and to set to this report's `period`, or period_comparison for every campaign's change.",
   run: async (context, options) => {
     const periods = await readPeriods(context, options);
 
+    const totals = noted(
+      context,
+      "Totals",
+      totalOf(periods.campaigns, options.alpha)
+    );
+
+    // Campaigns are ranked on the base the totals use.
     const ranking = rankCampaigns(
       periods.campaigns.map((entry) => ({
         campaign: entry.campaign,
         counts: entry.current,
       })),
       "reply_rate",
-      options.min_sent
+      options.min_sent,
+      totals.replyRateBasis
     );
 
     const sections: Sections = {
       anomalies: await readAnomalies(context, periods.current, options),
       bottom: ranking.ranked
-        .slice(options.top)
-        .slice(-options.top)
+        .slice(options.limit)
+        .slice(-options.limit)
         .toReversed(),
       bounceProblems: bounceProblems(periods.campaigns, options),
       runningOutOfLeads: await readRunways(context, periods.campaigns, options),
-      totals: noted(
-        context,
-        "Totals",
-        totalOf(periods.campaigns, options.alpha)
-      ),
+      totals,
     };
 
     const leftOut = [
@@ -348,13 +392,15 @@ export const clientReport = defineInsight({
 
     const report: ClientReport = {
       ...sections,
+      ...periods.read,
       actions: actionsOf(sections),
       campaigns: periods.campaigns.length,
       days: options.days,
       leftOut,
       period: periods.current,
       previousPeriod: periods.previous,
-      top: ranking.ranked.slice(0, options.top),
+      replyRateBasis: totals.replyRateBasis,
+      top: ranking.ranked.slice(0, options.limit),
     };
 
     return report;

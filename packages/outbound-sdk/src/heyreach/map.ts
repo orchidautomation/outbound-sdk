@@ -16,7 +16,6 @@ import {
   field,
   flag,
   fullName,
-  isJsonObject,
   list,
   objects,
   text,
@@ -24,6 +23,7 @@ import {
 } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
 import { leadStanding } from "../internal/lead-status.ts";
+import { listIn } from "../internal/lists.ts";
 import { recordBase, refTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
 
@@ -273,9 +273,20 @@ export interface ListEnvelope {
   readonly next: number | undefined;
 }
 
-/** `{ totalCount, items }`: there is no next marker, so it is computed. */
-export const listEnvelope = (body: Json, offset: number): ListEnvelope => {
-  const items = objects(isJsonObject(body) ? body.items : undefined);
+/**
+ * `{ totalCount, items }`: there is no next marker, so it is computed.
+ * `items` is required; any other answer is a `Provider` error naming `path`.
+ */
+export const listEnvelope = (
+  body: Json,
+  offset: number,
+  provider: string,
+  path: string
+): ListEnvelope => {
+  const items = objects(
+    listIn(body, { key: "items", path, provider, vendor: "HeyReach" })
+  );
+
   const total = count(field(body, "totalCount"));
   const end = offset + items.length;
 

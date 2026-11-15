@@ -2,19 +2,24 @@
 
 import { z } from "zod";
 
+import type { MetricRow } from "../../internal/entities.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
+import { plural } from "../../internal/numbers.ts";
+import { noun } from "../../internal/plural.ts";
 import { defineInsight } from "../define.ts";
+import type { InsightContext } from "../define.ts";
+import { rangeFields } from "../fields.ts";
+import { refOf } from "../ref.ts";
 import { compareRates, percent } from "../stats.ts";
 import type { Interval } from "../stats.ts";
 import {
-  dayInput,
+  basesInWords,
   measure,
-  perLead,
-  perMessage,
   rangeOf,
+  sharedBases,
   splitStats,
 } from "./shared.ts";
-import type { Measured, RateBasis } from "./shared.ts";
+import type { Base, Measured, RateBasis } from "./shared.ts";
 
 const METRICS = ["replied", "positive", "opened", "clicked"] as const;
 
@@ -33,7 +38,7 @@ const input = z.object({
     .string()
     .min(1)
     .describe("The campaign's ref, for example `instantly:acme:abc123`"),
-  from: dayInput("First day to count, YYYY-MM-DD. null counts from the start."),
+  ...rangeFields,
   metric: z
     .enum(METRICS)
     .default("replied")
@@ -48,7 +53,6 @@ const input = z.object({
     .describe(
       "A variant with a smaller base than this (sends, or leads contacted when the vendor counts those) is not compared."
     ),
-  to: dayInput("Last day to count, YYYY-MM-DD. null counts to today."),
 });
 
 export type VariantVerdict = "no_difference_yet" | "too_little_data" | "winner";
@@ -59,9 +63,16 @@ export interface TestedVariant {
   /** The metric's count. `null` when the vendor does not report it. */
   readonly count: number | null;
   /** What the rate is divided by. */
-  readonly trials: number | null;
+  readonly of: number | null;
+  /** What `of` counts. The same for every variant of a step unless they report no base in common, and then the step is not compared. */
   readonly basis: RateBasis | null;
   readonly rate: number | null;
+  /** The 95% Wilson interval of the rate. `null` when the rate is unknown. */
+  readonly low: number | null;
+  readonly high: number | null;
+  /** @deprecated Use `of`. Removed in 0.5.0. */
+  readonly trials: number | null;
+  /** @deprecated Use `low` and `high`. Removed in 0.5.0. */
   readonly interval: Interval | null;
   /** `false` when the base is under `min_sent` or the rate is unknown; such a variant is not compared. */
   readonly enoughData: boolean;
@@ -87,8 +98,12 @@ export interface VariantTest {
   readonly campaign: string;
   readonly metric: Metric;
   readonly alpha: number;
-  /** `false` when the vendor's step stats carry no variant rows at all. */
-  readonly variantStatsReported: boolean;
+  /**
+   * `false` when the vendor's step stats carry no variant rows at all, and
+   * `null` when it reported no step stats in the date range, which cannot
+   * tell either way.
+   */
+  readonly variantStatsReported: boolean | null;
   /** Winners first, then steps with no difference yet, then steps with too little data. */
   readonly steps: readonly VariantStepTest[];
   readonly totals: {
@@ -138,14 +153,10 @@ interface Candidate extends Measured {
 const candidateOf = (
   variantKey: string,
   counts: MetricCounts,
-  metric: Metric,
-  minSent: number
+  base: Base,
+  minSent: number,
+  metric: Metric
 ): Candidate => {
-  const base =
-    metric === "replied" || metric === "positive"
-      ? perLead(counts)
-      : perMessage(counts);
-
   const measured = measure(counts[metric], base);
 
   return {
@@ -180,31 +191,48 @@ interface Settings {
   readonly alpha: number;
 }
 
+const reasonFor = (
+  candidates: readonly Candidate[],
+  settings: Settings,
+  comparable: boolean
+): string => {
+  if (!comparable) {
+    return `The variants of this step report different bases (${basesInWords(
+      candidates.map((each) => ({ basis: each.basis, name: each.variantKey }))
+    )}), so their rates cannot be compared.`;
+  }
+
+  return candidates.some((each) => each.count === null)
+    ? `The vendor does not report ${settings.metric} for every variant of this step, so they cannot be compared.`
+    : `Fewer than two variants have a base of ${settings.minSent}, so no comparison is made.`;
+};
+
 const tooLittle = (
   step: number,
   candidates: readonly Candidate[],
-  settings: Settings
-): VariantStepTest => {
-  const unreported = candidates.some((each) => each.count === null);
-
-  return {
-    leader: null,
-    moreSendsNeeded: shortfall(candidates, settings.minSent),
-    pValue: null,
-    reason: unreported
-      ? `The vendor does not report ${settings.metric} for every variant of this step, so they cannot be compared.`
-      : `Fewer than two variants have a base of ${settings.minSent}, so no comparison is made.`,
-    step,
-    variants: candidates.map((each) => ({ ...each, pValueVsLeader: null })),
-    verdict: "too_little_data",
-  };
-};
+  settings: Settings,
+  comparable: boolean
+): VariantStepTest => ({
+  leader: null,
+  // More sends do not give variants with different bases a common one.
+  moreSendsNeeded: comparable ? shortfall(candidates, settings.minSent) : null,
+  pValue: null,
+  reason: reasonFor(candidates, settings, comparable),
+  step,
+  variants: candidates.map((each) => ({ ...each, pValueVsLeader: null })),
+  verdict: "too_little_data",
+});
 
 const testStep = (
   step: number,
   candidates: readonly Candidate[],
-  settings: Settings
+  settings: Settings,
+  comparable: boolean
 ): VariantStepTest => {
+  if (!comparable) {
+    return tooLittle(step, candidates, settings, false);
+  }
+
   const ready = candidates
     .filter((each) => each.enoughData)
     .toSorted(
@@ -216,7 +244,7 @@ const testStep = (
   const [leader, rival] = ready;
 
   if (leader === undefined || rival === undefined) {
-    return tooLittle(step, candidates, settings);
+    return tooLittle(step, candidates, settings, true);
   }
 
   const tests = new Map(
@@ -239,7 +267,7 @@ const testStep = (
   const aside =
     skipped === 0
       ? ""
-      : ` ${skipped} variant(s) with too little data were left out.`;
+      : ` ${plural(skipped, "variant")} with too little data ${noun(skipped, "was", "were")} left out.`;
 
   const variants = candidates.map((each) => ({
     ...each,
@@ -276,6 +304,58 @@ const testStep = (
   };
 };
 
+/** Tests one step's variants, each divided by the base they all report. */
+const stepTest = (
+  step: number,
+  variants: ReadonlyMap<string, MetricCounts>,
+  settings: Settings
+): VariantStepTest => {
+  const entries = [...variants];
+
+  const { bases, comparable } = sharedBases(
+    entries.map(([, counts]) => counts),
+    settings.metric === "replied" || settings.metric === "positive"
+      ? "lead"
+      : "message"
+  );
+
+  const candidates = entries.map(([key, counts], index) =>
+    candidateOf(
+      key,
+      counts,
+      bases[index] ?? { basis: null, trials: null },
+      settings.minSent,
+      settings.metric
+    )
+  );
+
+  return testStep(step, candidates, settings, comparable);
+};
+
+/** Whether the vendor splits step stats by variant, with a note when it does not or cannot tell. */
+const variantsReported = (
+  context: InsightContext,
+  rows: readonly MetricRow[]
+): boolean | null => {
+  if (rows.length === 0) {
+    context.note(
+      "The vendor reported no step stats for this campaign in the date range, so there is nothing to compare."
+    );
+
+    return null;
+  }
+
+  const reported = rows.some((row) => row.variantKey !== null);
+
+  if (!reported) {
+    context.note(
+      "The step stats carry no variant rows, so there is nothing to compare."
+    );
+  }
+
+  return reported;
+};
+
 const countOf = (
   steps: readonly VariantStepTest[],
   verdict: VariantVerdict
@@ -283,7 +363,7 @@ const countOf = (
 
 export const variantTest = defineInsight({
   description:
-    "Whether a campaign's A/B winner is real. For each step with two or more variants, compares every variant with the leader by a two-proportion test and returns the variants with rates and 95% intervals, the leader, and a verdict: winner, no_difference_yet or too_little_data, with the p-value and a rough number of sends still needed when there is no verdict. Use it before pausing a variant. Costs 1 request. A null count or rate means the vendor does not report it; an empty list means the vendor does not split step stats by variant.",
+    "Whether a campaign's A/B winner is real. For each step with two or more variants, compares every variant with the leader by a two-proportion test and returns the variants with rates and 95% intervals, the leader, and a verdict: winner, no_difference_yet or too_little_data, with the p-value and a rough number of sends still needed when there is no verdict. Use it before pausing a variant. Costs 1 request. A null count or rate means the vendor does not report it; an empty list means the vendor does not split step stats by variant (variantStatsReported false) or reported no step stats in the date range (null). Variants of a step are divided by the same base; variants with no base in common are not compared.",
   inputSchema: input,
   key: "variantTest",
   name: "variant_test",
@@ -303,32 +383,18 @@ export const variantTest = defineInsight({
       .flatMap(([step, stats]) =>
         stats.variants.size < 2
           ? []
-          : [
-              testStep(
-                step,
-                [...stats.variants].map(([key, counts]) =>
-                  candidateOf(key, counts, metric, min_sent)
-                ),
-                settings
-              ),
-            ]
+          : [stepTest(step, stats.variants, settings)]
       )
       .toSorted(
         (left, right) =>
           ORDER[left.verdict] - ORDER[right.verdict] || left.step - right.step
       );
 
-    const reported = rows.some((row) => row.variantKey !== null);
-
-    if (!reported) {
-      context.note(
-        "The step stats carry no variant rows, so there is nothing to compare."
-      );
-    }
+    const reported = variantsReported(context, rows);
 
     const result: VariantTest = {
       alpha,
-      campaign,
+      campaign: refOf(context.outbound, campaign),
       metric,
       steps,
       totals: {

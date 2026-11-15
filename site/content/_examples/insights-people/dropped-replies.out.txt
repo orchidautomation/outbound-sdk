@@ -1,10 +1,11 @@
-Ana Ruiz (SaaS founders): A positive reply has waited 170 hours with nothing sent after it. Unanswered replies: 2. Checked by timeline.
-https://www.linkedin.com/in/hal-voss-example (LinkedIn founders): An unknown reply has waited 72 hours with nothing sent after it. Unanswered replies: 1. Checked by timeline.
+Ana Ruiz (SaaS founders): A positive reply has waited 7 days with nothing sent after it. Unanswered replies: 2. Checked by timeline.
+https://www.linkedin.com/in/hal-voss-example (LinkedIn founders): An unknown reply has waited 3 days with nothing sent after it. Unanswered replies: 1. Checked by timeline.
 since: 2026-10-31T12:00:00.000Z
 totals: {
   answered: 2,
   conversations: 5,
   dropped: 2,
+  moreRepliesExist: false,
   repliesRead: 8,
   skippedAuto: 1,
   skippedByCategory: 1,

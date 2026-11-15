@@ -5,12 +5,13 @@
 import { z } from "zod";
 
 import { mapConcurrent } from "../../internal/concurrency.ts";
-import { campaignStatusSchema } from "../../internal/entities.ts";
 import type { Campaign, CampaignStatus } from "../../internal/entities.ts";
 import { sumCounts } from "../../internal/metrics.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
-import type { ListAll } from "../../internal/outbound/api.ts";
+import { campaignsReadOf, readCampaignsIn } from "../capped.ts";
+import type { CampaignsRead } from "../capped.ts";
 import type { InsightContext } from "../define.ts";
+import { statusesInput } from "../fields.ts";
 import { rate, total, wilson } from "../stats.ts";
 
 const DAY_MS = 86_400_000;
@@ -55,29 +56,14 @@ export const listFields = (costPerCampaign: string) => ({
     .max(200)
     .default(25)
     .describe(`The most campaigns to read. Each costs ${costPerCampaign}.`),
-  statuses: z
-    .array(campaignStatusSchema)
-    .min(1)
-    .default(["active", "paused", "completed"])
-    .describe("Only campaigns in one of these states are read"),
+  statuses: statusesInput(["active", "paused", "completed"]),
 });
-
-export const rangeFields = {
-  from: z.iso
-    .date()
-    .nullable()
-    .default(null)
-    .describe("First day counted, YYYY-MM-DD. null for the whole history."),
-  to: z.iso
-    .date()
-    .nullable()
-    .default(null)
-    .describe("Last day counted, YYYY-MM-DD. null for up to today."),
-};
 
 export interface CampaignLabel {
   /** The campaign's ref. */
   readonly campaign: string;
+  readonly campaignName: string;
+  /** @deprecated Use `campaignName`. Removed in 0.5.0. */
   readonly name: string;
   readonly status: CampaignStatus;
   readonly channel: "email" | "linkedin";
@@ -86,6 +72,7 @@ export interface CampaignLabel {
 
 export const labelOf = (campaign: Campaign): CampaignLabel => ({
   campaign: campaign.ref,
+  campaignName: campaign.name,
   channel: campaign.channel,
   name: campaign.name,
   provider: campaign.provider,
@@ -131,14 +118,42 @@ export const measure = (count: number | null, of: number | null): Measured => {
   };
 };
 
+/** What a reply rate divides by: leads contacted or messages sent. */
+export type ReplyBasis = "contacted" | "sent";
+
+/** What a rate's replies are divided by. */
+export type Base = (counts: Totals) => number | null;
+
+/** The base of one basis: `baseIn("sent")` divides by messages sent. */
+export const baseIn =
+  (basis: ReplyBasis): Base =>
+  (counts) =>
+    counts[basis];
+
 /** What a per-lead rate divides by: leads contacted, or messages sent when the vendor does not count leads. */
-export const perLeadBase = (counts: Totals): number | null =>
-  counts.contacted !== null && counts.contacted > 0
-    ? counts.contacted
-    : counts.sent;
+export const perLeadBasis = (counts: Totals): ReplyBasis =>
+  counts.contacted !== null && counts.contacted > 0 ? "contacted" : "sent";
+
+export const perLeadBase: Base = (counts) => counts[perLeadBasis(counts)];
+
+/**
+ * What two periods divide replies by, the same for both: messages sent when
+ * both report them, since replies in a week answer messages sent that week
+ * to leads first contacted weeks before, so a week's leads contacted can be
+ * far fewer than its replies. Otherwise leads contacted for both, so the
+ * two rates are never over different bases.
+ */
+export const periodBasis = (current: Totals, previous: Totals): ReplyBasis =>
+  current.sent !== null && previous.sent !== null ? "sent" : "contacted";
+
+/** The rate's name, to start a sentence: "Replies per message sent". */
+export const RATE_WORDS: Readonly<Record<ReplyBasis, string>> = {
+  contacted: "Replies per lead contacted",
+  sent: "Replies per message sent",
+};
 
 export interface Rates {
-  /** Replies divided by leads contacted (or messages sent when contacted is unknown). */
+  /** Replies divided by the base: leads contacted (or messages sent when contacted is unknown) unless the caller passes another. */
   readonly replyRate: Measured;
   /** Positive replies on the same base as the reply rate. */
   readonly positiveRate: Measured;
@@ -146,10 +161,10 @@ export interface Rates {
   readonly bounceRate: Measured;
 }
 
-export const ratesOf = (counts: Totals): Rates => ({
+export const ratesOf = (counts: Totals, base: Base = perLeadBase): Rates => ({
   bounceRate: measure(counts.bounced, counts.sent),
-  positiveRate: measure(counts.positive, perLeadBase(counts)),
-  replyRate: measure(counts.replied, perLeadBase(counts)),
+  positiveRate: measure(counts.positive, base(counts)),
+  replyRate: measure(counts.replied, base(counts)),
 });
 
 /** How many of the rows added up are behind a rate. */
@@ -207,9 +222,12 @@ export const partialRate = (name: string, across: RateCoverage): string[] =>
     : [];
 
 /** The three rates over several rows of counts, each over the rows that report it. */
-export const ratesAcross = (rows: readonly Totals[]): RatesAcross => {
-  const reply = measureAcross(rows, (row) => row.replied, perLeadBase);
-  const positive = measureAcross(rows, (row) => row.positive, perLeadBase);
+export const ratesAcross = (
+  rows: readonly Totals[],
+  base: Base = perLeadBase
+): RatesAcross => {
+  const reply = measureAcross(rows, (row) => row.replied, base);
+  const positive = measureAcross(rows, (row) => row.positive, base);
 
   const bounce = measureAcross(
     rows,
@@ -255,62 +273,6 @@ export const descending = (
   return right - left;
 };
 
-export interface Capped<Item> {
-  readonly items: Item[];
-  /** `false` when more records exist than the cap allowed. */
-  readonly complete: boolean;
-}
-
-/** Reads a listing up to `max` records, and says whether `max` cut it short. */
-export const readUpTo = async <Item>(
-  context: InsightContext,
-  list: (max: number) => ListAll<Item>,
-  max: number
-): Promise<Capped<Item>> => {
-  const walk = list(max);
-  const items = await context.all(walk);
-
-  return { complete: !walk.truncated, items };
-};
-
-/**
- * The campaigns in the given states, up to `max`. Asks the vendor per state
- * when it can filter, and filters after reading when it cannot.
- */
-export const readCampaigns = async (
-  context: InsightContext,
-  statuses: readonly CampaignStatus[],
-  max: number
-): Promise<Campaign[]> => {
-  const { campaigns } = context.outbound;
-  const wanted = [...new Set(statuses)];
-
-  if (context.outbound.capabilities["campaigns.status"] === false) {
-    const every = await readUpTo(
-      context,
-      (cap) => campaigns.listAll({ max: cap }),
-      max
-    );
-
-    return every.items.filter((campaign) => wanted.includes(campaign.status));
-  }
-
-  const found: Campaign[] = [];
-
-  for (const status of wanted) {
-    // oxlint-disable-next-line no-await-in-loop -- each status reads only the room the earlier ones left under the cap.
-    const listed = await readUpTo(
-      context,
-      (cap) => campaigns.listAll({ max: cap, status }),
-      max - found.length
-    );
-
-    found.push(...listed.items);
-  }
-
-  return found;
-};
-
 /** One campaign's counts over a range, added up. Every count is `null` when the vendor reports nothing. */
 export const readTotals = async (
   context: InsightContext,
@@ -328,6 +290,11 @@ export const readTotals = async (
 export interface CampaignTotals {
   readonly campaign: Campaign;
   readonly counts: MetricCounts;
+}
+
+export interface EveryCampaignTotals {
+  readonly entries: CampaignTotals[];
+  readonly read: CampaignsRead;
 }
 
 export interface ListInput extends OpenRange {
@@ -378,17 +345,19 @@ const readAllTotals = async (
 export const readCampaignTotals = async (
   context: InsightContext,
   input: ListInput
-): Promise<CampaignTotals[]> => {
-  const campaigns = await readCampaigns(
+): Promise<EveryCampaignTotals> => {
+  const listed = await readCampaignsIn(
     context,
     input.statuses,
     input.max_campaigns
   );
 
+  const campaigns = listed.items;
+
   const reported =
     campaigns.length > 1 ? await readAllTotals(context, input) : undefined;
 
-  return await mapConcurrent(
+  const entries = await mapConcurrent(
     campaigns,
     async (campaign): Promise<CampaignTotals> => ({
       campaign,
@@ -397,6 +366,8 @@ export const readCampaignTotals = async (
         (await readTotals(context, campaign.ref, input)),
     })
   );
+
+  return { entries, read: campaignsReadOf(listed) };
 };
 
 export interface DayCounts {

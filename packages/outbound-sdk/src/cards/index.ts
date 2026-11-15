@@ -11,7 +11,12 @@
 
 export { CARD_NAMES, cardFor, digest } from "./render.ts";
 
-export type { DigestOptions, DigestSection } from "./render.ts";
+export type {
+  CardInput,
+  DigestOptions,
+  DigestSection,
+  InsightResultLike,
+} from "./render.ts";
 
 export { alertCard, eventCard } from "./notify-cards.ts";
 

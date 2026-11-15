@@ -1,9 +1,21 @@
 {
   "data": {
+    "basis": "sent",
     "bestCopy": {
+      "basis": "sent",
       "bodyPreview": "Hi {{firstName}}, I saw {{company}} is hiring two account executives. Worth a short call next week?",
       "campaigns": 2,
       "contentHash": "731acea1c4f447bf4082393883bf01b1",
+      "rates": {
+        "replyRate": {
+          "basis": "sent",
+          "count": 52,
+          "high": 0.0615,
+          "low": 0.0362,
+          "of": 1100,
+          "rate": 0.0473
+        }
+      },
       "replies": 52,
       "replyRate": 0.0473,
       "replyRateInterval": {
@@ -15,12 +27,24 @@
       "trials": 1100
     },
     "campaignsRead": 2,
+    "moreCampaignsExist": false,
     "piecesOfCopy": 5,
     "reused": [
       {
+        "basis": "sent",
         "bodyPreview": "Hi {{firstName}}, I saw {{company}} is hiring two account executives. Worth a short call next week?",
         "campaigns": 2,
         "contentHash": "731acea1c4f447bf4082393883bf01b1",
+        "rates": {
+          "replyRate": {
+            "basis": "sent",
+            "count": 52,
+            "high": 0.0615,
+            "low": 0.0362,
+            "of": 1100,
+            "rate": 0.0473
+          }
+        },
         "replies": 52,
         "replyRate": 0.0473,
         "replyRateInterval": {
@@ -43,7 +67,18 @@
             "places": [
               "0:A"
             ],
+            "basis": "sent",
             "provider": "memory",
+            "rates": {
+              "replyRate": {
+                "basis": "sent",
+                "count": 40,
+                "high": 0.1071,
+                "low": 0.0593,
+                "of": 500,
+                "rate": 0.08
+              }
+            },
             "replies": 40,
             "replyRate": 0.08,
             "replyRateInterval": {
@@ -59,7 +94,18 @@
             "places": [
               "0:A"
             ],
+            "basis": "sent",
             "provider": "memory",
+            "rates": {
+              "replyRate": {
+                "basis": "sent",
+                "count": 12,
+                "high": 0.0346,
+                "low": 0.0115,
+                "of": 600,
+                "rate": 0.02
+              }
+            },
             "replies": 12,
             "replyRate": 0.02,
             "replyRateInterval": {
@@ -72,9 +118,20 @@
         ]
       },
       {
+        "basis": "sent",
         "bodyPreview": "Hi {{firstName}}, did my note reach you?",
         "campaigns": 2,
         "contentHash": "c06dbc8ddc1b8e6751f540a41c95f51c",
+        "rates": {
+          "replyRate": {
+            "basis": "sent",
+            "count": 19,
+            "high": 0.0346,
+            "low": 0.0144,
+            "of": 850,
+            "rate": 0.0224
+          }
+        },
         "replies": 19,
         "replyRate": 0.0224,
         "replyRateInterval": {
@@ -97,7 +154,18 @@
             "places": [
               "1:A"
             ],
+            "basis": "sent",
             "provider": "memory",
+            "rates": {
+              "replyRate": {
+                "basis": "sent",
+                "count": 10,
+                "high": 0.0454,
+                "low": 0.0136,
+                "of": 400,
+                "rate": 0.025
+              }
+            },
             "replies": 10,
             "replyRate": 0.025,
             "replyRateInterval": {
@@ -113,7 +181,18 @@
             "places": [
               "1:A"
             ],
+            "basis": "sent",
             "provider": "memory",
+            "rates": {
+              "replyRate": {
+                "basis": "sent",
+                "count": 9,
+                "high": 0.0376,
+                "low": 0.0106,
+                "of": 450,
+                "rate": 0.02
+              }
+            },
             "replies": 9,
             "replyRate": 0.02,
             "replyRateInterval": {

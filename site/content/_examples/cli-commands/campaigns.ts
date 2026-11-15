@@ -28,3 +28,12 @@ await outbound("campaign", "cmp_founders", "--sequence");
 await outbound("campaign", "cmp_founders", "--subsequences");
 
 await outbound("campaign", "cmp_founders", "--settings");
+
+// Two of the flags print both answers, each under its name.
+await outbound(
+  "campaign",
+  "cmp_founders",
+  "--stats",
+  "--sequence",
+  "--compact"
+);

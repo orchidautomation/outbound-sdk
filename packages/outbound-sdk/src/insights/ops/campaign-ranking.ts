@@ -3,13 +3,16 @@
 
 import { z } from "zod";
 
+import type { CampaignsRead } from "../capped.ts";
 import { defineInsight } from "../define.ts";
+import { rangeFields } from "../fields.ts";
 import { median, round } from "../stats.ts";
 import {
   descending,
+  baseIn,
   labelOf,
   listFields,
-  rangeFields,
+  perLeadBasis,
   ratesOf,
   readCampaignTotals,
   volumeOf,
@@ -19,6 +22,7 @@ import type {
   CampaignTotals,
   Measured,
   OpenRange,
+  ReplyBasis,
   Totals,
 } from "./shared.ts";
 
@@ -47,6 +51,9 @@ const input = z.object({
 export interface RankedCampaign extends CampaignLabel, Measured {
   /** 1 is the best. */
   readonly rank: number;
+  /** What `of` counts: leads contacted or messages sent. Always `sent` for bounce rate. */
+  readonly basis: ReplyBasis;
+  /** Messages sent. `null` when the vendor does not report them. */
   readonly sent: number | null;
 }
 
@@ -73,14 +80,18 @@ export interface Ranking {
   readonly gap: RankingGap;
 }
 
-export interface CampaignRanking extends Ranking {
+export interface CampaignRanking extends Ranking, CampaignsRead {
   readonly metric: RankingMetric;
   readonly better: "higher" | "lower";
   readonly period: OpenRange;
 }
 
-const measured = (counts: Totals, metric: RankingMetric): Measured => {
-  const rates = ratesOf(counts);
+const measured = (
+  counts: Totals,
+  metric: RankingMetric,
+  basis: ReplyBasis
+): Measured => {
+  const rates = ratesOf(counts, baseIn(basis));
 
   if (metric === "bounce_rate") {
     return rates.bounceRate;
@@ -97,11 +108,16 @@ const order = (metric: RankingMetric) => (left: Scored, right: Scored) =>
     : descending(left.low, right.low) || descending(left.rate, right.rate)) ||
   left.name.localeCompare(right.name);
 
-/** Ranks campaigns that sent enough, and sets the rest aside with the reason. */
+/**
+ * Ranks campaigns that sent enough, and sets the rest aside with the reason.
+ * `replyBasis` is what replies are divided by; by default leads contacted,
+ * or messages sent for a campaign that does not count leads.
+ */
 export const rankCampaigns = (
   entries: readonly CampaignTotals[],
   metric: RankingMetric,
-  minSent: number
+  minSent: number,
+  replyBasis?: ReplyBasis
 ): Ranking => {
   const scored: Scored[] = [];
   const tooFewSends: UnrankedCampaign[] = [];
@@ -110,7 +126,11 @@ export const rankCampaigns = (
   for (const { campaign, counts } of entries) {
     const label = labelOf(campaign);
     const volume = volumeOf(counts);
-    const result = measured(counts, metric);
+
+    const basis =
+      metric === "bounce_rate" ? "sent" : (replyBasis ?? perLeadBasis(counts));
+
+    const result = measured(counts, metric, basis);
 
     if (volume === null) {
       unknown.push({
@@ -131,7 +151,7 @@ export const rankCampaigns = (
         sent: volume,
       });
     } else {
-      scored.push({ ...label, ...result, sent: volume });
+      scored.push({ ...label, ...result, basis, sent: counts.sent });
     }
   }
 
@@ -163,10 +183,11 @@ export const campaignRanking = defineInsight({
   needs: ["stats.campaign"],
   next: "Use campaign_diagnosis on the campaign ranked last to see why it is behind.",
   run: async (context, options) => {
-    const entries = await readCampaignTotals(context, options);
+    const { entries, read } = await readCampaignTotals(context, options);
 
     const ranking: CampaignRanking = {
       ...rankCampaigns(entries, options.metric, options.min_sent),
+      ...read,
       better: options.metric === "bounce_rate" ? "lower" : "higher",
       metric: options.metric,
       period: { from: options.from, to: options.to },

@@ -1,5 +1,5 @@
 13 tools; the first one:
-{"description":"How every campaign is doing right now: sends, replies, positive replies, bounces and reply rate for each campaign with the given status. One vendor request per campaign. Rates are computed from counts; a null means the vendor does not report that count.","name":"campaign_overview","parameters":"(JSON Schema)","strict":false,"type":"function"}
+{"description":"How every campaign is doing right now: sends, replies, positive replies, bounces and reply rate for each campaign with the given status. One vendor request per campaign. Rates are computed from counts; a null means the vendor does not report that count. truncated: true means limit cut the list.","name":"campaign_overview","parameters":"(JSON Schema)","strict":false,"type":"function"}
 function, type
 
 winning_steps {"campaign":"cmp_founders"}
@@ -69,6 +69,7 @@ campaign_ranking {"metric":"reply_rate"}
       "ranked": [
         {
           "campaign": "memory:acme:cmp_founders",
+          "campaignName": "SaaS founders",
           "channel": "email",
           "name": "SaaS founders",
           "provider": "memory",
@@ -78,11 +79,13 @@ campaign_ranking {"metric":"reply_rate"}
           "low": 0.0605,
           "of": 140,
           "rate": 0.1,
+          "basis": "contacted",
           "sent": 350,
           "rank": 1
         },
         {
           "campaign": "memory:acme:cmp_agencies",
+          "campaignName": "Agency owners",
           "channel": "email",
           "name": "Agency owners",
           "provider": "memory",
@@ -92,12 +95,15 @@ campaign_ranking {"metric":"reply_rate"}
           "low": 0.0493,
           "of": 70,
           "rate": 0.1,
+          "basis": "contacted",
           "sent": 210,
           "rank": 2
         }
       ],
       "tooFewSends": [],
       "unknown": [],
+      "campaignsRead": 2,
+      "moreCampaignsExist": false,
       "better": "higher",
       "metric": "reply_rate",
       "period": {
@@ -111,6 +117,6 @@ campaign_ranking {"metric":"reply_rate"}
     "provider": "memory",
     "requests": 0
   },
-  "next": "Use campaign_diagnosis on the campaign ranked last to see why it is behind.",
+  "next": "Pick another of the listed tools to go further.",
   "ok": true
 }

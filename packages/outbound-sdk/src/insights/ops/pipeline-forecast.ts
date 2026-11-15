@@ -4,17 +4,13 @@
 import { z } from "zod";
 
 import type { Campaign, Lead, LeadStatus } from "../../internal/entities.ts";
+import { plural } from "../../internal/numbers.ts";
+import { noun } from "../../internal/plural.ts";
+import { readCapped } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { percent, round, spoken, total } from "../stats.ts";
-import {
-  labelOf,
-  lastDays,
-  ratesOf,
-  readDaily,
-  readTotals,
-  readUpTo,
-} from "./shared.ts";
+import { labelOf, lastDays, ratesOf, readDaily, readTotals } from "./shared.ts";
 import type { CampaignLabel, Measured } from "./shared.ts";
 
 const input = z.object({
@@ -53,7 +49,12 @@ export interface PipelineForecast extends CampaignLabel {
   readonly remaining: number;
   /** New leads contacted per day over the last `days`. `null` when the vendor has no daily contacted count. */
   readonly dailyContactRate: number | null;
-  /** `remaining` divided by `dailyContactRate`. */
+  /**
+   * `remaining` divided by `dailyContactRate`, and `0` when every lead was
+   * read and none is left. `null` when the remaining leads are unknown (the
+   * cap stopped the read, or a lead's status is unknown) or some remain with
+   * no contact rate to divide by.
+   */
   readonly daysLeft: number | null;
   /** The campaign's reply rate so far, over its whole history. */
   readonly replyRate: Measured;
@@ -122,31 +123,81 @@ const ASSUMPTIONS = [
   "The daily pace stays what it was over the recent days. Days with no report count as no sends.",
 ];
 
-const describe = (
-  remaining: number,
+interface Left {
+  readonly remaining: number;
+  readonly complete: boolean;
+  readonly daysLeft: number | null;
+}
+
+/** Days of sending left. See `PipelineForecast.daysLeft`. */
+const daysLeftOf = (
+  byStatus: Readonly<Record<LeadStatus, number>>,
   complete: boolean,
+  pace: number | null
+): number | null => {
+  const remaining = byStatus.active;
+
+  if (remaining === 0) {
+    return complete && byStatus.unknown === 0 ? 0 : null;
+  }
+
+  return pace === null || pace <= 0 ? null : round(remaining / pace);
+};
+
+const describe = (
+  { complete, daysLeft, remaining }: Left,
   forecast: Estimate
 ): string => {
-  const leads = `${complete ? "" : "At least "}${remaining} leads remain`;
+  if (daysLeft === 0) {
+    return "No leads are left to contact; add leads to keep the campaign sending.";
+  }
 
-  return forecast.expected === null
-    ? `${leads}; replies cannot be estimated because the vendor reports no reply rate yet.`
-    : `${leads}; expect about ${spoken(forecast.expected)} replies (between ${spoken(forecast.low)} and ${spoken(forecast.high)}). This is an estimate.`;
+  const leads = `${complete ? "" : "At least "}${plural(remaining, "lead")} ${noun(remaining, "remains", "remain")}`;
+
+  if (forecast.expected === null) {
+    return `${leads}; replies cannot be estimated because the vendor reports no reply rate yet.`;
+  }
+
+  const [expected, low, high] = [
+    forecast.expected,
+    forecast.low,
+    forecast.high,
+  ].map((value) => spoken(value));
+
+  // A range whose ends read the same says nothing, so it is left out.
+  const range = low === high ? "" : ` (between ${low} and ${high})`;
+
+  return `${leads}; expect about ${expected} ${noun(Number(expected), "reply", "replies")}${range}. This is an estimate.`;
 };
+
+export interface ForecastOptions {
+  readonly days: number;
+  readonly maxLeads: number;
+  /** The input `maxLeads` came from, for the note when it stops the read. */
+  readonly leadsInput: string;
+  /** What `maxLeads` counts, for that note: `leads`, or `leads of a campaign`. */
+  readonly leadsWhat: string;
+}
 
 /** Reads one campaign's leads, totals and recent pace, and projects what is left. */
 export const forecastCampaign = async (
   context: InsightContext,
   campaign: Campaign,
-  options: { readonly days: number; readonly maxLeads: number }
+  options: ForecastOptions
 ): Promise<PipelineForecast> => {
   const handle = context.outbound.campaign(campaign.ref);
 
-  const { complete, items: leads } = await readUpTo(
+  const { capped, items: leads } = await readCapped(
     context,
     (max) => handle.leads.listAll({ max }),
-    options.maxLeads
+    {
+      input: options.leadsInput,
+      max: options.maxLeads,
+      what: options.leadsWhat,
+    }
   );
+
+  const complete = !capped;
 
   const byStatus = countStatuses(leads);
   const remaining = byStatus.active;
@@ -157,20 +208,21 @@ export const forecastCampaign = async (
 
   const pace = await paceOf(context, campaign.ref, options.days);
   const expectedReplies = project(remaining, rates.replyRate);
+  const daysLeft = daysLeftOf(byStatus, complete, pace);
 
   return {
     ...labelOf(campaign),
     assumptions: [
       ...ASSUMPTIONS,
-      `The reply rate so far is ${percent(rates.replyRate.rate)}, from ${rates.replyRate.count ?? "unknown"} replies over ${rates.replyRate.of ?? "unknown"}.`,
+      `The reply rate so far is ${percent(rates.replyRate.rate)}, from ${rates.replyRate.count === null ? "an unknown number of replies" : plural(rates.replyRate.count, "reply", "replies")} over ${rates.replyRate.of ?? "unknown"}.`,
     ],
     byStatus,
     dailyContactRate: pace,
-    daysLeft: pace === null || pace <= 0 ? null : round(remaining / pace),
+    daysLeft,
     estimate: true,
     expectedPositive: project(remaining, rates.positiveRate),
     expectedReplies,
-    finding: describe(remaining, complete, expectedReplies),
+    finding: describe({ complete, daysLeft, remaining }, expectedReplies),
     leadsComplete: complete,
     leadsRead: leads.length,
     positiveRate: rates.positiveRate,
@@ -194,6 +246,8 @@ export const pipelineForecast = defineInsight({
 
     return await forecastCampaign(context, campaign, {
       days: options.days,
+      leadsInput: "max_leads",
+      leadsWhat: "leads",
       maxLeads: options.max_leads,
     });
   },

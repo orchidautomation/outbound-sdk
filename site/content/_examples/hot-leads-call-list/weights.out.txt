@@ -1,4 +1,4 @@
     65 ava.chen@example.com
     58 ben.ortiz@example.com
     15 hal.berg@example.com
-    10 cara.lind@example.com
+     0 cara.lind@example.com

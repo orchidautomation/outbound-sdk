@@ -17,6 +17,7 @@ import type {
   NextOperation,
   OutboundPlugin,
 } from "../internal/outbound/plugins.ts";
+import { parseRef } from "../internal/ref.ts";
 
 export const UNASSIGNED = "unassigned";
 
@@ -27,9 +28,9 @@ export interface ClientRule {
   readonly workspaceId?: string | undefined;
   /** Campaigns carrying this tag. */
   readonly campaignTag?: string | undefined;
-  /** Campaigns by ref. */
+  /** Campaigns by ref or by the vendor's own id. */
   readonly campaignIds?: readonly string[] | undefined;
-  /** Campaigns whose name matches. */
+  /** Campaigns whose name matches. The `g` and `y` flags make no difference. */
   readonly campaignName?: RegExp | undefined;
 }
 
@@ -58,7 +59,15 @@ export interface ClientsExtension {
      * campaigns. It costs one stats request per campaign.
      */
     readonly stats: (options?: ClientStatsOptions) => Promise<ClientStats[]>;
+    /** `stats()` with the vendor requests it made, listing included. */
+    readonly read: (options?: ClientStatsOptions) => Promise<ClientStatsRead>;
   };
+}
+
+export interface ClientStatsRead {
+  readonly clients: ClientStats[];
+  /** Vendor requests made: the campaign listing and each campaign's stats. */
+  readonly requests: number;
 }
 
 interface CampaignFacts {
@@ -89,6 +98,26 @@ const campaignRefOf = (record: OutboundRecord): string | null => {
 const needsCampaign = (rule: ClientRule): boolean =>
   rule.campaignTag !== undefined || rule.campaignName !== undefined;
 
+const namesCampaign = (
+  ids: readonly string[],
+  campaign: CampaignFacts
+): boolean =>
+  ids.includes(campaign.ref) ||
+  ids.includes(parseRef(campaign.ref)?.sourceId ?? campaign.ref);
+
+// `test` on a `g` or `y` regex starts at the `lastIndex` the last match left,
+// so one rule would match a campaign and miss the next.
+const withoutState = (rule: ClientRule): ClientRule =>
+  rule.campaignName === undefined
+    ? rule
+    : {
+        ...rule,
+        campaignName: new RegExp(
+          rule.campaignName.source,
+          rule.campaignName.flags.replaceAll(/[gy]/gu, "")
+        ),
+      };
+
 const matches = (
   rule: ClientRule,
   record: OutboundRecord,
@@ -97,7 +126,7 @@ const matches = (
   (rule.provider === undefined || rule.provider === record.provider) &&
   (rule.workspaceId === undefined || rule.workspaceId === record.workspaceId) &&
   (rule.campaignIds === undefined ||
-    (campaign !== null && rule.campaignIds.includes(campaign.ref))) &&
+    (campaign !== null && namesCampaign(rule.campaignIds, campaign))) &&
   (rule.campaignTag === undefined ||
     (campaign !== null && campaign.tags.includes(rule.campaignTag))) &&
   (rule.campaignName === undefined ||
@@ -109,7 +138,7 @@ class Assigner {
   readonly #campaigns = new Map<string, CampaignFacts>();
 
   constructor(rules: readonly ClientRule[]) {
-    this.#rules = rules;
+    this.#rules = rules.map(withoutState);
   }
 
   names(): string[] {
@@ -170,9 +199,21 @@ class Assigner {
 const clientStats = async (
   outbound: OutboundApi,
   options: ClientStatsOptions
-): Promise<ClientStats[]> => {
-  const campaigns = await outbound.campaigns.listAll(options).toArray();
+): Promise<ClientStatsRead> => {
+  // `from` and `to` are for the stats reads, not the campaign listing.
+  const { deadline, maxRequests, retries, signal, timeout } = options;
+
+  const walk = outbound.campaigns.listAll({
+    deadline,
+    maxRequests,
+    retries,
+    signal,
+    timeout,
+  });
+
+  const campaigns = await walk.toArray();
   const byClient = new Map<string, MetricCounts[]>();
+  let requests = walk.meta?.requests ?? 0;
 
   const read = await mapConcurrent(campaigns, async (campaign) => ({
     campaign,
@@ -185,16 +226,19 @@ const clientStats = async (
       readonly client: string;
     };
 
+    requests += stats.meta.requests;
     byClient.set(client, [...(byClient.get(client) ?? []), ...stats.rows]);
   }
 
-  return [...byClient.entries()]
+  const clientsRead = [...byClient.entries()]
     .map(([client, rows]) => ({
       campaigns: rows.length,
       client,
       counts: rows.length === 0 ? emptyCounts() : sumCounts(rows),
     }))
     .toSorted((left, right) => left.client.localeCompare(right.client));
+
+  return { clients: clientsRead, requests };
 };
 
 /** Tags every record with the client it belongs to. */
@@ -207,7 +251,12 @@ export const clients = (
     extend: (outbound) => ({
       clients: {
         names: () => assigner.names(),
-        stats: (statsOptions = {}) => clientStats(outbound, statsOptions),
+        read: (statsOptions = {}) => clientStats(outbound, statsOptions),
+        stats: async (statsOptions = {}) => {
+          const read = await clientStats(outbound, statsOptions);
+
+          return read.clients;
+        },
       },
     }),
     name: "clients",

@@ -1,7 +1,7 @@
 import type { AdapterContext, StatsQuery } from "../internal/adapter.ts";
 import type { MetricRow } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
-import { objects, text } from "../internal/json.ts";
+import { text } from "../internal/json.ts";
 import type { InstantlyClient } from "./client.ts";
 import {
   campaignRow,
@@ -23,11 +23,9 @@ const senderStats = async (
   scope: RowScope,
   query: StatsQuery
 ): Promise<MetricRow[]> => {
-  const days = objects(
-    await client.get(ctx, "/accounts/analytics/daily", {
-      query: { ...range(query), emails: scope.scopeId },
-    })
-  );
+  const days = await client.getRows(ctx, "/accounts/analytics/daily", {
+    query: { ...range(query), emails: scope.scopeId },
+  });
 
   return query.by === "day"
     ? days.map((day) => dailyRow(scope, day))
@@ -62,11 +60,11 @@ export const readStats = async (
     }
 
     // With no `id` the endpoint answers for every campaign, a row each.
-    const campaigns = await client.get(ctx, "/campaigns/analytics", {
+    const campaigns = await client.getRows(ctx, "/campaigns/analytics", {
       query: range(query),
     });
 
-    return objects(campaigns).flatMap((campaign) => {
+    return campaigns.flatMap((campaign) => {
       const scopeId = text(campaign.campaign_id);
 
       return scopeId === null
@@ -86,19 +84,19 @@ export const readStats = async (
       );
     }
 
-    const steps = await client.get(ctx, "/campaigns/analytics/steps", {
+    const steps = await client.getRows(ctx, "/campaigns/analytics/steps", {
       query: { ...range(query), campaign_id: query.scopeId },
     });
 
-    return objects(steps).map((step) => stepRow(scope, step));
+    return steps.map((step) => stepRow(scope, step));
   }
 
   if (query.by === "day") {
-    const days = await client.get(ctx, "/campaigns/analytics/daily", {
+    const days = await client.getRows(ctx, "/campaigns/analytics/daily", {
       query: { ...range(query), campaign_id: query.scopeId },
     });
 
-    return objects(days).map((day) => dailyRow(scope, day));
+    return days.map((day) => dailyRow(scope, day));
   }
 
   const overview = await client.getObject(

@@ -16,12 +16,12 @@ import {
   emailAddress,
   field,
   fullName,
-  isJsonObject,
   objects,
   text,
   timestamp,
 } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
+import { listIn } from "../internal/lists.ts";
 import { recordBase, refTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
 import { toVariant, variantKey } from "../internal/sequence.ts";
@@ -205,8 +205,18 @@ export interface ListEnvelope {
   readonly next: string | undefined;
 }
 
-/** `{ items, next_starting_after }`: the shape of every Instantly list. */
-export const listEnvelope = (body: Json): ListEnvelope => ({
-  items: objects(isJsonObject(body) ? body.items : body),
+/**
+ * `{ items, next_starting_after }`: the shape of every Instantly list, with
+ * `items` required. Any other answer, a bare array included, is a `Provider`
+ * error naming `path`.
+ */
+export const listEnvelope = (
+  body: Json,
+  provider: string,
+  path: string
+): ListEnvelope => ({
+  items: objects(
+    listIn(body, { key: "items", path, provider, vendor: "Instantly" })
+  ),
   next: text(field(body, "next_starting_after")) ?? undefined,
 });

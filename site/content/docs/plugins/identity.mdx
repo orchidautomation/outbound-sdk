@@ -62,6 +62,7 @@ A `Person` has:
 | `found` | `false` when no record carries the key. The link is unknown, not proven absent. |
 | `records` | One lead record per tool or campaign the person is in. |
 | `timeline` | Every message to and from the person across those records, oldest first. Empty when `timeline` is `false` or the adapter does not declare `leads.timeline`. |
+| `requests` | Vendor requests the lookup made, every lookup and timeline read counted. |
 
 ## How the lookup reads
 

@@ -5,18 +5,26 @@ import { z } from "zod";
 import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { SenderHealth } from "../../internal/entities-account.ts";
 import type { Sender } from "../../internal/entities.ts";
+import { plural } from "../../internal/numbers.ts";
+import { noun } from "../../internal/plural.ts";
+import { renamed } from "../../internal/renamed.ts";
 import { defineInsight } from "../define.ts";
-import { percent, rate, wilson } from "../stats.ts";
+import { measure } from "../ops/shared.ts";
+import type { Measured } from "../ops/shared.ts";
+import { percent, wilson } from "../stats.ts";
 import type { Interval } from "../stats.ts";
 import {
   DNS_RECORDS,
   domainOf,
   failingDns,
-  readCapped,
+  readHealth,
+  readSenders,
   unknownDns,
   warmupSpam,
 } from "./read.ts";
 import type { DnsRecord } from "./read.ts";
+
+const maxSpamRate = z.number().min(0).max(1);
 
 const input = z.object({
   max_senders: z
@@ -26,14 +34,12 @@ const input = z.object({
     .max(500)
     .default(50)
     .describe("The most senders to check. Each costs 1 request."),
-  spam_rate_threshold: z
-    .number()
-    .min(0)
-    .max(1)
+  max_spam_rate: maxSpamRate
     .default(0.1)
     .describe(
       "A domain whose warmup emails land in spam more often than this share is high risk"
     ),
+  spam_rate_threshold: renamed("max_spam_rate", maxSpamRate),
 });
 
 export type DomainRisk = "high" | "low" | "medium" | "unknown";
@@ -50,13 +56,14 @@ export interface DomainMailbox {
   readonly issues: readonly string[];
 }
 
-export interface DomainWarmup {
+export interface DomainWarmup extends Measured {
   /** Mailboxes that report warmup spam. The pooled numbers cover only these. */
   readonly mailboxes: number;
   readonly sent: number | null;
   readonly spam: number | null;
+  /** @deprecated Use `rate`: warmup emails in spam (`count`) over those sent (`of`). Removed in 0.5.0. */
   readonly spamRate: number | null;
-  /** The Wilson interval of the spam rate; wide when few warmup emails were sent. */
+  /** @deprecated Use `low` and `high`. Removed in 0.5.0. */
   readonly interval: Interval | null;
 }
 
@@ -69,7 +76,8 @@ export interface DomainReport {
   /** DNS records that fail on at least one mailbox. */
   readonly failingDns: readonly DnsRecord[];
   readonly disconnected: number;
-  readonly blacklisted: number;
+  /** Mailboxes on a block list. `null` when no mailbox of the domain reports its block list status. */
+  readonly blacklisted: number | null;
   readonly warmup: DomainWarmup;
   /** Checks the vendor reported for no mailbox of the domain. */
   readonly notReported: readonly string[];
@@ -92,6 +100,7 @@ export interface DomainHealth {
   /** Mailboxes whose domain is not known, by sender ref. */
   readonly mailboxesWithoutDomain: readonly string[];
   readonly totals: {
+    /** Senders checked. One the vendor no longer finds is left out, with a note. */
     readonly senders: number;
     readonly domains: number;
     readonly high: number;
@@ -118,6 +127,7 @@ const pooledWarmup = (checked: readonly Checked[]): DomainWarmup => {
 
   if (reported.length === 0) {
     return {
+      ...measure(null, null),
       interval: null,
       mailboxes: 0,
       sent: null,
@@ -128,13 +138,15 @@ const pooledWarmup = (checked: readonly Checked[]): DomainWarmup => {
 
   const sent = reported.reduce((sum, each) => sum + each.sent, 0);
   const spam = reported.reduce((sum, each) => sum + each.spam, 0);
+  const measured = measure(spam, sent);
 
   return {
+    ...measured,
     interval: wilson(spam, sent),
     mailboxes: reported.length,
     sent,
     spam,
-    spamRate: rate(spam, sent),
+    spamRate: measured.rate,
   };
 };
 
@@ -154,8 +166,6 @@ const missingChecks = (
   ...(warmup.mailboxes === 0 ? ["warmup"] : []),
 ];
 
-const CHECKS = DNS_RECORDS.length + 3;
-
 const reportFor = (
   domain: string,
   checked: readonly Checked[],
@@ -165,28 +175,32 @@ const reportFor = (
     checked.some(({ health }) => health.dns[record] === false)
   );
 
-  const blacklisted = checked.filter(
-    ({ health }) => health.blacklisted === true
-  ).length;
+  const warmup = pooledWarmup(checked);
+  const notReported = missingChecks(checked, warmup);
+
+  const blacklisted = notReported.includes("blocklist")
+    ? null
+    : checked.filter(({ health }) => health.blacklisted === true).length;
 
   const disconnected = checked.filter(
     ({ health }) => health.connected === false
   ).length;
 
-  const warmup = pooledWarmup(checked);
   const authFailing = failing.filter((record) => record !== "dmarc");
-  const spamHigh = warmup.spamRate !== null && warmup.spamRate > threshold;
+  const spamHigh = warmup.rate !== null && warmup.rate > threshold;
 
   const high = [
-    ...(blacklisted > 0
-      ? [`${blacklisted} of ${checked.length} mailboxes are on a block list`]
+    ...((blacklisted ?? 0) > 0
+      ? [
+          `${blacklisted} of ${plural(checked.length, "mailbox", "mailboxes")} ${noun(blacklisted ?? 0, "is", "are")} on a block list`,
+        ]
       : []),
     ...(authFailing.length > 0
       ? [`${authFailing.join(", ").toUpperCase()} failing`]
       : []),
     ...(spamHigh
       ? [
-          `${warmup.spam} of ${warmup.sent} warmup emails landed in spam (${percent(warmup.spamRate)}, over ${percent(threshold)})`,
+          `${warmup.spam} of ${warmup.sent} warmup emails landed in spam (${percent(warmup.rate)}, over ${percent(threshold)})`,
         ]
       : []),
   ];
@@ -194,13 +208,18 @@ const reportFor = (
   const medium = [
     ...(failing.includes("dmarc") ? ["DMARC failing"] : []),
     ...(disconnected > 0
-      ? [`${disconnected} of ${checked.length} mailboxes are disconnected`]
+      ? [
+          `${disconnected} of ${plural(checked.length, "mailbox", "mailboxes")} ${noun(disconnected, "is", "are")} disconnected`,
+        ]
       : []),
   ];
 
-  const notReported = missingChecks(checked, warmup);
-
-  const calm: DomainRisk = notReported.length === CHECKS ? "unknown" : "low";
+  // With no DNS record reported, nothing says the domain is sound.
+  const calm: DomainRisk = DNS_RECORDS.every((record) =>
+    notReported.includes(record)
+  )
+    ? "unknown"
+    : "low";
 
   const lesser: DomainRisk = medium.length > 0 ? "medium" : calm;
 
@@ -228,7 +247,7 @@ const reportFor = (
 const worstFirst = (left: DomainReport, right: DomainReport): number =>
   RISK_ORDER.indexOf(left.risk) - RISK_ORDER.indexOf(right.risk) ||
   right.reasons.length - left.reasons.length ||
-  (right.warmup.spamRate ?? -1) - (left.warmup.spamRate ?? -1) ||
+  (right.warmup.rate ?? -1) - (left.warmup.rate ?? -1) ||
   left.domain.localeCompare(right.domain);
 
 // A seat the vendor cannot sign in to comes first, then one it says nothing about.
@@ -242,7 +261,7 @@ const seatRank = (seat: LinkedinSeat): number => {
 
 export const domainHealth = defineInsight({
   description:
-    "Deliverability per sending domain: for each domain its mailboxes, which DNS records (SPF, DKIM, DMARC, MX) fail, how many mailboxes are disconnected or on a block list, the share of warmup emails landing in spam pooled over its mailboxes, and a risk level with the reasons, worst domain first. LinkedIn seats are listed apart with their connection state. Use it before scaling volume or when replies drop. Costs one listing of senders plus 1 request per sender. A null count or rate means the vendor does not report it; a domain with nothing reported has the risk `unknown`, not `low`.",
+    "Deliverability per sending domain: for each domain its mailboxes, which DNS records (SPF, DKIM, DMARC, MX) fail, how many mailboxes are disconnected or on a block list, the share of warmup emails landing in spam pooled over its mailboxes, and a risk level with the reasons, worst domain first. LinkedIn seats are listed apart with their connection state. Use it before scaling volume or when replies drop. Costs one listing of senders plus 1 request per sender. A null count or rate means the vendor does not report it; a domain with no DNS record reported has the risk `unknown`, not `low`.",
   inputSchema: input,
   key: "domainHealth",
   name: "domain_health",
@@ -250,25 +269,23 @@ export const domainHealth = defineInsight({
   next: "Use warmup_readiness to see which mailboxes of a risky domain are not ready, or bounce_watch to see whether bounces already rose.",
   run: async (
     context,
-    { max_senders: maxSenders, spam_rate_threshold: threshold }
+    { max_senders: maxSenders, max_spam_rate: threshold }
   ) => {
-    const { outbound } = context;
-
-    const senders = await readCapped(
-      context,
-      (cap) => outbound.senders.listAll({ max: cap }),
-      maxSenders,
-      "senders"
-    );
+    const { items: senders } = await readSenders(context, maxSenders);
 
     const byDomain = new Map<string, Checked[]>();
     const linkedinSeats: LinkedinSeat[] = [];
     const mailboxesWithoutDomain: string[] = [];
 
-    const checks = await mapConcurrent(senders, async (sender) => ({
-      health: context.one(await outbound.sender(sender.ref).health()),
+    const read = await mapConcurrent(senders, async (sender) => ({
+      health: await readHealth(context, sender),
       sender,
     }));
+
+    // A sender the vendor no longer finds is left out, with a note.
+    const checks = read.flatMap(({ health, sender }) =>
+      health === null ? [] : [{ health, sender }]
+    );
 
     for (const { health, sender } of checks) {
       const domain = health.domain ?? domainOf(sender.address);
@@ -311,7 +328,7 @@ export const domainHealth = defineInsight({
         linkedinSeats: linkedinSeats.length,
         low: count("low"),
         medium: count("medium"),
-        senders: senders.length,
+        senders: checks.length,
         unknown: count("unknown"),
       },
     };

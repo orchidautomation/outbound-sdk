@@ -157,7 +157,7 @@ test("hot_leads gives an out-of-office reply no reply or recency points", async 
   assert.equal(opened?.parts.recency, 0);
   assert.equal(
     opened?.reason,
-    "marked Out of office, so replies earn nothing, 2 open(s)."
+    "marked Out of office, so replies earn nothing, 2 opens."
   );
   assert.doesNotMatch(opened?.reason ?? "", /replied/u);
   assert.equal(result.data.totals.autoReplied, 2);

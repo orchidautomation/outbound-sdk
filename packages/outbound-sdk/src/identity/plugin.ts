@@ -39,6 +39,13 @@ export interface Person {
   readonly records: readonly Lead[];
   /** Every message to and from the person across tools, oldest first. */
   readonly timeline: readonly Message[];
+  /** Vendor requests the lookup made. */
+  readonly requests: number;
+}
+
+/** Vendor requests made so far by one lookup. */
+interface Tally {
+  requests: number;
 }
 
 export interface IdentityExtension {
@@ -71,27 +78,34 @@ const withKeys = (record: OutboundRecord): OutboundRecord => {
 // by campaign otherwise.
 const scanLeads = async function* scanLeads(
   outbound: OutboundApi,
-  options: PersonOptions
+  options: PersonOptions,
+  tally: Tally
 ): AsyncGenerator<Lead> {
   if (
     options.campaignIds === undefined &&
     outbound.capabilities["leads.list"]
   ) {
-    yield* outbound.leads.listAll();
+    const walk = outbound.leads.listAll();
+    yield* walk;
+    tally.requests += walk.meta?.requests ?? 0;
 
     return;
   }
 
-  const campaigns =
-    options.campaignIds === undefined
-      ? await outbound.campaigns.listAll().toArray()
-      : [];
+  let { campaignIds } = options;
 
-  const campaignIds =
-    options.campaignIds ?? campaigns.map((campaign) => campaign.ref);
+  if (campaignIds === undefined) {
+    const listing = outbound.campaigns.listAll();
+    const campaigns = await listing.toArray();
+
+    campaignIds = campaigns.map((campaign) => campaign.ref);
+    tally.requests += listing.meta?.requests ?? 0;
+  }
 
   for (const campaignId of campaignIds) {
-    yield* outbound.campaign(campaignId).leads.listAll();
+    const walk = outbound.campaign(campaignId).leads.listAll();
+    yield* walk;
+    tally.requests += walk.meta?.requests ?? 0;
   }
 };
 
@@ -99,11 +113,12 @@ const collect = async (
   outbound: OutboundApi,
   options: PersonOptions,
   keys: Set<string>,
-  found: Map<string, Lead>
+  found: Map<string, Lead>,
+  tally: Tally
 ): Promise<boolean> => {
   let grew = false;
 
-  for await (const lead of scanLeads(outbound, options)) {
+  for await (const lead of scanLeads(outbound, options, tally)) {
     const leadKeys = keysOf(lead);
 
     if (!found.has(lead.ref) && leadKeys.some((key) => keys.has(key))) {
@@ -134,7 +149,8 @@ const filterFor = (key: string): { email: string } | { linkedinUrl: string } =>
 const find = async (
   outbound: OutboundApi,
   keys: Set<string>,
-  found: Map<string, Lead>
+  found: Map<string, Lead>,
+  tally: Tally
 ): Promise<void> => {
   const asked = new Set<string>();
 
@@ -150,9 +166,13 @@ const find = async (
     // Every identifier known so far is asked for at once; an answer can name
     // another identifier, which the next round asks for.
     // oxlint-disable-next-line no-await-in-loop -- each round depends on the identifiers the previous one found.
-    const answers = await mapConcurrent(round, (key) =>
-      outbound.leads.listAll(filterFor(key)).toArray()
-    );
+    const answers = await mapConcurrent(round, async (key) => {
+      const walk = outbound.leads.listAll(filterFor(key));
+      const leads = await walk.toArray();
+      tally.requests += walk.meta?.requests ?? 0;
+
+      return leads;
+    });
 
     for (const [index, leads] of answers.entries()) {
       const asking = round[index];
@@ -226,16 +246,17 @@ const lookup = async (
 
   const keys = new Set([key]);
   const found = new Map<string, Lead>();
+  const tally: Tally = { requests: 0 };
 
   if (
     outbound.capabilities["leads.lookup"] &&
     options.campaignIds === undefined
   ) {
-    await find(outbound, keys, found);
-  } else if (await collect(outbound, options, keys, found)) {
+    await find(outbound, keys, found, tally);
+  } else if (await collect(outbound, options, keys, found, tally)) {
     // A record that links two identifiers (an email and a profile) can reveal
     // records seen earlier under the other one, so scan again when that happens.
-    await collect(outbound, options, keys, found);
+    await collect(outbound, options, keys, found, tally);
   }
 
   const records = [...found.values()];
@@ -256,6 +277,10 @@ const lookup = async (
     key,
     keys: [...keys].toSorted(),
     records,
+    requests: timelines.reduce(
+      (sum, page) => sum + page.meta.requests,
+      tally.requests
+    ),
     timeline: timelines.flatMap((page) => page.items).toSorted(bySentAt),
   };
 };

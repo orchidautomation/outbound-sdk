@@ -137,7 +137,7 @@ test("campaign_setup reports how a campaign is set up to send", async () => {
         to: "17:00",
       },
     ],
-    start_date: "2026-09-26",
+    start_date: "2026-09-17",
     stop_on_auto_reply: false,
     stop_on_reply: true,
     track_clicks: false,
@@ -180,7 +180,7 @@ test("deliverability_check lists senders with a problem first and computes the w
     ]
   );
   assert.equal(senders[0]?.domain, "example.com");
-  assert.equal(result.meta.requests, 1);
+  assert.equal(result.meta.requests, 0);
 
   const scoped = await call("deliverability_check", {
     campaign: "cmp_agencies",
@@ -237,7 +237,7 @@ test("audience_lists reports each saved list and its size", async () => {
   assert.deepEqual(result.data, {
     lists: [
       {
-        created_at: "2026-09-21T09:00:00.000Z",
+        created_at: "2026-09-14T09:00:00.000Z",
         kind: "leads",
         list: "memory:acme:lst_founders",
         name: "SaaS founders",

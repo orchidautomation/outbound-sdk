@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import { combine } from "../../src/combine/index.ts";
+import { createOutbound, OutboundError } from "../../src/index.ts";
+import { insights, insightTools } from "../../src/insights/index.ts";
+import { memory } from "../../src/memory/index.ts";
 import type { MemoryData } from "../../src/memory/index.ts";
 import { NOW, single } from "./helpers.ts";
 import { pair, row, unsupported } from "./ops-helpers.ts";
@@ -266,4 +270,49 @@ test("tag_rollup divides a count only by the sends of the campaigns that report 
   assert.deepEqual(result.meta.notes, [
     "Tag mixed: bounce rate (1 of 2) counts only the campaigns that report both the count and what it is divided by. The others are left out of the rate, not counted as 0.",
   ]);
+});
+
+test("tag_rollup is Unsupported, before any request, on a tool whose campaigns carry no tags (OUT-57)", async () => {
+  // As HeyReach: campaigns have no tags, so every one would be untagged.
+  const untagged = createOutbound({
+    adapter: memory({
+      data: DATA,
+      fields: { campaign: { tags: false } },
+      workspaceId: "agency",
+    }),
+    plugins: [insights()],
+  });
+
+  await assert.rejects(
+    untagged.insights.tagRollup({}, { now: NOW }),
+    (error) =>
+      OutboundError.is(error) &&
+      error.code === "Unsupported" &&
+      error.message ===
+        "tag_rollup is not available: the memory adapter does not report campaign tags"
+  );
+  assert.deepEqual(
+    insightTools(untagged, { only: ["tag_rollup", "campaign_ranking"] }).map(
+      (tool) => tool.name
+    ),
+    ["campaign_ranking"]
+  );
+
+  // With a tool that has tags beside it, the campaigns that carry tags are grouped.
+  const mixed = createOutbound({
+    adapter: combine([
+      memory({ data: DATA, name: "mailtool", workspaceId: "agency" }),
+      memory({
+        data: { campaigns: [{ channel: "linkedin", id: "k1" }] },
+        fields: { campaign: { tags: false } },
+        name: "lntool",
+        workspaceId: "agency",
+      }),
+    ]),
+    plugins: [insights()],
+  });
+
+  const result = await mixed.insights.tagRollup({ min_sent: 0 }, { now: NOW });
+
+  assert.ok(result.data.tags.some((tag) => tag.tag === "client-a"));
 });

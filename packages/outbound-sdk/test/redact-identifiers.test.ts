@@ -111,7 +111,10 @@ test("person() refuses under a redact that masks identifiers, and works when it 
 
   assert.equal(person.found, true);
   assert.equal(person.records.length, 2, "the profile linked a second record");
-  assert.deepEqual(names.redacted, { fields: ["name"], strategy: "mask" });
+  const { hash, ...redacted } = names.redacted;
+
+  assert.deepEqual(redacted, { fields: ["name"], strategy: "mask" });
+  assert.equal(hash("Alex"), "[redacted]");
 });
 
 test("redact masks an address or a profile URL inside an id and every ref", async () => {

@@ -87,11 +87,11 @@ test("heyreach: the page size is clamped to the documented maximum of 100", asyn
   assert.equal((bodyOf(requests[1]) as { limit: number }).limit, 25);
 });
 
-test("heyreach: a list without totalCount or without items ends the walk", async () => {
+// A body with no items array is a Provider error: test/heyreach/strict-lists.test.ts.
+test("heyreach: a list without totalCount, or with no items left, ends the walk", async () => {
   for (const body of [
     { items: [{ id: 1, name: "One", status: "DRAFT" }] },
     { items: [], totalCount: 40 },
-    ["unexpected"],
   ]) {
     const { outbound, settle } = harness(suite, () => Response.json(body));
     const page = await settle(outbound.campaigns.list());

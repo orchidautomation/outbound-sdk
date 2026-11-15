@@ -1,5 +1,7 @@
 {
   "data": {
+    "campaignsRead": 5,
+    "moreCampaignsExist": false,
     "campaigns": 5,
     "period": {
       "from": null,

@@ -3,7 +3,17 @@
 
 import type { Json, JsonObject } from "../internal/json.ts";
 import type { Stat } from "./content.ts";
-import { child, int, mark, num, pctRange, show, words } from "./format.ts";
+import {
+  bool,
+  child,
+  int,
+  mark,
+  num,
+  pctRange,
+  plural,
+  show,
+  words,
+} from "./format.ts";
 
 export const LEFT = "left";
 export const RIGHT = "right";
@@ -12,19 +22,31 @@ export const RIGHT = "right";
 export const measured = (value: Json | undefined): string =>
   pctRange(num(value, "rate"), num(value, "low"), num(value, "high"));
 
-/** A rate with an `interval` object beside it, as the copy insights report one. */
+/**
+ * A rate with `low` and `high` beside it, or the `interval` object a result
+ * stored before those carries.
+ */
 export const withInterval = (
   value: JsonObject,
-  rateKey: string,
-  intervalKey: string
+  rateKey = "rate",
+  intervalKey = "interval"
 ): string => {
   const interval = child(value, intervalKey);
 
   return pctRange(
     num(value, rateKey),
-    num(interval, "low"),
-    num(interval, "high")
+    num(value, "low") ?? num(interval, "low"),
+    num(value, "high") ?? num(interval, "high")
   );
+};
+
+/** A row's `rates.replyRate`, or its older `replyRate` and `replyRateInterval`. */
+export const replyRate = (value: JsonObject): string => {
+  const rate = child(child(value, "rates"), "replyRate");
+
+  return "rate" in rate
+    ? measured(rate)
+    : withInterval(value, "replyRate", "replyRateInterval");
 };
 
 /** Sent, replies, positive and bounced, as fields. */
@@ -72,3 +94,11 @@ export const range = (period: Json | undefined): string =>
 /** `4.2%` as a chart value: one decimal, or `null`. */
 export const percentPoint = (rate: number | null): number | null =>
   rate === null ? null : Math.round(rate * 1000) / 10;
+
+/** Says an answer stopped at `max_campaigns` with more campaigns left, or nothing. */
+export const campaignsCapped = (data: Json | undefined): string[] =>
+  bool(data, "moreCampaignsExist") === true
+    ? [
+        `🟡 Stopped at ${plural(num(data, "campaignsRead") ?? 0, "campaign")} read (max_campaigns); more exist and are not in this answer.`,
+      ]
+    : [];

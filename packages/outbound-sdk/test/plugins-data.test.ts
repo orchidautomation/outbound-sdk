@@ -139,7 +139,7 @@ test("alerts fire for a bounce spike, a weak reply rate, a dead sender and a sil
       ["reply-rate-below", "memory:default:bad", 0.01, 0.02],
     ]
   );
-  assert.equal(notified[0]?.[0]?.message, "Bounce rate is 12.0%, above 5.0%");
+  assert.equal(notified[0]?.[0]?.message, "Bounce rate is 12%, above 5%");
 
   await outbound.senders.list();
   await outbound.campaign("bad").stats({ by: "day" });
@@ -151,6 +151,40 @@ test("alerts fire for a bounce spike, a weak reply rate, a dead sender and a sil
     notified.flat().find((alert) => alert.rule === "sender-not-active")
       ?.subject,
     "memory:default:s2"
+  );
+});
+
+test("an alert names its subject as a person knows it, once the instance has read it", async () => {
+  const notified: Alert[] = [];
+
+  const outbound = createOutbound({
+    adapter: memory({
+      data: { ...data(), campaigns: [{ id: "bad", name: "Founders Q4" }] },
+    }),
+    plugins: [
+      alerts({
+        notify: (fired) => {
+          notified.push(...fired);
+        },
+        rules: [bounceRateAbove(0.05), senderNotActive()],
+      }),
+    ],
+  });
+
+  // Before the campaign itself is read, only its ref is known.
+  await outbound.campaign("bad").stats();
+  await outbound.campaigns.list();
+  await outbound.campaign("bad").stats();
+  await outbound.senders.list();
+  await settle();
+
+  assert.deepEqual(
+    notified.map((alert) => [alert.rule, alert.subjectName]),
+    [
+      ["bounce-rate-above", null],
+      ["bounce-rate-above", "Founders Q4"],
+      ["sender-not-active", "down@example.com"],
+    ]
   );
 });
 

@@ -1,28 +1,12 @@
-// What the copy insights share: capped reads, the base a step's rate is
-// divided by, and a rate with its interval.
+// What the copy insights share: the base a step's rate is divided by, and a
+// rate with its interval.
 
-import { z } from "zod";
-
-import type {
-  Campaign,
-  CampaignStatus,
-  MetricRow,
-} from "../../internal/entities.ts";
+import type { MetricRow } from "../../internal/entities.ts";
 import { sumCounts } from "../../internal/metrics.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
-import type { ListAll } from "../../internal/outbound/api.ts";
-import type { InsightContext } from "../define.ts";
+import type { Measured as Rate } from "../ops/shared.ts";
 import { rate, wilson } from "../stats.ts";
 import type { Interval } from "../stats.ts";
-
-/** A `YYYY-MM-DD` input that defaults to `null`, meaning no bound. */
-export const dayInput = (description: string) =>
-  z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/u, "must be YYYY-MM-DD")
-    .nullable()
-    .default(null)
-    .describe(description);
 
 export interface DayRange {
   readonly from: string | undefined;
@@ -33,50 +17,6 @@ export const rangeOf = (from: string | null, to: string | null): DayRange => ({
   from: from ?? undefined,
   to: to ?? undefined,
 });
-
-/** Reads a listing up to `max` records; a listing that holds more is reported as cut off. */
-export const readCapped = <Item>(
-  context: InsightContext,
-  walk: (max: number) => ListAll<Item>,
-  max: number
-): Promise<Item[]> => context.all(walk(max));
-
-/** The campaigns in the given statuses, up to `max` in all. */
-export const campaignsIn = async (
-  context: InsightContext,
-  statuses: readonly CampaignStatus[],
-  max: number
-): Promise<Campaign[]> => {
-  const { outbound } = context;
-
-  if (outbound.capabilities["campaigns.status"] === false) {
-    // The vendor cannot filter by status, so the cap applies before the filter.
-    const every = await readCapped(
-      context,
-      (cap) => outbound.campaigns.listAll({ max: cap }),
-      max
-    );
-
-    return every.filter((campaign) => statuses.includes(campaign.status));
-  }
-
-  const found: Campaign[] = [];
-
-  // A status read after the cap is reached still asks for one record, so
-  // campaigns left out are reported instead of silently dropped.
-  for (const status of new Set(statuses)) {
-    // oxlint-disable-next-line no-await-in-loop -- each status reads only the room the earlier ones left under the cap.
-    const page = await readCapped(
-      context,
-      (cap) => outbound.campaigns.listAll({ max: cap, status }),
-      max - found.length
-    );
-
-    found.push(...page);
-  }
-
-  return found;
-};
 
 export type RateBasis = "contacted" | "delivered" | "sent";
 
@@ -112,22 +52,116 @@ export const perMessage = (counts: MetricCounts): Base =>
     ["sent", counts.sent],
   ]);
 
-export interface Measured {
-  readonly count: number | null;
-  readonly trials: number | null;
+/** The counts' base of one kind, or no base when they do not report it. */
+export const baseIn = (counts: MetricCounts, basis: RateBasis): Base =>
+  firstKnown([[basis, counts[basis]]]);
+
+const ORDER = {
+  lead: ["contacted", "sent"],
+  message: ["delivered", "sent"],
+} as const satisfies Record<string, readonly RateBasis[]>;
+
+export interface SharedBases {
+  /** One base per entry of counts, in order. */
+  readonly bases: readonly Base[];
+  /** The base every entry is divided by. `null` when they are not comparable or none reports a base. */
   readonly basis: RateBasis | null;
-  readonly rate: number | null;
-  /** The 95% Wilson interval of the rate. `null` when the rate is unknown. */
+  /** `false` when no one base is reported by every entry, so each has its own and they cannot be compared. */
+  readonly comparable: boolean;
+}
+
+/**
+ * One base for counts that are compared with each other: the first in the
+ * usual order that every entry with a base reports. One variant divided by
+ * leads contacted and another by messages sent would differ for no reason
+ * but the base.
+ */
+export const sharedBases = (
+  counts: readonly MetricCounts[],
+  per: keyof typeof ORDER
+): SharedBases => {
+  const own = counts.map(per === "lead" ? perLead : perMessage);
+  const based = counts.filter((_, index) => own[index]?.basis !== null);
+
+  for (const basis of ORDER[per]) {
+    if (based.every((each) => (each[basis] ?? 0) > 0)) {
+      return {
+        bases: counts.map((each) => baseIn(each, basis)),
+        basis: based.length === 0 ? null : basis,
+        comparable: true,
+      };
+    }
+  }
+
+  return { bases: own, basis: null, comparable: false };
+};
+
+const BASIS_WORDS: Readonly<Record<RateBasis, string>> = {
+  contacted: "per lead contacted",
+  delivered: "per message delivered",
+  sent: "per message sent",
+};
+
+/** `A per lead contacted, B per message sent`, for a note that bases differ. */
+export const basesInWords = (
+  named: readonly { readonly name: string; readonly basis: RateBasis | null }[]
+): string =>
+  named
+    .map(
+      ({ basis, name }) =>
+        `${name} ${basis === null ? "with no base" : BASIS_WORDS[basis]}`
+    )
+    .join(", ");
+
+/** A rate with its counts and 95% Wilson interval, and what it divides by. */
+export interface BasedRate extends Rate {
+  /** What `of` counts. */
+  readonly basis: RateBasis | null;
+}
+
+export interface Measured extends BasedRate {
+  /** @deprecated Use `of`. Removed in 0.5.0. */
+  readonly trials: number | null;
+  /** @deprecated Use `low` and `high`. Removed in 0.5.0. */
   readonly interval: Interval | null;
 }
 
-export const measure = (count: number | null, base: Base): Measured => ({
-  basis: base.basis,
-  count,
-  interval: wilson(count, base.trials),
-  rate: rate(count, base.trials),
-  trials: base.trials,
-});
+export const measure = (count: number | null, base: Base): Measured => {
+  const interval = wilson(count, base.trials);
+
+  return {
+    basis: base.basis,
+    count,
+    high: interval?.high ?? null,
+    interval,
+    low: interval?.low ?? null,
+    of: base.trials,
+    rate: rate(count, base.trials),
+    trials: base.trials,
+  };
+};
+
+const NO_RATE: BasedRate = {
+  basis: null,
+  count: null,
+  high: null,
+  low: null,
+  of: null,
+  rate: null,
+};
+
+/** The rate alone, without the deprecated `trials` and `interval`. */
+export const replyRateOf = (measured: Measured | null): BasedRate =>
+  measured === null
+    ? NO_RATE
+    : {
+        basis: measured.basis,
+        count: measured.count,
+        high: measured.high,
+        low: measured.low,
+        of: measured.of,
+        rate: measured.rate,
+      };
 
 /** Adds rows of counts; a count no row reports stays `null`. */
 export const sumRows = (rows: readonly MetricRow[]): MetricCounts =>

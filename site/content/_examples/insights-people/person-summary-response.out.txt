@@ -16,6 +16,7 @@
         "lead": "mailtool:acme:ana_founders",
         "leadStatus": "replied",
         "provider": "mailtool",
+        "autoReplied": false,
         "replied": true,
         "repliedSteps": [
           1
@@ -36,6 +37,7 @@
         "lead": "mailtool:acme:ana_agencies",
         "leadStatus": "active",
         "provider": "mailtool",
+        "autoReplied": false,
         "replied": false,
         "repliedSteps": []
       },
@@ -54,6 +56,7 @@
         "lead": "linkedintool:acme:ana_linkedin",
         "leadStatus": "active",
         "provider": "linkedintool",
+        "autoReplied": false,
         "replied": true,
         "repliedSteps": []
       }

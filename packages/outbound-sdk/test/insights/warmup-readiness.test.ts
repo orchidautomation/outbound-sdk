@@ -125,6 +125,10 @@ test("warmup_readiness names each sender that is not ready, the one with the mos
   assert.equal(data.total, 8);
   assert.equal(data.linkedinSeats, 2);
   assert.equal(data.healthChecked, false);
+  // The default leaves sender health unread, and the notes say how to read it.
+  assert.deepEqual(result.meta.notes, [
+    "DNS records and warmup spam were not checked, so a ready mailbox is ready on warmup alone. Pass check_health: true to check them, at 1 more request per mailbox.",
+  ]);
   assert.equal(result.meta.complete, true);
 });
 

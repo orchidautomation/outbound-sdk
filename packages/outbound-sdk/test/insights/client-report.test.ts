@@ -76,7 +76,7 @@ const BOUNCE_NOTE =
 
 test("client_report composes totals, best and worst campaigns, bounce problems, unusual days, leads left and actions", async () => {
   const result = await single(DATA).insights.clientReport(
-    { top: 1 },
+    { limit: 1 },
     { now: NOW }
   );
 
@@ -93,7 +93,8 @@ test("client_report composes totals, best and worst campaigns, bounce problems, 
   });
   // Current: 400 + 300 + 200 + 20 sends, 70 + 140 + 70 + 20 contacted,
   // 14 + 14 + 2 + 1 replies, 4 + 3 + 20 bounces. Previous: 900 sends,
-  // 280 contacted, 12 + 14 + 9 replies, 2 bounces. Small reports no bounces,
+  // 280 contacted, 12 + 14 + 9 replies, 2 bounces. Replies are divided by
+  // messages sent, not leads contacted. Small reports no bounces,
   // so the 27 are divided by the other three's 900 sends, not by 920; in the
   // earlier period only Bouncy reports them: 2 of its 200.
   assert.deepEqual(result.data.totals.current, {
@@ -103,7 +104,7 @@ test("client_report composes totals, best and worst campaigns, bounce problems, 
     positive: null,
     positiveRate: null,
     replied: 31,
-    replyRate: 0.1033,
+    replyRate: 0.0337,
     sent: 920,
   });
   assert.deepEqual(result.data.totals.previous, {
@@ -113,28 +114,33 @@ test("client_report composes totals, best and worst campaigns, bounce problems, 
     positive: null,
     positiveRate: null,
     replied: 35,
-    replyRate: 0.125,
+    replyRate: 0.0389,
     sent: 900,
   });
-  assert.equal(result.data.totals.change.replyRate, -0.0217);
+  assert.equal(result.data.replyRateBasis, "sent");
+  assert.equal(result.data.totals.replyRateBasis, "sent");
+  assert.equal(result.data.totals.change.replyRate, -0.0052);
   assert.equal(result.data.totals.change.sent, 20);
-  // 31 of 300 against 35 of 280: z = -0.82, p = 0.41.
+  // 31 of 920 against 35 of 900: z = -0.59, p = 0.55.
   assert.equal(result.data.totals.verdict, "no_real_change");
-  assert.equal(result.data.totals.replyRateTest?.pValue, 0.4116);
-  // 14 of 70 has a low end of 12.3%, 14 of 140 has 6.05%, 2 of 70 has 0.79%.
+  assert.equal(result.data.totals.replyRateTest?.pValue, 0.5535);
+  // Per message sent, 14 of 300 has a low end of 2.8%, 14 of 400 has 2.1%
+  // and 2 of 200 has 0.27%: Middling leads, though Winner leads per lead.
   assert.deepEqual(result.data.top, [
     {
-      campaign: "memory:agency:a",
+      basis: "sent",
+      campaign: "memory:agency:b",
       channel: "email",
       count: 14,
-      high: 0.3082,
-      low: 0.123,
-      name: "Winner",
-      of: 70,
+      high: 0.0768,
+      low: 0.028,
+      campaignName: "Middling",
+      name: "Middling",
+      of: 300,
       provider: "memory",
       rank: 1,
-      rate: 0.2,
-      sent: 400,
+      rate: 0.0467,
+      sent: 300,
       status: "active",
     },
   ]);
@@ -147,16 +153,20 @@ test("client_report composes totals, best and worst campaigns, bounce problems, 
       each.rate,
       each.low,
     ]),
-    [["Bouncy", 3, 2, 70, 0.0286, 0.0079]]
+    [["Bouncy", 3, 2, 200, 0.01, 0.0027]]
   );
   assert.deepEqual(result.data.bounceProblems, [
     {
       bounced: 20,
       campaign: "memory:agency:c",
       channel: "email",
+      // The Measured shape: count over of, the same as bounced over sent.
+      count: 20,
       high: 0.1494,
       low: 0.0657,
+      campaignName: "Bouncy",
       name: "Bouncy",
+      of: 200,
       provider: "memory",
       rate: 0.1,
       sent: 200,
@@ -184,6 +194,7 @@ test("client_report composes totals, best and worst campaigns, bounce problems, 
       channel: "email",
       dailyContactRate: 10,
       daysLeft: 0.5,
+      campaignName: "Bouncy",
       name: "Bouncy",
       provider: "memory",
       remaining: 5,
@@ -194,6 +205,7 @@ test("client_report composes totals, best and worst campaigns, bounce problems, 
       channel: "email",
       dailyContactRate: 20,
       daysLeft: 2,
+      campaignName: "Middling",
       name: "Middling",
       provider: "memory",
       remaining: 40,
@@ -226,11 +238,11 @@ test("client_report composes totals, best and worst campaigns, bounce problems, 
     },
     {
       action:
-        "Review the copy and the audience of Bouncy: it has the weakest reply rate, 2.9% (2 of 70).",
+        "Review the copy and the audience of Bouncy: it has the fewest replies per message sent, 1% (2 of 200).",
       campaign: "memory:agency:c",
       campaignName: "Bouncy",
       kind: "review_campaign",
-      number: 0.0286,
+      number: 0.01,
     },
     {
       action:
@@ -253,7 +265,7 @@ test("client_report moves with top, the bounce limit, min_sent and the runway", 
   // Three campaigns are ranked and the default top is 3: none is left for the bottom.
   assert.deepEqual(
     wide.data.top.map((each) => each.name),
-    ["Winner", "Middling", "Bouncy"]
+    ["Middling", "Winner", "Bouncy"]
   );
   assert.deepEqual(wide.data.bottom, []);
   assert.ok(!wide.data.actions.some((each) => each.kind === "review_campaign"));
@@ -274,7 +286,7 @@ test("client_report moves with top, the bounce limit, min_sent and the runway", 
   // Bouncy's 200 sends are now too few to rank or to call a bounce problem.
   assert.deepEqual(
     strict.data.top.map((each) => each.name),
-    ["Winner", "Middling"]
+    ["Middling", "Winner"]
   );
   assert.deepEqual(strict.data.bounceProblems, []);
 
@@ -342,7 +354,7 @@ test("client_report moves with the anomaly settings, alpha and the days", async 
   assert.deepEqual(brief.data.anomalies, []);
 
   const credulous = await outbound.insights.clientReport(
-    { alpha: 0.5 },
+    { alpha: 0.6 },
     { now: NOW }
   );
 
@@ -351,11 +363,11 @@ test("client_report moves with the anomaly settings, alpha and the days", async 
     credulous.data.actions.find((each) => each.kind === "reply_rate_fell"),
     {
       action:
-        "Find out what changed: the reply rate fell from 12.5% to 10.3%, more than chance would give.",
+        "Find out what changed: replies per message sent fell from 3.9% to 3.4%, more than chance would give.",
       campaign: null,
       campaignName: null,
       kind: "reply_rate_fell",
-      number: -0.0217,
+      number: -0.0052,
     }
   );
 
@@ -377,7 +389,7 @@ test("client_report leaves out the sections the adapter cannot serve, and names 
 
   const noDays = await single(DATA, {
     "stats.byDay": false,
-  }).insights.clientReport({ top: 1 }, { now: NOW });
+  }).insights.clientReport({ limit: 1 }, { now: NOW });
 
   assert.equal(noDays.data.anomalies, null);
   assert.equal(noDays.data.runningOutOfLeads, null);
@@ -468,7 +480,7 @@ test("client_report covers the campaigns of two tools in one report", async () =
       row("k1", "2026-11-05", { contacted: 100, replied: 20, sent: 100 }),
       row("k1", "2026-11-12", { contacted: 100, replied: 25, sent: 100 }),
     ],
-  }).insights.clientReport({ top: 1 }, { now: NOW });
+  }).insights.clientReport({ limit: 1 }, { now: NOW });
 
   assert.equal(result.data.campaigns, 5);
   // 25 of 100 has a low end of 17.55%, above Winner's 12.3%.
@@ -490,4 +502,51 @@ test("client_report covers the campaigns of two tools in one report", async () =
     ]
   );
   assert.equal(result.meta.provider, "combined");
+});
+
+test("client_report divides by leads contacted when the vendor reports no messages sent, and says so", async () => {
+  // 3 of 100 before and 9 of 60 now: no row counts messages sent.
+  const result = await single({
+    campaigns: [
+      { id: "k", name: "Seats" },
+      { id: "m", name: "Founders" },
+    ],
+    stats: [
+      row("k", "2026-11-02", { contacted: 50, replied: 1 }),
+      row("m", "2026-11-02", { contacted: 50, replied: 2 }),
+      row("k", "2026-11-09", { contacted: 30, replied: 6 }),
+      row("m", "2026-11-09", { contacted: 30, replied: 3 }),
+    ],
+  }).insights.clientReport({ limit: 1, min_sent: 10 }, { now: NOW });
+
+  assert.equal(result.data.replyRateBasis, "contacted");
+  assert.equal(result.data.totals.replyRateBasis, "contacted");
+  assert.deepEqual(
+    [
+      result.data.totals.previous.replyRate,
+      result.data.totals.current.replyRate,
+    ],
+    [0.03, 0.15]
+  );
+  assert.match(
+    result.data.totals.finding,
+    /^Replies per lead contacted went from 3% to 15%; /u
+  );
+  // 6 of 30 against 3 of 30, both per lead contacted.
+  assert.deepEqual(
+    [...result.data.top, ...result.data.bottom].map((each) => [
+      each.campaignName,
+      each.of,
+      each.basis,
+    ]),
+    [
+      ["Seats", 30, "contacted"],
+      ["Founders", 30, "contacted"],
+    ]
+  );
+  assert.match(
+    result.data.actions.find((each) => each.kind === "review_campaign")
+      ?.action ?? "",
+    /fewest replies per lead contacted/u
+  );
 });

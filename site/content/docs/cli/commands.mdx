@@ -46,8 +46,8 @@ The output shows what the CLI does with the demo data. It does not show what a v
 | --- | --- | --- |
 | `--provider <id>` | all that need an adapter | The adapter to use, or `all` for every provider whose key is set. Overrides `OUTBOUND_SDK_PROVIDER`. |
 | `--compact` | all that print JSON | Print the JSON on one line. |
-| `--help`, `-h` | all | Print the usage text and exit 0. |
-| `--limit <n>` | `campaigns`, `senders`, `leads`, `lists`, `replies`, `tags`, `blocklist`, `webhooks`, `person` | Stop after this many records. A positive whole number. Defaults to 50. |
+| `--help`, `-h` | all | Print the usage text and exit 0. After a command, `outbound leads --help`, print that command's options and the ones every command takes. |
+| `--limit <n>` | `campaigns`, `senders`, `leads`, `lists`, `replies`, `tags`, `blocklist`, `webhooks`, `person` | Stop after this many records. A positive whole number. Defaults to 50. When a listing stops there and more records exist, standard error says so, for example "Stopped at 50 leads; more exist. Pass --limit to read more." Standard output is the same JSON either way. |
 | `--status <status>` | `campaigns` | Only campaigns with this status: `active`, `paused`, `draft`, `completed`, `archived` or `unknown`. |
 | `--stats` | `campaign` | The campaign's counts. |
 | `--sequence` | `campaign` | The campaign's steps and variants. |
@@ -69,7 +69,9 @@ The output shows what the CLI does with the demo data. It does not show what a v
 
 The last five add [plugins](/docs/cli#plugins); the overview says which plugin each adds and in what order.
 
-When `campaign` gets more than one of its flags, one wins, in this order: `--sequence`, `--subsequences`, `--settings`, `--stats`.
+A flag a command does not take is refused before any request, with exit code 1: `outbound leads --since 2030-01-01` writes "Invalid: --since is not an option of leads". The flags in the last five rows, `--provider`, `--compact` and `--help` are taken by every command.
+
+When `campaign` gets one of `--stats`, `--sequence`, `--subsequences` and `--settings`, it prints that answer. Given two or more, it prints one object with each answer under its name: `outbound campaign <id> --stats --sequence` prints `{ "sequence": ..., "stats": ... }`.
 
 ## providers and capabilities
 

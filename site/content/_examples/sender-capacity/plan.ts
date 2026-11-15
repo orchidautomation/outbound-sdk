@@ -13,7 +13,11 @@ export const capacityFor = async (
   outbound: Outbound & InsightsExtension,
   plannedDaily: number
 ): Promise<string> => {
-  const capacity = await outbound.insights.senderCapacity({ days: 7 });
+  const capacity = await outbound.insights.senderCapacity({
+    days: 7,
+    split_uncounted: true,
+  });
+
   const readiness = await outbound.insights.warmupReadiness({});
   const load = await outbound.insights.senderLoad({});
 

@@ -187,7 +187,7 @@ test("person_summary stops at max_campaigns and rejects text that is not an addr
   assert.equal(capped.meta.complete, false);
   // The note names the cap, as the other insights do.
   assert.deepEqual(capped.meta.notes, [
-    "Stopped at 1 records of the person; more exist.",
+    "Stopped at 1 record of the person (max_campaigns); more exist.",
   ]);
 
   await assert.rejects(
@@ -195,7 +195,7 @@ test("person_summary stops at max_campaigns and rejects text that is not an addr
     (error) =>
       OutboundError.is(error) &&
       error.code === "Invalid" &&
-      /email address or a LinkedIn profile/u.test(error.message)
+      /email address, a LinkedIn profile URL or a lead ref/u.test(error.message)
   );
 });
 
@@ -296,16 +296,32 @@ const masked = (fields?: readonly RedactField[]) =>
     plugins: [redact(fields === undefined ? {} : { fields }), insights()],
   });
 
-test("person_summary refuses when redact masks the identifiers, instead of reporting not found", async () => {
-  for (const fields of [undefined, ["email"], ["linkedin"]] as const) {
+test("person_summary refuses an identifier redact masks, and looks a person up by the one it leaves", async () => {
+  for (const [fields, person] of [
+    [undefined, "person1@example.com"],
+    [["email"], "person1@example.com"],
+    [["linkedin"], PROFILE],
+  ] as const) {
     await assert.rejects(
-      masked(fields).insights.personSummary({ person: "person1@example.com" }),
+      masked(fields).insights.personSummary({ person }),
       (error) =>
         OutboundError.is(error) &&
         error.code === "Unsupported" &&
         /redact plugin masks/u.test(error.message)
     );
   }
+
+  // With only LinkedIn masked an email still finds its records, and the
+  // answer says the LinkedIn records could not be linked.
+  const byEmail = await masked(["linkedin"]).insights.personSummary({
+    person: "person1@example.com",
+  });
+
+  assert.equal(byEmail.data.found, true);
+  assert.deepEqual(byEmail.data.identifiers, ["email:person1@example.com"]);
+  assert.equal(byEmail.data.totals.campaigns, 3);
+  assert.equal(byEmail.meta.complete, false);
+  assert.match(byEmail.meta.notes.join(" "), /masks LinkedIn profiles/u);
 
   // Masking something other than the identifiers leaves the lookup working.
   const named = await masked(["name"]).insights.personSummary({

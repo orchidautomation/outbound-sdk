@@ -8,7 +8,8 @@ import {
 import { OutboundError } from "../internal/errors.ts";
 import { isJsonObject, parseJson, toJson } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
-import type { OutboundApi } from "../internal/outbound/api.ts";
+import { plural } from "../internal/numbers.ts";
+import type { ListAll, OutboundApi } from "../internal/outbound/api.ts";
 import { providers } from "../providers/index.ts";
 import { createTools } from "../tools/index.ts";
 import type { OutboundTool, ToolResult } from "../tools/index.ts";
@@ -16,6 +17,8 @@ import type { OutboundTool, ToolResult } from "../tools/index.ts";
 export interface CommandInput {
   readonly positionals: readonly string[];
   readonly flags: Readonly<Record<string, string | boolean | undefined>>;
+  /** Writes a line for the person to stderr, apart from the JSON on stdout. */
+  readonly note: (text: string) => void;
 }
 
 type Command = (outbound: OutboundApi, input: CommandInput) => Promise<Json>;
@@ -98,9 +101,26 @@ const fieldExceptions = (outbound: OutboundApi): Json =>
     })
   );
 
-const listing = async <Item>(walk: {
-  readonly toArray: () => Promise<Item[]>;
-}): Promise<Json> => asJson(await walk.toArray());
+/**
+ * Every record of a walk. When `--limit` stopped it while more exist, a note
+ * on stderr says so; stdout stays the JSON. `one` and `many` name a record.
+ */
+const listing = async <Item>(
+  walk: ListAll<Item>,
+  input: CommandInput,
+  one: string,
+  many?: string
+): Promise<Json> => {
+  const items = await walk.toArray();
+
+  if (walk.truncated) {
+    input.note(
+      `Stopped at ${plural(items.length, one, many)}; more exist. Pass --limit to read more.`
+    );
+  }
+
+  return asJson(items);
+};
 
 const wantsCard = (input: CommandInput): boolean =>
   input.flags.slack === true || input.flags.card === true;
@@ -161,56 +181,119 @@ const runInsight: Command = async (outbound, input) => {
 
 export interface CommandSpec {
   readonly help: string;
+  /** The options this command takes, besides the ones every command takes. */
+  readonly flags: readonly string[];
   readonly run: Command;
 }
 
+/** The options every command takes. */
+export const GLOBAL_FLAGS = [
+  "cache",
+  "compact",
+  "config",
+  "help",
+  "max-requests",
+  "no-redact",
+  "provider",
+  "redact",
+];
+
+/** Refuses an option the command does not take, instead of ignoring it. */
+export const checkFlags = (
+  name: string,
+  flags: readonly string[],
+  given: readonly string[]
+): void => {
+  const stray = given.find(
+    (flag) => !GLOBAL_FLAGS.includes(flag) && !flags.includes(flag)
+  );
+
+  if (stray !== undefined) {
+    throw new OutboundError(
+      "Invalid",
+      `--${stray} is not an option of ${name}`
+    );
+  }
+};
+
+// `campaign <id>` reads one section per flag. Two or more print together,
+// keyed by section.
+const SECTIONS = ["sequence", "settings", "stats", "subsequences"] as const;
+
 const COMMAND_TABLE = {
   blocklist: {
+    flags: ["limit"],
     help: "blocklist [--limit N]",
     run: (outbound, input) =>
-      listing(outbound.blocklist.listAll({ max: count(input, "limit", 50) })),
+      listing(
+        outbound.blocklist.listAll({ max: count(input, "limit", 50) }),
+        input,
+        "entry",
+        "entries"
+      ),
   },
   campaign: {
+    flags: [
+      "by",
+      "from",
+      "sequence",
+      "settings",
+      "stats",
+      "subsequences",
+      "to",
+    ],
     help: "campaign <id> [--stats] [--sequence] [--subsequences] [--settings] [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--by day|total]",
     run: async (outbound, input) => {
       const campaign = outbound.campaign(required(input, 0, "a campaign id"));
+      const by = choice(input, "by", BY);
 
-      if (input.flags.sequence === true) {
-        return asJson(await campaign.sequence());
+      const read = {
+        sequence: async () => asJson(await campaign.sequence()),
+        settings: async () => asJson(await campaign.settings()),
+        stats: async () =>
+          asJson(
+            await campaign.stats({
+              by,
+              from: text(input, "from"),
+              to: text(input, "to"),
+            })
+          ),
+        subsequences: () =>
+          listing(campaign.subsequences.listAll(), input, "subsequence"),
+      };
+
+      const wanted = SECTIONS.filter(
+        (section) => input.flags[section] === true
+      );
+
+      if (wanted.length === 0) {
+        return asJson(await campaign.get());
       }
 
-      if (input.flags.subsequences === true) {
-        return await listing(campaign.subsequences.listAll());
-      }
+      const answers = await Promise.all(
+        wanted.map(async (section) => [section, await read[section]()] as const)
+      );
 
-      if (input.flags.settings === true) {
-        return asJson(await campaign.settings());
-      }
-
-      if (input.flags.stats === true) {
-        return asJson(
-          await campaign.stats({
-            by: choice(input, "by", BY),
-            from: text(input, "from"),
-            to: text(input, "to"),
-          })
-        );
-      }
-
-      return asJson(await campaign.get());
+      return answers.length === 1
+        ? (answers[0]?.[1] ?? null)
+        : Object.fromEntries(answers);
     },
   },
   campaigns: {
+    flags: ["limit", "status"],
     help: "campaigns [--status active|paused|draft|completed|archived] [--limit N]",
     run: (outbound, input) =>
       listing(
         outbound.campaigns.listAll({
           max: count(input, "limit", 50),
           status: choice(input, "status", campaignStatusSchema.options),
-        })
+        }),
+        input,
+        "campaign"
       ),
   },
   capabilities: {
+    flags: [],
     help: "capabilities",
     run: (outbound) =>
       Promise.resolve({
@@ -223,15 +306,18 @@ const COMMAND_TABLE = {
       }),
   },
   health: {
+    flags: [],
     help: "health <sender id>",
     run: async (outbound, input) =>
       asJson(await outbound.sender(required(input, 0, "a sender id")).health()),
   },
   insight: {
+    flags: ["card", "input", "slack"],
     help: "insight [name] [--input JSON] [--card | --slack]  computed answers; no name lists them",
     run: runInsight,
   },
   leads: {
+    flags: ["campaign", "limit", "list"],
     help: "leads [--campaign ID | --list ID] [--limit N]",
     run: (outbound, input) =>
       listing(
@@ -239,19 +325,28 @@ const COMMAND_TABLE = {
           campaignId: text(input, "campaign"),
           listId: text(input, "list"),
           max: count(input, "limit", 50),
-        })
+        }),
+        input,
+        "lead"
       ),
   },
   lists: {
+    flags: ["limit"],
     help: "lists [--limit N]",
     run: (outbound, input) =>
-      listing(outbound.lists.listAll({ max: count(input, "limit", 50) })),
+      listing(
+        outbound.lists.listAll({ max: count(input, "limit", 50) }),
+        input,
+        "list"
+      ),
   },
   limits: {
+    flags: [],
     help: "limits",
     run: async (outbound) => asJson(await outbound.limits()),
   },
   native: {
+    flags: ["input"],
     help: "native [name] [--input JSON]   the vendor's own reads; no name lists them",
     run: async (outbound, input) => {
       const [name] = input.positionals;
@@ -270,10 +365,12 @@ const COMMAND_TABLE = {
     },
   },
   person: {
+    flags: ["card", "limit", "slack"],
     help: "person <email or LinkedIn URL> [--limit N] [--card | --slack]  one person's campaigns across every tool",
     // The person_summary insight, with its input taken from the arguments.
     run: (outbound, input) =>
       runInsight(outbound, {
+        ...input,
         flags: {
           ...input.flags,
           input: JSON.stringify({
@@ -285,6 +382,7 @@ const COMMAND_TABLE = {
       }),
   },
   replies: {
+    flags: ["bodies", "campaign", "category", "limit", "since"],
     help: "replies [--campaign ID] [--category positive|negative|neutral|ooo|...] [--since ISO] [--limit N] [--bodies]",
     run: (outbound, input) =>
       listing(
@@ -294,15 +392,24 @@ const COMMAND_TABLE = {
           include: input.flags.bodies === true ? ["body"] : undefined,
           max: count(input, "limit", 50),
           since: text(input, "since"),
-        })
+        }),
+        input,
+        "reply",
+        "replies"
       ),
   },
   senders: {
+    flags: ["limit"],
     help: "senders [--limit N]",
     run: (outbound, input) =>
-      listing(outbound.senders.listAll({ max: count(input, "limit", 50) })),
+      listing(
+        outbound.senders.listAll({ max: count(input, "limit", 50) }),
+        input,
+        "sender"
+      ),
   },
   stats: {
+    flags: ["by", "from", "to"],
     help: "stats [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--by day|total]",
     run: async (outbound, input) =>
       asJson(
@@ -314,11 +421,17 @@ const COMMAND_TABLE = {
       ),
   },
   tags: {
+    flags: ["limit"],
     help: "tags [--limit N]",
     run: (outbound, input) =>
-      listing(outbound.tags.listAll({ max: count(input, "limit", 50) })),
+      listing(
+        outbound.tags.listAll({ max: count(input, "limit", 50) }),
+        input,
+        "tag"
+      ),
   },
   thread: {
+    flags: ["bodies"],
     help: "thread <id> [--bodies]",
     run: async (outbound, input) =>
       asJson(
@@ -328,6 +441,7 @@ const COMMAND_TABLE = {
       ),
   },
   tool: {
+    flags: ["card", "input", "slack"],
     help: "tool <name> [--input JSON] [--card | --slack]",
     run: async (outbound, input) => {
       const name = required(input, 0, "a tool name");
@@ -350,6 +464,7 @@ const COMMAND_TABLE = {
     },
   },
   tools: {
+    flags: [],
     help: "tools",
     run: async (outbound) => {
       const offered = await offeredTools(outbound);
@@ -361,13 +476,16 @@ const COMMAND_TABLE = {
     },
   },
   webhooks: {
+    flags: ["campaign", "limit"],
     help: "webhooks [--campaign ID] [--limit N]",
     run: (outbound, input) =>
       listing(
         outbound.webhooks.listAll({
           campaignId: text(input, "campaign"),
           max: count(input, "limit", 50),
-        })
+        }),
+        input,
+        "webhook"
       ),
   },
 } satisfies Record<string, CommandSpec>;
@@ -390,6 +508,20 @@ export const listProviders = (): Json =>
     note: provider.note,
   }));
 
+const GLOBAL_HELP = [
+  "Options:",
+  "  --provider <id>          the adapter to use, or all for every provider whose key is set (default: OUTBOUND_SDK_PROVIDER)",
+  "  --compact                print JSON on one line",
+  "  --config <file>          load plugins from a file whose default export is defineConfig({ plugins })",
+  "  --redact                 mask personal fields (on by default for mcp)",
+  "  --no-redact              do not mask personal fields, even for mcp",
+  "  --cache <seconds>        reuse an answer for this long",
+  "  --max-requests <n>       the most vendor requests one command, or one MCP tool call, may make",
+  "",
+  "Each adapter reads its own key from the environment, for example INSTANTLY_API_KEY.",
+];
+
+/** Every command with its options, then the options every command takes. */
 export const helpText = (): string =>
   [
     "outbound: read-only access to outbound sending tools",
@@ -400,14 +532,9 @@ export const helpText = (): string =>
     ...[...COMMANDS.values()].map((command) => `  ${command.help}`),
     "  mcp                      start a local MCP server on stdio (redact is on)",
     "",
-    "Options:",
-    "  --provider <id>          the adapter to use, or all for every provider whose key is set (default: OUTBOUND_SDK_PROVIDER)",
-    "  --compact                print JSON on one line",
-    "  --config <file>          load plugins from a file whose default export is defineConfig({ plugins })",
-    "  --redact                 mask personal fields (on by default for mcp)",
-    "  --no-redact              do not mask personal fields, even for mcp",
-    "  --cache <seconds>        reuse an answer for this long",
-    "  --max-requests <n>       the most vendor requests one command, or one MCP tool call, may make",
-    "",
-    "Each adapter reads its own key from the environment, for example INSTANTLY_API_KEY.",
+    ...GLOBAL_HELP,
   ].join("\n");
+
+/** One command's options, then the options every command takes. */
+export const commandHelp = (command: CommandSpec): string =>
+  [`Usage: outbound ${command.help}`, "", ...GLOBAL_HELP].join("\n");

@@ -8,16 +8,24 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/u;
 const invalid = (message: string): OutboundError =>
   new OutboundError("Invalid", message);
 
-/** An inclusive ISO 8601 UTC timestamp, or `undefined`. */
+const DAY_MS = 86_400_000;
+
+/**
+ * An inclusive ISO 8601 UTC timestamp, or `undefined`. A date-only `until`
+ * is the last millisecond of that UTC day, so the whole day is included.
+ */
 const normalizeInstant = (
   value: string | undefined,
-  name: string
+  name: "since" | "until"
 ): string | undefined => {
   if (value === undefined) {
     return undefined;
   }
 
-  const time = Date.parse(value);
+  const parsed = Date.parse(value);
+
+  const time =
+    name === "until" && DATE.test(value) ? parsed + DAY_MS - 1 : parsed;
 
   if (Number.isNaN(time)) {
     throw invalid(
@@ -61,8 +69,27 @@ export const assertLimit = (limit: number | undefined): number | undefined => {
   return limit;
 };
 
+/** `max` for `listAll`: a positive integer, like `limit`. */
+export const assertMax = (max: number | undefined): number | undefined => {
+  if (max !== undefined && (!Number.isInteger(max) || max < 1)) {
+    throw invalid(`max must be a positive integer, got ${max}`);
+  }
+
+  return max;
+};
+
+/** A plain JavaScript caller can pass anything as an id. */
+export const assertIdIsString = (id: string, what: string): string => {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- `id` is a public argument a plain JavaScript caller can pass as anything
+  if (typeof id !== "string") {
+    throw invalid(`${what} id must be a string, got ${String(id)}`);
+  }
+
+  return id;
+};
+
 export const assertId = (id: string, what: string): string => {
-  if (id.trim() === "") {
+  if (assertIdIsString(id, what).trim() === "") {
     throw invalid(`${what} id must not be empty`);
   }
 

@@ -2,7 +2,17 @@
 // a failed result, and a tool with no card of its own, still get one, so a
 // caller can post whatever came back.
 
-import { field, isJsonArray, isJsonObject, text } from "../internal/json.ts";
+import type { Evidence } from "../internal/entities.ts";
+import {
+  count,
+  field,
+  flag,
+  isJsonArray,
+  isJsonObject,
+  list,
+  text,
+  toJson,
+} from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
 import type { ToolResult, ToolSuccess } from "../tools/index.ts";
 import { compact, layout } from "./content.ts";
@@ -85,36 +95,119 @@ const failureText = (name: string, result: ToolResult): string | null =>
         result.error.message
       )}`;
 
+/** An insight method's result, as `outbound.insights.hotLeads()` returns it. */
+export interface InsightResultLike {
+  readonly insight?: string | undefined;
+  readonly data: unknown;
+  readonly meta: {
+    readonly evidence: string;
+    readonly requests: number;
+    readonly provider: string;
+    readonly complete?: boolean | undefined;
+    readonly notes?: readonly string[] | undefined;
+  };
+}
+
+/** What `cardFor` draws: a tool's result, or an insight method's result. */
+export type CardInput = InsightResultLike | ToolResult;
+
+const EVIDENCE: ReadonlySet<string> = new Set(["derived", "exact", "sampled"]);
+
+const isEvidence = (value: string | null): value is Evidence =>
+  EVIDENCE.has(value ?? "");
+
+const NOT_A_RESULT =
+  "⚪ Nothing to show: this is not a tool or insight result.";
+
+/**
+ * What came in, as a tool result: an insight's answer is wrapped the way
+ * `insightTools` wraps it. `null` when it is neither.
+ */
+const asToolResult = (input: CardInput): ToolResult | null => {
+  const value = toJson(input);
+  const ok = flag(field(value, "ok"));
+
+  if (ok === false) {
+    const error = field(value, "error");
+
+    return {
+      error: {
+        code: text(field(error, "code")) ?? "Unknown",
+        message: text(field(error, "message")) ?? "No message was given.",
+      },
+      next: "",
+      ok: false,
+    };
+  }
+
+  const meta = field(value, "meta");
+  const data = field(value, "data");
+
+  if (!isJsonObject(meta) || data === undefined) {
+    return null;
+  }
+
+  const evidence = text(field(meta, "evidence"));
+
+  return {
+    data:
+      ok === true
+        ? data
+        : {
+            complete: flag(field(meta, "complete")) ?? true,
+            notes: list(field(meta, "notes")),
+            result: data,
+          },
+    meta: {
+      evidence: isEvidence(evidence) ? evidence : "derived",
+      provider: text(field(meta, "provider")) ?? "unknown",
+      requests: count(field(meta, "requests")) ?? 0,
+    },
+    next: "",
+    ok: true,
+  };
+};
+
+const note = (name: string, content: string): CardSpec =>
+  buildSpec({
+    children: [{ content, style: "bold", type: "Text" }],
+    title: words(name),
+  });
+
 /**
  * The card for one tool or insight result. `name` is the tool's name, such as
- * `campaign_overview` or `hot_leads`. Never throws: a failed result becomes a
- * card that says what failed.
+ * `campaign_overview` or `hot_leads`. `result` is what the tool's `call`
+ * returned, or what the insight method returned, such as
+ * `await outbound.insights.hotLeads({})`. Never throws: a failed result
+ * becomes a card that says what failed, and anything else a card that says
+ * there is nothing to show.
  */
 export const cardFor = (
   name: string,
-  result: ToolResult,
+  result: CardInput,
   options: CardOptions = {}
 ): CardSpec => {
-  if (!result.ok) {
+  try {
+    const given = asToolResult(result);
+
+    if (given === null) {
+      return note(name, NOT_A_RESULT);
+    }
+
+    if (!given.ok) {
+      return note(name, failureText(name, given) ?? "");
+    }
+
+    const { content, meta } = draw(name, given);
+
     return buildSpec({
-      children: [
-        {
-          content: failureText(name, result) ?? "",
-          style: "bold",
-          type: "Text",
-        },
-      ],
-      title: words(name),
+      children: layout(content, meta, options),
+      subtitle: content.subtitle,
+      title: content.title,
     });
+  } catch {
+    return note(name, NOT_A_RESULT);
   }
-
-  const { content, meta } = draw(name, result);
-
-  return buildSpec({
-    children: layout(content, meta, options),
-    subtitle: content.subtitle,
-    title: content.title,
-  });
 };
 
 export interface DigestSection {

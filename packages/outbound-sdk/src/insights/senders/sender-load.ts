@@ -5,12 +5,8 @@ import { z } from "zod";
 import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Campaign, Sender } from "../../internal/entities.ts";
 import { defineInsight } from "../define.ts";
-import {
-  readCampaigns,
-  readCampaignSenders,
-  readCapped,
-  statusesInput,
-} from "./read.ts";
+import { statusesInput } from "../fields.ts";
+import { readCampaigns, readCampaignSenders, readSenders } from "./read.ts";
 
 const input = z.object({
   max_campaigns: z
@@ -35,7 +31,7 @@ const input = z.object({
     .describe(
       "The most senders to read for the workspace, and for each campaign"
     ),
-  statuses: statusesInput,
+  statuses: statusesInput(["active"]),
 });
 
 export interface LoadedSender {
@@ -61,6 +57,8 @@ export type CampaignSenderIssue =
 
 export interface CampaignSenderRisk {
   readonly campaign: string;
+  readonly campaignName: string;
+  /** @deprecated Use `campaignName`. Removed in 0.5.0. */
   readonly name: string;
   readonly senders: number;
   readonly issues: readonly CampaignSenderIssue[];
@@ -115,6 +113,7 @@ const riskOf = (
 
   return {
     campaign: campaign.ref,
+    campaignName: campaign.name,
     finding:
       inactive.length > 0
         ? `${campaign.name} has ${count}, ${inactive.length} of them not active.`
@@ -135,15 +134,9 @@ export const senderLoad = defineInsight({
   needs: ["senders.list", "senders.byCampaign"],
   next: "Use sender_capacity to see whether the senders can cover the campaigns' daily limits, or warmup_readiness for the senders that are not active.",
   run: async (context, options) => {
-    const { outbound } = context;
     const allowed = options.max_campaigns_per_sender;
 
-    const senders = await readCapped(
-      context,
-      (cap) => outbound.senders.listAll({ max: cap }),
-      options.max_senders,
-      "senders"
-    );
+    const { items: senders } = await readSenders(context, options.max_senders);
 
     const campaigns = await readCampaigns(
       context,
@@ -157,7 +150,12 @@ export const senderLoad = defineInsight({
 
     const read = await mapConcurrent(campaigns, async (campaign) => ({
       campaign,
-      own: await readCampaignSenders(context, campaign, options.max_senders),
+      own: await readCampaignSenders(
+        context,
+        campaign,
+        options.max_senders,
+        "max_senders"
+      ),
     }));
 
     for (const { campaign, own } of read) {

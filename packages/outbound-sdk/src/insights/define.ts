@@ -10,6 +10,7 @@ import type { Evidence, MetricRow } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
 import { toJson, unknownKey } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
+import { plural } from "../internal/numbers.ts";
 import type {
   ListAll,
   OutboundApi,
@@ -18,6 +19,8 @@ import type {
   StatsResult,
   WithMeta,
 } from "../internal/outbound/api.ts";
+import { applyRenames, liveKeys } from "../internal/renamed.ts";
+import { inputProblem } from "../tools/input-problem.ts";
 
 export interface InsightMeta {
   /** `exact` only when every read behind the answer was exact. */
@@ -33,11 +36,98 @@ export interface InsightMeta {
   readonly computedAt: string;
 }
 
+/** What the redact plugin masks on an instance. */
+export interface Masking {
+  readonly fields: readonly string[];
+  readonly strategy: "hash" | "mask";
+  /** The token the plugin writes in place of a value in a masked field. */
+  readonly hash?: ((value: string) => string) | undefined;
+}
+
+/**
+ * Says why an insight cannot answer with these fields masked, for example
+ * `email addresses, which it matches people by`, or `null` when it can.
+ */
+export type MaskedOut = (masking: Masking) => string | null;
+
+/**
+ * Names what this adapter does not report that the insight needs, for
+ * example `campaign tags`, or `null` when it reports it.
+ */
+export type Lacks = (outbound: OutboundApi) => string | null;
+
+interface Redacted {
+  readonly redacted: Masking;
+}
+
+// The redact plugin says what it masks on the instance. Told apart by shape,
+// so the insights do not import that plugin.
+const isRedacted = (
+  outbound: OutboundApi
+): outbound is OutboundApi & Redacted => "redacted" in outbound;
+
+/** What the redact plugin masks here, or `null` without it. */
+export const maskingOf = (outbound: OutboundApi): Masking | null =>
+  isRedacted(outbound) ? outbound.redacted : null;
+
+/** Why the entry cannot answer under this instance's redact plugin, or `null`. */
+export const maskedOutBy = (
+  outbound: OutboundApi,
+  entry: Pick<InsightEntry, "maskedOut">
+): string | null => {
+  const masking = maskingOf(outbound);
+
+  return masking === null || entry.maskedOut === undefined
+    ? null
+    : entry.maskedOut(masking);
+};
+
 export interface InsightResult<Data> {
   readonly insight: string;
   readonly data: Data;
   readonly meta: InsightMeta;
 }
+
+/**
+ * The cap a listing was read up to, for the note when it stops early:
+ * `{ input: "max_campaigns", max: 25, what: "campaigns" }` gives "Stopped at
+ * 25 campaigns (max_campaigns); more exist."
+ */
+export interface Cap {
+  /** The cap as the caller set it, not the room left under it. */
+  readonly max: number;
+  /** What was counted, in the plural: `campaigns`, `leads of a campaign`. */
+  readonly what: string;
+  /** The input that raises the cap, or `null` for a cap no input sets. */
+  readonly input: string | null;
+}
+
+// A custom insight written before `Cap` existed names its cap as free text,
+// such as `50 campaigns`; that form is kept so its code still compiles.
+const stopNote = (cap: Cap | string | undefined): string => {
+  if (cap === undefined) {
+    return "A listing was cut off at its cap; more records exist.";
+  }
+
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- `cap` is a public argument that is either the old free-text form or a `Cap`
+  return typeof cap === "string"
+    ? `Stopped at ${cap}; more exist.`
+    : capNote(cap);
+};
+
+/**
+ * `cap.what` for a cap of one: its first plural word in the singular, so
+ * `recent replies looked through` becomes `recent reply looked through`.
+ */
+const oneOf = (what: string): string =>
+  what.replace(
+    /\b(?<stem>\w+?)(?<end>ies|s)\b/u,
+    (_match, stem: string, end: string) => (end === "ies" ? `${stem}y` : stem)
+  );
+
+/** The note for a listing that a cap stopped with more records left. */
+export const capNote = (cap: Cap): string =>
+  `Stopped at ${plural(cap.max, oneOf(cap.what), cap.what)} (${cap.input ?? "a fixed cap"}); more exist.`;
 
 /** What an insight reads through. Every helper records the read's cost and evidence. */
 export interface InsightContext {
@@ -49,9 +139,14 @@ export interface InsightContext {
   /**
    * Walks a listing to its end or its `max`, records the cost and returns the
    * records. When `max` cut it short the answer is marked incomplete; `cap`
-   * names what was capped for the note, for example `50 campaigns`.
+   * names what was capped and the input that raises it, for the note. A
+   * string such as `50 campaigns` is still accepted, for insights written
+   * before the input could be named.
    */
-  readonly all: <Item>(walk: ListAll<Item>, cap?: string) => Promise<Item[]>;
+  readonly all: <Item>(
+    walk: ListAll<Item>,
+    cap?: Cap | string
+  ) => Promise<Item[]>;
   /** Records one lookup's cost and returns the record. */
   readonly one: <Item>(item: WithMeta<Item>) => Item;
   /** Records a stats read's cost and returns its rows. */
@@ -81,6 +176,10 @@ export interface InsightEntry {
   readonly needs: readonly CapabilityKey[];
   /** What to ask next, for an agent. */
   readonly next: string;
+  /** Why the insight cannot answer while the redact plugin masks what it matches on. */
+  readonly maskedOut?: MaskedOut | undefined;
+  /** What the adapter does not report that the insight needs, beyond a capability. */
+  readonly lacks?: Lacks | undefined;
   /** Checks the input and the capabilities, then runs the insight. */
   readonly execute: (
     outbound: OutboundApi,
@@ -105,6 +204,18 @@ export interface InsightSpec<Key extends string, Input, Data, Given = Input> {
    */
   readonly needsFor?: ((input: Input) => readonly CapabilityKey[]) | undefined;
   readonly next: string;
+  /**
+   * What makes the insight unable to answer under the redact plugin, for an
+   * insight that matches records by a field redact can mask. Checked before
+   * any request, and an insight it refuses is not offered as a tool.
+   */
+  readonly maskedOut?: MaskedOut | undefined;
+  /**
+   * What the adapter does not report that the insight needs beyond a
+   * capability, such as a field its records never fill. Checked before any
+   * request, and an insight it refuses is not offered as a tool.
+   */
+  readonly lacks?: Lacks | undefined;
   readonly run: (context: InsightContext, input: Input) => Promise<Data>;
 }
 
@@ -165,11 +276,7 @@ const track = (outbound: OutboundApi, now: number): Tracker => {
         seen(walk.meta);
 
         if (walk.truncated) {
-          partial(
-            cap === undefined
-              ? "A listing was cut off at its cap; more records exist."
-              : `Stopped at ${cap}; more exist.`
-          );
+          partial(stopNote(cap));
         }
 
         return items;
@@ -208,14 +315,45 @@ const missing = (
 ): CapabilityKey[] =>
   needs.filter((key) => outbound.capabilities[key] === false);
 
+interface Prepared<Input> {
+  readonly input: Input;
+  /** One note for each deprecated input name the caller used. */
+  readonly notes: readonly string[];
+}
+
+/** The input with each old name moved to its new one, and a note for each. */
+const withRenames = (
+  outbound: OutboundApi,
+  spec: Pick<InsightEntry, "inputSchema" | "name">,
+  given: Json | undefined
+) => {
+  // An old input name still works for one minor release, with a note.
+  const renamed = applyRenames(spec.inputSchema.shape, given);
+
+  if ("conflict" in renamed) {
+    const { from, to } = renamed.conflict;
+
+    throw new OutboundError(
+      "Invalid",
+      `${spec.name}: pass \`${to}\` only; \`${from}\` is its old name`,
+      { provider: outbound.provider }
+    );
+  }
+
+  return renamed;
+};
+
 const prepare = <Key extends string, Input, Data, Given>(
   outbound: OutboundApi,
   spec: InsightSpec<Key, Input, Data, Given>,
-  input: Json | undefined
-): Input => {
+  given: Json | undefined
+): Prepared<Input> => {
+  const fields = spec.inputSchema.shape;
+  const renamed = withRenames(outbound, spec, given);
+  const { input } = renamed;
   // A misspelt or unsupported filter is refused. Dropping it would let the
   // insight quietly answer a wider question than the one asked.
-  const stray = unknownKey(Object.keys(spec.inputSchema.shape), input);
+  const stray = unknownKey(liveKeys(fields), input);
 
   if (stray !== undefined) {
     throw new OutboundError("Invalid", `${spec.name}: ${stray}`, {
@@ -230,7 +368,27 @@ const prepare = <Key extends string, Input, Data, Given>(
 
     throw new OutboundError(
       "Invalid",
-      `${spec.name}: ${issue?.path.join(".") || "input"} ${issue?.message ?? "is invalid"}`,
+      `${spec.name}: ${inputProblem(input, issue)}`,
+      { provider: outbound.provider }
+    );
+  }
+
+  const blocked = maskedOutBy(outbound, spec);
+
+  if (blocked !== null) {
+    throw new OutboundError(
+      "Unsupported",
+      `${spec.name} is not available while the redact plugin masks ${blocked}`,
+      { provider: outbound.provider }
+    );
+  }
+
+  const lacked = spec.lacks?.(outbound) ?? null;
+
+  if (lacked !== null) {
+    throw new OutboundError(
+      "Unsupported",
+      `${spec.name} is not available: the ${outbound.provider} adapter does not report ${lacked}`,
       { provider: outbound.provider }
     );
   }
@@ -247,7 +405,7 @@ const prepare = <Key extends string, Input, Data, Given>(
     );
   }
 
-  return parsed.data;
+  return { input: parsed.data, notes: renamed.notes };
 };
 
 const execute = async <Key extends string, Input, Data, Given>(
@@ -259,7 +417,12 @@ const execute = async <Key extends string, Input, Data, Given>(
   const checked = prepare(outbound, spec, input);
   const now = options.now ?? Date.now();
   const tracker = track(outbound, now);
-  const data = await spec.run(tracker.context, checked);
+
+  for (const note of checked.notes) {
+    tracker.context.note(note);
+  }
+
+  const data = await spec.run(tracker.context, checked.input);
 
   return {
     data,

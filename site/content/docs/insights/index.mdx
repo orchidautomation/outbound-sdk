@@ -50,7 +50,7 @@ Pass `meta.notes` on with the numbers. An answer cut short by a cap looks like a
 
 ## Caps
 
-Every read an insight makes has a cap you can set. The defaults keep one call to tens of requests on a real vendor. When a cap stops a read, `meta.complete` is `false` and a note names the cap. The answer is never padded or guessed.
+Every read an insight makes has a cap you can set. The defaults keep one call to tens of requests on a real vendor. When a cap stops a read, `meta.complete` is `false` and a note names the input to raise, for example "Stopped at 25 campaigns (max_campaigns); more exist." The answer is never padded or guessed.
 
 | Cap | Default | Where |
 | --- | --- | --- |
@@ -104,9 +104,9 @@ Rates, interval ends and p-values are rounded to four decimal places. A p-value 
 
 ## Inputs are checked
 
-An input is checked twice: by the method's type when you compile, and by the insight's schema when it runs. The method's type is generated from the schema, so hovering a field such as `max_leads` in an editor shows its default and its range. `InsightInputs["hotLeads"]` is that type, for code that builds an input before calling. A key the insight does not take is refused as `Invalid`, with the list of inputs it does take. It is never dropped, because a dropped filter would quietly answer a wider question than the one asked.
+An input is checked twice: by the method's type when you compile, and by the insight's schema when it runs. The method's type is generated from the schema, so hovering a field such as `max_leads` in an editor shows its default and its range. `InsightInputs["hotLeads"]` is that type, for code that builds an input before calling. A key the insight does not take is refused as `Invalid`, with the list of inputs it does take. It is never dropped, because a dropped filter would quietly answer a wider question than the one asked. A missing required input is refused as `Invalid` too, for example ``step_funnel: `campaign` is required``. A `campaign` that does not exist is refused as `NotFound`, for the same reason: an empty campaign would answer as "nothing happened".
 
-An insight that needs a capability the adapter lacks is refused as `Unsupported` before any request is made, and is left out of the tool list, so a model is never offered a tool that cannot work.
+An insight that needs a capability the adapter lacks, or a field its records never fill (`tagRollup` on campaigns with no tags), is refused as `Unsupported` before any request is made, and is left out of the tool list, so a model is never offered a tool that cannot work. So is an insight that matches records by a field the [`redact` plugin](/docs/plugins/redact) masks, such as `accountSummary` while emails are masked. A tool's `next` hint never names a tool that is not on offer.
 
 <include meta='title="input-checking.ts"'>
   ../../_examples/insights-index/input-checking.ts
@@ -117,6 +117,30 @@ An insight that needs a capability the adapter lacks is refused as `Unsupported`
 </include>
 
 Each `@ts-expect-error` marks a line the compiler rejects. Without the comment, the sample would not type-check. Input names are snake case (`max_campaigns`) because the same schema serves the agent tool and the CLI.
+
+## Names
+
+The same word means the same thing in every insight.
+
+- **Inputs are snake case, answers are camel case.** `max_campaigns` goes in and `moreCampaignsExist` comes out, because the same input schema serves the method, the agent tool and the CLI. The [built-in tools](/docs/tools) take snake case inputs too, and answer in snake case JSON written for a model; an insight's answer is camel case wherever it is read.
+- **`from` and `to` are an inclusive range of `YYYY-MM-DD` days.** `null`, the default, is no bound: the whole history, or up to today. A day that does not exist, such as `2026-02-30`, is refused.
+- **`since` is an ISO time** that a listing starts at, as in `droppedReplies` and `replyTiming`.
+- **`days` is the last N complete days, ending yesterday.**
+- **`limit` is how many items come back. `max_*` caps what is read.** `max_leads` caps every lead read; `max_leads_per_campaign` caps each campaign's.
+- **`max_<metric>_rate` and `min_<metric>_rate` are cutoffs**, such as `max_bounce_rate`. `anomalies`' `threshold` is a z-score, not a rate, and keeps its name, as do `recency_days` (how fast `hotLeads` lets a reply fade) and `baseline_days`.
+- **`campaign` in an answer is always the campaign's ref**, even when you passed its bare vendor id, and a campaign row carries `campaignName` beside it.
+- **A rate is `{ count, of, rate, low, high }`**: the count, what it is divided by, the rate and the ends of its 95% Wilson interval. A few figures stay plain numbers because no single count is behind them: `PeriodNumbers`' rates, `personSummary`'s `campaignReplyRate` and `personalizationGaps`' `affectedRate`.
+
+Names that broke this rule before 0.4.0 have new ones. The old name still works until 0.5.0: it gives the same answer with a note in `meta.notes`, the tool parameters mark it `deprecated`, and passing both names is `Invalid`.
+
+| Insight | Old input | New input |
+| --- | --- | --- |
+| `bounceWatch` | `threshold` | `max_bounce_rate` |
+| `domainHealth` | `spam_rate_threshold` | `max_spam_rate` |
+| `campaignDiagnosis` | `recent_days` | `days` |
+| `clientReport` | `top` | `limit` (the `top` list in the answer keeps its name) |
+
+Old answer fields stay beside the new ones, marked `@deprecated` in the types, until 0.5.0: `name` beside `campaignName`, `interval` and `trials` beside `low`, `high` and `of`, `replyRate`, `replyRateInterval` and `replyRateBasis` beside `rates.replyRate`, `spamRate` beside `rate`, and bounceWatch's `threshold` beside `maxBounceRate`. [Cards](/docs/cards) draw either form.
 
 ## The insights
 
@@ -245,7 +269,7 @@ outbound insight client_report --input '{}'
 | `rows(stats)` | Records a stats read and returns its rows. |
 | `one(item)` | Records one lookup and returns the record. |
 | `page(page)` | Records one page and returns its items. An unfinished page marks the answer incomplete. |
-| `all(walk, cap)` | Walks a `listAll` to its end or its `max`, and marks the answer incomplete when `max` cut it short. |
+| `all(walk, cap)` | Walks a `listAll` to its end or its `max`, and marks the answer incomplete when `max` cut it short. `cap` (`{ max, what, input }`) names what was capped and the input that raises it, for the note. |
 | `note(text)` | Adds a note. The same note is kept once. |
 | `partial(reason)` | Marks the answer incomplete, with the reason as a note. |
 

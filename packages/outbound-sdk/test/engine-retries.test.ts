@@ -253,7 +253,7 @@ test("stops a call that reaches its request budget", async () => {
 
   const error = await failure(clock.settle(outbound.campaigns.list()));
   assert.equal(error.code, "RateLimited");
-  assert.match(error.message, /budget of 2 request\(s\)/u);
+  assert.match(error.message, /budget of 2 requests/u);
   assert.match(error.message, /Raise maxRequestsPerCall or ask for less/u);
   assert.equal(error.limit, "call");
   assert.equal(error.permanent, true, "retrying stops at the same place");
@@ -270,7 +270,7 @@ test("a cap set on the call stops it as permanently as the instance's", async ()
     clock.settle(outbound.campaigns.list({ maxRequests: 1 }))
   );
 
-  assert.match(error.message, /budget of 1 request\(s\)/u);
+  assert.match(error.message, /budget of 1 request /u);
   assert.equal(error.limit, "call");
   assert.equal(error.permanent, true);
 });

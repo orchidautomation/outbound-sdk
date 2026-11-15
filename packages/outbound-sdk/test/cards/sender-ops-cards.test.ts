@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { cardFor } from "../../src/cards/index.ts";
@@ -28,6 +29,7 @@ const NOTHING = "⚪ Nothing had enough data to check.";
 
 const label = (name: string): CampaignLabel => ({
   campaign: `instantly:acme:${name}`,
+  campaignName: name,
   channel: "email",
   name,
   provider: "instantly",
@@ -43,18 +45,25 @@ const rate = (count: number | null, of: number | null): Measured => ({
 });
 
 const bounce = (over: number, clean: number): BounceWatch => ({
+  maxBounceRate: 0.03,
   minSent: 100,
   over: Array.from({ length: over }, () => ({
     bounced: 40,
     campaign: "c1",
-    finding: "Founders Q4 bounces at 8.0%, above the 3.0% limit.",
+    campaignName: "Founders Q4",
+    count: 40,
+    finding: "Founders Q4 bounces at 8%, above the 3% limit.",
+    high: 0.1,
     interval: { high: 0.1, low: 0.06 },
+    low: 0.06,
     name: "Founders Q4",
+    of: 500,
     rate: 0.08,
     senders: null,
     sent: 500,
     status: "active",
   })),
+  sendersRead: 2,
   threshold: 0.03,
   tooFewSends: [],
   totals: {
@@ -70,16 +79,69 @@ const bounce = (over: number, clean: number): BounceWatch => ({
   unknown: [],
 });
 
+test("bounce_watch draws from campaignName, maxBounceRate and low and high", () => {
+  const [row] = bounce(1, 0).over;
+  assert.ok(row);
+
+  const renamed: BounceWatch = {
+    ...bounce(1, 0),
+    maxBounceRate: 0.04,
+    over: [
+      { ...row, campaignName: "New name", high: 0.11, low: 0.05, name: "Old" },
+    ],
+    threshold: 0.09,
+  };
+
+  const text = read(cardFor("bounce_watch", insight(renamed)));
+
+  includes(
+    text,
+    "🔴 Above the 4% bounce limit: 1 campaign.",
+    "New name | 500  | 40      | 8% (5–11%)"
+  );
+  excludes(text, "Old", "9%");
+});
+
+test("bounce_watch still draws a result stored before campaignName and low and high", () => {
+  const old = {
+    minSent: 100,
+    over: [
+      {
+        bounced: 40,
+        campaign: "c1",
+        finding: "",
+        interval: { high: 0.1, low: 0.06 },
+        name: "Founders Q4",
+        rate: 0.08,
+        senders: null,
+        sent: 500,
+        status: "active",
+      },
+    ],
+    sendersRead: null,
+    threshold: 0.03,
+    tooFewSends: [],
+    totals: { campaigns: 1, clean: 0, over: 1, rate: 0.08 },
+    unknown: [],
+  };
+
+  includes(
+    read(cardFor("bounce_watch", insight(old))),
+    "🔴 Above the 3% bounce limit: 1 campaign.",
+    "Founders Q4 | 500  | 40      | 8% (6–10%)"
+  );
+});
+
 test("bounce_watch flags campaigns over the limit", () => {
   includes(
     read(cardFor("bounce_watch", insight(bounce(1, 2)))),
-    "🔴 Above the 3.0% bounce limit: 1 campaign.",
-    "Founders Q4 | 500  | 40      | 8.0% (6.0–10.0%)",
-    "Overall bounce rate: 5.0%"
+    "🔴 Above the 3% bounce limit: 1 campaign.",
+    "Founders Q4 | 500  | 40      | 8% (6–10%)",
+    "Overall bounce rate: 5%"
   );
   includes(
     read(cardFor("bounce_watch", insight(bounce(0, 2)))),
-    "🟢 No campaign is above the 3.0% bounce limit."
+    "🟢 No campaign is above the 3% bounce limit."
   );
   includes(read(cardFor("bounce_watch", insight(bounce(0, 0)))), NOTHING);
 });
@@ -104,8 +166,13 @@ const domain = (name: string, risk: DomainReport["risk"]): DomainReport => ({
   reasons: risk === "low" ? ["nothing wrong"] : ["DKIM and DMARC fail"],
   risk,
   warmup: {
+    count: 12,
+    high: null,
     interval: null,
+    low: null,
     mailboxes: 1,
+    of: 100,
+    rate: risk === "high" ? 0.12 : null,
     sent: 100,
     spam: 12,
     spamRate: risk === "high" ? 0.12 : null,
@@ -141,7 +208,7 @@ test("domain_health puts the riskiest domain first", () => {
     text,
     "🔴 1 sending domain at high risk.",
     "• 🔴 **bad.example**: DKIM and DMARC fail",
-    "bad.example  | 🔴 high | 1         | DKIM DMARC  | 12.0%",
+    "bad.example  | 🔴 high | 1         | DKIM DMARC  | 12%",
     "good.example | 🟢 low  | 1         | —           | —"
   );
   excludes(text, "nothing wrong");
@@ -155,6 +222,30 @@ test("domain_health puts the riskiest domain first", () => {
     "🟢 No sending domain is at high risk."
   );
   includes(read(cardFor("domain_health", insight(domains([])))), NOTHING);
+});
+
+test("domain_health says a domain with no DNS checks reported is of unknown risk, and lists what is not reported", () => {
+  const silent: DomainReport = {
+    ...domain("quiet.example", "unknown"),
+    notReported: ["spf", "dkim", "dmarc", "mx", "blocklist"],
+    reasons: [],
+  };
+
+  const report = domains([silent]);
+
+  const text = read(
+    cardFor(
+      "domain_health",
+      insight({ ...report, totals: { ...report.totals, unknown: 1 } })
+    )
+  );
+
+  includes(
+    text,
+    "⚪ 1 sending domain of unknown risk: the vendor reports none of SPF, DKIM, DMARC and MX for it.",
+    "spf, dkim, dmarc, mx, blocklist"
+  );
+  excludes(text, "🟢");
 });
 
 test("sender_capacity repeats the finding and lists short campaigns", () => {
@@ -176,6 +267,7 @@ test("sender_capacity repeats the finding and lists short campaigns", () => {
       days: 7,
       daysWithData: 7,
       from: "2026-11-07",
+      fromUncounted: 93,
       scope: "workspace",
       to: "2026-11-13",
       total: 2173,
@@ -203,6 +295,7 @@ test("sender_capacity repeats the finding and lists short campaigns", () => {
     "Campaigns ask for: 500",
     "Average sent per day: 310.5",
     "Capacity in use: 77.6%",
+    "Sent by senders not counted: 93",
     "• 🟡 Founders Q4 asks for 200 a day from senders that can do 80."
   );
 });
@@ -220,6 +313,7 @@ const load = (problems: boolean, senders: number): SenderLoad => ({
     ? [
         {
           campaign: "c1",
+          campaignName: "Founders Q4",
           finding: "Founders Q4 has one sender.",
           inactive: [],
           issues: ["single_sender"],
@@ -319,10 +413,14 @@ test("settings_audit names the campaign beside each finding", () => {
   );
 });
 
-const readiness = (notReady: number, total: number): WarmupReadiness => ({
+const readiness = (
+  notReady: number,
+  total: number,
+  healthChecked = false
+): WarmupReadiness => ({
   // Reasons with no sender are left out of the card.
   byReason: { low_score: notReady, warmup_off: 0 } as never,
-  healthChecked: false,
+  healthChecked,
   linkedinSeats: 0,
   notReady: Array.from({ length: notReady }, () => ({
     address: "new@example.com",
@@ -345,14 +443,25 @@ test("warmup_readiness says how many senders are ready and why not", () => {
 
   includes(
     text,
-    "🟡 4 of 5 senders are ready to send.",
+    "🟡 4 of 5 senders are ready on warmup alone; DNS and warmup spam were not checked.",
     "Low score: 1",
-    "new@example.com | active | 61           | low score",
-    "Sender health was not read, so DNS and sign-in were not checked."
+    "new@example.com | active | 61           | low score"
   );
-  excludes(text, "Warmup off");
+  excludes(text, "Warmup off", "ready to send");
+
+  const unchecked = read(cardFor("warmup_readiness", insight(readiness(0, 5))));
+
   includes(
-    read(cardFor("warmup_readiness", insight(readiness(0, 5)))),
+    unchecked,
+    "🟢 Every sender is ready on warmup alone (5 checked); DNS and warmup spam were not checked."
+  );
+  excludes(unchecked, "ready to send");
+  includes(
+    read(cardFor("warmup_readiness", insight(readiness(1, 5, true)))),
+    "🟡 4 of 5 senders are ready to send."
+  );
+  includes(
+    read(cardFor("warmup_readiness", insight(readiness(0, 5, true)))),
     "🟢 Every sender is ready to send (5 checked)."
   );
   includes(
@@ -405,7 +514,8 @@ const scan = (found: boolean, testable: boolean): Anomalies => ({
 test("anomalies points up or down for each day that stands out", () => {
   includes(
     read(cardFor("anomalies", insight(scan(true, true)))),
-    "workspace · 2026-10-15 to 2026-11-13",
+    "2026-10-15 to 2026-11-13",
+    "Scope: Whole workspace",
     "🟡 Days that stand out from the baseline: 2.",
     "• 🔺 Bounced was 31 on 2026-11-12, against a usual 4.",
     "• 🔻 Sent was 20 on 2026-11-13, against a usual 300."
@@ -427,7 +537,7 @@ test("campaign_diagnosis gives each finding with what to do next", () => {
     findings: [
       {
         code: "high_bounce" as never,
-        finding: "Bounce rate is 8.0%.",
+        finding: "Bounce rate is 8%.",
         next: "Run deliverability_check.",
         numbers: { bounced: 40 },
         severity: "high",
@@ -456,21 +566,24 @@ test("campaign_diagnosis gives each finding with what to do next", () => {
     "One thing is wrong: bounces.",
     "Sent: 500",
     "Positive: —",
-    "Reply rate: 6.0% (4.0–8.0%)",
+    "Reply rate: 6% (4–8%)",
     "Positive rate: —",
-    "• 🔴 Bounce rate is 8.0%. Next: Run deliverability_check.",
+    "• 🔴 Bounce rate is 8%. Next: Run deliverability_check.",
     "Note: Not checked: sender health"
   );
 });
 
 const ranking = (names: string[], thin: number): CampaignRanking => ({
   better: "higher",
+  campaignsRead: names.length + thin,
   gap: { difference: 0.02, median: 0.04, top: 0.06 },
   metric: "reply_rate" as never,
+  moreCampaignsExist: false,
   period: { from: null, to: null },
   ranked: names.map((name, index) => ({
     ...label(name),
     ...rate(30 - index * 10, 500),
+    basis: "sent" as const,
     rank: index + 1,
     sent: 500,
   })),
@@ -488,16 +601,44 @@ test("campaign_ranking ranks by the measured rate with its interval", () => {
       cardFor("campaign_ranking", insight(ranking(["Founders", "Agencies"], 1)))
     ),
     "Reply rate, higher is better",
-    "Founders ranks first at 6.0%.",
-    "1 | Founders | 500  | 6.0% (4.0–8.0%)",
-    "2 | Agencies | 500  | 4.0% (4.0–8.0%)",
-    "Gap: 2.0%",
+    "Founders ranks first at 6%.",
+    "1 | Founders | 500  | 6% (4–8%)",
+    "2 | Agencies | 500  | 4% (4–8%)",
+    "Gap: 2%",
     "Founders | 6",
     "1 campaign left out: too few sends to rank."
   );
   includes(
     read(cardFor("campaign_ranking", insight(ranking([], 0)))),
     "No campaign has enough sends to rank."
+  );
+});
+
+test("the ops cards name a campaign by campaignName, or by name in an older result", () => {
+  const fresh = ranking(["Founders"], 0);
+  const [first] = fresh.ranked;
+  assert.ok(first);
+
+  const renamed = read(
+    cardFor(
+      "campaign_ranking",
+      insight({
+        ...fresh,
+        ranked: [{ ...first, campaignName: "New name", name: "Old" }],
+      })
+    )
+  );
+
+  includes(renamed, "New name ranks first at 6%.");
+  excludes(renamed, "Old");
+
+  // A result stored before `campaignName` has only `name`.
+  const { campaignName: _dropped, ...old } = first;
+
+  includes(
+    read(cardFor("campaign_ranking", insight({ ...fresh, ranked: [old] }))),
+    "Founders ranks first at 6%.",
+    "1 | Founders | 500  | 6% (4–8%)"
   );
 });
 
@@ -517,17 +658,19 @@ const channelGroup = (channel: "email" | "linkedin", replied: number) => ({
 test("channel_mix compares email and LinkedIn", () => {
   const mix: ChannelMix = {
     byProvider: [],
+    campaignsRead: 2,
     channels: [channelGroup("email", 20), channelGroup("linkedin", 45)],
     comparison: null,
-    finding: "LinkedIn replies at 9.0% against 4.0% for email.",
+    finding: "LinkedIn replies at 9% against 4% for email.",
+    moreCampaignsExist: false,
     period: { from: null, to: null },
   };
 
   includes(
     read(cardFor("channel_mix", insight(mix))),
-    "LinkedIn replies at 9.0% against 4.0% for email.",
-    "Email    | 2         | 500  | 20      | 4.0% (4.0–8.0%)",
-    "Linkedin | 2         | 500  | 45      | 9.0% (4.0–8.0%)",
+    "LinkedIn replies at 9% against 4% for email.",
+    "Email    | 2         | 500  | 20      | 4% (4–8%)",
+    "Linkedin | 2         | 500  | 45      | 9% (4–8%)",
     "Replies by channel"
   );
 });
@@ -549,14 +692,16 @@ const numbers = (
 const comparison = (verdict: Comparison["verdict"]): Comparison => ({
   change: numbers(200, -10),
   current: numbers(1200, 50),
-  finding: "Reply rate fell from 6.0% to 4.2%, more than chance.",
+  finding: "Replies per message sent fell from 6% to 4.2%, more than chance.",
   previous: numbers(1000, 60),
+  replyRateBasis: "sent",
   replyRateTest: null,
   verdict,
 });
 
 test("period_comparison shows each number now and before", () => {
   const periods: PeriodComparison = {
+    campaignsRead: 2,
     campaigns: [
       { ...label("Founders"), ...comparison("down") },
       { ...label("Agencies"), ...comparison("up") },
@@ -565,6 +710,7 @@ test("period_comparison shows each number now and before", () => {
     ],
     current: { from: "2026-11-07", to: "2026-11-13" },
     days: 7,
+    moreCampaignsExist: false,
     previous: { from: "2026-10-31", to: "2026-11-06" },
     tooFewSends: [],
     total: comparison("down"),
@@ -575,14 +721,14 @@ test("period_comparison shows each number now and before", () => {
     read(cardFor("period_comparison", insight(periods))),
     "Last 7 days against the 7 before",
     "2026-11-07 to 2026-11-13, against 2026-10-31 to 2026-11-06",
-    "Reply rate fell from 6.0% to 4.2%, more than chance.",
+    "Replies per message sent fell from 6% to 4.2%, more than chance.",
     "Sent: 1,200 (was 1,000)",
-    "Reply rate: 4.2% (was 6.0%)",
+    "Replies per send: 4.2% (was 6%)",
     "Positive: —",
-    "Founders | 4.2%           | 6.0%   | 🔻 down",
-    "Agencies | 4.2%           | 6.0%   | 🔺 up",
-    "Steady   | 4.2%           | 6.0%   | ▪️ no real change",
-    "Blank    | 4.2%           | 6.0%   | ⚪ unknown"
+    "Founders | 4.2%           | 6%     | 🔻 down",
+    "Agencies | 4.2%           | 6%     | 🔺 up",
+    "Steady   | 4.2%           | 6%     | ▪️ no real change",
+    "Blank    | 4.2%           | 6%     | ⚪ unknown"
   );
 });
 
@@ -637,6 +783,8 @@ const tagGroup = (tag: string | null, replied: number) => ({
 test("tag_rollup groups results by tag, naming the untagged group", () => {
   const rollup: TagRollup = {
     campaigns: 4,
+    campaignsRead: 4,
+    moreCampaignsExist: true,
     period: { from: null, to: null },
     tags: [tagGroup("client-a", 30), tagGroup(null, 20)],
     tooFewSends: [],
@@ -645,9 +793,10 @@ test("tag_rollup groups results by tag, naming the untagged group", () => {
   includes(
     read(cardFor("tag_rollup", insight(rollup))),
     "4 campaigns · 2 tags",
-    "client-a | 2         | 500  | 30      | 6.0% (4.0–8.0%) | —",
-    "(no tag) | 2         | 500  | 20      | 4.0% (4.0–8.0%) | —",
-    "client-a | 6"
+    "client-a | 2         | 500  | 30      | 6% (4–8%)  | —",
+    "(no tag) | 2         | 500  | 20      | 4% (4–8%)  | —",
+    "client-a | 6",
+    "• 🟡 Stopped at 4 campaigns read (max_campaigns); more exist and are not in this answer."
   );
 });
 
@@ -667,12 +816,23 @@ const report = (withActions: boolean): ClientReport => ({
   bottom: [],
   bounceProblems: [],
   campaigns: 3,
+  campaignsRead: 3,
   days: 7,
   leftOut: ["anomalies: the vendor reports no daily counts"],
+  moreCampaignsExist: false,
   period: { from: "2026-11-07", to: "2026-11-13" },
   previousPeriod: { from: "2026-10-31", to: "2026-11-06" },
+  replyRateBasis: "sent",
   runningOutOfLeads: null,
-  top: [{ ...label("Founders Q4"), ...rate(30, 500), rank: 1, sent: 500 }],
+  top: [
+    {
+      ...label("Founders Q4"),
+      ...rate(30, 500),
+      basis: "sent",
+      rank: 1,
+      sent: 500,
+    },
+  ],
   totals: comparison("down"),
 });
 
@@ -682,10 +842,10 @@ test("client_report leads with the change and lists what to do", () => {
   includes(
     text,
     "3 campaigns · 2026-11-07 to 2026-11-13",
-    "Reply rate fell from 6.0% to 4.2%, more than chance.",
+    "Replies per message sent fell from 6% to 4.2%, more than chance.",
     "Replies: 50 (was 60)",
     "• 👉 Add leads to Founders Q4: 4 days left.",
-    "1 | Founders Q4   | 500  | 6.0% (4.0–8.0%)",
+    "1 | Founders Q4   | 500  | 6% (4–8%)",
     "Note: Left out: anomalies: the vendor reports no daily counts"
   );
   excludes(read(cardFor("client_report", insight(report(false)))), "👉", "🟢");

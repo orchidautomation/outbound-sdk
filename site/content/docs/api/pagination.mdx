@@ -45,7 +45,7 @@ The samples on this page read five leads from an adapter that serves two per pag
 
 `limit` is a page size hint. An adapter serves at most what its vendor allows, so `limit: 500` above returned two records from an adapter whose page size is two. `limit: 1` returned one.
 
-`limit` must be a positive integer. Anything else is `Invalid` before any request. It is the size of one page and not a cap on a walk: for that, use `max`.
+`limit` must be a positive integer. Anything else is `Invalid` before any request. It is the size of one page and not a cap on a walk: for that, use `max`, which must be a positive integer as well.
 
 A page can also be shorter than `limit` with more pages to come. That happens when the SDK filters a page for you (a [`client` filter](/docs/capabilities#filter-grades)) or a vendor returns a short page. Go by `cursor` or `complete`, never by `items.length`.
 

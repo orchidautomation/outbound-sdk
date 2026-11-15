@@ -69,7 +69,8 @@ The same tools run from a shell, in a project where the package is installed (se
 export OUTBOUND_SDK_PROVIDER=memory
 npx outbound tools
 npx outbound tool campaign_overview --input '{"status":"active"}'
-npx outbound tool campaign_trend --input '{"campaign":"cmp_founders","metric":"replied","from":"2026-10-01","to":"2026-10-31"}'
+npx outbound tool winning_steps --input '{"campaign":"cmp_founders"}'
+npx outbound insight step_funnel --input '{"campaign":"cmp_founders"}'
 npx outbound insight
 npx outbound insight bounce_watch --input '{"max_campaigns":10}'
 npx outbound capabilities

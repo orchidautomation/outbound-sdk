@@ -3,22 +3,28 @@
 
 import { z } from "zod";
 
-import { campaignStatusSchema } from "../../internal/entities.ts";
 import type {
   Campaign,
   CampaignStatus,
   Lead,
+  ReplyCategory,
 } from "../../internal/entities.ts";
+import { plural } from "../../internal/numbers.ts";
 import type { BulkResult, ListAll } from "../../internal/outbound/api.ts";
+import { noun } from "../../internal/plural.ts";
+import { readCampaignsIn, readCapped } from "../capped.ts";
+import type { Capped } from "../capped.ts";
 import type { InsightContext } from "../define.ts";
+import { statusesInput } from "../fields.ts";
 
-/** Reads at most `max` records, and says so in a note when more exist. */
-export const readCapped = <Item>(
+/** Reads at most `max` records, and says so in a note naming `input` when more exist. */
+export const readCappedFlag = <Item>(
   context: InsightContext,
   open: (max: number) => ListAll<Item>,
   max: number,
-  what: string
-): Promise<Item[]> => context.all(open(max), `${max} ${what}`);
+  what: string,
+  input: string
+): Promise<Capped<Item>> => readCapped(context, open, { input, max, what });
 
 /**
  * Reads records by ref in one batch and maps them by ref. A record that
@@ -29,7 +35,7 @@ export const readByRef = async <Item>(
   context: InsightContext,
   refs: readonly string[],
   read: (refs: readonly string[]) => Promise<BulkResult<Item>>,
-  what: string,
+  what: readonly [one: string, many: string],
   effect: string
 ): Promise<Map<string, Item>> => {
   if (refs.length === 0) {
@@ -40,7 +46,7 @@ export const readByRef = async <Item>(
 
   if (found.errors.length > 0) {
     context.note(
-      `${found.errors.length} ${what} could not be read, so ${found.errors.length === 1 ? "its" : "their"} ${effect}.`
+      `${plural(found.errors.length, ...what)} could not be read, so ${noun(found.errors.length, "its", "their")} ${effect}.`
     );
   }
 
@@ -55,71 +61,36 @@ export const readByRef = async <Item>(
   return new Map(found.results.map(({ id, value }) => [id, value]));
 };
 
-export const statusesField = z
-  .array(campaignStatusSchema)
-  .min(1)
-  .default(["active"])
-  .describe("Campaign statuses to consider, for example active or paused");
+export const statusesField = statusesInput(["active"]);
 
-/**
- * Campaigns in the given statuses, up to `max`. Without a status filter on
- * the adapter the first `max` campaigns are read and filtered here.
- */
+/** Campaigns in the given statuses, up to `max_campaigns`. */
 export const campaignsIn = async (
   context: InsightContext,
   statuses: readonly CampaignStatus[],
   max: number
 ): Promise<Campaign[]> => {
-  const { outbound } = context;
-  const wanted = [...new Set(statuses)];
+  const { items } = await readCampaignsIn(context, statuses, max);
 
-  if (outbound.capabilities["campaigns.status"] === false) {
-    const every = await readCapped(
-      context,
-      (cap) => outbound.campaigns.listAll({ max: cap }),
-      max,
-      "campaigns"
-    );
-
-    return every.filter((campaign) => wanted.includes(campaign.status));
-  }
-
-  const campaigns: Campaign[] = [];
-
-  for (const status of wanted) {
-    const room = max - campaigns.length;
-
-    if (room <= 0) {
-      context.partial(`Stopped at ${max} campaigns; more may exist.`);
-      break;
-    }
-
-    // oxlint-disable-next-line no-await-in-loop -- each status reads only the room the earlier ones left under the cap.
-    const found = await readCapped(
-      context,
-      (cap) => outbound.campaigns.listAll({ max: cap, status }),
-      room,
-      "campaigns"
-    );
-
-    campaigns.push(...found);
-  }
-
-  return campaigns;
+  return items;
 };
 
-/** The leads of one campaign, up to `max`. Needs `leads.byCampaign`. */
-export const leadsOf = (
+/** The leads of one campaign, up to `max`, the value of the input named. Needs `leads.byCampaign`. */
+export const leadsOf = async (
   context: InsightContext,
   campaign: string,
-  max: number
-): Promise<Lead[]> =>
-  readCapped(
+  max: number,
+  input: string
+): Promise<Lead[]> => {
+  const { items } = await readCappedFlag(
     context,
     (cap) => context.outbound.campaign(campaign).leads.listAll({ max: cap }),
     max,
-    "leads of a campaign"
+    "leads of a campaign",
+    input
   );
+
+  return items;
+};
 
 /** First and last name joined, or `null` when the vendor has neither. */
 export const nameOf = (lead: Lead): string | null => {
@@ -168,6 +139,43 @@ export const hasReplied = (lead: Lead): boolean =>
   lead.replied === true ||
   (lead.engagement?.replies ?? 0) > 0 ||
   (lead.engagement?.lastRepliedAt ?? null) !== null;
+
+/** An interest label that says the lead's reply was an out-of-office. */
+const OUT_OF_OFFICE = /\bout[\s-]+of[\s-]+(?:the\s+)?office\b/iu;
+
+/** Interest categories that say the reply came from a machine, not the person. */
+const AUTOMATIC: ReadonlySet<ReplyCategory> = new Set<ReplyCategory>([
+  "bounce",
+  "ooo",
+]);
+
+/**
+ * The vendor labels the lead out-of-office or bounced: its reply was an
+ * automatic one. A vendor's per-lead reply count may include such replies,
+ * so they are not counted as the person replying.
+ */
+export const isAutoReplied = (lead: Lead): boolean =>
+  (lead.interestCategory !== null && AUTOMATIC.has(lead.interestCategory)) ||
+  // A label the vendor did not map to a category is read by a fixed rule.
+  (lead.interestCategory === null && OUT_OF_OFFICE.test(lead.interest ?? ""));
+
+/** Whether the lead replied, not counting a reply that was automatic. */
+export const hasHumanReply = (lead: Lead): boolean =>
+  hasReplied(lead) && !isAutoReplied(lead);
+
+/** Interest categories that say the person does not want to hear more. */
+export const NEGATIVE_CATEGORIES: ReadonlySet<ReplyCategory> =
+  new Set<ReplyCategory>(["negative", "unsubscribe"]);
+
+/** Labels read as negative when the vendor maps the label to no category. */
+const NEGATIVE_LABEL =
+  /\b(?:not[\s-]+interested|wrong[\s-]+person|unsubscribed?|do[\s-]+not[\s-]+contact)\b/iu;
+
+/** The vendor labels the lead negative: not interested, wrong person, unsubscribed, do not contact. */
+export const isNegative = (lead: Lead): boolean =>
+  (lead.interestCategory !== null &&
+    NEGATIVE_CATEGORIES.has(lead.interestCategory)) ||
+  (lead.interestCategory === null && NEGATIVE_LABEL.test(lead.interest ?? ""));
 
 const COUNTS = "no per-lead open, click or reply counts";
 

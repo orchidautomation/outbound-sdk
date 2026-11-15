@@ -132,6 +132,17 @@ test("copy_reuse compares the same copy across campaigns and names the best copy
     high: 0.0765,
     low: 0.0469,
   });
+  // `rates.replyRate` holds the same numbers as the older fields.
+  assert.deepEqual(x.uses[0]?.rates.replyRate, {
+    basis: x.uses[0]?.basis,
+    count: x.uses[0]?.replies,
+    high: 0.0765,
+    low: 0.0469,
+    of: x.uses[0]?.trials,
+    rate: x.uses[0]?.replyRate,
+  });
+  assert.equal(x.rates.replyRate.rate, x.replyRate);
+  assert.equal(x.rates.replyRate.of, x.trials);
   // 0.06 - 0.02; 60/1000 against 20/1000 is z = 4.5644, p rounds to 0.
   assert.deepEqual(
     [x.spread, x.best, x.worst, x.spreadPValue, x.spreadIsReal],
@@ -232,10 +243,21 @@ test("copy_reuse moves the spread and the best copy with min_sent, and the campa
     [4, 4, 4]
   );
   assert.deepEqual(x?.uses.at(-1), {
+    basis: null,
     campaign: ref("c4"),
     campaignName: "Not started",
     places: ["0:B"],
     provider: "memory",
+    rates: {
+      replyRate: {
+        basis: null,
+        count: null,
+        high: null,
+        low: null,
+        of: null,
+        rate: null,
+      },
+    },
     replies: null,
     replyRate: null,
     replyRateInterval: null,
@@ -331,7 +353,7 @@ test("copy_reuse leaves counts unknown when the vendor reports a split step as a
   assert.equal(result.data.variantsWithoutStats, 2);
   assert.ok(
     result.meta.notes.some((note) =>
-      note.startsWith("2 variant(s) have no counts of their own")
+      note.startsWith("2 variants have no counts of their own")
     )
   );
 });
@@ -340,8 +362,10 @@ test("copy_reuse with no campaigns returns nothing, and a cap makes the answer i
   const empty = await single({}).insights.copyReuse({}, { now: NOW });
 
   assert.deepEqual(empty.data, {
+    basis: null,
     bestCopy: null,
     campaignsRead: 0,
+    moreCampaignsExist: false,
     piecesOfCopy: 0,
     reused: [],
     variantsWithoutStats: 0,
@@ -354,9 +378,10 @@ test("copy_reuse with no campaigns returns nothing, and a cap makes the answer i
   );
 
   assert.equal(capped.data.campaignsRead, 2);
+  assert.equal(capped.data.moreCampaignsExist, true);
   assert.equal(capped.meta.complete, false);
   assert.deepEqual(capped.meta.notes, [
-    "A listing was cut off at its cap; more records exist.",
+    "Stopped at 2 campaigns (max_campaigns); more exist.",
   ]);
 
   // Exactly at the cap nothing is cut off.
@@ -433,4 +458,66 @@ test("copy_reuse matches copy across tools on a combined instance", async () => 
   );
   // 110 + 12 replies of 3000 + 300 sends = 122 / 3300 = 0.037.
   assert.deepEqual([x?.sent, x?.replies, x?.replyRate], [3300, 122, 0.037]);
+});
+
+const sameCopy = (counts: Record<string, Record<string, number>>) =>
+  single({
+    campaigns: Object.keys(counts).map((id) => ({
+      id,
+      name: id,
+      steps: [{ variants: [{ body: "Same copy", subject: "Hi" }] }],
+    })),
+    stats: Object.entries(counts).map(([campaignId, each]) => ({
+      campaignId,
+      counts: each,
+      date: "2026-11-10",
+      stepIndex: 0,
+    })),
+  });
+
+test("copy_reuse divides every campaign's replies by the same base (OUT-58)", async () => {
+  // 10 replies on 1,000 sends in both; c1 also reports 100 leads contacted.
+  const result = await sameCopy({
+    c1: { contacted: 100, replied: 10, sent: 1000 },
+    c2: { replied: 10, sent: 1000 },
+  }).insights.copyReuse({}, { now: NOW });
+
+  const [piece] = result.data.reused;
+
+  assert.equal(result.data.basis, "sent");
+  assert.deepEqual(
+    piece?.uses.map((use) => [use.campaignName, use.basis, use.replyRate]),
+    [
+      ["c1", "sent", 0.01],
+      ["c2", "sent", 0.01],
+    ]
+  );
+  assert.equal(piece?.spread, 0);
+  assert.equal(piece?.spreadIsReal, false);
+
+  // No base both report: the rates are listed, never compared.
+  const apart = await sameCopy({
+    c1: { contacted: 100, replied: 10 },
+    c2: { replied: 10, sent: 1000 },
+  }).insights.copyReuse({}, { now: NOW });
+
+  const [unlike] = apart.data.reused;
+
+  assert.equal(apart.data.basis, null);
+  assert.equal(apart.data.bestCopy, null);
+  assert.equal(unlike?.spread, null);
+  assert.equal(unlike?.spreadIsReal, null);
+  assert.deepEqual(
+    unlike?.uses.map((use) => [use.campaignName, use.basis]),
+    [
+      ["c1", "contacted"],
+      ["c2", "sent"],
+    ]
+  );
+  assert.ok(
+    apart.meta.notes.includes(
+      "The campaigns report different bases (c1 per lead contacted, c2 per message sent), so their reply rates are not compared: no spread is judged and no best copy is named."
+    ),
+    apart.meta.notes.join(" | ")
+  );
 });

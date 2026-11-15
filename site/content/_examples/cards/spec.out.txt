@@ -28,7 +28,7 @@
       "children": [],
       "props": {
         "label": "Limit",
-        "value": "3.0%"
+        "value": "3%"
       },
       "type": "Field"
     },

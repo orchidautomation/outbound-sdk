@@ -1,5 +1,5 @@
 [ 'campaign_overview', 'sender_health' ]
-How every campaign is doing right now: sends, replies, positive replies, bounces and reply rate for each campaign with the given status. One vendor request per campaign. Rates are computed from counts; a null means the vendor does not report that count.
+How every campaign is doing right now: sends, replies, positive replies, bounces and reply rate for each campaign with the given status. One vendor request per campaign. Rates are computed from counts; a null means the vendor does not report that count. truncated: true means limit cut the list.
 {
   "data": {
     "campaigns": [
@@ -8,27 +8,28 @@ How every campaign is doing right now: sends, replies, positive replies, bounces
         "channel": "email",
         "name": "Agency owners",
         "metrics": {
-          "bounce_rate": 0.0522,
-          "bounced": 6,
+          "bounce_rate": 0.0505,
+          "bounced": 53,
           "connections_accepted": null,
           "connections_sent": null,
-          "contacted": 115,
-          "opened": 38,
-          "positive": 1,
-          "positive_reply_rate": 0.0087,
-          "replied": 3,
-          "reply_rate": 0.0261,
+          "contacted": 630,
+          "opened": 378,
+          "positive": 4,
+          "positive_reply_rate": 0.0063,
+          "replied": 15,
+          "reply_rate": 0.0238,
           "reply_rate_basis": "contacted",
-          "sent": 115
+          "sent": 1050
         },
         "status": "paused"
       }
-    ]
+    ],
+    "truncated": false
   },
   "meta": {
     "evidence": "exact",
     "provider": "memory",
-    "requests": 1,
+    "requests": 0,
     "today": "2026-11-14"
   },
   "next": "Pick another of the listed tools to go further.",

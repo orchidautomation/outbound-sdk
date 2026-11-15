@@ -1,6 +1,6 @@
 1 campaign on this page; complete: true
 steps: 2
-sent: 180
+sent: 584
 person1@example.com replied
 person2@example.com active
 exact memory true

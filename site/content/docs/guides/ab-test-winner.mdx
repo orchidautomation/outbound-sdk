@@ -98,6 +98,8 @@ Both insights need `stats.byStep`. The HeyReach adapter declares it `false` beca
 | What happened | What you get | What to do |
 | --- | --- | --- |
 | The step stats have no row per variant | `variantStatsReported` is `false`, `steps` is empty and a note says there is nothing to compare | Nothing can be tested from this data. Compare the variants in the vendor's own interface. |
+| No step stats in the date range | `variantStatsReported` is `null`, `steps` is empty and a note says the vendor reported no step stats in the range | Widen `from` and `to`, or leave them out. |
+| The variants report different bases (one counts leads contacted, another only messages sent) | Every variant is divided by messages sent when they all report it; otherwise the step is `too_little_data`, the reason names each variant's base and `moreSendsNeeded` is `null` | Compare the variants in the vendor's own interface. |
 | The vendor does not report the metric for every variant | `too_little_data`, with the reason in `reason` and `moreSendsNeeded` `null` | Pick a metric the vendor reports. More sends will not help. |
 | An input the insight does not take | `Invalid`, naming the key and listing the inputs | Fix the key. There is no filter by step: the answer covers every tested step. |
 | Input out of range | `Invalid`, before any request | Fix the value. |

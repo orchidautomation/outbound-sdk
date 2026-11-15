@@ -25,8 +25,10 @@ test("a seven-day client report over the demo data has both periods", async () =
 
   const { current, previous } = report.data.totals;
 
-  assert.equal(current.sent, 150);
-  assert.equal(previous.sent, 145);
+  // The seven days before LATER, and the seven before those: 314 sends in
+  // "Q4 SaaS founders" and 350 in "Agency owners" each week.
+  assert.equal(current.sent, 314 + 350);
+  assert.equal(previous.sent, 314 + 350);
   assert.notEqual(report.data.totals.verdict, "unknown");
 });
 
@@ -70,4 +72,20 @@ test("the demo data's dates sit before the moment it is built for", () => {
 
 test("demoData refuses a now that is not a date", () => {
   assert.throws(() => demoData({ now: "next tuesday" }), TypeError);
+});
+
+test("a runway shorter than a day reads as less than a day, not 0 days", async () => {
+  const report = await instanceAt(LATER).insights.clientReport(
+    {},
+    { now: LATER }
+  );
+
+  const runway = report.data.actions.find((action) =>
+    action.action.startsWith("Add leads to")
+  );
+
+  // One lead left in "Q4 SaaS founders" at about 30 contacted a day.
+  assert.ok(runway, "the demo campaign close to running dry gets an action");
+  assert.match(runway.action, /less than a day of sending\.$/u);
+  assert.doesNotMatch(runway.action, /about 0 days/u);
 });

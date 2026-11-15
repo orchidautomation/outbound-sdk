@@ -5,10 +5,8 @@ import { OutboundError } from "../internal/errors.ts";
 import type { Json } from "../internal/json.ts";
 import type { MetricCounts } from "../internal/metrics.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
-import { untrusted } from "./shared.ts";
+import { optionalRange, untrusted } from "./shared.ts";
 import type { ToolDefinition } from "./shared.ts";
-
-const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/u, "Use YYYY-MM-DD");
 
 const DAY_MS = 86_400_000;
 
@@ -79,18 +77,19 @@ export const leadRunway: ToolDefinition<z.infer<typeof runwayInput>> = {
   },
 };
 
-interface ClientStatsEntry {
-  readonly client: string;
-  readonly campaigns: number;
-  readonly counts: MetricCounts;
-}
-
 interface WithClients {
   readonly clients: {
-    readonly stats: (options: {
+    readonly read: (range: {
       from?: string | undefined;
       to?: string | undefined;
-    }) => Promise<ClientStatsEntry[]>;
+    }) => Promise<{
+      readonly clients: readonly {
+        readonly client: string;
+        readonly campaigns: number;
+        readonly counts: MetricCounts;
+      }[];
+      readonly requests: number;
+    }>;
   };
 }
 
@@ -99,14 +98,7 @@ const hasClients = (
 ): outbound is OutboundApi & WithClients => "clients" in outbound;
 
 const compareInput = z.object({
-  from: day
-    .optional()
-    .describe(
-      "First day, YYYY-MM-DD. Leave out for the whole history. Do not guess the date: every result gives today as meta.today"
-    ),
-  to: day
-    .optional()
-    .describe("Last day, YYYY-MM-DD. Leave out for up to today"),
+  ...optionalRange,
 });
 
 export const compareClients: ToolDefinition<z.infer<typeof compareInput>> = {
@@ -123,14 +115,14 @@ export const compareClients: ToolDefinition<z.infer<typeof compareInput>> = {
       );
     }
 
-    const stats = await outbound.clients.stats({
+    const { clients: entries, requests } = await outbound.clients.read({
       from: input.from,
       to: input.to,
     });
 
     return {
       data: {
-        clients: stats.map((entry) => ({
+        clients: entries.map((entry) => ({
           campaigns: entry.campaigns,
           client: entry.client,
           contacted: entry.counts.contacted,
@@ -150,7 +142,7 @@ export const compareClients: ToolDefinition<z.infer<typeof compareInput>> = {
       meta: {
         evidence: "derived",
         provider: outbound.provider,
-        requests: stats.length,
+        requests,
       },
       next: "A client named unassigned holds campaigns that matched no client rule.",
       ok: true,
@@ -164,6 +156,7 @@ interface PersonResult {
   readonly keys: readonly string[];
   readonly records: readonly Lead[];
   readonly timeline: readonly Message[];
+  readonly requests: number;
 }
 
 interface WithPerson {
@@ -231,7 +224,7 @@ export const crossChannelLead: ToolDefinition<z.infer<typeof personInput>> = {
       meta: {
         evidence: "derived",
         provider: outbound.provider,
-        requests: person.records.length,
+        requests: person.requests,
       },
       next: "Use reply_samples to read replies across a whole campaign.",
       ok: true,

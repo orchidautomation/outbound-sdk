@@ -32,6 +32,7 @@ import {
   objectOf,
   offsetPage,
   pageSize,
+  rowsOf,
   segment,
 } from "./shared.ts";
 
@@ -87,8 +88,10 @@ const campaignWebhooks = async (
   ctx: AdapterContext,
   campaignId: string
 ): Promise<WebhookSubscription[]> =>
-  objects(
-    unwrap(await client.get(ctx, `/campaigns/${segment(campaignId)}/webhooks`))
+  rowsOf(
+    client,
+    await client.get(ctx, `/campaigns/${segment(campaignId)}/webhooks`),
+    `/campaigns/${campaignId}/webhooks`
   ).map((webhook) => toWebhook(client.identity, campaignId, webhook));
 
 // Smartlead lists webhooks per campaign only, so a listing without a campaign
@@ -210,16 +213,20 @@ export const accountReaders = (client: SmartleadClient): AccountReaders => {
     },
     // SmartDelivery answers with every test at once: no pages are documented.
     listPlacementTests: async (_query, ctx) => ({
-      items: objects(
-        unwrap(await client.delivery.post(ctx, "/spam-test/report", {}))
+      items: rowsOf(
+        client,
+        await client.delivery.post(ctx, "/spam-test/report", {}),
+        "/spam-test/report"
       ).map((test) => toPlacementTest(identity, test)),
     }),
     listSubsequences: (query, ctx) => listSubsequences(client, ctx, query),
     // One response holds every tag of the account; there are no pages.
     listTags: async (_query, ctx) => ({
-      items: objects(unwrap(await client.get(ctx, "/email-accounts/tags"))).map(
-        (tag) => toTag(identity, tag)
-      ),
+      items: rowsOf(
+        client,
+        await client.get(ctx, "/email-accounts/tags"),
+        "/email-accounts/tags"
+      ).map((tag) => toTag(identity, tag)),
     }),
     listWebhooks: (query, ctx) => listWebhooks(client, ctx, query),
   };

@@ -5,8 +5,11 @@ import { z } from "zod";
 
 import type { CampaignSettings } from "../../internal/entities-account.ts";
 import type { Sender } from "../../internal/entities.ts";
+import { renamed } from "../../internal/renamed.ts";
+import { readCapped } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
+import { rangeFields } from "../fields.ts";
 import { total } from "../stats.ts";
 import { diagnose, unknownRates } from "./diagnosis-checks.ts";
 import type {
@@ -17,11 +20,9 @@ import type {
 import {
   labelOf,
   lastDays,
-  rangeFields,
   ratesOf,
   readDaily,
   readTotals,
-  readUpTo,
   totalsOf,
 } from "./shared.ts";
 import type { CampaignLabel, OpenRange, Rates, Totals } from "./shared.ts";
@@ -29,9 +30,16 @@ import type { CampaignLabel, OpenRange, Rates, Totals } from "./shared.ts";
 const share = (fallback: number, text: string) =>
   z.number().min(0).max(1).default(fallback).describe(text);
 
+const recentDays = z.number().int().min(1).max(30);
+
 const input = z.object({
   ...rangeFields,
   campaign: z.string().min(3).describe("The campaign's ref"),
+  days: recentDays
+    .default(7)
+    .describe(
+      "The days, ending yesterday, held against the same number before"
+    ),
   daily_limit_share: share(
     0.9,
     "Average daily sends at or over this share of the daily limit mean the limit holds volume back"
@@ -57,7 +65,7 @@ const input = z.object({
     .number()
     .int()
     .min(0)
-    .default(100)
+    .default(50)
     .describe("Under this many sends, rates are not judged"),
   min_weekly_hours: z
     .number()
@@ -65,15 +73,7 @@ const input = z.object({
     .max(168)
     .default(20)
     .describe("Sending windows open fewer hours a week than this limit volume"),
-  recent_days: z
-    .number()
-    .int()
-    .min(1)
-    .max(30)
-    .default(7)
-    .describe(
-      "The days, ending yesterday, held against the same number before"
-    ),
+  recent_days: renamed("days", recentDays),
 });
 
 export interface CampaignDiagnosis extends CampaignLabel {
@@ -160,11 +160,11 @@ const readExtras = async (
     !capabilities["senders.byCampaign"],
     "Sender status: the adapter cannot list a campaign's senders."
   )
-    ? await readUpTo(
-        context,
-        (max) => handle.senders.listAll({ max }),
-        options.maxSenders
-      )
+    ? await readCapped(context, (max) => handle.senders.listAll({ max }), {
+        input: "max_senders",
+        max: options.maxSenders,
+        what: "senders",
+      })
     : null;
 
   const recent = unless(
@@ -208,7 +208,7 @@ export const campaignDiagnosis = defineInsight({
 
     const extras = await readExtras(context, campaign.ref, {
       maxSenders: options.max_senders,
-      recentDays: options.recent_days,
+      recentDays: options.days,
     });
 
     const facts: Facts = {

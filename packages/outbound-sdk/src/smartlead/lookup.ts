@@ -3,6 +3,7 @@
 
 import type { AdapterContext, LeadQuery, Page } from "../internal/adapter.ts";
 import type { Lead } from "../internal/entities.ts";
+import { OutboundError } from "../internal/errors.ts";
 import {
   emailAddress,
   isJsonArray,
@@ -13,7 +14,7 @@ import {
 import type { JsonObject } from "../internal/json.ts";
 import type { SmartleadClient } from "./client.ts";
 import { NO_CATEGORIES, toFoundLead, unwrap } from "./map.ts";
-import { leadCategories, segment } from "./shared.ts";
+import { leadCategories, legacyRows, segment } from "./shared.ts";
 
 const NONE: Page<Lead> = { items: [] };
 
@@ -32,16 +33,11 @@ const memberships = async (
 ): Promise<Membership[]> => {
   const listed = lead.lead_campaign_data;
 
+  const path = `/leads/${segment(text(lead.id) ?? "")}/campaigns`;
+
   const entries = isJsonArray(listed)
     ? objects(listed)
-    : objects(
-        unwrap(
-          await client.get(
-            ctx,
-            `/leads/${segment(text(lead.id) ?? "")}/campaigns`
-          )
-        )
-      );
+    : legacyRows(client, await client.get(ctx, path), path);
 
   return entries.flatMap((entry) => {
     const campaignId = text(entry.campaign_id) ?? text(entry.id);
@@ -68,13 +64,20 @@ export const leadsByEmail = async (
     await client.get(ctx, "/leads/", { query: { email: query.email } })
   );
 
-  // An unknown address answers `{}` with 200. How Smartlead matches the
-  // address is not documented, so anything but the exact one is dropped.
-  if (
-    !isJsonObject(lead) ||
-    text(lead.id) === null ||
-    emailAddress(lead.email) !== query.email
-  ) {
+  // Not a list, so read leniently: an unknown address answers `{}` with 200,
+  // which stays "no lead". An answer that is not an object at all (a body
+  // that is not JSON, an empty one, an array) is the vendor's fault.
+  if (!isJsonObject(lead)) {
+    throw new OutboundError(
+      "Provider",
+      "Smartlead returned no object for /leads/?email=",
+      { provider: client.identity.provider }
+    );
+  }
+
+  // How Smartlead matches the address is not documented, so anything but
+  // the exact one is dropped.
+  if (text(lead.id) === null || emailAddress(lead.email) !== query.email) {
     return NONE;
   }
 

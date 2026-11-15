@@ -121,11 +121,13 @@ There are no resources, prompts, sampling or list-change notifications. `PROTOCO
   ../../_examples/cli-mcp/server.out.txt
 </include>
 
-That is 9 built-in tools and 26 insights on the in-memory adapter. Three things change the list on a real setup:
+That is 9 built-in tools and 22 of the 26 insights on the in-memory adapter: `person_summary`, `account_summary`, `lead_collisions` and `suppression_check` match people by email address or LinkedIn profile, which `redact` masks, so they are offered only with `--no-redact`. Three things change the list on a real setup:
 
 - A real adapter also serves `vendor_read`, because it has [native reads](/docs/native), but only with `--no-redact`: a native read returns the vendor's payload unmasked, so `redact` turns native reads off.
 - `outbound mcp` serves `compare_clients` only with the `clients` plugin from a config file, and `cross_channel_lead` only with `--no-redact`, because `redact` masks the identifiers it matches on. The CLI always installs the `identity` plugin it needs.
 - A built-in tool or an insight whose adapter lacks a capability it needs is left out. On HeyReach that removes `winning_steps` and `campaign_setup`.
+
+A call to a tool that `redact` left out is answered with a protocol error (`-32602`) whose message names it: "person_summary is left out while the redact plugin is on: it needs what redact masks. Start the server with --no-redact to offer it; personal fields are then not masked." A name no tool has is still "Unknown tool".
 
 The `instructions` string repeats the rule about reply text once for the whole server, then names the plugins that are on. It is a label for the model, not a safeguard. See [untrusted content](/docs/tools/untrusted-content).
 

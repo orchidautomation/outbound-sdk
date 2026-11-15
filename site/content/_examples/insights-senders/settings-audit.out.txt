@@ -1,5 +1,5 @@
 Agency owners:
-  high limit_over_senders: The daily limit of 200 is over 50 a day for each of its 3 senders (150).
+  high limit_over_senders: The daily limit of 200 is over the 100 a day its 3 senders can send.
   high end_date_passed: The campaign is active but its end date 2026-10-31 has passed.
   high reply_does_not_stop: A lead who replies keeps getting the next steps.
   medium window_long: A sending window is 16 hours long, over 12.

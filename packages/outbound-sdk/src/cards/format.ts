@@ -12,6 +12,10 @@ import {
   text,
 } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
+import { percentOf, points } from "../internal/numbers.ts";
+import { noun, shownKey } from "../internal/plural.ts";
+
+export { noun } from "../internal/plural.ts";
 
 /** What a card shows for a value the vendor does not report. */
 export const DASH = "—";
@@ -50,6 +54,10 @@ export const str = (value: Json | undefined, key: string): string | null => {
 export const show = (value: Json | undefined, key: string): string =>
   str(value, key) ?? DASH;
 
+/** A campaign's name: `campaignName`, or `name` in a result stored before it. */
+export const campaignNameOf = (value: Json | undefined): string =>
+  str(value, "campaignName") ?? show(value, "name");
+
 export const num = (value: Json | undefined, key: string): number | null =>
   count(field(value, key));
 
@@ -67,6 +75,12 @@ export const strings = (value: Json | undefined, key: string): string[] =>
     return raw === null ? [] : [safe(raw)];
   });
 
+/** Person keys as a person reads them: `jo@example.com · linkedin.com/in/jo`, or `null`. */
+export const people = (value: Json | undefined, key: string): string | null =>
+  strings(value, key)
+    .map((each) => shownKey(each))
+    .join(" · ") || null;
+
 export const child = (value: Json | undefined, key: string): JsonObject => {
   const found = field(value, key);
 
@@ -79,9 +93,29 @@ const grouped = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 export const int = (value: number | null): string =>
   value === null ? DASH : grouped.format(value);
 
+/**
+ * A step as a person counts it, from 1. A tool or insight counts steps from
+ * 0, as the vendor does, so step `0` is shown as `1`.
+ */
+export const stepOf = (value: Json | undefined, key: string): string => {
+  const index = num(value, key);
+
+  return index === null ? DASH : int(index + 1);
+};
+
+/** A list of steps as a person counts them, from 1: `1, 3`. */
+export const stepsOf = (value: Json | undefined, key: string): string =>
+  list(field(value, key))
+    .flatMap((index) => {
+      const at = count(index);
+
+      return at === null ? [] : [int(at + 1)];
+    })
+    .join(", ");
+
 /** A rate between 0 and 1 as a percentage with one decimal, or a dash. */
 export const pct = (rate: number | null): string =>
-  rate === null ? DASH : `${(rate * 100).toFixed(1)}%`;
+  rate === null ? DASH : percentOf(rate);
 
 /** A rate with its interval, as `4.2% (3.1–5.6%)`. */
 export const pctRange = (
@@ -91,7 +125,7 @@ export const pctRange = (
 ): string =>
   rate === null || low === null || high === null
     ? pct(rate)
-    : `${pct(rate)} (${(low * 100).toFixed(1)}–${pct(high)})`;
+    : `${pct(rate)} (${points(low)}–${pct(high)})`;
 
 export const yesNo = (value: boolean | null): string => {
   if (value === null) {
@@ -114,12 +148,15 @@ export const waiting = (hours: number | null): string => {
   return hours >= 48 ? `${Math.floor(hours / 24)}d` : `${Math.round(hours)}h`;
 };
 
-/** `1 campaign`, `3 campaigns`. Pass `many` when adding an `s` is wrong. */
+/**
+ * `1 campaign`, `3 campaigns`, with thousands separators, and `— campaigns`
+ * for a count the vendor does not report. Pass `many` when adding an `s` is wrong.
+ */
 export const plural = (
-  amount: number,
+  amount: number | null,
   word: string,
   many = `${word}s`
-): string => `${int(amount)} ${amount === 1 ? word : many}`;
+): string => `${int(amount)} ${noun(amount ?? 0, word, many)}`;
 
 const SEVERITY_MARKS = new Map([
   ["high", "🔴"],

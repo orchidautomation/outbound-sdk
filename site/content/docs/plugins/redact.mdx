@@ -78,7 +78,7 @@ It changes nothing in `meta`.
 
 | Member | Holds |
 | --- | --- |
-| `outbound.redacted` | `{ fields, strategy }`: the fields being masked, sorted, and `"mask"` or `"hash"`. Other plugins and the tools read it to know what they cannot see. |
+| `outbound.redacted` | `{ fields, strategy, hash }`: the fields being masked, sorted, `"mask"` or `"hash"`, and `hash(value)`, the text this redact writes in place of `value` in a masked field (the token under `hash`, `[redacted]` under `mask`), so a known address can be found among hashed records. Other plugins and the tools read it to know what they cannot see. |
 
 ## Webhook events
 
@@ -96,8 +96,11 @@ List `redact` first. It masks what the layers inside it return, so `cache`, `fai
 
 - `clients` adds `client`, your own label. It passes through.
 - `identity` adds `personKey` and `personKeys`, which hold the email address and the profile slug. `redact` masks the part after `email:` or `linkedin:` when that field is being masked: `email:[redacted]`, or with `hash` `email:redacted:` and 16 hex characters, the same token the lead's `email` gets.
-- `outbound.person()` is refused as `Unsupported` while `redact` masks `email` or `linkedin`, because it links records by those identifiers and would see none. The `cross_channel_lead` tool is not offered then, and the `person_summary` insight, and so `outbound person`, is refused the same way instead of reporting a known person as not found. With a `fields` list that leaves both out, `person()` works as usual.
-- [`insights`](/docs/insights) and the method-only plugins (`exporter`, `sync`, `reconcile`, `benchmarks`) read through the instance, so they receive masked records.
+- `outbound.person()` is refused as `Unsupported` while `redact` masks `email` or `linkedin`, because it links records by those identifiers and would see none. The `cross_channel_lead` tool is not offered then. With a `fields` list that leaves both out, `person()` works as usual.
+- [`insights`](/docs/insights) and the method-only plugins (`exporter`, `sync`, `reconcile`, `benchmarks`) read through the instance, so they receive masked records. An insight that matches records by a masked field refuses with `Unsupported` before any read, naming `redact`, and is left out of `insightTools`, instead of answering with nobody found:
+  - `person_summary`, and so `outbound person`, refuses an identifier of a masked kind under `mask`. Under `hash` it hashes the address or profile URL given the way `redact` does and matches the hashed records. A lead ref is looked up by the lead's email address when that is not masked, or else by its LinkedIn profile; it is refused when neither is left, and under `hash` when the one it would use is hashed (give the address or the profile URL instead). With one of `email` and `linkedin` masked it says the records under the masked one were not linked. It is left out of the tools while both are masked with `mask`.
+  - `account_summary` refuses while `email` is masked, with either strategy: no domain is left to match, and a hashed address keeps none.
+  - `suppression_check` and `lead_collisions` refuse while `email` is masked with `strategy: "mask"`, under which every address reads the same. With `hash` they match by the hashed address and say what they could not match: domain entries, and LinkedIn profiles when those are masked.
 
 ## When it fails
 
@@ -113,6 +116,8 @@ List `redact` first. It masks what the layers inside it return, so `cache`, `fai
 | --- | --- | --- |
 | A read asks for bodies (`include: ["body"]`) | `Unsupported`, before any request. The message names the plugin. | Leave bodies out, or construct `redact` with `fields` that do not include `"body"`. |
 | A native read, or any `outbound.raw` request | `Unsupported`, before any request. The message names the plugin. | Use a second instance without `redact` for those reads, and handle its output as unmasked. |
-| `outbound.person()` or `person_summary` while `email` or `linkedin` is masked | `Unsupported`, before any read | Look the person up on an instance without `redact`, or leave both fields out of `fields`. |
+| `outbound.person()` while `email` or `linkedin` is masked, or `person_summary` with an identifier of a kind masked with `mask` | `Unsupported`, before any read | Look the person up on an instance without `redact`, use `strategy: "hash"`, or leave both fields out of `fields`. |
+| `person_summary` with a lead ref whose email address and LinkedIn profile are both masked, or hashed | `Unsupported` | Give the person's email address or profile URL, which `hash` can match. |
+| `account_summary` while `email` is masked; `suppression_check` or `lead_collisions` while it is masked with `mask` | `Unsupported`, before any read. The message names the plugin. | Run it on an instance without `redact`, or, for the last two, use `strategy: "hash"`. |
 | `redact` listed twice | `Invalid`, when the instance is built | List it once. |
 | A layer inside returns something that is not an SDK record | `Unsupported`. Nothing is returned. | Fix the plugin that produced it. |

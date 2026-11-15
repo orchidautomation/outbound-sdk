@@ -493,3 +493,38 @@ Source: `https://api.instantly.ai/openapi/api_v2.json`, fetched fresh (198 paths
 - **One list, one webhook (`lists.get`, `webhooks.get`).** `GET /lead-lists/{id}` returns the list item's fields and no count, so `lists.get` also reads `GET /lead-lists/{id}/verification-stats` for `total_leads`: two requests. This reverses the line above for a single list; a listing still has no size. `GET /webhooks/{id}` returns the list item's fields, `headers` included, which the mapper drops.
 - **Campaign progress (`campaigns.progress`).** `GET /campaigns/analytics?id=` returns one row with `leads_count` ("The total number of leads") and `completed_count` ("The number of leads that the campaign was completed for"). Nothing splits the leads still waiting, in progress or stopped.
 - **Placement tests (`placementTests.list`).** `GET /inbox-placement-tests`: `{ items, next_starting_after }`. Item fields used: `id`, `name`, `status` (1 Active, 2 Paused, 3 Completed), `type` ("Whether the inbox placement test is a one-time test or an automated test", enum 1 and 2 with no names: read as 1 one-time, 2 automated, in the order of the sentence), `campaign_id`, `timestamp_created`, `timestamp_next_run`. Results (`/inbox-placement-analytics`) are one row per test email and stay native.
+
+## Response shapes for list endpoints (2026-11-15, for OUT-73)
+
+Fetched fresh on 2026-11-15 to decide which 200 bodies a list read may accept:
+
+- https://api.instantly.ai/openapi/api_v2.json (`info.version` 2.0.0, 198 paths). The 200 schema of each endpoint below was read directly.
+- https://developer.instantly.ai/api-reference/campaign/list-campaign.md (the page agrees with the spec: `items` is in `required`).
+
+Every paged list has one schema: `{ items: array (required, not nullable), next_starting_after?: string }`. No list endpoint the adapter reads is documented as a bare array, and none documents `items` as optional or `null`. An empty list is `{ "items": [] }`, with or without `next_starting_after`. The analytics reports are the opposite: a bare array of rows, never wrapped.
+
+| Endpoint | Read by | Documented 200 body | List field | Paging |
+| --- | --- | --- | --- | --- |
+| `GET /campaigns` | `campaigns.list` | object | `items` (required array) | `limit`, `starting_after` in; `next_starting_after` out (optional string) |
+| `GET /account-campaign-mappings/{email}` | `campaigns.list({ senderId })` | object | `items` | same |
+| `GET /custom-tag-mappings` | campaign and sender tags (lookup) | object | `items` | same |
+| `GET /custom-tags` | tags lookup, `tags.list` | object | `items` | same |
+| `GET /accounts` | `senders.list`, `senders.byCampaign` | object | `items` | same |
+| `POST /leads/list` | `leads.list`, `leads.lookup` | object | `items` | `limit`, `starting_after` in the body; `next_starting_after` out |
+| `GET /emails` | `messages.list`, `replies.list` | object | `items` | same; own lane of 20 a minute |
+| `GET /lead-labels` | custom interest labels (lookup) | object | `items` | same |
+| `GET /block-lists-entries` | `blocklist` | object | `items` | same |
+| `GET /lead-lists` | `lists.list` | object | `items` | same |
+| `GET /inbox-placement-tests` | `placementTests.list` | object | `items` | same |
+| `GET /subsequences` | `sequence.subsequences` | object | `items` | same |
+| `GET /webhooks` | `webhooks.list` | object | `items` | same |
+| `GET /campaigns/analytics` | `stats` (every campaign), `campaigns.progress` | bare array | the body | none |
+| `GET /campaigns/analytics/steps` | `stats` by step | bare array | the body | none |
+| `GET /campaigns/analytics/daily` | `stats` by day | bare array | the body | none |
+| `GET /accounts/analytics/daily` | `stats` for a sender | bare array | the body | none |
+
+Ambiguous or not documented:
+
+- Nothing in the spec says whether a page past the end returns `{ items: [] }` or omits `items`. The schema requires it, so an absent `items` is treated as a broken answer.
+- `next_starting_after` is typed `string` and is not marked nullable. The live run of 2026-11-14 found it sent on a last page too. Reading a `null` as "no next page" stays lenient.
+- `fixtures/instantly/` matches the spec: every `list*.json` is `{ items, next_starting_after? }`, and the four analytics fixtures are bare arrays.

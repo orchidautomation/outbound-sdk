@@ -1,9 +1,26 @@
 Q4 SaaS founders active
 step 0: email, day +0, [ 'Quick question', 'Congrats' ]
-step 1: email, day +3, [ 'Re: Quick question' ]
+step 1: email, day +3, [ 'Following up' ]
 daily limit: 80 | stops on reply: true | plain text: null
 2 senders, 2 leads, 3 messages, 1 reply, 0 webhooks, 0 subsequences
-2026-11-04 sent 45 replied 2
-2026-11-05 sent 45 replied 2
-2026-11-11 sent 50 replied 4
-2026-11-12 sent 40 replied 3
+2026-10-24 sent 44 replied 1
+2026-10-25 sent 45 replied 2
+2026-10-26 sent 46 replied 1
+2026-10-27 sent 45 replied 2
+2026-10-28 sent 44 replied 1
+2026-10-29 sent 46 replied 2
+2026-10-30 sent 45 replied 2
+2026-10-31 sent 44 replied 2
+2026-11-01 sent 46 replied 0
+2026-11-02 sent 45 replied 1
+2026-11-03 sent 44 replied 1
+2026-11-04 sent 45 replied 1
+2026-11-05 sent 46 replied 1
+2026-11-06 sent 44 replied 2
+2026-11-07 sent 45 replied 2
+2026-11-08 sent 45 replied 1
+2026-11-09 sent 44 replied 2
+2026-11-10 sent 46 replied 1
+2026-11-11 sent 45 replied 3
+2026-11-12 sent 45 replied 2
+2026-11-13 sent 44 replied 2

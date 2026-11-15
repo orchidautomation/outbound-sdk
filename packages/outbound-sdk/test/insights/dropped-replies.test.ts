@@ -164,8 +164,7 @@ test("dropped_replies reports unanswered replies longest waiting first, and coun
       category: "positive",
       channel: "email",
       checkedBy: "thread",
-      finding:
-        "A positive reply has waited 100 hours with nothing sent after it.",
+      finding: "A positive reply has waited 4 days with nothing sent after it.",
       // 2026-11-10T08:00 to 2026-11-14T12:00 is 4 days and 4 hours.
       email: "person1@example.com",
       hoursWaiting: 100,
@@ -203,6 +202,7 @@ test("dropped_replies reports unanswered replies longest waiting first, and coun
     // t1, t2, the timeline of l4, t3 and the reply with nothing to read.
     conversations: 5,
     dropped: 2,
+    moreRepliesExist: false,
     // The ten inbound messages but the one from October.
     repliesRead: 9,
     skippedAuto: 1,
@@ -377,6 +377,7 @@ test("dropped_replies finds nothing when there are no replies", async () => {
     answered: 0,
     conversations: 0,
     dropped: 0,
+    moreRepliesExist: false,
     repliesRead: 0,
     skippedAuto: 0,
     skippedByCategory: 0,
@@ -394,9 +395,12 @@ test("dropped_replies says the answer is partial when max_replies stops the read
 
   // The two replies of t1.
   assert.equal(result.data.totals.repliesRead, 2);
+  assert.equal(result.data.totals.moreRepliesExist, true);
   assert.equal(result.data.dropped.length, 1);
   assert.equal(result.meta.complete, false);
-  assert.deepEqual(result.meta.notes, ["Stopped at 2 replies; more exist."]);
+  assert.deepEqual(result.meta.notes, [
+    "Stopped at 2 replies (max_replies); more exist.",
+  ]);
 });
 
 test("dropped_replies is refused without a list of replies", async () => {
@@ -504,7 +508,7 @@ test("dropped_replies writes the article the category takes", async () => {
   }).insights.droppedReplies({ categories: ["unknown", "ooo"] }, { now: NOW });
 
   assert.deepEqual(result.data.dropped.map((each) => each.finding).toSorted(), [
-    "An ooo reply has waited 100 hours with nothing sent after it.",
-    "An unknown reply has waited 100 hours with nothing sent after it.",
+    "An ooo reply has waited 4 days with nothing sent after it.",
+    "An unknown reply has waited 4 days with nothing sent after it.",
   ]);
 });

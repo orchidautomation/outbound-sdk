@@ -12,7 +12,10 @@ export const deliverabilityCheck = async (
   outbound: Outbound & InsightsExtension
 ): Promise<string> => {
   const domains = await outbound.insights.domainHealth({});
-  const bounces = await outbound.insights.bounceWatch({ threshold: 0.03 });
+
+  const bounces = await outbound.insights.bounceWatch({
+    max_bounce_rate: 0.03,
+  });
 
   const lines = ["Domains:"];
 
@@ -30,11 +33,11 @@ export const deliverabilityCheck = async (
 
   lines.push(
     "",
-    `Campaigns over a ${percent(bounces.data.threshold)} bounce rate:`
+    `Campaigns over a ${percent(bounces.data.maxBounceRate)} bounce rate:`
   );
 
   for (const campaign of bounces.data.over) {
-    lines.push(`  ${campaign.name}: ${campaign.finding}`);
+    lines.push(`  ${campaign.campaignName}: ${campaign.finding}`);
 
     for (const sender of campaign.senders ?? []) {
       lines.push(

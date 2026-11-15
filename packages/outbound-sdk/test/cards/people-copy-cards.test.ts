@@ -22,6 +22,7 @@ const NOTHING = "⚪ Nothing had enough data to check.";
 const person = (found: boolean): PersonSummary => ({
   campaigns: [
     {
+      autoReplied: false,
       campaign: "instantly:acme:c1",
       campaignName: "Founders Q4",
       campaignStatus: "active",
@@ -55,9 +56,9 @@ const person = (found: boolean): PersonSummary => ({
 test("person_summary shows one person across campaigns and channels", () => {
   includes(
     read(cardFor("person_summary", insight(person(true)))),
-    "email:person1@example.com",
+    "person1@example.com",
     "Replied in 1 of 2 campaigns.",
-    "Email: 3 sent · 1 replies",
+    "Email: 3 sent · 1 reply",
     "Founders Q4 | email   | 3    | 1       | Interested | 2026-11-06"
   );
   includes(
@@ -90,6 +91,7 @@ const account = (lastReply: AccountSummary["lastReply"]): AccountSummary => ({
     interested: 1,
     leadsRead: 40,
     leadsWithoutEmail: 0,
+    moreLeadsExist: false,
     people: 1,
     records: 2,
     replied: 1,
@@ -173,6 +175,8 @@ const check = (found: number): SuppressionCheck => ({
     byMatch: { domain: found, email: 0, linkedin: 0 },
     campaignsRead: 2,
     leadsRead: 300,
+    moreBlockEntriesExist: false,
+    moreLeadsExist: false,
     violations: found,
   },
   violations: Array.from({ length: found }, (_, index) => ({
@@ -228,6 +232,7 @@ const dropped = (count: number, repliesRead: number): DroppedReplies => ({
     answered: 5,
     conversations: 5 + count,
     dropped: count,
+    moreRepliesExist: false,
     repliesRead,
     skippedAuto: 0,
     skippedByCategory: 0,
@@ -284,6 +289,7 @@ test("hot_leads ranks who to call, and falls back from name to email", () => {
       hot: 3,
       leadsRead: 50,
       moreLeadsExist: false,
+      negative: 0,
       scored: 12,
       withoutData: 0,
     },
@@ -352,9 +358,9 @@ test("personalization_gaps shows only the variables with a gap", () => {
 
   includes(
     text,
-    "🔴 30 leads will get broken copy (15.0% of those read).",
+    "🔴 30 leads will get broken copy (15% of those read).",
     "• 🟡 `compnay` is not a field any lead has.",
-    "firstName | builtin | 0, 2  | 30"
+    "firstName | builtin | 1, 3  | 30"
   );
   excludes(text, "company  ");
   includes(
@@ -368,6 +374,16 @@ const step = (index: number, replies: number | null) => ({
   delayDays: 3,
   earnsPlace: replies === null ? null : replies > 2,
   inSequence: true,
+  rates: {
+    replyRate: {
+      basis: "sent" as const,
+      count: replies,
+      high: replies === null ? null : 0.08,
+      low: replies === null ? null : 0.04,
+      of: 400,
+      rate: replies === null ? null : replies / 400,
+    },
+  },
   replies,
   replyRate: replies === null ? null : replies / 400,
   replyRateBasis: "sent" as const,
@@ -383,7 +399,7 @@ const step = (index: number, replies: number | null) => ({
 test("step_funnel charts replies by step and repeats the insight's finding", () => {
   const funnel: StepFunnel = {
     campaign: "c1",
-    finding: "Step 0 brings 92% of replies.",
+    finding: "Step 1 brings 92% of replies.",
     lastStepEarningPlace: 0,
     steps: [step(0, 24), step(1, 2), step(2, null)],
     topStep: 0,
@@ -393,17 +409,37 @@ test("step_funnel charts replies by step and repeats the insight's finding", () 
 
   includes(
     read(cardFor("step_funnel", insight(funnel))),
-    "Step 0 brings 92% of replies.",
-    "0    | 400  | 24      | 6.0% (4.0–8.0%) | 92.3%            | Yes",
-    "1    | 400  | 2       | 0.5% (4.0–8.0%) | 7.7%             | No",
-    "2    | 400  | —       | —               | —                | —",
+    "Step 1 brings 92% of replies.",
+    "1    | 400  | 24      | 6% (4–8%)   | 92.3%            | Yes",
+    "2    | 400  | 2       | 0.5% (4–8%) | 7.7%             | No",
+    "3    | 400  | —       | —           | —                | —",
     "Replies by step",
-    "Step 0 | 24",
+    "Step 1 | 24",
     "1 stats row could not be tied to a step."
   );
 });
 
-const tested = (reported: boolean): VariantTest => ({
+test("step_funnel still draws a result stored before rates.replyRate", () => {
+  const { rates: _dropped, ...old } = step(0, 24);
+
+  includes(
+    read(
+      cardFor(
+        "step_funnel",
+        insight({
+          campaign: "c1",
+          finding: "Step 1 brings the most replies.",
+          steps: [old],
+          totals: { replies: 24, sent: 400 },
+          unattributed: { replies: null, rows: 0, sent: null },
+        })
+      )
+    ),
+    "1    | 400  | 24      | 6% (4–8%)"
+  );
+});
+
+const tested = (reported: boolean | null): VariantTest => ({
   alpha: 0.05,
   campaign: "c1",
   metric: "replied",
@@ -418,7 +454,10 @@ const tested = (reported: boolean): VariantTest => ({
         basis: "sent" as const,
         count: 10 + index * 20,
         enoughData: true,
+        high: 0.07,
         interval: { high: 0.07, low: 0.01 },
+        low: 0.01,
+        of: 500,
         pValueVsLeader: null,
         rate: (10 + index * 20) / 500,
         sent: 500,
@@ -450,14 +489,18 @@ test("variant_test stars the leader and says why", () => {
   includes(
     read(cardFor("variant_test", insight(tested(true)))),
     "1 step with a real winner out of 2 tested.",
-    "• 🟢 **Step 0**: B is ahead by more than chance.",
-    "• ⚪ **Step 1**: Too few sends to compare.",
-    "0    | A       | 500  | 2.0% (1.0–7.0%)",
-    "0    | B ★     | 500  | 6.0% (1.0–7.0%)"
+    "• 🟢 **Step 1**: B is ahead by more than chance.",
+    "• ⚪ **Step 2**: Too few sends to compare.",
+    "1    | A       | 500  | 2% (1–7%)",
+    "1    | B ★     | 500  | 6% (1–7%)"
   );
   includes(
     read(cardFor("variant_test", insight(tested(false)))),
     "The vendor does not report results by variant for this campaign."
+  );
+  includes(
+    read(cardFor("variant_test", insight(tested(null)))),
+    "No step stats in this date range."
   );
 });
 
@@ -465,6 +508,7 @@ const audit = (clean: boolean, variantsChecked: number): CopyAudit => ({
   byCheck: [],
   bySeverity: { high: clean ? 0 : 1, low: 0, medium: clean ? 0 : 1 },
   campaign: "c1",
+  campaignName: "Founders Q4",
   channel: "email",
   clean,
   findings: clean
@@ -497,9 +541,10 @@ const audit = (clean: boolean, variantsChecked: number): CopyAudit => ({
 test("copy_audit marks each finding by severity", () => {
   includes(
     read(cardFor("copy_audit", insight(audit(false, 2)))),
+    "*Copy audit*\nFounders Q4",
     "2 problems found in the copy.",
-    "• 🔴 Step 0 A: The body uses 2 spam words.",
-    "• 🟡 Step 1 A: The body has 3 links.",
+    "• 🔴 Step 1 A: The body uses 2 spam words.",
+    "• 🟡 Step 2 A: The body has 3 links.",
     "High: 1"
   );
   includes(
@@ -511,9 +556,20 @@ test("copy_audit marks each finding by severity", () => {
 
 test("copy_reuse names the best copy and each reused piece", () => {
   const piece = {
+    basis: "sent" as const,
     bodyPreview: "Saw you are hiring",
     campaigns: 2,
     contentHash: "abc",
+    rates: {
+      replyRate: {
+        basis: "sent" as const,
+        count: 30,
+        high: 0.08,
+        low: 0.04,
+        of: 500,
+        rate: 0.06,
+      },
+    },
     replies: 30,
     replyRate: 0.06,
     replyRateInterval: { high: 0.08, low: 0.04 },
@@ -523,8 +579,10 @@ test("copy_reuse names the best copy and each reused piece", () => {
   };
 
   const reuse = (withBest: boolean): CopyReuse => ({
+    basis: "sent",
     bestCopy: withBest ? piece : null,
     campaignsRead: 4,
+    moreCampaignsExist: false,
     piecesOfCopy: 7,
     reused: [
       {
@@ -544,9 +602,9 @@ test("copy_reuse names the best copy and each reused piece", () => {
 
   includes(
     read(cardFor("copy_reuse", insight(reuse(true)))),
-    'Best copy: "Quick question" at 6.0% (4.0–8.0%).',
+    'Best copy: "Quick question" at 6% (4–8%).',
     "• The same copy gets 8% in Founders and 4% in Agencies.",
-    "Saw you are hiring | 2         | 500  | 6.0%       | 4.0%"
+    "Saw you are hiring | 2         | 500  | 6%         | 4%"
   );
   includes(
     read(cardFor("copy_reuse", insight(reuse(false)))),
@@ -563,6 +621,7 @@ const timing = (topWeekday: string | null): ReplyTiming => ({
     received: 22,
     sent: 68,
     unpaired: 2,
+    unpairedShare: 0.0909,
   },
   replies: {
     byHour: [],
@@ -598,7 +657,7 @@ test("reply_timing says when replies arrive", () => {
     "Most replies arrive on Tuesday around 10:00.",
     "Median time to reply: 5h",
     "90% reply within: 3d",
-    "Within 24 hours: 70.0%",
+    "Within 24 hours: 70%",
     "Tue | 12"
   );
   includes(

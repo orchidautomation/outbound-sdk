@@ -1,12 +1,12 @@
 [untagged-campaign] memory:agency:cmp_ecom: Ecommerce ops has no tag, so no client rule can match it
-[bounce-rate-above] memory:agency:cmp_ecom: Bounce rate is 9.0%, above 5.0%
-[reply-rate-below] memory:agency:cmp_ecom: Reply rate is 1.0%, below 2.0%
+[bounce-rate-above] memory:agency:cmp_ecom: Bounce rate is 9%, above 5%
+[reply-rate-below] memory:agency:cmp_ecom: Reply rate is 1%, below 2%
 [sender-not-active] memory:agency:snd_ben: Sender is disconnected
 [no-sends] memory:agency:cmp_ecom: Nothing was sent on 2026-11-11
-[bounce-rate-above] memory:agency:cmp_ecom: Bounce rate is 9.0%, above 5.0%
-[reply-rate-below] memory:agency:cmp_ecom: Reply rate is 1.0%, below 2.0%
-[bounce-rate-above] memory:agency:cmp_ecom: Bounce rate is 9.0%, above 5.0%
-[reply-rate-below] memory:agency:cmp_ecom: Reply rate is 1.0%, below 2.0%
+[bounce-rate-above] memory:agency:cmp_ecom: Bounce rate is 9%, above 5%
+[reply-rate-below] memory:agency:cmp_ecom: Reply rate is 1%, below 2%
+[bounce-rate-above] memory:agency:cmp_ecom: Bounce rate is 9%, above 5%
+[reply-rate-below] memory:agency:cmp_ecom: Reply rate is 1%, below 2%
 
 evaluate: [ 'sender-not-active' ]
 notify called by evaluate: false

@@ -118,12 +118,12 @@ export const alertCard = (alert: Alert): CardSpec =>
       { content: safe(alert.message), style: "bold", type: "Text" },
       {
         fields: [
-          ["About", safe(alert.subject)],
+          ["About", safe(alert.subjectName ?? alert.subject)],
           ["Measured", written(alert.value, alert.rule.includes("rate"))],
           ["Limit", written(alert.threshold, alert.rule.includes("rate"))],
         ],
         type: "Fields",
       },
     ],
-    title: `🚨 ${words(alert.rule)}`,
+    title: `🚨 ${words(alert.rule.replaceAll("-", " "))}`,
   });

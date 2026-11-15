@@ -1,39 +1,37 @@
 {
   "data": {
+    "maxBounceRate": 0.03,
     "minSent": 100,
     "over": [
       {
         "campaign": "memory:acme:agencies",
+        "campaignName": "Agency owners",
         "name": "Agency owners",
         "status": "active",
+        "count": 21,
+        "high": 0.1119,
+        "low": 0.0496,
+        "of": 280,
+        "rate": 0.075,
         "bounced": 21,
         "interval": {
           "high": 0.1119,
           "low": 0.0496
         },
-        "rate": 0.075,
         "sent": 280,
         "finding": "21 of 280 sends bounced (7.5%), over the 3% threshold.",
         "senders": [
           {
-            "bounced": 9,
-            "interval": {
-              "high": 0.1792,
-              "low": 0.0535
-            },
-            "rate": 0.1,
-            "sent": 90,
-            "address": "dee@send-two.example.com",
-            "name": null,
-            "sender": "memory:acme:dee"
-          },
-          {
+            "count": 12,
+            "high": 0.1346,
+            "low": 0.0464,
+            "of": 150,
+            "rate": 0.08,
             "bounced": 12,
             "interval": {
               "high": 0.1346,
               "low": 0.0464
             },
-            "rate": 0.08,
             "sent": 150,
             "address": "cy@send-two.example.com",
             "name": null,
@@ -42,18 +40,24 @@
         ]
       }
     ],
+    "sendersRead": 3,
     "threshold": 0.03,
     "tooFewSends": [
       {
         "campaign": "memory:acme:ecom",
+        "campaignName": "Ecommerce ops",
         "name": "Ecommerce ops",
         "status": "active",
+        "count": 7,
+        "high": 0.1923,
+        "low": 0.0493,
+        "of": 70,
+        "rate": 0.1,
         "bounced": 7,
         "interval": {
           "high": 0.1923,
           "low": 0.0493
         },
-        "rate": 0.1,
         "sent": 70,
         "finding": "7 of 70 sends bounced; under 100 sends is too few to judge.",
         "senders": null
@@ -72,6 +76,7 @@
     "unknown": [
       {
         "campaign": "memory:acme:linkedin",
+        "campaignName": "LinkedIn founders",
         "name": "LinkedIn founders",
         "status": "active",
         "reason": "The vendor does not report a bounce count."

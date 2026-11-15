@@ -6,13 +6,7 @@
 import type { AdapterContext, LeadQuery, Page } from "../internal/adapter.ts";
 import type { Lead } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
-import {
-  field,
-  isJsonObject,
-  isNumber,
-  objects,
-  text,
-} from "../internal/json.ts";
+import { field, isJsonObject, isNumber, text } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
 import { profileSlug } from "../internal/url.ts";
 import type { HeyReachClient } from "./client.ts";
@@ -79,22 +73,24 @@ const profileByEmail = async (
     client.post(ctx, "/list/GetListsForLead", { email, limit: 1, offset: 0 })
   );
 
-  const listId = field(objects(field(lists, "items"))[0], "listId");
+  // `undefined` is the 404 for an address in no list.
+  const listId =
+    lists === undefined
+      ? undefined
+      : field(client.items(lists, "/list/GetListsForLead")[0], "listId");
 
   if (!isNumber(listId)) {
     return undefined;
   }
 
-  const rows = objects(
-    field(
-      await client.post(ctx, "/list/GetLeadsFromList", {
-        keyword: fullName,
-        limit: MAX_CANDIDATES,
-        listId,
-        offset: 0,
-      }),
-      "items"
-    )
+  const rows = client.items(
+    await client.post(ctx, "/list/GetLeadsFromList", {
+      keyword: fullName,
+      limit: MAX_CANDIDATES,
+      listId,
+      offset: 0,
+    }),
+    "/list/GetLeadsFromList"
   );
 
   for (const row of rows) {
@@ -213,7 +209,12 @@ export const lookupLeads = async (
     return { items: [] };
   }
 
-  const envelope = listEnvelope(campaigns ?? null, offset);
+  // `undefined` is HeyReach's 404 for a person in no campaign: an empty
+  // page, not a bad answer. Any answer it did send must be the list.
+  const envelope =
+    campaigns === undefined
+      ? { items: [], next: undefined }
+      : listEnvelope(campaigns, offset, provider, CAMPAIGNS_PATH);
 
   if (envelope.items.length === 0 && offset === 0) {
     return {

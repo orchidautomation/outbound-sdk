@@ -143,23 +143,39 @@ export const toJson = <Value>(value: Value): Json =>
   parseJson(JSON.stringify(value) ?? "null") ?? null;
 
 /**
- * Says which key of `input` is not one of `known`, or `undefined` when every
- * key is. Used so an input that would be ignored is refused instead.
+ * `toJson`, or `undefined` for a value `JSON.stringify` cannot write (a
+ * BigInt, a cycle). For an input from a caller, such as a tool's.
  */
-export const unknownKey = (
-  known: readonly string[],
-  input: Json | undefined
-): string | undefined => {
-  if (!isJsonObject(input)) {
+export const jsonInput = <Value>(value: Value): Json | undefined => {
+  try {
+    return toJson(value);
+  } catch {
     return undefined;
   }
+};
 
-  const stray = Object.keys(input).find((key) => !known.includes(key));
+/**
+ * Says which of the `given` keys is not one of `known`, or `undefined` when
+ * every one is. Used so an input that would be ignored is refused instead.
+ */
+export const strayKey = (
+  known: readonly string[],
+  given: readonly string[],
+  noun = "an input"
+): string | undefined => {
+  const stray = given.find((key) => !known.includes(key));
 
   return stray === undefined
     ? undefined
-    : `"${stray}" is not an input. It takes: ${known.toSorted().join(", ") || "nothing"}`;
+    : `"${stray}" is not ${noun}. It takes: ${known.toSorted().join(", ") || "nothing"}`;
 };
+
+/** `strayKey` for a JSON input: which key of `input` is not one of `known`. */
+export const unknownKey = (
+  known: readonly string[],
+  input: Json | undefined
+): string | undefined =>
+  strayKey(known, isJsonObject(input) ? Object.keys(input) : []);
 
 /**
  * A copy of `value` without any key that matches `secret`, at any depth. A

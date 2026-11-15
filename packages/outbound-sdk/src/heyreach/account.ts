@@ -58,13 +58,13 @@ const listBlocklist =
   async (query, ctx) => {
     const { companies, offset } = blocklistCursor(query.next);
 
+    const path = companies ? "/blacklist/GetCompanies" : "/blacklist/GetLeads";
+
     const envelope = listEnvelope(
-      await client.post(
-        ctx,
-        companies ? "/blacklist/GetCompanies" : "/blacklist/GetLeads",
-        { limit: pageSize(query.limit), offset }
-      ),
-      offset
+      await client.post(ctx, path, { limit: pageSize(query.limit), offset }),
+      offset,
+      client.identity.provider,
+      path
     );
 
     const toEntries = companies ? toBlockedCompany : toBlockedLead;
@@ -146,7 +146,9 @@ export const accountReaders = (client: HeyReachClient): AccountReaders => ({
         limit: pageSize(query.limit),
         offset,
       }),
-      offset
+      offset,
+      client.identity.provider,
+      "/list/GetAll"
     );
 
     return mapPage(envelope, (item) => toLeadList(client.identity, item));
@@ -161,7 +163,9 @@ export const accountReaders = (client: HeyReachClient): AccountReaders => ({
         limit: pageSize(query.limit),
         offset,
       }),
-      offset
+      offset,
+      client.identity.provider,
+      "/webhooks/GetAllWebhooks"
     );
 
     const { campaignId } = query;
@@ -232,7 +236,9 @@ export const campaignSenders = async (
       limit: pageSize(query.limit),
       offset,
     }),
-    offset
+    offset,
+    client.identity.provider,
+    "/li_account/GetAll"
   );
 
   return {

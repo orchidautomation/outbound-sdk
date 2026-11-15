@@ -1,8 +1,8 @@
-97.1429 ana@northwind.example.com: marked Interested, replied 2 time(s), last reply 2 day(s) ago, 1 click(s), 6 open(s).
+97.1429 ana@northwind.example.com: marked Interested, replied 2 times, last reply 2 days ago, 1 click, 6 opens.
   parts: { clicks: 5, interest: 50, opens: 5, recency: 17.1429, replies: 20 }
-84 eli@example.com: marked Meeting Booked, replied 1 time(s), last reply 7 day(s) ago, 2 click(s), 4 open(s).
+84 eli@example.com: marked Meeting Booked, replied 1 time, last reply 7 days ago, 2 clicks, 4 opens.
   parts: { clicks: 10, interest: 50, opens: 4, recency: 10, replies: 10 }
-3 ben@northwind.example.com: 3 open(s).
+3 ben@northwind.example.com: 3 opens.
   parts: { clicks: 0, interest: null, opens: 3, recency: null, replies: 0 }
 totals: {
   autoReplied: 0,
@@ -10,6 +10,7 @@ totals: {
   fromReplies: 0,
   hot: 4,
   moreLeadsExist: false,
+  negative: 1,
   leadsRead: 12,
   scored: 5,
   withoutData: 6

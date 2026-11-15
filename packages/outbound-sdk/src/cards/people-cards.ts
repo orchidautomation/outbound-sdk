@@ -10,9 +10,11 @@ import {
   int,
   num,
   pct,
+  people,
   plural,
   rows,
   show,
+  stepsOf,
   str,
   strings,
   waiting,
@@ -38,12 +40,14 @@ const personSummary: CardBuilder = (data) => {
       ["Replies", int(num(totals, "replies"))],
       ...Object.keys(channels).map((channel): Stat => [
         words(channel),
-        `${int(num(child(channels, channel), "messagesSent"))} sent · ${int(
-          num(child(channels, channel), "replies")
-        )} replies`,
+        `${int(num(child(channels, channel), "messagesSent"))} sent · ${plural(
+          num(child(channels, channel), "replies"),
+          "reply",
+          "replies"
+        )}`,
       ]),
     ],
-    subtitle: strings(data, "identifiers").join(" · ") || null,
+    subtitle: people(data, "identifiers"),
     table: {
       align: [LEFT, LEFT, RIGHT, RIGHT, LEFT, LEFT],
       headers: [
@@ -72,6 +76,12 @@ const accountSummary: CardBuilder = (data) => {
   const last = child(data, "lastReply");
 
   return {
+    bullets:
+      bool(totals, "moreLeadsExist") === true
+        ? [
+            `🟡 Stopped at ${plural(num(totals, "leadsRead") ?? 0, "lead")} read; more exist, so people at this company may be missing.`,
+          ]
+        : [],
     finding:
       str(last, "at") === null
         ? "Nobody at this company has replied."
@@ -130,14 +140,32 @@ const suppressionCheck: CardBuilder = (data) => {
   const totals = child(data, "totals");
   const found = num(totals, "violations") ?? 0;
   const byMatch = child(totals, "byMatch");
+  const moreEntries = bool(totals, "moreBlockEntriesExist") === true;
+
+  const capped = [
+    ...(moreEntries
+      ? [
+          `🟡 Stopped at ${plural(num(totals, "blockEntriesRead") ?? 0, "block list entry", "block list entries")}; more exist and were not checked.`,
+        ]
+      : []),
+    ...(bool(totals, "moreLeadsExist") === true
+      ? ["🟡 A campaign had more leads than were read; those were not checked."]
+      : []),
+  ];
+
+  const problem =
+    found === 0
+      ? null
+      : `🔴 ${plural(found, "blocked lead")} still in a campaign.`;
 
   return {
-    bullets: findings(rows(data, "violations"), "🔴"),
+    bullets: [...capped, ...findings(rows(data, "violations"), "🔴")],
     finding: verdict(
       num(totals, "leadsRead"),
-      found === 0
-        ? null
-        : `🔴 ${plural(found, "blocked lead")} still in a campaign.`,
+      problem ??
+        (moreEntries
+          ? "🟡 No blocked lead found in the entries read, but more entries exist."
+          : null),
       "No blocked lead is in a campaign."
     ),
     stats: [
@@ -158,6 +186,12 @@ const droppedReplies: CardBuilder = (data) => {
   const [longest] = dropped;
 
   return {
+    bullets:
+      bool(totals, "moreRepliesExist") === true
+        ? [
+            `🟡 Stopped at ${plural(num(totals, "repliesRead") ?? 0, "reply", "replies")} read; more exist and were not checked.`,
+          ]
+        : [],
     finding: verdict(
       num(totals, "repliesRead"),
       longest === undefined
@@ -193,6 +227,8 @@ const hotLeads: CardBuilder = (data) => {
   const totals = child(data, "totals");
   const leads = rows(data, "leads");
   const fromReplies = num(totals, "fromReplies") ?? 0;
+  // Leads labelled negative score 0 and fill the room left, so they are not hot.
+  const hot = num(totals, "hot") ?? leads.length;
 
   return {
     bullets:
@@ -202,9 +238,9 @@ const hotLeads: CardBuilder = (data) => {
           ]
         : [],
     finding:
-      leads.length === 0
+      leads.length === 0 || hot === 0
         ? "No lead scores as hot yet."
-        : `${plural(num(totals, "hot") ?? leads.length, "lead")} to call first.`,
+        : `${plural(hot, "lead")} to call first.`,
     stats: [
       ["Hot", int(num(totals, "hot"))],
       ["Scored", int(num(totals, "scored"))],
@@ -261,7 +297,7 @@ const personalizationGaps: CardBuilder = (data) => {
         .map((variable) => [
           show(variable, "name"),
           show(variable, "source"),
-          strings(variable, "steps").join(", ") || DASH,
+          stepsOf(variable, "steps") || DASH,
           int(num(variable, "leadsWithoutValue")),
         ]),
     },

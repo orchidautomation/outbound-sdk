@@ -172,7 +172,7 @@ const readConversations = async (
   const next = text(field(body, "nextCursor"));
 
   return {
-    conversations: objects(field(body, "items")),
+    conversations: client.items(body, CONVERSATIONS_PATH),
     next:
       field(body, "hasNextPage") === true && next !== null ? next : undefined,
   };

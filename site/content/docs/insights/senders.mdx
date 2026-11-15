@@ -33,11 +33,11 @@ Deliverability per sending domain: DNS records, sign-in, block lists and the sha
 | Input | Default | Range | What it is |
 | --- | --- | --- | --- |
 | `max_senders` | 50 | 1 to 500 | The most senders to check. |
-| `spam_rate_threshold` | 0.1 | 0 to 1 | A domain whose warmup emails land in spam more often than this share is high risk. |
+| `max_spam_rate` | 0.1 | 0 to 1 | A domain whose warmup emails land in spam more often than this share is high risk. Its old name, `spam_rate_threshold`, works until 0.5.0, with a note. |
 
 `data` (`DomainHealth`):
 
-- `domains`: one entry per domain, worst first, with `risk` (`high`, `medium`, `low` or `unknown`), `reasons`, `mailboxes` (each with `address`, `status`, `connected`, `blacklisted`, `failingDns` and the vendor's own `issues`), `failingDns`, `disconnected`, `blacklisted`, `warmup` (pooled over the mailboxes that report it: `mailboxes`, `sent`, `spam`, `spamRate`, `interval`) and `notReported`.
+- `domains`: one entry per domain, worst first, with `risk` (`high`, `medium`, `low` or `unknown`), `reasons`, `mailboxes` (each with `address`, `status`, `connected`, `blacklisted`, `failingDns` and the vendor's own `issues`), `failingDns`, `disconnected`, `blacklisted` (`null` when no mailbox of the domain reports its block list status), `warmup` (pooled over the mailboxes that report it: `mailboxes`, `sent`, `spam`, and the spam rate as `count`, `of`, `rate`, `low` and `high`; `spamRate` and `interval` are its deprecated old form) and `notReported`.
 - `linkedinSeats`: seats have no domain. Each has `name`, `linkedinUrl`, `status`, `connected` and `issues`. Disconnected seats first.
 - `mailboxesWithoutDomain`: sender refs whose domain is not known.
 - `totals`: `senders`, `domains`, `high`, `medium`, `low`, `unknown` and `linkedinSeats`.
@@ -48,13 +48,13 @@ How the risk is set:
 | --- | --- |
 | `high` | A mailbox is on a block list, SPF, DKIM or MX fails, or the pooled warmup spam rate is over the threshold. |
 | `medium` | DMARC fails, or a mailbox is disconnected. |
-| `low` | None of the above, and the vendor reported at least one check. |
-| `unknown` | The vendor reported nothing for any mailbox of the domain. |
+| `low` | None of the above, and the vendor reported at least one of SPF, DKIM, DMARC and MX. |
+| `unknown` | None of the above, and the vendor reported none of SPF, DKIM, DMARC and MX for any mailbox of the domain. |
 
 - **Needs:** `senders.list`, `senders.health`.
 - **Costs:** one listing of senders, plus 1 request per sender.
-- **Notes it can add:** a cap was reached.
-- **Does not:** look up DNS itself. It reports what the vendor says about each mailbox. A check the vendor reports for no mailbox of a domain is named in `notReported`, and a domain with nothing reported is `unknown`, not `low`.
+- **Notes it can add:** a cap was reached; a sender the vendor no longer finds (its health read answered `NotFound`) was left out, which also sets `meta.complete` to `false`. Any other error, such as a refused key or an outage, still throws.
+- **Does not:** look up DNS itself. It reports what the vendor says about each mailbox. A check the vendor reports for no mailbox of a domain is named in `notReported`, and a domain with no DNS record reported is `unknown`, not `low`. The card lists what is not reported per domain.
 
 <include meta='title="domain-health.ts"'>
   ../../_examples/insights-senders/domain-health.ts
@@ -87,15 +87,15 @@ Whether the senders can send what the campaigns ask.
 - `finding`: the answer in a sentence or three.
 - `capacity`: `daily` (the daily limits of active senders added up), `mailboxDaily`, `linkedinDaily`, `activeSenders`, `withLimit`, `withoutLimit` and `inactiveSenders`.
 - `ask`: `daily` (the daily limits of active campaigns added up), `campaigns`, `withLimit` and `withoutLimit`. `null` when the adapter cannot read campaign settings.
-- `sends`: `averageDaily`, `total`, `days`, `daysWithData`, `from`, `to` and `scope` (`workspace` or `campaigns`). `null` when the adapter has no daily stats.
-- `utilization`: average daily sends divided by daily capacity.
+- `sends`: `averageDaily`, `total`, `days`, `daysWithData`, `from`, `to`, `scope` (`workspace` or `campaigns`) and `fromUncounted`: what senders not counted in capacity (inactive, with no daily limit, or past `max_senders`) sent of `total`, `null` when that cannot be told. `null` when the adapter has no daily stats.
+- `utilization`: the average daily sends of the senders counted in capacity, divided by daily capacity, so it compares sends and capacity over the same senders. `null` when `fromUncounted` is.
 - `askRatio`: the daily ask divided by daily capacity. Over 1 means the campaigns ask for more than the senders can send.
 - `shortCampaigns`: campaigns whose own senders cannot cover their daily limit, with `dailyLimit`, `senderCapacity`, `shortBy`, `senders`, `activeSenders` and a `finding`. Largest gap first. `null` when it could not be checked.
 - `uncheckedCampaigns`: campaigns left out of `shortCampaigns` because a limit is not reported.
 
 - **Needs:** `senders.list`. It reads more when the adapter has `campaigns.settings`, `senders.byCampaign` and `stats.byDay`.
-- **Costs:** one listing of senders and one of active campaigns, then up to 2 requests per campaign and 1 for daily stats. Without workspace stats it reads daily stats per campaign: up to 3 per campaign.
-- **Notes it can add:** the daily ask and the short campaigns were left out because the adapter cannot read campaign settings; the short campaigns were left out because it cannot list a campaign's senders; average daily sends were left out, or cover only the active campaigns read.
+- **Costs:** one listing of senders and one of active campaigns, then up to 2 requests per campaign and 1 for daily stats, plus, with `split_uncounted: true`, 1 request per inactive sender or sender with no daily limit, to keep what they sent out of `utilization`. Off (the default), `utilization` is `null` when such a sender exists. Without workspace stats it reads daily stats per campaign: up to 3 per campaign.
+- **Notes it can add:** the daily ask and the short campaigns were left out because the adapter cannot read campaign settings; the short campaigns were left out because it cannot list a campaign's senders; average daily sends were left out, or cover only the active campaigns read; capacity in use was left out because the sends of senders not counted in capacity could not be told apart.
 - **Does not:** count a sender or campaign with no reported limit as 0. They are counted apart, in `withoutLimit`. In `shortCampaigns`, a sender shared with another campaign is counted in full for each, so a campaign can look covered while its senders are oversubscribed: `askRatio` shows that. Only active campaigns are read.
 
 <include meta='title="sender-capacity.ts"'>
@@ -114,7 +114,7 @@ Whether the senders can send what the campaigns ask.
   </include>
 </CodeGroup>
 
-Five senders are active, but one reports no daily limit, so the capacity of 130 is that of four, and the finding says so. "Ecommerce ops" reports no daily limit, so it is not checked.
+Five senders are active, but one reports no daily limit, so the capacity of 130 is that of four, and the finding says so. "Ecommerce ops" reports no daily limit, so it is not checked. `eli@send-three.example.com` reports no limit and no stats for the week, so the sends of senders outside capacity cannot be told apart: `utilization` is `null` and a note says why. The [capacity guide](/docs/guides/sender-capacity) shows it computed.
 
 ## `bounceWatch`
 
@@ -122,26 +122,28 @@ The campaigns whose bounce rate (bounced divided by sent) is over a threshold, a
 
 | Input | Default | Range | What it is |
 | --- | --- | --- | --- |
-| `threshold` | 0.03 | 0 to 1 | The bounce rate that is too high. |
-| `min_sent` | 100 | 0 or more, whole | A campaign with fewer sends than this is too small to judge. |
-| `from` | none | `YYYY-MM-DD` | First day to count. Leave out for the vendor's whole history. |
-| `to` | none | `YYYY-MM-DD` | Last day to count. Leave out for the vendor's whole history. |
+| `max_bounce_rate` | 0.03 | 0 to 1 | The bounce rate that is too high. Its old name, `threshold`, works until 0.5.0, with a note. |
+| `min_sent` | 100 | 0 or more, whole | A campaign or sender with fewer sends than this is too small to judge. |
+| `from` | `null` | `YYYY-MM-DD` or `null` | First day to count. `null` for the vendor's whole history. |
+| `to` | `null` | `YYYY-MM-DD` or `null` | Last day to count. `null` for up to today. |
+| `statuses` | `["active"]` | at least one campaign status | Only campaigns in one of these states are read. |
 | `include_senders` | `true` | boolean | Also check the senders of each campaign over the threshold. |
 | `max_campaigns` | 50 | 1 to 500 | The most campaigns to check. |
 | `max_senders_per_campaign` | 10 | 1 to 200 | The most senders to check for one campaign over the threshold. |
 
 `data` (`BounceWatch`):
 
-- `over`: campaigns over the threshold, worst first, each with `bounced`, `sent`, `rate`, `interval`, `status`, a `finding`, and `senders`: its senders that are themselves over the threshold (`null` when senders were not checked).
+- `over`: campaigns over the threshold, worst first, each with `campaign` and `campaignName`, `bounced`, `sent`, the rate as `count`, `of`, `rate`, `low` and `high`, `status`, a `finding`, and `senders`: its senders that are themselves over the threshold (`null` when senders were not checked).
 - `tooFewSends`: campaigns with fewer sends than `min_sent`, whatever their rate.
 - `unknown`: campaigns the vendor reports no sent or bounce count for, with the `reason`.
 - `totals`: `campaigns`, `over`, `clean`, `tooFewSends`, `unknown`, and `bounced`, `sent` and `rate` over the campaigns with known counts.
-- `threshold`, `minSent`: what was used.
+- `maxBounceRate`, `minSent`: what was used. `threshold` is the deprecated old name of `maxBounceRate`.
+- `sendersRead`: how many senders had their sent and bounce counts read. `null` when senders were not checked. An empty `senders` list with a low `sendersRead` means little was checked, not that every sender is clean.
 
 - **Needs:** `stats.campaign`. Checking senders also needs `stats.bySender` and `senders.byCampaign`.
 - **Costs:** one listing of campaigns and 1 request per campaign, plus 1 listing and up to 1 request per sender for each campaign over the threshold.
-- **Notes it can add:** senders were not checked because the adapter needs stats per sender and the list of a campaign's senders; a cap was reached.
-- **Does not:** judge a sender within one campaign. A sender's rate is over everything it sent in the period, because no vendor reports one sender within one campaign. Every campaign is read, whatever its status. A campaign in `tooFewSends` or `unknown` is not clean.
+- **Notes it can add:** senders were not checked because the adapter needs stats per sender and the list of a campaign's senders; the senders whose sent or bounce count could not be read, by address; a cap was reached.
+- **Does not:** flag a sender with fewer sends than `min_sent`. Nor does it judge a sender within one campaign. A sender's rate is over everything it sent in the period, because no vendor reports one sender within one campaign. Only campaigns in `statuses` are read, active by default. To read every campaign, as it did before 0.3.0, pass `statuses: ["active", "paused", "completed", "draft", "archived", "unknown"]`. A campaign in `tooFewSends` or `unknown` is not clean.
 
 <include meta='title="bounce-watch.ts"'>
   ../../_examples/insights-senders/bounce-watch.ts
@@ -177,7 +179,7 @@ Which senders are not ready to send, each with its reasons.
 - `notReady`: the senders with at least one reason, most reasons first. Each has `kind`, `address`, `name`, `status`, `warmupEnabled`, `score`, `dailyLimit`, `reasons` and `findings` (each reason in plain words).
 - `byReason`: how many senders have each reason.
 - `ready`, `total`, `linkedinSeats`.
-- `healthChecked`: `true` when DNS records and warmup spam were checked too.
+- `healthChecked`: `true` when DNS records and warmup spam were checked too. When it is `false`, a sender counted as ready is ready on warmup and status alone, and the card says "ready on warmup alone", not "ready to send".
 
 The reasons:
 
@@ -193,7 +195,7 @@ The reasons:
 
 - **Needs:** `senders.list`. `check_health` also needs `senders.health`.
 - **Costs:** one listing of senders, plus 1 request per mailbox with `check_health`.
-- **Notes it can add:** DNS records and warmup spam were not checked because the adapter cannot read a sender's health; a cap was reached.
+- **Notes it can add:** with `check_health` off (the default), DNS records and warmup spam were not checked, so a ready mailbox is ready on warmup alone, and how to turn the check on; DNS records and warmup spam were not checked because the adapter cannot read a sender's health; a cap was reached; with `check_health`, a mailbox the vendor no longer finds was left out, which also sets `meta.complete` to `false`.
 - **Does not:** treat a missing score as 0. A `null` score means the vendor does not report one, which counts as not ready under its own reason. A LinkedIn seat is judged on its status only.
 
 <include meta='title="warmup-readiness.ts"'>
@@ -227,7 +229,7 @@ Senders that are overused or unused, and campaigns that depend on too few sender
 
 - `overused`: senders in more campaigns than allowed, most loaded first, with `campaigns`, `over`, `campaignRefs` and a `finding`.
 - `unused`: active senders attached to none of the campaigns read.
-- `campaigns`: campaigns with an issue (`no_sender`, `single_sender` or `inactive_sender`), with `senders`, `issues`, the `inactive` senders and a `finding`.
+- `campaigns`: campaigns with an issue (`no_sender`, `single_sender` or `inactive_sender`), with `campaign`, `campaignName`, `senders`, `issues`, the `inactive` senders and a `finding`.
 - `totals`: `senders`, `activeSenders`, `campaigns`, `overused`, `unused` and `campaignsAtRisk`.
 - `maxCampaignsPerSender`: what was used.
 
@@ -262,7 +264,7 @@ Risky campaign settings, per campaign and by severity.
 | `max_window_hours` | 12 | 1 to 24 | A sending window longer than this is flagged. |
 | `min_window_hours` | 2 | 0 to 24 | A sending window shorter than this is flagged. |
 | `min_gap_minutes` | 5 | 0 or more | A wait between two sends shorter than this is flagged. |
-| `max_daily_limit_per_sender` | 50 | 1 or more | A campaign's daily limit should not exceed this many sends per attached sender. |
+| `max_daily_limit_per_sender` | 50 | 1 or more | The sends a day assumed for each attached sender when the senders' own daily limits are not reported. |
 | `max_campaigns` | 25 | 1 to 200 | The most campaigns to audit. |
 | `max_senders_per_campaign` | 100 | 1 to 1,000 | The most senders to count for one campaign. |
 
@@ -276,7 +278,7 @@ The checks:
 
 | Check | Severity | Fires when |
 | --- | --- | --- |
-| `limit_over_senders` | high | The daily limit is over `max_daily_limit_per_sender` times the number of attached senders. |
+| `limit_over_senders` | high | The daily limit is over what the attached senders can send: their own daily limits added up, or, when any of them reports none, `max_daily_limit_per_sender` times their number. The finding says when it assumed that share. |
 | `end_date_passed` | high | The campaign is active but its end date has passed. |
 | `reply_does_not_stop` | high | A lead who replies keeps getting the next steps. |
 | `no_window` | medium | No sending window is set or reported. |

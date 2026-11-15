@@ -7,7 +7,13 @@ import type { SenderHealth } from "../../internal/entities-account.ts";
 import type { Sender } from "../../internal/entities.ts";
 import { defineInsight } from "../define.ts";
 import { percent, rate, spoken } from "../stats.ts";
-import { failingDns, readCapped, warmupSpam } from "./read.ts";
+import {
+  countEach,
+  failingDns,
+  readHealth,
+  readSenders,
+  warmupSpam,
+} from "./read.ts";
 
 const input = z.object({
   check_health: z
@@ -165,20 +171,12 @@ const judge = (
   };
 };
 
-const countReasons = (judged: readonly UnreadySender[]): ReadinessCounts => {
-  const count = (reason: ReadinessReason): number =>
-    judged.filter((sender) => sender.reasons.includes(reason)).length;
-
-  return {
-    dns_failing: count("dns_failing"),
-    no_daily_limit: count("no_daily_limit"),
-    not_active: count("not_active"),
-    score_low: count("score_low"),
-    score_unknown: count("score_unknown"),
-    warmup_off: count("warmup_off"),
-    warmup_spam_high: count("warmup_spam_high"),
-  };
-};
+const countReasons = (judged: readonly UnreadySender[]): ReadinessCounts =>
+  countEach(
+    READINESS_REASONS,
+    (reason) =>
+      judged.filter((sender) => sender.reasons.includes(reason)).length
+  );
 
 export const warmupReadiness = defineInsight({
   description:
@@ -196,12 +194,7 @@ export const warmupReadiness = defineInsight({
       minScore: options.min_score,
     };
 
-    const senders = await readCapped(
-      context,
-      (cap) => outbound.senders.listAll({ max: cap }),
-      options.max_senders,
-      "senders"
-    );
+    const { items: senders } = await readSenders(context, options.max_senders);
 
     const healthChecked =
       options.check_health && outbound.capabilities["senders.health"];
@@ -212,17 +205,29 @@ export const warmupReadiness = defineInsight({
       );
     }
 
-    const judged: UnreadySender[] = await mapConcurrent(
-      senders,
-      async (sender) => {
-        const health =
-          healthChecked && sender.kind === "mailbox"
-            ? context.one(await outbound.sender(sender.ref).health())
-            : null;
+    // Left off by default to save a request per mailbox; the note says so.
+    if (
+      !options.check_health &&
+      outbound.capabilities["senders.health"] &&
+      senders.some((sender) => sender.kind === "mailbox")
+    ) {
+      context.note(
+        "DNS records and warmup spam were not checked, so a ready mailbox is ready on warmup alone. Pass check_health: true to check them, at 1 more request per mailbox."
+      );
+    }
 
-        return judge(sender, health, bars);
+    const each = await mapConcurrent(senders, async (sender) => {
+      if (!healthChecked || sender.kind !== "mailbox") {
+        return [judge(sender, null, bars)];
       }
-    );
+
+      // A mailbox the vendor no longer finds is left out, with a note.
+      const health = await readHealth(context, sender);
+
+      return health === null ? [] : [judge(sender, health, bars)];
+    });
+
+    const judged: UnreadySender[] = each.flat();
 
     const notReady = judged
       .filter((sender) => sender.reasons.length > 0)

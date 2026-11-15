@@ -32,6 +32,7 @@
             "opens": 6,
             "provider": "mailtool",
             "replies": 2,
+            "autoReplied": false,
             "status": "replied"
           },
           {
@@ -44,6 +45,7 @@
             "opens": 2,
             "provider": "mailtool",
             "replies": null,
+            "autoReplied": false,
             "status": "active"
           }
         ],
@@ -74,6 +76,7 @@
             "opens": 3,
             "provider": "mailtool",
             "replies": 0,
+            "autoReplied": false,
             "status": "active"
           },
           {
@@ -86,6 +89,7 @@
             "opens": null,
             "provider": "mailtool",
             "replies": null,
+            "autoReplied": false,
             "status": "completed"
           }
         ],
@@ -99,6 +103,7 @@
       "interested": 1,
       "leadsRead": 12,
       "leadsWithoutEmail": 2,
+      "moreLeadsExist": false,
       "people": 2,
       "records": 4,
       "replied": 1

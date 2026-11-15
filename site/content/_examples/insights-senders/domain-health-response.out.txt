@@ -39,14 +39,19 @@
         ],
         "notReported": [],
         "reasons": [
-          "1 of 2 mailboxes are on a block list",
+          "1 of 2 mailboxes is on a block list",
           "DKIM failing",
           "30 of 200 warmup emails landed in spam (15%, over 10%)",
           "DMARC failing",
-          "1 of 2 mailboxes are disconnected"
+          "1 of 2 mailboxes is disconnected"
         ],
         "risk": "high",
         "warmup": {
+          "count": 30,
+          "high": 0.2061,
+          "low": 0.1071,
+          "of": 200,
+          "rate": 0.15,
           "interval": {
             "high": 0.2061,
             "low": 0.1071
@@ -86,6 +91,11 @@
         "reasons": [],
         "risk": "low",
         "warmup": {
+          "count": 10,
+          "high": 0.0454,
+          "low": 0.0136,
+          "of": 400,
+          "rate": 0.025,
           "interval": {
             "high": 0.0454,
             "low": 0.0136
@@ -97,7 +107,7 @@
         }
       },
       {
-        "blacklisted": 0,
+        "blacklisted": null,
         "disconnected": 0,
         "domain": "send-three.example.com",
         "failingDns": [],
@@ -124,6 +134,11 @@
         "reasons": [],
         "risk": "unknown",
         "warmup": {
+          "count": null,
+          "high": null,
+          "low": null,
+          "of": null,
+          "rate": null,
           "interval": null,
           "mailboxes": 0,
           "sent": null,

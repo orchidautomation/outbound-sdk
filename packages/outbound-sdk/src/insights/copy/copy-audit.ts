@@ -68,6 +68,8 @@ export interface CheckCount {
 
 export interface CopyAudit {
   readonly campaign: string;
+  /** The campaign's name, from the campaign record the audit reads. */
+  readonly campaignName: string;
   readonly channel: "email" | "linkedin";
   /** `true` when no check found anything in the copy that could be read. */
   readonly clean: boolean;
@@ -271,7 +273,9 @@ export const copyAudit = defineInsight({
 
     if (withoutBody > 0) {
       context.note(
-        `${withoutBody} variant(s) have no body in the vendor's answer, so their body checks were skipped.`
+        withoutBody === 1
+          ? "1 variant has no body in the vendor's answer, so its body checks were skipped."
+          : `${withoutBody} variants have no body in the vendor's answer, so their body checks were skipped.`
       );
     }
 
@@ -285,7 +289,8 @@ export const copyAudit = defineInsight({
         low: severity("low"),
         medium: severity("medium"),
       },
-      campaign: args.campaign,
+      campaign: campaign.ref,
+      campaignName: campaign.name,
       channel: campaign.channel,
       clean: findings.length === 0,
       findings,

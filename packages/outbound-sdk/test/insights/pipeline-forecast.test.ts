@@ -87,6 +87,7 @@ test("pipeline_forecast counts the leads left and projects replies from the repl
       "40 leads remain; expect about 4 replies (between 2.6 and 6). This is an estimate.",
     leadsComplete: true,
     leadsRead: 46,
+    campaignName: "Pipeline",
     name: "Pipeline",
     positiveRate: { count: 5, high: 0.0572, low: 0.0107, of: 200, rate: 0.025 },
     provider: "memory",
@@ -152,7 +153,7 @@ test("pipeline_forecast keeps unknowns unknown, and reports a drained campaign a
   );
   assert.equal(
     fresh.data.assumptions.at(-1),
-    "The reply rate so far is unknown, from unknown replies over 9."
+    "The reply rate so far is unknown, from an unknown number of replies over 9."
   );
 
   const drained = await outbound.insights.pipelineForecast(
@@ -245,4 +246,114 @@ test("pipeline_forecast reads a campaign of either tool on a combined instance",
     high: 0.1744,
     low: 0.0552,
   });
+});
+
+// An active campaign whose leads are all finished: it stopped contacting new
+// leads ten days ago, so it has no recent contact rate (OUT-56).
+const FINISHED: MemoryData = {
+  campaigns: [
+    { id: "done", name: "Founders", status: "active" },
+    { id: "busy", name: "Agencies", status: "active" },
+  ],
+  leads: [
+    ...Array.from({ length: 40 }, (_, index) =>
+      lead(`d${index}`, "done", "completed")
+    ),
+    ...Array.from({ length: 6 }, (_, index) =>
+      lead(`b${index}`, "busy", "active")
+    ),
+  ],
+  stats: [
+    row("done", "2026-11-03", { contacted: 40, replied: 2, sent: 80 }),
+    row("done", "2026-11-11", { contacted: 0, replied: 1, sent: 60 }),
+    row("busy", "2026-11-11", { contacted: 7, replied: 1, sent: 70 }),
+  ],
+};
+
+test("pipeline_forecast gives a campaign with no leads left 0 days, even with no contact rate", async () => {
+  const outbound = single(FINISHED);
+
+  const done = await outbound.insights.pipelineForecast(
+    { campaign: "memory:agency:done" },
+    { now: NOW }
+  );
+
+  assert.equal(done.data.remaining, 0);
+  assert.equal(done.data.dailyContactRate, 0);
+  assert.equal(done.data.daysLeft, 0);
+  assert.equal(
+    done.data.finding,
+    "No leads are left to contact; add leads to keep the campaign sending."
+  );
+
+  // Cut off by the cap, the leads left are unknown, so the days left are too.
+  const capped = await outbound.insights.pipelineForecast(
+    { campaign: "memory:agency:done", max_leads: 10 },
+    { now: NOW }
+  );
+
+  assert.equal(capped.data.remaining, 0);
+  assert.equal(capped.data.daysLeft, null);
+
+  // Leads whose status the vendor does not say may still be waiting.
+  const unknown = await single({
+    ...FINISHED,
+    leads: [lead("u1", "done", "unknown")],
+  }).insights.pipelineForecast(
+    { campaign: "memory:agency:done" },
+    { now: NOW }
+  );
+
+  assert.equal(unknown.data.daysLeft, null);
+});
+
+test("client_report lists a campaign with no leads left first, with the action to add leads", async () => {
+  const report = await single(FINISHED).insights.clientReport(
+    { min_sent: 1 },
+    { now: NOW }
+  );
+
+  assert.deepEqual(
+    report.data.runningOutOfLeads?.map((each) => [each.name, each.daysLeft]),
+    [
+      ["Founders", 0],
+      ["Agencies", 6],
+    ]
+  );
+
+  const first = report.data.actions.find(
+    (action) => action.kind === "add_leads"
+  );
+
+  assert.deepEqual(first, {
+    action:
+      "Add leads to Founders: no leads are left to contact, so it is not sending.",
+    campaign: "memory:agency:done",
+    campaignName: "Founders",
+    kind: "add_leads",
+    number: 0,
+  });
+});
+
+test("pipeline_forecast writes one lead in the singular and leaves out a range whose ends read the same", async () => {
+  // c1 read up to its first lead, which has replied: at least 0 leads remain.
+  const none = await single(DATA).insights.pipelineForecast(
+    { ...C1, max_leads: 1 },
+    { now: NOW }
+  );
+
+  assert.equal(
+    none.data.finding,
+    "At least 0 leads remain; expect about 0 replies. This is an estimate."
+  );
+
+  const one = await single({
+    ...DATA,
+    leads: [lead("solo", "c1", "active")],
+  }).insights.pipelineForecast(C1, { now: NOW });
+
+  assert.match(
+    one.data.finding,
+    /^1 lead remains; expect about 0\.\d replies/u
+  );
 });

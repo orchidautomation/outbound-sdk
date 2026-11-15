@@ -103,12 +103,14 @@ export const deliverabilityCheck: ToolDefinition<
   name: "deliverability_check",
   needs: ["senders.health"],
   run: async (outbound, input) => {
-    const senders = await outbound.senders
-      .listAll({ campaignId: input.campaign, max: input.limit })
-      .toArray();
+    const walk = outbound.senders.listAll({
+      campaignId: input.campaign,
+      max: input.limit,
+    });
 
+    const senders = await walk.toArray();
     const rows: { readonly problems: string[]; readonly row: Json }[] = [];
-    let requests = 1;
+    let requests = walk.meta?.requests ?? 0;
 
     const checks = await mapConcurrent(senders, async (sender) => ({
       health: await outbound.sender(sender.ref).health(),

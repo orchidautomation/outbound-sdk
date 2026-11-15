@@ -1,3 +1,4 @@
+import type { Adapter } from "../adapter.ts";
 import type { NativeCatalog, NoNative } from "../native.ts";
 import { Outbound } from "./outbound.ts";
 import type { OutboundOptions } from "./outbound.ts";
@@ -39,24 +40,38 @@ export type OutboundWith<
 > = Outbound<Native> & ExtensionsOf<Plugins>;
 
 /**
+ * The native catalog of an adapter type. A union of adapters, as from
+ * `cond ? smartlead() : instantly()`, gives the union of their catalogs, so
+ * only the reads they share are typed.
+ */
+export type NativeOf<Given> =
+  Given extends Adapter<infer Native> ? Native : NoNative;
+
+/**
  * Creates the client. One instance wraps one adapter; `combine()` puts
  * several adapters behind one.
  */
 // The result is NoInfer: the plugins come from `options`, never from the
 // type the result is assigned to, so an instance built without a plugin
-// cannot be typed as one with it.
+// cannot be typed as one with it. The adapter is inferred as a whole rather
+// than through its catalog, so a union of two adapters is accepted.
 export const createOutbound = <
   const Plugins extends readonly OutboundPlugin[] = [],
-  Native extends NativeCatalog = NoNative,
+  const Given extends Adapter<NativeCatalog> = Adapter,
 >(
-  options: OutboundOptions<Native> & {
-    readonly plugins?: Plugins | undefined;
+  options: Omit<OutboundOptions, "adapter"> & {
+    readonly adapter: Given;
+    // The array form accepts a list TypeScript infers as a tuple but types
+    // as an array, such as one with a conditional spread.
+    readonly plugins?: Plugins | readonly Plugins[number][] | undefined;
   }
-): NoInfer<OutboundWith<Plugins, Native>> => {
-  const outbound = new Outbound<Native>(options);
+): NoInfer<OutboundWith<Plugins, NativeOf<Given>>> => {
+  const outbound = new Outbound<NativeCatalog>(options);
 
   installExtensions(outbound, options.plugins ?? []);
 
-  // SAFETY: installExtensions() just defined every property the plugins' extensions declare.
-  return outbound as OutboundWith<Plugins, Native>;
+  // SAFETY: installExtensions() just defined every property the plugins'
+  // extensions declare, and the adapter's catalog is `NativeOf<Given>` by
+  // that type's definition, which TypeScript cannot see through.
+  return outbound as OutboundWith<Plugins, NativeOf<Given>>;
 };

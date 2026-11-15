@@ -3,7 +3,7 @@
 
 import type { Adapter } from "../internal/adapter.ts";
 import { OutboundError } from "../internal/errors.ts";
-import { count, emailAddress, field, objects, text } from "../internal/json.ts";
+import { count, emailAddress, field, text } from "../internal/json.ts";
 import { flatMapPage, mapPage } from "../internal/page.ts";
 import type { InstantlyClient } from "./client.ts";
 import {
@@ -40,9 +40,9 @@ export const accountReaders = (client: InstantlyClient): AccountReaders => {
   return {
     // The per-campaign report, asked for one campaign: an array of one row.
     getCampaignProgress: async (id, ctx) => {
-      const rows = objects(
-        await client.get(ctx, "/campaigns/analytics", { query: { id } })
-      );
+      const rows = await client.getRows(ctx, "/campaigns/analytics", {
+        query: { id },
+      });
 
       const row = rows.find((each) => text(each.campaign_id) === id) ?? rows[0];
 

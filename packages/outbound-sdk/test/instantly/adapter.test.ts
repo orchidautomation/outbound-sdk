@@ -33,11 +33,14 @@ test("instantly: every documented campaign status number maps to a status", asyn
   ] as const;
 
   for (const [code, status] of expected) {
-    const { outbound, settle } = harness(suite, () =>
-      Response.json({
-        ...(fixture("instantly", "getCampaign.json") as object),
-        status: code,
-      })
+    // Only the campaign read: its tags come from their own list.
+    const { outbound, settle } = harness(suite, (request) =>
+      new URL(request.url).pathname.endsWith(`/campaigns/${CAMPAIGN}`)
+        ? Response.json({
+            ...(fixture("instantly", "getCampaign.json") as object),
+            status: code,
+          })
+        : undefined
     );
 
     const campaign = await settle(outbound.campaigns.get(CAMPAIGN));
@@ -237,6 +240,27 @@ test("instantly: emails use the 20-per-minute lane", async () => {
   );
 });
 
+test("instantly: an until with a time is sent as that instant", async () => {
+  const { outbound, requests, settle } = harness(suite);
+
+  await settle(
+    outbound.replies.list({
+      since: "2026-11-12",
+      until: "2026-11-12T09:00:00+02:00",
+    })
+  );
+
+  const url = new URL(requests[0]?.url ?? "");
+  assert.equal(
+    url.searchParams.get("min_timestamp_created"),
+    "2026-11-12T00:00:00.000Z"
+  );
+  assert.equal(
+    url.searchParams.get("max_timestamp_created"),
+    "2026-11-12T07:00:00.000Z"
+  );
+});
+
 test("instantly: a message maps direction, sender, lead and thread", async () => {
   const { outbound, requests, settle } = harness(suite);
 
@@ -257,7 +281,8 @@ test("instantly: a message maps direction, sender, lead and thread", async () =>
   );
   assert.equal(
     url.searchParams.get("max_timestamp_created"),
-    "2026-12-31T00:00:00.000Z"
+    "2026-12-31T23:59:59.999Z",
+    "a date-only until covers that whole UTC day"
   );
   const [message] = page.items;
   assert.equal(message?.direction, "out", "ue_type 3 is Sent");

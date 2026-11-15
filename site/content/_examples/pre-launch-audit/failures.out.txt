@@ -1,5 +1,5 @@
 unknown campaign: NotFound - Campaign cmp_missing was not found
-capped: false 0 of 2 [ 'Stopped at 2 leads of a campaign; more exist.' ]
+capped: false 0 of 2 [ 'Stopped at 2 leads of a campaign (max_leads); more exist.' ]
 no campaign in that status: { campaigns: 0, clean: 0, high: 0, low: 0, medium: 0, withFindings: 0 }
 default statuses: [ 'SaaS founders' ]
 no settings: Unsupported - settings_audit is not available: the memory adapter does not support campaigns.settings

@@ -2,7 +2,7 @@ import type { Outbound } from "outbound-sdk";
 import type { InsightsExtension } from "outbound-sdk/insights";
 
 const percent = (rate: number | null): string =>
-  rate === null ? "not reported" : `${(rate * 100).toFixed(1)}%`;
+  rate === null ? "not reported" : `${Math.round(rate * 1000) / 10}%`;
 
 // A count the vendor does not report is null, never 0. Say so.
 const count = (value: number | null): string =>
@@ -20,13 +20,14 @@ export const weeklyReport = async (
     `Outbound report for ${outbound.workspaceId}: ${data.period.from} to ${data.period.to}`,
     "",
     `Sent ${count(current.sent)}, replies ${count(current.replied)}, bounces ${count(current.bounced)}`,
-    `Reply rate ${percent(current.replyRate)} (the week before: ${percent(previous.replyRate)})`,
+    // A week's rates are per message sent (`data.replyRateBasis`).
+    `Replies per message sent ${percent(current.replyRate)} (the week before: ${percent(previous.replyRate)})`,
     data.totals.finding,
     "",
     "Best campaigns:",
     ...data.top.map(
       (campaign) =>
-        `  ${campaign.rank}. ${campaign.name}: ${percent(campaign.rate)} reply rate (${campaign.count} of ${campaign.of})`
+        `  ${campaign.rank}. ${campaign.campaignName}: ${percent(campaign.rate)} (${campaign.count} replies to ${campaign.of} messages)`
     ),
     "",
     "To do:",

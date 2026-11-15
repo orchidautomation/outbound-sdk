@@ -58,6 +58,7 @@
       "medium": 3
     },
     "campaign": "memory:acme:founders",
+    "campaignName": "SaaS founders",
     "channel": "email",
     "clean": false,
     "findings": [
@@ -72,7 +73,7 @@
       },
       {
         "check": "spam_words",
-        "finding": "The copy uses 2 word(s) or phrase(s) that spam filters weigh.",
+        "finding": "The copy uses 2 words or phrases that spam filters weigh.",
         "text": "free trial, no obligation",
         "action": "email",
         "severity": "medium",
@@ -99,7 +100,7 @@
       },
       {
         "check": "all_caps",
-        "finding": "2 word(s) of four or more letters are in capitals; the limit is 1.",
+        "finding": "2 words of four or more letters are in capitals; the limit is 1.",
         "text": "FRIDAY ENDS",
         "action": "email",
         "severity": "low",

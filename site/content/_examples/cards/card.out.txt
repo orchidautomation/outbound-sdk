@@ -20,7 +20,7 @@ Sender health: 🟢 No sender needs attention (2 checked).
       {
         "fields": [
           {
-            "text": "*Senders*\n2",
+            "text": "*Senders checked*\n2",
             "type": "mrkdwn"
           },
           {
@@ -39,7 +39,7 @@ Sender health: 🟢 No sender needs attention (2 checked).
           {
             "block": {
               "text": {
-                "text": "Senders\n*2*",
+                "text": "Senders checked\n*2*",
                 "type": "mrkdwn"
               },
               "type": "section"
@@ -94,7 +94,7 @@ Sender health: 🟢 No sender needs attention (2 checked).
                   "style": {
                     "bold": true
                   },
-                  "text": "memory:acme:mbx_1",
+                  "text": "outreach1@example.com",
                   "type": "text"
                 }
               ],
@@ -131,7 +131,7 @@ Sender health: 🟢 No sender needs attention (2 checked).
                   "style": {
                     "bold": true
                   },
-                  "text": "memory:acme:mbx_2",
+                  "text": "outreach2@example.com",
                   "type": "text"
                 }
               ],

@@ -1,5 +1,7 @@
 {
   "data": {
+    "campaignsRead": 5,
+    "moreCampaignsExist": false,
     "comparison": {
       "difference": 0.083,
       "higher": "linkedin",

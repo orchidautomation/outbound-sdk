@@ -7,14 +7,15 @@ import type {
   CampaignSettings,
   SendingWindow,
 } from "../../internal/entities-account.ts";
-import type { Campaign } from "../../internal/entities.ts";
+import type { Campaign, Sender } from "../../internal/entities.ts";
 import { defineInsight } from "../define.ts";
+import { statusesInput } from "../fields.ts";
 import { spoken } from "../stats.ts";
 import {
+  countEach,
   dayFrom,
   readCampaigns,
   readCampaignSenders,
-  statusesInput,
 } from "./read.ts";
 
 const input = z.object({
@@ -32,7 +33,7 @@ const input = z.object({
     .min(1)
     .default(50)
     .describe(
-      "A campaign's daily limit should not exceed this many sends per attached sender"
+      "The sends a day assumed for an attached sender when the senders' own daily limits are not reported"
     ),
   max_senders_per_campaign: z
     .number()
@@ -58,7 +59,7 @@ const input = z.object({
     .max(24)
     .default(2)
     .describe("A sending window shorter than this many hours is flagged"),
-  statuses: statusesInput,
+  statuses: statusesInput(["active"]),
 });
 
 export type SettingsCheck =
@@ -121,7 +122,7 @@ interface Audit {
   readonly campaign: Campaign;
   readonly settings: CampaignSettings;
   /** `null` when the campaign's senders could not be listed. */
-  readonly senders: number | null;
+  readonly senders: readonly Sender[] | null;
   readonly today: string;
   readonly bars: Bars;
 }
@@ -217,8 +218,16 @@ const scheduleFindings = ({ bars, settings }: Audit): SettingsFinding[] => {
 const limitFindings = (audit: Audit): SettingsFinding[] => {
   const { bars, campaign, senders, settings, today } = audit;
   const { dailyLimit, endDate, gapMinutes } = settings;
+  const count = senders?.length ?? 0;
+
+  // The senders' own limits when each reports one, else a fixed share each.
+  const own =
+    senders?.every((sender) => sender.dailyLimit !== null) === true
+      ? senders.reduce((sum, sender) => sum + (sender.dailyLimit ?? 0), 0)
+      : null;
+
   // With no sender attached there is nothing to compare the limit with.
-  const allowed = (senders ?? 0) * bars.maxPerSender;
+  const allowed = own ?? count * bars.maxPerSender;
 
   return [
     ...when(
@@ -229,7 +238,9 @@ const limitFindings = (audit: Audit): SettingsFinding[] => {
     ...when(
       dailyLimit !== null && allowed > 0 && dailyLimit > allowed,
       "limit_over_senders",
-      `The daily limit of ${dailyLimit} is over ${bars.maxPerSender} a day for each of its ${senders} senders (${allowed}).`,
+      own === null
+        ? `The daily limit of ${dailyLimit} is over ${allowed} a day: its ${count} senders do not all report a daily limit, so ${bars.maxPerSender} each was assumed.`
+        : `The daily limit of ${dailyLimit} is over the ${own} a day its ${count} senders can send.`,
       dailyLimit
     ),
     ...when(
@@ -289,27 +300,15 @@ const worstFirst = (left: AuditedCampaign, right: AuditedCampaign): number =>
 
 const countChecks = (
   campaigns: readonly AuditedCampaign[]
-): SettingsCheckCounts => {
-  const count = (check: SettingsCheck): number =>
-    campaigns.filter((campaign) =>
-      campaign.findings.some((finding) => finding.check === check)
-    ).length;
-
-  return {
-    click_tracking: count("click_tracking"),
-    end_date_passed: count("end_date_passed"),
-    gap_short: count("gap_short"),
-    limit_over_senders: count("limit_over_senders"),
-    no_daily_limit: count("no_daily_limit"),
-    no_timezone: count("no_timezone"),
-    no_window: count("no_window"),
-    open_tracking: count("open_tracking"),
-    reply_does_not_stop: count("reply_does_not_stop"),
-    weekend: count("weekend"),
-    window_long: count("window_long"),
-    window_short: count("window_short"),
-  };
-};
+): SettingsCheckCounts =>
+  countEach(
+    // SAFETY: SEVERITY has exactly one key per check.
+    Object.keys(SEVERITY) as SettingsCheck[],
+    (check) =>
+      campaigns.filter((campaign) =>
+        campaign.findings.some((finding) => finding.check === check)
+      ).length
+  );
 
 export const settingsAudit = defineInsight({
   description:
@@ -351,7 +350,8 @@ export const settingsAudit = defineInsight({
             ? readCampaignSenders(
                 context,
                 campaign,
-                options.max_senders_per_campaign
+                options.max_senders_per_campaign,
+                "max_senders_per_campaign"
               )
             : null,
         ]);
@@ -359,7 +359,7 @@ export const settingsAudit = defineInsight({
         return audit({
           bars,
           campaign,
-          senders: senders?.length ?? null,
+          senders,
           settings: context.one(settings),
           today: dayFrom(context.now, 0),
         });

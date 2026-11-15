@@ -7,6 +7,6 @@
   type: 'function'
 }
 [ 'function', 'type' ] campaign_overview
-{"data":{"campaigns":[{"campaign":"memory:acme:cmp_agencies","channel":"email","name":"Agency owners","metrics":{"bounce_rate":0.0522,"bounced":6,"connections_accepted":null,"connections_sent":null,"contacted":115,"opened":38,"positive":1,"positive_reply_rate":0.0087,"replied":3,"reply_rate":0.0261,"reply_rate_basis":"contacted","sent":115},"status":"paused"}]},"meta":{"evidence":"exact","provider":"memory","requests":1,"today":"2026-11-14"},"next":"Use campaign_trend for one campaign over time, or winning_steps to see which step drives replies.","ok":true}
+{"data":{"campaigns":[{"campaign":"memory:acme:cmp_agencies","channel":"email","name":"Agency owners","metrics":{"bounce_rate":0.0505,"bounced":53,"connections_accepted":null,"connections_sent":null,"contacted":630,"opened":378,"positive":4,"positive_reply_rate":0.0063,"replied":15,"reply_rate":0.0238,"reply_rate_basis":"contacted","sent":1050},"status":"paused"}],"truncated":false},"meta":{"evidence":"exact","provider":"memory","requests":0,"today":"2026-11-14"},"next":"Use campaign_trend for one campaign over time, or winning_steps to see which step drives replies.","ok":true}
 {"error":{"code":"Invalid","message":"Unknown tool drop_database"},"next":"Call one of the listed tools with a JSON object.","ok":false}
 {"error":{"code":"Invalid","message":"The arguments are not valid JSON"},"next":"Call one of the listed tools with a JSON object.","ok":false}

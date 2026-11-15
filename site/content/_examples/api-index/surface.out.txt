@@ -1,13 +1,13 @@
 memory acme stable
 caveats: 0
 sequence: true
-2 campaigns, 2 steps, 295 sent
+2 campaigns, 2 steps, 1234 sent
 true
 {
-  basis: '25 page(s) of 100 at 1 request(s) each, plus 0 per record',
+  basis: '25 pages of 100 at 1 request each, plus 0 per record',
   requests: 25
 }
-{ basis: '1 request(s) per page', requests: null }
+{ basis: '1 request per page', requests: null }
 instantly share 0.5
 default: 0 of 50 per 1000 ms
 default: 0 of 3000 per 60000 ms

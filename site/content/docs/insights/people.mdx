@@ -32,21 +32,23 @@ Everything about one person across campaigns and channels: each campaign they ar
 
 | Input | Default | Range | What it is |
 | --- | --- | --- | --- |
-| `person` | required | at least 3 characters | An email address or a LinkedIn profile URL. Anything else is `Invalid`. |
+| `person` | required | at least 3 characters | An email address, a LinkedIn profile URL, or a lead ref as the other people insights return it. Anything else is `Invalid`. |
 | `max_campaigns` | 20 | 1 to 50 | The most campaigns to report on. |
 
 `data` (`PersonSummary`):
 
 - `found`: `false` when no record matched.
 - `identifiers`: every exact identifier the records carry, as `email:` and `linkedin:` keys.
-- `campaigns`: one entry per campaign, with `campaignName`, `campaignStatus`, `channel`, `provider`, `lead`, `leadStatus`, `interest` (the vendor's own label), `messagesSent`, `replies`, `replied`, `repliedSteps` (counted from 0), `lastStep`, `firstContactedAt`, `lastContactedAt` and `lastRepliedAt`.
+- `campaigns`: one entry per campaign, with `campaignName`, `campaignStatus`, `channel`, `provider`, `lead`, `leadStatus`, `interest` (the vendor's own label), `messagesSent`, `replies`, `replied`, `autoReplied`, `repliedSteps` (counted from 0), `lastStep`, `firstContactedAt`, `lastContactedAt` and `lastRepliedAt`.
 - `totals`: `campaigns`, `campaignsReplied`, `campaignReplyRate` (campaigns they replied in, divided by campaigns that sent them at least one message), `messagesSent`, `replies` and `byChannel`.
 
-- **Needs:** `leads.lookup`, `leads.timeline`.
-- **Costs:** one lookup per identifier, then up to 2 requests per campaign (the lead's timeline and the campaign).
-- **Notes it can add:** a thread held fewer sent messages than the lead's last step, so messages sent is counted from the last step.
+A record the vendor labels out-of-office or bounced (the same rule as [`hotLeads`](#hotleads)) is `autoReplied: true`: its replies were automatic, so it counts 0 `replies`, is not `replied` and adds nothing to `campaignsReplied`.
+
+- **Needs:** `leads.lookup`, `leads.timeline`, and `leads.get` for a lead ref.
+- **Costs:** one lookup per identifier, one read of the lead for a lead ref, then up to 2 requests per campaign (the lead's timeline and the campaign).
+- **Notes it can add:** a thread held fewer sent messages than the lead's last step, so messages sent is counted from the last step; a record labelled out-of-office or bounced had replies that are not counted; redact masks one kind of identifier, so records found only under it were not linked.
 - **Does not:** match by name, or find a LinkedIn record from an email address unless some tool holds both for that person. `repliedSteps` is empty when the vendor ties a reply to no step.
-- **Refuses:** with `Unsupported`, before any read, while the [`redact` plugin](/docs/plugins/redact) masks `email` or `linkedin`, as `outbound mcp` does by default. Masked records could not be matched, so it does not report a known person as not found.
+- **Refuses:** with `Unsupported`, before any read, while the [`redact` plugin](/docs/plugins/redact) masks the kind of identifier asked for, or masks any identifier when given a lead ref. Masked records could not be matched, so it does not report a known person as not found. While redact masks both `email` and `linkedin`, as `outbound mcp` does by default, it is not offered as a tool.
 
 <include meta='title="person-summary.ts"'>
   ../../_examples/insights-people/person-summary.ts
@@ -81,14 +83,15 @@ Everyone at one company, across campaigns and tools, by exact email domain.
 `data` (`AccountSummary`):
 
 - `domain`: the domain that was matched.
-- `people`: one entry per email address, with `name`, `title`, `company`, `campaigns` (refs), `replied`, `interested` (`null` when they carry no label), `opens`, `clicks` and `replies` added up over their records, `lastRepliedAt`, and `records` (one per campaign). Sorted by most recent reply.
-- `totals`: `people`, `records`, `campaigns`, `replied`, `interested`, `leadsRead` and `leadsWithoutEmail`.
+- `people`: one entry per email address, with `name`, `title`, `company`, `campaigns` (refs), `replied`, `interested` (`null` when they carry no label), `opens`, `clicks` and `replies` added up over their records, `lastRepliedAt`, and `records` (one per campaign, each with `autoReplied`). Sorted by most recent reply. A record the vendor labels out-of-office or bounced is `autoReplied: true`, and its replies do not count toward `replied`, `replies` or `lastRepliedAt`.
+- `totals`: `people`, `records`, `campaigns`, `replied`, `interested`, `leadsRead`, `leadsWithoutEmail` and `moreLeadsExist` (`true` when `max_leads` or `max_campaigns` left leads unread, so people may be missing).
 - `lastReply`: the most recent reply with a known time, or `null`.
 
 - **Needs:** `leads.list`. Without it, `leads.byCampaign`, and the insight reads campaign by campaign. With neither it is `Unsupported`.
 - **Costs:** one request per page of leads read. `max_leads` sets the ceiling.
 - **Notes it can add:** the tool reports no per-lead open, click or reply counts, so those are `null`; a cap was reached. On a combined instance the note names only the tools whose records carry no counts, and is left out when every tool's records carry them: records from a tool that reports counts keep them.
 - **Does not:** find a lead that has only a LinkedIn profile (they are counted in `leadsWithoutEmail`), or treat a subdomain as the same company. It reads leads and filters them here, so it costs the same whether the company has one lead or fifty.
+- **Refuses:** with `Unsupported`, before any read, while the [`redact` plugin](/docs/plugins/redact) masks `email`, which leaves no domain to match. It is then not offered as a tool.
 
 <include meta='title="account-summary.ts"'>
   ../../_examples/insights-people/account-summary.ts
@@ -127,6 +130,7 @@ People who are in two or more campaigns at once, so they get overlapping outreac
 - **Costs:** one request per page of campaigns, plus one per page of each campaign's leads.
 - **Notes it can add:** a cap was reached.
 - **Does not:** count the same person twice in one campaign as a collision, or look at campaigns outside `statuses`. A lead with neither an email address nor a profile cannot be matched and is counted in `leadsWithoutIdentifier`.
+- **Refuses:** with `Unsupported`, before any read, while the [`redact` plugin](/docs/plugins/redact) masks `email` with its default `mask` strategy, since every address would read the same. It is then not offered as a tool. Under `strategy: "hash"` it matches by the hashed address, and notes that LinkedIn profiles could not be matched when those are masked too.
 
 <include meta='title="lead-collisions.ts"'>
   ../../_examples/insights-people/lead-collisions.ts
@@ -161,12 +165,13 @@ Leads sitting in campaigns although they are on the block list.
 
 - `violations`: one entry per lead, with `lead`, `email`, `linkedinUrl`, `leadStatus`, `campaign`, `campaignName`, `entry`, `entryValue`, `matchedBy` (`email`, `domain` or `linkedin`), `sameTool` and a `finding` sentence. Leads still `active` first.
 - `byCampaign`: every campaign checked with `leadsRead` and `violations`, most violations first.
-- `totals`: `violations`, `byMatch`, `campaignsRead`, `leadsRead`, `blockEntriesRead` and `blockEntriesNotChecked`.
+- `totals`: `violations`, `byMatch`, `campaignsRead`, `leadsRead`, `blockEntriesRead`, `blockEntriesNotChecked`, `moreBlockEntriesExist` (`true` when `max_block_entries` left entries unread; a lead on one of those was not found, and `blockEntriesNotChecked` is then `null`) and `moreLeadsExist` (`true` when `max_leads_per_campaign` left a campaign's leads unread).
 
 - **Needs:** `blocklist`, `leads.byCampaign`.
 - **Costs:** one request per page of block entries, plus one per page of each campaign's leads.
 - **Notes it can add:** a cap was reached.
 - **Does not:** match a company name or an entry of the vendor's kind `other`. Those are counted in `blockEntriesNotChecked`. It reports a lead once, by its most specific match: the address, then the profile, then the domain. It removes nobody from a campaign.
+- **Refuses:** with `Unsupported`, before any read, while the [`redact` plugin](/docs/plugins/redact) masks `email` with its default `mask` strategy. It is then not offered as a tool. Under `strategy: "hash"` it still matches an exact address, and says the domain entries (and, when profiles are masked, the profile entries) could not be matched.
 
 <include meta='title="suppression-check.ts"'>
   ../../_examples/insights-people/suppression-check.ts
@@ -201,12 +206,12 @@ Replies from prospects that nobody answered, longest waiting first.
 `data` (`DroppedReplies`):
 
 - `dropped`: one entry per conversation, with `reply` (the oldest unanswered reply), `lead` and the person's `name`, `email` and `linkedinUrl`, `campaign` and its `campaignName`, `channel`, `provider`, `category`, `subject`, `receivedAt`, `hoursWaiting`, `unansweredReplies`, `checkedBy` (`thread` or `timeline`) and a `finding` sentence.
-- `totals`: `repliesRead`, `skippedByCategory`, `skippedAuto`, `conversations`, `answered`, `dropped`, `tooRecent` and `unchecked`.
+- `totals`: `repliesRead`, `skippedByCategory`, `skippedAuto`, `conversations`, `answered`, `dropped`, `tooRecent`, `unchecked` and `moreRepliesExist` (`true` when `max_replies` left replies unread, so dropped ones may be missing).
 - `since` and `olderThanHours`: what was used.
 
 - **Needs:** `replies.list`. To check a conversation it also needs `messages.list` with `messages.byThread` or `leads.timeline`.
 - **Costs:** one request per page of replies, one per conversation checked, and one read of each listed lead and campaign to name them. About `max_replies` requests plus two per listed reply.
-- **Notes it can add:** the adapter cannot filter replies by date, so the newest were read and filtered here; the adapter cannot read one lead, so the names are `null`; a lead or campaign could not be read, so its names are `null`; the adapter can read neither a conversation nor a timeline, so no reply could be checked; a cap was reached.
+- **Notes it can add:** the adapter cannot filter replies by date, so the newest were read and filtered here; the adapter cannot read one lead, so the names are `null`; a reply carries no lead ref (Smartlead ties a reply to no lead), so its names are `null`; a lead or campaign could not be read, so its names are `null`; the adapter can read neither a conversation nor a timeline, so no reply could be checked; a cap was reached.
 - **Does not:** report a reply it could not check as dropped. Those are counted in `totals.unchecked`. "Answered" means a message was sent after the reply in the same conversation. It does not read what the message said.
 
 <include meta='title="dropped-replies.ts"'>
@@ -233,7 +238,7 @@ Who to call first: leads ranked by a score built from what the vendor reports.
 
 | Input | Default | Range | What it is |
 | --- | --- | --- | --- |
-| `campaign` | `null` | a campaign ref | Rank one campaign's leads. `null` ranks every lead the adapter lists. |
+| `campaign` | `null` | a campaign ref | Rank one campaign's leads. An unknown campaign is `NotFound`. `null` ranks every lead the adapter lists. |
 | `limit` | 20 | 1 to 500 | How many leads to return. |
 | `max_leads` | 500 | 1 to 20,000 | The most leads to read and score. When more exist, the leads behind recent replies are read as well. |
 | `positive_labels` | `Interested`, `Meeting Booked`, `Meeting Completed` | at least 1 character each | Interest labels that count as positive. |
@@ -247,12 +252,19 @@ Who to call first: leads ranked by a score built from what the vendor reports.
 
 `data` (`HotLeads`):
 
-- `leads`: highest score first, only leads that scored above 0. Each has `lead`, `email`, `linkedinUrl`, `name`, `title`, `company`, `campaign`, `status`, `interest`, `score`, `parts` (the points per signal: `interest`, `replies`, `clicks`, `opens`, `recency`), the raw `replies`, `clicks` and `opens`, `lastRepliedAt` and a `reason` sentence.
-- `totals`: `leadsRead`, `scored`, `hot`, `withoutData`, `excluded`, `moreLeadsExist` (`true` when `max_leads` stopped the listing with leads left unscored), `fromReplies` (leads past the cap read because they replied) and `autoReplied` (leads labelled out-of-office, whose replies earned nothing).
+- `leads`: highest score first: the leads that scored above 0, then, while `limit` leaves room, the leads labelled negative, which score 0. Each has `lead`, `email`, `linkedinUrl`, `name`, `title`, `company`, `campaign`, `status`, `interest`, `score`, `parts` (the points per signal: `interest`, `replies`, `clicks`, `opens`, `recency`), the raw `replies`, `clicks` and `opens`, `lastRepliedAt` and a `reason` sentence.
+- `totals`: `leadsRead`, `scored`, `hot`, `withoutData`, `excluded`, `moreLeadsExist` (`true` when `max_leads` stopped the listing with leads left unscored), `fromReplies` (leads past the cap read because they replied), `autoReplied` (leads labelled out-of-office or bounced, whose replies earned nothing) and `negative` (leads labelled negative, which earned no points at all).
 
 A lead listing comes in the vendor's order, usually the order leads were added, not by engagement. So when `max_leads` stops it with more leads left, `hotLeads` also reads up to 100 replies from the last `recency_days` days and reads the lead behind each one the listing missed, at most `limit` of them. Engaged leads past the cap are still ranked; the cold ones past it are not, and `moreLeadsExist` says so in the answer itself.
 
-A lead the vendor labels out-of-office (`interestCategory` is `ooo`, or, where the vendor gives no category, an interest label that reads "out of office") earns no reply or recency points and no "replied" reason: a vendor's per-lead reply count may include automatic replies. [Coverage](/docs/coverage) says, per vendor, what is known about that count.
+Some labels discount a lead. An automatic one discounts its replies: it earns no reply or recency points and no "replied" reason, and its `reason` names the label, "marked Out of office, so replies earn nothing". Its clicks and opens still count. A negative one discounts everything: the lead earns no points at all, from clicks and opens either, so it never outranks a lead that engaged; it is listed after every lead with a score above 0 while `limit` leaves room, and its `reason` reads "marked Not Interested, so it earns no points".
+
+| Discounted as | `interestCategory` | Or, where the vendor gives no category, a label that reads |
+| --- | --- | --- |
+| Automatic | `ooo`, `bounce` | "out of office" |
+| Negative | `negative`, `unsubscribe` | "not interested", "wrong person", "unsubscribe(d)" or "do not contact" |
+
+An automatic reply is discounted because a vendor's per-lead reply count may include it; [Coverage](/docs/coverage) says, per vendor, what is known about that count. A negative one is discounted because the person asked not to hear more. A label listed in `positive_labels` is never discounted as negative. [`personSummary`](#personsummary) and [`accountSummary`](#accountsummary) use the same automatic rule to decide whether a person replied.
 
 - **Needs:** `leads.list`, or `leads.byCampaign` when `campaign` is given. Without `campaign` on an adapter that cannot list every lead it is `Unsupported`. Looking past the cap also needs `replies.list` and `leads.get`; without them the answer says `moreLeadsExist` and a note says the replied leads were not looked for.
 - **Costs:** one request per page of leads read. `max_leads` sets the ceiling. Past the cap, one or two more for the replies and one per replied lead the listing missed, at most `limit`: about 27 requests for a default call on Instantly with more than 500 leads.
@@ -289,7 +301,7 @@ Leads in one campaign who will get broken copy because a merge variable has no v
 
 `data` (`PersonalizationGaps`):
 
-- `campaign`: the ref that was checked.
+- `campaign`: the ref that was checked, even when the input was its bare vendor id.
 - `variables`: one entry per variable in the copy, with `name`, `source` (`builtin`, `custom` or `unknown`), `gap`, `steps`, `uses` (step, variant, field, and whether that use has a fallback), `leadsWithoutValue` and `leadsAffected`. Most leads affected first.
 - `leads`: the leads missing at least one variable, with `lead`, `email`, `linkedinUrl`, `status` and `missing`. Most missing first, up to `limit`.
 - `unknownVariables`: variables no lead has a value for and that are not built in.

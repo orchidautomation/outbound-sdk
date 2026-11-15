@@ -175,7 +175,7 @@ test("a per-call budget stops a walk that would spend too many requests", async 
 
   assert.ok(OutboundError.is(error));
   assert.equal(error.code, "RateLimited");
-  assert.match(error.message, /used its budget of 2 request\(s\)/u);
+  assert.match(error.message, /used its budget of 2 requests/u);
   assert.match(error.message, /Raise budget\(\)'s maxRequests/u);
   assert.equal(error.limit, "call");
   assert.equal(error.permanent, true);
@@ -204,7 +204,7 @@ test("a per-run budget counts across calls until it is reset", async () => {
       error.limit === "run" &&
       error.permanent &&
       error.retryAfterMs === undefined &&
-      /The run used its budget of 3 request\(s\) to testvendor\./u.test(
+      /The run used its budget of 3 requests to testvendor\./u.test(
         error.message
       ) &&
       /requestBudget\.reset\(\)/u.test(error.message)
@@ -232,7 +232,7 @@ test("a run budget that runs out part way through a walk stops it as a run cap",
   assert.ok(OutboundError.is(error));
   assert.equal(error.limit, "run");
   assert.equal(error.permanent, true);
-  assert.match(error.message, /The run used its budget of 1 request\(s\)/u);
+  assert.match(error.message, /The run used its budget of 1 request /u);
   assert.equal(http.requests.length, 1, "the second page was never asked for");
 });
 

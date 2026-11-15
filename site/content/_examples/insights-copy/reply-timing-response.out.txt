@@ -7,7 +7,8 @@
       "paired": 5,
       "received": 7,
       "sent": 5,
-      "unpaired": 1
+      "unpaired": 1,
+      "unpairedShare": 0.1429
     },
     "replies": {
       "byHour": [
@@ -351,7 +352,9 @@
   "meta": {
     "complete": true,
     "evidence": "exact",
-    "notes": [],
+    "notes": [
+      "Automatic replies such as out-of-office messages are counted as replies: messages carry no auto flag, so they cannot be told apart. A fast median can be auto-replies."
+    ],
     "requests": 0,
     "computedAt": "2026-11-14T12:00:00.000Z",
     "provider": "memory"

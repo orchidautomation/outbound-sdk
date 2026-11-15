@@ -347,7 +347,7 @@ test("toSlackMessage adds the text a notification shows", () => {
 
   assert.equal(
     message.text,
-    "Sender health: 🔴 1 of 1 senders need attention."
+    "Sender health: 🔴 1 of 1 sender needs attention."
   );
   assert.equal(message.blocks[0]?.type, "header");
   assert.equal(
@@ -365,6 +365,31 @@ test("toSlackMessage adds the text a notification shows", () => {
     toSlackMessage(cardFor("audience_lists", tool({ lists: [] }))).text,
     "Audience lists: 0 lists"
   );
+});
+
+test("a digest section counts every checked sender in its more line", () => {
+  const text = read(
+    digest({
+      sections: [
+        {
+          name: "sender_health",
+          result: tool({
+            all_checked: true,
+            checked: 70,
+            senders: Array.from({ length: 50 }, (_, index) => ({
+              address: `s${index}@example.com`,
+              status: "active",
+            })),
+            unhealthy: 0,
+          }),
+        },
+      ],
+      title: "Digest",
+    })
+  );
+
+  // 3 shown of the 70 checked.
+  includes(text, "… and 67 more");
 });
 
 test("digest puts several results in one message, each cut to its headline", () => {
@@ -398,7 +423,7 @@ test("digest puts several results in one message, each cut to its headline", () 
     "Hot leads\n5 leads to call first.",
     "• Lead 1 · Example Co · 90 · replied",
     "• Lead 3 · Example Co · 88 · replied\n… and 2 more",
-    "Sender health\n🔴 1 of 1 senders need attention.",
+    "Sender health\n🔴 1 of 1 sender needs attention.",
     "Lead runway\n⚪ Not available: not here",
     "Sent per day · c1",
     "instantly, heyreach · 7 requests"
@@ -532,8 +557,8 @@ test("alertCard shows what was measured against its limit", () => {
     "🚨 Bounce rate above",
     "Founders Q4 bounces at 8% ‹!channel›",
     "About: instantly:acme:c1",
-    "Measured: 8.0%",
-    "Limit: 3.0%"
+    "Measured: 8%",
+    "Limit: 3%"
   );
   includes(
     read(
@@ -548,6 +573,22 @@ test("alertCard shows what was measured against its limit", () => {
     "Measured: paused",
     "Limit: —"
   );
+});
+
+test("alertCard names the subject when the alert has a name, and titles the rule in words", () => {
+  const text = read(
+    alertCard({
+      message: "Bounce rate is 20%, above 5%",
+      rule: "bounce-rate-above",
+      subject: "memory:default:c1",
+      subjectName: "Founders Q4",
+      threshold: 0.05,
+      value: 0.2,
+    })
+  );
+
+  includes(text, "🚨 Bounce rate above", "About: Founders Q4");
+  excludes(text, "memory:default:c1", "Bounce-rate-above");
 });
 
 test("safe makes mentions, links and code fences inert", () => {

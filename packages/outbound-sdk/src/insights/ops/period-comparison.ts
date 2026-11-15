@@ -6,6 +6,8 @@ import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Campaign, CampaignStatus } from "../../internal/entities.ts";
 import { sumCounts } from "../../internal/metrics.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
+import { campaignsReadOf, readCampaignsIn } from "../capped.ts";
+import type { CampaignsRead } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { compareRates, percent, pText, round } from "../stats.ts";
@@ -15,15 +17,23 @@ import {
   labelOf,
   lastDays,
   listFields,
+  baseIn,
   partialNote,
+  periodBasis,
+  RATE_WORDS,
   ratesAcross,
   ratesOf,
-  readCampaigns,
   readTotals,
   totalsOf,
   volumeOf,
 } from "./shared.ts";
-import type { CampaignLabel, DayRange, Rates, Totals } from "./shared.ts";
+import type {
+  CampaignLabel,
+  DayRange,
+  Rates,
+  ReplyBasis,
+  Totals,
+} from "./shared.ts";
 
 const input = z.object({
   ...listFields("two stats requests"),
@@ -50,7 +60,10 @@ const input = z.object({
     ),
 });
 
-/** Counts and rates for one period, or the change between two. `null` is unknown. */
+/**
+ * Counts and rates for one period, or the change between two. `null` is
+ * unknown. The reply and positive reply rates are over `replyRateBasis`.
+ */
 export interface PeriodNumbers extends Totals {
   readonly replyRate: number | null;
   readonly positiveRate: number | null;
@@ -60,6 +73,12 @@ export interface PeriodNumbers extends Totals {
 export interface Comparison {
   readonly current: PeriodNumbers;
   readonly previous: PeriodNumbers;
+  /**
+   * What replies and positive replies are divided by, the same in both
+   * periods: messages sent when both report them, since a period's replies
+   * also answer leads contacted before it, and otherwise leads contacted.
+   */
+  readonly replyRateBasis: ReplyBasis;
   /** `current` minus `previous`, field by field. Rates change in points: 0.02 is two points. */
   readonly change: PeriodNumbers;
   /** The two-proportion test on the reply rate. `null` when it cannot be run. */
@@ -76,7 +95,7 @@ export interface ThinCampaign extends CampaignLabel {
   readonly previousSent: number | null;
 }
 
-export interface PeriodComparison {
+export interface PeriodComparison extends CampaignsRead {
   readonly days: number;
   readonly current: DayRange;
   readonly previous: DayRange;
@@ -128,6 +147,7 @@ const verdictOf = (test: ProportionTest | null): Comparison["verdict"] => {
 const compare = (
   current: { readonly counts: Totals; readonly rates: Rates },
   previous: { readonly counts: Totals; readonly rates: Rates },
+  basis: ReplyBasis,
   alpha: number
 ): Comparison => {
   const now = current.rates.replyRate;
@@ -139,7 +159,8 @@ const compare = (
     alpha
   );
 
-  const moved = `Reply rate went from ${percent(before.rate)} to ${percent(now.rate)}`;
+  const rateName = RATE_WORDS[basis];
+  const moved = `${rateName} went from ${percent(before.rate)} to ${percent(now.rate)}`;
   const numbers = numbersOf(current.counts, current.rates);
   const earlier = numbersOf(previous.counts, previous.rates);
 
@@ -148,13 +169,14 @@ const compare = (
     current: numbers,
     finding:
       test === null
-        ? "Reply rate cannot be compared: a period has no reply or volume counts, or neither has a reply."
+        ? `${rateName} cannot be compared: a period has no reply count or nothing to divide it by, or neither has a reply.`
         : `${moved}; ${
             test.significant
               ? "more than chance"
               : "within what chance would give"
           } (${pText(test.pValue)}).`,
     previous: earlier,
+    replyRateBasis: basis,
     replyRateTest: test,
     verdict: verdictOf(test),
   };
@@ -165,12 +187,16 @@ export const comparePeriods = (
   current: Totals,
   previous: Totals,
   alpha: number
-): Comparison =>
-  compare(
-    { counts: current, rates: ratesOf(current) },
-    { counts: previous, rates: ratesOf(previous) },
+): Comparison => {
+  const basis = periodBasis(current, previous);
+
+  return compare(
+    { counts: current, rates: ratesOf(current, baseIn(basis)) },
+    { counts: previous, rates: ratesOf(previous, baseIn(basis)) },
+    basis,
     alpha
   );
+};
 
 export interface ComparedAcross {
   readonly comparison: Comparison;
@@ -188,13 +214,16 @@ export const compareAcross = (
   previous: readonly MetricCounts[],
   alpha: number
 ): ComparedAcross => {
-  const now = ratesAcross(current);
-  const before = ratesAcross(previous);
+  const counts = [sumCounts(current), sumCounts(previous)] as const;
+  const basis = periodBasis(...counts);
+  const now = ratesAcross(current, baseIn(basis));
+  const before = ratesAcross(previous, baseIn(basis));
 
   return {
     comparison: compare(
-      { counts: sumCounts(current), rates: now.rates },
-      { counts: sumCounts(previous), rates: before.rates },
+      { counts: counts[0], rates: now.rates },
+      { counts: counts[1], rates: before.rates },
+      basis,
       alpha
     ),
     partial: [
@@ -214,6 +243,7 @@ export interface Periods {
   readonly current: DayRange;
   readonly previous: DayRange;
   readonly campaigns: readonly CampaignPeriods[];
+  readonly read: CampaignsRead;
 }
 
 /** Each campaign's totals for the last `days` and the `days` before: two stats requests per campaign. */
@@ -228,14 +258,14 @@ export const readPeriods = async (
   const current = lastDays(context.now, options.days);
   const previous = lastDays(context.now, options.days, 1);
 
-  const found = await readCampaigns(
+  const listed = await readCampaignsIn(
     context,
     options.statuses,
     options.max_campaigns
   );
 
   const campaigns = await mapConcurrent(
-    found,
+    listed.items,
     async (campaign): Promise<CampaignPeriods> => {
       const [now, before] = await Promise.all([
         readTotals(context, campaign.ref, current),
@@ -246,7 +276,7 @@ export const readPeriods = async (
     }
   );
 
-  return { campaigns, current, previous };
+  return { campaigns, current, previous, read: campaignsReadOf(listed) };
 };
 
 /** Every campaign's two periods added together. */
@@ -303,7 +333,7 @@ const workspaceOf = async (
 
 export const periodComparison = defineInsight({
   description:
-    "This period against the last: for each campaign, counts and rates for the last `days` complete days and for the `days` before, the change in each, and whether the change in reply rate is more than chance (a two-proportion test), with the campaigns sorted by the size of that change. Also the same for every campaign added together and, where the adapter has them, for the vendor's workspace totals. Use it for a weekly review. Campaigns under min_sent sends in either period are listed apart; a null is a count the vendor does not report, and a rate of a total counts only the campaigns that report both its count and what it divides by (a note says when some are left out). Costs two stats requests per campaign plus two for the workspace.",
+    "This period against the last: for each campaign, counts and rates for the last `days` complete days and for the `days` before, the change in each, and whether the change in the reply rate is more than chance (a two-proportion test), with the campaigns sorted by the size of that change. Also the same for every campaign added together and, where the adapter has them, for the vendor's workspace totals. Reply and positive reply rates divide by messages sent (`replyRateBasis`), since a period's replies also answer leads contacted before it, and by leads contacted for both periods only when a period does not report messages sent. Use it for a weekly review. Campaigns under min_sent sends in either period are listed apart; a null is a count the vendor does not report, and a rate of a total counts only the campaigns that report both its count and what it divides by (a note says when some are left out). Costs two stats requests per campaign plus two for the workspace.",
   inputSchema: input,
   key: "periodComparison",
   name: "period_comparison",
@@ -332,6 +362,7 @@ export const periodComparison = defineInsight({
     }
 
     const comparison: PeriodComparison = {
+      ...periods.read,
       campaigns: campaigns.toSorted(
         (left, right) =>
           descending(

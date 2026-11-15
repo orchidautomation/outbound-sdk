@@ -3,7 +3,7 @@ import { outbound } from "./outbound.ts";
 const { data } = await outbound.insights.bounceWatch({});
 
 for (const campaign of data.over) {
-  console.log(`${campaign.name}: ${campaign.finding}`);
+  console.log(`${campaign.campaignName}: ${campaign.finding}`);
   console.log(
     `  95% interval: ${campaign.interval?.low} to ${campaign.interval?.high}`
   );
@@ -16,7 +16,7 @@ for (const campaign of data.over) {
 }
 
 for (const campaign of data.tooFewSends) {
-  console.log(`${campaign.name}: ${campaign.finding}`);
+  console.log(`${campaign.campaignName}: ${campaign.finding}`);
 }
 
 for (const campaign of data.unknown) {

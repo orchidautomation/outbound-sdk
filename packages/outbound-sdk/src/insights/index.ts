@@ -15,6 +15,7 @@ export type { InsightToolsOptions } from "./tools.ts";
 export { defineInsight, runInsight } from "./define.ts";
 
 export type {
+  Cap,
   InsightContext,
   InsightDefinition,
   InsightMeta,

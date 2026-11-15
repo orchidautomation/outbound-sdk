@@ -1,11 +1,11 @@
 $ outbound person 'person1@example.com' --compact
-{"data":{"campaigns":[{"firstContactedAt":"2026-11-11T14:00:00.000Z","lastContactedAt":"2026-11-11T14:00:00.000Z","lastRepliedAt":"2026-11-12T09:30:00.000Z","lastStep":0,"messagesSent":1,"replies":1,"campaign":"memory:default:cmp_founders","campaignName":"Q4 SaaS founders","campaignStatus":"active","channel":"email","interest":"Interested","lead":"memory:default:lead_1","leadStatus":"replied","provider":"memory","replied":true,"repliedSteps":[0]}],"found":true,"identifiers":["email:person1@example.com"],"totals":{"byChannel":{"email":{"messagesSent":1,"replies":1}},"campaignReplyRate":1,"campaigns":1,"campaignsReplied":1,"messagesSent":1,"replies":1}},"insight":"person_summary","meta":{"complete":true,"evidence":"exact","notes":[],"requests":0,"computedAt":"2026-11-14T12:00:00.000Z","provider":"memory"}}
+{"data":{"campaigns":[{"firstContactedAt":"2026-11-11T14:00:00.000Z","lastContactedAt":"2026-11-11T14:00:00.000Z","lastRepliedAt":"2026-11-12T09:30:00.000Z","lastStep":0,"messagesSent":1,"replies":1,"campaign":"memory:default:cmp_founders","campaignName":"Q4 SaaS founders","campaignStatus":"active","channel":"email","interest":"Interested","lead":"memory:default:lead_1","leadStatus":"replied","provider":"memory","autoReplied":false,"replied":true,"repliedSteps":[0]}],"found":true,"identifiers":["email:person1@example.com"],"totals":{"byChannel":{"email":{"messagesSent":1,"replies":1}},"campaignReplyRate":1,"campaigns":1,"campaignsReplied":1,"messagesSent":1,"replies":1}},"insight":"person_summary","meta":{"complete":true,"evidence":"exact","notes":[],"requests":0,"computedAt":"2026-11-14T12:00:00.000Z","provider":"memory"}}
 
 $ outbound person 'nobody@example.com' --compact
 {"data":{"campaigns":[],"found":false,"identifiers":["email:nobody@example.com"],"totals":{"byChannel":{},"campaignReplyRate":null,"campaigns":0,"campaignsReplied":0,"messagesSent":0,"replies":0}},"insight":"person_summary","meta":{"complete":true,"evidence":"exact","notes":[],"requests":0,"computedAt":"2026-11-14T12:00:00.000Z","provider":"memory"}}
 
 $ outbound person 'person1@example.com' --redact
-Unsupported: A person cannot be looked up while the redact plugin masks email and linkedin: the records could not be matched to the identifier
+Unsupported: person_summary is not available while the redact plugin masks email addresses and LinkedIn profiles, which it looks a person up by
 (exit code 1)
 
 $ outbound person

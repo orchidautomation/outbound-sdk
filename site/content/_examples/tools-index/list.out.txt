@@ -16,6 +16,11 @@ campaign_overview: {
       "type": "string",
       "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
     },
+    "to": {
+      "description": "Last day, YYYY-MM-DD. Leave out for up to today",
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
     "limit": {
       "default": 10,
       "description": "How many campaigns to include",
@@ -35,11 +40,6 @@ campaign_overview: {
         "paused",
         "unknown"
       ]
-    },
-    "to": {
-      "description": "Last day, YYYY-MM-DD. Leave out for up to today",
-      "type": "string",
-      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
     }
   }
 }

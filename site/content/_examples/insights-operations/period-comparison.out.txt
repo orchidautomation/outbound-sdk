@@ -1,7 +1,7 @@
 2026-11-07 to 2026-11-13, against 2026-10-31 to 2026-11-06
-Agency owners (down): Reply rate went from 10% to 2.5%; more than chance (p = 0.0002).
-Ecommerce ops (no_real_change): Reply rate went from 2% to 2%; within what chance would give (p = 1).
-LinkedIn founders (no_real_change): Reply rate went from 13.3% to 13.3%; within what chance would give (p = 1).
-SaaS founders (no_real_change): Reply rate went from 6% to 6%; within what chance would give (p = 1).
-all campaigns (down): Reply rate went from 6.5% to 4.5%; more than chance (p = 0.0477).
+Agency owners (down): Replies per message sent went from 4% to 1%; more than chance (p = 0.0003).
+Ecommerce ops (no_real_change): Replies per message sent went from 1.3% to 1.3%; within what chance would give (p = 1).
+LinkedIn founders (no_real_change): Replies per message sent went from 6.7% to 6.7%; within what chance would give (p = 1).
+SaaS founders (no_real_change): Replies per message sent went from 3% to 3%; within what chance would give (p = 1).
+all campaigns (no_real_change): Replies per message sent went from 3.2% to 2.3%; within what chance would give (p = 0.0509).
 too few sends: [ 'Pilot test' ]

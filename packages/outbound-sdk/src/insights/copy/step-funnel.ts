@@ -5,24 +5,26 @@ import { z } from "zod";
 import type { MetricRow, Sequence } from "../../internal/entities.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
 import { defineInsight } from "../define.ts";
+import { rangeFields } from "../fields.ts";
+import { refOf } from "../ref.ts";
 import { rate, total } from "../stats.ts";
 import type { Interval } from "../stats.ts";
 import {
-  dayInput,
   measure,
   perLead,
   rangeOf,
+  replyRateOf,
   splitStats,
   sumRows,
 } from "./shared.ts";
-import type { RateBasis, StepStats } from "./shared.ts";
+import type { BasedRate, RateBasis, StepStats } from "./shared.ts";
 
 const input = z.object({
   campaign: z
     .string()
     .min(1)
     .describe("The campaign's ref, for example `instantly:acme:abc123`"),
-  from: dayInput("First day to count, YYYY-MM-DD. null counts from the start."),
+  ...rangeFields,
   min_reply_rate: z
     .number()
     .min(0)
@@ -31,7 +33,6 @@ const input = z.object({
     .describe(
       "A step earns its place when the low end of its reply rate interval is above this. 0 asks only that the rate is reliably above zero."
     ),
-  to: dayInput("Last day to count, YYYY-MM-DD. null counts to today."),
 });
 
 export interface FunnelVariant {
@@ -40,7 +41,10 @@ export interface FunnelVariant {
   readonly contentHash: string | null;
   readonly sent: number | null;
   readonly replies: number | null;
+  readonly rates: { readonly replyRate: BasedRate };
+  /** @deprecated Use `rates.replyRate.rate`. Removed in 0.5.0. */
   readonly replyRate: number | null;
+  /** @deprecated Use `rates.replyRate.low` and `.high`. Removed in 0.5.0. */
   readonly replyRateInterval: Interval | null;
 }
 
@@ -53,9 +57,13 @@ export interface FunnelStep {
   readonly inSequence: boolean;
   readonly sent: number | null;
   readonly replies: number | null;
-  /** Replies divided by `replyRateBasis`. `null` when either count is unknown. */
+  /** Replies divided by leads contacted, or messages sent, as `basis` says. */
+  readonly rates: { readonly replyRate: BasedRate };
+  /** @deprecated Use `rates.replyRate.rate`. Removed in 0.5.0. */
   readonly replyRate: number | null;
+  /** @deprecated Use `rates.replyRate.low` and `.high`. Removed in 0.5.0. */
   readonly replyRateInterval: Interval | null;
+  /** @deprecated Use `rates.replyRate.basis`. Removed in 0.5.0. */
   readonly replyRateBasis: RateBasis | null;
   /** This step's replies divided by every reply in the campaign, unattributed ones included. */
   readonly shareOfReplies: number | null;
@@ -106,6 +114,7 @@ const variantsOf = (
       contentHash:
         step?.variants.find((variant) => variant.variantKey === variantKey)
           ?.contentHash ?? null,
+      rates: { replyRate: replyRateOf(measured) },
       replies: counts.replied,
       replyRate: measured.rate,
       replyRateInterval: measured.interval,
@@ -133,6 +142,7 @@ const draftOf = (
     earnsPlace: interval === null ? null : interval.low > minReplyRate,
     inSequence: step !== undefined,
     parent: step === undefined ? null : step.parentIndex,
+    rates: { replyRate: replyRateOf(measured) },
     replies: counts?.replied ?? null,
     replyRate: measured?.rate ?? null,
     replyRateBasis: measured?.basis ?? null,
@@ -192,7 +202,8 @@ const describe = (
     return "No step has a reply in this range.";
   }
 
-  const lead = `Step ${top.step} (counted from 0) brings the most replies: ${top.replies} of ${allReplies}.`;
+  // A person counts steps from 1; `step` in the answer counts from 0.
+  const lead = `Step ${top.step + 1} brings the most replies: ${top.replies} of ${allReplies}.`;
 
   if (last === null) {
     return `${lead} No step's reply rate is reliably above the bar yet.`;
@@ -203,8 +214,8 @@ const describe = (
   );
 
   return later.length === 0
-    ? `${lead} Every step up to step ${last.step} still earns its place.`
-    : `${lead} Step ${last.step} is the last whose reply rate is reliably above the bar; the ${later.length} later step(s) sent ${total(later.map((step) => step.sent))} messages for ${total(later.map((step) => step.replies)) ?? "an unknown number of"} replies.`;
+    ? `${lead} Every step up to step ${last.step + 1} still earns its place.`
+    : `${lead} Step ${last.step + 1} is the last whose reply rate is reliably above the bar; the ${later.length === 1 ? "1 later step" : `${later.length} later steps`} sent ${total(later.map((step) => step.sent))} messages for ${total(later.map((step) => step.replies)) ?? "an unknown number of"} replies.`;
 };
 
 const unattributedOf = (rows: readonly MetricRow[]) => {
@@ -265,7 +276,7 @@ export const stepFunnel = defineInsight({
     }
 
     const funnel: StepFunnel = {
-      campaign,
+      campaign: refOf(context.outbound, campaign),
       finding: describe(steps, top, last, allReplies),
       lastStepEarningPlace: last?.step ?? null,
       steps,

@@ -50,7 +50,7 @@ The score is the sum of five parts, with these defaults:
 Read the output above against that table:
 
 - **Ava** scores 95: 50 for the label, 20 for two replies, 15 because her last reply was 3.5 of 14 days ago, 5 for a click and 5 for opens. She has six opens; the cap counts five.
-- **Cara** is third although the vendor labelled her `Not Interested`. A label that is not positive earns 0 points, and her reply and its recency still count. The ranking does not read what a reply says.
+- **Cara** is last although she replied: the vendor labelled her `Not Interested`, so nothing she did earns points, not her reply, its recency or her opens, and her reason says so. She is listed only because there is room after everyone who scored. A lead labelled out-of-office or bounced loses only its reply points; the [`hotLeads` reference](/docs/insights/people#hotleads) lists the labels. The ranking does not read what a reply says.
 - **Dev** has 40 opens and 5 points. The cap is there so opens cannot outrank a reply.
 - **A part that is `null` is unknown, not zero.** Ben has no label, so `parts.interest` is `null`. The function prints "unknown".
 
@@ -58,7 +58,7 @@ Who is left out:
 
 - A lead with no label and no engagement data is not scored 0. It is left out and counted in `totals.withoutData`.
 - Unsubscribed and bounced leads are left out and counted in `totals.excluded`.
-- A lead whose known parts add up to 0 is not on the list.
+- A lead whose known parts add up to 0 is not on the list, except one labelled negative, such as Cara, which is listed after everyone who scored while `limit` leaves room.
 
 ## Try it without a key
 
@@ -86,7 +86,7 @@ Every weight is an input. This run makes a recent reply worth most, shortens the
   ../../_examples/hot-leads-call-list/weights.out.txt
 </include>
 
-Ben is now seven points behind Ava, and Dev is gone: with opens worth nothing he scores 0.
+Ben is now seven points behind Ava, and Dev is gone: with opens worth nothing he scores 0. Cara stays at the bottom with 0 points, because a lead labelled negative fills the room left after everyone who scored.
 
 ## Point it at your vendor
 

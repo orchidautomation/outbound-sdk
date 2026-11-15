@@ -255,7 +255,7 @@ test("heyreach: a date range on a campaign's leads filters by creation time on t
     offset: 0,
     timeFilter: "CreationTime",
     timeFrom: "2024-09-01T00:00:00.000Z",
-    timeTo: "2024-10-31T00:00:00.000Z",
+    timeTo: "2024-10-31T23:59:59.999Z",
   });
   assert.equal(page.meta.evidence, "exact");
 
