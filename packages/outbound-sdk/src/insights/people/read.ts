@@ -9,7 +9,7 @@ import type {
   CampaignStatus,
   Lead,
 } from "../../internal/entities.ts";
-import type { ListAll } from "../../internal/outbound/api.ts";
+import type { BulkResult, ListAll } from "../../internal/outbound/api.ts";
 import type { InsightContext } from "../define.ts";
 
 /** Reads at most `max` records, and says so in a note when more exist. */
@@ -19,6 +19,41 @@ export const readCapped = <Item>(
   max: number,
   what: string
 ): Promise<Item[]> => context.all(open(max), `${max} ${what}`);
+
+/**
+ * Reads records by ref in one batch and maps them by ref. A record that
+ * cannot be read is left out with a note ending in `effect`. Every record of
+ * a batch carries the whole batch's cost, so the cost is counted once.
+ */
+export const readByRef = async <Item>(
+  context: InsightContext,
+  refs: readonly string[],
+  read: (refs: readonly string[]) => Promise<BulkResult<Item>>,
+  what: string,
+  effect: string
+): Promise<Map<string, Item>> => {
+  if (refs.length === 0) {
+    return new Map();
+  }
+
+  const found = await read(refs);
+
+  if (found.errors.length > 0) {
+    context.note(
+      `${found.errors.length} ${what} could not be read, so ${found.errors.length === 1 ? "its" : "their"} ${effect}.`
+    );
+  }
+
+  const [costliest] = found.results.toSorted(
+    (left, right) => right.value.meta.requests - left.value.meta.requests
+  );
+
+  if (costliest !== undefined) {
+    context.one(costliest.value);
+  }
+
+  return new Map(found.results.map(({ id, value }) => [id, value]));
+};
 
 export const statusesField = z
   .array(campaignStatusSchema)

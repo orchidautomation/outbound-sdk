@@ -404,6 +404,7 @@ Read on 2026-11-14 from `https://developer.instantly.ai/api-reference/lead/list-
 19. **Plan names**: "all Outbound plans" for API access and "Hyper Growth plan or above" for webhooks come from the help center (articles dated October 9, 2026), not the developer docs.
 20. The copy of the spec served at `https://developer.instantly.ai/api-reference/openapi.json` is smaller (167 operations) than `https://api.instantly.ai/openapi/api_v2.json` (268). All endpoints used here are in both.
 21. **One lead row per campaign membership** (section 4) is my reading of the schema, not a documented statement.
+22. **Whether `email_reply_count` counts automatic replies.** The lead schema says only "Number of times the email was replied to" (re-read 2026-11-15 from `https://api.instantly.ai/openapi/api_v2.json`, `info.version` 2.0.0). Campaign analytics separate them (`reply_count_unique` "excludes automatic replies"), the lead count does not say. Settling it needs a live workspace with a lead whose only reply is a known out-of-office. Until then `hotLeads` gives no reply points to a lead whose `lt_interest_status` is 0 (Out of Office).
 
 ## Endpoint inventory and native catalog (2026-11-14)
 

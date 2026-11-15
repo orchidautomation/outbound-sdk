@@ -1,0 +1,193 @@
+// hot_leads past max_leads, and out-of-office replies. A lead listing comes
+// in the vendor's order, so a cap can cut off the leads worth calling; the
+// leads behind recent replies are read as well. And a vendor's reply count
+// may include automatic replies, so a lead labelled out-of-office earns no
+// reply points.
+
+import assert from "node:assert/strict";
+import { test } from "node:test";
+
+import { createOutbound, MemoryRateLimitStore } from "../../src/index.ts";
+import { insights } from "../../src/insights/index.ts";
+import type {
+  MemoryData,
+  MemoryLead,
+  MemoryMessage,
+} from "../../src/memory/index.ts";
+import { fixtureHandler } from "../helpers/adapter-suite.ts";
+import { createClock } from "../helpers/clock.ts";
+import { createFetch } from "../helpers/http.ts";
+import { suite as instantly } from "../instantly/suite.ts";
+import { NOW, single } from "./helpers.ts";
+
+const COLD = 1840;
+const ENGAGED = 5;
+
+const cold = (index: number): MemoryLead => ({
+  campaignId: "c1",
+  email: `cold${index}@example.com`,
+  engagement: { clicks: 0, opens: 0, replies: 0 },
+  id: `cold${index}`,
+  status: "active",
+});
+
+const engaged = (index: number): MemoryLead => ({
+  campaignId: "c1",
+  email: `warm${index}@example.com`,
+  engagement: {
+    lastRepliedAt: `2026-11-1${index}T09:00:00.000Z`,
+    opens: 2,
+    replies: 1,
+  },
+  firstName: `Warm${index}`,
+  id: `warm${index}`,
+  interest: "Interested",
+  status: "replied",
+});
+
+const reply = (index: number): MemoryMessage => ({
+  campaignId: "c1",
+  category: "positive",
+  direction: "in",
+  id: `reply${index}`,
+  isAuto: false,
+  leadId: `warm${index}`,
+  sentAt: `2026-11-1${index}T09:00:00.000Z`,
+  threadId: `thread${index}`,
+});
+
+// 1,840 cold leads listed first, then the five who replied.
+const CAPPED: MemoryData = {
+  campaigns: [{ id: "c1", name: "Agency owners" }],
+  leads: [
+    ...Array.from({ length: COLD }, (_, index) => cold(index)),
+    ...Array.from({ length: ENGAGED }, (_, index) => engaged(index)),
+  ],
+  messages: Array.from({ length: ENGAGED }, (_, index) => reply(index)),
+};
+
+test("hot_leads finds the leads that replied past the max_leads cap", async () => {
+  const result = await single(CAPPED).insights.hotLeads(
+    { limit: 5 },
+    { now: NOW }
+  );
+
+  assert.deepEqual(
+    result.data.leads.map((each) => each.email).toSorted(),
+    Array.from({ length: ENGAGED }, (_, index) => `warm${index}@example.com`)
+  );
+  assert.equal(result.data.totals.moreLeadsExist, true);
+  assert.equal(result.data.totals.fromReplies, ENGAGED);
+  assert.equal(result.data.totals.leadsRead, 500 + ENGAGED);
+  assert.equal(result.meta.complete, false);
+});
+
+test("hot_leads says in its data that leads went unscored when it cannot look past the cap", async () => {
+  const result = await single(CAPPED, {
+    "replies.list": false,
+  }).insights.hotLeads({ limit: 5 }, { now: NOW });
+
+  assert.deepEqual(result.data.leads, []);
+  assert.equal(result.data.totals.moreLeadsExist, true);
+  assert.equal(result.data.totals.fromReplies, 0);
+  assert.ok(
+    result.meta.notes.includes(
+      "This tool cannot list replies or read one lead, so leads past max_leads that replied were not looked for."
+    )
+  );
+});
+
+test("hot_leads reads no replies when the listing was not cut short", async () => {
+  const result = await single(CAPPED).insights.hotLeads(
+    { limit: 5, max_leads: 5000 },
+    { now: NOW }
+  );
+
+  assert.equal(result.data.totals.moreLeadsExist, false);
+  assert.equal(result.data.totals.fromReplies, 0);
+  assert.equal(result.data.leads.length, ENGAGED);
+});
+
+const OUT_OF_OFFICE: MemoryData = {
+  leads: [
+    {
+      campaignId: "c1",
+      email: "away@example.com",
+      engagement: {
+        lastRepliedAt: "2026-11-13T09:00:00.000Z",
+        opens: 0,
+        replies: 1,
+      },
+      id: "away",
+      interest: "Out of office",
+      interestCategory: "ooo",
+      status: "replied",
+    },
+    {
+      campaignId: "c1",
+      email: "away-but-opened@example.com",
+      engagement: {
+        lastRepliedAt: "2026-11-13T09:00:00.000Z",
+        opens: 2,
+        replies: 1,
+      },
+      id: "opened",
+      interest: "Out of office",
+      interestCategory: "ooo",
+      status: "replied",
+    },
+  ],
+};
+
+test("hot_leads gives an out-of-office reply no reply or recency points", async () => {
+  const result = await single(OUT_OF_OFFICE).insights.hotLeads(
+    {},
+    { now: NOW }
+  );
+
+  // The lead whose only signal is the automatic reply scores 0 and is left out.
+  assert.deepEqual(
+    result.data.leads.map((each) => [each.email, each.score]),
+    [["away-but-opened@example.com", 2]]
+  );
+
+  const [opened] = result.data.leads;
+
+  assert.equal(opened?.parts.replies, 0);
+  assert.equal(opened?.parts.recency, 0);
+  assert.equal(
+    opened?.reason,
+    "marked Out of office, so replies earn nothing, 2 open(s)."
+  );
+  assert.doesNotMatch(opened?.reason ?? "", /replied/u);
+  assert.equal(result.data.totals.autoReplied, 2);
+});
+
+test("hot_leads on Instantly past the cap counts every request it makes", async () => {
+  const clock = createClock();
+  const unrouted: string[] = [];
+  const http = createFetch(fixtureHandler([instantly], unrouted));
+
+  const outbound = createOutbound({
+    adapter: instantly.make(),
+    fetch: http.fetch,
+    plugins: [insights()],
+    rateLimitStore: new MemoryRateLimitStore(),
+    runtime: clock.runtime,
+    share: 1,
+  });
+
+  const result = await clock.settle(
+    outbound.insights.hotLeads({ max_leads: 1 })
+  );
+
+  assert.deepEqual(unrouted, []);
+  assert.equal(result.data.totals.moreLeadsExist, true);
+  assert.equal(result.meta.requests, http.requests.length);
+  assert.ok(
+    http.requests.some((request) =>
+      new URL(request.url).searchParams.has("email_type")
+    ),
+    "it read the replies"
+  );
+});

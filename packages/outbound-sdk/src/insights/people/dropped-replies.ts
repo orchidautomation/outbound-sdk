@@ -10,11 +10,10 @@ import type {
   Message,
   Reply,
 } from "../../internal/entities.ts";
-import type { BulkResult } from "../../internal/outbound/api.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { round } from "../stats.ts";
-import { nameOf, readCapped } from "./read.ts";
+import { nameOf, readByRef, readCapped } from "./read.ts";
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -216,37 +215,6 @@ const refsOf = (refs: readonly (string | null)[]): string[] => [
   ...new Set(refs.flatMap((ref) => (ref === null ? [] : [ref]))),
 ];
 
-/** Reads the records in one batch, counts its cost once, and maps them by ref. */
-const readEach = async <Item>(
-  context: InsightContext,
-  refs: readonly string[],
-  read: (refs: readonly string[]) => Promise<BulkResult<Item>>,
-  what: string
-): Promise<Map<string, Item>> => {
-  if (refs.length === 0) {
-    return new Map();
-  }
-
-  const found = await read(refs);
-
-  if (found.errors.length > 0) {
-    context.note(
-      `${found.errors.length} ${what} could not be read, so ${found.errors.length === 1 ? "its" : "their"} names are null.`
-    );
-  }
-
-  // Every record of a batch carries the whole batch's cost, so it is counted once.
-  const [costliest] = found.results.toSorted(
-    (left, right) => right.value.meta.requests - left.value.meta.requests
-  );
-
-  if (costliest !== undefined) {
-    context.one(costliest.value);
-  }
-
-  return new Map(found.results.map(({ id, value }) => [id, value]));
-};
-
 /**
  * Fills in who is waiting and which campaign they are in. Reads only the
  * leads and campaigns of the dropped replies: one request each.
@@ -266,17 +234,19 @@ const named = async (
   }
 
   const [leads, campaigns] = await Promise.all([
-    readEach<Lead>(
+    readByRef<Lead>(
       context,
       leadRefs,
       (refs) => outbound.leads.getMany(refs),
-      "lead(s)"
+      "lead(s)",
+      "names are null"
     ),
-    readEach<Campaign>(
+    readByRef<Campaign>(
       context,
       refsOf(dropped.map((each) => each.campaign)),
       (refs) => outbound.campaigns.getMany(refs),
-      "campaign(s)"
+      "campaign(s)",
+      "names are null"
     ),
   ]);
 

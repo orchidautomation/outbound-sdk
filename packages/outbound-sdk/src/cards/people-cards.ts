@@ -192,8 +192,15 @@ const droppedReplies: CardBuilder = (data) => {
 const hotLeads: CardBuilder = (data) => {
   const totals = child(data, "totals");
   const leads = rows(data, "leads");
+  const fromReplies = num(totals, "fromReplies") ?? 0;
 
   return {
+    bullets:
+      bool(totals, "moreLeadsExist") === true
+        ? [
+            `🟡 Stopped at ${plural(num(totals, "leadsRead") ?? 0, "lead")} read; more exist and were not scored${fromReplies > 0 ? `, except ${plural(fromReplies, "lead")} found through recent replies` : ""}.`,
+          ]
+        : [],
     finding:
       leads.length === 0
         ? "No lead scores as hot yet."

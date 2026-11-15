@@ -125,3 +125,7 @@ Five reads stay in the native catalog and are also used by a normalized read. Lo
 | `POST` | `/webhooks/GetAllWebhooks` | Webhooks | normalized | `webhooks.list` |
 | `GET` | `/webhooks/GetWebhookById` | One webhook | native | `webhookById` |
 | `PATCH` | `/webhooks/UpdateWebhook` | Changes a webhook | write |  |
+
+## Per-lead reply counts and automatic replies
+
+No HeyReach lead shape has a reply count, so `engagement` is `null` on every HeyReach lead. `hotLeads` scores HeyReach leads from the interest label and the lead's status only, so an automatic reply cannot add reply points.

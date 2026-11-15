@@ -277,7 +277,16 @@ test("hot_leads ranks who to call, and falls back from name to email", () => {
       lead(null, "sam@example.com", 40),
       lead(null, null, 20),
     ],
-    totals: { excluded: 0, hot: 3, leadsRead: 50, scored: 12, withoutData: 0 },
+    totals: {
+      autoReplied: 0,
+      excluded: 0,
+      fromReplies: 0,
+      hot: 3,
+      leadsRead: 50,
+      moreLeadsExist: false,
+      scored: 12,
+      withoutData: 0,
+    },
   };
 
   includes(
@@ -292,6 +301,16 @@ test("hot_leads ranks who to call, and falls back from name to email", () => {
       cardFor("hot_leads", insight({ ...hot, leads: [] } satisfies HotLeads))
     ),
     "No lead scores as hot yet."
+  );
+
+  const capped = {
+    ...hot,
+    totals: { ...hot.totals, fromReplies: 2, moreLeadsExist: true },
+  } satisfies HotLeads;
+
+  includes(
+    read(cardFor("hot_leads", insight(capped))),
+    "🟡 Stopped at 50 leads read; more exist and were not scored, except 2 leads found through recent replies."
   );
 });
 
