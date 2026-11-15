@@ -34,10 +34,13 @@ export interface ExportResult {
 }
 
 export interface ExporterExtension {
-  /** Writes every record of a listing, for example `outbound.leads.listAll()`. */
+  /**
+   * Writes every record of a listing, for example `outbound.leads.listAll()`,
+   * or of an array or any other iterable.
+   */
   // The records can be any entity, so the source is typed by what it yields.
   readonly export: <Item>(
-    source: AsyncIterable<Item>,
+    source: AsyncIterable<Item> | Iterable<Item>,
     options: ExportOptions
   ) => Promise<ExportResult>;
 }
@@ -92,7 +95,7 @@ const fileWriter = async (
 };
 
 const exportRows = async <Item>(
-  source: AsyncIterable<Item>,
+  source: AsyncIterable<Item> | Iterable<Item>,
   options: ExportOptions
 ): Promise<ExportResult> => {
   let writer: RowWriter | undefined;

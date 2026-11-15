@@ -143,6 +143,18 @@ export const toJson = <Value>(value: Value): Json =>
   parseJson(JSON.stringify(value) ?? "null") ?? null;
 
 /**
+ * `toJson`, or `undefined` for a value `JSON.stringify` cannot write (a
+ * BigInt, a cycle). For an input from a caller, such as a tool's.
+ */
+export const jsonInput = <Value>(value: Value): Json | undefined => {
+  try {
+    return toJson(value);
+  } catch {
+    return undefined;
+  }
+};
+
+/**
  * Says which of the `given` keys is not one of `known`, or `undefined` when
  * every one is. Used so an input that would be ignored is refused instead.
  */

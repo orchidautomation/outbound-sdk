@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import type { CapabilityKey } from "../internal/capabilities.ts";
 import { OutboundError } from "../internal/errors.ts";
-import { unknownKey } from "../internal/json.ts";
+import { jsonInput, unknownKey } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
 import {
@@ -38,8 +38,14 @@ export interface OutboundTool {
   /** The input's fields as Zod schemas, for SDKs that take them one by one. */
   readonly fields: InputFields;
   readonly needs: readonly string[];
-  /** Validates the input and runs the tool. Never throws: a failure is a result. */
-  readonly call: (input: Json) => Promise<ToolResult>;
+  /**
+   * Validates the input and runs the tool. Never throws: a failure is a
+   * result. The input is checked against the tool's schema when it runs, so
+   * a model's arguments, an object typed from the schema and a
+   * `Record<string, unknown>` are all taken as they are.
+   */
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- the input is parsed by the tool's own schema inside call()
+  readonly call: (input: unknown) => Promise<ToolResult>;
 }
 
 interface Definition<Input> {
@@ -54,7 +60,18 @@ const bind = <Input>(
   outbound: OutboundApi,
   definition: Definition<Input>
 ): OutboundTool => ({
-  call: async (input) => {
+  call: async (given) => {
+    const input = jsonInput(given);
+
+    if (input === undefined) {
+      return failure(
+        new OutboundError(
+          "Invalid",
+          `${definition.name}: the input is not JSON`
+        )
+      );
+    }
+
     // An argument the tool does not take is reported to the model, not dropped.
     const stray = unknownKey(Object.keys(definition.inputSchema.shape), input);
 

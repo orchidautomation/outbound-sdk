@@ -4,6 +4,7 @@
 import { z } from "zod";
 
 import { OutboundError } from "../internal/errors.ts";
+import { jsonInput } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
 import type { OutboundTool } from "../tools/index.ts";
@@ -40,8 +41,17 @@ const toTool = (
   definition: InsightEntry,
   next: string
 ): OutboundTool => ({
-  call: async (input) => {
+  call: async (given) => {
     try {
+      const input = jsonInput(given);
+
+      if (input === undefined) {
+        throw new OutboundError(
+          "Invalid",
+          `${definition.name}: the input is not JSON`
+        );
+      }
+
       const result = await definition.execute(outbound, input);
 
       return {

@@ -106,6 +106,7 @@ A `client` filter costs the whole listing, because the vendor is asked for every
 - Listing 1,000 campaigns on Instantly is 30 requests, not 10: each page also reads tag assignments and tag names.
 - Replies on Smartlead come 20 to a page, so 1,000 replies are 50 requests.
 - `requests` is `null` when the cost cannot be known up front: Smartlead returns every campaign in one response with no page size, and the in-memory adapter declares no costs.
+- The list needs no type of its own. `createOutbound` takes a union of adapters, as from a list or `flag ? smartlead() : instantly()`, and its `native` then types only the reads they share.
 - `estimate` does not read `capabilities`. It gives a number for a read the adapter would refuse, such as `tags.list` on HeyReach. Check the capability first.
 
 ## When it cannot answer
