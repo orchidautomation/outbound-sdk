@@ -1,6 +1,8 @@
 // The demo's daily stats: three weeks for each campaign, written out day by
 // day, with step and variant rows that add up to the campaign rows. Day 4
-// before `now` carries a bounce spike, so anomalies has a day to flag.
+// before `now` carries a bounce spike, so anomalies has a day to flag. The
+// last week has more replies than the week before (19 of 664 sends against
+// 11 of 664), so a weekly comparison reads as a change, not the same week twice.
 
 import type { MemoryStats } from "./data.ts";
 
@@ -42,13 +44,15 @@ const FOUNDERS: readonly FoundersDay[] = [
   [15, 0, 15, 1, 14, 1, 1, 25, 0],
   [16, 1, 14, 0, 15, 0, 1, 26, 1],
   [14, 1, 16, 0, 15, 1, 1, 23, 0],
-  [15, 2, 15, 1, 14, 0, 2, 25, 1],
+  // The week before: the same sends, and fewer replies (8 of 314, against
+  // 13 of 314 in the week above), so a weekly comparison has a change to show.
+  [15, 1, 15, 1, 14, 0, 2, 25, 1],
   [16, 0, 15, 0, 15, 1, 0, 24, 0],
-  [15, 1, 14, 0, 16, 1, 1, 26, 1],
-  [14, 1, 15, 1, 15, 0, 1, 23, 0],
-  [15, 1, 16, 0, 14, 1, 1, 25, 1],
+  [15, 0, 14, 0, 16, 1, 1, 26, 1],
+  [14, 1, 15, 0, 15, 0, 1, 23, 0],
+  [15, 1, 16, 0, 14, 0, 1, 25, 1],
   [16, 0, 15, 0, 15, 0, 0, 24, 0],
-  [15, 1, 14, 1, 15, 1, 1, 26, 1],
+  [15, 1, 14, 1, 15, 0, 1, 26, 1],
   [14, 2, 15, 0, 16, 0, 1, 23, 0],
   [15, 1, 16, 0, 15, 1, 1, 25, 1],
   [16, 0, 14, 1, 14, 0, 0, 24, 0],
@@ -66,12 +70,13 @@ const AGENCIES: readonly AgenciesDay[] = [
   [31, 0, 19, 1, 0, 17, 2],
   [29, 1, 21, 0, 0, 19, 3],
   [30, 0, 20, 1, 1, 18, 2],
+  // The week before: 3 replies from 350 sends, against 6 in the week above.
   [30, 1, 20, 0, 0, 17, 3],
   [31, 0, 19, 1, 0, 19, 2],
-  [29, 1, 21, 0, 0, 18, 3],
+  [29, 0, 21, 0, 0, 18, 3],
   [30, 0, 20, 0, 0, 17, 2],
-  [31, 0, 19, 1, 1, 19, 3],
-  [29, 1, 21, 1, 1, 18, 2],
+  [31, 0, 19, 0, 0, 19, 3],
+  [29, 0, 21, 1, 1, 18, 2],
   [30, 0, 20, 0, 0, 17, 3],
   [31, 0, 19, 0, 0, 19, 2],
   [29, 1, 21, 0, 0, 18, 3],

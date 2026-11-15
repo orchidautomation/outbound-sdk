@@ -187,9 +187,10 @@ test("stats give totals, or one row per day, for a workspace or a campaign", asy
   const total = await outbound.stats();
   assert.equal(total.rows.length, 1);
   assert.equal(total.rows[0]?.scope, "workspace");
-  // "Q4 SaaS founders" and "Agency owners" over the demo's three weeks.
+  // "Q4 SaaS founders" and "Agency owners" over the demo's three weeks:
+  // 13 + 8 + 11 replies in one and 6 + 3 + 6 in the other, newest week first.
   assert.equal(total.rows[0]?.sent, 943 + 1050);
-  assert.equal(total.rows[0]?.replied, 37 + 18);
+  assert.equal(total.rows[0]?.replied, 32 + 15);
   assert.equal(total.rows[0]?.date, null);
   assert.equal(total.meta.evidence, "exact");
 

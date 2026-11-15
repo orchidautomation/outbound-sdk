@@ -53,7 +53,7 @@ An `Alert` is:
 | `rule` | `string` | The rule's name. |
 | `subject` | `string` | The ref of the campaign, sender or workspace it is about. For a stats row, its `scopeRef`. |
 | `subjectName` | `string \| null` | The subject as a person knows it: the sender's address, or the campaign's name when this instance has already read that campaign record. `null` when neither is known; `alertCard` then shows the ref. |
-| `message` | `string` | A sentence, for example "Bounce rate is 9.0%, above 5.0%". |
+| `message` | `string` | A sentence, for example "Bounce rate is 9%, above 5%". |
 | `value` | `number \| string \| null` | What was measured. |
 | `threshold` | `number \| string \| null` | What it was compared with. |
 | `day` | `string \| null` | The day of the stats row, `YYYY-MM-DD`, for an alert about one day's counts. `null` for a row that totals a range. Absent from an alert about another record. |

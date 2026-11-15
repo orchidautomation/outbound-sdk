@@ -110,7 +110,8 @@ test("campaign_overview reports each active campaign with rates computed from co
   assert.equal(campaigns[0]?.campaign, "memory:acme:cmp_founders");
   assert.equal(campaigns[0]?.name, "Q4 SaaS founders");
   // Demo data, all three weeks: 943 sent, 630 of them first touches to
-  // leads contacted, 37 replies, 19 positive, 19 bounces.
+  // leads contacted, 13 + 8 + 11 = 32 replies, 19 positive, 19 bounces.
+  // 32 / 630 = 0.0508.
   assert.deepEqual(campaigns[0]?.metrics, {
     bounce_rate: 0.0201,
     bounced: 19,
@@ -120,8 +121,8 @@ test("campaign_overview reports each active campaign with rates computed from co
     opened: 516,
     positive: 19,
     positive_reply_rate: 0.0302,
-    replied: 37,
-    reply_rate: 0.0587,
+    replied: 32,
+    reply_rate: 0.0508,
     reply_rate_basis: "contacted",
     sent: 943,
   });
@@ -440,8 +441,8 @@ test("compare_clients and cross_channel_lead work once their plugins are on the 
       client.sent,
       client.replied,
     ]),
-    // 943 + 1,050 sent and 37 + 18 replies over the demo's three weeks.
-    [["acme", 2, 1993, 55]]
+    // 943 + 1,050 sent and 32 + 15 replies over the demo's three weeks.
+    [["acme", 2, 1993, 47]]
   );
 
   const person = data(

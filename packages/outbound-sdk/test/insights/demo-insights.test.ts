@@ -92,9 +92,11 @@ for (const now of MOMENTS) {
 
     assert.deepEqual(
       data.steps.map((step) => [step.step, step.sent, step.replies]),
+      // Over the three weeks, newest first: variant A 7 + 4 + 6 = 17
+      // replies, variant B 2 + 2 + 2 = 6, the follow-up 4 + 2 + 3 = 9.
       [
-        [0, 316 + 314, 19 + 7],
-        [1, 313, 11],
+        [0, 316 + 314, 17 + 6],
+        [1, 313, 9],
       ]
     );
 
@@ -105,8 +107,8 @@ for (const now of MOMENTS) {
         variant.replies,
       ]),
       [
-        ["A", 316, 19],
-        ["B", 314, 7],
+        ["A", 316, 17],
+        ["B", 314, 6],
       ]
     );
 
@@ -122,7 +124,7 @@ for (const now of MOMENTS) {
 
     assert.equal(data.variantStatsReported, true);
     assert.equal(data.steps.length, 1);
-    // 19 replies from 316 sends against 7 from 314.
+    // 17 replies from 316 sends against 6 from 314.
     assert.equal(data.steps[0]?.leader, "A");
     assert.equal(data.steps[0]?.verdict, "winner");
   });
@@ -131,15 +133,15 @@ for (const now of MOMENTS) {
     const { data } = await instanceAt(now).insights.copyReuse({}, { now });
 
     assert.equal(data.variantsWithoutStats, 0);
-    // Variant A of step 0: 19 replies from 316 sends.
+    // Variant A of step 0: 17 replies from 316 sends.
     assert.equal(data.bestCopy?.subject, "Quick question");
-    assert.equal(data.bestCopy?.replies, 19);
+    assert.equal(data.bestCopy?.replies, 17);
 
     const [followUp] = data.reused;
     assert.equal(followUp?.subject, "Following up");
-    // 11 of 313 in one campaign, 8 of 420 in the other.
+    // 9 of 313 in one campaign, 7 of 420 in the other (3 + 2 + 2 by week).
     assert.equal(followUp?.sent, 313 + 420);
-    assert.equal(followUp?.replies, 11 + 8);
+    assert.equal(followUp?.replies, 9 + 7);
   });
 
   test(`anomalies flags the demo's bounce spike and nothing else on ${day}`, async () => {
