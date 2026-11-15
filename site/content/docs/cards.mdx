@@ -24,7 +24,15 @@ This page uses the [in-memory adapter](/docs/adapters/memory). Every card's Slac
   ../_examples/cards/card.out.txt
 </include>
 
-`cardFor` never throws. A failed result becomes a card that says what failed, and a tool of your own with no card gets one that lists its plain values.
+An insight method's result goes to `cardFor` as it is, with the insight's tool name. Its notes and an incomplete read show on the card as they do for the tool.
+
+<include meta='title="insight.ts"'>../_examples/cards/insight.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/cards/insight.out.txt
+</include>
+
+`cardFor` never throws. A failed result becomes a card that says what failed, a tool of your own with no card gets one that lists its plain values, and anything that is not a tool or insight result gets a card that says there is nothing to show.
 
 ## The card format
 
