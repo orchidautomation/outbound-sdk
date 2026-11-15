@@ -22,9 +22,29 @@ export type ExtensionsOf<Plugins extends readonly OutboundPlugin[]> =
   UnionToIntersection<ExtensionOf<Plugins[number]>>;
 
 /**
+ * The type of an instance built with these plugins, for a function that
+ * takes one:
+ *
+ * ```ts
+ * const plugins = [insights(), exporter()];
+ * type MyOutbound = OutboundWith<typeof plugins>;
+ * const brief = async (outbound: MyOutbound) => outbound.insights.hotLeads({});
+ * ```
+ *
+ * `Outbound` alone is an instance with no plugins.
+ */
+export type OutboundWith<
+  Plugins extends readonly OutboundPlugin[] = [],
+  Native extends NativeCatalog = NoNative,
+> = Outbound<Native> & ExtensionsOf<Plugins>;
+
+/**
  * Creates the client. One instance wraps one adapter; `combine()` puts
  * several adapters behind one.
  */
+// The result is NoInfer: the plugins come from `options`, never from the
+// type the result is assigned to, so an instance built without a plugin
+// cannot be typed as one with it.
 export const createOutbound = <
   const Plugins extends readonly OutboundPlugin[] = [],
   Native extends NativeCatalog = NoNative,
@@ -32,11 +52,11 @@ export const createOutbound = <
   options: OutboundOptions<Native> & {
     readonly plugins?: Plugins | undefined;
   }
-): Outbound<Native> & ExtensionsOf<Plugins> => {
+): NoInfer<OutboundWith<Plugins, Native>> => {
   const outbound = new Outbound<Native>(options);
 
   installExtensions(outbound, options.plugins ?? []);
 
   // SAFETY: installExtensions() just defined every property the plugins' extensions declare.
-  return outbound as Outbound<Native> & ExtensionsOf<Plugins>;
+  return outbound as OutboundWith<Plugins, Native>;
 };

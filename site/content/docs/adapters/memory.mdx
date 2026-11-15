@@ -71,7 +71,7 @@ Its dates are counted back from the moment you call it and sit in the two weeks 
 
 ## Limit it to what a vendor can do
 
-Pass `capabilities` to turn single capabilities off or to weaken a filter from `server` to `client`. The adapter then behaves like a narrower vendor: gated calls are refused before they run, and a `client` filter is applied by the SDK and marked `derived`.
+Pass `capabilities` to turn single capabilities off or to weaken a filter from `server` to `client`. The adapter then behaves like a narrower vendor: gated calls are refused before they run, and a `client` filter is applied by the SDK and marked `derived`. `MemoryOptions["capabilities"]` is the type of that map, for a helper that builds such variants.
 
 <include meta='title="limited.ts"'>
   ../../_examples/adapters-memory/limited.ts

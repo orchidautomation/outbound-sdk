@@ -3,7 +3,7 @@
 
 export { createOutbound } from "./internal/outbound/create.ts";
 
-export type { ExtensionsOf } from "./internal/outbound/create.ts";
+export type { ExtensionsOf, OutboundWith } from "./internal/outbound/create.ts";
 
 export { Outbound } from "./internal/outbound/outbound.ts";
 
