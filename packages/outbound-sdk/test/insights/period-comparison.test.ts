@@ -86,6 +86,7 @@ test("period_comparison sets the last days against the days before, per campaign
     },
     finding:
       "Replies per message sent went from 6% to 12%; more than chance (p = 0.0009).",
+    campaignName: "Rising",
     name: "Rising",
     previous: {
       bounceRate: 0.02,
@@ -127,6 +128,7 @@ test("period_comparison sets the last days against the days before, per campaign
       campaign: "memory:agency:c3",
       channel: "email",
       currentSent: 100,
+      campaignName: "New",
       name: "New",
       previousSent: null,
       provider: "memory",

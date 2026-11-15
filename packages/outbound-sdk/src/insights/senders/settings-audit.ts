@@ -9,13 +9,13 @@ import type {
 } from "../../internal/entities-account.ts";
 import type { Campaign, Sender } from "../../internal/entities.ts";
 import { defineInsight } from "../define.ts";
+import { statusesInput } from "../fields.ts";
 import { spoken } from "../stats.ts";
 import {
   countEach,
   dayFrom,
   readCampaigns,
   readCampaignSenders,
-  statusesInput,
 } from "./read.ts";
 
 const input = z.object({
@@ -59,7 +59,7 @@ const input = z.object({
     .max(24)
     .default(2)
     .describe("A sending window shorter than this many hours is flagged"),
-  statuses: statusesInput,
+  statuses: statusesInput(["active"]),
 });
 
 export type SettingsCheck =

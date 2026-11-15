@@ -13,7 +13,7 @@ Five insights about what a campaign says and when. Each is a method on `outbound
 
 Three of them need per-step stats (`stats.byStep`). An adapter that does not declare it refuses them as `Unsupported`: see [which adapter serves which](/docs/insights#which-adapter-serves-which).
 
-A reply rate here is replies divided by leads contacted, or by messages sent when the vendor does not count leads. Each answer says which in `basis` or `replyRateBasis`.
+A reply rate here is replies divided by leads contacted, or by messages sent when the vendor does not count leads. A rate is `count`, `of`, `rate`, `low` and `high`, with `basis` saying what `of` counts. The older `trials`, `interval`, `replyRate`, `replyRateInterval` and `replyRateBasis` hold the same numbers and are deprecated until 0.4.0. `campaign` in every answer is the campaign's ref, even when the input was its bare vendor id.
 
 ## The data the samples run on
 
@@ -34,8 +34,8 @@ Where a campaign's replies come from, one row per sequence step.
 | Input | Default | Range | What it is |
 | --- | --- | --- | --- |
 | `campaign` | required | a campaign ref | The campaign to read. |
-| `from` | `null` | `YYYY-MM-DD` | First day to count. `null` counts from the start. |
-| `to` | `null` | `YYYY-MM-DD` | Last day to count. `null` counts to today. |
+| `from` | `null` | `YYYY-MM-DD` or `null` | First day counted. `null` for the whole history. |
+| `to` | `null` | `YYYY-MM-DD` or `null` | Last day counted. `null` for up to today. |
 | `min_reply_rate` | 0 | 0 to 1 | A step earns its place when the low end of its reply rate interval is above this. 0 asks only that the rate is reliably above zero. |
 
 `data` (`StepFunnel`):
@@ -43,7 +43,7 @@ Where a campaign's replies come from, one row per sequence step.
 - `finding`: what the numbers say, in one or two sentences.
 - `topStep`: the step with the most replies, or `null`.
 - `lastStepEarningPlace`: the last step whose reply rate is reliably above `min_reply_rate`, or `null`.
-- `steps`: one entry per step, counted from 0 (a sentence or card counts from 1, as a person does), with `action`, `delayDays`, `inSequence`, `sent`, `replies`, `replyRate`, `replyRateInterval`, `replyRateBasis`, `shareOfReplies`, `sentDrop` and `sentDropRate` (how far sends fell from the step before), `earnsPlace`, and `variants` (empty when the vendor does not split step stats by variant).
+- `steps`: one entry per step, counted from 0 (a sentence or card counts from 1, as a person does), with `action`, `delayDays`, `inSequence`, `sent`, `replies`, `rates.replyRate` (`count`, `of`, `rate`, `low`, `high` and `basis`), `shareOfReplies`, `sentDrop` and `sentDropRate` (how far sends fell from the step before), `earnsPlace`, and `variants` (empty when the vendor does not split step stats by variant).
 - `totals`: `sent` and `replies`.
 - `unattributed`: counts the vendor tied to no step (`rows`, `sent`, `replies`). They are in no step's row.
 
@@ -80,14 +80,14 @@ Whether a step's A/B leader is ahead by more than chance.
 | `metric` | `replied` | `replied`, `positive`, `opened`, `clicked` | What a variant is judged on. Replies and positive replies are divided by leads contacted (or sends); opens and clicks by messages delivered (or sends). |
 | `alpha` | 0.05 | above 0, up to 0.5 | A difference with a p-value under this is a winner. |
 | `min_sent` | 100 | 1 or more, whole | A variant with a smaller base than this is not compared. |
-| `from` | `null` | `YYYY-MM-DD` | First day to count. |
-| `to` | `null` | `YYYY-MM-DD` | Last day to count. |
+| `from` | `null` | `YYYY-MM-DD` or `null` | First day counted. `null` for the whole history. |
+| `to` | `null` | `YYYY-MM-DD` or `null` | Last day counted. `null` for up to today. |
 
 `data` (`VariantTest`):
 
 - `campaign`, `metric`, `alpha`: what was asked.
 - `variantStatsReported`: `false` when the vendor's step stats carry no variant rows at all, and `null` when it reported no step stats in the date range, which says nothing either way.
-- `steps`: one entry per step with two or more variants, with `verdict` (`winner`, `no_difference_yet` or `too_little_data`), `leader`, `pValue` (the leader against its closest rival), `moreSendsNeeded`, a `reason` sentence, and `variants` (each with `sent`, `count`, `trials`, `basis`, `rate`, `interval`, `enoughData` and `pValueVsLeader`). Winners first.
+- `steps`: one entry per step with two or more variants, with `verdict` (`winner`, `no_difference_yet` or `too_little_data`), `leader`, `pValue` (the leader against its closest rival), `moreSendsNeeded`, a `reason` sentence, and `variants` (each with `sent`, `count`, `of`, `basis`, `rate`, `low`, `high`, `enoughData` and `pValueVsLeader`). Winners first.
 - Every variant of a step is divided by the same base, named in `basis`: leads contacted when they all count them, otherwise messages sent (for opens and clicks, messages delivered, otherwise sent). Variants with no base in common are `too_little_data`, with the reason and each variant's own `basis`.
 - `totals`: `stepsTested`, `winners`, `noDifferenceYet` and `tooLittleData`.
 
@@ -190,7 +190,7 @@ How the same piece of copy performs in different campaigns. Variants are matched
 `data` (`CopyReuse`):
 
 - `basis`: what every reply rate is divided by: `contacted` (leads contacted) when every campaign counts them, otherwise `sent` (messages sent). `null` when the campaigns report no base in common; their rates are then listed with their own `basis` but not compared, so every `spread` and `bestCopy` is `null`.
-- `reused`: every piece of copy used in two or more campaigns, with `contentHash`, `subject`, `bodyPreview` (the first 120 characters), `campaigns`, pooled `sent`, `replies`, `trials`, `basis`, `replyRate` and `replyRateInterval`, `uses` (per campaign: `places` as `step:variant`, counts, `basis` and rate), `spread` (best minus worst reply rate), `best`, `worst`, `spreadPValue`, `spreadIsReal` and a `finding` sentence. Widest spread first.
+- `reused`: every piece of copy used in two or more campaigns, with `contentHash`, `subject`, `bodyPreview` (the first 120 characters), `campaigns`, pooled `sent`, `replies`, `basis` and `rates.replyRate`, `uses` (per campaign: `campaign`, `campaignName`, `places` as `step:variant`, counts, `basis` and `rates.replyRate`), `spread` (best minus worst reply rate), `best`, `worst`, `spreadPValue`, `spreadIsReal` and a `finding` sentence. Widest spread first.
 - `bestCopy`: the copy with the highest pooled reply rate among those with a base of `min_sent`, or `null`.
 - `campaignsRead`, `moreCampaignsExist` (`true` when `max_campaigns` stopped the listing with campaigns left), `piecesOfCopy`, `variantsWithoutStats`.
 

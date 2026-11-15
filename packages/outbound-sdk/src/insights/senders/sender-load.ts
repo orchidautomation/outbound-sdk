@@ -5,12 +5,8 @@ import { z } from "zod";
 import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Campaign, Sender } from "../../internal/entities.ts";
 import { defineInsight } from "../define.ts";
-import {
-  readCampaigns,
-  readCampaignSenders,
-  readSenders,
-  statusesInput,
-} from "./read.ts";
+import { statusesInput } from "../fields.ts";
+import { readCampaigns, readCampaignSenders, readSenders } from "./read.ts";
 
 const input = z.object({
   max_campaigns: z
@@ -35,7 +31,7 @@ const input = z.object({
     .describe(
       "The most senders to read for the workspace, and for each campaign"
     ),
-  statuses: statusesInput,
+  statuses: statusesInput(["active"]),
 });
 
 export interface LoadedSender {
@@ -61,6 +57,8 @@ export type CampaignSenderIssue =
 
 export interface CampaignSenderRisk {
   readonly campaign: string;
+  readonly campaignName: string;
+  /** @deprecated Use `campaignName`. Removed in 0.4.0. */
   readonly name: string;
   readonly senders: number;
   readonly issues: readonly CampaignSenderIssue[];
@@ -115,6 +113,7 @@ const riskOf = (
 
   return {
     campaign: campaign.ref,
+    campaignName: campaign.name,
     finding:
       inactive.length > 0
         ? `${campaign.name} has ${count}, ${inactive.length} of them not active.`

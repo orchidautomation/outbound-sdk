@@ -6,8 +6,11 @@ import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { SenderHealth } from "../../internal/entities-account.ts";
 import type { Sender } from "../../internal/entities.ts";
 import { noun, plural } from "../../internal/plural.ts";
+import { renamed } from "../../internal/renamed.ts";
 import { defineInsight } from "../define.ts";
-import { percent, rate, wilson } from "../stats.ts";
+import { measure } from "../ops/shared.ts";
+import type { Measured } from "../ops/shared.ts";
+import { percent, wilson } from "../stats.ts";
 import type { Interval } from "../stats.ts";
 import {
   DNS_RECORDS,
@@ -20,6 +23,8 @@ import {
 } from "./read.ts";
 import type { DnsRecord } from "./read.ts";
 
+const maxSpamRate = z.number().min(0).max(1);
+
 const input = z.object({
   max_senders: z
     .number()
@@ -28,14 +33,12 @@ const input = z.object({
     .max(500)
     .default(50)
     .describe("The most senders to check. Each costs 1 request."),
-  spam_rate_threshold: z
-    .number()
-    .min(0)
-    .max(1)
+  max_spam_rate: maxSpamRate
     .default(0.1)
     .describe(
       "A domain whose warmup emails land in spam more often than this share is high risk"
     ),
+  spam_rate_threshold: renamed("max_spam_rate", maxSpamRate),
 });
 
 export type DomainRisk = "high" | "low" | "medium" | "unknown";
@@ -52,13 +55,14 @@ export interface DomainMailbox {
   readonly issues: readonly string[];
 }
 
-export interface DomainWarmup {
+export interface DomainWarmup extends Measured {
   /** Mailboxes that report warmup spam. The pooled numbers cover only these. */
   readonly mailboxes: number;
   readonly sent: number | null;
   readonly spam: number | null;
+  /** @deprecated Use `rate`: warmup emails in spam (`count`) over those sent (`of`). Removed in 0.4.0. */
   readonly spamRate: number | null;
-  /** The Wilson interval of the spam rate; wide when few warmup emails were sent. */
+  /** @deprecated Use `low` and `high`. Removed in 0.4.0. */
   readonly interval: Interval | null;
 }
 
@@ -122,6 +126,7 @@ const pooledWarmup = (checked: readonly Checked[]): DomainWarmup => {
 
   if (reported.length === 0) {
     return {
+      ...measure(null, null),
       interval: null,
       mailboxes: 0,
       sent: null,
@@ -132,13 +137,15 @@ const pooledWarmup = (checked: readonly Checked[]): DomainWarmup => {
 
   const sent = reported.reduce((sum, each) => sum + each.sent, 0);
   const spam = reported.reduce((sum, each) => sum + each.spam, 0);
+  const measured = measure(spam, sent);
 
   return {
+    ...measured,
     interval: wilson(spam, sent),
     mailboxes: reported.length,
     sent,
     spam,
-    spamRate: rate(spam, sent),
+    spamRate: measured.rate,
   };
 };
 
@@ -179,7 +186,7 @@ const reportFor = (
   ).length;
 
   const authFailing = failing.filter((record) => record !== "dmarc");
-  const spamHigh = warmup.spamRate !== null && warmup.spamRate > threshold;
+  const spamHigh = warmup.rate !== null && warmup.rate > threshold;
 
   const high = [
     ...((blacklisted ?? 0) > 0
@@ -192,7 +199,7 @@ const reportFor = (
       : []),
     ...(spamHigh
       ? [
-          `${warmup.spam} of ${warmup.sent} warmup emails landed in spam (${percent(warmup.spamRate)}, over ${percent(threshold)})`,
+          `${warmup.spam} of ${warmup.sent} warmup emails landed in spam (${percent(warmup.rate)}, over ${percent(threshold)})`,
         ]
       : []),
   ];
@@ -239,7 +246,7 @@ const reportFor = (
 const worstFirst = (left: DomainReport, right: DomainReport): number =>
   RISK_ORDER.indexOf(left.risk) - RISK_ORDER.indexOf(right.risk) ||
   right.reasons.length - left.reasons.length ||
-  (right.warmup.spamRate ?? -1) - (left.warmup.spamRate ?? -1) ||
+  (right.warmup.rate ?? -1) - (left.warmup.rate ?? -1) ||
   left.domain.localeCompare(right.domain);
 
 // A seat the vendor cannot sign in to comes first, then one it says nothing about.
@@ -261,7 +268,7 @@ export const domainHealth = defineInsight({
   next: "Use warmup_readiness to see which mailboxes of a risky domain are not ready, or bounce_watch to see whether bounces already rose.",
   run: async (
     context,
-    { max_senders: maxSenders, spam_rate_threshold: threshold }
+    { max_senders: maxSenders, max_spam_rate: threshold }
   ) => {
     const { items: senders } = await readSenders(context, maxSenders);
 

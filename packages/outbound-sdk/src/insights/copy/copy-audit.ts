@@ -289,7 +289,7 @@ export const copyAudit = defineInsight({
         low: severity("low"),
         medium: severity("medium"),
       },
-      campaign: args.campaign,
+      campaign: campaign.ref,
       campaignName: campaign.name,
       channel: campaign.channel,
       clean: findings.length === 0,

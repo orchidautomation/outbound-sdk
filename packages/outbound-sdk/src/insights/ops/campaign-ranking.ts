@@ -5,12 +5,12 @@ import { z } from "zod";
 
 import type { CampaignsRead } from "../capped.ts";
 import { defineInsight } from "../define.ts";
+import { rangeFields } from "../fields.ts";
 import { median, round } from "../stats.ts";
 import {
   descending,
   labelOf,
   listFields,
-  rangeFields,
   ratesOf,
   readCampaignTotals,
   volumeOf,

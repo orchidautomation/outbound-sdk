@@ -1,6 +1,7 @@
 {
   "data": {
     "campaign": "memory:acme:ecom",
+    "campaignName": "Ecommerce ops",
     "channel": "email",
     "name": "Ecommerce ops",
     "provider": "memory",

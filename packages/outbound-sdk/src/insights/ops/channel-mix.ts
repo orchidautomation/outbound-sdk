@@ -6,6 +6,7 @@ import type { Channel } from "../../internal/entities.ts";
 import { sumCounts } from "../../internal/metrics.ts";
 import type { CampaignsRead } from "../capped.ts";
 import { defineInsight } from "../define.ts";
+import { rangeFields } from "../fields.ts";
 import { compareRates, percent, pText, round } from "../stats.ts";
 import type { ProportionTest } from "../stats.ts";
 import {
@@ -14,7 +15,6 @@ import {
   partialNote,
   partialRate,
   perLeadBase,
-  rangeFields,
   readCampaignTotals,
   totalsOf,
 } from "./shared.ts";

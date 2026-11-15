@@ -76,6 +76,38 @@ test("a field's JSDoc gives its description, range and default", () => {
   assert.match(text, /A number, more than 0\. Defaults to `1`\./u);
 });
 
+test("an old input name is marked @deprecated and has no default", () => {
+  const text = renderInput({
+    properties: {
+      max_bounce_rate: {
+        default: 0.03,
+        description: "The bounce rate that is too high",
+        maximum: 1,
+        minimum: 0,
+        type: "number",
+      },
+      threshold: {
+        deprecated: true,
+        description:
+          "Deprecated: renamed to `max_bounce_rate`. Removed in 0.4.0.",
+        maximum: 1,
+        minimum: 0,
+        type: "number",
+      },
+    },
+  });
+
+  assert.match(
+    text,
+    /\/\*\*\n \* @deprecated Renamed to `max_bounce_rate`\. Removed in 0\.4\.0\.\n \*\n \* A number from 0 to 1\.\n \*\/\nreadonly threshold\?: number \| undefined;/u
+  );
+  assert.match(
+    text,
+    /\* The bounce rate that is too high\n \*\n \* A number from 0 to 1\. Defaults to `0\.03`\.\n \*\/\nreadonly max_bounce_rate\?: number \| undefined;/u
+  );
+  assert.doesNotMatch(text, /@deprecated[^/]*Defaults to/u);
+});
+
 test("types and rules follow the schema the way z.input does", () => {
   assert.equal(
     typeOf({ items: { enum: ["a", "b"], type: "string" }, type: "array" }),

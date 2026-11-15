@@ -1,22 +1,12 @@
 // What the copy insights share: the base a step's rate is divided by, and a
 // rate with its interval.
 
-import { z } from "zod";
-
 import type { MetricRow } from "../../internal/entities.ts";
 import { sumCounts } from "../../internal/metrics.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
+import type { Measured as Rate } from "../ops/shared.ts";
 import { rate, wilson } from "../stats.ts";
 import type { Interval } from "../stats.ts";
-
-/** A `YYYY-MM-DD` input that defaults to `null`, meaning no bound. */
-export const dayInput = (description: string) =>
-  z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/u, "must be YYYY-MM-DD")
-    .nullable()
-    .default(null)
-    .describe(description);
 
 export interface DayRange {
   readonly from: string | undefined;
@@ -123,22 +113,55 @@ export const basesInWords = (
     )
     .join(", ");
 
-export interface Measured {
-  readonly count: number | null;
-  readonly trials: number | null;
+/** A rate with its counts and 95% Wilson interval, and what it divides by. */
+export interface BasedRate extends Rate {
+  /** What `of` counts. */
   readonly basis: RateBasis | null;
-  readonly rate: number | null;
-  /** The 95% Wilson interval of the rate. `null` when the rate is unknown. */
+}
+
+export interface Measured extends BasedRate {
+  /** @deprecated Use `of`. Removed in 0.4.0. */
+  readonly trials: number | null;
+  /** @deprecated Use `low` and `high`. Removed in 0.4.0. */
   readonly interval: Interval | null;
 }
 
-export const measure = (count: number | null, base: Base): Measured => ({
-  basis: base.basis,
-  count,
-  interval: wilson(count, base.trials),
-  rate: rate(count, base.trials),
-  trials: base.trials,
-});
+export const measure = (count: number | null, base: Base): Measured => {
+  const interval = wilson(count, base.trials);
+
+  return {
+    basis: base.basis,
+    count,
+    high: interval?.high ?? null,
+    interval,
+    low: interval?.low ?? null,
+    of: base.trials,
+    rate: rate(count, base.trials),
+    trials: base.trials,
+  };
+};
+
+const NO_RATE: BasedRate = {
+  basis: null,
+  count: null,
+  high: null,
+  low: null,
+  of: null,
+  rate: null,
+};
+
+/** The rate alone, without the deprecated `trials` and `interval`. */
+export const replyRateOf = (measured: Measured | null): BasedRate =>
+  measured === null
+    ? NO_RATE
+    : {
+        basis: measured.basis,
+        count: measured.count,
+        high: measured.high,
+        low: measured.low,
+        of: measured.of,
+        rate: measured.rate,
+      };
 
 /** Adds rows of counts; a count no row reports stays `null`. */
 export const sumRows = (rows: readonly MetricRow[]): MetricCounts =>

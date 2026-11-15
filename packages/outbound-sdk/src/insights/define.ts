@@ -19,6 +19,7 @@ import type {
   WithMeta,
 } from "../internal/outbound/api.ts";
 import { plural } from "../internal/plural.ts";
+import { applyRenames, liveKeys } from "../internal/renamed.ts";
 
 export interface InsightMeta {
   /** `exact` only when every read behind the answer was exact. */
@@ -325,14 +326,45 @@ const isAbsent = (
   );
 };
 
+interface Prepared<Input> {
+  readonly input: Input;
+  /** One note for each deprecated input name the caller used. */
+  readonly notes: readonly string[];
+}
+
+/** The input with each old name moved to its new one, and a note for each. */
+const withRenames = (
+  outbound: OutboundApi,
+  spec: Pick<InsightEntry, "inputSchema" | "name">,
+  given: Json | undefined
+) => {
+  // An old input name still works for one minor release, with a note.
+  const renamed = applyRenames(spec.inputSchema.shape, given);
+
+  if ("conflict" in renamed) {
+    const { from, to } = renamed.conflict;
+
+    throw new OutboundError(
+      "Invalid",
+      `${spec.name}: pass \`${to}\` only; \`${from}\` is its old name`,
+      { provider: outbound.provider }
+    );
+  }
+
+  return renamed;
+};
+
 const prepare = <Key extends string, Input, Data, Given>(
   outbound: OutboundApi,
   spec: InsightSpec<Key, Input, Data, Given>,
-  input: Json | undefined
-): Input => {
+  given: Json | undefined
+): Prepared<Input> => {
+  const fields = spec.inputSchema.shape;
+  const renamed = withRenames(outbound, spec, given);
+  const { input } = renamed;
   // A misspelt or unsupported filter is refused. Dropping it would let the
   // insight quietly answer a wider question than the one asked.
-  const stray = unknownKey(Object.keys(spec.inputSchema.shape), input);
+  const stray = unknownKey(liveKeys(fields), input);
 
   if (stray !== undefined) {
     throw new OutboundError("Invalid", `${spec.name}: ${stray}`, {
@@ -385,7 +417,7 @@ const prepare = <Key extends string, Input, Data, Given>(
     );
   }
 
-  return parsed.data;
+  return { input: parsed.data, notes: renamed.notes };
 };
 
 const execute = async <Key extends string, Input, Data, Given>(
@@ -397,7 +429,12 @@ const execute = async <Key extends string, Input, Data, Given>(
   const checked = prepare(outbound, spec, input);
   const now = options.now ?? Date.now();
   const tracker = track(outbound, now);
-  const data = await spec.run(tracker.context, checked);
+
+  for (const note of checked.notes) {
+    tracker.context.note(note);
+  }
+
+  const data = await spec.run(tracker.context, checked.input);
 
   return {
     data,

@@ -14,10 +14,13 @@
           {
             "basis": "sent",
             "count": 40,
+            "high": 0.1071,
             "interval": {
               "high": 0.1071,
               "low": 0.0593
             },
+            "low": 0.0593,
+            "of": 500,
             "rate": 0.08,
             "trials": 500,
             "enoughData": true,
@@ -28,10 +31,13 @@
           {
             "basis": "sent",
             "count": 20,
+            "high": 0.061,
             "interval": {
               "high": 0.061,
               "low": 0.026
             },
+            "low": 0.026,
+            "of": 500,
             "rate": 0.04,
             "trials": 500,
             "enoughData": true,
@@ -52,10 +58,13 @@
           {
             "basis": "sent",
             "count": 10,
+            "high": 0.0454,
             "interval": {
               "high": 0.0454,
               "low": 0.0136
             },
+            "low": 0.0136,
+            "of": 400,
             "rate": 0.025,
             "trials": 400,
             "enoughData": true,
@@ -66,10 +75,13 @@
           {
             "basis": "sent",
             "count": 6,
+            "high": 0.0323,
             "interval": {
               "high": 0.0323,
               "low": 0.0069
             },
+            "low": 0.0069,
+            "of": 400,
             "rate": 0.015,
             "trials": 400,
             "enoughData": true,

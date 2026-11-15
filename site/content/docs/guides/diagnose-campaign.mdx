@@ -41,12 +41,12 @@ The checks, with their defaults. Each bar is an input.
 | Code | Severity | Fires when |
 | --- | --- | --- |
 | `high_bounce_rate` | high | Bounced divided by sent is over `max_bounce_rate` (0.03) |
-| `no_recent_sends` | high | The campaign is active and nothing was sent in the last `recent_days` (7) |
+| `no_recent_sends` | high | The campaign is active and nothing was sent in the last `days` (7) |
 | `inactive_sender` | high | A sender of the campaign has a status other than `active` |
 | `low_reply_rate` | high or medium | The reply rate is under `min_reply_rate` (0.01). High only when the whole 95% interval is under it. |
-| `too_little_volume` | medium | Fewer than `min_sent` (100) sends in the range |
+| `too_little_volume` | medium | Fewer than `min_sent` (50) sends in the range |
 | `few_positive_replies` | medium | Positive replies are under `min_positive_share` (0.2) of replies |
-| `falling_sends` | medium | Sends over the last `recent_days` fell by more than `max_send_drop` (0.3) against the same number of days before |
+| `falling_sends` | medium | Sends over the last `days` fell by more than `max_send_drop` (0.3) against the same number of days before |
 | `short_sequence` | medium | The sequence has one or two steps |
 | `schedule_limits_volume` | low | Sending windows are open under `min_weekly_hours` (20) a week, or recent days average at or over `daily_limit_share` (0.9) of the daily limit |
 | `tracking_off` | low | Open tracking is off and no opens are counted, so the missing opens are expected |
@@ -56,7 +56,7 @@ Things to keep when you format the answer:
 - **Under `min_sent`, rates are not judged.** `too_little_volume` replaces the bounce, reply and positive-reply checks. It does not mean they passed.
 - **`notChecked` is part of the answer.** A read the adapter cannot serve, or a count the vendor does not report, is named there.
 - **The reply rate is replies divided by leads contacted**, or by sends when the vendor reports no contacted count. The bounce rate is bounces divided by sends.
-- **`from` and `to` limit the totals.** Left out, the totals cover the campaign's whole history. The recent-sends checks always use the last `recent_days` complete days, ending yesterday.
+- **`from` and `to` limit the totals.** Left out, the totals cover the campaign's whole history. The recent-sends checks always use the last `days` complete days, ending yesterday.
 
 For context:
 

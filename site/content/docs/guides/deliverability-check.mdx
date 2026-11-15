@@ -41,8 +41,8 @@ The first part is the function's return value. The last part is what the notifie
 
 How the two insights judge:
 
-- **A domain is `high` risk** when a mailbox is on a block list, when SPF, DKIM or MX fails, or when warmup emails land in spam more often than `spam_rate_threshold` (default 0.1), pooled over the domain's mailboxes. It is `medium` when DMARC fails or a mailbox is disconnected. It is `unknown`, not `low`, when nothing above applies and the vendor reports none of SPF, DKIM, DMARC and MX. `blacklisted` is `null`, not 0, when no mailbox of the domain reports its block list status. `notReported` lists the checks the vendor reported for no mailbox of the domain.
-- **A campaign is "over"** when bounced divided by sent is above `threshold` (default 0.03) and it has at least `min_sent` sends (default 100). A campaign with fewer sends goes in `tooFewSends`, and one with no sent or bounce count goes in `unknown`. Neither is counted as clean.
+- **A domain is `high` risk** when a mailbox is on a block list, when SPF, DKIM or MX fails, or when warmup emails land in spam more often than `max_spam_rate` (default 0.1), pooled over the domain's mailboxes. It is `medium` when DMARC fails or a mailbox is disconnected. It is `unknown`, not `low`, when nothing above applies and the vendor reports none of SPF, DKIM, DMARC and MX. `blacklisted` is `null`, not 0, when no mailbox of the domain reports its block list status. `notReported` lists the checks the vendor reported for no mailbox of the domain.
+- **A campaign is "over"** when bounced divided by sent is above `max_bounce_rate` (default 0.03) and it has at least `min_sent` sends (default 100). Only campaigns in `statuses` are read, active by default. A campaign with fewer sends goes in `tooFewSends`, and one with no sent or bounce count goes in `unknown`. Neither is counted as clean.
 - **Senders under a campaign** are counted over everything each sender sent in the period, not that campaign alone. A sender shared by two campaigns shows the same numbers under both.
 - **Rates carry an interval.** Each bounce rate and each pooled warmup spam rate has a 95% Wilson interval, wide on few sends.
 
@@ -60,7 +60,7 @@ Three things to know before you wire `notify` to a pager:
 
 - **It is called per read, so the same alert can arrive twice in one run.** Above, the disconnected mailbox fired once when `domainHealth` listed the senders and again when `bounceWatch` listed the senders of the campaign over the threshold. Deduplicate by `rule` and `subject`, or pass `dedupe: memoryAlertDedupe()` to `alerts`, which does that for as long as the instance lives.
 - **The SDK stores nothing, so it does not remember yesterday.** A sender that stays disconnected alerts on every run. If you want "only when it changes", keep the last set of alerts in your own store and compare.
-- **The rules are separate from the insights' thresholds.** `bounceRateAbove(0.03, { minSent: 100 })` looks at any stats row a read returns, for a campaign or a sender. `bounceWatch({ threshold })` decides what the summary lists. Set both.
+- **The rules are separate from the insights' thresholds.** `bounceRateAbove(0.03, { minSent: 100 })` looks at any stats row a read returns, for a campaign or a sender. `bounceWatch({ max_bounce_rate })` decides what the summary lists. Set both.
 
 ## Try it without a key
 

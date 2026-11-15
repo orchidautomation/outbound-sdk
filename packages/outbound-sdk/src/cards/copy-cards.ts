@@ -24,6 +24,7 @@ import {
   campaignsCapped,
   flagged,
   LEFT,
+  replyRate,
   RIGHT,
   verdict,
   withInterval,
@@ -64,7 +65,7 @@ const stepFunnel: CardBuilder = (data) => {
         stepOf(each, "step"),
         int(num(each, "sent")),
         int(num(each, "replies")),
-        withInterval(each, "replyRate", "replyRateInterval"),
+        replyRate(each),
         pct(num(each, "shareOfReplies")),
         yesNo(bool(each, "earnsPlace")),
       ]),
@@ -124,7 +125,7 @@ const variantTest: CardBuilder = (data) => {
             str(tested, "leader") === str(variant, "variantKey") ? " ★" : ""
           }`,
           int(num(variant, "sent")),
-          withInterval(variant, "rate", "interval"),
+          withInterval(variant),
         ])
       ),
     },
@@ -176,11 +177,7 @@ const copyReuse: CardBuilder = (data) => {
     finding:
       str(bestCopy, "contentHash") === null
         ? "No copy has enough results to name a best one."
-        : `Best copy: "${copyLabel(bestCopy)}" at ${withInterval(
-            bestCopy,
-            "replyRate",
-            "replyRateInterval"
-          )}.`,
+        : `Best copy: "${copyLabel(bestCopy)}" at ${replyRate(bestCopy)}.`,
     stats: [
       ["Copy used more than once", int(reused.length)],
       ["Pieces of copy", int(num(data, "piecesOfCopy"))],

@@ -5,11 +5,11 @@ import { z } from "zod";
 import { sumCounts } from "../../internal/metrics.ts";
 import type { CampaignsRead } from "../capped.ts";
 import { defineInsight } from "../define.ts";
+import { rangeFields } from "../fields.ts";
 import {
   descending,
   listFields,
   partialNote,
-  rangeFields,
   ratesAcross,
   readCampaignTotals,
   totalsOf,

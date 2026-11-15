@@ -18,6 +18,7 @@ Three things hold for all of them:
 - **A rate over a time window is per message sent.** `periodComparison` and `clientReport` divide replies and positive replies by messages sent in the period, never by leads contacted, and say so in `replyRateBasis: "sent"`. A week's replies also answer leads first contacted weeks before, so a week that contacted 5 new leads and sent 300 follow-ups could otherwise show 8 replies as 160%.
 - **A rate comes with its count, its base and its 95% interval** as `count`, `of`, `rate`, `low` and `high`.
 - **"The last N days" means N complete UTC days ending yesterday.** Today is left out because it is not over.
+- **Every campaign row has `campaign`, its ref, and `campaignName`.** `name` holds the same name and is deprecated until 0.4.0.
 
 Five of them (`periodComparison`, `campaignRanking`, `channelMix`, `tagRollup` and `clientReport`) share two inputs:
 
@@ -54,12 +55,12 @@ Why one campaign is underperforming: a list of findings, most serious first.
 | Input | Default | Range | What it is |
 | --- | --- | --- | --- |
 | `campaign` | required | a campaign ref | The campaign to diagnose. |
-| `from`, `to` | `null` | `YYYY-MM-DD` | The days the totals cover. |
-| `min_sent` | 100 | 0 or more, whole | Under this many sends, rates are not judged. |
+| `from`, `to` | `null` | `YYYY-MM-DD` or `null` | The days the totals cover. `null` for the whole history, the default. |
+| `min_sent` | 50 | 0 or more, whole | Under this many sends, rates are not judged. |
 | `min_reply_rate` | 0.01 | 0 to 1 | A reply rate under this is a finding. |
 | `max_bounce_rate` | 0.03 | 0 to 1 | A bounce rate over this is a finding. |
 | `min_positive_share` | 0.2 | 0 to 1 | A share of replies that are positive under this is a finding. |
-| `recent_days` | 7 | 1 to 30 | The days, ending yesterday, held against the same number before. |
+| `days` | 7 | 1 to 30 | The days, ending yesterday, held against the same number before. Its old name, `recent_days`, works until 0.4.0, with a note. |
 | `max_send_drop` | 0.3 | 0 to 1 | A fall in sends, recent days against the days before, over this share is a finding. |
 | `min_weekly_hours` | 20 | 0 to 168 | Sending windows open fewer hours a week than this limit volume. |
 | `daily_limit_share` | 0.9 | 0 to 1 | Average daily sends at or over this share of the daily limit mean the limit holds volume back. |
@@ -67,7 +68,7 @@ Why one campaign is underperforming: a list of findings, most serious first.
 
 `data` (`CampaignDiagnosis`):
 
-- `campaign`, `name`, `status`, `channel`, `provider`.
+- `campaign`, `campaignName`, `status`, `channel`, `provider`. `name` is the same as `campaignName` and is deprecated.
 - `period`: the `from` and `to` given.
 - `totals`: `sent`, `contacted`, `replied`, `positive`, `bounced`.
 - `rates`: `replyRate`, `positiveRate` and `bounceRate`, each with its interval.
@@ -80,7 +81,7 @@ The findings:
 | Code | Severity | Fires when |
 | --- | --- | --- |
 | `high_bounce_rate` | high | The bounce rate is over `max_bounce_rate`. |
-| `no_recent_sends` | high | The campaign is active but nothing was sent in the last `recent_days`. |
+| `no_recent_sends` | high | The campaign is active but nothing was sent in the last `days`. |
 | `inactive_sender` | high | A sender of the campaign is not active. |
 | `low_reply_rate` | high or medium | The reply rate is under `min_reply_rate`. High when the whole interval is under it. |
 | `too_little_volume` | medium | Fewer sends than `min_sent`. Reply and bounce rates are then not judged. |
@@ -123,7 +124,7 @@ The leads one campaign has left, and what they should produce. It is an estimate
 
 `data` (`PipelineForecast`):
 
-- `campaign`, `name`, `status`, `channel`, `provider`.
+- `campaign`, `campaignName`, `status`, `channel`, `provider`. `name` is the same as `campaignName` and is deprecated.
 - `estimate`: always `true`. Every figure below `remaining` is a projection, not a count.
 - `leadsRead`, `leadsComplete` (`false` when `max_leads` stopped the read, so `remaining` is a minimum), `byStatus`.
 - `remaining`: leads still `active` in the campaign.
@@ -368,7 +369,7 @@ One report for one client or workspace over the last `days` complete days, compo
 | Input | Default | Range | What it is |
 | --- | --- | --- | --- |
 | `days` | 7 | 1 to 90 | The length of the period. |
-| `top` | 3 | 1 to 20 | How many best and worst campaigns to show. |
+| `limit` | 3 | 1 to 20 | How many best and worst campaigns to show in `top` and `bottom`. Its old name, `top`, works until 0.4.0, with a note. |
 | `alpha` | 0.05 | above 0, under 1 | The p-value under which a change counts as more than chance. |
 | `min_sent` | 50 | 0 or more, whole | Campaigns under this many sends in the period are not judged. |
 | `max_bounce_rate` | 0.03 | 0 to 1 | A campaign bounce rate over this is a bounce problem. |
@@ -385,7 +386,7 @@ One report for one client or workspace over the last `days` complete days, compo
 - `replyRateBasis`: `"sent"`. `totals`, `top` and `bottom` divide replies by messages sent in the period, as `periodComparison` does.
 - `totals`: every campaign added together, as in `periodComparison`: `current`, `previous`, `change`, `replyRateBasis`, `replyRateTest`, `verdict` and `finding`. A rate counts only the campaigns that report both sides of it.
 - `top`, `bottom`: the best and worst campaigns by the low end of the interval of replies per message sent. `bottom` never repeats a campaign in `top`.
-- `bounceProblems`: campaigns over `max_bounce_rate`, worst first.
+- `bounceProblems`: campaigns over `max_bounce_rate`, worst first, with the rate as `count`, `of`, `rate`, `low` and `high`, and `bounced` and `sent`, the same counts under their older names.
 - `anomalies`: unusual days in the period, workspace-wide. `null` when the adapter cannot serve them.
 - `runningOutOfLeads`: active campaigns with `runway_days` of leads or fewer, with `remaining`, `dailyContactRate` and `daysLeft`, soonest first. A campaign with no leads left has `daysLeft` 0, so it comes first and gets an `add_leads` action. `null` when the adapter cannot serve them.
 - `actions`: what to do, most pressing first. Each has a `kind` (`fix_bounces`, `add_leads`, `reply_rate_fell`, `review_campaign` or `check_anomaly`), the `campaign` and `campaignName` it is about, an `action` sentence and the `number` behind it.

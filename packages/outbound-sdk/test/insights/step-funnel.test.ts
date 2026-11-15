@@ -211,6 +211,16 @@ test("step_funnel splits a step by variant, keeps counts tied to no step apart, 
   assert.deepEqual(first?.variants, [
     {
       contentHash: hashes?.[0],
+      rates: {
+        replyRate: {
+          basis: "sent",
+          count: 20,
+          high: 0.061,
+          low: 0.026,
+          of: 500,
+          rate: 0.04,
+        },
+      },
       replies: 20,
       replyRate: 0.04,
       replyRateInterval: { high: 0.061, low: 0.026 },
@@ -219,6 +229,16 @@ test("step_funnel splits a step by variant, keeps counts tied to no step apart, 
     },
     {
       contentHash: hashes?.[1],
+      rates: {
+        replyRate: {
+          basis: "sent",
+          count: 10,
+          high: 0.0364,
+          low: 0.0109,
+          of: 500,
+          rate: 0.02,
+        },
+      },
       replies: 10,
       replyRate: 0.02,
       replyRateInterval: { high: 0.0364, low: 0.0109 },
@@ -231,6 +251,15 @@ test("step_funnel splits a step by variant, keeps counts tied to no step apart, 
     [second?.sent, second?.replies, second?.replyRate, second?.replyRateBasis],
     [700, 6, 0.02, "contacted"]
   );
+  // `rates.replyRate` holds what the deprecated fields hold: 6 of 300 contacted.
+  assert.deepEqual(second?.rates.replyRate, {
+    basis: "contacted",
+    count: 6,
+    high: 0.0429,
+    low: 0.0092,
+    of: 300,
+    rate: 0.02,
+  });
 
   // Step 4 is in the stats only. Its drop is from the row above: 700 - 90.
   assert.deepEqual(

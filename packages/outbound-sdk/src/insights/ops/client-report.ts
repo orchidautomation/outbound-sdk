@@ -4,6 +4,7 @@
 import { z } from "zod";
 
 import { mapConcurrent } from "../../internal/concurrency.ts";
+import { renamed } from "../../internal/renamed.ts";
 import type { CampaignsRead } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
@@ -25,6 +26,8 @@ import {
   volumeOf,
 } from "./shared.ts";
 import type { CampaignLabel, DayRange } from "./shared.ts";
+
+const limit = z.number().int().min(1).max(20);
 
 const input = z.object({
   ...listFields(
@@ -55,6 +58,7 @@ const input = z.object({
     .max(90)
     .default(7)
     .describe("The length of the period, in complete days ending yesterday"),
+  limit: limit.default(3).describe("How many best and worst campaigns to show"),
   max_bounce_rate: z
     .number()
     .min(0)
@@ -87,13 +91,7 @@ const input = z.object({
     .describe(
       "A campaign with this many days of leads left or fewer is flagged"
     ),
-  top: z
-    .number()
-    .int()
-    .min(1)
-    .max(20)
-    .default(3)
-    .describe("How many best and worst campaigns to show"),
+  top: renamed("limit", limit),
 });
 
 type Options = z.infer<typeof input>;
@@ -111,6 +109,10 @@ const sendingLeft = (daysLeft: number | null): string => {
 };
 
 export interface BounceProblem extends CampaignLabel {
+  /** Bounces. The same as `bounced`. */
+  readonly count: number | null;
+  /** Messages sent, which the rate divides by. The same as `sent`. */
+  readonly of: number | null;
   readonly bounced: number | null;
   readonly sent: number | null;
   readonly rate: number;
@@ -181,7 +183,18 @@ const bounceProblems = (
       return rate !== null &&
         rate > options.max_bounce_rate &&
         (volumeOf(current) ?? -1) >= options.min_sent
-        ? [{ ...labelOf(campaign), bounced: count, high, low, rate, sent: of }]
+        ? [
+            {
+              ...labelOf(campaign),
+              bounced: count,
+              count,
+              high,
+              low,
+              of,
+              rate,
+              sent: of,
+            },
+          ]
         : [];
     })
     .toSorted((left, right) => right.rate - left.rate);
@@ -274,19 +287,19 @@ const actionsOf = (report: Sections): ActionItem[] => {
 
   return [
     ...report.bounceProblems.map((problem) => ({
-      action: `Fix the bounces of ${problem.name}: its bounce rate is ${percent(problem.rate)} (${problem.bounced} of ${problem.sent} sends).`,
+      action: `Fix the bounces of ${problem.campaignName}: its bounce rate is ${percent(problem.rate)} (${problem.count} of ${problem.of} sends).`,
       campaign: problem.campaign,
-      campaignName: problem.name,
+      campaignName: problem.campaignName,
       kind: "fix_bounces" as const,
       number: problem.rate,
     })),
     ...(report.runningOutOfLeads ?? []).map((runway) => ({
       action:
         runway.remaining === 0
-          ? `Add leads to ${runway.name}: no leads are left to contact, so it is not sending.`
-          : `Add leads to ${runway.name}: ${runway.remaining} ${runway.remaining === 1 ? "lead remains" : "leads remain"}, ${sendingLeft(runway.daysLeft)}.`,
+          ? `Add leads to ${runway.campaignName}: no leads are left to contact, so it is not sending.`
+          : `Add leads to ${runway.campaignName}: ${runway.remaining} ${runway.remaining === 1 ? "lead remains" : "leads remain"}, ${sendingLeft(runway.daysLeft)}.`,
       campaign: runway.campaign,
-      campaignName: runway.name,
+      campaignName: runway.campaignName,
       kind: "add_leads" as const,
       number: runway.daysLeft,
     })),
@@ -305,9 +318,9 @@ const actionsOf = (report: Sections): ActionItem[] => {
       ? []
       : [
           {
-            action: `Review the copy and the audience of ${worst.name}: it has the fewest replies per message sent, ${percent(worst.rate)} (${worst.count} of ${worst.of}).`,
+            action: `Review the copy and the audience of ${worst.campaignName}: it has the fewest replies per message sent, ${percent(worst.rate)} (${worst.count} of ${worst.of}).`,
             campaign: worst.campaign,
-            campaignName: worst.name,
+            campaignName: worst.campaignName,
             kind: "review_campaign" as const,
             number: worst.rate,
           },
@@ -329,7 +342,7 @@ export const clientReport = defineInsight({
   key: "clientReport",
   name: "client_report",
   needs: ["stats.campaign"],
-  next: "Use campaign_diagnosis on a campaign an action item names, or period_comparison for every campaign's change.",
+  next: "Use campaign_diagnosis on a campaign an action item names, with from and to set to this report's `period`, or period_comparison for every campaign's change.",
   run: async (context, options) => {
     const periods = await readPeriods(context, options);
 
@@ -346,8 +359,8 @@ export const clientReport = defineInsight({
     const sections: Sections = {
       anomalies: await readAnomalies(context, periods.current, options),
       bottom: ranking.ranked
-        .slice(options.top)
-        .slice(-options.top)
+        .slice(options.limit)
+        .slice(-options.limit)
         .toReversed(),
       bounceProblems: bounceProblems(periods.campaigns, options),
       runningOutOfLeads: await readRunways(context, periods.campaigns, options),
@@ -383,7 +396,7 @@ export const clientReport = defineInsight({
       period: periods.current,
       previousPeriod: periods.previous,
       replyRateBasis: "sent",
-      top: ranking.ranked.slice(0, options.top),
+      top: ranking.ranked.slice(0, options.limit),
     };
 
     return report;

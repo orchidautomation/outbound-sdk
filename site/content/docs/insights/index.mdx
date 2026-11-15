@@ -118,6 +118,30 @@ An insight that needs a capability the adapter lacks, or a field its records nev
 
 Each `@ts-expect-error` marks a line the compiler rejects. Without the comment, the sample would not type-check. Input names are snake case (`max_campaigns`) because the same schema serves the agent tool and the CLI.
 
+## Names
+
+The same word means the same thing in every insight.
+
+- **Inputs are snake case, answers are camel case.** `max_campaigns` goes in and `moreCampaignsExist` comes out, because the same input schema serves the method, the agent tool and the CLI. The [built-in tools](/docs/tools) take snake case inputs too, and answer in snake case JSON written for a model; an insight's answer is camel case wherever it is read.
+- **`from` and `to` are an inclusive range of `YYYY-MM-DD` days.** `null`, the default, is no bound: the whole history, or up to today. A day that does not exist, such as `2026-02-30`, is refused.
+- **`since` is an ISO time** that a listing starts at, as in `droppedReplies` and `replyTiming`.
+- **`days` is the last N complete days, ending yesterday.**
+- **`limit` is how many items come back. `max_*` caps what is read.** `max_leads` caps every lead read; `max_leads_per_campaign` caps each campaign's.
+- **`max_<metric>_rate` and `min_<metric>_rate` are cutoffs**, such as `max_bounce_rate`. `anomalies`' `threshold` is a z-score, not a rate, and keeps its name, as do `recency_days` (how fast `hotLeads` lets a reply fade) and `baseline_days`.
+- **`campaign` in an answer is always the campaign's ref**, even when you passed its bare vendor id, and a campaign row carries `campaignName` beside it.
+- **A rate is `{ count, of, rate, low, high }`**: the count, what it is divided by, the rate and the ends of its 95% Wilson interval. A few figures stay plain numbers because no single count is behind them: `PeriodNumbers`' rates, `personSummary`'s `campaignReplyRate` and `personalizationGaps`' `affectedRate`.
+
+Names that broke this rule before 0.3.0 have new ones. The old name still works until 0.4.0: it gives the same answer with a note in `meta.notes`, the tool parameters mark it `deprecated`, and passing both names is `Invalid`.
+
+| Insight | Old input | New input |
+| --- | --- | --- |
+| `bounceWatch` | `threshold` | `max_bounce_rate` |
+| `domainHealth` | `spam_rate_threshold` | `max_spam_rate` |
+| `campaignDiagnosis` | `recent_days` | `days` |
+| `clientReport` | `top` | `limit` (the `top` list in the answer keeps its name) |
+
+Old answer fields stay beside the new ones, marked `@deprecated` in the types, until 0.4.0: `name` beside `campaignName`, `interval` and `trials` beside `low`, `high` and `of`, `replyRate`, `replyRateInterval` and `replyRateBasis` beside `rates.replyRate`, `spamRate` beside `rate`, and bounceWatch's `threshold` beside `maxBounceRate`. [Cards](/docs/cards) draw either form.
+
 ## The insights
 
 The tool and CLI name of each is the same words in snake case: `personSummary` is `person_summary`.

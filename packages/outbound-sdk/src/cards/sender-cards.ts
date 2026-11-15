@@ -3,13 +3,14 @@
 import type { JsonObject } from "../internal/json.ts";
 import {
   bool,
+  campaignNameOf,
   child,
   DASH,
   int,
   mark,
+  noun,
   num,
   pct,
-  noun,
   plural,
   rows,
   show,
@@ -30,10 +31,13 @@ import type { CardBuilder } from "./tool-cards.ts";
 const senderName = (sender: JsonObject): string =>
   str(sender, "address") ?? str(sender, "name") ?? show(sender, "sender");
 
+const warmupRate = (warmup: JsonObject): number | null =>
+  num(warmup, "rate") ?? num(warmup, "spamRate");
+
 const bounceWatch: CardBuilder = (data) => {
   const totals = child(data, "totals");
   const over = rows(data, "over");
-  const threshold = pct(num(data, "threshold"));
+  const threshold = pct(num(data, "maxBounceRate") ?? num(data, "threshold"));
 
   return {
     finding: verdict(
@@ -54,10 +58,10 @@ const bounceWatch: CardBuilder = (data) => {
       align: [LEFT, RIGHT, RIGHT, RIGHT],
       headers: ["Campaign", "Sent", "Bounced", "Bounce rate"],
       rows: over.map((campaign) => [
-        show(campaign, "name"),
+        campaignNameOf(campaign),
         int(num(campaign, "sent")),
         int(num(campaign, "bounced")),
-        withInterval(campaign, "rate", "interval"),
+        withInterval(campaign),
       ]),
     },
     title: "Bounce watch",
@@ -127,7 +131,7 @@ const domainHealth: CardBuilder = (data) => {
         `${riskMark(str(domain, "risk"))} ${show(domain, "risk")}`,
         int(rows(domain, "mailboxes").length),
         strings(domain, "failingDns").join(" ").toUpperCase() || DASH,
-        pct(num(child(domain, "warmup"), "spamRate")),
+        pct(warmupRate(child(domain, "warmup"))),
         strings(domain, "notReported").join(", ") || DASH,
       ]),
     },

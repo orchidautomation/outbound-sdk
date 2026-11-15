@@ -1,8 +1,6 @@
 // What the senders insights share: capped listings, campaigns by status, and
 // the checks made on one sender's health record.
 
-import { z } from "zod";
-
 import type { SenderHealth } from "../../internal/entities-account.ts";
 import type {
   Campaign,
@@ -11,27 +9,9 @@ import type {
 } from "../../internal/entities.ts";
 import { OutboundError } from "../../internal/errors.ts";
 import type { ListAll } from "../../internal/outbound/api.ts";
-import { campaignStatusSchema } from "../../internal/vocabulary.ts";
 import { readCampaignsIn, readCapped as readUpTo } from "../capped.ts";
 import type { Capped } from "../capped.ts";
 import type { InsightContext } from "../define.ts";
-
-export const statusesInput = z
-  .array(campaignStatusSchema)
-  .min(1)
-  .default(["active"])
-  .describe(
-    "Campaign statuses to look at: active, paused, draft, completed, archived or unknown"
-  );
-
-export const dayInput = (what: string) =>
-  z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/u)
-    .optional()
-    .describe(
-      `${what}, as YYYY-MM-DD. Leave out for the vendor's whole history.`
-    );
 
 /** Walks a listing up to `max` records, and says so in a note naming `input` when more exist. */
 export const readCapped = async <Item>(

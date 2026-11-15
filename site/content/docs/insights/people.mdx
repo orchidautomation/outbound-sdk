@@ -301,7 +301,7 @@ Leads in one campaign who will get broken copy because a merge variable has no v
 
 `data` (`PersonalizationGaps`):
 
-- `campaign`: the ref that was checked.
+- `campaign`: the ref that was checked, even when the input was its bare vendor id.
 - `variables`: one entry per variable in the copy, with `name`, `source` (`builtin`, `custom` or `unknown`), `gap`, `steps`, `uses` (step, variant, field, and whether that use has a fallback), `leadsWithoutValue` and `leadsAffected`. Most leads affected first.
 - `leads`: the leads missing at least one variable, with `lead`, `email`, `linkedinUrl`, `status` and `missing`. Most missing first, up to `limit`.
 - `unknownVariables`: variables no lead has a value for and that are not built in.

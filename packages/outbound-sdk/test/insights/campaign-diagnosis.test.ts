@@ -279,7 +279,7 @@ test("campaign_diagnosis moves with each threshold", async () => {
   ]);
 
   // The last 3 days, 11-11 to 11-13, have no sends at all.
-  assert.deepEqual(await run({ recent_days: 3 }), [
+  assert.deepEqual(await run({ days: 3 }), [
     "high_bounce_rate",
     "no_recent_sends",
     "inactive_sender",
@@ -336,7 +336,7 @@ test("campaign_diagnosis words each finding from its own numbers", async () => {
   );
 
   const stopped = await outbound.insights.campaignDiagnosis(
-    { ...BAD, recent_days: 3 },
+    { ...BAD, days: 3 },
     { now: NOW }
   );
 
@@ -403,7 +403,7 @@ test("campaign_diagnosis keeps unknown counts unknown and says what it could not
     "The vendor reports no sends for this period, so no rate can be judged."
   );
   assert.deepEqual(blank.data.findings[1]?.numbers, {
-    minSent: 100,
+    minSent: 50,
     sent: null,
   });
 });
@@ -494,4 +494,16 @@ test("campaign_diagnosis reads a campaign of either tool on a combined instance"
       ],
     ]
   );
+});
+
+test("campaign_diagnosis judges a campaign with 60 sends, as the other ops insights do", async () => {
+  const result = await single({
+    campaigns: [{ id: "few", name: "Few" }],
+    stats: [row("few", "2026-11-10", { contacted: 60, replied: 0, sent: 60 })],
+  }).insights.campaignDiagnosis({ campaign: "few" }, { now: NOW });
+
+  const found = result.data.findings.map((each) => each.code);
+
+  assert.ok(!found.includes("too_little_volume"), found.join(", "));
+  assert.ok(found.includes("low_reply_rate"), found.join(", "));
 });

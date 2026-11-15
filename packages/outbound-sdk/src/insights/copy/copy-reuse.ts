@@ -5,16 +5,16 @@ import { z } from "zod";
 import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Campaign, Sequence } from "../../internal/entities.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
-import { campaignStatusSchema } from "../../internal/vocabulary.ts";
 import { readCampaignsIn } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
+import { statusesInput } from "../fields.ts";
 import { compareRates, percent, round } from "../stats.ts";
 import type { Interval } from "../stats.ts";
 import { pooled, sharedBaseOf } from "./reuse-base.ts";
 import type { BaseOf } from "./reuse-base.ts";
-import { groupBy, splitStats } from "./shared.ts";
-import type { RateBasis, SplitStats } from "./shared.ts";
+import { groupBy, replyRateOf, splitStats } from "./shared.ts";
+import type { BasedRate, RateBasis, SplitStats } from "./shared.ts";
 
 const input = z.object({
   max_campaigns: z
@@ -34,11 +34,7 @@ const input = z.object({
     .describe(
       "The smallest base (sends, or leads contacted when the vendor counts those) a campaign needs to count in the spread, and a piece of copy needs to be named the best."
     ),
-  statuses: z
-    .array(campaignStatusSchema)
-    .min(1)
-    .default(["active", "paused", "completed"])
-    .describe("The campaign statuses to read."),
+  statuses: statusesInput(["active", "paused", "completed"]),
 });
 
 export interface CopyUse {
@@ -49,11 +45,15 @@ export interface CopyUse {
   readonly places: readonly string[];
   readonly sent: number | null;
   readonly replies: number | null;
-  /** What the rate is divided by. `null` when the vendor reports no counts for this copy. */
-  readonly trials: number | null;
-  /** What `trials` counts: leads contacted or messages sent. */
+  /** Replies over leads contacted or messages sent, as `basis` says. */
+  readonly rates: { readonly replyRate: BasedRate };
+  /** What the rate divides by: leads contacted or messages sent. */
   readonly basis: RateBasis | null;
+  /** @deprecated Use `rates.replyRate.of`. Removed in 0.4.0. */
+  readonly trials: number | null;
+  /** @deprecated Use `rates.replyRate.rate`. Removed in 0.4.0. */
   readonly replyRate: number | null;
+  /** @deprecated Use `rates.replyRate.low` and `.high`. Removed in 0.4.0. */
   readonly replyRateInterval: Interval | null;
 }
 
@@ -65,10 +65,14 @@ export interface CopyPiece {
   readonly campaigns: number;
   readonly sent: number | null;
   readonly replies: number | null;
-  readonly trials: number | null;
-  readonly basis: RateBasis | null;
   /** Replies over the base, added up across campaigns. */
+  readonly rates: { readonly replyRate: BasedRate };
+  readonly basis: RateBasis | null;
+  /** @deprecated Use `rates.replyRate.of`. Removed in 0.4.0. */
+  readonly trials: number | null;
+  /** @deprecated Use `rates.replyRate.rate`. Removed in 0.4.0. */
   readonly replyRate: number | null;
+  /** @deprecated Use `rates.replyRate.low` and `.high`. Removed in 0.4.0. */
   readonly replyRateInterval: Interval | null;
 }
 
@@ -166,6 +170,7 @@ const useOf = (placements: readonly Placement[], baseOf: BaseOf): CopyUse[] => {
       places: placements.map((placement) => placement.place),
       basis: sum.basis,
       provider: first.campaign.provider,
+      rates: { replyRate: replyRateOf(sum) },
       replies: sum.count,
       replyRate: sum.rate,
       replyRateInterval: sum.interval,
@@ -197,6 +202,7 @@ const pieceOf = (
       bodyPreview: first.body?.slice(0, PREVIEW) ?? null,
       campaigns: uses.length,
       contentHash: first.contentHash,
+      rates: { replyRate: replyRateOf(sum) },
       replies: sum.count,
       replyRate: sum.rate,
       replyRateInterval: sum.interval,
