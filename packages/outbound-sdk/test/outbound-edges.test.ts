@@ -37,7 +37,7 @@ const failure = async (action: () => unknown): Promise<OutboundError> => {
 };
 
 test("an adapter that declares a capability it does not implement fails as Unsupported", async () => {
-  const base = memory({ data: demoData() });
+  const base = memory({ data: demoData({ now: "2026-10-08T12:00:00.000Z" }) });
 
   const hollow: Adapter = {
     capabilities: ALL,
@@ -234,7 +234,7 @@ test("a vendor with leads and senders only per campaign serves the scoped listin
   const outbound = createOutbound({
     adapter: memory({
       capabilities: { "leads.list": false, "senders.list": false },
-      data: demoData(),
+      data: demoData({ now: "2026-10-08T12:00:00.000Z" }),
     }),
   });
 
@@ -258,7 +258,7 @@ test("a vendor with leads and senders only per campaign serves the scoped listin
   const unscopedOnly = createOutbound({
     adapter: memory({
       capabilities: { "leads.byCampaign": false },
-      data: demoData(),
+      data: demoData({ now: "2026-10-08T12:00:00.000Z" }),
     }),
   });
 

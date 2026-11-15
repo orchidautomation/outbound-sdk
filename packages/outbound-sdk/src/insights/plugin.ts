@@ -7,14 +7,9 @@ import type { Json } from "../internal/json.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
 import type { OutboundPlugin } from "../internal/outbound/plugins.ts";
 import type { InsightResult, RunOptions } from "./define.ts";
+import type { InsightInputs } from "./inputs.generated.ts";
 import { ENTRIES } from "./registry.ts";
 import type { AnyInsight } from "./registry.ts";
-
-// What a caller writes: the schema's input type, where a field with a
-// default is optional.
-type InputOf<Definition> = Definition extends { readonly given?: infer Given }
-  ? Given
-  : never;
 
 type DataOf<Definition> = Definition extends {
   readonly run: (...args: never[]) => Promise<infer Data>;
@@ -22,10 +17,14 @@ type DataOf<Definition> = Definition extends {
   ? Data
   : never;
 
-/** One method per insight: `outbound.insights.personSummary({ person })`. */
+/**
+ * One method per insight: `outbound.insights.personSummary({ person })`. The
+ * input is the generated `InsightInputs` entry, which is the schema's input
+ * type with each field's default and range in its JSDoc.
+ */
 export type Insights = {
   readonly [Definition in AnyInsight as Definition["key"]]: (
-    input: InputOf<Definition>,
+    input: InsightInputs[Definition["key"]],
     options?: RunOptions
   ) => Promise<InsightResult<DataOf<Definition>>>;
 };

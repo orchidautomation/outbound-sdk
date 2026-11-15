@@ -1,6 +1,6 @@
 checked 2026-10-15 to 2026-11-13
-above: bounced was 16 on 2026-11-11, against an average of 4 over the 14 days with data before it (z = 11.5635).
-below: replied was 7 on 2026-11-08, against an average of 9.7857 over the 14 days with data before it (z = -3.4744).
+above: bounced was 16 on 2026-11-11, against an average of 4 over the 14 days with data before it (z = 11.6).
+below: replied was 7 on 2026-11-08, against an average of 9.8 over the 14 days with data before it (z = -3.5).
 below: replied was 7 on 2026-11-07, against 10 on each of the 14 days with data before it (a flat baseline has no z-score: any other count is flagged).
 sent: 16 of 21 days tested
 replied: 16 of 21 days tested

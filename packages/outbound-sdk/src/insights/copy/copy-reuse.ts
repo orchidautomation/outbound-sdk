@@ -8,7 +8,7 @@ import type { Campaign, Sequence } from "../../internal/entities.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
-import { compareRates, round, total } from "../stats.ts";
+import { compareRates, percent, round, total } from "../stats.ts";
 import type { Interval } from "../stats.ts";
 import {
   campaignsIn,
@@ -247,8 +247,8 @@ const spreadOf = (uses: readonly CopyUse[], minSent: number) => {
   return {
     best: best.campaign,
     finding: real
-      ? `The same copy gets ${best.replyRate} in ${best.campaignName} and ${worst.replyRate} in ${worst.campaignName}; the gap is more than chance, so the audience or the sender differs, not the copy.`
-      : `The same copy gets ${best.replyRate} in ${best.campaignName} and ${worst.replyRate} in ${worst.campaignName}; a gap this size could be chance.`,
+      ? `The same copy gets ${percent(best.replyRate)} in ${best.campaignName} and ${percent(worst.replyRate)} in ${worst.campaignName}; the gap is more than chance, so the audience or the sender differs, not the copy.`
+      : `The same copy gets ${percent(best.replyRate)} in ${best.campaignName} and ${percent(worst.replyRate)} in ${worst.campaignName}; a gap this size could be chance.`,
     spread: round((best.replyRate ?? 0) - (worst.replyRate ?? 0)),
     spreadIsReal: real,
     spreadPValue: test?.pValue ?? null,

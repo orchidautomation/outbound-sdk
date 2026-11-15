@@ -7,7 +7,10 @@ import { createFetch, json, sequence, testAdapter } from "./helpers/http.ts";
 
 const client = () =>
   createOutbound({
-    adapter: memory({ data: demoData(), workspaceId: "client-a" }),
+    adapter: memory({
+      data: demoData({ now: "2026-10-08T12:00:00.000Z" }),
+      workspaceId: "client-a",
+    }),
   });
 
 const failure = async (action: () => unknown): Promise<OutboundError> => {
@@ -184,8 +187,8 @@ test("stats give totals, or one row per day, for a workspace or a campaign", asy
   const total = await outbound.stats();
   assert.equal(total.rows.length, 1);
   assert.equal(total.rows[0]?.scope, "workspace");
-  assert.equal(total.rows[0]?.sent, 150);
-  assert.equal(total.rows[0]?.replied, 8);
+  assert.equal(total.rows[0]?.sent, 295);
+  assert.equal(total.rows[0]?.replied, 14);
   assert.equal(total.rows[0]?.date, null);
   assert.equal(total.meta.evidence, "exact");
 
@@ -193,6 +196,8 @@ test("stats give totals, or one row per day, for a workspace or a campaign", asy
   assert.deepEqual(
     daily.rows.map((row) => [row.date, row.sent, row.replied, row.timezone]),
     [
+      ["2026-09-28", 45, 2, "UTC"],
+      ["2026-09-29", 45, 2, "UTC"],
       ["2026-10-05", 50, 4, "UTC"],
       ["2026-10-06", 40, 3, "UTC"],
     ]

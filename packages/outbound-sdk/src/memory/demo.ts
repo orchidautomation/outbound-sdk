@@ -1,8 +1,33 @@
 import type { MemoryData } from "./data.ts";
 
-const campaigns: MemoryData["campaigns"] = [
+const DAY = 86_400_000;
+
+/** Times counted back from the day `demoData()` is called for. */
+interface Clock {
+  /** `days` before the anchor's day, at `time` (UTC), as an ISO 8601 time. */
+  readonly at: (days: number, time: string) => string;
+  /** `days` before the anchor's day, as `YYYY-MM-DD` (UTC). */
+  readonly day: (days: number) => string;
+}
+
+const clockAt = (now: number): Clock => {
+  const today = Math.floor(now / DAY) * DAY;
+
+  const day = (days: number): string =>
+    new Date(today - days * DAY).toISOString().slice(0, 10);
+
+  return {
+    at: (days, time) => `${day(days)}T${time}:00.000Z`,
+    day,
+  };
+};
+
+const campaigns = ({
+  at,
+  day,
+}: Clock): NonNullable<MemoryData["campaigns"]> => [
   {
-    createdAt: "2026-10-01T09:00:00.000Z",
+    createdAt: at(16, "09:00"),
     id: "cmp_founders",
     name: "Q4 SaaS founders",
     settings: {
@@ -18,7 +43,7 @@ const campaigns: MemoryData["campaigns"] = [
           to: "17:00",
         },
       ],
-      startDate: "2026-10-05",
+      startDate: day(12),
       stopOnAutoReply: false,
       stopOnReply: true,
       trackClicks: false,
@@ -49,7 +74,7 @@ const campaigns: MemoryData["campaigns"] = [
     tags: ["client-a"],
   },
   {
-    createdAt: "2026-09-12T09:00:00.000Z",
+    createdAt: at(26, "09:00"),
     id: "cmp_agencies",
     name: "Agency owners",
     status: "paused",
@@ -65,15 +90,15 @@ const campaigns: MemoryData["campaigns"] = [
   },
 ];
 
-const leads: MemoryData["leads"] = [
+const leads = ({ at }: Clock): NonNullable<MemoryData["leads"]> => [
   {
     campaignId: "cmp_founders",
     company: "Example Co",
-    createdAt: "2026-10-02T10:00:00.000Z",
+    createdAt: at(15, "10:00"),
     email: "person1@example.com",
     engagement: {
-      lastContactedAt: "2026-10-05T14:00:00.000Z",
-      lastRepliedAt: "2026-10-06T09:30:00.000Z",
+      lastContactedAt: at(3, "14:00"),
+      lastRepliedAt: at(2, "09:30"),
       opens: 2,
       replies: 1,
       stepIndex: 0,
@@ -89,7 +114,7 @@ const leads: MemoryData["leads"] = [
   {
     campaignId: "cmp_founders",
     company: "Sample Ltd",
-    createdAt: "2026-10-03T10:00:00.000Z",
+    createdAt: at(14, "10:00"),
     email: "person2@example.com",
     firstName: "Sam",
     id: "lead_2",
@@ -101,7 +126,7 @@ const leads: MemoryData["leads"] = [
   {
     campaignId: "cmp_agencies",
     company: "Demo Agency",
-    createdAt: "2026-09-13T10:00:00.000Z",
+    createdAt: at(25, "10:00"),
     email: "person3@example.com",
     firstName: "Dana",
     id: "lead_3",
@@ -111,7 +136,7 @@ const leads: MemoryData["leads"] = [
   },
 ];
 
-const messages: MemoryData["messages"] = [
+const messages = ({ at }: Clock): NonNullable<MemoryData["messages"]> => [
   {
     body: "Hi Alex, saw your launch.",
     campaignId: "cmp_founders",
@@ -119,7 +144,7 @@ const messages: MemoryData["messages"] = [
     id: "msg_1",
     leadId: "lead_1",
     senderId: "mbx_1",
-    sentAt: "2026-10-05T14:00:00.000Z",
+    sentAt: at(3, "14:00"),
     stepIndex: 0,
     subject: "Quick question",
     threadId: "thr_1",
@@ -134,7 +159,7 @@ const messages: MemoryData["messages"] = [
     isAuto: false,
     leadId: "lead_1",
     senderId: "mbx_1",
-    sentAt: "2026-10-06T09:30:00.000Z",
+    sentAt: at(2, "09:30"),
     subject: "Re: Quick question",
     threadId: "thr_1",
   },
@@ -145,20 +170,20 @@ const messages: MemoryData["messages"] = [
     id: "msg_3",
     leadId: "lead_2",
     senderId: "mbx_2",
-    sentAt: "2026-10-05T14:05:00.000Z",
+    sentAt: at(3, "14:05"),
     stepIndex: 0,
     subject: "Congrats",
     variantKey: "B",
   },
 ];
 
-const senders: MemoryData["senders"] = [
+const senders = ({ at }: Clock): NonNullable<MemoryData["senders"]> => [
   {
     address: "outreach1@example.com",
     campaignIds: ["cmp_founders"],
     dailyLimit: 40,
     health: {
-      checkedAt: "2026-10-06T00:00:00.000Z",
+      checkedAt: at(2, "00:00"),
       connected: true,
       dkim: true,
       dmarc: true,
@@ -175,7 +200,7 @@ const senders: MemoryData["senders"] = [
     campaignIds: ["cmp_founders", "cmp_agencies"],
     dailyLimit: 40,
     health: {
-      checkedAt: "2026-10-06T00:00:00.000Z",
+      checkedAt: at(2, "00:00"),
       connected: true,
       dkim: false,
       dmarc: true,
@@ -190,7 +215,7 @@ const senders: MemoryData["senders"] = [
   },
 ];
 
-const stats: MemoryData["stats"] = [
+const stats = ({ day }: Clock): NonNullable<MemoryData["stats"]> => [
   {
     campaignId: "cmp_founders",
     counts: {
@@ -202,7 +227,7 @@ const stats: MemoryData["stats"] = [
       replied: 4,
       sent: 50,
     },
-    date: "2026-10-05",
+    date: day(3),
   },
   {
     campaignId: "cmp_founders",
@@ -215,7 +240,7 @@ const stats: MemoryData["stats"] = [
       replied: 3,
       sent: 40,
     },
-    date: "2026-10-06",
+    date: day(2),
   },
   {
     campaignId: "cmp_agencies",
@@ -228,36 +253,97 @@ const stats: MemoryData["stats"] = [
       replied: 1,
       sent: 60,
     },
-    date: "2026-10-05",
+    date: day(3),
+  },
+  // The week before, so a seven-day report has a period to compare with.
+  {
+    campaignId: "cmp_founders",
+    counts: {
+      bounced: 1,
+      contacted: 45,
+      delivered: 44,
+      opened: 25,
+      positive: 1,
+      replied: 2,
+      sent: 45,
+    },
+    date: day(10),
+  },
+  {
+    campaignId: "cmp_founders",
+    counts: {
+      bounced: 0,
+      contacted: 45,
+      delivered: 45,
+      opened: 24,
+      positive: 0,
+      replied: 2,
+      sent: 45,
+    },
+    date: day(9),
+  },
+  {
+    campaignId: "cmp_agencies",
+    counts: {
+      bounced: 2,
+      contacted: 55,
+      delivered: 53,
+      opened: 20,
+      positive: 1,
+      replied: 2,
+      sent: 55,
+    },
+    date: day(10),
   },
 ];
 
+export interface DemoDataOptions {
+  /**
+   * The moment the data is built for: every date is counted back from its
+   * day. Defaults to now. Pass a fixed time for output that never changes.
+   */
+  readonly now?: Date | number | string | undefined;
+}
+
 /**
  * A small made-up dataset for demos and docs: two campaigns, two mailboxes,
- * three leads, two days of stats, and one list, tag, webhook and block list
- * entry. No real people or companies.
+ * three leads, three messages, two weeks of stats, and one list, tag, webhook
+ * and block list entry. No real people or companies. Its dates sit in the two
+ * weeks before `now`, so the reports over the last seven or fourteen days
+ * find data on any day it is called.
  */
-export const demoData = (): MemoryData => ({
-  blocklist: [{ id: "blk_1", value: "competitor.example" }],
-  campaigns,
-  lists: [
-    {
-      createdAt: "2026-09-30T09:00:00.000Z",
-      id: "lst_founders",
-      name: "SaaS founders",
-    },
-  ],
-  tags: [{ description: "Work for client A", id: "tag_a", name: "client-a" }],
-  webhooks: [
-    {
-      events: ["reply_received"],
-      id: "wh_1",
-      name: "Replies",
-      url: "https://hooks.example.com/replies",
-    },
-  ],
-  leads,
-  messages,
-  senders,
-  stats,
-});
+export const demoData = (options: DemoDataOptions = {}): MemoryData => {
+  const now =
+    options.now === undefined ? Date.now() : new Date(options.now).getTime();
+
+  if (Number.isNaN(now)) {
+    throw new TypeError(`demoData: now is not a date: ${String(options.now)}`);
+  }
+
+  const clock = clockAt(now);
+
+  return {
+    blocklist: [{ id: "blk_1", value: "competitor.example" }],
+    campaigns: campaigns(clock),
+    leads: leads(clock),
+    lists: [
+      {
+        createdAt: clock.at(17, "09:00"),
+        id: "lst_founders",
+        name: "SaaS founders",
+      },
+    ],
+    messages: messages(clock),
+    senders: senders(clock),
+    stats: stats(clock),
+    tags: [{ description: "Work for client A", id: "tag_a", name: "client-a" }],
+    webhooks: [
+      {
+        events: ["reply_received"],
+        id: "wh_1",
+        name: "Replies",
+        url: "https://hooks.example.com/replies",
+      },
+    ],
+  };
+};

@@ -254,3 +254,7 @@ Two parameters are left out of the native catalog because they carry or return s
 | `GET` | `/smart-server/` | SmartServers: The account's dedicated sending IPs, with the campaigns on each on request | native | `smartServers` |
 | `GET` | `/smart-server/all/campaign/{campaign_id}` | SmartServers: The dedicated IP attached to a campaign; only one is returned when it has several | native | `smartServersForCampaign` |
 | `DELETE` | `/smart-server/mapping/campaign/{campaign_id}` | SmartServers: Unassign SmartServers from Campaign | write |  |
+
+## Per-lead reply counts and automatic replies
+
+The adapter reads no per-lead reply count: `engagement` is `null` on every Smartlead lead, because no documented endpoint returns the counts in a shape that can be mapped. `hotLeads` scores Smartlead leads from the interest category and the lead's status only, so an automatic reply cannot add reply points. A lead in the Out Of Office category has `interestCategory: "ooo"` and earns no reply points for its replied status.

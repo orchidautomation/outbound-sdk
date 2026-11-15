@@ -6,7 +6,7 @@ import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { SenderHealth } from "../../internal/entities-account.ts";
 import type { Sender } from "../../internal/entities.ts";
 import { defineInsight } from "../define.ts";
-import { rate } from "../stats.ts";
+import { percent, rate, spoken } from "../stats.ts";
 import { failingDns, readCapped, warmupSpam } from "./read.ts";
 
 const input = z.object({
@@ -105,7 +105,7 @@ const healthReasons = (health: SenderHealth, bars: Bars): Reason[] => {
       ? [
           [
             "warmup_spam_high",
-            `${spam.spam} of ${spam.sent} warmup emails landed in spam (${spamRate}, over ${bars.maxSpamRate})`,
+            `${spam.spam} of ${spam.sent} warmup emails landed in spam (${percent(spamRate)}, over ${percent(bars.maxSpamRate)})`,
           ] as const,
         ]
       : []),
@@ -124,7 +124,7 @@ const mailboxReasons = (
     ? [
         [
           "score_low",
-          `Warmup score ${score} is under ${bars.minScore}`,
+          `Warmup score ${spoken(score)} is under ${spoken(bars.minScore)}`,
         ] as const,
       ]
     : []),

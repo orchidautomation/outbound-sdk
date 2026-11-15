@@ -124,7 +124,7 @@ test("variant_test names a winner only when the gap is more than chance", async 
   ]);
   assert.equal(
     first?.reason,
-    "Variant A (0.06) beats every other variant by more than chance at alpha 0.05."
+    "Variant A (6%) beats every other variant by more than chance at alpha 0.05."
   );
 
   // C's 0.075 is the highest raw rate, but 40 sends are not compared.
@@ -144,7 +144,7 @@ test("variant_test names a winner only when the gap is more than chance", async 
   assert.match(second?.reason ?? "", /1 variant\(s\) with too little data/u);
   assert.equal(
     third?.reason,
-    "Variant B (0.03) leads variant A (0.02), but a gap this size could be chance."
+    "Variant B (3%) leads variant A (2%), but a gap this size could be chance."
   );
 });
 

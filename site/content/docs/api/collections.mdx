@@ -166,9 +166,12 @@ What a vendor matches on is an adapter fact. The [adapter pages](/docs/adapters)
 | `results` | `{ id, value }` for each record that was read. `value` is the record with its `meta`. |
 | `errors` | `{ id, error }` for each that was not. `error` is an `OutboundError`. |
 
+`results` is not a list of records the way `list().items` is. Each entry is a pair, and the record is under `value`: write `for (const { value: lead } of results)`, not `for (const lead of results)`.
+
 - It does not throw for a record that fails. A missing id, a rate limit and a vendor error all land in `errors`. Check `errors.length` before you treat the batch as whole.
 - It does throw, before any request, when the adapter cannot read that kind of record at all.
 - `concurrency` is how many records are fetched at once. The default is 4. The rate budget still applies to every request.
+- `value.meta.requests` is a running count for the whole batch at the moment that record was read, not that record's own cost. To know what a batch cost, take the largest, never the sum.
 - The per-call options cover the whole batch. `maxRequests: 10` is ten requests for all the ids together, and the ids past the budget come back in `errors` as `RateLimited`.
 
 ## Related

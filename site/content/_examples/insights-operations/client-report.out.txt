@@ -5,7 +5,7 @@ fix_bounces: Fix the bounces of Ecommerce ops: its bounce rate is 4.6% (26 of 56
 add_leads: Add leads to SaaS founders: 100 leads remain, about 2 days of sending.
 reply_rate_fell: Find out what changed: the reply rate fell from 6.5% to 4.5%, more than chance would give.
 review_campaign: Review the copy and the audience of Ecommerce ops: it has the weakest reply rate, 2% (7 of 350).
-check_anomaly: Check what happened on 2026-11-11: bounced was 16 on 2026-11-11, against an average of 4 over the 14 days with data before it (z = 11.5635).
-check_anomaly: Check what happened on 2026-11-08: replied was 7 on 2026-11-08, against an average of 9.7857 over the 14 days with data before it (z = -3.4744).
+check_anomaly: Check what happened on 2026-11-11: bounced was 16 on 2026-11-11, against an average of 4 over the 14 days with data before it (z = 11.6).
+check_anomaly: Check what happened on 2026-11-08: replied was 7 on 2026-11-08, against an average of 9.8 over the 14 days with data before it (z = -3.5).
 check_anomaly: Check what happened on 2026-11-07: replied was 7 on 2026-11-07, against 10 on each of the 14 days with data before it (a flat baseline has no z-score: any other count is flagged).
 complete: true left out: []

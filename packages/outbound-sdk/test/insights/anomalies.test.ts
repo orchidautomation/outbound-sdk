@@ -65,7 +65,7 @@ test("anomalies returns the days that broke from their baseline, newest first, a
       date: "2026-11-13",
       direction: "above",
       finding:
-        "positive was 30 on 2026-11-13, against an average of 1.5 over the 6 days with data before it (z = 52.0336).",
+        "positive was 30 on 2026-11-13, against an average of 1.5 over the 6 days with data before it (z = 52).",
       judgedBy: "z_score",
       metric: "positive",
       value: 30,
@@ -79,7 +79,7 @@ test("anomalies returns the days that broke from their baseline, newest first, a
       date: "2026-11-10",
       direction: "below",
       finding:
-        "sent was 50 on 2026-11-10, against an average of 100.1429 over the 7 days with data before it (z = -19.2155).",
+        "sent was 50 on 2026-11-10, against an average of 100.1 over the 7 days with data before it (z = -19.2).",
       judgedBy: "z_score",
       metric: "sent",
       value: 50,

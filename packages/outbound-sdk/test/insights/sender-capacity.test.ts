@@ -126,7 +126,7 @@ test("sender_capacity adds up capacity, ask and recent sends, and names the camp
   assert.equal(data.uncheckedCampaigns, 2);
   assert.equal(
     data.finding,
-    "The 3 active senders that report a daily limit can send 100 a day; 1 more reports no limit and is not counted. Active campaigns ask for 200, which is 100 more than that. 14.2857 a day were sent on average over the last 7 days."
+    "The 3 active senders that report a daily limit can send 100 a day; 1 more reports no limit and is not counted. Active campaigns ask for 200, which is 100 more than that. 14.3 a day were sent on average over the last 7 days."
   );
   assert.equal(result.meta.complete, true);
   assert.deepEqual(result.meta.notes, []);
@@ -281,7 +281,7 @@ test("sender_capacity leaves out the ask and the shortfalls when settings or cam
   ]);
   assert.equal(
     noSettings.data.finding,
-    "The 3 active senders that report a daily limit can send 100 a day; 1 more reports no limit and is not counted. 14.2857 a day were sent on average over the last 7 days."
+    "The 3 active senders that report a daily limit can send 100 a day; 1 more reports no limit and is not counted. 14.3 a day were sent on average over the last 7 days."
   );
 
   const noCampaignSenders = await single(DATA, {

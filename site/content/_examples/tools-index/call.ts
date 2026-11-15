@@ -15,8 +15,8 @@ console.log(JSON.stringify(overview, null, 2));
 
 const trend = await tools.get("campaign_trend")?.call({
   campaign: "cmp_founders",
-  from: "2026-10-01",
-  to: "2026-10-31",
+  from: "2026-11-01",
+  to: "2026-11-30",
 });
 
 console.log(JSON.stringify(trend, null, 2));

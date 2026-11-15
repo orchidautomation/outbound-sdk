@@ -20,7 +20,7 @@
           "Warmup is off",
           "The vendor reports no warmup score",
           "DKIM, DMARC failing",
-          "12 of 100 warmup emails landed in spam (0.12, over 0.1)"
+          "12 of 100 warmup emails landed in spam (12%, over 10%)"
         ],
         "kind": "mailbox",
         "name": null,
@@ -42,7 +42,7 @@
         "findings": [
           "Warmup score 72 is under 90",
           "DKIM, DMARC failing",
-          "18 of 100 warmup emails landed in spam (0.18, over 0.1)"
+          "18 of 100 warmup emails landed in spam (18%, over 10%)"
         ],
         "kind": "mailbox",
         "name": null,

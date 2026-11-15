@@ -23,7 +23,7 @@ export interface ProviderInfo {
   readonly docsUrl: string | null;
 }
 
-export const providers: readonly ProviderInfo[] = [
+const CATALOG = [
   {
     channels: ["email"],
     docsUrl: "https://developer.instantly.ai/",
@@ -93,7 +93,30 @@ export const providers: readonly ProviderInfo[] = [
     name: "In-memory (tests and demos)",
     note: "Holds data in memory. For tests and demos; there is no vendor behind it.",
   },
-];
+] as const satisfies readonly ProviderInfo[];
+
+/** The id of a provider in the catalog: `instantly`, `smartlead`, `heyreach` or `memory`. */
+export type ProviderId = (typeof CATALOG)[number]["id"];
+
+export const providers: readonly ProviderInfo[] = CATALOG;
+
+const IDS: ReadonlySet<string> = new Set(
+  providers.map((provider) => provider.id)
+);
+
+/**
+ * Whether a value is a provider id from the catalog, for checking a name that
+ * arrives as a string from a flag or an environment variable. A provider
+ * added to the catalog is accepted without a change here.
+ *
+ * ```ts
+ * if (value === ALL_PROVIDERS || isProviderId(value)) {
+ *   await fromEnv({ provider: value });
+ * }
+ * ```
+ */
+export const isProviderId = (value: unknown): value is ProviderId =>
+  typeof value === "string" && IDS.has(value);
 
 export const findProvider = (id: string): ProviderInfo | undefined =>
   providers.find((provider) => provider.id === id);

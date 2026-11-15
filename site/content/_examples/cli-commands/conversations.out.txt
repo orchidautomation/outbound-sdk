@@ -13,7 +13,7 @@ $ outbound replies --category positive --limit 1
     "channel": "email",
     "leadRef": "memory:default:lead_1",
     "senderRef": "memory:default:mbx_1",
-    "sentAt": "2026-10-06T09:30:00.000Z",
+    "sentAt": "2026-11-12T09:30:00.000Z",
     "stepIndex": null,
     "subject": "Re: Quick question",
     "threadId": "thr_1",
@@ -26,8 +26,8 @@ $ outbound replies --category positive --limit 1
   }
 ]
 
-$ outbound replies --campaign cmp_founders --since 2026-10-06T00:00:00Z --bodies --compact
-[{"provider":"memory","raw":null,"ref":"memory:default:msg_2","schemaVersion":1,"sourceId":"msg_2","workspaceId":"default","bodyHtml":null,"bodyText":"Thanks, happy to chat next week.","campaignRef":"memory:default:cmp_founders","channel":"email","leadRef":"memory:default:lead_1","senderRef":"memory:default:mbx_1","sentAt":"2026-10-06T09:30:00.000Z","stepIndex":null,"subject":"Re: Quick question","threadId":"thr_1","variantKey":null,"category":"positive","categorySource":"vendor","direction":"in","isAuto":false,"unread":null}]
+$ outbound replies --campaign cmp_founders --since 2026-11-12T00:00:00Z --bodies --compact
+[{"provider":"memory","raw":null,"ref":"memory:default:msg_2","schemaVersion":1,"sourceId":"msg_2","workspaceId":"default","bodyHtml":null,"bodyText":"Thanks, happy to chat next week.","campaignRef":"memory:default:cmp_founders","channel":"email","leadRef":"memory:default:lead_1","senderRef":"memory:default:mbx_1","sentAt":"2026-11-12T09:30:00.000Z","stepIndex":null,"subject":"Re: Quick question","threadId":"thr_1","variantKey":null,"category":"positive","categorySource":"vendor","direction":"in","isAuto":false,"unread":null}]
 
 $ outbound thread thr_1 --bodies
 {
@@ -46,7 +46,7 @@ $ outbound thread thr_1 --bodies
       "channel": "email",
       "leadRef": "memory:default:lead_1",
       "senderRef": "memory:default:mbx_1",
-      "sentAt": "2026-10-05T14:00:00.000Z",
+      "sentAt": "2026-11-11T14:00:00.000Z",
       "stepIndex": 0,
       "subject": "Quick question",
       "threadId": "thr_1",
@@ -66,7 +66,7 @@ $ outbound thread thr_1 --bodies
       "channel": "email",
       "leadRef": "memory:default:lead_1",
       "senderRef": "memory:default:mbx_1",
-      "sentAt": "2026-10-06T09:30:00.000Z",
+      "sentAt": "2026-11-12T09:30:00.000Z",
       "stepIndex": null,
       "subject": "Re: Quick question",
       "threadId": "thr_1",

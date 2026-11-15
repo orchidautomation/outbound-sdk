@@ -1,5 +1,5 @@
 active: [ 'Q4 SaaS founders' ]
-added since 3 October: [ 'person2@example.com' ]
+added since 31 October: [ 'person2@example.com' ]
 senders on cmp_agencies: [ 'outreach2@example.com' ]
 thr_1: [ 'out', 'in' ]
 SaaS founders | client-a | competitor.example | [ 'reply_received' ] | default

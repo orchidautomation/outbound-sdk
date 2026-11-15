@@ -8,7 +8,7 @@ import { sumCounts } from "../../internal/metrics.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
-import { compareRates, pText, round } from "../stats.ts";
+import { compareRates, percent, pText, round } from "../stats.ts";
 import type { ProportionTest } from "../stats.ts";
 import {
   descending,
@@ -16,7 +16,6 @@ import {
   lastDays,
   listFields,
   partialNote,
-  percent,
   ratesAcross,
   ratesOf,
   readCampaigns,

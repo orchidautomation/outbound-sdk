@@ -4,3 +4,5 @@ false
 ok: cmp_agencies Agency owners
 ok: cmp_founders Q4 SaaS founders
 failed: cmp_gone NotFound - Campaign cmp_gone was not found
+lead_1 Alex person1@example.com
+lead_2 Sam person2@example.com

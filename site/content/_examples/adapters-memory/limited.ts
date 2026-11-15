@@ -1,20 +1,20 @@
 import { createOutbound, OutboundError } from "outbound-sdk";
 import { memory } from "outbound-sdk/memory";
+import type { MemoryOptions } from "outbound-sdk/memory";
 
 import { seed } from "./seed.ts";
 
 // The same data behind an adapter that declares less, to exercise the code
 // path a narrower vendor would take.
-const outbound = createOutbound({
-  adapter: memory({
-    capabilities: {
-      "campaigns.settings": false,
-      "campaigns.status": "client",
-      "stats.byStep": false,
-    },
-    data: seed,
-    name: "narrowtool",
-  }),
+const narrower = (capabilities: MemoryOptions["capabilities"]) =>
+  createOutbound({
+    adapter: memory({ capabilities, data: seed, name: "narrowtool" }),
+  });
+
+const outbound = narrower({
+  "campaigns.settings": false,
+  "campaigns.status": "client",
+  "stats.byStep": false,
 });
 
 const attempt = async <Result>(label: string, read: () => Promise<Result>) => {

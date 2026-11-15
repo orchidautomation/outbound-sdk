@@ -14,7 +14,7 @@ const campaigns = (count: number): MemoryData => ({
 });
 
 const client = (
-  data: MemoryData = demoData(),
+  data: MemoryData = demoData({ now: "2026-10-08T12:00:00.000Z" }),
   capabilities?: CapabilityDeclaration,
   pageSize = 50
 ) =>
@@ -251,10 +251,10 @@ test("filters in the wrapper and marks the result derived when the vendor cannot
   );
   assert.equal(paused.meta.evidence, "derived");
 
-  const leads = await client(demoData(), {
+  const leads = await client(demoData({ now: "2026-10-08T12:00:00.000Z" }), {
     "leads.since": "client",
   }).leads.list({
-    since: "2026-10-03T00:00:00Z",
+    since: "2026-09-24T00:00:00Z",
   });
 
   assert.deepEqual(
@@ -285,7 +285,7 @@ test("refuses an unsupported filter before any adapter call", async () => {
 });
 
 test("an adapter that declares nothing supports only campaigns", async () => {
-  const bare = memory({ data: demoData() });
+  const bare = memory({ data: demoData({ now: "2026-10-08T12:00:00.000Z" }) });
 
   const outbound = createOutbound({
     adapter: { ...bare, capabilities: undefined },
@@ -308,7 +308,10 @@ test("an adapter that declares nothing supports only campaigns", async () => {
 });
 
 test("rejects malformed input as Invalid before any adapter call", async () => {
-  const spy = counting(memory({ data: demoData() }));
+  const spy = counting(
+    memory({ data: demoData({ now: "2026-10-08T12:00:00.000Z" }) })
+  );
+
   const outbound = createOutbound({ adapter: spy.adapter });
 
   for (const action of [
@@ -328,7 +331,7 @@ test("rejects malformed input as Invalid before any adapter call", async () => {
 });
 
 test("an adapter that returns a malformed record fails loudly", async () => {
-  const base = memory({ data: demoData() });
+  const base = memory({ data: demoData({ now: "2026-10-08T12:00:00.000Z" }) });
 
   const outbound = createOutbound({
     adapter: {
@@ -349,7 +352,7 @@ test("an adapter that returns a malformed record fails loudly", async () => {
 });
 
 test("an unexpected adapter exception becomes an OutboundError with the cause kept", async () => {
-  const base = memory({ data: demoData() });
+  const base = memory({ data: demoData({ now: "2026-10-08T12:00:00.000Z" }) });
   const cause = new TypeError("cannot read properties of undefined");
 
   const outbound = createOutbound({

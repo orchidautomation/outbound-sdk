@@ -1,4 +1,4 @@
-Agency owners: 21 of 280 sends bounced (0.075), over the 0.03 threshold.
+Agency owners: 21 of 280 sends bounced (7.5%), over the 3% threshold.
   95% interval: 0.0496 to 0.1119
   dee@send-two.example.com: 9 of 90 (0.1)
   cy@send-two.example.com: 12 of 150 (0.08)

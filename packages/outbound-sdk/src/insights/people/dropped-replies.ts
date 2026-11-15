@@ -4,11 +4,16 @@ import { z } from "zod";
 
 import { mapConcurrent } from "../../internal/concurrency.ts";
 import { replyCategorySchema } from "../../internal/entities.ts";
-import type { Message, Reply } from "../../internal/entities.ts";
+import type {
+  Campaign,
+  Lead,
+  Message,
+  Reply,
+} from "../../internal/entities.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { round } from "../stats.ts";
-import { readCapped } from "./read.ts";
+import { nameOf, readByRef, readCapped } from "./read.ts";
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -57,7 +62,13 @@ export interface DroppedReply {
   /** The oldest reply in the conversation that got no answer. */
   readonly reply: string;
   readonly lead: string | null;
+  /** The person's first and last name. `null` when the lead could not be read or has neither. */
+  readonly name: string | null;
+  readonly email: string | null;
+  readonly linkedinUrl: string | null;
   readonly campaign: string | null;
+  /** The campaign's name. `null` when the reply names no campaign or it could not be read. */
+  readonly campaignName: string | null;
   readonly channel: "email" | "linkedin";
   readonly provider: string;
   readonly category: string;
@@ -181,12 +192,16 @@ const toDropped = (
   return [
     {
       campaign: first.campaignRef,
+      campaignName: null,
       category: first.category,
       channel: first.channel,
       checkedBy: by,
       finding: `${/^[aeiou]/u.test(first.category) ? "An" : "A"} ${first.category} reply has waited ${Math.floor(hoursWaiting)} hours with nothing sent after it.`,
       hoursWaiting,
+      email: null,
       lead: first.leadRef,
+      linkedinUrl: null,
+      name: null,
       provider: first.provider,
       receivedAt: first.sentAt,
       reply: first.ref,
@@ -194,6 +209,61 @@ const toDropped = (
       unansweredReplies: open.length,
     },
   ];
+};
+
+const refsOf = (refs: readonly (string | null)[]): string[] => [
+  ...new Set(refs.flatMap((ref) => (ref === null ? [] : [ref]))),
+];
+
+/**
+ * Fills in who is waiting and which campaign they are in. Reads only the
+ * leads and campaigns of the dropped replies: one request each.
+ */
+const named = async (
+  context: InsightContext,
+  dropped: readonly DroppedReply[]
+): Promise<DroppedReply[]> => {
+  const { outbound } = context;
+  const readLeads = outbound.capabilities["leads.get"];
+  const leadRefs = readLeads ? refsOf(dropped.map((each) => each.lead)) : [];
+
+  if (!readLeads && dropped.length > 0) {
+    context.note(
+      "This tool cannot read one lead (leads.get), so name, email and linkedinUrl are null."
+    );
+  }
+
+  const [leads, campaigns] = await Promise.all([
+    readByRef<Lead>(
+      context,
+      leadRefs,
+      (refs) => outbound.leads.getMany(refs),
+      "lead(s)",
+      "names are null"
+    ),
+    readByRef<Campaign>(
+      context,
+      refsOf(dropped.map((each) => each.campaign)),
+      (refs) => outbound.campaigns.getMany(refs),
+      "campaign(s)",
+      "names are null"
+    ),
+  ]);
+
+  return dropped.map((each) => {
+    const lead = each.lead === null ? undefined : leads.get(each.lead);
+
+    const campaign =
+      each.campaign === null ? undefined : campaigns.get(each.campaign);
+
+    return {
+      ...each,
+      campaignName: campaign?.name ?? null,
+      email: lead?.email ?? null,
+      linkedinUrl: lead?.linkedinUrl ?? null,
+      name: lead === undefined ? null : nameOf(lead),
+    };
+  });
 };
 
 const readReplies = (
@@ -221,7 +291,7 @@ const readReplies = (
 
 export const droppedReplies = defineInsight({
   description:
-    "Replies from prospects that nobody answered. Reads the replies since a date (14 days before now by default), keeps the categories that need an answer, and for each conversation reads its thread, or the lead's timeline when there is no thread, and reports it as dropped when nothing was sent after the reply and it has waited longer than older_than_hours. Returns the dropped replies longest waiting first with hours waiting, category, campaign and lead. A reply that could not be checked is counted in totals.unchecked, never reported as dropped. Costs one request per page of replies plus one per conversation checked, so at most about max_replies requests.",
+    "Replies from prospects that nobody answered. Reads the replies since a date (14 days before now by default), keeps the categories that need an answer, and for each conversation reads its thread, or the lead's timeline when there is no thread, and reports it as dropped when nothing was sent after the reply and it has waited longer than older_than_hours. Returns the dropped replies longest waiting first with hours waiting, category, the campaign and its name, and the lead with their name, email and LinkedIn profile. A reply that could not be checked is counted in totals.unchecked, never reported as dropped. Costs one request per page of replies, one per conversation checked, and one per lead and per campaign among the dropped replies to name them, so at most about three times max_replies requests.",
   inputSchema: input,
   key: "droppedReplies",
   name: "dropped_replies",
@@ -298,8 +368,10 @@ export const droppedReplies = defineInsight({
       tooRecent += found.length - old.length;
     }
 
+    const withNames = await named(context, dropped);
+
     const answer: DroppedReplies = {
-      dropped: dropped.toSorted(
+      dropped: withNames.toSorted(
         (left, right) =>
           right.hoursWaiting - left.hoursWaiting ||
           left.reply.localeCompare(right.reply)

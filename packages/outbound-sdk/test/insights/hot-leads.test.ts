@@ -161,10 +161,13 @@ test("hot_leads ranks leads by a score whose parts are returned, and leaves out 
   assert.equal(data.leads[4]?.replies, null);
   assert.equal(data.leads[4]?.reason, "replied 1 time(s).");
   assert.deepEqual(data.totals, {
+    autoReplied: 0,
     // h8 unsubscribed and h9 bounced.
     excluded: 2,
+    fromReplies: 0,
     hot: 5,
     leadsRead: 10,
+    moreLeadsExist: false,
     // The five above and h10, whose counts are all a known 0.
     scored: 6,
     // h6 and h7.
@@ -247,7 +250,16 @@ test("hot_leads returns nobody when there are no leads", async () => {
 
   assert.deepEqual(result.data, {
     leads: [],
-    totals: { excluded: 0, hot: 0, leadsRead: 0, scored: 0, withoutData: 0 },
+    totals: {
+      autoReplied: 0,
+      excluded: 0,
+      fromReplies: 0,
+      hot: 0,
+      leadsRead: 0,
+      moreLeadsExist: false,
+      scored: 0,
+      withoutData: 0,
+    },
   });
   assert.equal(result.meta.complete, true);
 });
@@ -335,9 +347,12 @@ test("hot_leads ranks leads from two tools together", async () => {
     [["mailtool:agency:l1", 60]]
   );
   assert.deepEqual(result.data.totals, {
+    autoReplied: 0,
     excluded: 0,
+    fromReplies: 0,
     hot: 1,
     leadsRead: 5,
+    moreLeadsExist: false,
     scored: 1,
     withoutData: 4,
   });

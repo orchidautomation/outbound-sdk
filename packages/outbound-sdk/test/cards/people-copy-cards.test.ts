@@ -206,12 +206,16 @@ test("suppression_check lists blocked leads still in a campaign", () => {
 const dropped = (count: number, repliesRead: number): DroppedReplies => ({
   dropped: Array.from({ length: count }, (_, index) => ({
     campaign: "c1",
+    campaignName: index === 0 ? "Founders Q4" : null,
     category: "interested",
     channel: "email" as const,
     checkedBy: "thread" as const,
     finding: "",
+    email: index === 0 ? null : `person${index}@example.com`,
     hoursWaiting: 72 - index * 60,
     lead: `l${index}`,
+    linkedinUrl: null,
+    name: index === 0 ? "Jordan Example" : null,
     provider: "instantly",
     receivedAt: "2026-11-10T10:00:00.000Z",
     reply: `r${index}`,
@@ -236,8 +240,8 @@ test("dropped_replies leads with the longest wait", () => {
   includes(
     read(cardFor("dropped_replies", insight(dropped(2, 9)))),
     "🔴 2 replies waiting. The longest has waited 3d.",
-    "l0   | c1       | Interested | 3d",
-    "l1   | c1       | Interested | 12h",
+    "Jordan Example      | Founders Q4 | Interested | 3d",
+    "person1@example.com | c1          | Interested | 12h",
     "Answered: 5"
   );
   includes(
@@ -273,7 +277,16 @@ test("hot_leads ranks who to call, and falls back from name to email", () => {
       lead(null, "sam@example.com", 40),
       lead(null, null, 20),
     ],
-    totals: { excluded: 0, hot: 3, leadsRead: 50, scored: 12, withoutData: 0 },
+    totals: {
+      autoReplied: 0,
+      excluded: 0,
+      fromReplies: 0,
+      hot: 3,
+      leadsRead: 50,
+      moreLeadsExist: false,
+      scored: 12,
+      withoutData: 0,
+    },
   };
 
   includes(
@@ -288,6 +301,16 @@ test("hot_leads ranks who to call, and falls back from name to email", () => {
       cardFor("hot_leads", insight({ ...hot, leads: [] } satisfies HotLeads))
     ),
     "No lead scores as hot yet."
+  );
+
+  const capped = {
+    ...hot,
+    totals: { ...hot.totals, fromReplies: 2, moreLeadsExist: true },
+  } satisfies HotLeads;
+
+  includes(
+    read(cardFor("hot_leads", insight(capped))),
+    "🟡 Stopped at 50 leads read; more exist and were not scored, except 2 leads found through recent replies."
   );
 });
 

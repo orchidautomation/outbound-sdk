@@ -24,3 +24,11 @@ for (const { id, value } of results) {
 for (const { error, id } of errors) {
   console.log("failed:", id, error.code, "-", error.message);
 }
+
+// `results` holds { id, value } pairs, not records as `list().items` does.
+// The record is under `value`.
+const leads = await outbound.leads.getMany(["lead_1", "lead_2"]);
+
+for (const { id, value: lead } of leads.results) {
+  console.log(id, lead.firstName, lead.email);
+}

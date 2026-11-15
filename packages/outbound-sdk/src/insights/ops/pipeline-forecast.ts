@@ -6,11 +6,10 @@ import { z } from "zod";
 import type { Campaign, Lead, LeadStatus } from "../../internal/entities.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
-import { round, total } from "../stats.ts";
+import { percent, round, spoken, total } from "../stats.ts";
 import {
   labelOf,
   lastDays,
-  percent,
   ratesOf,
   readDaily,
   readTotals,
@@ -132,7 +131,7 @@ const describe = (
 
   return forecast.expected === null
     ? `${leads}; replies cannot be estimated because the vendor reports no reply rate yet.`
-    : `${leads}; expect about ${forecast.expected} replies (between ${forecast.low} and ${forecast.high}). This is an estimate.`;
+    : `${leads}; expect about ${spoken(forecast.expected)} replies (between ${spoken(forecast.low)} and ${spoken(forecast.high)}). This is an estimate.`;
 };
 
 /** Reads one campaign's leads, totals and recent pace, and projects what is left. */

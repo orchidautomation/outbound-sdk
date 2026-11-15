@@ -200,13 +200,13 @@ Replies from prospects that nobody answered, longest waiting first.
 
 `data` (`DroppedReplies`):
 
-- `dropped`: one entry per conversation, with `reply` (the oldest unanswered reply), `lead`, `campaign`, `channel`, `provider`, `category`, `subject`, `receivedAt`, `hoursWaiting`, `unansweredReplies`, `checkedBy` (`thread` or `timeline`) and a `finding` sentence.
+- `dropped`: one entry per conversation, with `reply` (the oldest unanswered reply), `lead` and the person's `name`, `email` and `linkedinUrl`, `campaign` and its `campaignName`, `channel`, `provider`, `category`, `subject`, `receivedAt`, `hoursWaiting`, `unansweredReplies`, `checkedBy` (`thread` or `timeline`) and a `finding` sentence.
 - `totals`: `repliesRead`, `skippedByCategory`, `skippedAuto`, `conversations`, `answered`, `dropped`, `tooRecent` and `unchecked`.
 - `since` and `olderThanHours`: what was used.
 
 - **Needs:** `replies.list`. To check a conversation it also needs `messages.list` with `messages.byThread` or `leads.timeline`.
-- **Costs:** one request per page of replies, plus one per conversation checked. At most about `max_replies` requests.
-- **Notes it can add:** the adapter cannot filter replies by date, so the newest were read and filtered here; the adapter can read neither a conversation nor a timeline, so no reply could be checked; a cap was reached.
+- **Costs:** one request per page of replies, one per conversation checked, and one read of each listed lead and campaign to name them. About `max_replies` requests plus two per listed reply.
+- **Notes it can add:** the adapter cannot filter replies by date, so the newest were read and filtered here; the adapter cannot read one lead, so the names are `null`; a lead or campaign could not be read, so its names are `null`; the adapter can read neither a conversation nor a timeline, so no reply could be checked; a cap was reached.
 - **Does not:** report a reply it could not check as dropped. Those are counted in `totals.unchecked`. "Answered" means a message was sent after the reply in the same conversation. It does not read what the message said.
 
 <include meta='title="dropped-replies.ts"'>
@@ -235,7 +235,7 @@ Who to call first: leads ranked by a score built from what the vendor reports.
 | --- | --- | --- | --- |
 | `campaign` | `null` | a campaign ref | Rank one campaign's leads. `null` ranks every lead the adapter lists. |
 | `limit` | 20 | 1 to 500 | How many leads to return. |
-| `max_leads` | 500 | 1 to 20,000 | The most leads to read and score. |
+| `max_leads` | 500 | 1 to 20,000 | The most leads to read and score. When more exist, the leads behind recent replies are read as well. |
 | `positive_labels` | `Interested`, `Meeting Booked`, `Meeting Completed` | at least 1 character each | Interest labels that count as positive. |
 | `weight_interest` | 50 | 0 or more | Points for carrying a positive interest label. |
 | `weight_reply` | 10 | 0 or more | Points for each reply, up to `count_cap`. |
@@ -248,10 +248,14 @@ Who to call first: leads ranked by a score built from what the vendor reports.
 `data` (`HotLeads`):
 
 - `leads`: highest score first, only leads that scored above 0. Each has `lead`, `email`, `linkedinUrl`, `name`, `title`, `company`, `campaign`, `status`, `interest`, `score`, `parts` (the points per signal: `interest`, `replies`, `clicks`, `opens`, `recency`), the raw `replies`, `clicks` and `opens`, `lastRepliedAt` and a `reason` sentence.
-- `totals`: `leadsRead`, `scored`, `hot`, `withoutData` and `excluded`.
+- `totals`: `leadsRead`, `scored`, `hot`, `withoutData`, `excluded`, `moreLeadsExist` (`true` when `max_leads` stopped the listing with leads left unscored), `fromReplies` (leads past the cap read because they replied) and `autoReplied` (leads labelled out-of-office, whose replies earned nothing).
 
-- **Needs:** `leads.list`, or `leads.byCampaign` when `campaign` is given. Without `campaign` on an adapter that cannot list every lead it is `Unsupported`.
-- **Costs:** one request per page of leads read. `max_leads` sets the ceiling.
+A lead listing comes in the vendor's order, usually the order leads were added, not by engagement. So when `max_leads` stops it with more leads left, `hotLeads` also reads up to 100 replies from the last `recency_days` days and reads the lead behind each one the listing missed, at most `limit` of them. Engaged leads past the cap are still ranked; the cold ones past it are not, and `moreLeadsExist` says so in the answer itself.
+
+A lead the vendor labels out-of-office (`interestCategory` is `ooo`, or, where the vendor gives no category, an interest label that reads "out of office") earns no reply or recency points and no "replied" reason: a vendor's per-lead reply count may include automatic replies. [Coverage](/docs/coverage) says, per vendor, what is known about that count.
+
+- **Needs:** `leads.list`, or `leads.byCampaign` when `campaign` is given. Without `campaign` on an adapter that cannot list every lead it is `Unsupported`. Looking past the cap also needs `replies.list` and `leads.get`; without them the answer says `moreLeadsExist` and a note says the replied leads were not looked for.
+- **Costs:** one request per page of leads read. `max_leads` sets the ceiling. Past the cap, one or two more for the replies and one per replied lead the listing missed, at most `limit`: about 27 requests for a default call on Instantly with more than 500 leads.
 - **Notes it can add:** the tool reports no per-lead open, click or reply counts, so scores rest on the interest label and the lead's status; a cap was reached. On a combined instance the note names only the tools whose leads carry no counts.
 - **Does not:** predict anything. The score is a sum you can recompute from `parts`. A part that is `null` means the vendor does not report that signal. A lead with no label and no engagement data is left out and counted in `withoutData`, never scored 0. Unsubscribed and bounced leads are left out and counted in `excluded`.
 

@@ -7,7 +7,11 @@ import { demoData, memory } from "../src/memory/index.ts";
 import { createTools } from "../src/tools/index.ts";
 
 const adapter = (capabilities = {}) =>
-  memory({ capabilities, data: demoData(), workspaceId: "acme" });
+  memory({
+    capabilities,
+    data: demoData({ now: "2026-10-08T12:00:00.000Z" }),
+    workspaceId: "acme",
+  });
 
 const cli = async (...argv: string[]) => {
   const out: string[] = [];
@@ -133,7 +137,7 @@ test("campaign_setup reports how a campaign is set up to send", async () => {
         to: "17:00",
       },
     ],
-    start_date: "2026-10-05",
+    start_date: "2026-09-26",
     stop_on_auto_reply: false,
     stop_on_reply: true,
     track_clicks: false,
@@ -233,7 +237,7 @@ test("audience_lists reports each saved list and its size", async () => {
   assert.deepEqual(result.data, {
     lists: [
       {
-        created_at: "2026-09-30T09:00:00.000Z",
+        created_at: "2026-09-21T09:00:00.000Z",
         kind: "leads",
         list: "memory:acme:lst_founders",
         name: "SaaS founders",

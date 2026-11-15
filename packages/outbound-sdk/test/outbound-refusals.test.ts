@@ -44,7 +44,7 @@ const narrow = () =>
         "stats.bySender": false,
         "stats.workspace": false,
       },
-      data: demoData(),
+      data: demoData({ now: "2026-10-08T12:00:00.000Z" }),
     }),
     plugins: [insights()],
   });
@@ -84,7 +84,7 @@ test("a capability refusal rejects the promise on every handle method, lookup an
 
 test("an input refusal rejects the promise too", async () => {
   const outbound = createOutbound({
-    adapter: memory({ data: demoData() }),
+    adapter: memory({ data: demoData({ now: "2026-10-08T12:00:00.000Z" }) }),
     plugins: [insights()],
   });
 
@@ -127,7 +127,7 @@ test("exists and getMany do not report a missing record to onError, and get does
   const errors: string[] = [];
 
   const outbound = createOutbound({
-    adapter: memory({ data: demoData() }),
+    adapter: memory({ data: demoData({ now: "2026-10-08T12:00:00.000Z" }) }),
     hooks: {
       onAction: (event) => {
         actions.push(event.action);
@@ -164,7 +164,7 @@ test("exists and getMany still report a failure that is not a missing record", a
   const errors: string[] = [];
 
   const outbound = createOutbound({
-    adapter: memory({ data: demoData() }),
+    adapter: memory({ data: demoData({ now: "2026-10-08T12:00:00.000Z" }) }),
     hooks: {
       onError: (event) => {
         errors.push(event.action);

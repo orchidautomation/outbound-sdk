@@ -273,7 +273,10 @@ const assertSlackAccepts = (all: Block[], name: string): void => {
 
 test("every card a real instance produces keeps to what Slack accepts", async () => {
   const outbound = createOutbound({
-    adapter: memory({ data: demoData(), workspaceId: "acme" }),
+    adapter: memory({
+      data: demoData({ now: "2026-10-08T12:00:00.000Z" }),
+      workspaceId: "acme",
+    }),
     plugins: [clients(), identity(), insights()],
   });
 

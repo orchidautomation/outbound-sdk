@@ -40,6 +40,18 @@ Four more rules:
 
 `outbound.plugins` lists the plugins on an instance, outermost first.
 
+## Pass an instance to your own functions
+
+`OutboundWith<typeof plugins>` is the type of the instance a list of plugins builds, with every method they add. Use it for a function that takes the instance. `Outbound` alone is an instance with no plugins, and a function that needs one plugin can name that plugin's extension, as in `Outbound & InsightsExtension`.
+
+<include meta='title="typed.ts"'>
+  ../../_examples/plugins-index/typed.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/plugins-index/typed.out.txt
+</include>
+
 ## The order that matters
 
 List plugins in this order. Each line says why.

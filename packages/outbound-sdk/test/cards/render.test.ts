@@ -25,7 +25,10 @@ import { excludes, includes, insight, read, tool } from "./helpers.ts";
 
 const demo = () =>
   createOutbound({
-    adapter: memory({ data: demoData(), workspaceId: "acme" }),
+    adapter: memory({
+      data: demoData({ now: "2026-10-08T12:00:00.000Z" }),
+      workspaceId: "acme",
+    }),
     plugins: [clients(), identity(), insights()],
   });
 

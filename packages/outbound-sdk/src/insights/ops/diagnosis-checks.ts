@@ -3,8 +3,8 @@
 
 import type { CampaignSettings } from "../../internal/entities-account.ts";
 import type { Campaign, Sender } from "../../internal/entities.ts";
-import { round } from "../stats.ts";
-import { measure, percent, volumeOf } from "./shared.ts";
+import { percent, round, spoken } from "../stats.ts";
+import { measure, volumeOf } from "./shared.ts";
 import type { Rates, Totals } from "./shared.ts";
 
 export type DiagnosisCode =
@@ -295,14 +295,14 @@ const schedule: Check = ({ recent, settings }, limits) => {
   const reasons = [
     ...(hours !== null && hours < limits.minWeeklyHours
       ? [
-          `The sending windows are open ${hours} hours a week, under ${limits.minWeeklyHours}.`,
+          `The sending windows are open ${spoken(hours)} hours a week, under ${limits.minWeeklyHours}.`,
         ]
       : []),
     ...(settings.dailyLimit !== null &&
     average !== null &&
     average >= settings.dailyLimit * limits.dailyLimitShare
       ? [
-          `Recent sending days average ${average} sends against a daily limit of ${settings.dailyLimit}, so the limit is what holds volume back.`,
+          `Recent sending days average ${spoken(average)} sends against a daily limit of ${settings.dailyLimit}, so the limit is what holds volume back.`,
         ]
       : []),
   ];

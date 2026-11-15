@@ -1,13 +1,13 @@
 A/B tests of cmp_founders, judged on replied at alpha 0.05
 
 Step 0: winner
-  Variant A (0.06) beats every other variant by more than chance at alpha 0.05.
+  Variant A (6%) beats every other variant by more than chance at alpha 0.05.
   A: 6.0% (48 of 800 contacted)
   B: 3.0% (24 of 800 contacted)
   p = 0.0038
 
 Step 1: no_difference_yet
-  Variant B (0.04) leads variant A (0.0286), but a gap this size could be chance.
+  Variant B (4%) leads variant A (2.9%), but a gap this size could be chance.
   A: 2.9% (20 of 700 contacted)
   B: 4.0% (28 of 700 contacted)
   p = 0.24

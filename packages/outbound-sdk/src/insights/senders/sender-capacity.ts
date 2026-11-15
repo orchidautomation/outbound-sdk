@@ -6,7 +6,7 @@ import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Campaign, MetricRow, Sender } from "../../internal/entities.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
-import { rate, round, total } from "../stats.ts";
+import { rate, round, spoken, total } from "../stats.ts";
 import {
   dayFrom,
   readCampaigns,
@@ -304,7 +304,7 @@ const findingOf = (
 
   if (sends !== null && sends.averageDaily !== null) {
     parts.push(
-      `${sends.averageDaily} a day were sent on average over the last ${sends.days} days.`
+      `${spoken(sends.averageDaily)} a day were sent on average over the last ${sends.days} days.`
     );
   }
 

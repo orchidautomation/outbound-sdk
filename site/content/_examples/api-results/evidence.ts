@@ -19,6 +19,6 @@ const all = await outbound.leads.list();
 
 console.log(all.items.length, all.meta.evidence, trusted(all.meta));
 
-const recent = await outbound.leads.list({ since: "2026-10-03" });
+const recent = await outbound.leads.list({ since: "2026-10-31" });
 
 console.log(recent.items.length, recent.meta.evidence, trusted(recent.meta));

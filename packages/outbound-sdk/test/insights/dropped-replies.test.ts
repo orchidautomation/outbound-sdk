@@ -1,18 +1,40 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { OutboundError } from "../../src/index.ts";
+import {
+  createOutbound,
+  MemoryRateLimitStore,
+  OutboundError,
+} from "../../src/index.ts";
+import { insights } from "../../src/insights/index.ts";
 import type { MemoryData, MemoryMessage } from "../../src/memory/index.ts";
+import { fixtureHandler } from "../helpers/adapter-suite.ts";
+import { createClock } from "../helpers/clock.ts";
+import { createFetch, json } from "../helpers/http.ts";
+import { suite as instantly } from "../instantly/suite.ts";
 import { agency, NOW, single } from "./helpers.ts";
 
 // NOW is 2026-11-14T12:00:00Z.
 const DATA: MemoryData = {
-  campaigns: [{ id: "c1" }, { channel: "linkedin", id: "c2" }],
+  campaigns: [
+    { id: "c1", name: "Agency owners" },
+    { channel: "linkedin", id: "c2", name: "LinkedIn founders" },
+  ],
   leads: [
-    { campaignId: "c1", email: "person1@example.com", id: "l1" },
+    {
+      campaignId: "c1",
+      email: "person1@example.com",
+      firstName: "Jon",
+      id: "l1",
+      lastName: "Example",
+    },
     { campaignId: "c1", email: "person2@example.com", id: "l2" },
     { campaignId: "c1", email: "person3@example.com", id: "l3" },
-    { campaignId: "c2", id: "l4" },
+    {
+      campaignId: "c2",
+      id: "l4",
+      linkedinUrl: "https://www.linkedin.com/in/example-person",
+    },
   ],
   messages: [
     // Thread t1: two replies after the last send, the first 100 hours ago.
@@ -138,14 +160,18 @@ test("dropped_replies reports unanswered replies longest waiting first, and coun
   assert.deepEqual(data.dropped, [
     {
       campaign: "memory:agency:c1",
+      campaignName: "Agency owners",
       category: "positive",
       channel: "email",
       checkedBy: "thread",
       finding:
         "A positive reply has waited 100 hours with nothing sent after it.",
       // 2026-11-10T08:00 to 2026-11-14T12:00 is 4 days and 4 hours.
+      email: "person1@example.com",
       hoursWaiting: 100,
       lead: "memory:agency:l1",
+      linkedinUrl: null,
+      name: "Jon Example",
       provider: "memory",
       receivedAt: "2026-11-10T08:00:00.000Z",
       reply: "memory:agency:m2",
@@ -154,13 +180,17 @@ test("dropped_replies reports unanswered replies longest waiting first, and coun
     },
     {
       campaign: "memory:agency:c2",
+      campaignName: "LinkedIn founders",
       category: "positive",
       channel: "linkedin",
       checkedBy: "timeline",
       finding:
         "A positive reply has waited 30 hours with nothing sent after it.",
+      email: null,
       hoursWaiting: 30.5,
       lead: "memory:agency:l4",
+      linkedinUrl: "https://www.linkedin.com/in/example-person",
+      name: null,
       provider: "memory",
       receivedAt: "2026-11-13T05:30:00.000Z",
       reply: "memory:agency:m6",
@@ -184,6 +214,80 @@ test("dropped_replies reports unanswered replies longest waiting first, and coun
   assert.equal(data.olderThanHours, 24);
   assert.equal(result.meta.complete, true);
   assert.deepEqual(result.meta.notes, []);
+});
+
+test("dropped_replies on Instantly reads each waiting person's lead and campaign, and counts every request", async () => {
+  const clock = createClock();
+  const unrouted: string[] = [];
+  const fixtures = fixtureHandler([instantly], unrouted);
+
+  // Every conversation comes back empty, so each reply has waited unanswered.
+  const http = createFetch((request, index) => {
+    const url = new URL(request.url);
+
+    return url.pathname === "/api/v2/emails" &&
+      url.searchParams.get("email_type") !== "received"
+      ? json({ items: [] })
+      : fixtures(request, index);
+  });
+
+  const outbound = createOutbound({
+    adapter: instantly.make(),
+    fetch: http.fetch,
+    plugins: [insights()],
+    rateLimitStore: new MemoryRateLimitStore(),
+    runtime: clock.runtime,
+    share: 1,
+  });
+
+  const result = await clock.settle(
+    outbound.insights.droppedReplies({
+      categories: ["neutral", "ooo"],
+      older_than_hours: 0,
+      since: "2026-01-01",
+    })
+  );
+
+  const paths = http.requests.map((request) => new URL(request.url).pathname);
+
+  assert.deepEqual(unrouted, []);
+  assert.equal(result.data.dropped.length, 3);
+  assert.equal(
+    paths.filter((path) => path.startsWith("/api/v2/leads/")).length,
+    3
+  );
+  assert.equal(
+    paths.filter((path) => path.startsWith("/api/v2/campaigns/")).length,
+    3
+  );
+  assert.equal(result.meta.requests, http.requests.length);
+
+  for (const each of result.data.dropped) {
+    assert.equal(each.name, "Alex Example");
+    assert.equal(each.email, "person1@example.com");
+    assert.equal(each.campaignName, "My First Campaign");
+  }
+});
+
+test("dropped_replies leaves the names null, with a note, when the tool cannot read one lead", async () => {
+  const unnamed = await single(DATA, {
+    "leads.get": false,
+  }).insights.droppedReplies({}, { now: NOW });
+
+  assert.deepEqual(
+    unnamed.data.dropped.map((each) => [
+      each.name,
+      each.email,
+      each.campaignName,
+    ]),
+    [
+      [null, null, "Agency owners"],
+      [null, null, "LinkedIn founders"],
+    ]
+  );
+  assert.deepEqual(unnamed.meta.notes, [
+    "This tool cannot read one lead (leads.get), so name, email and linkedinUrl are null.",
+  ]);
 });
 
 test("dropped_replies moves with older_than_hours, since, categories and include_auto", async () => {

@@ -234,7 +234,7 @@ test("client_report composes totals, best and worst campaigns, bounce problems, 
     },
     {
       action:
-        "Check what happened on 2026-11-11: replied was 2 on 2026-11-11, against an average of 12.8 over the 5 days with data before it (z = -4.5236).",
+        "Check what happened on 2026-11-11: replied was 2 on 2026-11-11, against an average of 12.8 over the 5 days with data before it (z = -4.5).",
       campaign: null,
       campaignName: null,
       kind: "check_anomaly",
