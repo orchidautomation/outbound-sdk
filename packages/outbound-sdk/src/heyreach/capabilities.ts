@@ -186,12 +186,12 @@ export const costs = {
   "leads.get": { perPage: 2 },
   // A campaign's leads. A saved list's leads come up to 1000 a page. Without
   // a campaign or a list, each new page of campaigns costs one more request.
-  "leads.list": { pageSize: PAGE_SIZE, perPage: 1 },
+  "leads.list": { pageSize: PAGE_SIZE, perPage: 1, perWalk: 1 },
   // One person by profile URL: the campaigns and the profile, two requests.
   // By email it is three (campaigns, the lists the address is in, a name
   // search in one list) and one more per profile read to find the address,
   // eight at most; a later page is two again.
-  "leads.lookup": { pageSize: PAGE_SIZE, perPage: 2 },
+  "leads.lookup": { pageSize: PAGE_SIZE, perPage: 2, perWalk: 6 },
   "lists.list": { pageSize: PAGE_SIZE, perPage: 1 },
   // One conversation by thread id is a single request.
   "messages.list": { pageSize: PAGE_SIZE, perPage: 1 },
@@ -199,7 +199,7 @@ export const costs = {
   "senders.get": { perPage: 1 },
   "senders.health": { perPage: 1 },
   // A campaign's senders cost one more request, once, to read the campaign.
-  "senders.list": { pageSize: PAGE_SIZE, perPage: 1 },
+  "senders.list": { pageSize: PAGE_SIZE, perPage: 1, perWalk: 1 },
   "sequence.get": { perPage: 1 },
   stats: { perPage: 1 },
   "webhooks.list": { pageSize: PAGE_SIZE, perPage: 1 },

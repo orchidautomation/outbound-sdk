@@ -5,6 +5,8 @@ import { OutboundError } from "../internal/errors.ts";
 import { jsonInput, unknownKey } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
+import { plural } from "../internal/plural.ts";
+import { requestCounter, withGuard } from "../internal/request-cap.ts";
 import {
   audienceLists,
   campaignSetup,
@@ -24,11 +26,21 @@ import {
   crossChannelLead,
   leadRunway,
 } from "./people-tools.ts";
-import { failure } from "./shared.ts";
+import { capNext, DEFAULT_TOOL_REQUESTS, failure } from "./shared.ts";
 import type { ToolResult } from "./shared.ts";
 
 /** The fields of a tool's input object, each a Zod schema. */
 export type InputFields = z.ZodObject["shape"];
+
+/** What a caller of `call` can set for that one call. */
+export interface ToolCallOptions {
+  /**
+   * The most vendor requests this call may send, retries included. Replaces
+   * the tool's default; `Infinity` removes it. `createTools` passes its
+   * `maxRequestsPerToolCall` here.
+   */
+  readonly maxRequests?: number | undefined;
+}
 
 /** A tool with its input type erased, so tools of different inputs sit in one list. */
 export interface OutboundTool {
@@ -45,8 +57,11 @@ export interface OutboundTool {
    * a model's arguments, an object typed from the schema and a
    * `Record<string, unknown>` are all taken as they are.
    */
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- the input is parsed by the tool's own schema inside call()
-  readonly call: (input: unknown) => Promise<ToolResult>;
+  readonly call: (
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- the input is parsed by the tool's own schema inside call()
+    input: unknown,
+    options?: ToolCallOptions
+  ) => Promise<ToolResult>;
 }
 
 interface Definition<Input> {
@@ -57,11 +72,25 @@ interface Definition<Input> {
   readonly run: (outbound: OutboundApi, input: Input) => Promise<ToolResult>;
 }
 
+/** Throws `Invalid` unless `cap` is a positive integer or `Infinity`. */
+export const checkCap = (cap: number | undefined, setting: string): void => {
+  if (
+    cap !== undefined &&
+    cap !== Infinity &&
+    (!Number.isInteger(cap) || cap < 1)
+  ) {
+    throw new OutboundError(
+      "Invalid",
+      `${setting} must be a positive integer, or Infinity for no cap`
+    );
+  }
+};
+
 const bind = <Input>(
   outbound: OutboundApi,
   definition: Definition<Input>
 ): OutboundTool => ({
-  call: async (given) => {
+  call: async (given, options = {}) => {
     const input = jsonInput(given);
 
     if (input === undefined) {
@@ -95,8 +124,26 @@ const bind = <Input>(
       );
     }
 
+    checkCap(options.maxRequests, "maxRequests");
+    const cap = options.maxRequests ?? DEFAULT_TOOL_REQUESTS;
+    const isDefault = options.maxRequests === undefined;
+
+    // Every request of this call, from every read in flight, counts against one allowance.
+    const counter = requestCounter(
+      cap,
+      (provider) =>
+        new OutboundError(
+          "RateLimited",
+          `${definition.name} stopped after ${plural(cap, "request")} to ${provider}, at ${isDefault ? "the default cap of a tool call" : "maxRequestsPerToolCall"}.`,
+          { limit: "call", provider }
+        )
+    );
+
     try {
-      const result = await definition.run(outbound, parsed.data);
+      const result = await definition.run(
+        withGuard(outbound, counter),
+        parsed.data
+      );
 
       return result.ok
         ? {
@@ -108,7 +155,9 @@ const bind = <Input>(
           }
         : result;
     } catch (error) {
-      return failure(error);
+      return counter.stopped()
+        ? failure(error, counter.used(), capNext(cap, isDefault))
+        : failure(error, counter.used());
     }
   },
   description: definition.description,
@@ -141,6 +190,14 @@ export interface ToolsOptions {
   readonly only?: readonly ToolName[] | undefined;
   /** More tools to offer after the built-in ones, for example `insightTools(outbound)`. */
   readonly extra?: readonly OutboundTool[] | undefined;
+  /**
+   * The most vendor requests one tool call may send, retries included,
+   * counted across every read the call makes. Without it a built-in tool
+   * call may send 100 and an insight tool call what its input can cost, at
+   * most 500. `Infinity` removes the default. A `maxRequestsPerCall` on the
+   * instance and `budget()` still apply under it.
+   */
+  readonly maxRequestsPerToolCall?: number | undefined;
 }
 
 interface Redacted {
@@ -171,8 +228,8 @@ const withOfferedHints = (
     ? tool
     : {
         ...tool,
-        call: async (input) => {
-          const result = await tool.call(input);
+        call: async (input, options) => {
+          const result = await tool.call(input, options);
 
           return hidden.some((name) => result.next.includes(name))
             ? { ...result, next: NEXT_FALLBACK }
@@ -190,6 +247,8 @@ export const createTools = (
   outbound: OutboundApi,
   options: ToolsOptions = {}
 ): OutboundTool[] => {
+  checkCap(options.maxRequestsPerToolCall, "maxRequestsPerToolCall");
+
   const all = [
     bind(outbound, campaignOverview),
     bind(outbound, campaignTrend),
@@ -239,6 +298,20 @@ export const createTools = (
   ];
 
   const names = new Set(offered.map((tool) => tool.name));
+  const perCall = options.maxRequestsPerToolCall;
 
-  return offered.map((tool) => withOfferedHints(tool, names));
+  return offered.map((tool) => {
+    const hinted = withOfferedHints(tool, names);
+
+    // The cap set here is each call's, unless a caller passes its own.
+    return perCall === undefined
+      ? hinted
+      : {
+          ...hinted,
+          call: (input, callOptions) =>
+            hinted.call(input, {
+              maxRequests: callOptions?.maxRequests ?? perCall,
+            }),
+        };
+  });
 };

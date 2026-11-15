@@ -10,6 +10,7 @@ import { sumCounts } from "../../internal/metrics.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
 import { campaignsReadOf, readCampaignsIn } from "../capped.ts";
 import type { CampaignsRead } from "../capped.ts";
+import type { Price } from "../cost.ts";
 import type { InsightContext } from "../define.ts";
 import { statusesInput } from "../fields.ts";
 import { rate, total, wilson } from "../stats.ts";
@@ -48,6 +49,29 @@ export interface OpenRange {
 }
 
 /** Input fields the campaign-listing insights share. */
+/**
+ * What `readCampaignTotals` costs: the listing, then one stats read per
+ * campaign, or one for all of them where the vendor reports every campaign
+ * in one call (and one each for the campaigns that report leaves out).
+ */
+export const campaignTotalsCost = (
+  input: {
+    readonly max_campaigns: number;
+    readonly statuses: readonly string[];
+  },
+  price: Price
+): number => {
+  const campaigns = price.campaigns(input.max_campaigns);
+
+  return (
+    price.campaignsIn(new Set(input.statuses).size, input.max_campaigns) +
+    (price.capabilities["stats.allCampaigns"] === "full"
+      ? price.upTo(1) * price.one("stats") +
+        price.upTo(campaigns) * price.one("stats")
+      : campaigns * price.one("stats"))
+  );
+};
+
 export const listFields = (costPerCampaign: string) => ({
   max_campaigns: z
     .number()

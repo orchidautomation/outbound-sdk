@@ -14,9 +14,18 @@ import type { ToolResult } from "./shared.ts";
 
 export { createTools, TOOL_NAMES } from "./registry.ts";
 
-export type { OutboundTool, ToolName, ToolsOptions } from "./registry.ts";
+export type {
+  OutboundTool,
+  ToolCallOptions,
+  ToolName,
+  ToolsOptions,
+} from "./registry.ts";
 
-export { DEFAULT_BODY_CHARS, UNTRUSTED_NOTE } from "./shared.ts";
+export {
+  DEFAULT_BODY_CHARS,
+  DEFAULT_TOOL_REQUESTS,
+  UNTRUSTED_NOTE,
+} from "./shared.ts";
 
 export type {
   MetricSummary,
@@ -81,6 +90,7 @@ export const openaiTools = (
                   tool === undefined
                     ? `Unknown tool ${name}`
                     : "The arguments are not valid JSON",
+                retryable: false,
               },
               next: "Call one of the listed tools with a JSON object.",
               ok: false,

@@ -116,6 +116,18 @@ The most vendor requests one call may send, retries included. On one call the op
 
 On a walk with `listAll` and on `getMany`, it covers all the pages or records together. `meta.requests` on a [result](/docs/api/results) is what a call spent, and [`outbound.estimate`](/docs/api#methods) is what it would spend.
 
+### Default caps
+
+One SDK call has no request cap unless you set one. The places where a read is most likely to run away have one by default: they count every request of one answer across all the calls that make it, retries included, and stop before the next request.
+
+| What | Default | Change it with |
+| --- | --- | --- |
+| One [insight](/docs/insights#request-caps) run | The most its input can cost, a quarter more for retries, and 4 on top | `maxRequests` in the insight's options |
+| One built-in [tool](/docs/tools#request-caps) call | 100 requests | `maxRequestsPerToolCall` on `createTools` |
+| One insight tool call | The insight's default for that input, at most 500 | `maxRequestsPerToolCall` on `insightTools` or `createTools` |
+
+`Infinity` removes a default. Each of these sits beside `maxRequestsPerCall` and [`budget()`](/docs/plugins/budget), and the lowest cap stops the call. A stop is `RateLimited` with `limit: "call"` and `permanent: true`, like any cap of your own, and its message names the default and the setting that changes it. An insight that cannot afford even the least its input costs is refused before its first request.
+
 ### `signal`
 
 An `AbortSignal` stops a call at once: the request in flight is cancelled, a backoff or a rate-budget wait ends, and nothing is retried. The error is `Provider` with `aborted: true` and `permanent: true`. A signal that is already aborted sends no request at all.

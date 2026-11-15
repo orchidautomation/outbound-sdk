@@ -179,7 +179,8 @@ $ outbound tool campaign_trend --input '{"campaign":"cmp_founders"}'
 {
   "error": {
     "code": "Invalid",
-    "message": "campaign_trend: `from` is required"
+    "message": "campaign_trend: `from` is required",
+    "retryable": false
   },
   "next": "Check the input and try again.",
   "ok": false

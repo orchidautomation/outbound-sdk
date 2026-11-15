@@ -366,6 +366,7 @@ export const variantTest = defineInsight({
     "Whether a campaign's A/B winner is real. For each step with two or more variants, compares every variant with the leader by a two-proportion test and returns the variants with rates and 95% intervals, the leader, and a verdict: winner, no_difference_yet or too_little_data, with the p-value and a rough number of sends still needed when there is no verdict. Use it before pausing a variant. Costs 1 request. A null count or rate means the vendor does not report it; an empty list means the vendor does not split step stats by variant (variantStatsReported false) or reported no step stats in the date range (null). Variants of a step are divided by the same base; variants with no base in common are not compared.",
   inputSchema: input,
   key: "variantTest",
+  cost: (_input, price) => price.one("stats"),
   name: "variant_test",
   needs: ["stats.byStep"],
   next: "Use step_funnel to see how much of the campaign's replies the tested step brings, or copy_audit to check the losing variant's copy.",

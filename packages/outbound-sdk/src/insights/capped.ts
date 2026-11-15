@@ -80,10 +80,13 @@ export const readCampaignsIn = async (
       cap
     );
 
-    return {
-      capped: every.capped,
-      items: every.items.filter((campaign) => wanted.includes(campaign.status)),
-    };
+    const items = every.items.filter((campaign) =>
+      wanted.includes(campaign.status)
+    );
+
+    context.campaignsFound(items.length);
+
+    return { capped: every.capped, items };
   }
 
   const found: Campaign[] = [];
@@ -101,6 +104,8 @@ export const readCampaignsIn = async (
     found.push(...listed.items);
     capped ||= listed.capped;
   }
+
+  context.campaignsFound(found.length);
 
   return { capped, items: found };
 };

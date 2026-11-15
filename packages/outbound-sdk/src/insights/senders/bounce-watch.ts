@@ -257,6 +257,25 @@ export const bounceWatch = defineInsight({
     "Where bounces are too high: the campaigns whose bounce rate (bounced divided by sent) is over a threshold, worst first, each with bounced, sent, the rate and its Wilson interval, and the senders of each such campaign that are themselves over the threshold. Campaigns with too few sends to judge and campaigns with no reported bounce count are listed apart, never as clean. Use it daily, or when a domain's reputation is in doubt. Costs one listing of campaigns and 1 request per campaign, plus 1 listing and up to 1 request per sender for each campaign over the threshold. A null rate means nothing was sent.",
   inputSchema: input,
   key: "bounceWatch",
+  cost: (values, price) => {
+    const campaigns = price.campaigns(values.max_campaigns);
+
+    const bySender =
+      values.include_senders &&
+      price.capabilities["stats.bySender"] !== false &&
+      price.capabilities["senders.byCampaign"] !== false;
+
+    return (
+      price.campaignsIn(new Set(values.statuses).size, values.max_campaigns) +
+      campaigns * price.one("stats") +
+      (bySender
+        ? price.upTo(campaigns) *
+          (price.list("senders.list", values.max_senders_per_campaign) +
+            values.max_senders_per_campaign * price.one("stats"))
+        : 0)
+    );
+  },
+  scales: "max_campaigns",
   name: "bounce_watch",
   needs: ["stats.campaign"],
   next: "Use domain_health on the senders named here, and settings_audit on the campaigns over the threshold.",

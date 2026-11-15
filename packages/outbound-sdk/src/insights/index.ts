@@ -2,13 +2,24 @@
 // from the normalized reads. Each is one typed method, one agent tool and one
 // CLI command. No model is called and nothing is stored.
 
-export { insights, listInsights, runInsightByName } from "./plugin.ts";
+export {
+  insightCost,
+  insights,
+  listInsights,
+  runInsightByName,
+} from "./plugin.ts";
 
-export type { Insights, InsightsExtension } from "./plugin.ts";
+export type {
+  InsightCostEstimate,
+  Insights,
+  InsightsExtension,
+} from "./plugin.ts";
+
+export type { InsightCost, Price } from "./cost.ts";
 
 export type { InsightInputs } from "./inputs.generated.ts";
 
-export { insightTools } from "./tools.ts";
+export { INSIGHT_TOOL_CEILING, insightTools } from "./tools.ts";
 
 export type { InsightToolsOptions } from "./tools.ts";
 

@@ -139,27 +139,42 @@ export const limits: LimitDeclaration = {
 
 // Where a read needs more than one request, the number here is the usual
 // case; the caveats name what can add to it.
+// A listing that ends by itself costs one more, empty, page: Instantly sends
+// a next cursor on its last page too (see the caveats). That page is perWalk.
 export const costs = {
-  "blocklist.list": { pageSize: PAGE_SIZE, perPage: 1 },
+  "blocklist.list": { pageSize: PAGE_SIZE, perPage: 1, perWalk: 1 },
   // The campaign, its tag assignments, then the tags' names.
   "campaigns.get": { perPage: 3 },
   // The campaigns, their tag assignments, then the tags' names.
-  "campaigns.list": { pageSize: PAGE_SIZE, perPage: 3 },
+  "campaigns.list": { pageSize: PAGE_SIZE, perPage: 3, perWalk: 1 },
   "campaigns.settings": { perPage: 1 },
-  "leads.get": { perPage: 1 },
-  "leads.list": { pageSize: PAGE_SIZE, perPage: 1 },
-  "lists.list": { pageSize: PAGE_SIZE, perPage: 1 },
-  "messages.list": { pageSize: PAGE_SIZE, perPage: 1 },
-  "replies.list": { pageSize: PAGE_SIZE, perPage: 1 },
+  // A custom interest label costs one more read of the label list, made only
+  // when the lead or a page of leads holds one.
+  "leads.get": { perPage: 1, perWalk: 1 },
+  "leads.list": {
+    pageSize: PAGE_SIZE,
+    perPage: 1,
+    perPageAtMost: 2,
+    perWalk: 1,
+  },
+  "lists.list": { pageSize: PAGE_SIZE, perPage: 1, perWalk: 1 },
+  "messages.list": { pageSize: PAGE_SIZE, perPage: 1, perWalk: 1 },
+  // The same label read, for a page of replies with a custom status.
+  "replies.list": {
+    pageSize: PAGE_SIZE,
+    perPage: 1,
+    perPageAtMost: 2,
+    perWalk: 1,
+  },
   "senders.get": { perPage: 1 },
   // The account, its DNS test, then its warmup analytics.
   "senders.health": { perPage: 3 },
-  "senders.list": { pageSize: PAGE_SIZE, perPage: 1 },
+  "senders.list": { pageSize: PAGE_SIZE, perPage: 1, perWalk: 1 },
   "sequence.get": { perPage: 1 },
-  "sequence.subsequences": { pageSize: PAGE_SIZE, perPage: 1 },
+  "sequence.subsequences": { pageSize: PAGE_SIZE, perPage: 1, perWalk: 1 },
   stats: { perPage: 1 },
-  "tags.list": { pageSize: PAGE_SIZE, perPage: 1 },
-  "webhooks.list": { pageSize: PAGE_SIZE, perPage: 1 },
+  "tags.list": { pageSize: PAGE_SIZE, perPage: 1, perWalk: 1 },
+  "webhooks.list": { pageSize: PAGE_SIZE, perPage: 1, perWalk: 1 },
   "workspaces.list": { perPage: 1 },
 } satisfies Record<string, OperationCost>;
 

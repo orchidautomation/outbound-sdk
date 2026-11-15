@@ -336,6 +336,13 @@ export const periodComparison = defineInsight({
     "This period against the last: for each campaign, counts and rates for the last `days` complete days and for the `days` before, the change in each, and whether the change in the reply rate is more than chance (a two-proportion test), with the campaigns sorted by the size of that change. Also the same for every campaign added together and, where the adapter has them, for the vendor's workspace totals. Reply and positive reply rates divide by messages sent (`replyRateBasis`), since a period's replies also answer leads contacted before it, and by leads contacted for both periods only when a period does not report messages sent. Use it for a weekly review. Campaigns under min_sent sends in either period are listed apart; a null is a count the vendor does not report, and a rate of a total counts only the campaigns that report both its count and what it divides by (a note says when some are left out). Costs two stats requests per campaign plus two for the workspace.",
   inputSchema: input,
   key: "periodComparison",
+  cost: (values, price) =>
+    price.campaignsIn(new Set(values.statuses).size, values.max_campaigns) +
+    2 * price.campaigns(values.max_campaigns) * price.one("stats") +
+    (price.capabilities["stats.workspace"] === false
+      ? 0
+      : 2 * price.one("stats")),
+  scales: "max_campaigns",
   name: "period_comparison",
   needs: ["stats.campaign"],
   next: "Use campaign_diagnosis on the campaign whose reply rate fell the most.",

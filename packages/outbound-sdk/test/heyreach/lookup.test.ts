@@ -50,9 +50,12 @@ test("heyreach: a profile lookup reads the campaigns and the profile, and return
     ],
     ["/lead/GetLead", { profileUrl: LEAD }],
   ]);
+  // By email a lookup can cost up to six more (the lists, a name search and
+  // the profiles read to find the address): eight at most.
   assert.deepEqual(adapter.costs?.["leads.lookup"], {
     pageSize: 100,
     perPage: 2,
+    perWalk: 6,
   });
   assert.equal(adapter.capabilities?.["leads.lookup"], true);
 

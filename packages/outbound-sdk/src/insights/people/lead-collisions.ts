@@ -162,6 +162,11 @@ export const leadCollisions = defineInsight({
     fields.includes("email") && strategy === "mask"
       ? "email addresses, which it matches people by"
       : null,
+  cost: (values, price) =>
+    price.campaignsIn(new Set(values.statuses).size, values.max_campaigns) +
+    price.campaigns(values.max_campaigns) *
+      price.list("leads.list", values.max_leads_per_campaign),
+  scales: "max_campaigns",
   name: "lead_collisions",
   needs: ["leads.byCampaign"],
   next: "Use person_summary with one of the identifiers or lead refs to see what that person was sent and whether they replied.",

@@ -230,6 +230,8 @@ export const copyAudit = defineInsight({
     "Problems in a campaign's copy before it sends. Checks every step and variant for a long subject, a long body, too many links, spam words, unbalanced or empty {{ }} variables, words in capitals, repeated exclamation marks, an image or tracking pixel, a missing subject on the first email, and a follow-up whose subject breaks the thread; a LinkedIn campaign skips the email-only checks and flags a connection request over the character limit. Returns each finding with a severity and the text that triggered it, and a count per check. Costs 2 requests. Fixed rules only, no model. A variant whose body the vendor does not return is counted, not judged.",
   inputSchema: input,
   key: "copyAudit",
+  cost: (_input, price) =>
+    price.one("campaigns.get") + price.one("sequence.get"),
   name: "copy_audit",
   needs: ["sequence"],
   next: "Use step_funnel to see whether the steps with findings are also the ones with few replies.",

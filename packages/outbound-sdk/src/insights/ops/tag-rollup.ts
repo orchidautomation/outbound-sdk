@@ -7,6 +7,7 @@ import type { CampaignsRead } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import { rangeFields } from "../fields.ts";
 import {
+  campaignTotalsCost,
   descending,
   listFields,
   partialNote,
@@ -84,6 +85,8 @@ export const tagRollup = defineInsight({
   // tags is enough.
   lacks: (outbound) =>
     outbound.fields.campaign["tags"] === false ? "campaign tags" : null,
+  cost: campaignTotalsCost,
+  scales: "max_campaigns",
   name: "tag_rollup",
   needs: ["stats.campaign"],
   next: "Use campaign_ranking to see the campaigns inside the best and the worst tag.",

@@ -315,6 +315,14 @@ export const settingsAudit = defineInsight({
     "Risky campaign settings, per campaign and by severity: no sending window, a window that includes the weekend or is too long or too short, no timezone, open or click tracking on, a reply that does not stop the sequence, no daily limit, sends too close together, an end date in the past on an active campaign, and a daily limit too high for the number of senders. Returns the findings per campaign, worst first, and a count per check. Use it before launching a campaign or when deliverability drops. Costs one listing of campaigns, then 1 request per campaign, or 2 when its senders can be listed. A setting the vendor reports nothing for is skipped, except a missing window, timezone or daily limit, which the vendor cannot tell apart from one that is not set.",
   inputSchema: input,
   key: "settingsAudit",
+  cost: (values, price) =>
+    price.campaignsIn(new Set(values.statuses).size, values.max_campaigns) +
+    price.campaigns(values.max_campaigns) *
+      (price.one("campaigns.settings") +
+        (price.capabilities["senders.byCampaign"] === false
+          ? 0
+          : price.list("senders.list", values.max_senders_per_campaign))),
+  scales: "max_campaigns",
   name: "settings_audit",
   needs: ["campaigns.settings"],
   next: "Use sender_capacity to size a daily limit against the senders, or bounce_watch to see whether a flagged campaign already bounces.",

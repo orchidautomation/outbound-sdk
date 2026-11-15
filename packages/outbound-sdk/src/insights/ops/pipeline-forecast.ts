@@ -236,6 +236,12 @@ export const pipelineForecast = defineInsight({
     "The leads one campaign has left and what they should produce: leads counted by status, the leads still active, the days of sending left at the recent daily contact rate, and the replies and positive replies to expect from the remaining leads at the campaign's reply rate so far, each with a low and a high figure from the 95% interval. Use it to decide when to load more leads. It is an estimate and lists what it assumes; a null means the vendor does not report the count behind it. Costs one request per page of leads, plus two stats requests.",
   inputSchema: input,
   key: "pipelineForecast",
+  cost: (values, price) =>
+    price.one("campaigns.get") +
+    price.list("leads.list", values.max_leads) +
+    price.one("stats") +
+    (price.capabilities["stats.byDay"] === false ? 0 : price.one("stats")),
+  scales: "max_leads",
   name: "pipeline_forecast",
   needs: ["leads.byCampaign", "stats.campaign"],
   next: "Use client_report to see every campaign that is running out of leads.",

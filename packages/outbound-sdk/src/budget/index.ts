@@ -23,6 +23,8 @@ export interface BudgetOptions {
 
 export interface BudgetExtension {
   readonly requestBudget: {
+    /** What the budget counts against: each call, or the whole run. */
+    readonly per: "call" | "run";
     /** Requests counted against a `run` budget so far. */
     readonly used: () => number;
     readonly remaining: () => number;
@@ -58,6 +60,7 @@ export const budget = (
   return {
     extend: () => ({
       requestBudget: {
+        per: perRun ? "run" : "call",
         remaining,
         reset: () => {
           used = 0;

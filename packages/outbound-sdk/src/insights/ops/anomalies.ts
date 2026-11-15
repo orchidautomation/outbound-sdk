@@ -246,6 +246,7 @@ export const anomalies = defineInsight({
     "Days that broke from trend, for one campaign or the whole workspace: each of the last `days` complete days is held to the `baseline_days` before it, and a daily count `threshold` standard deviations or more from that baseline's mean is returned, newest first, with the metric, the value, the baseline mean, the z-score, the direction and how it was judged. When every baseline day has the same count there is no standard deviation: a day with another count is returned with a null z-score and judgedBy flat_baseline. Use it to spot a sending outage, a bounce spike or a reply surge. Days the vendor has no count for are skipped, never read as zero. With no campaign it reads workspace stats, so it then also needs stats.workspace. Costs one stats request.",
   inputSchema: input,
   key: "anomalies",
+  cost: (_input, price) => price.one("stats"),
   name: "anomalies",
   needs: ["stats.byDay"],
   // The whole workspace is read from workspace stats, a campaign from its own.

@@ -33,7 +33,18 @@ export interface ToolSuccess {
 
 export interface ToolFailure {
   readonly ok: false;
-  readonly error: { readonly code: string; readonly message: string };
+  readonly error: {
+    readonly code: string;
+    readonly message: string;
+    /**
+     * `false` when the same call fails the same way again: a request cap was
+     * reached, or the input or the adapter cannot work. Always set on a
+     * result from this package; a tool of your own may leave it out.
+     */
+    readonly retryable?: boolean | undefined;
+  };
+  /** Set when the tool sent vendor requests before it failed. */
+  readonly meta?: { readonly requests: number } | undefined;
   readonly next: string;
 }
 
@@ -140,20 +151,58 @@ export const weakest = (all: readonly Evidence[]): Evidence => {
   return all.includes("sampled") ? "sampled" : "exact";
 };
 
-export const failure = (cause: unknown): ToolFailure => {
-  const error = OutboundError.is(cause)
-    ? { code: cause.code, message: cause.message }
-    : {
-        code: "Provider",
-        message: cause instanceof Error ? cause.message : String(cause),
-      };
+/** The default `maxRequestsPerToolCall` of a built-in tool. */
+export const DEFAULT_TOOL_REQUESTS = 100;
 
-  return {
-    error,
-    next:
-      error.code === "Unsupported"
-        ? "This tool is not available with the current adapter or plugins. Try another tool."
-        : "Check the input and try again.",
+/** What a model is told after a request cap stopped a tool call. */
+export const capNext = (
+  cap: number,
+  isDefault: boolean,
+  lower?: {
+    readonly input: string;
+    readonly to: number;
+    readonly sure: boolean;
+  }
+): string => {
+  const ask = `the user to raise maxRequestsPerToolCall (${isDefault ? "default" : "set to"} ${cap} here)`;
+
+  return `Do not call again with the same input. ${lower === undefined ? `Ask ${ask}` : `Lower ${lower.input} to ${lower.to}${lower.sure ? "" : " or less"}, or ask ${ask}`}.`;
+};
+
+const nextFor = (cause: unknown, code: string): string => {
+  if (code === "Unsupported") {
+    return "This tool is not available with the current adapter or plugins. Try another tool.";
+  }
+
+  if (OutboundError.is(cause) && code === "RateLimited") {
+    return cause.permanent
+      ? "A request cap the user set was reached; the message says which. Do not call again with the same input."
+      : "The vendor's rate limit was reached. Wait a minute before calling again.";
+  }
+
+  return "Check the input and try again.";
+};
+
+/** A thrown error as a tool result. `requests` is what the call sent before it. */
+export const failure = (
+  cause: unknown,
+  requests?: number,
+  next?: string
+): ToolFailure => {
+  const known = OutboundError.is(cause);
+  const code = known ? cause.code : "Provider";
+
+  const result: ToolFailure = {
+    error: {
+      code,
+      message: cause instanceof Error ? cause.message : String(cause),
+      retryable: known ? !cause.permanent : true,
+    },
+    next: next ?? nextFor(cause, code),
     ok: false,
   };
+
+  return requests === undefined || requests === 0
+    ? result
+    : { ...result, meta: { requests } };
 };

@@ -192,6 +192,18 @@ export interface OperationCost {
   readonly pageSize?: number | undefined;
   /** Extra requests per record, for example one per lead to fetch a body. */
   readonly perRecord?: number | undefined;
+  /**
+   * The most extra requests a listing makes once, whatever its length, for
+   * example a lookup of category names on its first page. Counted in the
+   * upper bound of an insight's cost, never in its lower bound.
+   */
+  readonly perWalk?: number | undefined;
+  /**
+   * The most requests one page can cost, when some pages cost more than
+   * `perPage`, for example a label lookup made only when a page holds a
+   * custom label. Counted in the upper bound of an insight's cost only.
+   */
+  readonly perPageAtMost?: number | undefined;
 }
 
 export interface Adapter<Native extends NativeCatalog = NoNative> {

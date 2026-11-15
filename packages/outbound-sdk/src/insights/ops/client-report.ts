@@ -341,6 +341,25 @@ export const clientReport = defineInsight({
     "One report for one client or workspace over the last `days` complete days: totals and the change from the period before, the best and worst campaigns by the low end of the interval of the reply rate, campaigns with a bounce problem, unusual days, active campaigns running out of leads, and a short list of action items in plain language, each naming the campaign and the number behind it. Reply rates divide by messages sent (`replyRateBasis`), since a period's replies also answer leads contacted before it, and by leads contacted for both periods only when a period does not report messages sent. Use it for a weekly client update. A section the adapter cannot serve is null and named in `leftOut`, and a null count is one the vendor does not report. Costs two stats requests per campaign, one for the workspace, and for each active campaign two more plus its pages of leads.",
   inputSchema: input,
   key: "clientReport",
+  cost: (values, price) => {
+    const { capabilities } = price;
+    const campaigns = price.campaigns(values.max_campaigns);
+    const byDay = capabilities["stats.byDay"] !== false;
+
+    return (
+      price.campaignsIn(new Set(values.statuses).size, values.max_campaigns) +
+      2 * campaigns * price.one("stats") +
+      (byDay && capabilities["stats.workspace"] !== false
+        ? price.one("stats")
+        : 0) +
+      (byDay && capabilities["leads.byCampaign"] !== false
+        ? price.upTo(campaigns) *
+          (price.list("leads.list", values.max_leads_per_campaign) +
+            2 * price.one("stats"))
+        : 0)
+    );
+  },
+  scales: "max_campaigns",
   name: "client_report",
   needs: ["stats.campaign"],
   next: "Use campaign_diagnosis on a campaign an action item names, with from and to set to this report's `period`, or period_comparison for every campaign's change.",

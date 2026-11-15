@@ -47,7 +47,7 @@ tools/call that fails: a result with isError, not a protocol error
   "result": {
     "content": [
       {
-        "text": "{\"error\":{\"code\":\"Invalid\",\"message\":\"campaign_overview: \\\"client\\\" is not an input. It takes: from, limit, status, to\"},\"next\":\"Check the input and try again.\",\"ok\":false}",
+        "text": "{\"error\":{\"code\":\"Invalid\",\"message\":\"campaign_overview: \\\"client\\\" is not an input. It takes: from, limit, status, to\",\"retryable\":false},\"next\":\"Check the input and try again.\",\"ok\":false}",
         "type": "text"
       }
     ],
@@ -55,7 +55,8 @@ tools/call that fails: a result with isError, not a protocol error
     "structuredContent": {
       "error": {
         "code": "Invalid",
-        "message": "campaign_overview: \"client\" is not an input. It takes: from, limit, status, to"
+        "message": "campaign_overview: \"client\" is not an input. It takes: from, limit, status, to",
+        "retryable": false
       },
       "next": "Check the input and try again.",
       "ok": false
