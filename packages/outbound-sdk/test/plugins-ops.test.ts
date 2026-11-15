@@ -161,7 +161,7 @@ test("the memory cache store drops its oldest entry when full", async () => {
 
 test("a per-call budget stops a walk that would spend too many requests", async () => {
   const { clock, http, outbound } = setup(
-    [budget({ maxRequests: 2 })],
+    [budget({ maxRequests: 2, per: "call" })],
     (request) =>
       json({
         items: [{ id: `c${new URL(request.url).searchParams.get("offset")}` }],
@@ -277,8 +277,9 @@ test("a run budget counts retries, because each one is a vendor request", async 
 });
 
 test("budget keeps a tighter per-call maxRequests and rejects a bad cap", async () => {
-  const { clock, http, outbound } = setup([budget({ maxRequests: 10 })], () =>
-    json({}, 500)
+  const { clock, http, outbound } = setup(
+    [budget({ maxRequests: 10, per: "call" })],
+    () => json({}, 500)
   );
 
   await assert.rejects(

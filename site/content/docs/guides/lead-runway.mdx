@@ -84,7 +84,7 @@ Swap the adapter. Nothing else changes.
   ../../_examples/lead-runway/production.ts
 </include>
 
-`maxRequests` caps what one run may spend. If the cap is reached the call fails with `RateLimited` instead of spending your vendor quota.
+`maxRequestsPerCall` caps what each call may spend. It is not a total for the run: for that, add [budget](/docs/plugins/budget). If the cap is reached the call fails with `RateLimited` instead of spending your vendor quota.
 
 ## What each vendor can serve
 

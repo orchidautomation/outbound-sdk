@@ -42,7 +42,7 @@ for (const provider of providers) {
     async () => {
       const outbound = createOutbound({
         adapter: provider.make(),
-        maxRequests: 10,
+        maxRequestsPerCall: 10,
       });
 
       const page = await outbound.campaigns.list({ limit: 5 });
@@ -73,7 +73,7 @@ for (const provider of providers) {
     async () => {
       const outbound = createOutbound({
         adapter: provider.make(),
-        maxRequests: 30,
+        maxRequestsPerCall: 30,
       });
 
       const { capabilities } = outbound;
@@ -108,7 +108,7 @@ for (const provider of providers) {
     async () => {
       const outbound = createOutbound({
         adapter: provider.make(),
-        maxRequests: 60,
+        maxRequestsPerCall: 60,
       });
 
       const { capabilities } = outbound;
@@ -144,7 +144,7 @@ for (const provider of providers) {
     async () => {
       const outbound = createOutbound({
         adapter: provider.make(),
-        maxRequests: 60,
+        maxRequestsPerCall: 60,
       });
 
       const { capabilities } = outbound;
@@ -190,7 +190,7 @@ for (const provider of providers) {
     async () => {
       const outbound = createOutbound({
         adapter: provider.make(),
-        maxRequests: 200,
+        maxRequestsPerCall: 200,
         retries: 1,
       });
 
@@ -236,7 +236,7 @@ for (const provider of providers) {
     async () => {
       const outbound = createOutbound({
         adapter: provider.make(),
-        maxRequests: 10,
+        maxRequestsPerCall: 10,
       });
 
       await outbound.campaigns.list({ limit: 1 });

@@ -134,7 +134,12 @@ export class RequestEngine {
           ? undefined
           : this.now() + merged.deadline,
       maxRequests: merged.maxRequests,
-      maxRequestsSetBy: undefined,
+      // A cap from the instance is named by the option that set it there.
+      maxRequestsSetBy:
+        options.maxRequests === undefined &&
+        this.#defaults.maxRequests !== undefined
+          ? "maxRequestsPerCall"
+          : undefined,
       requests: 0,
       retry: resolveRetryPolicy(merged.retries),
       signal: merged.signal,

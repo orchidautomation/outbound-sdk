@@ -7,6 +7,6 @@ export const outbound = createOutbound({
   adapter: instantly({ workspaceId: "acme" }),
   // Enough for 25 campaigns read with maxLeads 500: 25 x (3 + 5 + 2), plus 3
   // for the list of campaigns.
-  maxRequests: 260,
+  maxRequestsPerCall: 260,
   plugins: [insights()],
 });

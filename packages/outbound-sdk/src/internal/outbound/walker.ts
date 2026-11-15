@@ -2,16 +2,19 @@
 // so a sync that dies on page 40 restarts on page 40.
 
 import type { CallState } from "../engine/request.ts";
+import { OutboundError } from "../errors.ts";
 import type { ListAll, PageResult, ResultMeta } from "./api.ts";
 
 export interface WalkerOptions<Item> {
   readonly cursor: string | undefined;
   readonly max: number | undefined;
+  /** Starts the call's accounting, when the first page is asked for. */
+  readonly begin: () => CallState;
   /** Fetches one page. `state` is shared by every page of the walk. */
   readonly fetchPage: (
     cursor: string | undefined,
-    state: CallState | undefined
-  ) => Promise<{ readonly page: PageResult<Item>; readonly state: CallState }>;
+    state: CallState
+  ) => Promise<{ readonly page: PageResult<Item> }>;
   /** A stable key used to drop records a shifting page returned twice. */
   readonly keyOf: (item: Item) => string | undefined;
 }
@@ -21,6 +24,7 @@ export class PageWalker<Item> implements ListAll<Item> {
   #cursor: string | undefined;
   #meta: ResultMeta | undefined;
   #truncated = false;
+  #state: CallState | undefined;
 
   constructor(options: WalkerOptions<Item>) {
     this.#options = options;
@@ -40,15 +44,15 @@ export class PageWalker<Item> implements ListAll<Item> {
   }
 
   async *[Symbol.asyncIterator](): AsyncGenerator<Item, void, undefined> {
-    const { fetchPage, keyOf, max } = this.#options;
+    const { begin, fetchPage, keyOf, max } = this.#options;
     const seen = new Set<string>();
-    let state: CallState | undefined;
+    const state = begin();
+    this.#state = state;
     let yielded = 0;
 
     for (;;) {
       // oxlint-disable-next-line no-await-in-loop -- each page needs the previous page's cursor.
       const fetched = await fetchPage(this.#cursor, state);
-      ({ state } = fetched);
       this.#meta = fetched.page.meta;
 
       for (const item of fetched.page.items) {
@@ -91,8 +95,32 @@ export class PageWalker<Item> implements ListAll<Item> {
   async toArray(): Promise<Item[]> {
     const items: Item[] = [];
 
-    for await (const item of this) {
-      items.push(item);
+    try {
+      for await (const item of this) {
+        items.push(item);
+      }
+    } catch (error) {
+      if (!OutboundError.is(error)) {
+        throw error;
+      }
+
+      // Keep what was fetched. A walk fails only between pages, after the
+      // cursor moved past every record collected, so resuming from it
+      // neither skips nor repeats one.
+      throw new OutboundError(error.code, error.message, {
+        aborted: error.aborted,
+        cause: error,
+        limit: error.limit,
+        partial: {
+          cursor: this.#cursor,
+          items,
+          requests: this.#state?.requests ?? 0,
+        },
+        provider: error.provider,
+        retryAfterMs: error.retryAfterMs,
+        status: error.status,
+        timedOut: error.timedOut,
+      });
     }
 
     return items;

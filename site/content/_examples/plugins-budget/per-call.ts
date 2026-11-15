@@ -8,7 +8,7 @@ const outbound = createOutbound({
   adapter: instantly({ workspaceId: "acme" }),
   fetch: documentedFetch,
   // `per` defaults to "call": every SDK call gets one request of its own.
-  plugins: [budget({ maxRequests: 1 })],
+  plugins: [budget({ maxRequests: 1, per: "call" })],
 });
 
 const first = await outbound.senders.list();

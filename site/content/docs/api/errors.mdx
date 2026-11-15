@@ -46,6 +46,7 @@ What "retried" covers, and how to change it, is on the [retries](/docs/retries) 
 | `timedOut` | `boolean` | `true` when time ran out: every attempt hit `timeout`, or the `deadline` would pass before the next retry or before the rate budget frees up. |
 | `aborted` | `boolean` | `true` when your `signal` stopped the call. |
 | `limit` | `"vendor"`, `"deadline"`, `"call"`, `"run"` or `undefined` | What stopped a `RateLimited` call. See [below](#limit). `undefined` on every other code. |
+| `partial` | `{ items, cursor, requests }` or `undefined` | Set when `listAll().toArray()` stopped part way: the records it fetched and where to resume. See [pagination](/docs/api/pagination#when-a-walk-stops-part-way). |
 | `permanent` | `boolean` | `true` when sending the same call again cannot succeed. |
 | `cause` | `unknown` | The original error, when there was one: the network error, or the HTTP failure with its `status` and `body`. |
 | `name` | `"OutboundError"` |  |
@@ -62,7 +63,7 @@ What "retried" covers, and how to change it, is on the [retries](/docs/retries) 
 | --- | --- | --- | --- | --- |
 | `"vendor"` | The vendor answered 429 and the SDK's retries did not get past it. `status` is `429`. | `false` | when the vendor sent one | Try again after `retryAfterMs`. |
 | `"deadline"` | The SDK's own rate budget for the key was full, and waiting for room would pass the `deadline`. No request was sent. | `false` | the wait | Try again later, or raise `deadline`. |
-| `"call"` | The call reached its request cap: `maxRequests` on the call or on `createOutbound`, or `budget({ per: "call" })`. | `true` | none | Raise the cap, or ask for less in one call. |
+| `"call"` | The call reached its request cap: `maxRequests` on the call, `maxRequestsPerCall` on `createOutbound`, or `budget({ per: "call" })`. | `true` | none | Raise the cap, or ask for less in one call. |
 | `"run"` | A `budget({ per: "run" })` has nothing left. | `true` | none | Call `requestBudget.reset()` when a new run starts, or raise the cap. |
 
 `code` stays `RateLimited` for all four, so a `switch` on `code` written before `limit` existed still works.
