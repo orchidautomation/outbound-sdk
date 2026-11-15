@@ -138,9 +138,9 @@ The SDK spends `share` (default 0.5) of these numbers, because the vendor's limi
 
 ## The provider catalog and choosing an adapter at run time
 
-`outbound-sdk/providers` lists every provider with its channels, its maturity and the environment variables it reads, without importing any adapter. `outbound-sdk/loader` builds the adapter that `OUTBOUND_SDK_PROVIDER` names, reading that adapter's own key from the environment; the [CLI](/docs/cli) picks its adapter this way.
+`outbound-sdk/providers` lists every provider with its channels, its maturity and the environment variables it reads, without importing any adapter. `outbound-sdk/loader` builds the adapter that `OUTBOUND_SDK_PROVIDER` names, reading that adapter's own key from the environment; the [CLI](/docs/cli) and `outbound mcp` pick their adapter this way.
 
-Set it to `all`, or call `fromEnv({ provider: "all" })`, to build every provider whose required key is set. One key gives that adapter alone; several give one [combined](/docs/adapters/combine) instance, in catalog order. `configuredProviders()` returns the ids it would build. A provider that needs no key, `memory`, is never included, and with no key set the call throws `Invalid` and names the variables. A combined instance promises only what all its members can do, so adding a key can remove a capability: see [what it promises](/docs/adapters/combine).
+Set it to `all`, or call `fromEnv({ provider: "all" })`, to build every provider whose required key is set. With `OUTBOUND_SDK_PROVIDER` not set and no `provider` passed, `fromEnv()` does the same. One key gives that adapter alone; several give one [combined](/docs/adapters/combine) instance, in catalog order. `configuredProviders()` returns the ids it would build. A provider that needs no key, `memory`, is never included, and with no key set the call throws `Invalid` and names the variables. A combined instance promises only what all its members can do, so adding a key can remove a capability: see [what it promises](/docs/adapters/combine).
 
 <include meta='title="catalog.ts"'>
   ../../_examples/adapters-providers/catalog.ts
@@ -148,6 +148,16 @@ Set it to `all`, or call `fromEnv({ provider: "all" })`, to build every provider
 
 <include lang="text" meta='title="Output"'>
   ../../_examples/adapters-providers/catalog.out.txt
+</include>
+
+With two keys set and no provider named, `fromEnv()` builds both, combined. Building an adapter sends no request, so the keys below are made up and never checked.
+
+<include meta='title="all.ts"'>
+  ../../_examples/adapters-providers/all.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/adapters-providers/all.out.txt
 </include>
 
 ## Writing an adapter

@@ -96,7 +96,7 @@ List `redact` first. It masks what the layers inside it return, so `cache`, `fai
 
 - `clients` adds `client`, your own label. It passes through.
 - `identity` adds `personKey` and `personKeys`, which hold the email address and the profile slug. `redact` masks the part after `email:` or `linkedin:` when that field is being masked: `email:[redacted]`, or with `hash` `email:redacted:` and 16 hex characters, the same token the lead's `email` gets.
-- `outbound.person()` is refused as `Unsupported` while `redact` masks `email` or `linkedin`, because it links records by those identifiers and would see none. The `cross_channel_lead` tool is not offered then. With a `fields` list that leaves both out, `person()` works as usual.
+- `outbound.person()` is refused as `Unsupported` while `redact` masks `email` or `linkedin`, because it links records by those identifiers and would see none. The `cross_channel_lead` tool is not offered then, and the `person_summary` insight, and so `outbound person`, is refused the same way instead of reporting a known person as not found. With a `fields` list that leaves both out, `person()` works as usual.
 - [`insights`](/docs/insights) and the method-only plugins (`exporter`, `sync`, `reconcile`, `benchmarks`) read through the instance, so they receive masked records.
 
 ## When it fails
@@ -113,6 +113,6 @@ List `redact` first. It masks what the layers inside it return, so `cache`, `fai
 | --- | --- | --- |
 | A read asks for bodies (`include: ["body"]`) | `Unsupported`, before any request. The message names the plugin. | Leave bodies out, or construct `redact` with `fields` that do not include `"body"`. |
 | A native read, or any `outbound.raw` request | `Unsupported`, before any request. The message names the plugin. | Use a second instance without `redact` for those reads, and handle its output as unmasked. |
-| `outbound.person()` while `email` or `linkedin` is masked | `Unsupported`, before any read | Look the person up on an instance without `redact`, or leave both fields out of `fields`. |
+| `outbound.person()` or `person_summary` while `email` or `linkedin` is masked | `Unsupported`, before any read | Look the person up on an instance without `redact`, or leave both fields out of `fields`. |
 | `redact` listed twice | `Invalid`, when the instance is built | List it once. |
 | A layer inside returns something that is not an SDK record | `Unsupported`. Nothing is returned. | Fix the plugin that produced it. |

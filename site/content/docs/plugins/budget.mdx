@@ -34,7 +34,7 @@ The first walk spent two requests. The second walk got its first page with the t
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `maxRequests` | `number` | required | The most vendor requests allowed. A positive integer. |
-| `per` | `"call" \| "run"` | `"call"` | `call` allows `maxRequests` for each SDK call. `run` allows it in total across every call on the instance, until `reset()`. |
+| `per` | `"call" \| "run"` | `"call"` | `call` allows `maxRequests` for each SDK call. `run` allows it in total across every call on the instance, until `reset()`. An [MCP server](/docs/cli/mcp#a-request-cap-per-tool-call) resets it before each tool call. |
 
 One SDK call is one `list`, one `get`, one `stats`, or one whole `listAll` walk. A walk over ten pages is one call.
 

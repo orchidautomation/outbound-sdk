@@ -46,8 +46,8 @@ The test suite checks this page against the SDK. Every tool and insight appears 
 | Which replies has nobody answered? | `dropped_replies` |
 | How fast do people reply, and on which days and hours? | `reply_timing` |
 | Who should I call first? | `hot_leads` |
-| What has happened with this one person? | `person_summary` |
-| Every record and message for one person, across tools (needs the `identity` plugin) | `cross_channel_lead` |
+| What has happened with this one person? (refused while `redact` masks emails or LinkedIn) | `person_summary` |
+| Every record and message for one person, across tools (needs the `identity` plugin, which the CLI and `outbound mcp` always add; not offered while `redact` masks emails or LinkedIn) | `cross_channel_lead` |
 | Who at this company have we contacted? | `account_summary` |
 | Who is in two campaigns at once? | `lead_collisions` |
 | Is anyone on the block list still in a campaign? | `suppression_check` |
