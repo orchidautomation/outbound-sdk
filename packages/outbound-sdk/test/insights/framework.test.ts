@@ -165,6 +165,31 @@ test("an insight's meta adds up its reads, keeps a note once, and says when a pa
   assert.deepEqual(whole.meta.notes, ["a note"]);
 });
 
+test("a custom insight can still name its cap with a string", async () => {
+  const capped = defineInsight({
+    description: "Reads one sender, for the framework tests.",
+    inputSchema: z.object({}),
+    key: "capped",
+    name: "capped",
+    needs: ["senders.list"],
+    next: "Nothing.",
+    run: async (context) =>
+      (
+        await context.all(
+          context.outbound.senders.listAll({ max: 1 }),
+          "1 senders"
+        )
+      ).length,
+  });
+
+  const outbound = createOutbound({ adapter: memory({ data: demoData() }) });
+  const result = await runInsight(outbound, capped, {});
+
+  assert.equal(result.data, 1);
+  assert.equal(result.meta.complete, false);
+  assert.deepEqual(result.meta.notes, ["Stopped at 1 senders; more exist."]);
+});
+
 test("an insight takes the weakest evidence of its reads", async () => {
   const outbound = createOutbound({
     adapter: memory({

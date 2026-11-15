@@ -97,6 +97,19 @@ export interface Cap {
   readonly input: string | null;
 }
 
+// A custom insight written before `Cap` existed names its cap as free text,
+// such as `50 campaigns`; that form is kept so its code still compiles.
+const stopNote = (cap: Cap | string | undefined): string => {
+  if (cap === undefined) {
+    return "A listing was cut off at its cap; more records exist.";
+  }
+
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- `cap` is a public argument that is either the old free-text form or a `Cap`
+  return typeof cap === "string"
+    ? `Stopped at ${cap}; more exist.`
+    : capNote(cap);
+};
+
 /** The note for a listing that a cap stopped with more records left. */
 export const capNote = (cap: Cap): string =>
   `Stopped at ${cap.max} ${cap.what} (${cap.input ?? "a fixed cap"}); more exist.`;
@@ -111,9 +124,14 @@ export interface InsightContext {
   /**
    * Walks a listing to its end or its `max`, records the cost and returns the
    * records. When `max` cut it short the answer is marked incomplete; `cap`
-   * names what was capped and the input that raises it, for the note.
+   * names what was capped and the input that raises it, for the note. A
+   * string such as `50 campaigns` is still accepted, for insights written
+   * before the input could be named.
    */
-  readonly all: <Item>(walk: ListAll<Item>, cap?: Cap) => Promise<Item[]>;
+  readonly all: <Item>(
+    walk: ListAll<Item>,
+    cap?: Cap | string
+  ) => Promise<Item[]>;
   /** Records one lookup's cost and returns the record. */
   readonly one: <Item>(item: WithMeta<Item>) => Item;
   /** Records a stats read's cost and returns its rows. */
@@ -243,11 +261,7 @@ const track = (outbound: OutboundApi, now: number): Tracker => {
         seen(walk.meta);
 
         if (walk.truncated) {
-          partial(
-            cap === undefined
-              ? "A listing was cut off at its cap; more records exist."
-              : capNote(cap)
-          );
+          partial(stopNote(cap));
         }
 
         return items;
