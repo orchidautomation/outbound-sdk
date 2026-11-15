@@ -59,6 +59,8 @@ const TAG = /<[^>]+>/gu;
 const IMAGE = /<img\b[^>]*>/giu;
 const VARIABLE = /\{\{[^{}]*\}\}/gu;
 const LINK = /\b(?:https?:\/\/|www\.)[^\s"'<>)]+/giu;
+const ANCHOR = /<a\b(?<attributes>[^>]*)>[\s\S]*?<\/a\s*>/giu;
+const HREF = /\bhref\s*=\s*["']?(?<target>[^"'\s>]+)/iu;
 const CAPS_WORD = /\b[A-Z]{4,}\b/gu;
 const PIXEL = /(?:width|height)\s*[=:]\s*["']?[01](?:px)?\b|pixel|track/iu;
 const REPLY_PREFIX = /^(?:re|fwd?)\s*:\s*/iu;
@@ -104,9 +106,26 @@ export const bodyTooLong = (body: string, limits: Limits): Problem | null => {
     : null;
 };
 
-export const tooManyLinks = (body: string, limits: Limits): Problem | null => {
+/**
+ * The links a reader can follow: each `<a href>` once, whatever its text
+ * says, since most editors write the address as the text too, and each bare
+ * address outside one.
+ */
+const linksOf = (body: string): string[] => {
   // An image's address is not a link the reader can follow.
-  const links = body.replaceAll(IMAGE, " ").match(LINK) ?? [];
+  const html = body.replaceAll(IMAGE, " ");
+
+  const anchored = [...html.matchAll(ANCHOR)].flatMap((anchor) => {
+    const target = HREF.exec(anchor.groups?.attributes ?? "")?.groups?.target;
+
+    return target === undefined ? [] : [target];
+  });
+
+  return [...anchored, ...(html.replaceAll(ANCHOR, " ").match(LINK) ?? [])];
+};
+
+export const tooManyLinks = (body: string, limits: Limits): Problem | null => {
+  const links = linksOf(body);
 
   return links.length > limits.maxLinks
     ? {

@@ -147,7 +147,7 @@ The checks:
 | `missing_subject` | high | The first email has no subject. Email only. |
 | `connection_request_too_long` | high | A connection request is over the limit. LinkedIn only. |
 | `spam_words` | medium | The copy uses a listed word or phrase. Email only. |
-| `too_many_links` | medium | The body has more links than allowed. Email only. |
+| `too_many_links` | medium | The body has more links than allowed. A link written as `<a href="…">` counts once, whatever its text; a bare address outside one counts too; an image's address does not. Email only. |
 | `image` | medium | The body holds an image or a tracking pixel. Email only. |
 | `subject_breaks_thread` | medium | A follow-up's subject differs from the first email's, so it starts a new thread. Email only. |
 | `subject_too_long` | low | Email only. |

@@ -379,3 +379,44 @@ test("copy_audit picks the channel's checks per campaign on a combined instance"
     ["linkedin", 2]
   );
 });
+
+const linksIn = async (body: string): Promise<string | null> => {
+  const result = await single({
+    campaigns: [
+      {
+        id: "c1",
+        steps: [{ variants: [{ body, subject: "Quick question" }] }],
+      },
+    ],
+  }).insights.copyAudit({ campaign: ref("c1"), max_links: 0 }, { now: NOW });
+
+  return (
+    result.data.findings.find((each) => each.check === "too_many_links")
+      ?.finding ?? null
+  );
+};
+
+test("copy_audit counts a linked URL in an HTML body as one link (OUT-59)", async () => {
+  const href = "https://x.example/demo";
+
+  // The way most editors write a link: the address is also the link text.
+  assert.equal(
+    await linksIn(`<p>See <a href="${href}">${href}</a></p>`),
+    "The body has 1 links; the limit is 0."
+  );
+  assert.equal(
+    await linksIn(
+      `<a href="${href}">${href}</a> and <a href='https://y.example'>the other one</a>`
+    ),
+    "The body has 2 links; the limit is 0."
+  );
+  assert.equal(
+    await linksIn(`See ${href} for more.`),
+    "The body has 1 links; the limit is 0."
+  );
+  // A link and a bare address beside it are two.
+  assert.equal(
+    await linksIn(`<a href="${href}">the demo</a> or https://y.example`),
+    "The body has 2 links; the limit is 0."
+  );
+});
