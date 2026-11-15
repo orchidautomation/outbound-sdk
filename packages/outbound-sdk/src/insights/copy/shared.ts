@@ -120,9 +120,9 @@ export interface BasedRate extends Rate {
 }
 
 export interface Measured extends BasedRate {
-  /** @deprecated Use `of`. Removed in 0.5.0. */
+  /** @deprecated Use `of`. Removed in 0.6.0. */
   readonly trials: number | null;
-  /** @deprecated Use `low` and `high`. Removed in 0.5.0. */
+  /** @deprecated Use `low` and `high`. Removed in 0.6.0. */
   readonly interval: Interval | null;
 }
 

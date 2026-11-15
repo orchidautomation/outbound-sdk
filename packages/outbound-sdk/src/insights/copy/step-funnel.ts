@@ -42,9 +42,9 @@ export interface FunnelVariant {
   readonly sent: number | null;
   readonly replies: number | null;
   readonly rates: { readonly replyRate: BasedRate };
-  /** @deprecated Use `rates.replyRate.rate`. Removed in 0.5.0. */
+  /** @deprecated Use `rates.replyRate.rate`. Removed in 0.6.0. */
   readonly replyRate: number | null;
-  /** @deprecated Use `rates.replyRate.low` and `.high`. Removed in 0.5.0. */
+  /** @deprecated Use `rates.replyRate.low` and `.high`. Removed in 0.6.0. */
   readonly replyRateInterval: Interval | null;
 }
 
@@ -59,11 +59,11 @@ export interface FunnelStep {
   readonly replies: number | null;
   /** Replies divided by leads contacted, or messages sent, as `basis` says. */
   readonly rates: { readonly replyRate: BasedRate };
-  /** @deprecated Use `rates.replyRate.rate`. Removed in 0.5.0. */
+  /** @deprecated Use `rates.replyRate.rate`. Removed in 0.6.0. */
   readonly replyRate: number | null;
-  /** @deprecated Use `rates.replyRate.low` and `.high`. Removed in 0.5.0. */
+  /** @deprecated Use `rates.replyRate.low` and `.high`. Removed in 0.6.0. */
   readonly replyRateInterval: Interval | null;
-  /** @deprecated Use `rates.replyRate.basis`. Removed in 0.5.0. */
+  /** @deprecated Use `rates.replyRate.basis`. Removed in 0.6.0. */
   readonly replyRateBasis: RateBasis | null;
   /** This step's replies divided by every reply in the campaign, unattributed ones included. */
   readonly shareOfReplies: number | null;

@@ -59,7 +59,7 @@ export interface BounceCounts extends Measured {
   readonly sent: number;
   /** Bounced (`count`) divided by sent (`of`). `null` when nothing was sent. */
   readonly rate: number | null;
-  /** @deprecated Use `low` and `high`, the Wilson interval of the rate. Removed in 0.5.0. */
+  /** @deprecated Use `low` and `high`, the Wilson interval of the rate. Removed in 0.6.0. */
   readonly interval: Interval | null;
 }
 
@@ -72,7 +72,7 @@ export interface BounceSender extends BounceCounts {
 export interface BounceCampaign extends BounceCounts {
   readonly campaign: string;
   readonly campaignName: string;
-  /** @deprecated Use `campaignName`. Removed in 0.5.0. */
+  /** @deprecated Use `campaignName`. Removed in 0.6.0. */
   readonly name: string;
   readonly status: string;
   readonly finding: string;
@@ -87,7 +87,7 @@ export interface BounceCampaign extends BounceCounts {
 export interface BounceUnknown {
   readonly campaign: string;
   readonly campaignName: string;
-  /** @deprecated Use `campaignName`. Removed in 0.5.0. */
+  /** @deprecated Use `campaignName`. Removed in 0.6.0. */
   readonly name: string;
   readonly status: string;
   readonly reason: string;
@@ -113,7 +113,7 @@ export interface BounceWatch {
   };
   /** The `max_bounce_rate` the campaigns were held to. */
   readonly maxBounceRate: number;
-  /** @deprecated Use `maxBounceRate`. Removed in 0.5.0. */
+  /** @deprecated Use `maxBounceRate`. Removed in 0.6.0. */
   readonly threshold: number;
   readonly minSent: number;
   /**
