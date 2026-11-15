@@ -10,7 +10,7 @@ outbound-sdk reads campaigns, senders, leads, replies and stats from Instantly, 
 ## The tools you have
 
 - **Up to 12 built-in tools**, such as `campaign_overview`, `winning_steps`, `sender_health`, `deliverability_check` and `reply_samples`.
-- **Up to 26 insights**, such as `campaign_diagnosis`, `bounce_watch`, `variant_test` and `hot_leads`. Over MCP they sit in the same tool list as the built-in tools. In the CLI they run as `outbound insight <name>`.
+- **Up to 26 insights**, such as `campaign_diagnosis`, `bounce_watch`, `variant_test` and `hot_leads`. Over MCP and in `outbound tools` they sit in the same list as the built-in tools; in the CLI run one with `outbound tool <name>` or `outbound insight <name>`.
 - **Only what this adapter can serve.** A tool the adapter or a plugin cannot serve is left out of the list. Call only names that are in your tool list. A name you remember from somewhere else may not be there.
 
 [references/questions.md](references/questions.md) maps each kind of question to the tool that answers it. Read it when the right tool is not obvious.

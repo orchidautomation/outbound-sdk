@@ -76,7 +76,7 @@ The client configuration is the same shape in Claude Code (`.mcp.json` in the pr
 
 - **Use a read-only key.** The SDK never writes, but the key is what the vendor checks. On Instantly a key with the `all:read` scope is enough. A key that cannot write makes "read-only" true of the credential too.
 - **The key never reaches the model.** It is read by the adapter inside the server process. It is not in any tool input or result, and it is removed from error messages.
-- **One server, one key.** `outbound mcp` builds one adapter from the environment. For several clients, add one entry per client to the configuration, each with its own key, or build your own server (below).
+- **One key per vendor.** `outbound mcp` builds one instance from the environment: the vendor `OUTBOUND_SDK_PROVIDER` names, or every vendor whose key is set, combined. For several clients on one vendor, add one entry per client to the configuration, each with its own key, or build your own server (below).
 
 ## Reply text is untrusted
 

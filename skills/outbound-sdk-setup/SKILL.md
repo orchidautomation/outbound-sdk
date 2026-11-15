@@ -51,6 +51,7 @@ OUTBOUND_SDK_PROVIDER=memory npx outbound tool sender_health --input '{"limit":1
 | `smartlead` | `SMARTLEAD_API_KEY` | `unverified`: never run against a live account |
 | `memory` | none | demo data, no vendor behind it |
 | `all` | every key above that is set | one combined instance over those vendors; `memory` is never included |
+| not set | every key above that is set | the same as `all` |
 
 Tell the user what the maturity means for their vendor: `unverified` means expect mappings to be wrong. [What is verified](https://outbound-sdk.dev/docs/status) is the current record.
 
@@ -65,7 +66,7 @@ claude mcp add outbound --env OUTBOUND_SDK_PROVIDER=memory -- npx -y outbound-sd
 claude mcp get outbound
 ```
 
-Swap `memory` for the user's vendor and add its key with another `--env`, once the demo works. `claude mcp add` stores the server, key included, in the user's local Claude Code configuration. With `--scope project` it is written to `.mcp.json` in the project instead, which is a file that may get committed: keep keys out of it. Cursor (`.cursor/mcp.json`) and Claude Desktop (`claude_desktop_config.json`) take the same `command`, `args` and `env`. The [MCP server guide](https://outbound-sdk.dev/docs/guides/mcp-server) has the JSON form.
+Once the demo works, replace `--env OUTBOUND_SDK_PROVIDER=memory` with the user's key, such as `--env INSTANTLY_API_KEY=...`: with no provider named, the server reads every vendor whose key is set. Set `OUTBOUND_SDK_PROVIDER` only to pick one vendor when several keys are set. `claude mcp add` stores the server, key included, in the user's local Claude Code configuration. With `--scope project` it is written to `.mcp.json` in the project instead, which is a file that may get committed: keep keys out of it. Cursor (`.cursor/mcp.json`) and Claude Desktop (`claude_desktop_config.json`) take the same `command`, `args` and `env`. The [MCP server guide](https://outbound-sdk.dev/docs/guides/mcp-server) has the JSON form.
 
 On 2026-11-14 a tarball install was checked in Claude Code: version 2.1.325 reported the server as connected, and it answered `initialize` with 35 tools on `memory`. On 2026-11-15 `npx -y outbound-sdk mcp` answered `initialize` and `ping` from npm; that form was not run in a client. No model was run against either.
 
@@ -95,7 +96,7 @@ A `.mjs` or `.js` file works on every supported Node. A `.ts` file needs a Node 
 
 With keys for several vendors set and no `OUTBOUND_SDK_PROVIDER`, `outbound mcp` serves all of them as one instance; `--no-redact` then lets the agent look one person up across them.
 
-**A server of your own** is for when you want to build the instance in code: [examples/server.ts](examples/server.ts) picks the adapter from `OUTBOUND_SDK_PROVIDER`, as `outbound mcp` does, adds `redact()`, and serves stdio with `serveStdio`.
+**A server of your own** is for when you want to build the instance in code: [examples/server.ts](examples/server.ts) picks the adapter with `fromEnv()`, as `outbound mcp` does (the vendor `OUTBOUND_SDK_PROVIDER` names, or every vendor whose key is set), adds `redact()`, and serves stdio with `serveStdio`.
 
 - Copy it into the project as `server.mts` (or `server.ts` in a `"type": "module"` project) and point the client at `node /absolute/path/to/server.mts`. Node 24 runs it as is.
 - [examples/check.ts](examples/check.ts) feeds it a `ping`, a `tools/list` and a call for reply text, which `redact()` refuses. [examples/check.out.txt](examples/check.out.txt) is what it printed.

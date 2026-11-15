@@ -4,8 +4,6 @@ An [eve](https://eve.dev) agent for an outbound agency. It lives in Slack and an
 
 It only reads. outbound-sdk has no method that sends, pauses, edits or deletes anything, so neither does the agent.
 
-> This example is written as if `outbound-sdk` is on npm. Until it is, install the 0.1.0 tarball from its [GitHub release](https://github.com/orchidautomation/outbound-sdk/releases/tag/v0.1.0) in place of the `^0.1.0` dependency.
-
 ```text
 agent/
 ├── agent.ts                         model and a per-thread spend limit
@@ -55,7 +53,7 @@ npm run demo
 2. **Set the keys** in `.env.local` (see `.env.example`). The SDK only reads, so use a read-only key where the vendor offers one.
 3. Run `npm run dev`.
 
-Each client gets its own adapter, and `combine()` joins them into one instance, so one rate budget and one five-minute cache cover every read. `maxRequests: 150` stops any single tool call from spending more than 150 vendor requests: past that it fails with `RateLimited` instead of using up the client's quota.
+Each client gets its own adapter, and `combine()` joins them into one instance, so one rate budget and one five-minute cache cover every read. `maxRequests: 150` stops any single SDK read from spending more than 150 vendor requests: past that it fails with `RateLimited` instead of using up the client's quota. A tool that makes several reads can spend that much on each. A cap on the whole tool call, `budget({ per: "run" })`, does not fit here: it is one count for the instance, and this instance is shared by every conversation at once.
 
 ## Slack
 

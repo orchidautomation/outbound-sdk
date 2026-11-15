@@ -1,8 +1,8 @@
 // An MCP server of your own, for when you want the instance built in your own
 // code rather than loaded by `outbound mcp --config`. Copy it into your
 // project and point the client's `command` at it. It picks the
-// adapter from OUTBOUND_SDK_PROVIDER and reads that adapter's own key, the
-// same way `outbound mcp` does.
+// adapter the same way `outbound mcp` does: the vendor OUTBOUND_SDK_PROVIDER
+// names, or, when it is not set, every vendor whose key is set, combined.
 import { createOutbound } from "outbound-sdk";
 import { createMcpServer, serveStdio } from "outbound-sdk/cli";
 import { insightTools } from "outbound-sdk/insights";

@@ -11,8 +11,9 @@ for (const provider of providers) {
   console.log(provider.id, provider.maturity, provider.channels, required);
 }
 
-// fromEnv() builds the adapter OUTBOUND_SDK_PROVIDER names, or the one you
-// pass. Only that adapter's code is loaded.
+// fromEnv() builds the adapter you pass, or the one OUTBOUND_SDK_PROVIDER
+// names; with neither, every vendor whose key is set (all.ts). Only the code
+// of the adapters it builds is loaded.
 console.log(loadableProviders());
 
 const outbound = createOutbound({

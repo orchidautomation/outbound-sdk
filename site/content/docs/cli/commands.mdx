@@ -32,8 +32,8 @@ The output shows what the CLI does with the demo data. It does not show what a v
 | `blocklist` | Blocked addresses and domains | `outbound.blocklist.listAll` |
 | `webhooks` | Webhook subscriptions registered at the vendor | `outbound.webhooks.listAll` |
 | `limits` | The current rate budget | `outbound.limits` |
-| `tools` | The [AI tools](/docs/tools) the instance can serve | `createTools` |
-| `tool <name>` | Runs one AI tool | `tool.call` |
+| `tools` | The [AI tools](/docs/tools) the instance can serve, then the [insights](/docs/insights), as `outbound mcp` lists them | `createTools` with `insightTools` |
+| `tool <name>` | Runs one of them | `tool.call` |
 | `insight [name]` | Lists the [insights](/docs/insights), or runs one | `listInsights`, `runInsightByName` |
 | `person <email or URL>` | Every campaign one person is in, across every tool | `runInsightByName("person_summary")` |
 | `native [name]` | Lists the vendor's [own reads](/docs/native), or runs one | `outbound.native` |
@@ -47,7 +47,7 @@ The output shows what the CLI does with the demo data. It does not show what a v
 | `--provider <id>` | all that need an adapter | The adapter to use, or `all` for every provider whose key is set. Overrides `OUTBOUND_SDK_PROVIDER`. |
 | `--compact` | all that print JSON | Print the JSON on one line. |
 | `--help`, `-h` | all | Print the usage text and exit 0. |
-| `--limit <n>` | `campaigns`, `senders`, `leads`, `lists`, `replies`, `tags`, `blocklist`, `webhooks` | Stop after this many records. A positive whole number. Defaults to 50. |
+| `--limit <n>` | `campaigns`, `senders`, `leads`, `lists`, `replies`, `tags`, `blocklist`, `webhooks`, `person` | Stop after this many records. A positive whole number. Defaults to 50. |
 | `--status <status>` | `campaigns` | Only campaigns with this status: `active`, `paused`, `draft`, `completed`, `archived` or `unknown`. |
 | `--stats` | `campaign` | The campaign's counts. |
 | `--sequence` | `campaign` | The campaign's steps and variants. |
@@ -61,6 +61,13 @@ The output shows what the CLI does with the demo data. It does not show what a v
 | `--since <ISO date>` | `replies` | Only replies on or after this time. |
 | `--bodies` | `replies`, `thread` | Include message text. Left out by default. |
 | `--input <json>` | `tool`, `insight`, `native` | The input, as a JSON object in one argument. Defaults to `{}`. |
+| `--card`, `--slack` | `tool`, `insight`, `person` | Print the answer as a [card](/docs/cards), or as a Slack message. |
+| `--redact`, `--no-redact` | all that need an adapter | Mask personal fields, or do not. Masking is on by default for `mcp` only. |
+| `--cache <seconds>` | all that need an adapter | Reuse an answer for this long. |
+| `--max-requests <n>` | all that need an adapter | The most vendor requests one command, or one MCP tool call, may make. |
+| `--config <file>` | all that need an adapter | Load plugins from a file. |
+
+The last five add [plugins](/docs/cli#plugins); the overview says which plugin each adds and in what order.
 
 When `campaign` gets more than one of its flags, one wins, in this order: `--sequence`, `--subsequences`, `--settings`, `--stats`.
 
@@ -124,7 +131,7 @@ Message text is left out unless you pass `--bodies`: `bodyText` is `null` withou
 
 ## tools, tool and insight
 
-`tools` lists the [AI tools](/docs/tools) and `tool` runs one, with the same input a model would send. `insight` with no name lists the 26 insights with their input schemas, and with a name runs one.
+`tools` lists the [AI tools](/docs/tools) and the insights, as `outbound mcp` serves them, and `tool` runs any of them with the same input a model would send. `insight` with no name lists the 26 insights with their input schemas, and with a name runs one.
 
 <include meta='title="agent.ts"'>../../_examples/cli-commands/agent.ts</include>
 
@@ -134,7 +141,21 @@ Message text is left out unless you pass `--bodies`: `bodyText` is `null` withou
 
 Both commands exit 1 on failure, and say why in different places. A tool never throws, so `outbound tool` prints the tool's `{ "ok": false }` result on standard output, where a script can read `error` and `next`. An insight throws, so `outbound insight` writes the reason to standard error and prints nothing on standard output.
 
-`tools` lists `compare_clients` only with the `clients` plugin, and `cross_channel_lead` only with the `identity` plugin, both from a file passed to [`--config`](/docs/cli#plugins).
+`tools` lists `cross_channel_lead` because the CLI always installs the [identity](/docs/plugins/identity) plugin, and leaves it out with `--redact`, which masks the identifiers it matches on. It lists `compare_clients` only with the [clients](/docs/plugins/clients) plugin, from a file passed to [`--config`](/docs/cli#plugins). The insights are listed after the built-in tools, as `outbound mcp` serves them.
+
+## person
+
+`person` takes an email address or a LinkedIn profile URL and prints the `person_summary` insight: every campaign that person is in, in every tool the CLI reads. With several vendor keys set and no provider named, that is every one of them, so one command finds a person on Instantly and on HeyReach. `--card` and `--slack` print it as a [card](/docs/cards), as `tool` and `insight` do.
+
+<include meta='title="person.ts"'>
+  ../../_examples/cli-commands/person.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/cli-commands/person.out.txt
+</include>
+
+A person who is in no campaign is an answer, `found: false`, with exit code 0. With `--redact` the emails and profiles it would match are masked, so the command refuses with `Unsupported` rather than report a known person as not found.
 
 ## native
 

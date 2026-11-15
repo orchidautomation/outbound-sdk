@@ -65,8 +65,10 @@ const build = async (): Promise<OutboundApi> => {
 
   return createOutbound({
     adapter: combine(await Promise.all(CLIENTS.map(adapterFor))),
-    // One tool call may spend at most this many vendor requests. A call that
+    // One SDK read may spend at most this many vendor requests. A read that
     // would pass it fails with RateLimited instead of using up the quota.
+    // budget({ per: "run" }) would cap a whole tool call, but its count is
+    // one per instance, and this instance is shared by every session.
     maxRequests: 150,
     // A thread asks follow-ups about the same numbers. Reuse them for five
     // minutes instead of reading the vendor again.
