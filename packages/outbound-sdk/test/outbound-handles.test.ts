@@ -187,25 +187,33 @@ test("stats give totals, or one row per day, for a workspace or a campaign", asy
   const total = await outbound.stats();
   assert.equal(total.rows.length, 1);
   assert.equal(total.rows[0]?.scope, "workspace");
-  assert.equal(total.rows[0]?.sent, 295);
-  assert.equal(total.rows[0]?.replied, 14);
+  // "Q4 SaaS founders" and "Agency owners" over the demo's three weeks.
+  assert.equal(total.rows[0]?.sent, 943 + 1050);
+  assert.equal(total.rows[0]?.replied, 37 + 18);
   assert.equal(total.rows[0]?.date, null);
   assert.equal(total.meta.evidence, "exact");
 
   const daily = await outbound.campaign("cmp_founders").stats({ by: "day" });
-  assert.deepEqual(
-    daily.rows.map((row) => [row.date, row.sent, row.replied, row.timezone]),
-    [
-      ["2026-09-28", 45, 2, "UTC"],
-      ["2026-09-29", 45, 2, "UTC"],
-      ["2026-10-05", 50, 4, "UTC"],
-      ["2026-10-06", 40, 3, "UTC"],
-    ]
-  );
+
+  const rows = daily.rows.map((row) => [
+    row.date,
+    row.sent,
+    row.replied,
+    row.timezone,
+  ]);
+
+  // One row a day for the 21 days before 8 October, oldest first.
+  assert.equal(rows.length, 21);
+  assert.deepEqual(rows[0], ["2026-09-17", 44, 1, "UTC"]);
+  assert.deepEqual(rows.slice(-2), [
+    ["2026-10-06", 45, 2, "UTC"],
+    ["2026-10-07", 44, 2, "UTC"],
+  ]);
   assert.equal(daily.rows[0]?.scopeRef, "memory:client-a:cmp_founders");
 
   const ranged = await outbound.stats({ from: "2026-10-06", to: "2026-10-06" });
-  assert.equal(ranged.rows[0]?.sent, 40);
+  // 45 from one campaign and 50 from the other.
+  assert.equal(ranged.rows[0]?.sent, 45 + 50);
 });
 
 test("stats by step need the step scope", async () => {

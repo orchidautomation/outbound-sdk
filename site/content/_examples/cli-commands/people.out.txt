@@ -122,7 +122,7 @@ $ outbound lists
     "schemaVersion": 1,
     "sourceId": "lst_founders",
     "workspaceId": "default",
-    "createdAt": "2026-10-28T09:00:00.000Z",
+    "createdAt": "2026-10-21T09:00:00.000Z",
     "kind": "leads",
     "name": "SaaS founders",
     "size": 2

@@ -198,54 +198,54 @@ $ outbound insight channel_mix --input '{"max_campaigns":5}'
     "finding": "Only email campaigns were found, so there is nothing to compare.",
     "byProvider": [
       {
-        "bounced": 8,
-        "contacted": 295,
-        "positive": 5,
-        "replied": 14,
-        "sent": 295,
+        "bounced": 72,
+        "contacted": 1260,
+        "positive": 24,
+        "replied": 55,
+        "sent": 1993,
         "acceptance": null,
         "campaigns": 2,
         "channel": "email",
         "positiveRate": {
-          "count": 5,
-          "high": 0.0391,
-          "low": 0.0073,
-          "of": 295,
-          "rate": 0.0169
+          "count": 24,
+          "high": 0.0282,
+          "low": 0.0128,
+          "of": 1260,
+          "rate": 0.019
         },
         "replyRate": {
-          "count": 14,
-          "high": 0.0781,
-          "low": 0.0285,
-          "of": 295,
-          "rate": 0.0475
+          "count": 55,
+          "high": 0.0564,
+          "low": 0.0337,
+          "of": 1260,
+          "rate": 0.0437
         },
         "provider": "memory"
       }
     ],
     "channels": [
       {
-        "bounced": 8,
-        "contacted": 295,
-        "positive": 5,
-        "replied": 14,
-        "sent": 295,
+        "bounced": 72,
+        "contacted": 1260,
+        "positive": 24,
+        "replied": 55,
+        "sent": 1993,
         "acceptance": null,
         "campaigns": 2,
         "channel": "email",
         "positiveRate": {
-          "count": 5,
-          "high": 0.0391,
-          "low": 0.0073,
-          "of": 295,
-          "rate": 0.0169
+          "count": 24,
+          "high": 0.0282,
+          "low": 0.0128,
+          "of": 1260,
+          "rate": 0.019
         },
         "replyRate": {
-          "count": 14,
-          "high": 0.0781,
-          "low": 0.0285,
-          "of": 295,
-          "rate": 0.0475
+          "count": 55,
+          "high": 0.0564,
+          "low": 0.0337,
+          "of": 1260,
+          "rate": 0.0437
         }
       }
     ],

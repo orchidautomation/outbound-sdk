@@ -109,20 +109,21 @@ test("campaign_overview reports each active campaign with rates computed from co
   assert.equal(campaigns.length, 1);
   assert.equal(campaigns[0]?.campaign, "memory:acme:cmp_founders");
   assert.equal(campaigns[0]?.name, "Q4 SaaS founders");
-  // Demo data, both weeks: 180 sent to 180 contacted, 11 replies, 4 positive, 2 bounces.
+  // Demo data, all three weeks: 943 sent, 630 of them first touches to
+  // leads contacted, 37 replies, 19 positive, 19 bounces.
   assert.deepEqual(campaigns[0]?.metrics, {
-    bounce_rate: 0.0111,
-    bounced: 2,
+    bounce_rate: 0.0201,
+    bounced: 19,
     connections_accepted: null,
     connections_sent: null,
-    contacted: 180,
-    opened: 101,
-    positive: 4,
-    positive_reply_rate: 0.0222,
-    replied: 11,
-    reply_rate: 0.0611,
+    contacted: 630,
+    opened: 516,
+    positive: 19,
+    positive_reply_rate: 0.0302,
+    replied: 37,
+    reply_rate: 0.0587,
     reply_rate_basis: "contacted",
-    sent: 180,
+    sent: 943,
   });
   assert.ok(result.ok && result.meta.evidence === "exact");
   // A model does not know the date, so every result carries it.
@@ -145,9 +146,15 @@ test("campaign_trend returns one point per day for the chosen count", async () =
     to: "2026-10-31",
   });
 
+  // The demo is built for 8 October, so its days end on the 7th.
   assert.deepEqual(data(result).points, [
-    { date: "2026-10-05", timezone: "UTC", value: 4 },
-    { date: "2026-10-06", timezone: "UTC", value: 3 },
+    { date: "2026-10-01", timezone: "UTC", value: 2 },
+    { date: "2026-10-02", timezone: "UTC", value: 1 },
+    { date: "2026-10-03", timezone: "UTC", value: 2 },
+    { date: "2026-10-04", timezone: "UTC", value: 1 },
+    { date: "2026-10-05", timezone: "UTC", value: 3 },
+    { date: "2026-10-06", timezone: "UTC", value: 2 },
+    { date: "2026-10-07", timezone: "UTC", value: 2 },
   ]);
 });
 
@@ -433,7 +440,8 @@ test("compare_clients and cross_channel_lead work once their plugins are on the 
       client.sent,
       client.replied,
     ]),
-    [["acme", 2, 295, 14]]
+    // 943 + 1,050 sent and 37 + 18 replies over the demo's three weeks.
+    [["acme", 2, 1993, 55]]
   );
 
   const person = data(

@@ -6,18 +6,18 @@
         "channel": "email",
         "name": "Q4 SaaS founders",
         "metrics": {
-          "bounce_rate": 0.0111,
-          "bounced": 2,
+          "bounce_rate": 0.0201,
+          "bounced": 19,
           "connections_accepted": null,
           "connections_sent": null,
-          "contacted": 180,
-          "opened": 101,
-          "positive": 4,
-          "positive_reply_rate": 0.0222,
-          "replied": 11,
-          "reply_rate": 0.0611,
+          "contacted": 630,
+          "opened": 516,
+          "positive": 19,
+          "positive_reply_rate": 0.0302,
+          "replied": 37,
+          "reply_rate": 0.0587,
           "reply_rate_basis": "contacted",
-          "sent": 180
+          "sent": 943
         },
         "status": "active"
       }
@@ -39,6 +39,21 @@
     "metric": "replied",
     "points": [
       {
+        "date": "2026-11-01",
+        "timezone": "UTC",
+        "value": 0
+      },
+      {
+        "date": "2026-11-02",
+        "timezone": "UTC",
+        "value": 2
+      },
+      {
+        "date": "2026-11-03",
+        "timezone": "UTC",
+        "value": 2
+      },
+      {
         "date": "2026-11-04",
         "timezone": "UTC",
         "value": 2
@@ -46,17 +61,47 @@
       {
         "date": "2026-11-05",
         "timezone": "UTC",
+        "value": 1
+      },
+      {
+        "date": "2026-11-06",
+        "timezone": "UTC",
+        "value": 3
+      },
+      {
+        "date": "2026-11-07",
+        "timezone": "UTC",
         "value": 2
+      },
+      {
+        "date": "2026-11-08",
+        "timezone": "UTC",
+        "value": 1
+      },
+      {
+        "date": "2026-11-09",
+        "timezone": "UTC",
+        "value": 2
+      },
+      {
+        "date": "2026-11-10",
+        "timezone": "UTC",
+        "value": 1
       },
       {
         "date": "2026-11-11",
         "timezone": "UTC",
-        "value": 4
+        "value": 3
       },
       {
         "date": "2026-11-12",
         "timezone": "UTC",
-        "value": 3
+        "value": 2
+      },
+      {
+        "date": "2026-11-13",
+        "timezone": "UTC",
+        "value": 2
       }
     ]
   },
