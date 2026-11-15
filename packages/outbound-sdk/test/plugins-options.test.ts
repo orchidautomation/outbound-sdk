@@ -5,6 +5,7 @@ import {
   alerts,
   bounceRateAbove,
   memoryAlertDedupe,
+  noSends,
   senderNotActive,
 } from "../src/alerts/index.ts";
 import type { Alert } from "../src/alerts/index.ts";
@@ -93,7 +94,9 @@ test("alerts with a dedupe store notify once per rule and subject, however many 
     once.map((fired) => fired.map((alert) => alert.subject)),
     [["memory:default:s2"]]
   );
-  assert.deepEqual([...seen], ["sender-not-active|memory:default:s2"]);
+  assert.deepEqual([...seen], [
+    "sender-not-active|memory:default:s2|disconnected",
+  ]);
 
   // A later run with the same store stays quiet about what it already told.
   const later: Alert[][] = [];
@@ -158,6 +161,79 @@ test("alerts with a dedupe store notify once per rule and subject, however many 
 
   assert.equal((await broken.senders.list()).items.length, 2);
   await settle();
+});
+
+// A day on which campaign c1 sent nothing.
+const quiet = (date: string) => ({
+  campaignId: "c1",
+  counts: { contacted: 0, sent: 0 },
+  date,
+});
+
+test("alerts dedupe by the day of the data point, and by the value of a state", async () => {
+  const store = memoryAlertDedupe();
+  const told: Alert[][] = [];
+
+  const instance = (seed: MemoryData) =>
+    createOutbound({
+      adapter: memory({ data: seed }),
+      plugins: [
+        alerts({
+          dedupe: store,
+          notify: (fired) => {
+            told.push([...fired]);
+          },
+          rules: [noSends(), senderNotActive()],
+        }),
+      ],
+    });
+
+  // No sends on 11-10: one alert.
+  const first = instance({
+    campaigns: [{ id: "c1" }],
+    stats: [quiet("2026-11-10")],
+  });
+
+  await first.campaign("c1").stats({ by: "day" });
+  // A repeat run over the same day says nothing new.
+  await first.campaign("c1").stats({ by: "day" });
+  await settle();
+
+  // The next day is quiet too: a new data point, so a new alert.
+  const next = instance({
+    campaigns: [{ id: "c1" }],
+    stats: [quiet("2026-11-10"), quiet("2026-11-11")],
+  });
+
+  await next.campaign("c1").stats({ by: "day" });
+  await settle();
+
+  assert.deepEqual(
+    told.map((fired) => fired.map((alert) => [alert.rule, alert.day])),
+    [[["no-sends", "2026-11-10"]], [["no-sends", "2026-11-11"]]]
+  );
+
+  // A sender paused, then in error: a state that changed alerts again.
+  told.length = 0;
+
+  const paused = instance({
+    senders: [{ address: "a@example.com", id: "s1", status: "paused" }],
+  });
+
+  await paused.senders.list();
+  await paused.senders.list();
+
+  const broken = instance({
+    senders: [{ address: "a@example.com", id: "s1", status: "error" }],
+  });
+
+  await broken.senders.list();
+  await settle();
+
+  assert.deepEqual(
+    told.map((fired) => fired.map((alert) => alert.value)),
+    [["paused"], ["error"]]
+  );
 });
 
 // A writer that keeps what it is given.

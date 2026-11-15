@@ -23,12 +23,23 @@ export interface Alert {
   readonly value: number | string | null;
   /** What it was compared with. */
   readonly threshold: number | string | null;
+  /**
+   * The day of the data point, `YYYY-MM-DD`, for an alert about a day's
+   * counts. With `dedupe`, the same rule and subject on another day is a new
+   * alert. `null` or absent for a record that is not one day's.
+   */
+  readonly day?: string | null | undefined;
 }
 
 export interface AlertRule {
   readonly name: string;
   /** Returns an alert when the record breaks the rule, otherwise `null`. */
   readonly check: (record: OutboundRecord) => Alert | null;
+  /**
+   * The rule is about a state, such as a sender's status: with `dedupe`, a
+   * new `value` for the same subject is a new alert (paused, then error).
+   */
+  readonly state?: boolean | undefined;
 }
 
 /**
@@ -56,9 +67,10 @@ export interface AlertsOptions {
   readonly rules: readonly AlertRule[];
   readonly notify: (alerts: readonly Alert[]) => void | Promise<void>;
   /**
-   * Notify once per distinct alert, where an alert is its rule and its
-   * subject: `sender-not-active|<sender ref>`. Without it, every read that
-   * shows the condition notifies again.
+   * Notify once per distinct alert: its rule, its subject, the day of its
+   * data point when it has one, and its value for a state rule
+   * (`no-sends|<campaign ref>|2026-11-10`, `sender-not-active|<sender ref>|paused`).
+   * Without it, every read that shows the condition notifies again.
    */
   readonly dedupe?: AlertDedupe | undefined;
 }
@@ -101,6 +113,7 @@ export const bounceRateAbove = (
     return value !== null && value > threshold
       ? {
           message: `Bounce rate is ${percent(value)}, above ${percent(threshold)}`,
+          day: record.date,
           rule: "bounce-rate-above",
           subject: record.scopeRef,
           threshold,
@@ -126,6 +139,7 @@ export const replyRateBelow = (
     return value !== null && value < threshold
       ? {
           message: `Reply rate is ${percent(value)}, below ${percent(threshold)}`,
+          day: record.date,
           rule: "reply-rate-below",
           subject: record.scopeRef,
           threshold,
@@ -152,6 +166,7 @@ export const senderNotActive = (): AlertRule => ({
         }
       : null,
   name: "sender-not-active",
+  state: true,
 });
 
 /** Fires for a row that reported sends on a day with none: a sender gone quiet. */
@@ -159,6 +174,7 @@ export const noSends = (): AlertRule => ({
   check: (record) =>
     isMetricRow(record) && record.date !== null && record.sent === 0
       ? {
+          day: record.date,
           message: `Nothing was sent on ${record.date}`,
           rule: "no-sends",
           subject: record.scopeRef,
@@ -173,16 +189,28 @@ const ignore = (): void => {
   // A notifier must never fail the read it reports on.
 };
 
+interface Fired {
+  readonly alert: Alert;
+  /** What makes it a repeat: `rule|subject`, then the day and a state's value when there are. */
+  readonly key: string;
+}
+
+const keyOf = (alert: Alert, rule: AlertRule): string =>
+  [
+    alert.rule,
+    alert.subject,
+    ...(alert.day ? [alert.day] : []),
+    ...(rule.state === true ? [String(alert.value)] : []),
+  ].join("|");
+
 /** The alerts not notified before, each marked as notified. */
 const fresh = async (
-  fired: readonly Alert[],
+  fired: readonly Fired[],
   seen: AlertDedupe
 ): Promise<Alert[]> => {
   const unseen: Alert[] = [];
 
-  for (const alert of fired) {
-    const key = `${alert.rule}|${alert.subject}`;
-
+  for (const { alert, key } of fired) {
     // oxlint-disable-next-line no-await-in-loop -- one key at a time, so the same alert twice in one read is caught.
     if (!(await seen.has(key))) {
       // oxlint-disable-next-line no-await-in-loop -- marked before the next key is checked.
@@ -202,7 +230,7 @@ export const alerts = (
   // stats can name it without another read.
   const names = new Map<string, string>();
 
-  const evaluate = (records: readonly OutboundRecord[]): Alert[] => {
+  const fire = (records: readonly OutboundRecord[]): Fired[] => {
     for (const record of records) {
       if (isCampaign(record)) {
         names.set(record.ref, record.name);
@@ -217,14 +245,20 @@ export const alerts = (
           ? []
           : [
               {
-                ...alert,
-                subjectName:
-                  alert.subjectName ?? names.get(alert.subject) ?? null,
+                alert: {
+                  ...alert,
+                  subjectName:
+                    alert.subjectName ?? names.get(alert.subject) ?? null,
+                },
+                key: keyOf(alert, rule),
               },
             ];
       })
     );
   };
+
+  const evaluate = (records: readonly OutboundRecord[]): Alert[] =>
+    fire(records).map((each) => each.alert);
 
   const { dedupe } = options;
 
@@ -232,7 +266,7 @@ export const alerts = (
   // same alert unseen.
   let last: Promise<void> = Promise.resolve();
 
-  const notifyFresh = (fired: readonly Alert[], seen: AlertDedupe): void => {
+  const notifyFresh = (fired: readonly Fired[], seen: AlertDedupe): void => {
     last = (async () => {
       try {
         await last;
@@ -261,11 +295,11 @@ export const alerts = (
     name: "alerts",
     wrap: async (operation, next) => {
       const output = await next(operation);
-      const fired = evaluate(output.items);
+      const fired = fire(output.items);
 
       if (fired.length > 0) {
         if (dedupe === undefined) {
-          notifyAll(fired);
+          notifyAll(fired.map((each) => each.alert));
         } else {
           notifyFresh(fired, dedupe);
         }

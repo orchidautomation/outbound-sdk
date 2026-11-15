@@ -21,7 +21,7 @@ Runs on the [shared seed](/docs/plugins#every-plugin), where one campaign has 18
   ../../_examples/plugins-alerts/run.out.txt
 </include>
 
-The bounce and reply alerts appear three times: once for the two-day total, and once for each day of the by-day read, which is a separate read returning separate rows. By default nothing removes repeats. Pass `dedupe` to be told once per rule and subject.
+The bounce and reply alerts appear three times: once for the two-day total, and once for each day of the by-day read, which is a separate read returning separate rows. By default nothing removes repeats. Pass `dedupe` to be told about each one once (see [what counts as a repeat](#what-counts-as-a-repeat)).
 
 ## Options
 
@@ -29,7 +29,7 @@ The bounce and reply alerts appear three times: once for the two-day total, and 
 | --- | --- | --- | --- |
 | `rules` | `AlertRule[]` | required | Checked against every record, in order. |
 | `notify` | `(alerts: Alert[]) => void \| Promise<void>` | required | Called once per operation that fired at least one alert, with all of that operation's alerts. Not awaited. |
-| `dedupe` | `AlertDedupe` | none | A store of the alerts already notified: `has(key)` and `add(key)`, sync or async. With it, an alert is notified once per rule and subject (the key is `rule\|subject`), however many reads show it, and `notify` gets only the alerts not seen before. `memoryAlertDedupe()` keeps the keys in this process's memory, for one run. Supply your own to remember across runs: the SDK stores nothing itself. A store that fails is ignored and cannot fail the read; nothing is notified for that read. |
+| `dedupe` | `AlertDedupe` | none | A store of the alerts already notified: `has(key)` and `add(key)`, sync or async. With it, an alert is notified once, however many reads show it, and `notify` gets only the alerts not seen before. The key is in [what counts as a repeat](#what-counts-as-a-repeat). `memoryAlertDedupe()` keeps the keys in this process's memory, for one run. Supply your own to remember across runs: the SDK stores nothing itself. A store that fails is ignored and cannot fail the read; nothing is notified for that read. |
 
 ## Built-in rules
 
@@ -56,8 +56,21 @@ An `Alert` is:
 | `message` | `string` | A sentence, for example "Bounce rate is 9.0%, above 5.0%". |
 | `value` | `number \| string \| null` | What was measured. |
 | `threshold` | `number \| string \| null` | What it was compared with. |
+| `day` | `string \| null` | The day of the stats row, `YYYY-MM-DD`, for an alert about one day's counts. `null` for a row that totals a range. Absent from an alert about another record. |
 
-An `AlertRule` is `{ name, check }`, where `check(record)` returns an `Alert` or `null`. It receives every kind of record the instance returns, so it starts by telling them apart, as `untaggedCampaign` does in the sample. A rule sees one record at a time. Anything that needs two records, or a change since last week, is not a rule: see [insights](/docs/insights).
+An `AlertRule` is `{ name, check, state? }`, where `check(record)` returns an `Alert` or `null`. It receives every kind of record the instance returns, so it starts by telling them apart, as `untaggedCampaign` does in the sample. A rule sees one record at a time. Anything that needs two records, or a change since last week, is not a rule: see [insights](/docs/insights). Set `state: true` on a rule about a state, such as a status, so that `dedupe` tells you when the value changes.
+
+## What counts as a repeat
+
+With `dedupe`, an alert is a repeat of one already notified when it has the same key:
+
+| Alert | Key | So |
+| --- | --- | --- |
+| About one day's stats row (`day` is set) | `rule\|subject\|day`, for example `no-sends\|instantly:ws:c1\|2026-11-10` | No sends on 11-10 and again on 11-11 is two alerts. A second run over 11-10 is not a new one. |
+| From a state rule (`state: true`, as `senderNotActive()` is) | `rule\|subject\|value`, for example `sender-not-active\|instantly:ws:s1\|paused` | A sender paused, then in error, is two alerts. One that stays paused is one, and so is one that goes back to a status already notified. |
+| Anything else: a row that totals a range, or your own rule without `day` or `state` | `rule\|subject` | Notified once for that subject, whatever its value. |
+
+Each key is stored in your `dedupe` store as it is notified. A rate that changes on a day already notified is not a new alert.
 
 ## What it adds
 
