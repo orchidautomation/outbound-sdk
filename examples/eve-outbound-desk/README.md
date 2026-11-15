@@ -34,7 +34,7 @@ evals/                               four checks, run on the demo data
 
 ## Try it without a vendor key
 
-You need Node 26 (24 works for local development) and a model: an [AI Gateway](https://vercel.com/docs/ai-gateway) key, or run `/login` in the TUI to use one you have.
+You need Node 26 (24 works for local development) and a model. Any AI Gateway connection works: an [AI Gateway](https://vercel.com/docs/ai-gateway) key in `AI_GATEWAY_API_KEY`, or your signed-in Vercel CLI, which `eve dev` can use without linking a project. Run `/login` in the TUI to choose. If you have used eve with a ChatGPT subscription, that may be your saved default, and it can't serve the `anthropic/...` model this agent uses, so pick an AI Gateway connection in `/login`.
 
 ```sh
 npm install
