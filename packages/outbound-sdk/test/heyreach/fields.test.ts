@@ -363,3 +363,35 @@ test("heyreach: a campaign's lead says whether it replied, apart from where it i
     "LinkedIn has no bounce and no unsubscribe, and no message status is unknown"
   );
 });
+
+test("heyreach: a campaign's progress counts its leads by how far they got", async () => {
+  const { outbound, requests, settle } = harness(suite);
+  const progress = await settle(outbound.campaign(CAMPAIGN).progress());
+
+  assert.equal(
+    new URL(requests[0]?.url ?? "").pathname,
+    "/api/public/campaign/GetById"
+  );
+  assert.deepEqual(
+    {
+      blocked: progress.blocked,
+      completed: progress.completed,
+      failed: progress.failed,
+      inProgress: progress.inProgress,
+      leads: progress.leads,
+      notStarted: progress.notStarted,
+      stopped: progress.stopped,
+    },
+    {
+      blocked: null,
+      completed: 1,
+      failed: 0,
+      inProgress: 8,
+      leads: 9,
+      notStarted: 0,
+      stopped: 0,
+    },
+    "progressStats, with no count of blocked leads"
+  );
+  assert.equal(progress.campaignRef, `heyreach:client-a:${CAMPAIGN}`);
+});

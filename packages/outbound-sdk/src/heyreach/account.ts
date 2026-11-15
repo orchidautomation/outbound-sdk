@@ -22,6 +22,7 @@ import type { HeyReachClient } from "./client.ts";
 import {
   toBlockedCompany,
   toBlockedLead,
+  toCampaignProgress,
   toLeadList,
   toSenderHealth,
   toWebhook,
@@ -33,6 +34,7 @@ import { numericId, offsetOf, pageSize } from "./paging.ts";
 type AccountReaders = Required<
   Pick<
     Adapter,
+    | "getCampaignProgress"
     | "getList"
     | "getSenderHealth"
     | "getWebhook"
@@ -92,6 +94,20 @@ export const accountReaders = (client: HeyReachClient): AccountReaders => ({
       client.identity,
       id,
       client.object(await client.get(ctx, path), path)
+    );
+  },
+  getCampaignProgress: async (id, ctx) => {
+    const path = "/campaign/GetById";
+
+    return toCampaignProgress(
+      client.identity,
+      id,
+      client.object(
+        await client.get(ctx, path, {
+          query: { campaignId: numericId(client, id, "campaign") },
+        }),
+        path
+      )
     );
   },
   getList: async (id, ctx) => {

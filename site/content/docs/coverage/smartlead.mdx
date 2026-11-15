@@ -61,7 +61,7 @@ Two parameters are left out of the native catalog because they carry or return s
 | `GET` | `/campaigns/{campaignId}/webhooks/summary` | How many webhook calls a campaign made in a time window, and how many failed | native | `campaignWebhookSummary` |
 | `DELETE` | `/campaigns/{campaign_id}` | Delete Campaign | write |  |
 | `GET` | `/campaigns/{campaign_id}` | One campaign with its schedule, caps, tracking and stop rules | normalized | `campaigns.get`, `campaigns.settings` |
-| `GET` | `/campaigns/{campaign_id}/analytics` | A campaign's lifetime totals | normalized | `stats.campaign` |
+| `GET` | `/campaigns/{campaign_id}/analytics` | A campaign's lifetime totals and its lead counts | normalized | `stats.campaign`, `campaigns.progress` |
 | `GET` | `/campaigns/{campaign_id}/analytics-by-date` | A campaign's totals in a date window | normalized | `stats.campaign` |
 | `POST` | `/campaigns/{campaign_id}/duplicate` | Duplicate Campaign | write |  |
 | `DELETE` | `/campaigns/{campaign_id}/email-accounts` | Remove Email Accounts from Campaign | write |  |

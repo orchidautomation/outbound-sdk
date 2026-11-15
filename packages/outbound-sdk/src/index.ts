@@ -69,77 +69,8 @@ export type {
   OutboundErrorOptions,
 } from "./internal/errors.ts";
 
-export {
-  campaignSchema,
-  campaignStatusSchema,
-  channelSchema,
-  eventTypeSchema,
-  evidenceSchema,
-  leadSchema,
-  leadStatusSchema,
-  mailProviderSchema,
-  messageSchema,
-  metricRowSchema,
-  metricScopeSchema,
-  outboundEventSchema,
-  replyCategorySchema,
-  replySchema,
-  SCHEMA_VERSION,
-  senderSchema,
-  senderStatusSchema,
-  sequenceSchema,
-  workspaceSchema,
-} from "./internal/entities.ts";
-
-export type {
-  Campaign,
-  CampaignStatus,
-  Channel,
-  EventType,
-  Evidence,
-  Lead,
-  LeadEngagement,
-  LeadStatus,
-  MailProvider,
-  Message,
-  MetricRow,
-  MetricScope,
-  OutboundEvent,
-  Reply,
-  ReplyCategory,
-  Sender,
-  SenderStatus,
-  Sequence,
-  SequenceStep,
-  SequenceVariant,
-  Workspace,
-} from "./internal/entities.ts";
-
-export {
-  blockEntrySchema,
-  campaignSettingsSchema,
-  leadListSchema,
-  senderHealthSchema,
-  tagSchema,
-  webhookSubscriptionSchema,
-} from "./internal/entities-account.ts";
-
-export type {
-  BlockEntry,
-  CampaignSettings,
-  Entity,
-  LeadList,
-  SenderHealth,
-  SendingWindow,
-  Tag,
-  WebhookSubscription,
-} from "./internal/entities-account.ts";
-
-export { resolveFields } from "./internal/fields.ts";
-
-export type { FieldCoverage, FieldDeclaration } from "./internal/fields.ts";
-
-export type { LeadFieldMap } from "./internal/lead-fields.ts";
+// oxlint-disable-next-line oxc/no-barrel-file -- this file is the package's one public entry by design, and records.ts names every export it adds.
+export * from "./internal/records.ts";
 
 export { defineNative } from "./internal/native.ts";
 

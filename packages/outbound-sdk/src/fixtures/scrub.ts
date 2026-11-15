@@ -4,13 +4,14 @@
 
 import type {
   BlockEntry,
+  CampaignProgress,
   CampaignSettings,
   LeadList,
   SenderHealth,
   Tag,
   WebhookSubscription,
 } from "../internal/entities-account.ts";
-import type { Sequence } from "../internal/entities.ts";
+import type { Lead, Sequence } from "../internal/entities.ts";
 import type { OutboundRecord } from "../internal/outbound/operations.ts";
 import { makeRef, parseRef } from "../internal/ref.ts";
 import { profileSlug } from "../internal/url.ts";
@@ -54,6 +55,7 @@ interface Tools {
 // The account-level records, told apart by a field only that kind has.
 type AccountRecord =
   | BlockEntry
+  | CampaignProgress
   | CampaignSettings
   | LeadList
   | SenderHealth
@@ -64,6 +66,7 @@ type AccountRecord =
 const isAccountRecord = (record: OutboundRecord): record is AccountRecord =>
   "steps" in record ||
   "description" in record ||
+  "inProgress" in record ||
   "schedule" in record ||
   "dns" in record ||
   "value" in record ||
@@ -78,7 +81,8 @@ const accountRecord = (
     return base(record);
   }
 
-  if ("schedule" in record) {
+  // Settings and progress name their campaign and nobody else.
+  if ("schedule" in record || "inProgress" in record) {
     return {
       ...base(record),
       campaignRef: scrubRef(record.campaignRef) ?? record.campaignRef,
@@ -114,6 +118,35 @@ const accountRecord = (
     url: "https://example.com/webhook",
   };
 };
+
+// A fixed stand-in for a value that names someone, kept `null` when the
+// record had none.
+const standIn = (value: string | null, fake: string): string | null =>
+  value === null ? null : fake;
+
+// A lead with everything that names the person or the company replaced.
+const leadRecord = ({ base, placeholder }: Tools, record: Lead) => ({
+  ...base(record),
+  company: placeholder("company", record.company),
+  companyLinkedinUrl: standIn(
+    record.companyLinkedinUrl,
+    "https://www.linkedin.com/company/example-co"
+  ),
+  custom: Object.fromEntries(
+    Object.entries(record.custom).map(([key, value]) => [
+      key,
+      placeholder("value", value) ?? "",
+    ])
+  ),
+  email: placeholder("email", record.email),
+  firstName: standIn(record.firstName, "Person"),
+  lastName:
+    placeholder("person", record.lastName)?.replace("Person ", "") ?? null,
+  linkedinUrl: placeholder("linkedin", record.linkedinUrl),
+  location: standIn(record.location, "Example City"),
+  phone: standIn(record.phone, "+15550000000"),
+  website: standIn(record.website, "https://example.com"),
+});
 
 interface Identifiers {
   readonly email: string | null;
@@ -213,22 +246,10 @@ export const createScrubber = (): Scrubber => {
       }
 
       if ("custom" in record) {
-        return withPersonKeys(record, {
-          ...base(record),
-          company: placeholder("company", record.company),
-          custom: Object.fromEntries(
-            Object.entries(record.custom).map(([key, value]) => [
-              key,
-              placeholder("value", value) ?? "",
-            ])
-          ),
-          email: placeholder("email", record.email),
-          firstName: record.firstName === null ? null : "Person",
-          lastName:
-            placeholder("person", record.lastName)?.replace("Person ", "") ??
-            null,
-          linkedinUrl: placeholder("linkedin", record.linkedinUrl),
-        });
+        return withPersonKeys(
+          record,
+          leadRecord({ base, placeholder, scrubRef }, record)
+        );
       }
 
       if (isAccountRecord(record)) {

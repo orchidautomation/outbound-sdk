@@ -199,6 +199,8 @@ const PROBES: Partial<Record<CapabilityKey, Probe>> = {
   blocklist: (outbound) => outbound.blocklist.list(),
   "campaigns.bySender": (outbound, ids) =>
     outbound.sender(ids.sender ?? "missing").campaigns.list(),
+  "campaigns.progress": (outbound, ids) =>
+    outbound.campaign(ids.campaign).progress(),
   "campaigns.settings": (outbound, ids) =>
     outbound.campaign(ids.campaign).settings(),
   "lists.get": (outbound, ids) => outbound.lists.get(ids.list ?? "missing"),

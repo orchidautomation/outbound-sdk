@@ -374,3 +374,32 @@ test("instantly: a lead's status code is its progress or its outcome, and replie
     "an unsubscribe outranks a reply, and a missing code is unknown, not false"
   );
 });
+
+test("instantly: a campaign's progress is its lead count and its finished leads, and nothing else", async () => {
+  const { outbound, requests, settle } = harness(suite);
+  const id = "01a1d77f-5e23-7a9a-9112-a6f7089f329f";
+  const progress = await settle(outbound.campaign(id).progress());
+  const url = new URL(requests[0]?.url ?? "");
+
+  assert.equal(url.pathname, "/api/v2/campaigns/analytics");
+  assert.equal(url.searchParams.get("id"), id);
+  assert.equal(progress.leads, 101, "leads_count");
+  assert.equal(progress.completed, 119, "completed_count");
+  assert.deepEqual(
+    [
+      progress.notStarted,
+      progress.inProgress,
+      progress.stopped,
+      progress.failed,
+      progress.blocked,
+    ],
+    [null, null, null, null, null],
+    "the report does not split the rest"
+  );
+
+  const none = harness(suite, () => Response.json([]));
+  await assert.rejects(
+    async () => await none.settle(none.outbound.campaign(id).progress()),
+    /was not found/u
+  );
+});

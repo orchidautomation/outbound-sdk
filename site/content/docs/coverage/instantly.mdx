@@ -286,7 +286,7 @@ Of the 268 endpoints, 22 are used by normalized reads, 105 are in the native cat
 
 ## Notes
 
-- Two reads stay in the native catalog and are also used by a normalized read: `stats.allCampaigns` reads `GET /campaigns/analytics` with no id, and `campaigns.bySender` reads `GET /account-campaign-mappings/{email}`.
+- Two reads stay in the native catalog and are also used by a normalized read: `stats.allCampaigns` reads `GET /campaigns/analytics` with no id and `campaigns.progress` reads it for one, and `campaigns.bySender` reads `GET /account-campaign-mappings/{email}`.
 - `dfyAccounts` leaves out the documented `with_passwords` parameter, so a mailbox password cannot be asked for.
 - `ids` on `campaignAnalytics`, and `action_status` and `action_type` on `salesAgentActivities`, are arrays that Instantly takes as a repeated query key. The catalog sends one value.
 - `POST /creator-search/search` is listed as a write: Instantly asks for a `create` scope and charges credits for it after the free pages of the day.

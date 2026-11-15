@@ -15,6 +15,8 @@ export interface Capabilities {
   "campaigns.status": FilterGrade;
   /** List the campaigns one sender is attached to. */
   "campaigns.bySender": boolean;
+  /** How many of a campaign's leads are waiting, in progress, finished or stopped. */
+  "campaigns.progress": boolean;
   /** A campaign's schedule, daily caps, tracking and stop rules. */
   "campaigns.settings": boolean;
   /** A campaign's steps and variants. */
@@ -97,6 +99,7 @@ type CapabilityValue = Capabilities[CapabilityKey];
 export const NO_CAPABILITIES: Capabilities = {
   blocklist: false,
   "campaigns.bySender": false,
+  "campaigns.progress": false,
   "campaigns.settings": false,
   "campaigns.status": false,
   deletionDetection: false,

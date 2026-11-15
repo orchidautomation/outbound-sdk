@@ -4,6 +4,7 @@
 
 import type {
   BlockEntry,
+  CampaignProgress,
   LeadList,
   SenderHealth,
   WebhookSubscription,
@@ -11,6 +12,7 @@ import type {
 import {
   count,
   emailAddress,
+  field,
   flag,
   list,
   text,
@@ -20,6 +22,32 @@ import type { JsonObject } from "../internal/json.ts";
 import { eventTypesOf, recordBase, refTo, refsTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
 import { EVENT_TYPES } from "./webhooks.ts";
+
+/**
+ * `GET /campaign/GetById`: `progressStats` counts the campaign's leads by how
+ * far they got. `totalUsersExcluded` (leads kept out by an exclusion rule) has
+ * no equivalent and stays in raw.
+ */
+export const toCampaignProgress = (
+  identity: Identity,
+  campaignId: string,
+  raw: JsonObject
+): CampaignProgress => {
+  const stats = raw.progressStats;
+
+  return {
+    ...recordBase(identity, campaignId, raw),
+    // HeyReach has no bounce and no block list for a campaign's leads.
+    blocked: null,
+    campaignRef: refTo(identity, campaignId) ?? "",
+    completed: count(field(stats, "totalUsersFinished")),
+    failed: count(field(stats, "totalUsersFailed")),
+    inProgress: count(field(stats, "totalUsersInProgress")),
+    leads: count(field(stats, "totalUsers")),
+    notStarted: count(field(stats, "totalUsersPending")),
+    stopped: count(field(stats, "totalUsersManuallyStopped")),
+  };
+};
 
 /** `POST /list/GetAll`: `listType` is `USER_LIST` or `COMPANY_LIST`. */
 export const toLeadList = (identity: Identity, raw: JsonObject): LeadList => ({

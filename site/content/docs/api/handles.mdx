@@ -38,6 +38,7 @@ Every method takes the per-call options as its last argument: `timeout`, `retrie
 | `get()` | `WithMeta<Campaign>` | nothing |
 | `sequence()` | `WithMeta<Sequence>`: the steps and their variants | `sequence` |
 | `settings()` | `WithMeta<CampaignSettings>`: schedule, daily caps, tracking, stop rules | `campaigns.settings` |
+| `progress()` | `WithMeta<CampaignProgress>`: how many leads are waiting, in progress, finished or stopped | `campaigns.progress` |
 | `stats(options?)` | `StatsResult` | `stats.campaign`, or `stats.byStep` for `scope: "step"`; `stats.byDay` for `by: "day"` |
 | `senders` | `list`, `listAll` of `Sender` | `senders.byCampaign` |
 | `leads` | `list`, `listAll` of `Lead`. Filters: `email`, `linkedinUrl`, `since`, `until` | `leads.byCampaign` |

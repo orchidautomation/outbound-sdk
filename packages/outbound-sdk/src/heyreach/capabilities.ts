@@ -24,6 +24,8 @@ export const capabilities: CapabilityDeclaration = {
   blocklist: true,
   // POST /campaign/GetAll takes an `accountIds` array.
   "campaigns.bySender": true,
+  // GET /campaign/GetById carries progressStats.
+  "campaigns.progress": true,
   // A campaign's schedule can only be written (POST /campaign/UpdateSchedule).
   // GET /campaign/GetById returns no schedule, limits or stop rules.
   "campaigns.settings": false,
@@ -106,6 +108,7 @@ export const capabilities: CapabilityDeclaration = {
 // warmup or DNS, and the API reports no step a message belongs to.
 export const fields: FieldDeclaration = {
   campaign: { tags: false },
+  campaignProgress: { blocked: false },
   campaignSettings: false,
   lead: {
     // LinkedIn has no bounce and no unsubscribe.

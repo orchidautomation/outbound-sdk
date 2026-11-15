@@ -5,6 +5,7 @@
 import type { CapabilityDeclaration } from "./capabilities.ts";
 import type {
   BlockEntry,
+  CampaignProgress,
   CampaignSettings,
   LeadList,
   SenderHealth,
@@ -279,6 +280,10 @@ export interface Adapter<Native extends NativeCatalog = NoNative> {
     campaignId: string,
     ctx: AdapterContext
   ) => Promise<CampaignSettings>;
+  readonly getCampaignProgress?: (
+    campaignId: string,
+    ctx: AdapterContext
+  ) => Promise<CampaignProgress>;
   readonly listSubsequences?: (
     query: SubsequenceQuery,
     ctx: AdapterContext

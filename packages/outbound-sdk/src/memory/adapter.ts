@@ -46,6 +46,7 @@ export interface MemoryOptions {
 const FULL_CAPABILITIES: CapabilityDeclaration = {
   blocklist: true,
   "campaigns.bySender": true,
+  "campaigns.progress": true,
   "campaigns.settings": true,
   "campaigns.status": "server",
   "leads.byCampaign": true,

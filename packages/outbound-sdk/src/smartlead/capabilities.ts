@@ -38,6 +38,8 @@ export const capabilities: CapabilityDeclaration = {
   // GET /campaigns/{id}: schedule, caps, tracking and stop rules.
   // GET /email-accounts/{id}/?fetch_campaigns=true names the campaign ids.
   "campaigns.bySender": true,
+  // GET /campaigns/{id}/analytics carries campaign_lead_stats.
+  "campaigns.progress": true,
   "campaigns.settings": true,
   // GET /campaigns/ has no status filter and returns every campaign at once.
   "campaigns.status": "client",
@@ -109,6 +111,7 @@ export const capabilities: CapabilityDeclaration = {
 
 // What a Smartlead record never carries, and what the adapter works out.
 export const fields: FieldDeclaration = {
+  campaignProgress: { failed: false },
   campaignSettings: { endDate: false },
   lead: { companyLinkedinUrl: false, engagement: false, title: false },
   message: { variantKey: false },

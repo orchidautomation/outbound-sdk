@@ -2,11 +2,13 @@
 // mailbox's health, lead lists, the block list, tags and webhooks.
 
 import type { Adapter } from "../internal/adapter.ts";
-import { count, emailAddress, field } from "../internal/json.ts";
+import { OutboundError } from "../internal/errors.ts";
+import { count, emailAddress, field, objects, text } from "../internal/json.ts";
 import { flatMapPage, mapPage } from "../internal/page.ts";
 import type { InstantlyClient } from "./client.ts";
 import {
   toBlockEntry,
+  toCampaignProgress,
   toCampaignSettings,
   toLeadList,
   toSenderHealth,
@@ -18,6 +20,7 @@ import { listPage } from "./pages.ts";
 
 type AccountReaders = Pick<
   Adapter,
+  | "getCampaignProgress"
   | "getCampaignSettings"
   | "getList"
   | "getSenderHealth"
@@ -33,6 +36,22 @@ export const accountReaders = (client: InstantlyClient): AccountReaders => {
   const { identity } = client;
 
   return {
+    // The per-campaign report, asked for one campaign: an array of one row.
+    getCampaignProgress: async (id, ctx) => {
+      const rows = objects(
+        await client.get(ctx, "/campaigns/analytics", { query: { id } })
+      );
+
+      const row = rows.find((each) => text(each.campaign_id) === id) ?? rows[0];
+
+      if (row === undefined) {
+        throw new OutboundError("NotFound", `Campaign ${id} was not found`, {
+          provider: identity.provider,
+        });
+      }
+
+      return toCampaignProgress(identity, id, row);
+    },
     getCampaignSettings: async (id, ctx) =>
       toCampaignSettings(
         identity,

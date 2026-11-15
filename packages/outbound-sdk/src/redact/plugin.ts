@@ -234,14 +234,15 @@ const redactFields = (masks: Masks, record: OutboundRecord): OutboundRecord => {
 
   if (
     "steps" in record ||
+    "inProgress" in record ||
     "schedule" in record ||
     "dns" in record ||
     "size" in record ||
     "url" in record ||
     "description" in record
   ) {
-    // Sequences hold template text; settings, health, lists, webhooks and
-    // tags hold no person.
+    // Sequences hold template text; progress, settings, health, lists,
+    // webhooks and tags hold no person.
     return { ...record, raw: null };
   }
 

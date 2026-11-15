@@ -8,6 +8,7 @@ import type { z } from "zod";
 
 import {
   blockEntrySchema,
+  campaignProgressSchema,
   campaignSettingsSchema,
   leadListSchema,
   senderHealthSchema,
@@ -29,6 +30,7 @@ import {
 export const RECORD_SCHEMAS = {
   blockEntry: blockEntrySchema,
   campaign: campaignSchema,
+  campaignProgress: campaignProgressSchema,
   campaignSettings: campaignSettingsSchema,
   lead: leadSchema,
   leadList: leadListSchema,

@@ -408,3 +408,88 @@ test("redact: a lead's phone, website and company LinkedIn page are masked with 
   assert.equal(kept.phone, "+15550000000", "not masked unless asked");
   assert.equal(kept.website, "https://example.com");
 });
+
+test("campaign progress: counted from the leads in memory, and refused when turned off", async () => {
+  const data = {
+    campaigns: [{ id: "c1" }],
+    leads: [
+      { campaignId: "c1", id: "l1", status: "active" as const },
+      { campaignId: "c1", id: "l2", status: "completed" as const },
+      {
+        campaignId: "c1",
+        id: "l3",
+        progress: "completed" as const,
+        status: "replied" as const,
+      },
+      { campaignId: "c1", id: "l4", status: "paused" as const },
+      { campaignId: "other", id: "l5" },
+    ],
+  };
+
+  const outbound = createOutbound({
+    adapter: memory({ data }),
+    fetch: offline,
+  });
+
+  const progress = await outbound.campaign("c1").progress();
+
+  assert.equal(progress.leads, 4);
+  assert.equal(progress.inProgress, 1);
+  assert.equal(
+    progress.completed,
+    2,
+    "a lead that finished and replied is still finished"
+  );
+  assert.equal(progress.stopped, 1);
+
+  const off = createOutbound({
+    adapter: memory({ capabilities: { "campaigns.progress": false }, data }),
+    fetch: offline,
+  });
+
+  await assert.rejects(
+    async () => await off.campaign("c1").progress(),
+    /campaigns\.progress/u
+  );
+});
+
+test("combined: a campaign's progress and one list are read from the member that owns them", async () => {
+  const data = {
+    campaigns: [{ id: "c1" }],
+    leads: [
+      {
+        campaignId: "c1",
+        id: "l1",
+        listIds: ["list1"],
+        status: "active" as const,
+      },
+      { campaignId: "c1", id: "l2", status: "completed" as const },
+    ],
+    lists: [{ id: "list1", name: "Founders" }],
+  };
+
+  const both = createOutbound({
+    adapter: combine([
+      memory({ data, workspaceId: "acme" }),
+      memory({ data: { campaigns: [{ id: "c1" }] }, workspaceId: "globex" }),
+    ]),
+    fetch: offline,
+  });
+
+  const progress = await both.campaign("memory:acme:c1").progress();
+  assert.equal(progress.leads, 2);
+  assert.equal(progress.campaignRef, "memory:acme:c1");
+
+  const other = await both.campaign("memory:globex:c1").progress();
+  assert.equal(other.leads, 0, "the other member's campaign of the same id");
+
+  const list = await both.lists.get("memory:acme:list1");
+  assert.equal(list.size, 1);
+  assert.equal((await both.list("memory:acme:list1").get()).name, "Founders");
+
+  await assert.rejects(
+    async () => await both.lists.get("list1"),
+    /ref/u,
+    "a bare id names no member"
+  );
+});

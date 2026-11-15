@@ -20,6 +20,7 @@ import type { Core } from "./core.ts";
 import {
   healthGet,
   listGet,
+  progressGet,
   settingsGet,
   subsequenceList,
   webhookList,
@@ -63,6 +64,7 @@ export const makeCampaignHandle = (core: Core, id: string): CampaignHandle => {
   const get = makeGetter(core, campaignGet());
   const sequence = makeGetter(core, sequenceGet(core));
   const settings = makeGetter(core, settingsGet(core));
+  const progress = makeGetter(core, progressGet(core));
   const fixed = { campaignId };
 
   return {
@@ -70,6 +72,7 @@ export const makeCampaignHandle = (core: Core, id: string): CampaignHandle => {
     id: campaignId,
     leads: scoped(core, leadList(core), fixed),
     messages: scoped(core, messageList(core), fixed),
+    progress: (options) => progress(campaignId, options),
     replies: scoped(core, replyList(core), fixed),
     senders: scoped(core, senderList(core), fixed),
     sequence: (options) => sequence(campaignId, options),

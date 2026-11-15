@@ -30,6 +30,8 @@ export const capabilities: CapabilityDeclaration = {
   blocklist: true,
   // GET /account-campaign-mappings/{email}.
   "campaigns.bySender": true,
+  // GET /campaigns/analytics for one id: leads_count and completed_count.
+  "campaigns.progress": true,
   "campaigns.settings": true,
   // Draft and completed are filtered by Instantly. Active and paused each
   // cover several Instantly statuses, so the adapter matches those itself.
@@ -90,6 +92,14 @@ export const capabilities: CapabilityDeclaration = {
 // What an Instantly record never carries. A lead has no LinkedIn fields, no
 // location and no tags, and no report says how many emails were delivered.
 export const fields: FieldDeclaration = {
+  // The per-campaign report counts every lead and the finished ones only.
+  campaignProgress: {
+    blocked: false,
+    failed: false,
+    inProgress: false,
+    notStarted: false,
+    stopped: false,
+  },
   lead: {
     companyLinkedinUrl: false,
     linkedinUrl: false,

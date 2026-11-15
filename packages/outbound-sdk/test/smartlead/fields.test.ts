@@ -434,3 +434,46 @@ test("smartlead: a lead's progress and what came back from it are separate", asy
     "a campaign's lead row does not say whether the lead replied"
   );
 });
+
+test("smartlead: a campaign's progress is the lead counts of its analytics", async () => {
+  const { outbound, requests, settle } = harness(suite, (request) =>
+    /\/campaigns\/\d+\/analytics$/u.test(new URL(request.url).pathname)
+      ? Response.json({
+          campaign_lead_stats: {
+            blocked: 1,
+            completed: 2,
+            inprogress: 3,
+            notStarted: 4,
+            stopped: 5,
+            total: 15,
+          },
+          id: 372,
+        })
+      : undefined
+  );
+
+  const progress = await settle(outbound.campaign(CAMPAIGN).progress());
+
+  assert.equal(urlOfLast(requests).pathname, "/api/v1/campaigns/372/analytics");
+  assert.deepEqual(
+    {
+      blocked: progress.blocked,
+      completed: progress.completed,
+      failed: progress.failed,
+      inProgress: progress.inProgress,
+      leads: progress.leads,
+      notStarted: progress.notStarted,
+      stopped: progress.stopped,
+    },
+    {
+      blocked: 1,
+      completed: 2,
+      failed: null,
+      inProgress: 3,
+      leads: 15,
+      notStarted: 4,
+      stopped: 5,
+    },
+    "each count from its own field"
+  );
+});

@@ -3,6 +3,7 @@
 import { requireCapability } from "../capabilities.ts";
 import {
   blockEntrySchema,
+  campaignProgressSchema,
   campaignSettingsSchema,
   leadListSchema,
   senderHealthSchema,
@@ -11,6 +12,7 @@ import {
 } from "../entities-account.ts";
 import type {
   BlockEntry,
+  CampaignProgress,
   CampaignSettings,
   LeadList,
   SenderHealth,
@@ -40,6 +42,20 @@ export const settingsGet = (core: Core): GetSpec<CampaignSettings> => ({
   schema: campaignSettingsSchema,
   toOperation: (id) => ({ id, kind: "campaigns.settings" }),
   what: "Settings for campaign",
+});
+
+export const progressGet = (core: Core): GetSpec<CampaignProgress> => ({
+  action: "campaigns.progress",
+  prepare: () => {
+    requireCapability(
+      core.gate,
+      "campaigns.progress",
+      "Reading a campaign's progress"
+    );
+  },
+  schema: campaignProgressSchema,
+  toOperation: (id) => ({ id, kind: "campaigns.progress" }),
+  what: "Progress for campaign",
 });
 
 export const healthGet = (core: Core): GetSpec<SenderHealth> => ({

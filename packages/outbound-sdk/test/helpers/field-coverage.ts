@@ -64,6 +64,9 @@ const samplers = (ids: Ids): Record<RecordName, Sampler[]> => {
       (outbound) => outbound.campaigns.listAll().toArray(),
       (outbound) => one(outbound.campaigns.get(campaign)),
     ],
+    campaignProgress: [
+      (outbound) => one(outbound.campaign(campaign).progress()),
+    ],
     campaignSettings: [
       (outbound) => one(outbound.campaign(campaign).settings()),
     ],

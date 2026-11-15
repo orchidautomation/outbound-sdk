@@ -1,6 +1,9 @@
 // The in-memory adapter's account-level reads.
 
 import type { Adapter, PageQuery } from "../internal/adapter.ts";
+import type { LeadProgress } from "../internal/entities.ts";
+import { recordBase } from "../internal/record.ts";
+import { makeRef } from "../internal/ref.ts";
 import {
   toBlockEntry,
   toHealth,
@@ -9,12 +12,13 @@ import {
   toTag,
   toWebhook,
 } from "./account.ts";
-import { toSubsequence } from "./data.ts";
+import { toLead, toSubsequence } from "./data.ts";
 import { findCampaign, notFound, paginate } from "./store.ts";
 import type { Store } from "./store.ts";
 
 type AccountReads = Pick<
   Adapter,
+  | "getCampaignProgress"
   | "getCampaignSettings"
   | "getList"
   | "getSenderHealth"
@@ -38,6 +42,28 @@ export const accountReads = (store: Store): AccountReads => {
       .length;
 
   return {
+    // Counted from the seeded leads of the campaign, by their progress.
+    getCampaignProgress: (id) => {
+      findCampaign(store, id);
+
+      const mine = (data.leads ?? []).filter((lead) => lead.campaignId === id);
+
+      const counted = (progress: LeadProgress): number =>
+        mine.filter((lead) => toLead(identity, lead).progress === progress)
+          .length;
+
+      return Promise.resolve({
+        ...recordBase(identity, id, null),
+        blocked: null,
+        campaignRef: makeRef(identity.provider, identity.workspaceId, id),
+        completed: counted("completed"),
+        failed: null,
+        inProgress: counted("active"),
+        leads: mine.length,
+        notStarted: null,
+        stopped: counted("paused"),
+      });
+    },
     getCampaignSettings: (id) =>
       Promise.resolve(
         toSettings(identity, id, findCampaign(store, id).settings ?? {})

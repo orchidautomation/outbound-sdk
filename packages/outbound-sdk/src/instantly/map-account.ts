@@ -4,6 +4,7 @@
 
 import type {
   BlockEntry,
+  CampaignProgress,
   CampaignSettings,
   LeadList,
   SenderHealth,
@@ -79,6 +80,27 @@ export const toCampaignSettings = (
     },
   };
 };
+
+/**
+ * One campaign's row of `GET /campaigns/analytics`: `leads_count` is every
+ * lead and `completed_count` the leads the campaign was completed for. The
+ * report does not split the rest.
+ */
+export const toCampaignProgress = (
+  identity: Identity,
+  campaignId: string,
+  raw: JsonObject
+): CampaignProgress => ({
+  ...recordBase(identity, campaignId, raw),
+  blocked: null,
+  campaignRef: refTo(identity, campaignId) ?? "",
+  completed: count(raw.completed_count),
+  failed: null,
+  inProgress: null,
+  leads: count(raw.leads_count),
+  notStarted: null,
+  stopped: null,
+});
 
 /** The three responses a mailbox's health is read from. */
 export interface HealthParts {

@@ -194,6 +194,23 @@ A received message with a category. It has every `Message` field, `direction` is
 
 One row of counts. Every count is a number or `null`. Its fields are listed on the [stats](/docs/api/stats#the-counts) page.
 
+## CampaignProgress
+
+How far a campaign's leads have got, as counts of leads. Stats count messages and replies; this counts people. Its `sourceId` is the campaign's id.
+
+| Field | Type | Holds |
+| --- | --- | --- |
+| `campaignRef` | `string` |  |
+| `leads` | count or `null` | Every lead in the campaign. |
+| `notStarted` | count or `null` | Leads still waiting for their first step. |
+| `inProgress` | count or `null` | Leads who have had a step and have more to come. |
+| `completed` | count or `null` | Leads who reached the end of the sequence. |
+| `stopped` | count or `null` | Leads taken out of the sequence before its end. |
+| `failed` | count or `null` | Leads the campaign could not run for. |
+| `blocked` | count or `null` | Leads the vendor stopped for a bounce or a block list. |
+
+Instantly reports `leads` and `completed` only. HeyReach has no `blocked` count and Smartlead no `failed` count. [`outbound.fields`](/docs/capabilities#field-grades) says so per adapter.
+
 ## CampaignSettings
 
 How a campaign is set up to send. Its `sourceId` is the campaign's id.

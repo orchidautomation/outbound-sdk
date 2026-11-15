@@ -16,6 +16,7 @@ import { BLOCKLIST_PAGE_SIZE } from "./capabilities.ts";
 import type { SmartleadClient } from "./client.ts";
 import {
   toBlockEntry,
+  toCampaignProgress,
   toHealth,
   toList,
   toSettings,
@@ -35,6 +36,7 @@ import {
 
 type AccountReaders = Pick<
   Adapter,
+  | "getCampaignProgress"
   | "getCampaignSettings"
   | "getList"
   | "getSenderHealth"
@@ -130,6 +132,16 @@ export const accountReaders = (client: SmartleadClient): AccountReaders => {
   const { identity } = client;
 
   return {
+    getCampaignProgress: async (id, ctx) =>
+      toCampaignProgress(
+        identity,
+        id,
+        objectOf(
+          client,
+          await client.get(ctx, `/campaigns/${segment(id)}/analytics`),
+          "campaign analytics"
+        )
+      ),
     getCampaignSettings: async (id, ctx) =>
       toSettings(
         identity,

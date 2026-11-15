@@ -7,6 +7,7 @@ import { pageAcross, routeRef } from "./route.ts";
 
 type AccountReads = Pick<
   Adapter,
+  | "getCampaignProgress"
   | "getCampaignSettings"
   | "getList"
   | "getSenderHealth"
@@ -40,6 +41,11 @@ const need = <Key extends keyof AccountReads>(
 };
 
 export const accountReads = (members: readonly Adapter[]): AccountReads => ({
+  getCampaignProgress: (id, ctx) => {
+    const routed = routeRef(members, ctx, id, "Campaign");
+
+    return need(routed.member, "getCampaignProgress")(routed.id, routed.ctx);
+  },
   getCampaignSettings: (id, ctx) => {
     const routed = routeRef(members, ctx, id, "Campaign");
 

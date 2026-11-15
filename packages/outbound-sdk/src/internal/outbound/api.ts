@@ -6,6 +6,7 @@ import type { Capabilities } from "../capabilities.ts";
 import type { LimitsSnapshot, OperationOptions } from "../engine/engine.ts";
 import type {
   BlockEntry,
+  CampaignProgress,
   CampaignSettings,
   LeadList,
   SenderHealth,
@@ -206,6 +207,10 @@ export interface CampaignHandle {
   readonly settings: (
     options?: OperationOptions
   ) => Promise<WithMeta<CampaignSettings>>;
+  /** How many of the campaign's leads are waiting, in progress, finished or stopped. */
+  readonly progress: (
+    options?: OperationOptions
+  ) => Promise<WithMeta<CampaignProgress>>;
   /** The follow-up sequences attached to the campaign. */
   readonly subsequences: ReadCollection<Sequence, Record<never, never>>;
   readonly webhooks: ReadCollection<WebhookSubscription, Record<never, never>>;

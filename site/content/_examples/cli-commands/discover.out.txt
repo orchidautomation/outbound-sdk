@@ -75,6 +75,7 @@ $ outbound capabilities
   "capabilities": {
     "blocklist": true,
     "campaigns.bySender": true,
+    "campaigns.progress": true,
     "campaigns.settings": true,
     "campaigns.status": "server",
     "deletionDetection": false,

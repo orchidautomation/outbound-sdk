@@ -22,6 +22,7 @@ import { numericId, offsetOf, pageSize } from "./paging.ts";
 type Readers = Pick<
   Adapter,
   | "getCampaign"
+  | "getCampaignProgress"
   | "getLead"
   | "getList"
   | "getSender"

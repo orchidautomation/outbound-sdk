@@ -34,6 +34,7 @@ import { readStats } from "./stats.ts";
 type Readers = Pick<
   Adapter,
   | "getCampaign"
+  | "getCampaignProgress"
   | "getCampaignSettings"
   | "getLead"
   | "getList"

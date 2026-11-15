@@ -5,6 +5,7 @@
 
 import type {
   BlockEntry,
+  CampaignProgress,
   CampaignSettings,
   LeadList,
   SenderHealth,
@@ -142,6 +143,32 @@ export const toSettings = (
       clicks: tracked(raw.track_settings, "LINK_CLICK"),
       opens: tracked(raw.track_settings, "EMAIL_OPEN"),
     },
+  };
+};
+
+/**
+ * `GET /campaigns/{id}/analytics`: `campaign_lead_stats` counts the
+ * campaign's leads by how far they got. `blocked` is Smartlead's own word
+ * for a lead stopped by a bounce or the block list.
+ */
+export const toCampaignProgress = (
+  identity: Identity,
+  campaignId: string,
+  raw: JsonObject
+): CampaignProgress => {
+  const stats = raw.campaign_lead_stats;
+
+  return {
+    ...recordBase(identity, campaignId, raw),
+    blocked: count(field(stats, "blocked")),
+    campaignRef: refTo(identity, campaignId) ?? "",
+    completed: count(field(stats, "completed")),
+    // Smartlead has no count of leads a campaign failed for.
+    failed: null,
+    inProgress: count(field(stats, "inprogress")),
+    leads: count(field(stats, "total")),
+    notStarted: count(field(stats, "notStarted")),
+    stopped: count(field(stats, "stopped")),
   };
 };
 

@@ -18,3 +18,4 @@ Say which fields each adapter fills, and normalize more of what the three vendor
 - `stats.allCampaigns` is `full` or `partial`: `full` when each per-campaign row has every count the read of one campaign has. `campaign_ranking`, `channel_mix` and `tag_rollup` read every campaign's totals in one request on a `full` vendor.
 - A lead carries `progress` (where it is in its sequence) and `replied`, `bounced` and `unsubscribed` (what came back) as separate fields. `status` is the headline made from them the same way on every vendor, so a lead that replied reads `replied` on Instantly and Smartlead as it already did on HeyReach.
 - `redact` masks a lead's `phone` (a new `"phone"` field), and its `website` and `companyLinkedinUrl` with `company`.
+- `outbound.campaign(id).progress()` returns a `CampaignProgress`: how many of the campaign's leads are waiting, in progress, finished, stopped, failed or blocked (`campaigns.progress`).

@@ -13,6 +13,7 @@ import type { DispatchTarget, OperationOutput } from "./operation-shared.ts";
 
 export type AccountOperation =
   | { readonly kind: "blocklist.list"; readonly query: PageQuery }
+  | { readonly kind: "campaigns.progress"; readonly id: string }
   | { readonly kind: "campaigns.settings"; readonly id: string }
   | { readonly kind: "lists.get"; readonly id: string }
   | { readonly kind: "lists.list"; readonly query: PageQuery }
@@ -24,6 +25,7 @@ export type AccountOperation =
 
 const ACCOUNT_KINDS: ReadonlySet<string> = new Set<AccountOperation["kind"]>([
   "blocklist.list",
+  "campaigns.progress",
   "campaigns.settings",
   "lists.get",
   "lists.list",
@@ -47,6 +49,7 @@ const lookup = async (
 
   // The adapter method behind each lookup.
   const read = {
+    "campaigns.progress": adapter.getCampaignProgress,
     "campaigns.settings": adapter.getCampaignSettings,
     "lists.get": adapter.getList,
     "senders.health": adapter.getSenderHealth,
@@ -108,6 +111,7 @@ export const dispatchAccount = async (
   const { adapter, ctx } = target;
 
   switch (operation.kind) {
+    case "campaigns.progress":
     case "campaigns.settings":
     case "lists.get":
     case "senders.health":

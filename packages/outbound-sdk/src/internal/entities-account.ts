@@ -61,6 +61,31 @@ export const campaignSettingsSchema = z.object({
 
 export type CampaignSettings = z.infer<typeof campaignSettingsSchema>;
 
+/**
+ * How far a campaign's leads have got, as counts of leads. `sourceId` is the
+ * campaign's id. Stats count messages and replies; this counts people.
+ */
+export const campaignProgressSchema = z.object({
+  ...baseFields,
+  /** Leads the vendor stopped for a bounce or a block list. */
+  blocked: count,
+  campaignRef: z.string(),
+  /** Leads who reached the end of the sequence. */
+  completed: count,
+  /** Leads the campaign could not run for. */
+  failed: count,
+  /** Leads who have had a step and have more to come. */
+  inProgress: count,
+  /** Every lead in the campaign. */
+  leads: count,
+  /** Leads still waiting for their first step. */
+  notStarted: count,
+  /** Leads taken out of the sequence before its end. */
+  stopped: count,
+});
+
+export type CampaignProgress = z.infer<typeof campaignProgressSchema>;
+
 /** What the vendor knows about a sender's deliverability. `sourceId` is the sender's id. */
 export const senderHealthSchema = z.object({
   ...baseFields,
@@ -148,6 +173,7 @@ export type WebhookSubscription = z.infer<typeof webhookSubscriptionSchema>;
 export type Entity =
   | BlockEntry
   | Campaign
+  | CampaignProgress
   | CampaignSettings
   | Lead
   | LeadList
