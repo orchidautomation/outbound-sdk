@@ -34,7 +34,7 @@ The design authority is the Outbound SDK spec and the Linear document "Tech stac
 | Command | Runs |
 | --- | --- |
 | `npm run check:fast` | lint, type check, architecture, repo shape, `git diff --check` |
-| `npm run check` | `check:fast`, tests, build, dist smoke test, size budget |
+| `npm run check` | `check:fast`, tests, build, dist smoke test |
 | `npm run check:changed` | only the checks a change touches |
 | `npm run fix` | formatter and lint autofixes (run it twice) |
 | `npm run test:workers` | tests inside Cloudflare's Workers runtime, except those that need Node |

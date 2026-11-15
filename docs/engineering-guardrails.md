@@ -52,9 +52,9 @@ Ultracite on Oxlint and Oxfmt, with the `core` and `anti-slop` presets (`oxlint.
 
 `ultracite`, `oxlint` and `oxfmt` are pinned to exact versions and are upgraded together.
 
-## Build and size
+## Build
 
-`scripts/build.mjs` builds one ESM file per public subpath with esbuild and type declarations with `tsc`. The package's `exports` map is the only list of public subpaths. `scripts/smoke-dist.mjs` loads every subpath; CI runs it on Node 22 and Bun. `scripts/check-size.mjs` checks what a consumer's bundler ships for each subpath: the built entry is bundled on its own with tree-shaking and minification, then gzipped. Code behind a dynamic `import()` is left out. Budgets are in `size-budget.json`; the core is held to 18 kB, the CLI, which carries the MCP server and the tools, to 26 kB, each vendor adapter with its native catalog to 30 kB, and the insights to 50 kB. The CLI and insights budgets were raised on 2026-11-15 (OUT-50), on purpose rather than by trimming: the CLI had 66 bytes and the insights about 600 bytes left after the OUT-35 to OUT-44 fixes, and the fixes from the gotcha sweep after them (caps stated in data, refusals, partial results) add code to both. Raise a budget only like this: in its own commit, with the reason here. `dist/` itself is not minified.
+`scripts/build.mjs` builds one ESM file per public subpath with esbuild and type declarations with `tsc`. The package's `exports` map is the only list of public subpaths. `scripts/smoke-dist.mjs` loads every subpath; CI runs it on Node 22 and Bun. There is no bundle size budget. `scripts/check-size.mjs` and `size-budget.json` were removed on 2026-11-15 at Brandon's request, after the budgets had to be raised twice that day (OUT-50) to make room for fixes. `dist/` itself is not minified.
 
 ## Generated source
 
