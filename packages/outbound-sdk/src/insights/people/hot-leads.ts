@@ -206,10 +206,13 @@ const partsOf = (lead: Lead, values: Input, now: number): HotLeadParts => {
   // An automatic reply earns no recency either; without one the age decides.
   const fresh = age === null ? null : Math.max(0, 1 - age);
 
+  const { clicks, opens } = engagementParts(lead, values);
+
   return {
-    ...engagementParts(lead, values),
+    clicks,
     interest:
       positive === null ? null : Number(positive) * values.weight_interest,
+    opens,
     recency:
       automatic && counted !== null
         ? 0

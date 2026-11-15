@@ -13,6 +13,6 @@ Clean: 1. Too few sends to judge: 1. No bounce count: 0.
 
 Alerts the notifier received:
   sender-not-active memory:acme:snd_dan: Sender is disconnected
-  bounce-rate-above memory:acme:cmp_ecom: Bounce rate is 6.0%, above 3.0%
+  bounce-rate-above memory:acme:cmp_ecom: Bounce rate is 6%, above 3%
   sender-not-active memory:acme:snd_dan: Sender is disconnected
-  bounce-rate-above memory:acme:snd_cara: Bounce rate is 9.2%, above 3.0%
+  bounce-rate-above memory:acme:snd_cara: Bounce rate is 9.2%, above 3%

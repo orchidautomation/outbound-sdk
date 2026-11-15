@@ -11,7 +11,7 @@
    score 5: label unknown, replies 0, recency unknown, clicks 0, opens 5
    40 opens.
 5. Cara Lind <cara.lind@example.com>
-   score 2: label 0, replies 0, recency 0, clicks 0, opens 2
-   marked Not Interested, so replies earn nothing, 2 opens.
+   score 0: label 0, replies 0, recency 0, clicks 0, opens 0
+   marked Not Interested, so it earns no points.
 
-Read 8 leads: 5 scored above 0, 1 had nothing to score, 2 unsubscribed or bounced.
+Read 8 leads: 4 scored above 0, 1 had nothing to score, 2 unsubscribed or bounced.

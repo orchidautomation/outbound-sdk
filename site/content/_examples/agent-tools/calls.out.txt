@@ -79,6 +79,7 @@ campaign_ranking {"metric":"reply_rate"}
           "low": 0.0605,
           "of": 140,
           "rate": 0.1,
+          "basis": "contacted",
           "sent": 350,
           "rank": 1
         },
@@ -94,6 +95,7 @@ campaign_ranking {"metric":"reply_rate"}
           "low": 0.0493,
           "of": 70,
           "rate": 0.1,
+          "basis": "contacted",
           "sent": 210,
           "rank": 2
         }

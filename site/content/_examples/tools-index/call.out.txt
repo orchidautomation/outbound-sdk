@@ -14,8 +14,8 @@
           "opened": 516,
           "positive": 19,
           "positive_reply_rate": 0.0302,
-          "replied": 37,
-          "reply_rate": 0.0587,
+          "replied": 32,
+          "reply_rate": 0.0508,
           "reply_rate_basis": "contacted",
           "sent": 943
         },
@@ -46,17 +46,17 @@
       {
         "date": "2026-11-02",
         "timezone": "UTC",
-        "value": 2
+        "value": 1
       },
       {
         "date": "2026-11-03",
         "timezone": "UTC",
-        "value": 2
+        "value": 1
       },
       {
         "date": "2026-11-04",
         "timezone": "UTC",
-        "value": 2
+        "value": 1
       },
       {
         "date": "2026-11-05",
@@ -66,7 +66,7 @@
       {
         "date": "2026-11-06",
         "timezone": "UTC",
-        "value": 3
+        "value": 2
       },
       {
         "date": "2026-11-07",

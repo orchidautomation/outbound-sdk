@@ -61,7 +61,7 @@ $ outbound tools
     "name": "dropped_replies"
   },
   {
-    "description": "Who to call first: leads ranked by a score built from what the vendor reports, namely a positive interest label, replies, clicks, opens and how recent the last reply is. Every score comes with its parts, and the weights are inputs. A lead with no label and no engagement data is left out and counted in totals.withoutData, never scored 0; unsubscribed and bounced leads are left out too. Give a campaign ref to rank one campaign (an unknown one is refused with NotFound), or none to rank every lead the tool lists. A lead the vendor labels out-of-office or bounced (its interest category, or a label reading out of office) earns no reply or recency points, since a vendor's reply count may include automatic replies; nor does a lead it labels negative (the negative or unsubscribe category, or a label reading not interested, wrong person, unsubscribed or do not contact), and its reason names the label. Costs one request per page of leads read (max_leads sets the ceiling). When max_leads stops the listing with more leads left, totals.moreLeadsExist is true and it also reads up to 100 replies from the last recency_days days and one request per replied lead the listing missed, at most limit of them, so engaged leads past the cap are still ranked. A part that is null means the vendor does not report that signal.",
+    "description": "Who to call first: leads ranked by a score built from what the vendor reports, namely a positive interest label, replies, clicks, opens and how recent the last reply is. Every score comes with its parts, and the weights are inputs. A lead with no label and no engagement data is left out and counted in totals.withoutData, never scored 0; unsubscribed and bounced leads are left out too. Give a campaign ref to rank one campaign (an unknown one is refused with NotFound), or none to rank every lead the tool lists. A lead the vendor labels out-of-office or bounced (its interest category, or a label reading out of office) earns no reply or recency points, since a vendor's reply count may include automatic replies; a lead it labels negative (the negative or unsubscribe category, or a label reading not interested, wrong person, unsubscribed or do not contact) earns no points at all, from clicks and opens either, and is listed after every lead with a score above 0 while limit leaves room; its reason names the label. Costs one request per page of leads read (max_leads sets the ceiling). When max_leads stops the listing with more leads left, totals.moreLeadsExist is true and it also reads up to 100 replies from the last recency_days days and one request per replied lead the listing missed, at most limit of them, so engaged leads past the cap are still ranked. A part that is null means the vendor does not report that signal.",
     "name": "hot_leads"
   },
   {
@@ -125,7 +125,7 @@ $ outbound tools
     "name": "anomalies"
   },
   {
-    "description": "This period against the last: for each campaign, counts and rates for the last `days` complete days and for the `days` before, the change in each, and whether the change in replies per message sent is more than chance (a two-proportion test), with the campaigns sorted by the size of that change. Also the same for every campaign added together and, where the adapter has them, for the vendor's workspace totals. Reply and positive reply rates divide by messages sent (`replyRateBasis`), not leads contacted, since a period's replies also answer leads contacted before it. Use it for a weekly review. Campaigns under min_sent sends in either period are listed apart; a null is a count the vendor does not report, and a rate of a total counts only the campaigns that report both its count and what it divides by (a note says when some are left out). Costs two stats requests per campaign plus two for the workspace.",
+    "description": "This period against the last: for each campaign, counts and rates for the last `days` complete days and for the `days` before, the change in each, and whether the change in the reply rate is more than chance (a two-proportion test), with the campaigns sorted by the size of that change. Also the same for every campaign added together and, where the adapter has them, for the vendor's workspace totals. Reply and positive reply rates divide by messages sent (`replyRateBasis`), since a period's replies also answer leads contacted before it, and by leads contacted for both periods only when a period does not report messages sent. Use it for a weekly review. Campaigns under min_sent sends in either period are listed apart; a null is a count the vendor does not report, and a rate of a total counts only the campaigns that report both its count and what it divides by (a note says when some are left out). Costs two stats requests per campaign plus two for the workspace.",
     "name": "period_comparison"
   },
   {
@@ -141,7 +141,7 @@ $ outbound tools
     "name": "tag_rollup"
   },
   {
-    "description": "One report for one client or workspace over the last `days` complete days: totals and the change from the period before, the best and worst campaigns by the low end of the interval of replies per message sent, campaigns with a bounce problem, unusual days, active campaigns running out of leads, and a short list of action items in plain language, each naming the campaign and the number behind it. Reply rates divide by messages sent (`replyRateBasis`), not leads contacted, since a period's replies also answer leads contacted before it. Use it for a weekly client update. A section the adapter cannot serve is null and named in `leftOut`, and a null count is one the vendor does not report. Costs two stats requests per campaign, one for the workspace, and for each active campaign two more plus its pages of leads.",
+    "description": "One report for one client or workspace over the last `days` complete days: totals and the change from the period before, the best and worst campaigns by the low end of the interval of the reply rate, campaigns with a bounce problem, unusual days, active campaigns running out of leads, and a short list of action items in plain language, each naming the campaign and the number behind it. Reply rates divide by messages sent (`replyRateBasis`), since a period's replies also answer leads contacted before it, and by leads contacted for both periods only when a period does not report messages sent. Use it for a weekly client update. A section the adapter cannot serve is null and named in `leftOut`, and a null count is one the vendor does not report. Costs two stats requests per campaign, one for the workspace, and for each active campaign two more plus its pages of leads.",
     "name": "client_report"
   }
 ]
@@ -179,7 +179,7 @@ $ outbound tool campaign_trend --input '{"campaign":"cmp_founders"}'
 {
   "error": {
     "code": "Invalid",
-    "message": "campaign_trend: from Invalid input: expected string, received undefined"
+    "message": "campaign_trend: `from` is required"
   },
   "next": "Check the input and try again.",
   "ok": false
@@ -200,25 +200,25 @@ $ outbound insight channel_mix --input '{"max_campaigns":5}'
       {
         "bounced": 72,
         "contacted": 1260,
-        "positive": 24,
-        "replied": 55,
+        "positive": 23,
+        "replied": 47,
         "sent": 1993,
         "acceptance": null,
         "campaigns": 2,
         "channel": "email",
         "positiveRate": {
-          "count": 24,
-          "high": 0.0282,
-          "low": 0.0128,
+          "count": 23,
+          "high": 0.0272,
+          "low": 0.0122,
           "of": 1260,
-          "rate": 0.019
+          "rate": 0.0183
         },
         "replyRate": {
-          "count": 55,
-          "high": 0.0564,
-          "low": 0.0337,
+          "count": 47,
+          "high": 0.0492,
+          "low": 0.0282,
           "of": 1260,
-          "rate": 0.0437
+          "rate": 0.0373
         },
         "provider": "memory"
       }
@@ -227,25 +227,25 @@ $ outbound insight channel_mix --input '{"max_campaigns":5}'
       {
         "bounced": 72,
         "contacted": 1260,
-        "positive": 24,
-        "replied": 55,
+        "positive": 23,
+        "replied": 47,
         "sent": 1993,
         "acceptance": null,
         "campaigns": 2,
         "channel": "email",
         "positiveRate": {
-          "count": 24,
-          "high": 0.0282,
-          "low": 0.0128,
+          "count": 23,
+          "high": 0.0272,
+          "low": 0.0122,
           "of": 1260,
-          "rate": 0.019
+          "rate": 0.0183
         },
         "replyRate": {
-          "count": 55,
-          "high": 0.0564,
-          "low": 0.0337,
+          "count": 47,
+          "high": 0.0492,
+          "low": 0.0282,
           "of": 1260,
-          "rate": 0.0437
+          "rate": 0.0373
         }
       }
     ],

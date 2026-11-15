@@ -18,6 +18,7 @@
         "low": 0.1002,
         "of": 315,
         "rate": 0.1333,
+        "basis": "contacted",
         "sent": 630,
         "rank": 1
       },
@@ -33,6 +34,7 @@
         "low": 0.0591,
         "of": 840,
         "rate": 0.075,
+        "basis": "contacted",
         "sent": 2100,
         "rank": 2
       },
@@ -48,6 +50,7 @@
         "low": 0.0472,
         "of": 1050,
         "rate": 0.06,
+        "basis": "contacted",
         "sent": 2100,
         "rank": 3
       },
@@ -63,6 +66,7 @@
         "low": 0.0279,
         "of": 20,
         "rate": 0.1,
+        "basis": "contacted",
         "sent": 60,
         "rank": 4
       },
@@ -78,6 +82,7 @@
         "low": 0.0131,
         "of": 1050,
         "rate": 0.02,
+        "basis": "contacted",
         "sent": 1680,
         "rank": 5
       }

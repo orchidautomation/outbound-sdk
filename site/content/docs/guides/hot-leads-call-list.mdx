@@ -58,7 +58,7 @@ Who is left out:
 
 - A lead with no label and no engagement data is not scored 0. It is left out and counted in `totals.withoutData`.
 - Unsubscribed and bounced leads are left out and counted in `totals.excluded`.
-- A lead whose known parts add up to 0 is not on the list.
+- A lead whose known parts add up to 0 is not on the list, except one labelled negative, such as Cara, which is listed after everyone who scored while `limit` leaves room.
 
 ## Try it without a key
 
@@ -86,7 +86,7 @@ Every weight is an input. This run makes a recent reply worth most, shortens the
   ../../_examples/hot-leads-call-list/weights.out.txt
 </include>
 
-Ben is now seven points behind Ava, and Dev and Cara are gone: with opens worth nothing they score 0.
+Ben is now seven points behind Ava, and Dev is gone: with opens worth nothing he scores 0. Cara stays at the bottom with 0 points, because a lead labelled negative fills the room left after everyone who scored.
 
 ## Point it at your vendor
 

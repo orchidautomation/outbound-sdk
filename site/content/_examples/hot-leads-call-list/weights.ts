@@ -10,7 +10,7 @@ const outbound = createOutbound({
 });
 
 // The weights are inputs. Here a recent reply matters most, opens count for
-// nothing, and a lead the vendor labels "Not Interested" still earns nothing for replying.
+// nothing, and a lead the vendor labels "Not Interested" still earns nothing at all.
 const { data } = await outbound.insights.hotLeads({
   recency_days: 7,
   weight_interest: 10,

@@ -53,8 +53,8 @@
   "next": "Use campaign_trend for one campaign over time, or winning_steps to see which step drives replies.",
   "ok": true
 }
-Campaign overview: SaaS founders leads at 10.0% reply rate.
+Campaign overview: SaaS founders leads at 10% reply rate.
 Campaign | Sent | Replies | Reply rate | Positive | Bounce
-SaaS founders | 350 | 14 | 10.0% | 7 | 2.0%
-Agency owners | 210 | 7 | 10.0% | — | —
+SaaS founders | 350 | 14 | 10% | 7 | 2%
+Agency owners | 210 | 7 | 10% | — | —
 complete: false [ 'Stopped at 1 campaign (max_campaigns); more exist.' ]

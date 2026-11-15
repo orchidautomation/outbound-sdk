@@ -1,5 +1,5 @@
 capped: 3 false [ 'Stopped at 3 leads (max_leads); more exist.' ]
-limit 1: 1 of 5 true
+limit 1: 1 of 4 true
 no data: 0 {
   autoReplied: 0,
   excluded: 0,
@@ -13,4 +13,4 @@ no data: 0 {
 }
 bad weight: Invalid
 no campaign: Unsupported - hot_leads needs a campaign here: the memory adapter cannot list every lead (leads.list)
-with a campaign: 5 ranked
+with a campaign: 4 ranked
