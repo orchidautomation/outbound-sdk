@@ -444,6 +444,46 @@ test("rules map tags, names and whole workspaces to clients; the rest is unassig
   assert.deepEqual(outbound.clients.names(), ["Acme", "Globex"]);
 });
 
+test("a rule takes a bare campaign id or a ref, and a g or y regex matches every campaign", async () => {
+  const outbound = createOutbound({
+    adapter: emailTool(),
+    plugins: [
+      clients({
+        rules: [
+          { campaignIds: ["c1"], client: "Acme" },
+          { campaignIds: ["mailtool:agency:c2"], client: "Globex" },
+          { campaignName: /t/giuy, client: "Anything" },
+        ],
+      }),
+    ],
+  });
+
+  const campaigns = (await outbound.campaigns.listAll().toArray()) as readonly {
+    client?: string;
+    ref: string;
+  }[];
+
+  assert.deepEqual(
+    campaigns.map((campaign) => campaign.client),
+    ["Acme", "Globex", "Anything"],
+    "a y regex matches as it would without the flag, not only at lastIndex"
+  );
+
+  const global = createOutbound({
+    adapter: emailTool(),
+    plugins: [clients({ rules: [{ campaignName: /e/gu, client: "E" }] })],
+  });
+
+  const named = (await global.campaigns.listAll().toArray()) as readonly {
+    client?: string;
+  }[];
+
+  assert.deepEqual(
+    named.map((campaign) => campaign.client),
+    ["E", "E", "E"]
+  );
+});
+
 test("a lead is assigned through its campaign, fetched once when a rule needs the tag", async () => {
   let campaignLookups = 0;
   const base = emailTool();

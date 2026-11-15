@@ -17,6 +17,7 @@ import type {
   NextOperation,
   OutboundPlugin,
 } from "../internal/outbound/plugins.ts";
+import { parseRef } from "../internal/ref.ts";
 
 export const UNASSIGNED = "unassigned";
 
@@ -27,9 +28,9 @@ export interface ClientRule {
   readonly workspaceId?: string | undefined;
   /** Campaigns carrying this tag. */
   readonly campaignTag?: string | undefined;
-  /** Campaigns by ref. */
+  /** Campaigns by ref or by the vendor's own id. */
   readonly campaignIds?: readonly string[] | undefined;
-  /** Campaigns whose name matches. */
+  /** Campaigns whose name matches. The `g` and `y` flags make no difference. */
   readonly campaignName?: RegExp | undefined;
 }
 
@@ -97,6 +98,26 @@ const campaignRefOf = (record: OutboundRecord): string | null => {
 const needsCampaign = (rule: ClientRule): boolean =>
   rule.campaignTag !== undefined || rule.campaignName !== undefined;
 
+const namesCampaign = (
+  ids: readonly string[],
+  campaign: CampaignFacts
+): boolean =>
+  ids.includes(campaign.ref) ||
+  ids.includes(parseRef(campaign.ref)?.sourceId ?? campaign.ref);
+
+// `test` on a `g` or `y` regex starts at the `lastIndex` the last match left,
+// so one rule would match a campaign and miss the next.
+const withoutState = (rule: ClientRule): ClientRule =>
+  rule.campaignName === undefined
+    ? rule
+    : {
+        ...rule,
+        campaignName: new RegExp(
+          rule.campaignName.source,
+          rule.campaignName.flags.replaceAll(/[gy]/gu, "")
+        ),
+      };
+
 const matches = (
   rule: ClientRule,
   record: OutboundRecord,
@@ -105,7 +126,7 @@ const matches = (
   (rule.provider === undefined || rule.provider === record.provider) &&
   (rule.workspaceId === undefined || rule.workspaceId === record.workspaceId) &&
   (rule.campaignIds === undefined ||
-    (campaign !== null && rule.campaignIds.includes(campaign.ref))) &&
+    (campaign !== null && namesCampaign(rule.campaignIds, campaign))) &&
   (rule.campaignTag === undefined ||
     (campaign !== null && campaign.tags.includes(rule.campaignTag))) &&
   (rule.campaignName === undefined ||
@@ -117,7 +138,7 @@ class Assigner {
   readonly #campaigns = new Map<string, CampaignFacts>();
 
   constructor(rules: readonly ClientRule[]) {
-    this.#rules = rules;
+    this.#rules = rules.map(withoutState);
   }
 
   names(): string[] {
