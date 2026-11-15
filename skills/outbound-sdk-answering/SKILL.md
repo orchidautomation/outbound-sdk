@@ -67,16 +67,16 @@ The same tools run from a shell, in a project where the package is installed (se
 
 ```sh
 export OUTBOUND_SDK_PROVIDER=memory
-npx outbound tools
-npx outbound tool campaign_overview --input '{"status":"active"}'
-npx outbound tool winning_steps --input '{"campaign":"cmp_founders"}'
-npx outbound insight step_funnel --input '{"campaign":"cmp_founders"}'
-npx outbound insight
-npx outbound insight bounce_watch --input '{"max_campaigns":10}'
-npx outbound capabilities
+npx outbound-sdk tools
+npx outbound-sdk tool campaign_overview --input '{"status":"active"}'
+npx outbound-sdk tool winning_steps --input '{"campaign":"cmp_founders"}'
+npx outbound-sdk insight step_funnel --input '{"campaign":"cmp_founders"}'
+npx outbound-sdk insight
+npx outbound-sdk insight bounce_watch --input '{"max_campaigns":10}'
+npx outbound-sdk capabilities
 ```
 
-`npx outbound tool …` prints the tool's result as JSON and exits 1 when `ok` is `false`; the `error` and `next` are on standard output. `npx outbound insight …` prints the answer, or exits 1 with the reason on standard error. `npx outbound capabilities` prints what the adapter can read, its maturity and its caveats, without a vendor request. `--compact` prints JSON on one line.
+`npx outbound-sdk tool …` prints the tool's result as JSON and exits 1 when `ok` is `false`; the `error` and `next` are on standard output. `npx outbound-sdk insight …` prints the answer, or exits 1 with the reason on standard error. `npx outbound-sdk capabilities` prints what the adapter can read, its maturity and its caveats, without a vendor request. `--compact` prints JSON on one line.
 
 ## In code
 

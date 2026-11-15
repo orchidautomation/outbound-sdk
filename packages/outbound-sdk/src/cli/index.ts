@@ -20,6 +20,7 @@ import {
 import { pluginsFor } from "./config.ts";
 import { createMcpServer } from "./mcp.ts";
 import { serveStdio } from "./stdio.ts";
+import { runNpm, runSelf, STANDALONE } from "./update.ts";
 import { packageVersion } from "./version.ts";
 
 export { defineConfig } from "./config.ts";
@@ -32,6 +33,8 @@ export type { McpServer, McpServerOptions } from "./mcp.ts";
 
 export { serveStdio } from "./stdio.ts";
 
+export type { NpmRunner } from "./update.ts";
+
 export type { StdioOptions } from "./stdio.ts";
 
 export interface CliIo {
@@ -41,6 +44,8 @@ export interface CliIo {
   readonly stdin?: (() => AsyncIterable<string> | Iterable<string>) | undefined;
   /** Replaces the adapter the environment would choose. Meant for tests. */
   readonly adapter?: Adapter | undefined;
+  /** Runs npm for `outbound update` and resolves to its output. Meant for tests. */
+  readonly npm?: ((args: readonly string[]) => Promise<string>) | undefined;
 }
 
 const OPTIONS = {
@@ -69,6 +74,7 @@ const OPTIONS = {
   status: { type: "string" },
   subsequences: { type: "boolean" },
   to: { type: "string" },
+  version: { short: "v", type: "boolean" },
 } as const;
 
 const serve = async (
@@ -147,7 +153,7 @@ const parse = (argv: readonly string[]): Parsed => {
   const command = name === undefined ? undefined : COMMANDS.get(name);
   const named = name !== undefined && name !== "help";
 
-  if (named && !command && !["mcp", "providers"].includes(name)) {
+  if (named && !command && !STANDALONE.has(name)) {
     throw new OutboundError(
       "Invalid",
       `Unknown command "${name}". Run "outbound help"`
@@ -157,7 +163,7 @@ const parse = (argv: readonly string[]): Parsed => {
   if (named) {
     checkFlags(
       name,
-      command?.flags ?? [],
+      command?.flags ?? STANDALONE.get(name) ?? [],
       loose.tokens.flatMap((token) =>
         token.kind === "option" ? [token.name] : []
       )
@@ -182,6 +188,10 @@ export const run = async (
   try {
     const { help, name, rest, values } = parse(argv);
     const compact = values.compact === true;
+
+    if (await runSelf(name, values, io.npm ?? runNpm, io.stdout)) {
+      return 0;
+    }
 
     if (help !== undefined) {
       io.stdout(help);
