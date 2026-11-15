@@ -6,17 +6,14 @@ import { OutboundError } from "../internal/errors.ts";
 import { percentOf } from "../internal/numbers.ts";
 import { measure } from "./check-measure.ts";
 import type { CheckNumbers, CheckRead, Measurement } from "./check-measure.ts";
-import {
-  CHECK_METRICS,
-  describeIssues,
-  validateCheck,
-} from "./check-schema.ts";
+import { CHECK_METRICS } from "./check-schema.ts";
 import type {
   Check,
   CheckMetric,
   CheckMetricName,
   CheckOp,
 } from "./check-schema.ts";
+import { describeIssues, validateCheck } from "./check-validate.ts";
 import type { Alert, AlertRule } from "./plugin.ts";
 
 /** One subject that broke the check, with the numbers that broke it. */

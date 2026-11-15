@@ -102,7 +102,7 @@ const NUMBER_OPS = [">", ">=", "<", "<=", "==", "!="] as const;
 
 export type CheckOp = (typeof NUMBER_OPS)[number];
 
-const OP_ALIASES = new Map<string, CheckOp>([
+export const OP_ALIASES = new Map<string, CheckOp>([
   ["!==", "!="],
   ["<>", "!="],
   ["=", "=="],
@@ -152,7 +152,7 @@ const needs =
   (issue: { readonly input: unknown }): string =>
     issue.input === undefined ? `is required: ${missing}` : wrong;
 
-const baseSchema = z.strictObject({
+export const baseSchema = z.strictObject({
   metric: z.enum(METRIC_NAMES, {
     error: needs(
       `the number to check, one of ${METRIC_NAMES.join(", ")}`,
@@ -184,7 +184,7 @@ const baseSchema = z.strictObject({
   window: windowSchema.optional(),
 });
 
-interface Fit {
+export interface Fit {
   readonly path: readonly string[];
   readonly message: string;
 }
@@ -196,7 +196,7 @@ type Given =
 
 // The fields the metric-dependent rules read, each as given or absent, so
 // they can be checked while another field is still wrong.
-const looseCheck = z.object({
+export const looseCheck = z.object({
   metric: z.enum(METRIC_NAMES),
   min_sent: z
     .unknown()
@@ -272,7 +272,7 @@ const optionIssues = (check: LooseCheck, metric: CheckMetric): Fit[] => [
  * scope keys and options it takes. Read from the input as given, so they are
  * reported beside a wrong field elsewhere rather than after it is fixed.
  */
-const fitIssues = (check: LooseCheck): Fit[] => {
+export const fitIssues = (check: LooseCheck): Fit[] => {
   const metric: CheckMetric = CHECK_METRICS[check.metric];
   const issues: Fit[] = [];
 
@@ -329,118 +329,3 @@ export const checkSchema = baseSchema.superRefine((check, ctx) => {
 
 /** A data check, as written in JSON. */
 export type Check = z.infer<typeof checkSchema>;
-
-export interface CheckIssue {
-  /** Where the problem is, like `scope.person` or `value`. Empty for the whole check. */
-  readonly path: string;
-  /** What is wrong and what to write instead. */
-  readonly message: string;
-}
-
-export type CheckValidation =
-  | { readonly ok: true; readonly check: Check }
-  | { readonly ok: false; readonly issues: readonly CheckIssue[] };
-
-// What a field written under another name should be, by where it was found.
-const KEY_HINTS = new Map<string, ReadonlyMap<string, string>>([
-  [
-    "",
-    new Map([
-      ["days", "window: { days }"],
-      ["minSent", "min_sent"],
-      ["operator", "op"],
-      ["threshold", "value"],
-    ]),
-  ],
-  [
-    "scope",
-    new Map([
-      ["campaignId", "campaign"],
-      ["lead", "person"],
-      ["senderId", "sender"],
-    ]),
-  ],
-]);
-
-const unknownKey = (key: string, where: string): string => {
-  const hint = KEY_HINTS.get(where)?.get(key);
-
-  return hint === undefined
-    ? `${key} is not a check field`
-    : `${key} is not a check field: write ${hint}`;
-};
-
-const snake = (text: string): string =>
-  text
-    .replaceAll(/(?<lower>[a-z])(?<upper>[A-Z])/gu, "$<lower>_$<upper>")
-    .replaceAll(/[\s-]+/gu, "_")
-    .toLowerCase();
-
-// The metric and operator as written, when they are strings, for a hint.
-const written = z
-  .object({
-    metric: z.string().optional().catch(undefined),
-    op: z.string().optional().catch(undefined),
-  })
-  .catch({ metric: undefined, op: undefined });
-
-type Written = z.infer<typeof written>;
-
-const hintFor = (path: string, given: Written, message: string): string => {
-  const close = given.metric === undefined ? undefined : snake(given.metric);
-
-  if (path === "metric" && close !== undefined && close in CHECK_METRICS) {
-    return `${message}. Did you mean ${close}?`;
-  }
-
-  const alias = given.op === undefined ? undefined : OP_ALIASES.get(given.op);
-
-  return path === "op" && alias !== undefined
-    ? `${message}. Write ${alias} for ${given.op}`
-    : message;
-};
-
-const toIssues = (error: z.ZodError, given: Written): CheckIssue[] =>
-  error.issues.flatMap((issue) => {
-    const where = issue.path.join(".");
-
-    if (issue.code === "unrecognized_keys") {
-      return issue.keys.map((key) => ({
-        message: unknownKey(key, where),
-        path: where === "" ? key : `${where}.${key}`,
-      }));
-    }
-
-    if (where === "" && issue.code === "invalid_type") {
-      return [{ message: "a check is a JSON object", path: "" }];
-    }
-
-    return [{ message: hintFor(where, given, issue.message), path: where }];
-  });
-
-/** Validates a check and lists every problem with its fix, without throwing. */
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- the boundary: a check arrives as parsed JSON and is validated here
-export const validateCheck = (input: unknown): CheckValidation => {
-  const parsed = baseSchema.safeParse(input);
-  const loose = looseCheck.safeParse(input);
-
-  const issues = [
-    ...(parsed.success ? [] : toIssues(parsed.error, written.parse(input))),
-    ...(loose.success ? fitIssues(loose.data) : []).map((issue) => ({
-      message: issue.message,
-      path: issue.path.join("."),
-    })),
-  ];
-
-  return parsed.success && issues.length === 0
-    ? { check: parsed.data, ok: true }
-    : { issues, ok: false };
-};
-
-/** One line per problem: `scope.person: bounce_rate cannot be narrowed by person…`. */
-export const describeIssues = (issues: readonly CheckIssue[]): string =>
-  issues
-    .map((issue) =>
-      issue.path === "" ? issue.message : `${issue.path}: ${issue.message}`
-    )
-    .join("\n");
