@@ -223,19 +223,20 @@ const settingsAudit: CardBuilder = (data) => {
 
 const warmupReadiness: CardBuilder = (data) => {
   const notReady = rows(data, "notReady");
+  // Without sender health, "ready" rests on warmup and status alone.
+  const checked = bool(data, "healthChecked") !== false;
+  const ready = checked ? "ready to send" : "ready on warmup alone";
+
+  const unchecked = checked ? "" : "; DNS and warmup spam were not checked";
 
   return {
     finding: verdict(
       num(data, "total"),
       notReady.length === 0
         ? null
-        : `🟡 ${int(num(data, "ready"))} of ${int(num(data, "total"))} senders are ready to send.`,
-      `Every sender is ready to send (${int(num(data, "total"))} checked).`
+        : `🟡 ${int(num(data, "ready"))} of ${int(num(data, "total"))} senders are ${ready}${unchecked}.`,
+      `Every sender is ${ready} (${int(num(data, "total"))} checked)${unchecked}.`
     ),
-    notes:
-      bool(data, "healthChecked") === false
-        ? ["Sender health was not read, so DNS and sign-in were not checked."]
-        : [],
     stats: [
       ["Ready", int(num(data, "ready"))],
       ["Not ready", int(notReady.length)],

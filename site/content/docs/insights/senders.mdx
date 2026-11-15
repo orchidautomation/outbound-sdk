@@ -177,7 +177,7 @@ Which senders are not ready to send, each with its reasons.
 - `notReady`: the senders with at least one reason, most reasons first. Each has `kind`, `address`, `name`, `status`, `warmupEnabled`, `score`, `dailyLimit`, `reasons` and `findings` (each reason in plain words).
 - `byReason`: how many senders have each reason.
 - `ready`, `total`, `linkedinSeats`.
-- `healthChecked`: `true` when DNS records and warmup spam were checked too.
+- `healthChecked`: `true` when DNS records and warmup spam were checked too. When it is `false`, a sender counted as ready is ready on warmup and status alone, and the card says "ready on warmup alone", not "ready to send".
 
 The reasons:
 
@@ -193,7 +193,7 @@ The reasons:
 
 - **Needs:** `senders.list`. `check_health` also needs `senders.health`.
 - **Costs:** one listing of senders, plus 1 request per mailbox with `check_health`.
-- **Notes it can add:** DNS records and warmup spam were not checked because the adapter cannot read a sender's health; a cap was reached; with `check_health`, a mailbox the vendor no longer finds was left out, which also sets `meta.complete` to `false`.
+- **Notes it can add:** with `check_health` off (the default), DNS records and warmup spam were not checked, so a ready mailbox is ready on warmup alone, and how to turn the check on; DNS records and warmup spam were not checked because the adapter cannot read a sender's health; a cap was reached; with `check_health`, a mailbox the vendor no longer finds was left out, which also sets `meta.complete` to `false`.
 - **Does not:** treat a missing score as 0. A `null` score means the vendor does not report one, which counts as not ready under its own reason. A LinkedIn seat is judged on its status only.
 
 <include meta='title="warmup-readiness.ts"'>

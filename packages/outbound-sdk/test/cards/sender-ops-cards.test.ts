@@ -343,10 +343,14 @@ test("settings_audit names the campaign beside each finding", () => {
   );
 });
 
-const readiness = (notReady: number, total: number): WarmupReadiness => ({
+const readiness = (
+  notReady: number,
+  total: number,
+  healthChecked = false
+): WarmupReadiness => ({
   // Reasons with no sender are left out of the card.
   byReason: { low_score: notReady, warmup_off: 0 } as never,
-  healthChecked: false,
+  healthChecked,
   linkedinSeats: 0,
   notReady: Array.from({ length: notReady }, () => ({
     address: "new@example.com",
@@ -369,14 +373,25 @@ test("warmup_readiness says how many senders are ready and why not", () => {
 
   includes(
     text,
-    "🟡 4 of 5 senders are ready to send.",
+    "🟡 4 of 5 senders are ready on warmup alone; DNS and warmup spam were not checked.",
     "Low score: 1",
-    "new@example.com | active | 61           | low score",
-    "Sender health was not read, so DNS and sign-in were not checked."
+    "new@example.com | active | 61           | low score"
   );
-  excludes(text, "Warmup off");
+  excludes(text, "Warmup off", "ready to send");
+
+  const unchecked = read(cardFor("warmup_readiness", insight(readiness(0, 5))));
+
   includes(
-    read(cardFor("warmup_readiness", insight(readiness(0, 5)))),
+    unchecked,
+    "🟢 Every sender is ready on warmup alone (5 checked); DNS and warmup spam were not checked."
+  );
+  excludes(unchecked, "ready to send");
+  includes(
+    read(cardFor("warmup_readiness", insight(readiness(1, 5, true)))),
+    "🟡 4 of 5 senders are ready to send."
+  );
+  includes(
+    read(cardFor("warmup_readiness", insight(readiness(0, 5, true)))),
     "🟢 Every sender is ready to send (5 checked)."
   );
   includes(

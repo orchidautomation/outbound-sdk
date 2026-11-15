@@ -207,6 +207,17 @@ export const warmupReadiness = defineInsight({
       );
     }
 
+    // Left off by default to save a request per mailbox; the note says so.
+    if (
+      !options.check_health &&
+      outbound.capabilities["senders.health"] &&
+      senders.some((sender) => sender.kind === "mailbox")
+    ) {
+      context.note(
+        "DNS records and warmup spam were not checked, so a ready mailbox is ready on warmup alone. Pass check_health: true to check them, at 1 more request per mailbox."
+      );
+    }
+
     const each = await mapConcurrent(senders, async (sender) => {
       if (!healthChecked || sender.kind !== "mailbox") {
         return [judge(sender, null, bars)];
