@@ -8,18 +8,18 @@ How every campaign is doing right now: sends, replies, positive replies, bounces
         "channel": "email",
         "name": "Agency owners",
         "metrics": {
-          "bounce_rate": 0.0522,
-          "bounced": 6,
+          "bounce_rate": 0.0505,
+          "bounced": 53,
           "connections_accepted": null,
           "connections_sent": null,
-          "contacted": 115,
-          "opened": 38,
-          "positive": 1,
-          "positive_reply_rate": 0.0087,
-          "replied": 3,
-          "reply_rate": 0.0261,
+          "contacted": 630,
+          "opened": 378,
+          "positive": 5,
+          "positive_reply_rate": 0.0079,
+          "replied": 18,
+          "reply_rate": 0.0286,
           "reply_rate_basis": "contacted",
-          "sent": 115
+          "sent": 1050
         },
         "status": "paused"
       }
