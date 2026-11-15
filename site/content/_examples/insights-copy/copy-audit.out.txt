@@ -1,8 +1,8 @@
 step 2 high malformed_variable: A variable's braces are not balanced, so it sends as raw text.
-step 2 medium spam_words: The copy uses 2 word(s) or phrase(s) that spam filters weigh.
+step 2 medium spam_words: The copy uses 2 words or phrases that spam filters weigh.
 step 2 medium subject_breaks_thread: This follow-up has a subject that differs from the first email's, so it starts a new thread instead of continuing the first.
 step 2 medium too_many_links: The body has 2 links; the limit is 1.
-step 2 low all_caps: 2 word(s) of four or more letters are in capitals; the limit is 1.
+step 2 low all_caps: 2 words of four or more letters are in capitals; the limit is 1.
 step 2 low exclamation_marks: The copy has 2 exclamation marks; the limit is 1.
 step 2 low subject_too_long: The subject is 68 characters; the limit is 60.
 by severity: { high: 1, low: 3, medium: 3 }

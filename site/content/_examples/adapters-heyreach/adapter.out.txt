@@ -4,7 +4,7 @@ native reads: 25
 default: 7 per 2s
 default: 150 per 60s
 organization: 150 per 60s
-campaigns.list - 3 page(s) of 100 at 1 request(s) each, plus 0 per record
-leads.get - 2 request(s) per page
-leads.lookup - 3 page(s) of 100 at 2 request(s) each, plus 0 per record
-senders.list - 3 page(s) of 100 at 1 request(s) each, plus 0 per record
+campaigns.list - 3 pages of 100 at 1 request each, plus 0 per record
+leads.get - 2 requests per page
+leads.lookup - 3 pages of 100 at 2 requests each, plus 0 per record
+senders.list - 3 pages of 100 at 1 request each, plus 0 per record

@@ -1,17 +1,17 @@
 1. Ava Chen <ava.chen@example.com>, CEO, Northwind Example
    score 95: label 50, replies 20, recency 15, clicks 5, opens 5
-   marked Interested, replied 2 time(s), last reply 3 day(s) ago, 1 click(s), 6 open(s).
+   marked Interested, replied 2 times, last reply 3 days ago, 1 click, 6 opens.
 2. Ben Ortiz <ben.ortiz@example.com>, Head of Sales, Tailspin Example
    score 31: label unknown, replies 10, recency 18, clicks 0, opens 3
-   replied 1 time(s), last reply 1 day(s) ago, 3 open(s).
+   replied 1 time, last reply 1 day ago, 3 opens.
 3. Hal Berg <hal.berg@example.com>, COO
    score 19: label unknown, replies 0, recency unknown, clicks 15, opens 4
-   3 click(s), 4 open(s).
+   3 clicks, 4 opens.
 4. Dev Rao <dev.rao@example.com>
    score 5: label unknown, replies 0, recency unknown, clicks 0, opens 5
-   40 open(s).
+   40 opens.
 5. Cara Lind <cara.lind@example.com>
    score 2: label 0, replies 0, recency 0, clicks 0, opens 2
-   marked Not Interested, so replies earn nothing, 2 open(s).
+   marked Not Interested, so replies earn nothing, 2 opens.
 
 Read 8 leads: 5 scored above 0, 1 had nothing to score, 2 unsubscribed or bounced.

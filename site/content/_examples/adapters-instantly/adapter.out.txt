@@ -7,7 +7,7 @@ emails: 10 per 60s
 labelPrediction: 250 per 2592000s
 localBusinessFilters: 50 per 86400s
 localBusinessSearch: 100 per 86400s
-campaigns.get - 3 request(s) per page
-campaigns.list - 3 page(s) of 100 at 3 request(s) each, plus 0 per record
-senders.health - 3 request(s) per page
-leads.list - 3 page(s) of 100 at 1 request(s) each, plus 0 per record
+campaigns.get - 3 requests per page
+campaigns.list - 3 pages of 100 at 3 requests each, plus 0 per record
+senders.health - 3 requests per page
+leads.list - 3 pages of 100 at 1 request each, plus 0 per record

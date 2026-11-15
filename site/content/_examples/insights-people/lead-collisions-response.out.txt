@@ -33,7 +33,7 @@
           "email",
           "linkedin"
         ],
-        "finding": "email:ana@northwind.example.com is in 3 campaigns across mailtool and linkedintool (email and linkedin).",
+        "finding": "ana@northwind.example.com is in 3 campaigns across mailtool and linkedintool (email and linkedin).",
         "identifiers": [
           "email:ana@northwind.example.com",
           "linkedin:ana-ruiz-example"
@@ -68,7 +68,7 @@
         "channels": [
           "email"
         ],
-        "finding": "email:cy@example.com is in 2 mailtool campaigns at once.",
+        "finding": "cy@example.com is in 2 mailtool campaigns at once.",
         "identifiers": [
           "email:cy@example.com"
         ],

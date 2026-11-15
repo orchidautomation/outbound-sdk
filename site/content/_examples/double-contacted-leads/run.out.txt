@@ -1,10 +1,10 @@
 2 people are in two or more active campaigns (1 across tools, 1 inside one tool)
 
-  email:raj@example.com is in 3 campaigns across mailtool and lntool (email and linkedin).
+  raj@example.com is in 3 campaigns across mailtool and lntool (email and linkedin).
     Founders Q4 (mailtool, email), lead is active
     Agency owners (mailtool, email), lead is active
     LinkedIn founders (lntool, linkedin), lead is active
-  email:nina@example.com is in 2 mailtool campaigns at once.
+  nina@example.com is in 2 mailtool campaigns at once.
     Founders Q4 (mailtool, email), lead is active
     Agency owners (mailtool, email), lead is active
 

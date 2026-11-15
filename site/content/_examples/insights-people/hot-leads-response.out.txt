@@ -19,7 +19,7 @@
           "recency": 17.1429,
           "replies": 20
         },
-        "reason": "marked Interested, replied 2 time(s), last reply 2 day(s) ago, 1 click(s), 6 open(s).",
+        "reason": "marked Interested, replied 2 times, last reply 2 days ago, 1 click, 6 opens.",
         "replies": 2,
         "score": 97.1429,
         "status": "replied",
@@ -43,7 +43,7 @@
           "recency": 10,
           "replies": 10
         },
-        "reason": "marked Meeting Booked, replied 1 time(s), last reply 7 day(s) ago, 2 click(s), 4 open(s).",
+        "reason": "marked Meeting Booked, replied 1 time, last reply 7 days ago, 2 clicks, 4 opens.",
         "replies": 1,
         "score": 84,
         "status": "replied",
@@ -67,7 +67,7 @@
           "recency": null,
           "replies": 0
         },
-        "reason": "3 open(s).",
+        "reason": "3 opens.",
         "replies": 0,
         "score": 3,
         "status": "active",

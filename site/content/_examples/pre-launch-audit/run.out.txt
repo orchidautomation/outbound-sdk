@@ -2,7 +2,7 @@ Pre-launch audit of Agency owners Q1 (draft)
 
 Copy: 5 findings in 3 variants
   [high] step 0 B: A variable's braces are not balanced, so it sends as raw text.
-  [medium] step 0 A: The copy uses 1 word(s) or phrase(s) that spam filters weigh.
+  [medium] step 0 A: The copy uses 1 word or phrase that spam filters weigh.
   [medium] step 0 A: The body has 2 links; the limit is 1.
   [medium] step 1 A: This follow-up has a subject that differs from the first email's, so it starts a new thread instead of continuing the first.
   [low] step 1 A: The copy has 2 exclamation marks; the limit is 1.

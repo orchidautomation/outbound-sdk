@@ -4,7 +4,7 @@ no settings: null [
   'Capacity in use left out: 1 inactive or unlimited sender may have sent some of these messages. Pass split_uncounted: true to read their sends (1 request each).'
 ]
 capped: false 40 [
-  'Stopped at 1 campaigns (max_campaigns); more exist.',
+  'Stopped at 1 campaign (max_campaigns); more exist.',
   'Capacity in use left out: 1 inactive or unlimited sender may have sent some of these messages. Pass split_uncounted: true to read their sends (1 request each).'
 ]
 bad input: Invalid - sender_capacity: days Too small: expected number to be >=1

@@ -22,7 +22,7 @@
       },
       {
         "code": "inactive_sender",
-        "finding": "1 of 2 senders are not active: ben@send.example.com (error).",
+        "finding": "1 of 2 senders is not active: ben@send.example.com (error).",
         "next": "Reconnect or replace them; warmup_readiness shows which mailboxes are fit to send.",
         "numbers": {
           "inactive": 1,

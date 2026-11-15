@@ -2,7 +2,7 @@ Ecommerce ops (active): 8 findings. Most serious: Bounce rate is 4.1% (117 of 28
 
 [high] high_bounce_rate: Bounce rate is 4.1% (117 of 2836 sends), over the 3% limit.
     next: Use bounce_watch to find the senders behind it, and verify the lead list.
-[high] inactive_sender: 1 of 2 senders are not active: dan@example.com (paused).
+[high] inactive_sender: 1 of 2 senders is not active: dan@example.com (paused).
     next: Reconnect or replace them; warmup_readiness shows which mailboxes are fit to send.
 [high] low_reply_rate: Reply rate is 0.2% (2 of 945), under the 1% floor. The 95% interval is 0.1% to 0.8%, so it is below the floor beyond chance.
     next: Use step_funnel and copy_audit to see where replies are lost.

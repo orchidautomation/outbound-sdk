@@ -1,4 +1,4 @@
 used 3, remaining 0
-seen before: RateLimited - The run used its budget of 3 request(s) to memory
-not seen before: RateLimited - The run used its budget of 3 request(s) to memory
+seen before: RateLimited - The run used its budget of 3 requests to memory
+not seen before: RateLimited - The run used its budget of 3 requests to memory
 after reset: stale false
