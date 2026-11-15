@@ -15,7 +15,8 @@ agent/
 │   ├── clients.ts                   the client roster, the team's channels and teammates
 │   ├── roster.ts                    refuses a roster that puts two clients in one channel
 │   ├── outbound.ts                  one outbound-sdk instance for the whole agency
-│   ├── scope.ts                     what a conversation may see; fails closed
+│   ├── scope.ts, slack-scope.ts     what a conversation may see; fails closed
+│   ├── follow-up.ts                 asks Jev whether an unmentioned reply is meant for the agent
 │   ├── cards.ts                     the numbers behind a reply, as outbound-sdk cards
 │   └── demo.ts                      made-up data for trying it without a key
 ├── tools/
@@ -23,7 +24,7 @@ agent/
 │   └── no_reply.ts                  lets a quiet morning post nothing
 ├── skills/weekly-client-report/     the Monday report, step by step
 ├── channels/
-│   ├── slack.ts                     Slack mentions, DMs and threads, with the cards renderer
+│   ├── slack.ts                     mentions, DMs, followed threads, and the cards renderer
 │   └── eve.ts                       the HTTP API and the dev TUI
 └── schedules/
     ├── weekly-client-reports.ts     Monday 08:00 New York, one thread per client
@@ -82,6 +83,20 @@ To let Vercel hold the token and verify requests instead, run `eve add channel/s
 DMs need the teammate list because Slack identifies a Slack Connect guest by the agency's own workspace, so a DM alone can't tell a client's user from a teammate.
 
 The roster is checked when the agent loads, so `eve build` fails on a roster that gives one channel to two clients or two channels to one client. A client on two sending tools is two entries with the same `id` and channel.
+
+### Replies without a mention
+
+The agent answers an @mention or a DM straight away. It also follows the threads it is already part of, such as the Monday report thread, so a client can reply "why did Ecommerce ops drop?" without mentioning it.
+
+Following a thread doesn't mean answering everything in it. Each unmentioned reply goes first to [Jev](https://vercel.com/i/what-is-jev), TypeSafe AI's decision model and eve's default for `decide`, with the last few messages of the thread: one yes/no on whether the reply is meant for the agent (`agent/lib/follow-up.ts`). Only a yes starts a turn, and the agent can still stay quiet with `no_reply`. "Thanks, looks good" costs one classifier call, not an agent turn.
+
+| Message | Model calls |
+| --- | --- |
+| An @mention, or a DM | The agent's turn, no check |
+| An unmentioned reply in a thread the agent is part of | One Jev call; an agent turn only if Jev says yes |
+| A top-level message, a thread the agent isn't in, a conversation with no client data, another bot | None. It is ignored |
+
+If the Jev call fails, the reply is ignored; a mention still gets through. Jev resolves through AI Gateway, with no separate key.
 
 ### Cards under every answer
 

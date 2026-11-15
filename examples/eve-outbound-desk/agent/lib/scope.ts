@@ -14,24 +14,10 @@ import type { InstrumentationChannel } from "eve/channels";
 
 import eve from "../channels/eve";
 import slack from "../channels/slack";
-import {
-  clientForChannel,
-  INTERNAL_CHANNEL_IDS,
-  TEAM_USER_IDS,
-} from "./clients";
-import type { Client } from "./clients";
+import { AGENCY, NONE, slackScope } from "./slack-scope";
+import type { Scope } from "./slack-scope";
 
-export type Scope =
-  | { readonly kind: "agency" }
-  | { readonly kind: "client"; readonly client: Client }
-  | { readonly kind: "none" };
-
-const AGENCY: Scope = { kind: "agency" };
-const NONE: Scope = { kind: "none" };
-
-// Slack direct-message channel ids start with D.
-const isDirectMessage = (channelId: string): boolean =>
-  channelId.startsWith("D");
+export type { Scope } from "./slack-scope";
 
 export const scopeOf = (channel: InstrumentationChannel | undefined): Scope => {
   if (channel === undefined) {
@@ -48,23 +34,5 @@ export const scopeOf = (channel: InstrumentationChannel | undefined): Scope => {
 
   const { channelId, triggeringUserId } = channel.metadata;
 
-  if (channelId === null) {
-    return NONE;
-  }
-
-  const client = clientForChannel(channelId);
-
-  if (client !== undefined) {
-    return { client, kind: "client" };
-  }
-
-  if (INTERNAL_CHANNEL_IDS.has(channelId)) {
-    return AGENCY;
-  }
-
-  return isDirectMessage(channelId) &&
-    triggeringUserId !== null &&
-    TEAM_USER_IDS.has(triggeringUserId)
-    ? AGENCY
-    : NONE;
+  return channelId === null ? NONE : slackScope(channelId, triggeringUserId);
 };
