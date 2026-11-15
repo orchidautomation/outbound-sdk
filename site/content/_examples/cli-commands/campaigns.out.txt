@@ -8,7 +8,7 @@ $ outbound campaigns --status paused --limit 1
     "sourceId": "cmp_agencies",
     "workspaceId": "default",
     "channel": "email",
-    "createdAt": "2026-09-12T09:00:00.000Z",
+    "createdAt": "2026-10-19T09:00:00.000Z",
     "name": "Agency owners",
     "status": "paused",
     "tags": [
@@ -26,7 +26,7 @@ $ outbound campaign cmp_founders
   "sourceId": "cmp_founders",
   "workspaceId": "default",
   "channel": "email",
-  "createdAt": "2026-10-01T09:00:00.000Z",
+  "createdAt": "2026-10-29T09:00:00.000Z",
   "name": "Q4 SaaS founders",
   "status": "active",
   "tags": [
@@ -44,7 +44,7 @@ $ outbound campaign cmp_founders
   }
 }
 
-$ outbound campaign cmp_founders --stats --from 2026-10-05 --to 2026-10-05
+$ outbound campaign cmp_founders --stats --from 2026-11-11 --to 2026-11-11
 {
   "meta": {
     "complete": true,
@@ -89,7 +89,7 @@ $ outbound campaign cmp_founders --stats --from 2026-10-05 --to 2026-10-05
 }
 
 $ outbound campaign cmp_founders --stats --by day --compact
-{"meta":{"complete":true,"evidence":"exact","fetchedAt":"2026-11-14T12:00:00.000Z","provider":"memory","requests":0,"stale":false,"throttledMs":0,"workspaceId":"default"},"rows":[{"bounced":1,"clicked":null,"clickedTotal":null,"connectionsAccepted":null,"connectionsSent":null,"contacted":50,"delivered":49,"inmailsSent":null,"opened":30,"openedTotal":null,"positive":2,"replied":4,"repliedAuto":null,"sent":50,"unsubscribed":null,"contentHash":null,"date":"2026-10-05","evidence":"exact","provider":"memory","schemaVersion":1,"scope":"campaign","scopeRef":"memory:default:cmp_founders","stepIndex":null,"timezone":"UTC","variantKey":null,"workspaceId":"default"},{"bounced":0,"clicked":null,"clickedTotal":null,"connectionsAccepted":null,"connectionsSent":null,"contacted":40,"delivered":40,"inmailsSent":null,"opened":22,"openedTotal":null,"positive":1,"replied":3,"repliedAuto":null,"sent":40,"unsubscribed":null,"contentHash":null,"date":"2026-10-06","evidence":"exact","provider":"memory","schemaVersion":1,"scope":"campaign","scopeRef":"memory:default:cmp_founders","stepIndex":null,"timezone":"UTC","variantKey":null,"workspaceId":"default"}]}
+{"meta":{"complete":true,"evidence":"exact","fetchedAt":"2026-11-14T12:00:00.000Z","provider":"memory","requests":0,"stale":false,"throttledMs":0,"workspaceId":"default"},"rows":[{"bounced":1,"clicked":null,"clickedTotal":null,"connectionsAccepted":null,"connectionsSent":null,"contacted":45,"delivered":44,"inmailsSent":null,"opened":25,"openedTotal":null,"positive":1,"replied":2,"repliedAuto":null,"sent":45,"unsubscribed":null,"contentHash":null,"date":"2026-11-04","evidence":"exact","provider":"memory","schemaVersion":1,"scope":"campaign","scopeRef":"memory:default:cmp_founders","stepIndex":null,"timezone":"UTC","variantKey":null,"workspaceId":"default"},{"bounced":0,"clicked":null,"clickedTotal":null,"connectionsAccepted":null,"connectionsSent":null,"contacted":45,"delivered":45,"inmailsSent":null,"opened":24,"openedTotal":null,"positive":0,"replied":2,"repliedAuto":null,"sent":45,"unsubscribed":null,"contentHash":null,"date":"2026-11-05","evidence":"exact","provider":"memory","schemaVersion":1,"scope":"campaign","scopeRef":"memory:default:cmp_founders","stepIndex":null,"timezone":"UTC","variantKey":null,"workspaceId":"default"},{"bounced":1,"clicked":null,"clickedTotal":null,"connectionsAccepted":null,"connectionsSent":null,"contacted":50,"delivered":49,"inmailsSent":null,"opened":30,"openedTotal":null,"positive":2,"replied":4,"repliedAuto":null,"sent":50,"unsubscribed":null,"contentHash":null,"date":"2026-11-11","evidence":"exact","provider":"memory","schemaVersion":1,"scope":"campaign","scopeRef":"memory:default:cmp_founders","stepIndex":null,"timezone":"UTC","variantKey":null,"workspaceId":"default"},{"bounced":0,"clicked":null,"clickedTotal":null,"connectionsAccepted":null,"connectionsSent":null,"contacted":40,"delivered":40,"inmailsSent":null,"opened":22,"openedTotal":null,"positive":1,"replied":3,"repliedAuto":null,"sent":40,"unsubscribed":null,"contentHash":null,"date":"2026-11-12","evidence":"exact","provider":"memory","schemaVersion":1,"scope":"campaign","scopeRef":"memory:default:cmp_founders","stepIndex":null,"timezone":"UTC","variantKey":null,"workspaceId":"default"}]}
 
 $ outbound campaign cmp_founders --sequence
 {
@@ -184,7 +184,7 @@ $ outbound campaign cmp_founders --settings
       "to": "17:00"
     }
   ],
-  "startDate": "2026-10-05",
+  "startDate": "2026-11-02",
   "stopOnAutoReply": false,
   "stopOnReply": true,
   "tracking": {

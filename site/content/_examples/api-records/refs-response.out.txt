@@ -6,7 +6,7 @@
   "sourceId": "cmp_founders",
   "workspaceId": "acme",
   "channel": "email",
-  "createdAt": "2026-10-01T09:00:00.000Z",
+  "createdAt": "2026-10-29T09:00:00.000Z",
   "name": "Q4 SaaS founders",
   "status": "active",
   "tags": [

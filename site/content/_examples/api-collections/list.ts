@@ -14,11 +14,11 @@ console.log(
 // `since` and `until` are inclusive ISO 8601 dates or timestamps.
 const recent = await outbound.leads.list({
   campaignId: "cmp_founders",
-  since: "2026-10-03",
+  since: "2026-10-31",
 });
 
 console.log(
-  "added since 3 October:",
+  "added since 31 October:",
   recent.items.map((lead) => lead.email)
 );
 

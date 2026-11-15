@@ -1,8 +1,8 @@
 2 unanswered for more than 24 hours, since 2026-10-31
 
-  99h  priya@example.com
+  99h  priya@example.com (Founders Q4)
        email, positive, 2 unanswered, "Re: pricing for 10 seats"
-  31h  https://www.linkedin.com/in/tom-okafor-example
+  31h  https://www.linkedin.com/in/tom-okafor-example (LinkedIn founders)
        linkedin, positive, 1 unanswered
 
 Read 7 replies in 4 conversations to check: 1 answered, 1 too recent, 0 could not be checked.

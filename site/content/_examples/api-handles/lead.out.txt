@@ -1,5 +1,5 @@
 person1@example.com replied Interested
-2026-10-05T14:00:00.000Z out - Hi Alex, saw your launch.
-2026-10-06T09:30:00.000Z in - Thanks, happy to chat next week.
+2026-11-11T14:00:00.000Z out - Hi Alex, saw your launch.
+2026-11-12T09:30:00.000Z in - Thanks, happy to chat next week.
 thread: 2 messages
 on the list: [ 'person1@example.com', 'person2@example.com' ]

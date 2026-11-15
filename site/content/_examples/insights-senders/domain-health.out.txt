@@ -1,7 +1,7 @@
 send-two.example.com: high risk
   - 1 of 2 mailboxes are on a block list
   - DKIM failing
-  - 30 of 200 warmup emails landed in spam (0.15, over 0.1)
+  - 30 of 200 warmup emails landed in spam (15%, over 10%)
   - DMARC failing
   - 1 of 2 mailboxes are disconnected
 send-one.example.com: low risk

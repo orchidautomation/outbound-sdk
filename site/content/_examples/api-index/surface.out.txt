@@ -1,7 +1,7 @@
 memory acme stable
 caveats: 0
 sequence: true
-2 campaigns, 2 steps, 150 sent
+2 campaigns, 2 steps, 295 sent
 true
 {
   basis: '25 page(s) of 100 at 1 request(s) each, plus 0 per record',

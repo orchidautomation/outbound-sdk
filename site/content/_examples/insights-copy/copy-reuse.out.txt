@@ -1,8 +1,8 @@
 "Hi {{firstName}}, I saw {{company}} is h..."
-  The same copy gets 0.08 in SaaS founders and 0.02 in Agency owners; the gap is more than chance, so the audience or the sender differs, not the copy.
+  The same copy gets 8% in SaaS founders and 2% in Agency owners; the gap is more than chance, so the audience or the sender differs, not the copy.
   spread 0.06, p-value 0, real: true
 "Hi {{firstName}}, did my note reach you?..."
-  The same copy gets 0.025 in SaaS founders and 0.02 in Agency owners; a gap this size could be chance.
+  The same copy gets 2.5% in SaaS founders and 2% in Agency owners; a gap this size could be chance.
   spread 0.005, p-value 0.6226, real: false
 best copy: "Quick question about {{company}}" at 0.0473 over 1100 sends
 5 pieces of copy in 2 campaigns

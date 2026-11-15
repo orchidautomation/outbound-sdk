@@ -4,7 +4,7 @@ const { data } = await outbound.insights.droppedReplies({});
 
 for (const reply of data.dropped) {
   console.log(
-    `${reply.name ?? reply.email ?? reply.lead} (${reply.campaignName}): ${reply.finding} Unanswered replies: ${reply.unansweredReplies}. Checked by ${reply.checkedBy}.`
+    `${reply.name ?? reply.email ?? reply.linkedinUrl ?? reply.lead} (${reply.campaignName}): ${reply.finding} Unanswered replies: ${reply.unansweredReplies}. Checked by ${reply.checkedBy}.`
   );
 }
 

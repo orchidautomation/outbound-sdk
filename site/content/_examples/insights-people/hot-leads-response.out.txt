@@ -75,8 +75,11 @@
       }
     ],
     "totals": {
+      "autoReplied": 0,
       "excluded": 1,
+      "fromReplies": 0,
       "hot": 4,
+      "moreLeadsExist": false,
       "leadsRead": 12,
       "scored": 5,
       "withoutData": 6

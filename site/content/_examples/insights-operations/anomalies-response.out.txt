@@ -8,7 +8,7 @@
         "direction": "above",
         "metric": "bounced",
         "value": 16,
-        "finding": "bounced was 16 on 2026-11-11, against an average of 4 over the 14 days with data before it (z = 11.5635).",
+        "finding": "bounced was 16 on 2026-11-11, against an average of 4 over the 14 days with data before it (z = 11.6).",
         "judgedBy": "z_score",
         "zScore": 11.5635
       },
@@ -19,7 +19,7 @@
         "direction": "below",
         "metric": "replied",
         "value": 7,
-        "finding": "replied was 7 on 2026-11-08, against an average of 9.7857 over the 14 days with data before it (z = -3.4744).",
+        "finding": "replied was 7 on 2026-11-08, against an average of 9.8 over the 14 days with data before it (z = -3.5).",
         "judgedBy": "z_score",
         "zScore": -3.4744
       },

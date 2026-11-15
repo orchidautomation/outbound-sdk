@@ -3,12 +3,12 @@
 {"text":"*Hot leads*","type":"mrkdwn"}
 {"text":"1 lead to call first.","type":"mrkdwn"}
 [{"items":[{"block":{"text":{"text":"Hot\n*1*","type":"mrkdwn"},"type":"section"}},{"block":{"text":{"text":"Scored\n*1*","type":"mrkdwn"},"type":"section"}}]}]
-{"text":"• Alex Example · Example Co · 62 · marked Interested, replied 1 time(s), last reply 39 day(s) ago, 2 open(s).","type":"mrkdwn"}
+{"text":"• Alex Example · Example Co · 78.99 · marked Interested, replied 1 time(s), last reply 2 day(s) ago, 2 open(s).","type":"mrkdwn"}
 "divider"
 {"text":"*Domain health*","type":"mrkdwn"}
 {"text":"🔴 1 sending domain at high risk.","type":"mrkdwn"}
 [{"items":[{"block":{"text":{"text":"Domains\n*1*","type":"mrkdwn"},"type":"section"}},{"block":{"text":{"text":"High risk\n*1*","type":"mrkdwn"},"type":"section"}}]}]
-{"text":"• 🔴 *example.com*: DKIM failing; 29 of 200 warmup emails landed in spam (0.145, over 0.1)","type":"mrkdwn"}
+{"text":"• 🔴 *example.com*: DKIM failing; 29 of 200 warmup emails landed in spam (14.5%, over 10%)","type":"mrkdwn"}
 "divider"
 {"text":"*Warmup readiness*","type":"mrkdwn"}
 {"text":"🟡 1 of 2 senders are ready to send.","type":"mrkdwn"}

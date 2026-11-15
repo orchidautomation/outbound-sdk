@@ -1,12 +1,12 @@
 Domains:
   go.example.com: high risk, 2 mailboxes
     - DKIM failing
-    - 30 of 150 warmup emails landed in spam (0.2, over 0.1)
+    - 30 of 150 warmup emails landed in spam (20%, over 10%)
     - 1 of 2 mailboxes are disconnected
   mail.example.com: low risk, 2 mailboxes
 
 Campaigns over a 3.0% bounce rate:
-  Ecommerce ops: 54 of 900 sends bounced (0.06), over the 0.03 threshold.
+  Ecommerce ops: 54 of 900 sends bounced (6%), over the 3% threshold.
     cara@go.example.com: 9.2% (46 of 500)
 
 Clean: 1. Too few sends to judge: 1. No bounce count: 0.

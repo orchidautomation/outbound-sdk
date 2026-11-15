@@ -7,17 +7,17 @@
         "name": "Q4 SaaS founders",
         "metrics": {
           "bounce_rate": 0.0111,
-          "bounced": 1,
+          "bounced": 2,
           "connections_accepted": null,
           "connections_sent": null,
-          "contacted": 90,
-          "opened": 52,
-          "positive": 3,
-          "positive_reply_rate": 0.0333,
-          "replied": 7,
-          "reply_rate": 0.0778,
+          "contacted": 180,
+          "opened": 101,
+          "positive": 4,
+          "positive_reply_rate": 0.0222,
+          "replied": 11,
+          "reply_rate": 0.0611,
           "reply_rate_basis": "contacted",
-          "sent": 90
+          "sent": 180
         },
         "status": "active"
       }
@@ -38,12 +38,22 @@
     "metric": "replied",
     "points": [
       {
-        "date": "2026-10-05",
+        "date": "2026-11-04",
+        "timezone": "UTC",
+        "value": 2
+      },
+      {
+        "date": "2026-11-05",
+        "timezone": "UTC",
+        "value": 2
+      },
+      {
+        "date": "2026-11-11",
         "timezone": "UTC",
         "value": 4
       },
       {
-        "date": "2026-10-06",
+        "date": "2026-11-12",
         "timezone": "UTC",
         "value": 3
       }

@@ -3,4 +3,7 @@ smartlead unverified [ 'email' ] [ 'SMARTLEAD_API_KEY' ]
 heyreach beta [ 'linkedin' ] [ 'HEYREACH_API_KEY' ]
 memory stable [ 'email', 'linkedin' ] []
 [ 'heyreach', 'instantly', 'memory', 'smartlead' ]
+heyreach true
+nope false
+all false
 memory 2

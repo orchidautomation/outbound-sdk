@@ -7,7 +7,7 @@ await outbound(
   "--campaign",
   "cmp_founders",
   "--since",
-  "2026-10-06T00:00:00Z",
+  "2026-11-12T00:00:00Z",
   "--bodies",
   "--compact"
 );

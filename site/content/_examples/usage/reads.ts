@@ -20,7 +20,7 @@ const sequence = await campaign.sequence();
 
 console.log("steps:", sequence.steps.length);
 
-const stats = await campaign.stats({ from: "2026-10-01", to: "2026-10-31" });
+const stats = await campaign.stats({ from: "2026-11-01", to: "2026-11-30" });
 
 console.log("sent:", stats.rows[0]?.sent);
 

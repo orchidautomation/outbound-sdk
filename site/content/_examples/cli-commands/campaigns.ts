@@ -9,9 +9,9 @@ await outbound(
   "cmp_founders",
   "--stats",
   "--from",
-  "2026-10-05",
+  "2026-11-11",
   "--to",
-  "2026-10-05"
+  "2026-11-11"
 );
 
 await outbound(

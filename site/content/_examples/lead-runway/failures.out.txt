@@ -1,4 +1,4 @@
-capped: false false - At least 100 leads remain; expect about 12 replies (between 9.49 and 15.06). This is an estimate.
+capped: false false - At least 100 leads remain; expect about 12 replies (between 9.5 and 15.1). This is an estimate.
 nothing sent: null null - 120 leads remain; replies cannot be estimated because the vendor reports no reply rate yet.
 no daily stats: 40 null [
   'Days of sending left were not estimated: the adapter has no stats by day.'

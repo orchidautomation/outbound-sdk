@@ -31,7 +31,7 @@ const INPUT = new Map<string, Json>([
   ["campaign_setup", { campaign: "cmp_founders" }],
   [
     "campaign_trend",
-    { campaign: "cmp_founders", from: "2026-10-01", to: "2026-10-31" },
+    { campaign: "cmp_founders", from: "2026-11-01", to: "2026-11-30" },
   ],
   ["cross_channel_lead", { person: "person1@example.com" }],
   ["lead_runway", { campaign: "cmp_founders" }],
