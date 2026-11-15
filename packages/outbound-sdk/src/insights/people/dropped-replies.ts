@@ -236,9 +236,9 @@ const readEach = async <Item>(
   }
 
   // Every record of a batch carries the whole batch's cost, so it is counted once.
-  const costliest = found.results.toSorted(
+  const [costliest] = found.results.toSorted(
     (left, right) => right.value.meta.requests - left.value.meta.requests
-  )[0];
+  );
 
   if (costliest !== undefined) {
     context.one(costliest.value);
@@ -398,8 +398,10 @@ export const droppedReplies = defineInsight({
       tooRecent += found.length - old.length;
     }
 
+    const withNames = await named(context, dropped);
+
     const answer: DroppedReplies = {
-      dropped: (await named(context, dropped)).toSorted(
+      dropped: withNames.toSorted(
         (left, right) =>
           right.hoursWaiting - left.hoursWaiting ||
           left.reply.localeCompare(right.reply)
