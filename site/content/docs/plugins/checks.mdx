@@ -1,0 +1,126 @@
+---
+title: Checks as data
+description: Write an alert check as plain JSON, validate it with a fix for every problem, and evaluate it against stats, senders or an insight's answer to get the exact numbers that broke it.
+sidebar:
+  label: checks as data
+related:
+  - /docs/plugins/alerts
+  - /docs/insights/people
+  - /docs/insights/operations
+---
+
+A check is a JSON object: which number to read (`metric`), how to compare it (`op`), what with (`value`), and optionally for which client, campaign, sender or person (`scope`) and over how many days (`window`). Because it is data, it can be stored in a file or a database row, shown and edited in a settings screen, and written by a model. `outbound-sdk/alerts` validates it and evaluates it against what you read. A [rule function](/docs/plugins/alerts#alerts-and-your-own-rules) still works as before; a check is another way to write one.
+
+```json
+{
+  "metric": "bounce_rate",
+  "op": ">",
+  "value": 0.03,
+  "scope": { "client": "acme" }
+}
+```
+
+Evaluating a check reads nothing, schedules nothing and remembers nothing. Whether a check already fired, when it recovers, and where to send it are yours to keep.
+
+## Sample
+
+Four stored checks, run on the [shared seed](/docs/plugins#every-plugin) against the reads each one needs.
+
+<include meta='title="run.ts"'>../../_examples/plugins-checks/run.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/plugins-checks/run.out.txt
+</include>
+
+## Fields
+
+| Field | Type | Required | Meaning |
+| --- | --- | --- | --- |
+| `metric` | string | yes | The number to check. One of the [metrics](#metrics). |
+| `op` | `">"`, `">="`, `"<"`, `"<="`, `"=="`, `"!="` | yes | How the measured value is compared with `value`. The check fails for a subject when the comparison is true. `sender_status` takes only `==` and `!=`. |
+| `value` | number, or a status string | yes | What to compare with. A rate is a fraction from 0 to 1: `0.03` is 3%. For `sender_status`, one of `active`, `paused`, `disconnected`, `error`, `unknown`. |
+| `name` | string | no | The check's name in results and alerts. Defaults to the metric. |
+| `scope` | object | no | Narrows the check to one `client`, `campaign`, `sender` or `person`. `campaign`, `sender` and `person` are refs (`provider:workspaceId:id`), not names. `client` is the name your [clients](/docs/plugins/clients) rules give. Each metric takes only the keys listed for it below. |
+| `window` | `{ "days": n }` | no | Stats metrics only. Daily rows dated before the last `n` days (counting back from now, today included) are not checked. A row that totals a range is checked as read: read the range you mean. |
+| `min_sent` | number | no | `bounce_rate` and `reply_rate` only. Rows with fewer sends are skipped, since a rate on a few sends is noise. Defaults to `50`. |
+
+Any other field is rejected, so a typo cannot silently do nothing.
+
+## Metrics
+
+`CHECK_METRICS` holds this table as data: each metric's `reads`, `unit`, `scope` and `description`.
+
+| Metric | Reads | Value | Scope | One subject per |
+| --- | --- | --- | --- | --- |
+| `bounce_rate` | a [stats](/docs/api/stats) read | rate | client, campaign, sender | stats row |
+| `reply_rate` | a stats read | rate | client, campaign, sender | stats row |
+| `sent` | a stats read | count | client, campaign, sender | stats row |
+| `sender_status` | `outbound.senders.list()` | status | client, sender | sender (an `unknown` status is skipped) |
+| `positive_reply_waiting_hours` | `insights.droppedReplies()` | hours | client, campaign, person | positive reply with no answer |
+| `lead_runway_days` | `insights.pipelineForecast()` | days | client, campaign | campaign (skipped when `daysLeft` is `null`) |
+| `blocked_leads` | `insights.suppressionCheck()` | count | client, campaign | campaign |
+| `broken_variable_leads` | `insights.personalizationGaps()` | count | client, campaign | merge variable with no value and no fallback |
+
+`scope.campaign` matches a stats row whose `scope` is `campaign`, and `scope.sender` one whose `scope` is `sender`.
+
+## The defaults, written as checks
+
+| Default | Check |
+| --- | --- |
+| Bounce rate too high | `{ "metric": "bounce_rate", "op": ">", "value": 0.03 }` |
+| Positive reply waiting too long | `{ "metric": "positive_reply_waiting_hours", "op": ">", "value": 48 }` |
+| Lead runway too short | `{ "metric": "lead_runway_days", "op": "<", "value": 7 }` |
+| Sender gone quiet | `{ "metric": "sent", "op": "==", "value": 0, "window": { "days": 2 } }`, against a daily stats read with `scope: "sender"`, on a tool whose `stats.bySender` capability is not `false`. Add `"scope": { "sender": "<ref>" }` for one sender. Against a campaign read, the same check finds a campaign gone quiet. |
+| Sender not active | `{ "metric": "sender_status", "op": "!=", "value": "active" }` |
+| Block-listed lead still in a campaign | `{ "metric": "blocked_leads", "op": ">", "value": 0 }` |
+| Broken merge variable | `{ "metric": "broken_variable_leads", "op": ">", "value": 0 }` |
+
+## Functions
+
+| Function | Returns |
+| --- | --- |
+| `validateCheck(input)` | `{ ok: true, check }`, or `{ ok: false, issues }` with every problem at once. Each issue is `{ path, message }`, and the message says what to write instead. It never throws. |
+| `parseCheck(input)` | The check, or throws an `OutboundError` with code `Invalid` whose message lists every issue. |
+| `describeIssues(issues)` | The issues as lines of `path: message`. |
+| `evaluateCheck(check, read, { client, now })` | A `CheckResult`. It validates the check first and throws `Invalid` for a malformed one. |
+| `checkRule(check, { client })` | The check as an `AlertRule` for the [alerts](/docs/plugins/alerts) plugin. Only a check on stats or senders can be one. |
+| `checkSchema` | The Zod schema. `z.toJSONSchema(checkSchema)` gives a JSON Schema for an editor or a model's structured output. |
+
+`read` is what the metric reads, as the SDK returned it: the stats result itself or its `rows`, the senders page or its `items`, a single record, or an insight's result or its `data`.
+
+A check scoped to a client needs `{ client }`: the client the read belongs to. Without it, or with another client, the result is `not_checked` and says so. `now` sets the moment a `window` counts back from; it defaults to now.
+
+## Results
+
+A `CheckResult` is:
+
+| Field | Meaning |
+| --- | --- |
+| `check` | The check's `name`, or its metric. |
+| `status` | `fail` when at least one subject broke the check. `pass` when none did. `not_checked` when the read is not what the metric reads, or is another client's. |
+| `breaches` | Every subject that broke it. |
+| `checked` | Subjects measured and compared. `pass` with `checked: 0` means nothing was there to measure. |
+| `skipped` | Subjects seen but not measured: too few sends, a missing count, an unknown status, a day before the window. |
+| `reason` | Why it was `not_checked`, naming what to pass instead. Otherwise `null`. |
+
+A breach is an [`Alert`](/docs/plugins/alerts#alerts-and-your-own-rules) with three more fields: `metric`, `op`, and `numbers`, the counts behind the value, such as `{ "bounced": 9, "sent": 100 }`. `value` is what was measured and `threshold` is the check's `value`. A stats row's breach has `subjectName: null`; the `alerts` plugin fills it in with the campaign's name once it has read that campaign.
+
+## When a check is wrong
+
+Every problem is reported at once, each at its path, with the fix.
+
+<include meta='title="rejected.ts"'>
+  ../../_examples/plugins-checks/rejected.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/plugins-checks/rejected.out.txt
+</include>
+
+| What happened | What you get | What to do |
+| --- | --- | --- |
+| The check is malformed | `validateCheck` lists the issues; `parseCheck`, `evaluateCheck` and `checkRule` throw `Invalid` with them | Apply each message's fix. |
+| The read is not what the metric reads | `status: "not_checked"` and a `reason` naming the read to pass | Pass the read in `CHECK_METRICS[metric].reads`. |
+| The check is scoped to a client and the read is not that client's | `status: "not_checked"` | Pass `{ client }` with that client's read. |
+| A row is too small for a rate, or a count is missing | The subject is counted in `skipped`, never as a breach | Lower `min_sent` if small rows matter to you. A missing count never fails a check. |
+| `checkRule` is given an insight's metric | Throws `Invalid` | Run `evaluateCheck` on that insight's answer instead. |

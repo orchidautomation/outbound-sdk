@@ -1,0 +1,14 @@
+bounce-spike: fail (6 checked)
+  memory:agency:cmp_ecom: bounce_rate is 9%, above 5%
+  {"bounced":9,"sent":100} on 2026-11-12
+  memory:agency:cmp_ecom: bounce_rate is 9%, above 5%
+  {"bounced":9,"sent":100} on 2026-11-13
+campaign-quiet: fail (3 checked)
+  memory:agency:cmp_ecom: sent is 0, equal to 0
+  {"sent":0} on 2026-11-11
+sender-down: fail (2 checked)
+  ben@agency.example.com: sender_status is disconnected, not active
+  {"status":"disconnected"}
+reply-waiting: fail (1 checked)
+  Jane Doe: positive_reply_waiting_hours is 75.5 hours, above 48 hours
+  {"hoursWaiting":75.5,"receivedAt":"2026-11-11T08:30:00.000Z","unansweredReplies":1}
