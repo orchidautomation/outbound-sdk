@@ -118,7 +118,34 @@ test("bounce_watch lists the campaigns over the threshold worst first, with thei
   });
   assert.equal(data.threshold, 0.03);
   assert.equal(data.minSent, 100);
+  // s1, s2 and s3 were read; s4 has no stats, which the notes say.
+  assert.equal(data.sendersRead, 3);
+  assert.deepEqual(result.meta.notes, [
+    "No sent or bounce count could be read for 1 sender, so it was not checked: s4@example.com.",
+  ]);
   assert.equal(result.meta.complete, true);
+});
+
+test("bounce_watch does not flag a sender on fewer sends than min_sent", async () => {
+  const { data } = await single({
+    campaigns: [{ id: "c1", name: "Hot" }],
+    senders: [
+      { address: "few@example.com", campaignIds: ["c1"], id: "few" },
+      { address: "many@example.com", campaignIds: ["c1"], id: "many" },
+    ],
+    stats: [
+      row("c1", { bounced: 41, sent: 500 }),
+      row("c1", { bounced: 1, sent: 2 }, { senderId: "few" }),
+      row("c1", { bounced: 40, sent: 498 }, { senderId: "many" }),
+    ],
+  }).insights.bounceWatch({});
+
+  // 1 bounce of 2 sends is 50%, but 2 sends are too few to judge.
+  assert.deepEqual(
+    data.over[0]?.senders?.map((sender) => sender.address),
+    ["many@example.com"]
+  );
+  assert.equal(data.sendersRead, 2);
 });
 
 test("bounce_watch sets small campaigns apart and never calls an unknown count clean", async () => {
@@ -242,6 +269,7 @@ test("bounce_watch leaves the senders out when asked to, or when the adapter can
   });
 
   assert.equal(skipped.data.over[0]?.senders, null);
+  assert.equal(skipped.data.sendersRead, null);
   assert.deepEqual(skipped.meta.notes, []);
 
   const note =
@@ -272,6 +300,7 @@ test("bounce_watch has nothing to report with no campaigns", async () => {
   assert.deepEqual(result.data, {
     minSent: 100,
     over: [],
+    sendersRead: null,
     threshold: 0.03,
     tooFewSends: [],
     totals: {

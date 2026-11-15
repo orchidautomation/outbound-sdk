@@ -55,6 +55,7 @@ const bounce = (over: number, clean: number): BounceWatch => ({
     sent: 500,
     status: "active",
   })),
+  sendersRead: 2,
   threshold: 0.03,
   tooFewSends: [],
   totals: {

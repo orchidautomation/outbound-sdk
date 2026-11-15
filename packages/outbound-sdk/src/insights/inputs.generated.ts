@@ -522,7 +522,7 @@ export interface InsightInputs {
     readonly max_senders_per_campaign?: number | undefined;
 
     /**
-     * A campaign with fewer sends than this is too small to judge
+     * A campaign or sender with fewer sends than this is too small to judge
      *
      * A whole number from 0 to 9,007,199,254,740,991. Defaults to `100`.
      */

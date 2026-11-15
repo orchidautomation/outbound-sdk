@@ -37,7 +37,9 @@ const input = z.object({
     .int()
     .min(0)
     .default(100)
-    .describe("A campaign with fewer sends than this is too small to judge"),
+    .describe(
+      "A campaign or sender with fewer sends than this is too small to judge"
+    ),
   threshold: z
     .number()
     .min(0)
@@ -102,6 +104,11 @@ export interface BounceWatch {
   };
   readonly threshold: number;
   readonly minSent: number;
+  /**
+   * Senders whose sent and bounce counts were read. `null` when senders were
+   * not checked. A sender with no counts is named in a note, not counted.
+   */
+  readonly sendersRead: number | null;
 }
 
 interface Range {
@@ -123,6 +130,12 @@ const known = (row: MetricRow | undefined): BounceCounts | null =>
 
 const isOver = (counts: BounceCounts, threshold: number): boolean =>
   counts.rate !== null && counts.rate > threshold;
+
+/** Who was read: a sender's name once per sender, by whether its counts are known. */
+interface SendersSeen {
+  readonly read: Set<string>;
+  readonly unread: Set<string>;
+}
 
 const whyUnknown = (row: MetricRow | undefined): string => {
   if (row === undefined) {
@@ -163,8 +176,10 @@ const sendersOver = async (
   campaign: Campaign,
   options: {
     readonly max: number;
+    readonly minSent: number;
     readonly threshold: number;
     readonly read: SenderReader;
+    readonly seen: SendersSeen;
   }
 ): Promise<BounceSender[]> => {
   const senders = await readCampaignSenders(
@@ -179,8 +194,17 @@ const sendersOver = async (
     sender,
   }));
 
+  for (const { counts, sender } of read) {
+    options.seen[counts === null ? "unread" : "read"].add(
+      sender.address ?? sender.name ?? sender.ref
+    );
+  }
+
+  // A sender with too few sends is not judged, as a campaign is not.
   const over: BounceSender[] = read.flatMap(({ counts, sender }) =>
-    counts !== null && isOver(counts, options.threshold)
+    counts !== null &&
+    counts.sent >= options.minSent &&
+    isOver(counts, options.threshold)
       ? [
           {
             ...counts,
@@ -241,6 +265,7 @@ export const bounceWatch = defineInsight({
       campaigns.length > 0 && canCheckSenders(context, options.include_senders);
 
     const read = senderReader(context, range);
+    const seen: SendersSeen = { read: new Set(), unread: new Set() };
     const overBy: { campaign: Campaign; entry: BounceCampaign }[] = [];
     const tooFewSends: BounceCampaign[] = [];
     const unknown: BounceUnknown[] = [];
@@ -295,12 +320,20 @@ export const bounceWatch = defineInsight({
               ...entry,
               senders: await sendersOver(context, campaign, {
                 max: options.max_senders_per_campaign,
+                minSent,
                 read,
+                seen,
                 threshold,
               }),
             }
           : entry
     );
+
+    if (seen.unread.size > 0) {
+      context.note(
+        `No sent or bounce count could be read for ${seen.unread.size === 1 ? "1 sender, so it was" : `${seen.unread.size} senders, so they were`} not checked: ${[...seen.unread].join(", ")}.`
+      );
+    }
 
     const bounced = total(counted.map((each) => each.bounced));
     const sent = total(counted.map((each) => each.sent));
@@ -311,6 +344,7 @@ export const bounceWatch = defineInsight({
     const answer: BounceWatch = {
       minSent,
       over: over.toSorted(byRate),
+      sendersRead: withSenders ? seen.read.size : null,
       threshold,
       tooFewSends: tooFewSends.toSorted(byRate),
       totals: {

@@ -123,7 +123,7 @@ The campaigns whose bounce rate (bounced divided by sent) is over a threshold, a
 | Input | Default | Range | What it is |
 | --- | --- | --- | --- |
 | `threshold` | 0.03 | 0 to 1 | The bounce rate that is too high. |
-| `min_sent` | 100 | 0 or more, whole | A campaign with fewer sends than this is too small to judge. |
+| `min_sent` | 100 | 0 or more, whole | A campaign or sender with fewer sends than this is too small to judge. |
 | `from` | none | `YYYY-MM-DD` | First day to count. Leave out for the vendor's whole history. |
 | `to` | none | `YYYY-MM-DD` | Last day to count. Leave out for the vendor's whole history. |
 | `include_senders` | `true` | boolean | Also check the senders of each campaign over the threshold. |
@@ -137,11 +137,12 @@ The campaigns whose bounce rate (bounced divided by sent) is over a threshold, a
 - `unknown`: campaigns the vendor reports no sent or bounce count for, with the `reason`.
 - `totals`: `campaigns`, `over`, `clean`, `tooFewSends`, `unknown`, and `bounced`, `sent` and `rate` over the campaigns with known counts.
 - `threshold`, `minSent`: what was used.
+- `sendersRead`: how many senders had their sent and bounce counts read. `null` when senders were not checked. An empty `senders` list with a low `sendersRead` means little was checked, not that every sender is clean.
 
 - **Needs:** `stats.campaign`. Checking senders also needs `stats.bySender` and `senders.byCampaign`.
 - **Costs:** one listing of campaigns and 1 request per campaign, plus 1 listing and up to 1 request per sender for each campaign over the threshold.
-- **Notes it can add:** senders were not checked because the adapter needs stats per sender and the list of a campaign's senders; a cap was reached.
-- **Does not:** judge a sender within one campaign. A sender's rate is over everything it sent in the period, because no vendor reports one sender within one campaign. Every campaign is read, whatever its status. A campaign in `tooFewSends` or `unknown` is not clean.
+- **Notes it can add:** senders were not checked because the adapter needs stats per sender and the list of a campaign's senders; the senders whose sent or bounce count could not be read, by address; a cap was reached.
+- **Does not:** flag a sender with fewer sends than `min_sent`. Nor does it judge a sender within one campaign. A sender's rate is over everything it sent in the period, because no vendor reports one sender within one campaign. Every campaign is read, whatever its status. A campaign in `tooFewSends` or `unknown` is not clean.
 
 <include meta='title="bounce-watch.ts"'>
   ../../_examples/insights-senders/bounce-watch.ts
