@@ -84,7 +84,7 @@ const toTool = (
 
 /**
  * The insights this instance can serve, as tools. An insight whose adapter
- * lacks a capability it needs, or that cannot match records while the redact
+ * lacks a capability or a field it needs, or that cannot match records while the redact
  * plugin masks what it matches on, is left out, so a model is never offered a
  * tool that cannot work. A `next` hint naming a left-out insight is dropped.
  *
@@ -102,6 +102,7 @@ export const insightTools = (
     (definition) =>
       (wanted === undefined || wanted.has(definition.name)) &&
       definition.needs.every((key) => outbound.capabilities[key] !== false) &&
+      (definition.lacks?.(outbound) ?? null) === null &&
       maskedOutBy(outbound, definition) === null
   );
 

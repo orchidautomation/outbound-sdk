@@ -20,6 +20,7 @@ related:
 | `name` | `memory` | The provider name records carry. |
 | `pageSize` | `50` | Records per page, to exercise paging with a small seed. |
 | `capabilities` | everything it can serve | Overrides single capabilities, to exercise gating and fallbacks. |
+| `fields` | every field filled | The fields it says it never fills, as a vendor adapter declares them in `outbound.fields`. `{ campaign: { tags: false } }` acts like a tool whose campaigns have no tags. |
 
 ## Seed data
 

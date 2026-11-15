@@ -337,7 +337,7 @@ Results grouped by campaign tag, for example one tag per client, offer or audien
 - `tags`: one entry per tag, with `tag` (`null` for campaigns that carry none), `campaigns`, `sent`, `contacted`, `replied`, `positive`, `bounced`, and `replyRate`, `positiveRate` and `bounceRate` with their intervals. Best first, by the low end of the reply rate interval.
 - `tooFewSends`: tags under `min_sent`.
 
-- **Needs:** `stats.campaign`.
+- **Needs:** `stats.campaign`, and campaigns that carry tags. On an adapter whose campaigns have no tags (HeyReach; `outbound.fields.campaign.tags` is `false`) it is `Unsupported` before any request and left out of the tool list, since every campaign would be untagged. On a combined instance one tool with tags is enough; the other tool's campaigns are under the `null` tag.
 - **Costs:** one listing per status, plus one stats request per campaign (one for all of them on a vendor that reports every campaign in one call with every count).
 - **Notes it can add:** a tag's rate leaves out campaigns that do not report one side of it, naming the rate and how many campaigns are counted; a cap was reached.
 - **Does not:** split a campaign between its tags. A campaign with two tags counts in full in both, so the tags do not add up to the workspace. A rate counts only the campaigns that report both its count and what it is divided by, so its `count` and `of` can be smaller than the tag's totals beside it.

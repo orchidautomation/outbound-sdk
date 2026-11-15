@@ -9,6 +9,7 @@ import type {
 } from "../internal/adapter.ts";
 import type { CapabilityDeclaration } from "../internal/capabilities.ts";
 import { makeErrorMapper } from "../internal/errors.ts";
+import type { FieldDeclaration } from "../internal/fields.ts";
 import { recordBase } from "../internal/record.ts";
 import { assertWorkspaceId } from "../internal/ref.ts";
 import { profileSlug } from "../internal/url.ts";
@@ -41,6 +42,12 @@ export interface MemoryOptions {
   readonly pageSize?: number | undefined;
   /** Overrides what the adapter declares, to exercise gating and fallbacks. */
   readonly capabilities?: CapabilityDeclaration | undefined;
+  /**
+   * The fields this adapter says it never fills, as a vendor adapter declares
+   * them, for example `{ campaign: { tags: false } }` to act like a tool whose
+   * campaigns have no tags. Defaults to every field filled.
+   */
+  readonly fields?: FieldDeclaration | undefined;
 }
 
 const FULL_CAPABILITIES: CapabilityDeclaration = {
@@ -344,6 +351,7 @@ export const memory = (options: MemoryOptions = {}): Adapter => {
     ...accountReads(store),
     capabilities,
     costs: {},
+    fields: options.fields,
     // Nothing is rate limited in memory; the numbers only keep the engine's math defined.
     limits: {
       source: "in-memory adapter, not a vendor limit",

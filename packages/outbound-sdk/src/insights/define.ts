@@ -45,6 +45,12 @@ export interface Masking {
  */
 export type MaskedOut = (masking: Masking) => string | null;
 
+/**
+ * Names what this adapter does not report that the insight needs, for
+ * example `campaign tags`, or `null` when it reports it.
+ */
+export type Lacks = (outbound: OutboundApi) => string | null;
+
 interface Redacted {
   readonly redacted: Masking;
 }
@@ -139,6 +145,8 @@ export interface InsightEntry {
   readonly next: string;
   /** Why the insight cannot answer while the redact plugin masks what it matches on. */
   readonly maskedOut?: MaskedOut | undefined;
+  /** What the adapter does not report that the insight needs, beyond a capability. */
+  readonly lacks?: Lacks | undefined;
   /** Checks the input and the capabilities, then runs the insight. */
   readonly execute: (
     outbound: OutboundApi,
@@ -169,6 +177,12 @@ export interface InsightSpec<Key extends string, Input, Data, Given = Input> {
    * any request, and an insight it refuses is not offered as a tool.
    */
   readonly maskedOut?: MaskedOut | undefined;
+  /**
+   * What the adapter does not report that the insight needs beyond a
+   * capability, such as a field its records never fill. Checked before any
+   * request, and an insight it refuses is not offered as a tool.
+   */
+  readonly lacks?: Lacks | undefined;
   readonly run: (context: InsightContext, input: Input) => Promise<Data>;
 }
 
@@ -320,6 +334,16 @@ const prepare = <Key extends string, Input, Data, Given>(
     throw new OutboundError(
       "Unsupported",
       `${spec.name} is not available while the redact plugin masks ${blocked}`,
+      { provider: outbound.provider }
+    );
+  }
+
+  const lacked = spec.lacks?.(outbound) ?? null;
+
+  if (lacked !== null) {
+    throw new OutboundError(
+      "Unsupported",
+      `${spec.name} is not available: the ${outbound.provider} adapter does not report ${lacked}`,
       { provider: outbound.provider }
     );
   }
