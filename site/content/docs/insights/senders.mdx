@@ -33,11 +33,11 @@ Deliverability per sending domain: DNS records, sign-in, block lists and the sha
 | Input | Default | Range | What it is |
 | --- | --- | --- | --- |
 | `max_senders` | 50 | 1 to 500 | The most senders to check. |
-| `spam_rate_threshold` | 0.1 | 0 to 1 | A domain whose warmup emails land in spam more often than this share is high risk. |
+| `max_spam_rate` | 0.1 | 0 to 1 | A domain whose warmup emails land in spam more often than this share is high risk. Its old name, `spam_rate_threshold`, works until 0.4.0, with a note. |
 
 `data` (`DomainHealth`):
 
-- `domains`: one entry per domain, worst first, with `risk` (`high`, `medium`, `low` or `unknown`), `reasons`, `mailboxes` (each with `address`, `status`, `connected`, `blacklisted`, `failingDns` and the vendor's own `issues`), `failingDns`, `disconnected`, `blacklisted` (`null` when no mailbox of the domain reports its block list status), `warmup` (pooled over the mailboxes that report it: `mailboxes`, `sent`, `spam`, `spamRate`, `interval`) and `notReported`.
+- `domains`: one entry per domain, worst first, with `risk` (`high`, `medium`, `low` or `unknown`), `reasons`, `mailboxes` (each with `address`, `status`, `connected`, `blacklisted`, `failingDns` and the vendor's own `issues`), `failingDns`, `disconnected`, `blacklisted` (`null` when no mailbox of the domain reports its block list status), `warmup` (pooled over the mailboxes that report it: `mailboxes`, `sent`, `spam`, and the spam rate as `count`, `of`, `rate`, `low` and `high`; `spamRate` and `interval` are its deprecated old form) and `notReported`.
 - `linkedinSeats`: seats have no domain. Each has `name`, `linkedinUrl`, `status`, `connected` and `issues`. Disconnected seats first.
 - `mailboxesWithoutDomain`: sender refs whose domain is not known.
 - `totals`: `senders`, `domains`, `high`, `medium`, `low`, `unknown` and `linkedinSeats`.
@@ -122,27 +122,28 @@ The campaigns whose bounce rate (bounced divided by sent) is over a threshold, a
 
 | Input | Default | Range | What it is |
 | --- | --- | --- | --- |
-| `threshold` | 0.03 | 0 to 1 | The bounce rate that is too high. |
+| `max_bounce_rate` | 0.03 | 0 to 1 | The bounce rate that is too high. Its old name, `threshold`, works until 0.4.0, with a note. |
 | `min_sent` | 100 | 0 or more, whole | A campaign or sender with fewer sends than this is too small to judge. |
-| `from` | none | `YYYY-MM-DD` | First day to count. Leave out for the vendor's whole history. |
-| `to` | none | `YYYY-MM-DD` | Last day to count. Leave out for the vendor's whole history. |
+| `from` | `null` | `YYYY-MM-DD` or `null` | First day to count. `null` for the vendor's whole history. |
+| `to` | `null` | `YYYY-MM-DD` or `null` | Last day to count. `null` for up to today. |
+| `statuses` | `["active"]` | at least one campaign status | Only campaigns in one of these states are read. |
 | `include_senders` | `true` | boolean | Also check the senders of each campaign over the threshold. |
 | `max_campaigns` | 50 | 1 to 500 | The most campaigns to check. |
 | `max_senders_per_campaign` | 10 | 1 to 200 | The most senders to check for one campaign over the threshold. |
 
 `data` (`BounceWatch`):
 
-- `over`: campaigns over the threshold, worst first, each with `bounced`, `sent`, `rate`, `interval`, `status`, a `finding`, and `senders`: its senders that are themselves over the threshold (`null` when senders were not checked).
+- `over`: campaigns over the threshold, worst first, each with `campaign` and `campaignName`, `bounced`, `sent`, the rate as `count`, `of`, `rate`, `low` and `high`, `status`, a `finding`, and `senders`: its senders that are themselves over the threshold (`null` when senders were not checked).
 - `tooFewSends`: campaigns with fewer sends than `min_sent`, whatever their rate.
 - `unknown`: campaigns the vendor reports no sent or bounce count for, with the `reason`.
 - `totals`: `campaigns`, `over`, `clean`, `tooFewSends`, `unknown`, and `bounced`, `sent` and `rate` over the campaigns with known counts.
-- `threshold`, `minSent`: what was used.
+- `maxBounceRate`, `minSent`: what was used. `threshold` is the deprecated old name of `maxBounceRate`.
 - `sendersRead`: how many senders had their sent and bounce counts read. `null` when senders were not checked. An empty `senders` list with a low `sendersRead` means little was checked, not that every sender is clean.
 
 - **Needs:** `stats.campaign`. Checking senders also needs `stats.bySender` and `senders.byCampaign`.
 - **Costs:** one listing of campaigns and 1 request per campaign, plus 1 listing and up to 1 request per sender for each campaign over the threshold.
 - **Notes it can add:** senders were not checked because the adapter needs stats per sender and the list of a campaign's senders; the senders whose sent or bounce count could not be read, by address; a cap was reached.
-- **Does not:** flag a sender with fewer sends than `min_sent`. Nor does it judge a sender within one campaign. A sender's rate is over everything it sent in the period, because no vendor reports one sender within one campaign. Every campaign is read, whatever its status. A campaign in `tooFewSends` or `unknown` is not clean.
+- **Does not:** flag a sender with fewer sends than `min_sent`. Nor does it judge a sender within one campaign. A sender's rate is over everything it sent in the period, because no vendor reports one sender within one campaign. Only campaigns in `statuses` are read, active by default. To read every campaign, as it did before 0.3.0, pass `statuses: ["active", "paused", "completed", "draft", "archived", "unknown"]`. A campaign in `tooFewSends` or `unknown` is not clean.
 
 <include meta='title="bounce-watch.ts"'>
   ../../_examples/insights-senders/bounce-watch.ts
@@ -228,7 +229,7 @@ Senders that are overused or unused, and campaigns that depend on too few sender
 
 - `overused`: senders in more campaigns than allowed, most loaded first, with `campaigns`, `over`, `campaignRefs` and a `finding`.
 - `unused`: active senders attached to none of the campaigns read.
-- `campaigns`: campaigns with an issue (`no_sender`, `single_sender` or `inactive_sender`), with `senders`, `issues`, the `inactive` senders and a `finding`.
+- `campaigns`: campaigns with an issue (`no_sender`, `single_sender` or `inactive_sender`), with `campaign`, `campaignName`, `senders`, `issues`, the `inactive` senders and a `finding`.
 - `totals`: `senders`, `activeSenders`, `campaigns`, `overused`, `unused` and `campaignsAtRisk`.
 - `maxCampaignsPerSender`: what was used.
 

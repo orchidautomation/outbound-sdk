@@ -56,6 +56,10 @@ Ultracite on Oxlint and Oxfmt, with the `core` and `anti-slop` presets (`oxlint.
 
 `packages/outbound-sdk/src/insights/inputs.generated.ts` holds the input type of every built-in insight, with each field's description, default and range as JSDoc, read from the insight's Zod schema. After changing an insight's input, run `node scripts/generate-insight-inputs.mjs`. `npm test` fails while the file is stale, and the type check fails if a generated input stops matching its schema.
 
+## Insight names
+
+Insight inputs and answers follow one naming rule, written on the site under [Names](../site/content/docs/insights/index.mdx#names): snake case inputs and camel case answers, `from`/`to` as a day range, `limit` against `max_*`, `campaign` always a ref beside `campaignName`, and one rate shape. Built-in tools keep snake case answers, since they are JSON written for a model. To rename an input, keep the old name for one minor release with `renamed()` from `packages/outbound-sdk/src/internal/renamed.ts`: it moves the old value to the new name before parsing and adds a deprecation note. Rename an answer field by adding the new one and marking the old one `@deprecated` until the release that removes it.
+
 ## Differences from the plan
 
 - TypeScript is pinned to 6.0.3. TypeScript 7 has no JavaScript compiler API, and dependency-cruiser needs that API to read TypeScript imports.
