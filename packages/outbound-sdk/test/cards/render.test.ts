@@ -347,7 +347,7 @@ test("toSlackMessage adds the text a notification shows", () => {
 
   assert.equal(
     message.text,
-    "Sender health: 🔴 1 of 1 senders need attention."
+    "Sender health: 🔴 1 of 1 sender needs attention."
   );
   assert.equal(message.blocks[0]?.type, "header");
   assert.equal(
@@ -398,7 +398,7 @@ test("digest puts several results in one message, each cut to its headline", () 
     "Hot leads\n5 leads to call first.",
     "• Lead 1 · Example Co · 90 · replied",
     "• Lead 3 · Example Co · 88 · replied\n… and 2 more",
-    "Sender health\n🔴 1 of 1 senders need attention.",
+    "Sender health\n🔴 1 of 1 sender needs attention.",
     "Lead runway\n⚪ Not available: not here",
     "Sent per day · c1",
     "instantly, heyreach · 7 requests"

@@ -189,7 +189,7 @@ test("winning_steps ranks steps by reply rate", async () => {
   );
 });
 
-test("sender_health lists unhealthy senders first and never returns an address", async () => {
+test("sender_health lists unhealthy senders first, with their address", async () => {
   const outbound = createOutbound({
     adapter: memory({
       data: {
@@ -224,7 +224,92 @@ test("sender_health lists unhealthy senders first and never returns an address",
       ["memory:default:s1", "active", 97],
     ]
   );
-  assert.ok(!JSON.stringify(result).includes("@example.com"));
+  assert.deepEqual(
+    payload.senders.map((sender) => sender.address),
+    ["broken@example.com", "ok@example.com"]
+  );
+});
+
+test("sender_health finds senders that need attention past the limit, and says when it cut the list", async () => {
+  const senders = Array.from({ length: 70 }, (_, index) => ({
+    address: `sender${index}@example.com`,
+    id: `s${index}`,
+    status: index >= 60 ? ("disconnected" as const) : ("active" as const),
+  }));
+
+  const outbound = createOutbound({ adapter: memory({ data: { senders } }) });
+
+  const payload = data(await call(outbound, "sender_health")) as {
+    all_checked: boolean;
+    checked: number;
+    senders: { address: string; status: string }[];
+    truncated: boolean;
+    unhealthy: number;
+  };
+
+  assert.equal(payload.unhealthy, 10);
+  assert.equal(payload.checked, 70);
+  assert.equal(payload.all_checked, true);
+  assert.equal(payload.senders.length, 50, "the default limit is unchanged");
+  assert.equal(payload.truncated, true);
+  assert.deepEqual(
+    payload.senders.slice(0, 10).map((sender) => sender.address),
+    senders.slice(60).map((sender) => sender.address)
+  );
+  assert.ok(payload.senders.slice(0, 10).every((s) => s.status !== "active"));
+
+  // 150 senders: the first 100 are read, and the answer says the rest were not.
+  const many = createOutbound({
+    adapter: memory({
+      data: {
+        senders: Array.from({ length: 150 }, (_, index) => ({
+          id: `s${index}`,
+        })),
+      },
+    }),
+  });
+
+  const partial = data(await call(many, "sender_health", { limit: 5 }));
+
+  assert.equal(partial.checked, 100);
+  assert.equal(partial.all_checked, false);
+  assert.equal(partial.truncated, true);
+
+  const all = data(await call(outbound, "sender_health", { limit: 70 }));
+
+  assert.equal(all.truncated, false);
+});
+
+test("campaign_overview and reply_samples say when more exist than they return", async () => {
+  const one = data(await call(plain(), "campaign_overview", { limit: 1 }));
+  assert.equal(one.truncated, false);
+
+  const busy = createOutbound({
+    adapter: memory({
+      data: {
+        campaigns: [
+          { id: "c1", name: "One" },
+          { id: "c2", name: "Two" },
+        ],
+        messages: ["m1", "m2", "m3"].map((id) => ({
+          direction: "in" as const,
+          id,
+          sentAt: "2026-11-10T00:00:00.000Z",
+        })),
+      },
+    }),
+  });
+
+  const replies = data(await call(busy, "reply_samples", { limit: 2 }));
+  assert.equal(replies.truncated, true);
+
+  const everything = data(await call(busy, "reply_samples", { limit: 3 }));
+  assert.equal(everything.truncated, false);
+
+  assert.equal(
+    data(await call(busy, "campaign_overview", { limit: 1 })).truncated,
+    true
+  );
 });
 
 test("reply_samples leaves reply text out unless asked, then marks it untrusted and truncates it", async () => {
