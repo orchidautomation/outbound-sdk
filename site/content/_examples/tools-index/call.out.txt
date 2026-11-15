@@ -21,12 +21,13 @@
         },
         "status": "active"
       }
-    ]
+    ],
+    "truncated": false
   },
   "meta": {
     "evidence": "exact",
     "provider": "memory",
-    "requests": 1,
+    "requests": 0,
     "today": "2026-11-14"
   },
   "next": "Use campaign_trend for one campaign over time, or winning_steps to see which step drives replies.",
