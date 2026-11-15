@@ -7,8 +7,8 @@ import { unansweredReplies } from "./unanswered.ts";
 // Reads INSTANTLY_API_KEY. Swap the import for smartlead() or heyreach().
 const outbound = createOutbound({
   adapter: instantly({ workspaceId: "acme" }),
-  // One run may spend at most 150 vendor requests.
-  maxRequests: 150,
+  // Each call may spend at most 150 vendor requests.
+  maxRequestsPerCall: 150,
   plugins: [insights()],
 });
 

@@ -12,6 +12,6 @@ export const outbound = createOutbound({
     heyreach({ workspaceId: "agency" }),
   ]),
   // One call may spend at most 300 vendor requests.
-  maxRequests: 300,
+  maxRequestsPerCall: 300,
   plugins: [insights()],
 });

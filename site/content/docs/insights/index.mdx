@@ -70,7 +70,7 @@ Every read an insight makes has a cap you can set. The defaults keep one call to
 
 The range of each cap is on the insight's own section. Thresholds (a bounce rate that is too high, a warmup score that is too low) are inputs with defaults too.
 
-`maxRequests` on `createOutbound` is a different limit. It is the most vendor requests one call may make, and a call that reaches it fails with `RateLimited` instead of returning part of an answer.
+`maxRequestsPerCall` on `createOutbound` is a different limit. It is the most vendor requests one call may make, and a call that reaches it fails with `RateLimited` instead of returning part of an answer.
 
 ## Counts that are null
 
@@ -131,7 +131,7 @@ The same word means the same thing in every insight.
 - **`campaign` in an answer is always the campaign's ref**, even when you passed its bare vendor id, and a campaign row carries `campaignName` beside it.
 - **A rate is `{ count, of, rate, low, high }`**: the count, what it is divided by, the rate and the ends of its 95% Wilson interval. A few figures stay plain numbers because no single count is behind them: `PeriodNumbers`' rates, `personSummary`'s `campaignReplyRate` and `personalizationGaps`' `affectedRate`.
 
-Names that broke this rule before 0.3.0 have new ones. The old name still works until 0.4.0: it gives the same answer with a note in `meta.notes`, the tool parameters mark it `deprecated`, and passing both names is `Invalid`.
+Names that broke this rule before 0.4.0 have new ones. The old name still works until 0.5.0: it gives the same answer with a note in `meta.notes`, the tool parameters mark it `deprecated`, and passing both names is `Invalid`.
 
 | Insight | Old input | New input |
 | --- | --- | --- |
@@ -140,7 +140,7 @@ Names that broke this rule before 0.3.0 have new ones. The old name still works 
 | `campaignDiagnosis` | `recent_days` | `days` |
 | `clientReport` | `top` | `limit` (the `top` list in the answer keeps its name) |
 
-Old answer fields stay beside the new ones, marked `@deprecated` in the types, until 0.4.0: `name` beside `campaignName`, `interval` and `trials` beside `low`, `high` and `of`, `replyRate`, `replyRateInterval` and `replyRateBasis` beside `rates.replyRate`, `spamRate` beside `rate`, and bounceWatch's `threshold` beside `maxBounceRate`. [Cards](/docs/cards) draw either form.
+Old answer fields stay beside the new ones, marked `@deprecated` in the types, until 0.5.0: `name` beside `campaignName`, `interval` and `trials` beside `low`, `high` and `of`, `replyRate`, `replyRateInterval` and `replyRateBasis` beside `rates.replyRate`, `spamRate` beside `rate`, and bounceWatch's `threshold` beside `maxBounceRate`. [Cards](/docs/cards) draw either form.
 
 ## The insights
 

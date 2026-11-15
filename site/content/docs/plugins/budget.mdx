@@ -9,7 +9,7 @@ related:
   - /docs/guides/shared-rate-budget
 ---
 
-`budget({ maxRequests })` from `outbound-sdk/budget` caps vendor requests, so one question from an agent or one runaway loop cannot spend a vendor's whole rate limit. The cap is enforced inside the request engine, request by request. A call that reaches it stops with `RateLimited`. Retries count, because each one is a vendor request. List it last, so it sits next to the engine and counts only requests that reach the vendor.
+`budget({ maxRequests })` from `outbound-sdk/budget` caps vendor requests, so one question from an agent or one runaway loop cannot spend a vendor's whole rate limit. The cap is enforced inside the request engine, request by request. A call that reaches it stops with `RateLimited`, with `limit` set to `"call"` or `"run"` and `permanent: true`, so a retry loop does not spin on it. Retries count, because each one is a vendor request. List it last, so it sits next to the engine and counts only requests that reach the vendor.
 
 ## Sample
 
@@ -34,7 +34,7 @@ The first walk spent two requests. The second walk got its first page with the t
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `maxRequests` | `number` | required | The most vendor requests allowed. A positive integer. |
-| `per` | `"call" \| "run"` | `"call"` | `call` allows `maxRequests` for each SDK call. `run` allows it in total across every call on the instance, until `reset()`. An [MCP server](/docs/cli/mcp#a-request-cap-per-tool-call) resets it before each tool call. |
+| `per` | `"run" \| "call"` | `"run"` | `run` allows `maxRequests` in total across every call on the instance, until `reset()`. `call` allows it for each SDK call. An [MCP server](/docs/cli/mcp#a-request-cap-per-tool-call) resets it before each tool call. |
 
 One SDK call is one `list`, one `get`, one `stats`, or one whole `listAll` walk. A walk over ten pages is one call.
 
@@ -62,7 +62,7 @@ The count lives in the plugin object, in this process. `outbound.workspace(id)` 
 
 It changes no capability and nothing in `meta`. With `per: "call"` it lowers the request cap of each call it sees. With `per: "run"` it counts each request as it is sent, so calls running side by side, such as an insight reading several campaigns at once, share one allowance and the run stops at the cap exactly. A tighter `maxRequests` passed to the call itself, or set on the instance, still applies: the lower of the two wins.
 
-`per: "call"` has the same effect as `maxRequests` on `createOutbound`. The plugin is the way to get a run-wide cap and a counter.
+A budget is a total unless you ask for `per: "call"`, which has the same effect as `maxRequestsPerCall` on `createOutbound`. `per` used to default to `"call"`: add `per: "call"` to keep that behaviour.
 
 ## With other plugins
 
@@ -76,9 +76,9 @@ It changes no capability and nothing in `meta`. With `per: "call"` it lowers the
 | What happened | What you get | What to do |
 | --- | --- | --- |
 | `maxRequests` is not a positive integer | `Invalid`, when `budget()` is called | Pass a whole number of 1 or more. |
-| A call reaches a per-call cap | `RateLimited`: "The call used its budget of N requests". Requests already made are spent. | Raise the cap, narrow the read, or page by hand with `list`. |
-| A run has nothing left | `RateLimited`: "The run used its budget of N request(s)", before any request | Call `reset()` when a new run starts, or raise the cap. |
-| A run's cap is reached in the middle of one operation | `RateLimited` from the engine: "The call used its budget of N requests", where N is what that call was allowed, not `maxRequests` | The same. |
-| A walk stops part way | The error. With `for await`, the records already yielded stay with you. `toArray()` rejects and returns none. | Iterate with `for await` and keep the walk's `cursor` to resume later. See [pagination](/docs/api/pagination). |
+| A call reaches a per-call cap | `RateLimited`, `limit: "call"`: `The call used its budget of N requests to <vendor>. Raise budget()'s maxRequests or ask for less in one call.` Requests already made are spent. | Raise the cap, narrow the read, or page by hand with `list`. |
+| A run has nothing left | `RateLimited`, `limit: "run"`: `The run used its budget of N requests to <vendor>. Call requestBudget.reset() to start a new run, or raise budget()'s maxRequests.`, before any request | Call `reset()` when a new run starts, or raise the cap. |
+| A run's cap is reached in the middle of one operation | The same `limit: "run"` error, before the request that would go past it | The same. |
+| A walk stops part way | The error. With `toArray()`, the records fetched before the stop are in `error.partial.items` and the resume point in `error.partial.cursor`. With `for await`, the records already yielded stay with you. | Resume later with `listAll({ cursor })`. See [pagination](/docs/api/pagination#when-a-walk-stops-part-way). |
 
-The error has no `retryAfterMs`: no vendor asked for a wait. `error.permanent` is `false`, as for any `RateLimited`.
+The error has no `retryAfterMs` and no `status`: no vendor asked for a wait. `error.permanent` is `true`, because the same call stops at the same place until you raise the cap or reset the run. A vendor's 429 is `RateLimited` too, but with `limit: "vendor"` and `permanent: false`. See [errors](/docs/api/errors#limit).

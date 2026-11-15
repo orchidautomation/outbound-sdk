@@ -1,8 +1,8 @@
 listed 3 mailboxes over two pages
 used: 2
 remaining: 1
-RateLimited: The run used its budget of 3 requests to instantly
+RateLimited: The run used its budget of 3 requests to instantly. Call requestBudget.reset() to start a new run, or raise budget()'s maxRequests.
 used: 3
-RateLimited: The run used its budget of 3 requests to instantly
+RateLimited: The run used its budget of 3 requests to instantly. Call requestBudget.reset() to start a new run, or raise budget()'s maxRequests.
 requests that reached the fetch: 3
 after reset: 3

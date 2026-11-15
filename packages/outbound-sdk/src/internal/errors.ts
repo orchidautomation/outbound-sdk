@@ -10,6 +10,34 @@ export type OutboundErrorCode =
   | "Unauthorized"
   | "Unsupported";
 
+/**
+ * What stopped a `RateLimited` call.
+ *
+ * - `vendor`: the vendor answered 429 and the SDK's retries did not get past it.
+ * - `deadline`: the SDK's own rate budget was full, and waiting for room
+ *   would pass the call's `deadline`. No request was sent.
+ * - `call`: the call reached its request cap (`maxRequests` on the call or on
+ *   `createOutbound`, or `budget({ per: "call" })`).
+ * - `run`: a `budget({ per: "run" })` has nothing left.
+ *
+ * `vendor` and `deadline` can work later. `call` and `run` are caps you set,
+ * so the same call stops the same way until you raise or reset them.
+ */
+export type RequestLimit = "call" | "deadline" | "run" | "vendor";
+
+/**
+ * What a `listAll().toArray()` walk had fetched when it stopped. Resume with
+ * `listAll({ cursor })`: no record is skipped or repeated.
+ */
+export interface PartialWalk {
+  /** The records fetched before the stop, in order. */
+  readonly items: readonly unknown[];
+  /** Where to resume. `undefined` when no page was finished: start over. */
+  readonly cursor: string | undefined;
+  /** Vendor requests the walk made, including the one that failed. */
+  readonly requests: number;
+}
+
 export interface OutboundErrorOptions {
   /**
    * The original error or vendor response, for debugging. It is kept as a
@@ -24,6 +52,13 @@ export interface OutboundErrorOptions {
   readonly retryAfterMs?: number | undefined;
   readonly aborted?: boolean | undefined;
   readonly timedOut?: boolean | undefined;
+  /**
+   * What stopped a `RateLimited` call. Defaults to `vendor` when there is an
+   * HTTP status. A `call` or `run` cap makes the error permanent.
+   */
+  readonly limit?: RequestLimit | undefined;
+  /** What a `toArray()` walk had fetched when it stopped. */
+  readonly partial?: PartialWalk | undefined;
   /** Secrets to strip from the message. */
   readonly secrets?: readonly string[] | undefined;
 }
@@ -48,6 +83,17 @@ export class OutboundError extends Error {
   readonly retryAfterMs: number | undefined;
   readonly aborted: boolean;
   readonly timedOut: boolean;
+  /**
+   * What stopped a `RateLimited` call: the vendor, a deadline, or a request
+   * cap of your own. `undefined` on every other code.
+   */
+  readonly limit: RequestLimit | undefined;
+  /**
+   * Set when `listAll().toArray()` stopped part way: the records it had
+   * fetched and the cursor to resume from. A partial answer is never returned
+   * as if it were complete.
+   */
+  readonly partial: PartialWalk | undefined;
   /** `true` when retrying the same call cannot succeed. */
   readonly permanent: boolean;
   readonly [BRAND] = true;
@@ -66,7 +112,18 @@ export class OutboundError extends Error {
     this.retryAfterMs = options.retryAfterMs;
     this.aborted = options.aborted ?? false;
     this.timedOut = options.timedOut ?? false;
-    this.permanent = this.aborted || !RETRYABLE.has(code);
+    this.limit =
+      code === "RateLimited"
+        ? (options.limit ??
+          (options.status === undefined ? undefined : "vendor"))
+        : undefined;
+    this.partial = options.partial;
+    // A cap the caller set stops the same call at the same place again.
+    this.permanent =
+      this.aborted ||
+      !RETRYABLE.has(code) ||
+      this.limit === "call" ||
+      this.limit === "run";
   }
 
   /** Type guard that also recognises errors from another copy of the package. */

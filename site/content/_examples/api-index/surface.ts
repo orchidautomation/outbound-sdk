@@ -6,7 +6,7 @@ const outbound = createOutbound({
   adapter: memory({ data: demoData(), workspaceId: "acme" }),
   // Defaults for every call. Any call can set its own.
   deadline: 60_000,
-  maxRequests: 200,
+  maxRequestsPerCall: 200,
   retries: 4,
   timeout: 30_000,
 });

@@ -11,7 +11,7 @@ import type { ZodType } from "zod";
 import { isJsonObject } from "./json.ts";
 import type { Json } from "./json.ts";
 
-const REMOVED_IN = "0.4.0";
+const REMOVED_IN = "0.5.0";
 
 const renames = z.registry<{ readonly to: string }>();
 

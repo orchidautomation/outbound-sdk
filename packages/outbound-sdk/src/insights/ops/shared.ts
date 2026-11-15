@@ -63,7 +63,7 @@ export interface CampaignLabel {
   /** The campaign's ref. */
   readonly campaign: string;
   readonly campaignName: string;
-  /** @deprecated Use `campaignName`. Removed in 0.4.0. */
+  /** @deprecated Use `campaignName`. Removed in 0.5.0. */
   readonly name: string;
   readonly status: CampaignStatus;
   readonly channel: "email" | "linkedin";

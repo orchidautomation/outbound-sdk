@@ -18,7 +18,7 @@ Three things hold for all of them:
 - **A rate over a time window is per message sent.** `periodComparison` and `clientReport` divide replies and positive replies by messages sent in the period, never by leads contacted, and say so in `replyRateBasis: "sent"`. A week's replies also answer leads first contacted weeks before, so a week that contacted 5 new leads and sent 300 follow-ups could otherwise show 8 replies as 160%.
 - **A rate comes with its count, its base and its 95% interval** as `count`, `of`, `rate`, `low` and `high`.
 - **"The last N days" means N complete UTC days ending yesterday.** Today is left out because it is not over.
-- **Every campaign row has `campaign`, its ref, and `campaignName`.** `name` holds the same name and is deprecated until 0.4.0.
+- **Every campaign row has `campaign`, its ref, and `campaignName`.** `name` holds the same name and is deprecated until 0.5.0.
 
 Five of them (`periodComparison`, `campaignRanking`, `channelMix`, `tagRollup` and `clientReport`) share two inputs:
 
@@ -60,7 +60,7 @@ Why one campaign is underperforming: a list of findings, most serious first.
 | `min_reply_rate` | 0.01 | 0 to 1 | A reply rate under this is a finding. |
 | `max_bounce_rate` | 0.03 | 0 to 1 | A bounce rate over this is a finding. |
 | `min_positive_share` | 0.2 | 0 to 1 | A share of replies that are positive under this is a finding. |
-| `days` | 7 | 1 to 30 | The days, ending yesterday, held against the same number before. Its old name, `recent_days`, works until 0.4.0, with a note. |
+| `days` | 7 | 1 to 30 | The days, ending yesterday, held against the same number before. Its old name, `recent_days`, works until 0.5.0, with a note. |
 | `max_send_drop` | 0.3 | 0 to 1 | A fall in sends, recent days against the days before, over this share is a finding. |
 | `min_weekly_hours` | 20 | 0 to 168 | Sending windows open fewer hours a week than this limit volume. |
 | `daily_limit_share` | 0.9 | 0 to 1 | Average daily sends at or over this share of the daily limit mean the limit holds volume back. |
@@ -369,7 +369,7 @@ One report for one client or workspace over the last `days` complete days, compo
 | Input | Default | Range | What it is |
 | --- | --- | --- | --- |
 | `days` | 7 | 1 to 90 | The length of the period. |
-| `limit` | 3 | 1 to 20 | How many best and worst campaigns to show in `top` and `bottom`. Its old name, `top`, works until 0.4.0, with a note. |
+| `limit` | 3 | 1 to 20 | How many best and worst campaigns to show in `top` and `bottom`. Its old name, `top`, works until 0.5.0, with a note. |
 | `alpha` | 0.05 | above 0, under 1 | The p-value under which a change counts as more than chance. |
 | `min_sent` | 50 | 0 or more, whole | Campaigns under this many sends in the period are not judged. |
 | `max_bounce_rate` | 0.03 | 0 to 1 | A campaign bounce rate over this is a bounce problem. |

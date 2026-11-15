@@ -31,7 +31,7 @@ related:
 | `timeout` | `number` | `30000` | Milliseconds allowed for each attempt. See [retries](/docs/retries). |
 | `retries` | `number` or a policy | `4` | Retries after the first attempt. See [retries](/docs/retries). |
 | `deadline` | `number` | none | Total milliseconds for one call, across retries and waits. |
-| `maxRequests` | `number` | none | The most vendor requests one call may send. |
+| `maxRequestsPerCall` | `number` | none | The most vendor requests each call may send. Not a total: for that, use [budget](/docs/plugins/budget). The old name `maxRequests` still works, with a deprecation warning. Setting both is `Invalid`. |
 | `signal` | `AbortSignal` | none | Cancels calls. |
 | `share` | `number` | `0.5` | The fraction of the vendor's published rate limit to use. Greater than 0, at most 1. See [rate limits](/docs/rate-limits). |
 | `rateLimitStore` | `RateLimitStore` | this process's memory | Where the rate budget is counted. See [rate limits](/docs/rate-limits). |
@@ -39,7 +39,7 @@ related:
 | `fetch` | `typeof fetch` | the global `fetch` | A replacement for `fetch`. |
 | `runtime` | `Partial<Runtime>` | the real clock | Replaces the clock, timers and randomness. Meant for tests. |
 
-`timeout`, `retries`, `deadline`, `maxRequests` and `signal` are `OperationOptions`. Set on the constructor they are defaults. Every method that reads also takes them, and a value passed to one call wins for that call.
+`timeout`, `retries`, `deadline` and `signal` are `OperationOptions`, and so is `maxRequests`, which the constructor calls `maxRequestsPerCall`. Set on the constructor they are defaults. Every method that reads also takes them, and a value passed to one call wins for that call.
 
 ## Collections
 

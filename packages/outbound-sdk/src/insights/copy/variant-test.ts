@@ -69,9 +69,9 @@ export interface TestedVariant {
   /** The 95% Wilson interval of the rate. `null` when the rate is unknown. */
   readonly low: number | null;
   readonly high: number | null;
-  /** @deprecated Use `of`. Removed in 0.4.0. */
+  /** @deprecated Use `of`. Removed in 0.5.0. */
   readonly trials: number | null;
-  /** @deprecated Use `low` and `high`. Removed in 0.4.0. */
+  /** @deprecated Use `low` and `high`. Removed in 0.5.0. */
   readonly interval: Interval | null;
   /** `false` when the base is under `min_sent` or the rate is unknown; such a variant is not compared. */
   readonly enoughData: boolean;

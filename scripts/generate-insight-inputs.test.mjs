@@ -89,7 +89,7 @@ test("an old input name is marked @deprecated and has no default", () => {
       threshold: {
         deprecated: true,
         description:
-          "Deprecated: renamed to `max_bounce_rate`. Removed in 0.4.0.",
+          "Deprecated: renamed to `max_bounce_rate`. Removed in 0.5.0.",
         maximum: 1,
         minimum: 0,
         type: "number",
@@ -99,7 +99,7 @@ test("an old input name is marked @deprecated and has no default", () => {
 
   assert.match(
     text,
-    /\/\*\*\n \* @deprecated Renamed to `max_bounce_rate`\. Removed in 0\.4\.0\.\n \*\n \* A number from 0 to 1\.\n \*\/\nreadonly threshold\?: number \| undefined;/u
+    /\/\*\*\n \* @deprecated Renamed to `max_bounce_rate`\. Removed in 0\.5\.0\.\n \*\n \* A number from 0 to 1\.\n \*\/\nreadonly threshold\?: number \| undefined;/u
   );
   assert.match(
     text,

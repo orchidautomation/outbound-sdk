@@ -88,7 +88,7 @@ When the vendor says how long to wait, with a `Retry-After` header or a field in
 | `retries` | `number`, or `{ max, backoff? }` | `4` | How many times a failed request is tried again |
 | `timeout` | milliseconds | `30000` | One attempt |
 | `deadline` | milliseconds | none | The whole call: every attempt, every backoff and every wait for the rate budget |
-| `maxRequests` | `number` | none | How many vendor requests the call may send |
+| `maxRequests` | `number` | none | How many vendor requests the call may send. On `createOutbound` it is named `maxRequestsPerCall`. |
 | `signal` | `AbortSignal` | none | Cancels the call from outside |
 
 <include meta='title="budgets.ts"'>../_examples/retries/budgets.ts</include>
@@ -110,9 +110,9 @@ How long the whole call may take. The SDK checks it before each wait: if the nex
 
 A deadline does not cut off an attempt already in flight. That is `timeout`. Set both: `deadline` for how long you are willing to wait in all, `timeout` for how long one request may hang. On a walk with `listAll`, the deadline covers the whole walk from its first page.
 
-### `maxRequests`
+### `maxRequests` and `maxRequestsPerCall`
 
-The most vendor requests one call may send, retries included. When the count is reached the next request is not sent, and the call fails with `RateLimited` and the message shown above. It exists so one question cannot spend a vendor quota: an insight that reads every campaign, or a retry storm.
+The most vendor requests one call may send, retries included. On one call the option is `maxRequests`. On `createOutbound` it is `maxRequestsPerCall`, the default for every call, because it is a cap on each call and not a total for the instance. For a total across calls, use the [budget](/docs/plugins/budget) plugin. The old name, `maxRequests` on `createOutbound`, still works for now, with a deprecation warning. When the count is reached the next request is not sent, and the call fails with `RateLimited`, `limit: "call"` and `permanent: true`, with the message shown above. Retrying the same call would stop at the same place. It exists so one question cannot spend a vendor quota: an insight that reads every campaign, or a retry storm.
 
 On a walk with `listAll` and on `getMany`, it covers all the pages or records together. `meta.requests` on a [result](/docs/api/results) is what a call spent, and [`outbound.estimate`](/docs/api#methods) is what it would spend.
 
@@ -151,7 +151,9 @@ A retried call that succeeds looks like any other to the caller. To see retries,
 
 By then the SDK has retried what could be retried. `error.permanent` says whether trying again later could work:
 
-- **`permanent: false`** (`Provider`, `RateLimited`): the vendor is down, slow or limiting. Try again later, after `error.retryAfterMs` when it is set. The [failover](/docs/plugins/failover) plugin can serve the last good answer meanwhile.
+- **`permanent: false`** (`Provider`, and `RateLimited` from the vendor or the rate budget): the vendor is down, slow or limiting. Try again later, after `error.retryAfterMs` when it is set. The [failover](/docs/plugins/failover) plugin can serve the last good answer meanwhile.
 - **`permanent: true`**: the same call will fail the same way. Fix the key, the id or the input.
+
+A request cap of your own (`maxRequests` or the [budget](/docs/plugins/budget) plugin) also stops a call with `RateLimited`, but with `permanent: true`, so a loop that retries while `!permanent` stops on it. `error.limit` tells the causes apart: `"vendor"` or `"deadline"` for a wait, `"call"` or `"run"` for your own cap. See [errors](/docs/api/errors#limit).
 
 See [errors](/docs/api/errors) for every field.

@@ -1,4 +1,4 @@
 one page: 2 mailboxes, 1 request
 next page, a new call: 1 mailbox
-RateLimited: The call used its budget of 1 request to instantly
+RateLimited: The call used its budget of 1 request to instantly. Raise budget()'s maxRequests or ask for less in one call.
 Invalid: budget() needs maxRequests to be a positive integer

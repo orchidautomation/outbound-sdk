@@ -42,14 +42,14 @@ The stored answer is served only when the layers inside throw an `OutboundError`
 
 | Condition | Meaning |
 | --- | --- |
-| has code `Provider`, or has code `RateLimited` and an HTTP `status` | A vendor failure the SDK's retries did not get past, such as repeated 5xx answers, or a 429 that outlasted them. |
+| has code `Provider`, or has code `RateLimited` with `limit: "vendor"` (the vendor answered 429) | A vendor failure the SDK's retries did not get past, such as repeated 5xx answers, or a 429 that outlasted them. |
 | is not `aborted` | A call you cancelled through `signal` fails as it would without the plugin. |
 
 `Invalid`, `NotFound`, `Unauthorized` and `Unsupported` always reach the caller.
 
-So does a `RateLimited` the SDK raised itself, which carries no `status`. Those are your own caps, not an outage, and a stored answer is never served for them:
+So does a `RateLimited` the SDK raised itself, which carries no `status` and a `limit` of `"call"`, `"run"` or `"deadline"`. Those are your own caps, not an outage, and a stored answer is never served for them:
 
-- `maxRequests` on a call or on the instance.
+- `maxRequests` on a call, or `maxRequestsPerCall` on the instance.
 - The [`budget`](/docs/plugins/budget) plugin.
 - A `deadline` that would pass while the SDK's own [rate budget](/docs/rate-limits) for the vendor is full.
 
@@ -103,6 +103,6 @@ Methods that return no `meta` cannot tell you an answer was stale. That includes
 | The vendor is down and the read was stored | The stored answer, `meta.stale: true` | Show its age from `meta.fetchedAt`. |
 | The vendor is down and the read was never stored, or is older than `maxAge` | The original `Provider` or `RateLimited` error | Handle it as you would without the plugin. |
 | The caller's own mistake | The original error | Fix the call. |
-| A request cap of your own stops the read (`maxRequests`, `budget`, a `deadline` on a full rate budget) | The original `RateLimited` error, with no `status` | Raise the cap, or reset the budget. |
+| A request cap of your own stops the read (`maxRequests`, `budget`, a `deadline` on a full rate budget) | The original `RateLimited` error, with no `status` and `limit` `"call"`, `"run"` or `"deadline"` | Raise the cap, or reset the budget. |
 | `store.set` rejects after a successful read | The read fails with the store's error | Catch errors inside your store if a store outage should not fail reads. |
 | `store.get` rejects while the vendor is down | The store's error, not the vendor's | The same. |

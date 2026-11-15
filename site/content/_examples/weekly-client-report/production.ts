@@ -6,6 +6,6 @@ import { instantly } from "outbound-sdk/instantly";
 export const outbound = createOutbound({
   adapter: instantly({ workspaceId: "acme" }),
   // One report may spend at most 120 vendor requests.
-  maxRequests: 120,
+  maxRequestsPerCall: 120,
   plugins: [insights()],
 });

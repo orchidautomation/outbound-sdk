@@ -3,7 +3,8 @@
 // request engine.
 //
 // The cap is enforced inside the engine, request by request: a call that
-// reaches it stops with `RateLimited` and says how many requests it used.
+// reaches it stops with `RateLimited`, `limit` "call" or "run", and
+// `permanent: true`, because retrying stops at the same place.
 
 import { OutboundError } from "../internal/errors.ts";
 import type { OutboundPlugin } from "../internal/outbound/plugins.ts";
@@ -13,8 +14,9 @@ export interface BudgetOptions {
   /** The most vendor requests allowed. */
   readonly maxRequests: number;
   /**
-   * `call` allows `maxRequests` for each SDK call. `run` allows it in total
-   * across every call on the instance, until `reset()`.
+   * `run` (the default) allows `maxRequests` in total across every call on
+   * the instance, until `reset()`. `call` allows it for each SDK call, as
+   * `maxRequestsPerCall` on `createOutbound` does.
    */
   readonly per?: "call" | "run" | undefined;
 }
@@ -40,7 +42,7 @@ export const budget = (
     );
   }
 
-  const perRun = options.per === "run";
+  const perRun = options.per !== "call";
   let used = 0;
   const remaining = (): number => Math.max(0, options.maxRequests - used);
   // Requests counted live for each call, as the engine sends them.
@@ -49,8 +51,8 @@ export const budget = (
   const spent = (provider: string): OutboundError =>
     new OutboundError(
       "RateLimited",
-      `The run used its budget of ${plural(options.maxRequests, "request")} to ${provider}`,
-      { provider }
+      `The run used its budget of ${plural(options.maxRequests, "request")} to ${provider}. Call requestBudget.reset() to start a new run, or raise budget()'s maxRequests.`,
+      { limit: "run", provider }
     );
 
   return {
@@ -71,12 +73,14 @@ export const budget = (
         throw spent(info.provider);
       }
 
-      if (!perRun) {
+      if (
+        !perRun &&
+        (state.maxRequests === undefined ||
+          options.maxRequests < state.maxRequests)
+      ) {
         // The engine stops the call once it has made this many requests.
-        state.maxRequests = Math.min(
-          state.maxRequests ?? options.maxRequests,
-          options.maxRequests
-        );
+        state.maxRequests = options.maxRequests;
+        state.maxRequestsSetBy = "budget()'s maxRequests";
       }
 
       if (!live.has(state)) {

@@ -7,6 +7,6 @@ import { smartlead } from "outbound-sdk/smartlead";
 export const outbound = createOutbound({
   adapter: smartlead({ workspaceId: "acme" }),
   // One audit may spend at most 80 vendor requests.
-  maxRequests: 80,
+  maxRequestsPerCall: 80,
   plugins: [insights()],
 });

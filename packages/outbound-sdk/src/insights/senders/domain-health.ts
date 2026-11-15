@@ -60,9 +60,9 @@ export interface DomainWarmup extends Measured {
   readonly mailboxes: number;
   readonly sent: number | null;
   readonly spam: number | null;
-  /** @deprecated Use `rate`: warmup emails in spam (`count`) over those sent (`of`). Removed in 0.4.0. */
+  /** @deprecated Use `rate`: warmup emails in spam (`count`) over those sent (`of`). Removed in 0.5.0. */
   readonly spamRate: number | null;
-  /** @deprecated Use `low` and `high`. Removed in 0.4.0. */
+  /** @deprecated Use `low` and `high`. Removed in 0.5.0. */
   readonly interval: Interval | null;
 }
 

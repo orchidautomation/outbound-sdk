@@ -177,6 +177,7 @@ export const makeReadCollection = <Item, Filters>(
     const walkOptions: ListAllOptions | undefined = options;
 
     return new PageWalker<Item>({
+      begin: () => core.engine.begin(options),
       cursor: walkOptions?.cursor,
       fetchPage: (cursor, state) =>
         fetchPage(core, spec, { cursor, filters, limit }, options, state),

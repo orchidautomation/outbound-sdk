@@ -2,7 +2,7 @@
 "outbound-sdk": minor
 ---
 
-Insight names are consistent before 1.0 (OUT-74). The rule is on the insights page under "Names". Nothing is removed in this release: old names keep working until 0.4.0.
+Insight names are consistent before 1.0 (OUT-74). The rule is on the insights page under "Names". Nothing is removed in this release: old names keep working until 0.5.0.
 
 - Renamed inputs: `bounceWatch` `threshold` is `max_bounce_rate`, `domainHealth` `spam_rate_threshold` is `max_spam_rate`, `campaignDiagnosis` `recent_days` is `days`, and `clientReport` `top` is `limit` (the `top` list in the answer keeps its name). An old name gives the same answer with a note in `meta.notes`, the tool parameters mark it `deprecated: true` and the generated input types mark it `@deprecated`. Passing an old name and its new name together is `Invalid`.
 - Every campaign row the ops insights, `bounceWatch` and `senderLoad` return has `campaignName`; `name` is deprecated. `campaign` in `stepFunnel`, `variantTest`, `personalizationGaps`, `replyTiming` and `copyAudit`, and `anomalies`' `scope`, is the campaign's ref even when the input was a bare vendor id, at no extra request.

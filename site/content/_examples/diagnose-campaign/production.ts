@@ -7,6 +7,6 @@ import { instantly } from "outbound-sdk/instantly";
 export const outbound = createOutbound({
   adapter: instantly({ workspaceId: "acme" }),
   // One diagnosis with its context may spend at most 30 vendor requests.
-  maxRequests: 30,
+  maxRequestsPerCall: 30,
   plugins: [insights(), benchmarks()],
 });
