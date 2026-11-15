@@ -58,7 +58,7 @@ export type CampaignSenderIssue =
 export interface CampaignSenderRisk {
   readonly campaign: string;
   readonly campaignName: string;
-  /** @deprecated Use `campaignName`. Removed in 0.5.0. */
+  /** @deprecated Use `campaignName`. Removed in 0.6.0. */
   readonly name: string;
   readonly senders: number;
   readonly issues: readonly CampaignSenderIssue[];

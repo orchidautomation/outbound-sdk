@@ -469,7 +469,7 @@ export interface InsightInputs {
     readonly max_spam_rate?: number | undefined;
 
     /**
-     * @deprecated Renamed to `max_spam_rate`. Removed in 0.5.0.
+     * @deprecated Renamed to `max_spam_rate`. Removed in 0.6.0.
      *
      * A number from 0 to 1.
      */
@@ -557,7 +557,7 @@ export interface InsightInputs {
     readonly min_sent?: number | undefined;
 
     /**
-     * @deprecated Renamed to `max_bounce_rate`. Removed in 0.5.0.
+     * @deprecated Renamed to `max_bounce_rate`. Removed in 0.6.0.
      *
      * A number from 0 to 1.
      */
@@ -774,7 +774,7 @@ export interface InsightInputs {
     readonly min_weekly_hours?: number | undefined;
 
     /**
-     * @deprecated Renamed to `days`. Removed in 0.5.0.
+     * @deprecated Renamed to `days`. Removed in 0.6.0.
      *
      * A whole number from 1 to 30.
      */
@@ -1114,7 +1114,7 @@ export interface InsightInputs {
     readonly runway_days?: number | undefined;
 
     /**
-     * @deprecated Renamed to `limit`. Removed in 0.5.0.
+     * @deprecated Renamed to `limit`. Removed in 0.6.0.
      *
      * A whole number from 1 to 20.
      */

@@ -49,11 +49,11 @@ export interface CopyUse {
   readonly rates: { readonly replyRate: BasedRate };
   /** What the rate divides by: leads contacted or messages sent. */
   readonly basis: RateBasis | null;
-  /** @deprecated Use `rates.replyRate.of`. Removed in 0.5.0. */
+  /** @deprecated Use `rates.replyRate.of`. Removed in 0.6.0. */
   readonly trials: number | null;
-  /** @deprecated Use `rates.replyRate.rate`. Removed in 0.5.0. */
+  /** @deprecated Use `rates.replyRate.rate`. Removed in 0.6.0. */
   readonly replyRate: number | null;
-  /** @deprecated Use `rates.replyRate.low` and `.high`. Removed in 0.5.0. */
+  /** @deprecated Use `rates.replyRate.low` and `.high`. Removed in 0.6.0. */
   readonly replyRateInterval: Interval | null;
 }
 
@@ -68,11 +68,11 @@ export interface CopyPiece {
   /** Replies over the base, added up across campaigns. */
   readonly rates: { readonly replyRate: BasedRate };
   readonly basis: RateBasis | null;
-  /** @deprecated Use `rates.replyRate.of`. Removed in 0.5.0. */
+  /** @deprecated Use `rates.replyRate.of`. Removed in 0.6.0. */
   readonly trials: number | null;
-  /** @deprecated Use `rates.replyRate.rate`. Removed in 0.5.0. */
+  /** @deprecated Use `rates.replyRate.rate`. Removed in 0.6.0. */
   readonly replyRate: number | null;
-  /** @deprecated Use `rates.replyRate.low` and `.high`. Removed in 0.5.0. */
+  /** @deprecated Use `rates.replyRate.low` and `.high`. Removed in 0.6.0. */
   readonly replyRateInterval: Interval | null;
 }
 

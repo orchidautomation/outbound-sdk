@@ -1,5 +1,23 @@
 # outbound-sdk
 
+## 0.5.0
+
+### Minor Changes
+
+- The insight input and answer names deprecated in 0.4.0 keep working until 0.6.0 instead of being removed in 0.5.0, because 0.4.0 and 0.5.0 were released on the same day. Deprecation warnings now name 0.6.0.
+- d20a98a: Alert checks can be written as data (OUT-8). A check is a JSON object, `{ "metric": "bounce_rate", "op": ">", "value": 0.03, "scope": { "client": "acme" } }`, so it can be stored, shown and edited. `outbound-sdk/alerts` adds `validateCheck`, which lists every problem with what to write instead, `parseCheck`, `checkSchema` (the Zod schema, convertible to JSON Schema), `evaluateCheck`, which runs a check against stats rows, senders, or a `droppedReplies`, `pipelineForecast`, `suppressionCheck` or `personalizationGaps` answer and returns pass or fail with the numbers that broke it, and `checkRule`, which turns a check on records into an `AlertRule`. `CHECK_METRICS` lists the eight metrics and what each reads. Rule functions are unchanged.
+- dda979f: CLI: `outbound version` (also `--version` and `-v`) prints the installed version, and `outbound update` checks npm for a newer one. It updates a global install in place, and for a project install or npx it prints the command to run.
+
+  The executable is now also installed as `outbound-sdk`, so `npx outbound-sdk <command>` finds it by name. The docs and skills use that form, because `outbound` on npm is an unrelated package and `npx outbound` outside a project would download it. `outbound` still works.
+- fb25ffc: **Behaviour change:** insights and tool calls now have a request cap by default (OUT-77), and an insight that cannot afford its input is refused before its first request (OUT-79).
+
+  - Each insight states its cost, worked out from the input and the adapter's declared costs as a least and a most. It runs under a cap of the most, a quarter more for retries and 4 on top, counted across every read of the run. `maxRequests` in an insight's options replaces it; `Infinity` removes it. `insightCost(outbound, name, input)` returns `{ min, max, defaultCap }`, or `null` where costs are unknown (a combined instance), which keeps the old behaviour.
+  - A run whose least cost is over its cap, or over what a `budget({ per: "run" })` has left, fails with `RateLimited` (`limit: "call"`, permanent) before any request, and again after its campaign listing once the count is known. The message names the least, the most, the cap and the input to lower.
+  - Each tool call gets a fresh allowance: 100 requests for a built-in tool, the insight's default up to 500 for an insight tool. Set `maxRequestsPerToolCall` on `createTools` or `insightTools`; `Infinity` removes it. A tool's `call` takes `{ maxRequests }` as a second argument. The MCP server applies the same default on top of its per-call budget reset.
+  - Tool failures carry `error.retryable` and, when requests were spent, `meta.requests`. A cap stop no longer tells the model "Check the input and try again.": it says not to call again with the same input, and what to lower or ask the user to raise.
+  - `OperationCost` takes `perWalk` and `perPageAtMost`, upper-bound extras used only for caps; the Smartlead, Instantly and HeyReach adapters declare them. `requestBudget.per` says whether a budget counts per call or per run. Custom insights can declare `cost` and `scales`; the context has `campaignsFound(count)`.
+- 627822f: New adapter: `outbound-sdk/emailbison` reads EmailBison (OUT-11). It is `unverified`: written from EmailBison's public API reference and tested offline only, never run against a live account. It reads campaigns, settings, sequences, senders and their health, leads, lead lists, sent emails, a lead's timeline, threads, replies, workspace, campaign, step, sender and daily stats, the block list, tags, webhooks and workspaces, and has a native catalog of 32 more reads. Pass `baseUrl` (or set `EMAILBISON_BASE_URL`) to the URL you log in to EmailBison with. `outbound-sdk/webhooks` parses EmailBison webhooks; verify them with a secret in the URL.
+
 ## 0.4.0
 
 ### Minor Changes

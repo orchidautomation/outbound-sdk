@@ -14,7 +14,7 @@ for await (const campaign of outbound.campaigns.listAll({ status: "active" })) {
 }
 ```
 
-> Status: a 0.x preview on npm (`npm install outbound-sdk`). HeyReach and Instantly are `beta` (their reads were run against a live workspace each). Smartlead ships untested (`unverified`): it has never been run against a live account, and is written from public documentation and tested offline only. EmailBison (`outbound-sdk/emailbison`, added after 0.4.0 and not yet in a published release) is `unverified` too: no EmailBison account or key is available, so it is written from EmailBison's API reference and tested offline only. Its rate limit is a guess.
+> Status: a 0.x preview on npm (`npm install outbound-sdk`). HeyReach and Instantly are `beta` (their reads were run against a live workspace each). Smartlead ships untested (`unverified`): it has never been run against a live account, and is written from public documentation and tested offline only. EmailBison (`outbound-sdk/emailbison`, added in 0.5.0) is `unverified` too: no EmailBison account or key is available, so it is written from EmailBison's API reference and tested offline only. Its rate limit is a guess.
 
 The documentation is at [outbound-sdk.dev](https://outbound-sdk.dev). It is built from `site/` in this repository, and every code sample on it is a file the test suite runs.
 

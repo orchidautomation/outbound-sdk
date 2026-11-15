@@ -13,7 +13,7 @@ Five insights about what a campaign says and when. Each is a method on `outbound
 
 Three of them need per-step stats (`stats.byStep`). An adapter that does not declare it refuses them as `Unsupported`: see [which adapter serves which](/docs/insights#which-adapter-serves-which).
 
-A reply rate here is replies divided by leads contacted, or by messages sent when the vendor does not count leads. A rate is `count`, `of`, `rate`, `low` and `high`, with `basis` saying what `of` counts. The older `trials`, `interval`, `replyRate`, `replyRateInterval` and `replyRateBasis` hold the same numbers and are deprecated until 0.5.0. `campaign` in every answer is the campaign's ref, even when the input was its bare vendor id.
+A reply rate here is replies divided by leads contacted, or by messages sent when the vendor does not count leads. A rate is `count`, `of`, `rate`, `low` and `high`, with `basis` saying what `of` counts. The older `trials`, `interval`, `replyRate`, `replyRateInterval` and `replyRateBasis` hold the same numbers and are deprecated until 0.6.0. `campaign` in every answer is the campaign's ref, even when the input was its bare vendor id.
 
 ## The data the samples run on
 

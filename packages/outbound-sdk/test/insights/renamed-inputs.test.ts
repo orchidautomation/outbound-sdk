@@ -64,7 +64,7 @@ const run = async (name: string, input: Readonly<Record<string, unknown>>) => {
 };
 
 const noteFor = ({ from, to }: Rename): string =>
-  `\`${from}\` is deprecated and will be removed in 0.5.0; use \`${to}\`.`;
+  `\`${from}\` is deprecated and will be removed in 0.6.0; use \`${to}\`.`;
 
 for (const rename of RENAMES) {
   const { base = {}, from, to, tool, value } = rename;

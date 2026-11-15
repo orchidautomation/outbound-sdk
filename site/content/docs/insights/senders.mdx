@@ -33,7 +33,7 @@ Deliverability per sending domain: DNS records, sign-in, block lists and the sha
 | Input | Default | Range | What it is |
 | --- | --- | --- | --- |
 | `max_senders` | 50 | 1 to 500 | The most senders to check. |
-| `max_spam_rate` | 0.1 | 0 to 1 | A domain whose warmup emails land in spam more often than this share is high risk. Its old name, `spam_rate_threshold`, works until 0.5.0, with a note. |
+| `max_spam_rate` | 0.1 | 0 to 1 | A domain whose warmup emails land in spam more often than this share is high risk. Its old name, `spam_rate_threshold`, works until 0.6.0, with a note. |
 
 `data` (`DomainHealth`):
 
@@ -122,7 +122,7 @@ The campaigns whose bounce rate (bounced divided by sent) is over a threshold, a
 
 | Input | Default | Range | What it is |
 | --- | --- | --- | --- |
-| `max_bounce_rate` | 0.03 | 0 to 1 | The bounce rate that is too high. Its old name, `threshold`, works until 0.5.0, with a note. |
+| `max_bounce_rate` | 0.03 | 0 to 1 | The bounce rate that is too high. Its old name, `threshold`, works until 0.6.0, with a note. |
 | `min_sent` | 100 | 0 or more, whole | A campaign or sender with fewer sends than this is too small to judge. |
 | `from` | `null` | `YYYY-MM-DD` or `null` | First day to count. `null` for the vendor's whole history. |
 | `to` | `null` | `YYYY-MM-DD` or `null` | Last day to count. `null` for up to today. |
