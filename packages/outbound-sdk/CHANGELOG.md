@@ -1,5 +1,11 @@
 # outbound-sdk
 
+## 0.2.1
+
+### Patch Changes
+
+- 6b2c396: `outbound mcp` now reports the installed package's version as `serverInfo.version` in its `initialize` answer, instead of `0.0.0`. A server built with `createMcpServer` still reports the `version` option, which defaults to `0.0.0`.
+
 ## 0.2.0
 
 ### Minor Changes
