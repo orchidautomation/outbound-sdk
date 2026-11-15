@@ -206,12 +206,16 @@ test("suppression_check lists blocked leads still in a campaign", () => {
 const dropped = (count: number, repliesRead: number): DroppedReplies => ({
   dropped: Array.from({ length: count }, (_, index) => ({
     campaign: "c1",
+    campaignName: index === 0 ? "Founders Q4" : null,
     category: "interested",
     channel: "email" as const,
     checkedBy: "thread" as const,
     finding: "",
+    email: index === 0 ? null : `person${index}@example.com`,
     hoursWaiting: 72 - index * 60,
     lead: `l${index}`,
+    linkedinUrl: null,
+    name: index === 0 ? "Jordan Example" : null,
     provider: "instantly",
     receivedAt: "2026-11-10T10:00:00.000Z",
     reply: `r${index}`,
@@ -236,8 +240,8 @@ test("dropped_replies leads with the longest wait", () => {
   includes(
     read(cardFor("dropped_replies", insight(dropped(2, 9)))),
     "🔴 2 replies waiting. The longest has waited 3d.",
-    "l0   | c1       | Interested | 3d",
-    "l1   | c1       | Interested | 12h",
+    "Jordan Example      | Founders Q4 | Interested | 3d",
+    "person1@example.com | c1          | Interested | 12h",
     "Answered: 5"
   );
   includes(

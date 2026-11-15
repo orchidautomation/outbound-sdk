@@ -176,8 +176,11 @@ const droppedReplies: CardBuilder = (data) => {
       cards: { subtitle: [1, 2, 3], title: 0 },
       headers: ["Lead", "Campaign", "Category", "Waiting"],
       rows: dropped.map((reply) => [
-        show(reply, "lead"),
-        show(reply, "campaign"),
+        str(reply, "name") ??
+          str(reply, "email") ??
+          str(reply, "linkedinUrl") ??
+          show(reply, "lead"),
+        str(reply, "campaignName") ?? show(reply, "campaign"),
         words(show(reply, "category")),
         waiting(num(reply, "hoursWaiting")),
       ]),

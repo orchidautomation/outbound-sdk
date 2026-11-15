@@ -47,7 +47,7 @@ How a reply ends up on the list:
 Three things in the answer are worth copying:
 
 - **`totals.unchecked` is not zero by accident.** A reply with no thread and no lead to read, or no time on it, cannot be checked. It is counted there and never reported as dropped. Print the count, so a short list is not read as a clean one.
-- **A reply names its lead by ref.** The function reads each lead to print an address. That is one more read per listed reply.
+- **Each listed reply names the person and the campaign.** `name`, `email`, `linkedinUrl` and `campaignName` come from one read of each listed lead and campaign, made inside the insight. Any it could not read is `null`, so the function falls back to the next field.
 - **`meta.complete` is `false` when `max_replies` stopped the read.** The list then covers the replies that were read, and a note says so.
 
 The categories come from the vendor or from fixed rules. The SDK calls no AI model, so a reply the vendor filed as `neutral` is treated as one, whatever it says.
@@ -94,7 +94,7 @@ With several tools behind [`combine`](/docs/adapters/combine), a thread id canno
 
 ## What it costs
 
-One request per page of replies, plus one per conversation checked: at most about `max_replies` requests, so about 50 by default. The function above adds one lead read per listed reply (two requests each on Smartlead and HeyReach). `maxRequests` on the instance caps the whole run; past it the call fails with `RateLimited` instead of spending your vendor quota.
+One request per page of replies, one per conversation checked, and one read of each listed lead and campaign to name them: about `max_replies` requests plus two per listed reply, so about 50 by default when few are waiting. A lead read is two requests on Smartlead and HeyReach. `meta.requests` counts them all. `maxRequests` on the instance caps the whole run; past it the call fails with `RateLimited` instead of spending your vendor quota.
 
 ## When it cannot answer
 

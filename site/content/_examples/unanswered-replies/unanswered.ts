@@ -17,16 +17,12 @@ export const unansweredReplies = async (
 
   // Longest waiting first. That order comes from the insight.
   for (const reply of data.dropped) {
-    // A reply names its lead by ref. Reading the lead costs one request, or
-    // two on a vendor whose lead read is two.
+    // The insight names each person and campaign; any it could not read are null.
     const who =
-      reply.lead === null
-        ? null
-        : // oxlint-disable-next-line no-await-in-loop -- one lead at a time keeps the rate budget predictable.
-          await outbound.lead(reply.lead).get();
+      reply.name ?? reply.email ?? reply.linkedinUrl ?? "unknown lead";
 
     lines.push(
-      `  ${Math.floor(reply.hoursWaiting)}h  ${who?.email ?? who?.linkedinUrl ?? "unknown lead"}`,
+      `  ${Math.floor(reply.hoursWaiting)}h  ${who}${reply.campaignName === null ? "" : ` (${reply.campaignName})`}`,
       `       ${reply.channel}, ${reply.category}, ${reply.unansweredReplies} unanswered${
         reply.subject === null ? "" : `, "${reply.subject}"`
       }`
