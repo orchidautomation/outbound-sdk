@@ -20,6 +20,8 @@
 
 - threadId is a reply id: GET /api/replies/{id}/conversation-thread returns the messages before and after it. A message in folder Sent is outgoing.
 
+- The unread filter is sent as read=0 or read=1, assuming the API takes booleans the way a Laravel app does; the reference does not say.
+
 - Replies are the master inbox's inbox folder. category is positive when interested, ooo when automated_reply, otherwise unknown; only positive and ooo are filtered by EmailBison.
 
 - Dated statistics need both dates: a missing end is today (UTC), a missing start 2000-01-01 for totals and 30 days before the end for daily rows. No read says which timezone its days are in.
