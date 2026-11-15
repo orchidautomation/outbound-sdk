@@ -342,6 +342,7 @@ test("copy_reuse with no campaigns returns nothing, and a cap makes the answer i
   assert.deepEqual(empty.data, {
     bestCopy: null,
     campaignsRead: 0,
+    moreCampaignsExist: false,
     piecesOfCopy: 0,
     reused: [],
     variantsWithoutStats: 0,
@@ -354,9 +355,10 @@ test("copy_reuse with no campaigns returns nothing, and a cap makes the answer i
   );
 
   assert.equal(capped.data.campaignsRead, 2);
+  assert.equal(capped.data.moreCampaignsExist, true);
   assert.equal(capped.meta.complete, false);
   assert.deepEqual(capped.meta.notes, [
-    "A listing was cut off at its cap; more records exist.",
+    "Stopped at 2 campaigns (max_campaigns); more exist.",
   ]);
 
   // Exactly at the cap nothing is cut off.

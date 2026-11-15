@@ -6,17 +6,12 @@ import { mapConcurrent } from "../../internal/concurrency.ts";
 import { campaignStatusSchema } from "../../internal/entities.ts";
 import type { Campaign, Sequence } from "../../internal/entities.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
+import { readCampaignsIn } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { compareRates, percent, round, total } from "../stats.ts";
 import type { Interval } from "../stats.ts";
-import {
-  campaignsIn,
-  groupBy,
-  measure,
-  perLead,
-  splitStats,
-} from "./shared.ts";
+import { groupBy, measure, perLead, splitStats } from "./shared.ts";
 import type { Measured, SplitStats } from "./shared.ts";
 
 const input = z.object({
@@ -92,6 +87,8 @@ export interface CopyReuse {
   /** The copy with the highest pooled reply rate among those with a base of `min_sent`. `null` when none has. */
   readonly bestCopy: CopyPiece | null;
   readonly campaignsRead: number;
+  /** `true` when `max_campaigns` stopped the read with more campaigns left. */
+  readonly moreCampaignsExist: boolean;
   readonly piecesOfCopy: number;
   /** Variants whose counts the vendor does not split out, so their copy has no numbers. */
   readonly variantsWithoutStats: number;
@@ -287,7 +284,8 @@ export const copyReuse = defineInsight({
   needs: ["sequence", "stats.byStep"],
   next: "Use step_funnel on the campaign where the copy does worst, or variant_test where the copy runs against another variant.",
   run: async (context, { max_campaigns, min_sent, statuses }) => {
-    const campaigns = await campaignsIn(context, statuses, max_campaigns);
+    const listed = await readCampaignsIn(context, statuses, max_campaigns);
+    const campaigns = listed.items;
     const placements = await readPlacements(context, campaigns);
     const without = placements.filter((each) => each.counts === null).length;
 
@@ -328,6 +326,7 @@ export const copyReuse = defineInsight({
     const result: CopyReuse = {
       bestCopy: bestCopy ?? null,
       campaignsRead: campaigns.length,
+      moreCampaignsExist: listed.capped,
       piecesOfCopy: pieces.length,
       reused,
       variantsWithoutStats: without,

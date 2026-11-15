@@ -190,7 +190,7 @@ How the same piece of copy performs in different campaigns. Variants are matched
 
 - `reused`: every piece of copy used in two or more campaigns, with `contentHash`, `subject`, `bodyPreview` (the first 120 characters), `campaigns`, pooled `sent`, `replies`, `trials`, `replyRate` and `replyRateInterval`, `uses` (per campaign: `places` as `step:variant`, counts and rate), `spread` (best minus worst reply rate), `best`, `worst`, `spreadPValue`, `spreadIsReal` and a `finding` sentence. Widest spread first.
 - `bestCopy`: the copy with the highest pooled reply rate among those with a base of `min_sent`, or `null`.
-- `campaignsRead`, `piecesOfCopy`, `variantsWithoutStats`.
+- `campaignsRead`, `moreCampaignsExist` (`true` when `max_campaigns` stopped the listing with campaigns left), `piecesOfCopy`, `variantsWithoutStats`.
 
 - **Needs:** `sequence`, `stats.byStep`.
 - **Costs:** 2 requests per campaign, plus the campaign listing.

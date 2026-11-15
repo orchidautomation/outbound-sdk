@@ -77,6 +77,24 @@ export interface InsightResult<Data> {
   readonly meta: InsightMeta;
 }
 
+/**
+ * The cap a listing was read up to, for the note when it stops early:
+ * `{ input: "max_campaigns", max: 25, what: "campaigns" }` gives "Stopped at
+ * 25 campaigns (max_campaigns); more exist."
+ */
+export interface Cap {
+  /** The cap as the caller set it, not the room left under it. */
+  readonly max: number;
+  /** What was counted, in the plural: `campaigns`, `leads of a campaign`. */
+  readonly what: string;
+  /** The input that raises the cap, or `null` for a cap no input sets. */
+  readonly input: string | null;
+}
+
+/** The note for a listing that a cap stopped with more records left. */
+export const capNote = (cap: Cap): string =>
+  `Stopped at ${cap.max} ${cap.what} (${cap.input ?? "a fixed cap"}); more exist.`;
+
 /** What an insight reads through. Every helper records the read's cost and evidence. */
 export interface InsightContext {
   readonly outbound: OutboundApi;
@@ -87,9 +105,9 @@ export interface InsightContext {
   /**
    * Walks a listing to its end or its `max`, records the cost and returns the
    * records. When `max` cut it short the answer is marked incomplete; `cap`
-   * names what was capped for the note, for example `50 campaigns`.
+   * names what was capped and the input that raises it, for the note.
    */
-  readonly all: <Item>(walk: ListAll<Item>, cap?: string) => Promise<Item[]>;
+  readonly all: <Item>(walk: ListAll<Item>, cap?: Cap) => Promise<Item[]>;
   /** Records one lookup's cost and returns the record. */
   readonly one: <Item>(item: WithMeta<Item>) => Item;
   /** Records a stats read's cost and returns its rows. */
@@ -214,7 +232,7 @@ const track = (outbound: OutboundApi, now: number): Tracker => {
           partial(
             cap === undefined
               ? "A listing was cut off at its cap; more records exist."
-              : `Stopped at ${cap}; more exist.`
+              : capNote(cap)
           );
         }
 

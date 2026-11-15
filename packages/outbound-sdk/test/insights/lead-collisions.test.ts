@@ -261,7 +261,7 @@ test("lead_collisions says the answer is partial when a cap stops a read", async
   );
   assert.equal(fewCampaigns.meta.complete, false);
   assert.deepEqual(fewCampaigns.meta.notes, [
-    "Stopped at 2 campaigns; more exist.",
+    "Stopped at 2 campaigns (max_campaigns); more exist.",
   ]);
 
   const fewLeads = await single(MAIL).insights.leadCollisions({
@@ -273,7 +273,7 @@ test("lead_collisions says the answer is partial when a cap stops a read", async
   assert.equal(fewLeads.data.collisions[0]?.campaignCount, 3);
   assert.equal(fewLeads.meta.complete, false);
   assert.deepEqual(fewLeads.meta.notes, [
-    "Stopped at 1 leads of a campaign; more exist.",
+    "Stopped at 1 leads of a campaign (max_leads_per_campaign); more exist.",
   ]);
 
   const twoStatuses = await single(MAIL).insights.leadCollisions({
@@ -284,7 +284,7 @@ test("lead_collisions says the answer is partial when a cap stops a read", async
   assert.equal(twoStatuses.data.totals.campaignsRead, 3);
   assert.equal(twoStatuses.meta.complete, false);
   assert.deepEqual(twoStatuses.meta.notes, [
-    "Stopped at 3 campaigns; more may exist.",
+    "Stopped at 3 campaigns (max_campaigns); more exist.",
   ]);
 });
 

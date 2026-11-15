@@ -294,7 +294,11 @@ test("domain_health says so when max_senders stops the read", async () => {
     ["bad.example", "good.example"]
   );
   assert.equal(result.meta.complete, false);
-  assert.ok(result.meta.notes.includes("Stopped at 3 senders; more exist."));
+  assert.ok(
+    result.meta.notes.includes(
+      "Stopped at 3 senders (max_senders); more exist."
+    )
+  );
 
   const exact = await single(DATA).insights.domainHealth({ max_senders: 10 });
   assert.equal(

@@ -4,6 +4,7 @@
 import { z } from "zod";
 
 import { mapConcurrent } from "../../internal/concurrency.ts";
+import type { CampaignsRead } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { percent, spoken } from "../stats.ts";
@@ -127,7 +128,7 @@ export interface ActionItem {
   readonly number: number | null;
 }
 
-export interface ClientReport {
+export interface ClientReport extends CampaignsRead {
   readonly days: number;
   readonly period: DayRange;
   readonly previousPeriod: DayRange;
@@ -218,6 +219,8 @@ const readRunways = async (
     campaign,
     forecast: await forecastCampaign(context, campaign, {
       days: options.days,
+      leadsInput: "max_leads_per_campaign",
+      leadsWhat: "leads of a campaign",
       maxLeads: options.max_leads_per_campaign,
     }),
   }));
@@ -348,6 +351,7 @@ export const clientReport = defineInsight({
 
     const report: ClientReport = {
       ...sections,
+      ...periods.read,
       actions: actionsOf(sections),
       campaigns: periods.campaigns.length,
       days: options.days,

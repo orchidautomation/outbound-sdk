@@ -465,8 +465,10 @@ test("campaign_diagnosis gives each finding with what to do next", () => {
 
 const ranking = (names: string[], thin: number): CampaignRanking => ({
   better: "higher",
+  campaignsRead: names.length + thin,
   gap: { difference: 0.02, median: 0.04, top: 0.06 },
   metric: "reply_rate" as never,
+  moreCampaignsExist: false,
   period: { from: null, to: null },
   ranked: names.map((name, index) => ({
     ...label(name),
@@ -517,9 +519,11 @@ const channelGroup = (channel: "email" | "linkedin", replied: number) => ({
 test("channel_mix compares email and LinkedIn", () => {
   const mix: ChannelMix = {
     byProvider: [],
+    campaignsRead: 2,
     channels: [channelGroup("email", 20), channelGroup("linkedin", 45)],
     comparison: null,
     finding: "LinkedIn replies at 9.0% against 4.0% for email.",
+    moreCampaignsExist: false,
     period: { from: null, to: null },
   };
 
@@ -557,6 +561,7 @@ const comparison = (verdict: Comparison["verdict"]): Comparison => ({
 
 test("period_comparison shows each number now and before", () => {
   const periods: PeriodComparison = {
+    campaignsRead: 2,
     campaigns: [
       { ...label("Founders"), ...comparison("down") },
       { ...label("Agencies"), ...comparison("up") },
@@ -565,6 +570,7 @@ test("period_comparison shows each number now and before", () => {
     ],
     current: { from: "2026-11-07", to: "2026-11-13" },
     days: 7,
+    moreCampaignsExist: false,
     previous: { from: "2026-10-31", to: "2026-11-06" },
     tooFewSends: [],
     total: comparison("down"),
@@ -637,6 +643,8 @@ const tagGroup = (tag: string | null, replied: number) => ({
 test("tag_rollup groups results by tag, naming the untagged group", () => {
   const rollup: TagRollup = {
     campaigns: 4,
+    campaignsRead: 4,
+    moreCampaignsExist: true,
     period: { from: null, to: null },
     tags: [tagGroup("client-a", 30), tagGroup(null, 20)],
     tooFewSends: [],
@@ -647,7 +655,8 @@ test("tag_rollup groups results by tag, naming the untagged group", () => {
     "4 campaigns · 2 tags",
     "client-a | 2         | 500  | 30      | 6.0% (4.0–8.0%) | —",
     "(no tag) | 2         | 500  | 20      | 4.0% (4.0–8.0%) | —",
-    "client-a | 6"
+    "client-a | 6",
+    "• 🟡 Stopped at 4 campaigns read (max_campaigns); more exist and are not in this answer."
   );
 });
 
@@ -667,8 +676,10 @@ const report = (withActions: boolean): ClientReport => ({
   bottom: [],
   bounceProblems: [],
   campaigns: 3,
+  campaignsRead: 3,
   days: 7,
   leftOut: ["anomalies: the vendor reports no daily counts"],
+  moreCampaignsExist: false,
   period: { from: "2026-11-07", to: "2026-11-13" },
   previousPeriod: { from: "2026-10-31", to: "2026-11-06" },
   runningOutOfLeads: null,

@@ -258,7 +258,8 @@ export const domainHealth = defineInsight({
       context,
       (cap) => outbound.senders.listAll({ max: cap }),
       maxSenders,
-      "senders"
+      "senders",
+      "max_senders"
     );
 
     const byDomain = new Map<string, Checked[]>();

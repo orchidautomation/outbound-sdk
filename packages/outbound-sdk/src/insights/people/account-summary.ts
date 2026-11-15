@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import type { Lead } from "../../internal/entities.ts";
 import { OutboundError } from "../../internal/errors.ts";
+import type { Capped } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { total } from "../stats.ts";
@@ -17,7 +18,6 @@ import {
   positiveLabelsField,
   readCappedFlag,
 } from "./read.ts";
-import type { Capped } from "./read.ts";
 
 const input = z.object({
   allow_free_domains: z
@@ -180,7 +180,8 @@ const readLeads = async (
       context,
       (cap) => outbound.leads.listAll({ max: cap }),
       maxLeads,
-      "leads"
+      "leads",
+      "max_leads"
     );
   }
 
@@ -196,7 +197,8 @@ const readLeads = async (
     context,
     (cap) => outbound.campaigns.listAll({ max: cap }),
     maxCampaigns,
-    "campaigns"
+    "campaigns",
+    "max_campaigns"
   );
 
   const leads: Lead[] = [];
@@ -204,7 +206,9 @@ const readLeads = async (
 
   for (const campaign of campaigns.items) {
     if (leads.length >= maxLeads) {
-      context.partial(`Stopped at ${maxLeads} leads; more campaigns remain.`);
+      context.partial(
+        `Stopped at ${maxLeads} leads (max_leads); more campaigns remain.`
+      );
       capped = true;
       break;
     }
@@ -214,7 +218,8 @@ const readLeads = async (
       context,
       (cap) => outbound.campaign(campaign.ref).leads.listAll({ max: cap }),
       maxLeads - leads.length,
-      "leads of a campaign"
+      "leads of a campaign",
+      "max_leads"
     );
 
     leads.push(...found.items);

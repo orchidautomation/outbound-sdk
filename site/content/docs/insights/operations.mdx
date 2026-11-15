@@ -25,6 +25,8 @@ Five of them (`periodComparison`, `campaignRanking`, `channelMix`, `tagRollup` a
 | `statuses` | `["active", "paused", "completed"]` | at least one campaign status | Only campaigns in one of these states are read. |
 | `max_campaigns` | 25 | 1 to 200 | The most campaigns to read. |
 
+Their `data` says how many campaigns were read in `campaignsRead`, and `moreCampaignsExist` is `true` when `max_campaigns` stopped the listing with campaigns left. Those campaigns are in no part of the answer: a campaign past the cap can be the best one, or the one with the bounce problem.
+
 `campaignRanking`, `channelMix`, `tagRollup` and `campaignDiagnosis` also take a date range:
 
 | Input | Default | Range | What it is |
@@ -210,6 +212,7 @@ The last `days` complete days against the `days` before, per campaign and in tot
 `data` (`PeriodComparison`):
 
 - `days`, `current`, `previous`: the two periods as `from` and `to`.
+- `campaignsRead`, `moreCampaignsExist`.
 - `campaigns`: one entry per campaign, with `current` and `previous` (counts and the three rates), `change` (current minus previous; rates change in points, so 0.02 is two points), `replyRateTest` (`z`, `pValue`, `significant`), `verdict` (`up`, `down`, `no_real_change` or `unknown`) and a `finding` sentence. Largest change in reply rate first.
 - `tooFewSends`: campaigns under `min_sent` in either period, with `currentSent` and `previousSent`.
 - `total`: the same comparison for every campaign read, added together. Each rate counts only the campaigns that report both its count and what it is divided by, so the bounces of the campaigns that report them are never divided by every campaign's sends.
@@ -250,7 +253,7 @@ Which campaigns are best, ranked so a small sample cannot win on luck.
 
 `data` (`CampaignRanking`):
 
-- `metric`, `better` (`higher` or `lower`), `period`.
+- `metric`, `better` (`higher` or `lower`), `period`, `campaignsRead`, `moreCampaignsExist`.
 - `ranked`: best first, each with `rank`, `sent`, and the rate as `count`, `of`, `rate`, `low` and `high`.
 - `tooFewSends`: campaigns under `min_sent`, with the `reason`.
 - `unknown`: campaigns whose count for this metric the vendor does not report, with the `reason`.
@@ -290,7 +293,7 @@ Email against LinkedIn, from campaign totals added up per channel.
 
 `data` (`ChannelMix`):
 
-- `period`.
+- `period`, `campaignsRead`, `moreCampaignsExist`.
 - `channels`: email first, then LinkedIn, only the channels that have campaigns. Each has `campaigns`, `sent`, `contacted`, `replied`, `positive`, `bounced`, `replyRate`, `positiveRate` and `acceptance` (connection requests accepted out of those sent; `null` for email).
 - `comparison`: `higher` (the channel with the higher reply rate), `difference` and the `test`. `null` when there is one channel, or a channel has no counts to compare.
 - `finding`: the answer in a sentence.
@@ -330,7 +333,7 @@ Results grouped by campaign tag, for example one tag per client, offer or audien
 
 `data` (`TagRollup`):
 
-- `period`, `campaigns` (campaigns read).
+- `period`, `campaigns` (campaigns read), `campaignsRead` (the same number) and `moreCampaignsExist`.
 - `tags`: one entry per tag, with `tag` (`null` for campaigns that carry none), `campaigns`, `sent`, `contacted`, `replied`, `positive`, `bounced`, and `replyRate`, `positiveRate` and `bounceRate` with their intervals. Best first, by the low end of the reply rate interval.
 - `tooFewSends`: tags under `min_sent`.
 
@@ -377,7 +380,7 @@ One report for one client or workspace over the last `days` complete days, compo
 
 `data` (`ClientReport`):
 
-- `days`, `period`, `previousPeriod`, `campaigns` (campaigns read).
+- `days`, `period`, `previousPeriod`, `campaigns` (campaigns read), `campaignsRead` (the same number) and `moreCampaignsExist`.
 - `totals`: every campaign added together, as in `periodComparison`: `current`, `previous`, `change`, `replyRateTest`, `verdict` and `finding`. A rate counts only the campaigns that report both sides of it.
 - `top`, `bottom`: the best and worst campaigns by the low end of the reply rate interval. `bottom` never repeats a campaign in `top`.
 - `bounceProblems`: campaigns over `max_bounce_rate`, worst first.

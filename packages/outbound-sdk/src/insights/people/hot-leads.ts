@@ -281,10 +281,11 @@ const listLeads = async (
       ? outbound.leads.listAll({ max: maxLeads })
       : outbound.campaign(campaign).leads.listAll({ max: maxLeads });
 
-  const leads = await context.all(
-    walk,
-    `${maxLeads} ${campaign === null ? "leads" : "leads of a campaign"}`
-  );
+  const leads = await context.all(walk, {
+    input: "max_leads",
+    max: maxLeads,
+    what: campaign === null ? "leads" : "leads of a campaign",
+  });
 
   // An unknown campaign lists no leads, which would read as nobody engaged.
   if (campaign !== null && leads.length === 0) {
@@ -325,7 +326,11 @@ const repliedPastCap = async (
 
   const replies = await context.all(
     outbound.replies.listAll({ max: RECENT_REPLIES, ...range }),
-    `${RECENT_REPLIES} replies`
+    {
+      input: null,
+      max: RECENT_REPLIES,
+      what: "recent replies looked through for leads past max_leads",
+    }
   );
 
   const listed = new Set(read.map((lead) => lead.ref));

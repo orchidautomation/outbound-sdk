@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import type { Channel } from "../../internal/entities.ts";
 import { sumCounts } from "../../internal/metrics.ts";
+import type { CampaignsRead } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import { compareRates, percent, pText, round } from "../stats.ts";
 import type { ProportionTest } from "../stats.ts";
@@ -53,7 +54,7 @@ export interface ChannelComparison {
   readonly test: ProportionTest;
 }
 
-export interface ChannelMix {
+export interface ChannelMix extends CampaignsRead {
   readonly period: OpenRange;
   /** Email first, then LinkedIn; only the channels that have campaigns. */
   readonly channels: readonly ChannelGroup[];
@@ -193,7 +194,7 @@ export const channelMix = defineInsight({
   needs: ["stats.campaign"],
   next: "Use campaign_ranking to see which campaigns carry the better channel.",
   run: async (context, options) => {
-    const entries = await readCampaignTotals(context, options);
+    const { entries, read } = await readCampaignTotals(context, options);
     const channels = byChannel(entries);
     const providers = byProvider(entries);
 
@@ -212,6 +213,7 @@ export const channelMix = defineInsight({
     }
 
     const mix: ChannelMix = {
+      ...read,
       ...compare(
         channels.map((each) => each.group),
         options.alpha

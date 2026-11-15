@@ -11,34 +11,18 @@ import type {
   ReplyCategory,
 } from "../../internal/entities.ts";
 import type { BulkResult, ListAll } from "../../internal/outbound/api.ts";
+import { readCampaignsIn, readCapped } from "../capped.ts";
+import type { Capped } from "../capped.ts";
 import type { InsightContext } from "../define.ts";
 
-export interface Capped<Item> {
-  readonly items: Item[];
-  /** `true` when `max` stopped the read with more records left. */
-  readonly capped: boolean;
-}
-
-/** Reads at most `max` records, says so in a note when more exist, and says whether they did. */
-export const readCappedFlag = async <Item>(
+/** Reads at most `max` records, and says so in a note naming `input` when more exist. */
+export const readCappedFlag = <Item>(
   context: InsightContext,
   open: (max: number) => ListAll<Item>,
   max: number,
-  what: string
-): Promise<Capped<Item>> => {
-  const walk = open(max);
-  const items = await context.all(walk, `${max} ${what}`);
-
-  return { capped: walk.truncated, items };
-};
-
-/** Reads at most `max` records, and says so in a note when more exist. */
-export const readCapped = <Item>(
-  context: InsightContext,
-  open: (max: number) => ListAll<Item>,
-  max: number,
-  what: string
-): Promise<Item[]> => context.all(open(max), `${max} ${what}`);
+  what: string,
+  input: string
+): Promise<Capped<Item>> => readCapped(context, open, { input, max, what });
 
 /**
  * Reads records by ref in one batch and maps them by ref. A record that
@@ -81,65 +65,34 @@ export const statusesField = z
   .default(["active"])
   .describe("Campaign statuses to consider, for example active or paused");
 
-/**
- * Campaigns in the given statuses, up to `max`. Without a status filter on
- * the adapter the first `max` campaigns are read and filtered here.
- */
+/** Campaigns in the given statuses, up to `max_campaigns`. */
 export const campaignsIn = async (
   context: InsightContext,
   statuses: readonly CampaignStatus[],
   max: number
 ): Promise<Campaign[]> => {
-  const { outbound } = context;
-  const wanted = [...new Set(statuses)];
+  const { items } = await readCampaignsIn(context, statuses, max);
 
-  if (outbound.capabilities["campaigns.status"] === false) {
-    const every = await readCapped(
-      context,
-      (cap) => outbound.campaigns.listAll({ max: cap }),
-      max,
-      "campaigns"
-    );
-
-    return every.filter((campaign) => wanted.includes(campaign.status));
-  }
-
-  const campaigns: Campaign[] = [];
-
-  for (const status of wanted) {
-    const room = max - campaigns.length;
-
-    if (room <= 0) {
-      context.partial(`Stopped at ${max} campaigns; more may exist.`);
-      break;
-    }
-
-    // oxlint-disable-next-line no-await-in-loop -- each status reads only the room the earlier ones left under the cap.
-    const found = await readCapped(
-      context,
-      (cap) => outbound.campaigns.listAll({ max: cap, status }),
-      room,
-      "campaigns"
-    );
-
-    campaigns.push(...found);
-  }
-
-  return campaigns;
+  return items;
 };
 
-/** The leads of one campaign, up to `max`. Needs `leads.byCampaign`. */
-export const leadsOf = (
+/** The leads of one campaign, up to `max`, the value of the input named. Needs `leads.byCampaign`. */
+export const leadsOf = async (
   context: InsightContext,
   campaign: string,
-  max: number
-): Promise<Lead[]> =>
-  readCapped(
+  max: number,
+  input: string
+): Promise<Lead[]> => {
+  const { items } = await readCappedFlag(
     context,
     (cap) => context.outbound.campaign(campaign).leads.listAll({ max: cap }),
     max,
-    "leads of a campaign"
+    "leads of a campaign",
+    input
   );
+
+  return items;
+};
 
 /** First and last name joined, or `null` when the vendor has neither. */
 export const nameOf = (lead: Lead): string | null => {

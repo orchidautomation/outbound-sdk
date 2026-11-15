@@ -3,6 +3,7 @@
 
 import { z } from "zod";
 
+import type { CampaignsRead } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import { median, round } from "../stats.ts";
 import {
@@ -73,7 +74,7 @@ export interface Ranking {
   readonly gap: RankingGap;
 }
 
-export interface CampaignRanking extends Ranking {
+export interface CampaignRanking extends Ranking, CampaignsRead {
   readonly metric: RankingMetric;
   readonly better: "higher" | "lower";
   readonly period: OpenRange;
@@ -163,10 +164,11 @@ export const campaignRanking = defineInsight({
   needs: ["stats.campaign"],
   next: "Use campaign_diagnosis on the campaign ranked last to see why it is behind.",
   run: async (context, options) => {
-    const entries = await readCampaignTotals(context, options);
+    const { entries, read } = await readCampaignTotals(context, options);
 
     const ranking: CampaignRanking = {
       ...rankCampaigns(entries, options.metric, options.min_sent),
+      ...read,
       better: options.metric === "bounce_rate" ? "lower" : "higher",
       metric: options.metric,
       period: { from: options.from, to: options.to },

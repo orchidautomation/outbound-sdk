@@ -19,6 +19,7 @@ import {
   words,
 } from "./format.ts";
 import {
+  campaignsCapped,
   flagged,
   LEFT,
   measured,
@@ -86,6 +87,7 @@ const campaignRanking: CardBuilder = (data) => {
   const [first] = ranked;
 
   return {
+    bullets: campaignsCapped(data),
     chart: seriesChart(
       "bar",
       `${metric} by campaign (%)`,
@@ -129,6 +131,7 @@ const channelMix: CardBuilder = (data) => {
   const channels = rows(data, "channels");
 
   return {
+    bullets: campaignsCapped(data),
     chart: pieChart(
       "Replies by channel",
       channels.map((channel) => [
@@ -195,6 +198,7 @@ const periodComparison: CardBuilder = (data) => {
   const total = child(data, "total");
 
   return {
+    bullets: campaignsCapped(data),
     finding: str(total, "finding"),
     stats: comparisonStats(total),
     subtitle: `${range(child(data, "current"))}, against ${range(child(data, "previous"))}`,
@@ -245,6 +249,7 @@ const tagRollup: CardBuilder = (data) => {
   const tags = rows(data, "tags");
 
   return {
+    bullets: campaignsCapped(data),
     chart: seriesChart(
       "bar",
       "Reply rate by tag (%)",
@@ -283,7 +288,10 @@ const clientReport: CardBuilder = (data) => {
   const actions = rows(data, "actions");
 
   return {
-    bullets: actions.map((action) => `👉 ${show(action, "action")}`),
+    bullets: [
+      ...campaignsCapped(data),
+      ...actions.map((action) => `👉 ${show(action, "action")}`),
+    ],
     finding: str(totals, "finding"),
     notes: strings(data, "leftOut").map((part) => `Left out: ${part}`),
     stats: comparisonStats(totals),

@@ -142,7 +142,8 @@ export const senderLoad = defineInsight({
       context,
       (cap) => outbound.senders.listAll({ max: cap }),
       options.max_senders,
-      "senders"
+      "senders",
+      "max_senders"
     );
 
     const campaigns = await readCampaigns(
@@ -157,7 +158,12 @@ export const senderLoad = defineInsight({
 
     const read = await mapConcurrent(campaigns, async (campaign) => ({
       campaign,
-      own: await readCampaignSenders(context, campaign, options.max_senders),
+      own: await readCampaignSenders(
+        context,
+        campaign,
+        options.max_senders,
+        "max_senders"
+      ),
     }));
 
     for (const { campaign, own } of read) {

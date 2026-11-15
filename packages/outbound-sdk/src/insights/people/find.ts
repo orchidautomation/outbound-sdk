@@ -161,7 +161,11 @@ export const findPerson = async (
     const answers = await mapConcurrent(round, (key) =>
       context.all(
         context.outbound.leads.listAll({ ...filterFor(key), max: maxRecords }),
-        `${maxRecords} records of the person`
+        {
+          input: "max_campaigns",
+          max: maxRecords,
+          what: "records of the person",
+        }
       )
     );
 

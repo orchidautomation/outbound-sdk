@@ -3,6 +3,7 @@
 import { z } from "zod";
 
 import { sumCounts } from "../../internal/metrics.ts";
+import type { CampaignsRead } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import {
   descending,
@@ -38,7 +39,7 @@ export interface TagGroup extends Totals, Rates {
   readonly campaigns: number;
 }
 
-export interface TagRollup {
+export interface TagRollup extends CampaignsRead {
   readonly period: OpenRange;
   /** Campaigns read. One with two tags counts in both of its tags. */
   readonly campaigns: number;
@@ -82,7 +83,7 @@ export const tagRollup = defineInsight({
   needs: ["stats.campaign"],
   next: "Use campaign_ranking to see the campaigns inside the best and the worst tag.",
   run: async (context, options) => {
-    const entries = await readCampaignTotals(context, options);
+    const { entries, read } = await readCampaignTotals(context, options);
     const members = new Map<string | null, CampaignTotals[]>();
 
     for (const entry of entries) {
@@ -119,6 +120,7 @@ export const tagRollup = defineInsight({
       (volumeOf(group) ?? 0) >= options.min_sent;
 
     const rollup: TagRollup = {
+      ...read,
       campaigns: entries.length,
       period: { from: options.from, to: options.to },
       tags: groups.filter(enough),

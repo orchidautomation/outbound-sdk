@@ -200,7 +200,8 @@ export const warmupReadiness = defineInsight({
       context,
       (cap) => outbound.senders.listAll({ max: cap }),
       options.max_senders,
-      "senders"
+      "senders",
+      "max_senders"
     );
 
     const healthChecked =

@@ -11,6 +11,7 @@ import type {
   Sender,
 } from "../../internal/entities.ts";
 import type { ListAll } from "../../internal/outbound/api.ts";
+import { readCampaignsIn, readCapped as readUpTo } from "../capped.ts";
 import type { InsightContext } from "../define.ts";
 
 export const statusesInput = z
@@ -30,72 +31,44 @@ export const dayInput = (what: string) =>
       `${what}, as YYYY-MM-DD. Leave out for the vendor's whole history.`
     );
 
-/** Walks a listing up to `max` records, and says so in a note when more exist. */
-export const readCapped = <Item>(
+/** Walks a listing up to `max` records, and says so in a note naming `input` when more exist. */
+export const readCapped = async <Item>(
   context: InsightContext,
   walk: (max: number) => ListAll<Item>,
   max: number,
-  what: string
-): Promise<Item[]> => context.all(walk(max), `${max} ${what}`);
+  what: string,
+  input: string
+): Promise<Item[]> => {
+  const { items } = await readUpTo(context, walk, { input, max, what });
 
-/** The campaigns in the given statuses, up to `max`. */
+  return items;
+};
+
+/** The campaigns in the given statuses, up to `max_campaigns`. */
 export const readCampaigns = async (
   context: InsightContext,
   statuses: readonly CampaignStatus[],
   max: number
 ): Promise<Campaign[]> => {
-  const { outbound } = context;
+  const { items } = await readCampaignsIn(context, statuses, max);
 
-  if (outbound.capabilities["campaigns.status"] === false) {
-    // The vendor cannot filter by status, so the cap counts every campaign read.
-    const every = await readCapped(
-      context,
-      (cap) => outbound.campaigns.listAll({ max: cap }),
-      max,
-      "campaigns"
-    );
-
-    return every.filter((campaign) => statuses.includes(campaign.status));
-  }
-
-  const found: Campaign[] = [];
-
-  for (const status of new Set(statuses)) {
-    const room = max - found.length;
-
-    if (room <= 0) {
-      context.partial(
-        `The cap of ${max} campaigns was reached before ${status} campaigns were read.`
-      );
-      break;
-    }
-
-    found.push(
-      // oxlint-disable-next-line no-await-in-loop -- each status reads only the room the earlier ones left under the cap.
-      ...(await readCapped(
-        context,
-        (cap) => outbound.campaigns.listAll({ max: cap, status }),
-        room,
-        "campaigns"
-      ))
-    );
-  }
-
-  return found;
+  return items;
 };
 
 /** The senders attached to one campaign, up to `max`. */
 export const readCampaignSenders = (
   context: InsightContext,
   campaign: Campaign,
-  max: number
+  max: number,
+  input: string
 ): Promise<Sender[]> =>
   readCapped(
     context,
     (cap) =>
       context.outbound.campaign(campaign.ref).senders.listAll({ max: cap }),
     max,
-    `senders of campaign ${campaign.name}`
+    `senders of campaign ${campaign.name}`,
+    input
   );
 
 /** The part after the `@`, lowercased. `null` for a LinkedIn seat. */

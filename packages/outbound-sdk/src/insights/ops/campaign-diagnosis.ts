@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import type { CampaignSettings } from "../../internal/entities-account.ts";
 import type { Sender } from "../../internal/entities.ts";
+import { readCapped } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { total } from "../stats.ts";
@@ -21,7 +22,6 @@ import {
   ratesOf,
   readDaily,
   readTotals,
-  readUpTo,
   totalsOf,
 } from "./shared.ts";
 import type { CampaignLabel, OpenRange, Rates, Totals } from "./shared.ts";
@@ -160,11 +160,11 @@ const readExtras = async (
     !capabilities["senders.byCampaign"],
     "Sender status: the adapter cannot list a campaign's senders."
   )
-    ? await readUpTo(
-        context,
-        (max) => handle.senders.listAll({ max }),
-        options.maxSenders
-      )
+    ? await readCapped(context, (max) => handle.senders.listAll({ max }), {
+        input: "max_senders",
+        max: options.maxSenders,
+        what: "senders",
+      })
     : null;
 
   const recent = unless(

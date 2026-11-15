@@ -265,7 +265,9 @@ test("hot_leads says the answer is partial when max_leads stops the read, and li
     ["h3", 17],
   ]);
   assert.equal(capped.meta.complete, false);
-  assert.deepEqual(capped.meta.notes, ["Stopped at 3 leads; more exist."]);
+  assert.deepEqual(capped.meta.notes, [
+    "Stopped at 3 leads (max_leads); more exist.",
+  ]);
 
   const limited = await single(DATA).insights.hotLeads({ limit: 1 });
   assert.equal(limited.data.totals.hot, 4, "the count covers every hot lead");

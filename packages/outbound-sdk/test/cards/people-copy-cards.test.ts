@@ -531,6 +531,7 @@ test("copy_reuse names the best copy and each reused piece", () => {
   const reuse = (withBest: boolean): CopyReuse => ({
     bestCopy: withBest ? piece : null,
     campaignsRead: 4,
+    moreCampaignsExist: false,
     piecesOfCopy: 7,
     reused: [
       {

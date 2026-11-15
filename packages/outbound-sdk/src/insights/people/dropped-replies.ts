@@ -10,11 +10,11 @@ import type {
   Message,
   Reply,
 } from "../../internal/entities.ts";
+import type { Capped } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { round } from "../stats.ts";
 import { nameOf, readByRef, readCappedFlag } from "./read.ts";
-import type { Capped } from "./read.ts";
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -296,7 +296,8 @@ const readReplies = (
     (cap) =>
       outbound.replies.listAll(filtered ? { max: cap, since } : { max: cap }),
     max,
-    "replies"
+    "replies",
+    "max_replies"
   );
 };
 

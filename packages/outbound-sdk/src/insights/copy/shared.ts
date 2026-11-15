@@ -1,17 +1,11 @@
-// What the copy insights share: capped reads, the base a step's rate is
-// divided by, and a rate with its interval.
+// What the copy insights share: the base a step's rate is divided by, and a
+// rate with its interval.
 
 import { z } from "zod";
 
-import type {
-  Campaign,
-  CampaignStatus,
-  MetricRow,
-} from "../../internal/entities.ts";
+import type { MetricRow } from "../../internal/entities.ts";
 import { sumCounts } from "../../internal/metrics.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
-import type { ListAll } from "../../internal/outbound/api.ts";
-import type { InsightContext } from "../define.ts";
 import { rate, wilson } from "../stats.ts";
 import type { Interval } from "../stats.ts";
 
@@ -33,50 +27,6 @@ export const rangeOf = (from: string | null, to: string | null): DayRange => ({
   from: from ?? undefined,
   to: to ?? undefined,
 });
-
-/** Reads a listing up to `max` records; a listing that holds more is reported as cut off. */
-export const readCapped = <Item>(
-  context: InsightContext,
-  walk: (max: number) => ListAll<Item>,
-  max: number
-): Promise<Item[]> => context.all(walk(max));
-
-/** The campaigns in the given statuses, up to `max` in all. */
-export const campaignsIn = async (
-  context: InsightContext,
-  statuses: readonly CampaignStatus[],
-  max: number
-): Promise<Campaign[]> => {
-  const { outbound } = context;
-
-  if (outbound.capabilities["campaigns.status"] === false) {
-    // The vendor cannot filter by status, so the cap applies before the filter.
-    const every = await readCapped(
-      context,
-      (cap) => outbound.campaigns.listAll({ max: cap }),
-      max
-    );
-
-    return every.filter((campaign) => statuses.includes(campaign.status));
-  }
-
-  const found: Campaign[] = [];
-
-  // A status read after the cap is reached still asks for one record, so
-  // campaigns left out are reported instead of silently dropped.
-  for (const status of new Set(statuses)) {
-    // oxlint-disable-next-line no-await-in-loop -- each status reads only the room the earlier ones left under the cap.
-    const page = await readCapped(
-      context,
-      (cap) => outbound.campaigns.listAll({ max: cap, status }),
-      max - found.length
-    );
-
-    found.push(...page);
-  }
-
-  return found;
-};
 
 export type RateBasis = "contacted" | "delivered" | "sent";
 

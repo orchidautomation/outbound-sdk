@@ -215,3 +215,74 @@ test("dropped_replies notes a reply that carries no lead ref, instead of silentl
     "1 dropped reply carries no lead ref, since the vendor does not tie a reply to its lead, so name, email and linkedinUrl are null there.",
   ]);
 });
+
+const day = (days: number): string =>
+  new Date(NOW - days * 86_400_000).toISOString().slice(0, 10);
+
+// 30 active campaigns, past the default max_campaigns of 25, and a paused one
+// with a bounce problem that the active ones crowd out (OUT-46).
+const CROWDED: MemoryData = {
+  campaigns: [
+    ...Array.from({ length: 30 }, (_, index) => ({
+      id: `c${index}`,
+      name: `Campaign ${index}`,
+      status: "active" as const,
+    })),
+    { id: "p1", name: "Paused bouncy", status: "paused" as const },
+  ],
+  stats: [...Array.from({ length: 30 }, (_, index) => `c${index}`), "p1"].map(
+    (campaignId) => ({
+      campaignId,
+      counts: {
+        bounced: campaignId === "p1" ? 40 : 1,
+        contacted: 200,
+        replied: campaignId === "c29" ? 40 : 4,
+        sent: 200,
+      },
+      date: day(3),
+    })
+  ),
+};
+
+test("the campaign insights say in data that max_campaigns left campaigns unread", async () => {
+  const outbound = single(CROWDED);
+  const options = { now: NOW };
+
+  const results = [
+    await outbound.insights.campaignRanking({}, options),
+    await outbound.insights.clientReport({}, options),
+    await outbound.insights.periodComparison({}, options),
+    await outbound.insights.tagRollup({}, options),
+    await outbound.insights.channelMix({}, options),
+    await outbound.insights.copyReuse({}, options),
+  ];
+
+  for (const result of results) {
+    assert.equal(result.data.moreCampaignsExist, true, result.insight);
+    assert.equal(result.meta.complete, false, result.insight);
+  }
+
+  const [ranking, report] = results;
+
+  assert.equal(ranking?.data.campaignsRead, 25);
+  assert.ok(
+    ranking?.meta.notes.includes(
+      "Stopped at 25 campaigns (max_campaigns); more exist."
+    )
+  );
+  assert.equal(report?.data.campaignsRead, 25);
+
+  const control = await outbound.insights.campaignRanking(
+    { max_campaigns: 40 },
+    options
+  );
+
+  assert.equal(control.data.campaignsRead, 31);
+  assert.equal(control.data.moreCampaignsExist, false);
+  assert.equal(control.data.ranked[0]?.name, "Campaign 29");
+
+  includes(
+    await card(CROWDED, "campaign_ranking"),
+    "🟡 Stopped at 25 campaigns read (max_campaigns); more exist and are not in this answer."
+  );
+});

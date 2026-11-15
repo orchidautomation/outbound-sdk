@@ -237,7 +237,7 @@ test("personalization_gaps says the answer is partial when max_leads stops the r
   assert.equal(capped.data.totals.affectedRate, 0.5);
   assert.equal(capped.meta.complete, false);
   assert.deepEqual(capped.meta.notes, [
-    "Stopped at 2 leads of a campaign; more exist.",
+    "Stopped at 2 leads of a campaign (max_leads); more exist.",
   ]);
 
   const limited = await single(DATA).insights.personalizationGaps({

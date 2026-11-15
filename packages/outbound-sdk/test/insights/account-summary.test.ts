@@ -277,7 +277,9 @@ test("account_summary says the answer is partial when max_leads stops the read",
   assert.equal(capped.data.totals.leadsRead, 2);
   assert.equal(capped.data.totals.people, 1);
   assert.equal(capped.meta.complete, false);
-  assert.deepEqual(capped.meta.notes, ["Stopped at 2 leads; more exist."]);
+  assert.deepEqual(capped.meta.notes, [
+    "Stopped at 2 leads (max_leads); more exist.",
+  ]);
 
   const exact = await single(MAIL).insights.accountSummary({
     domain: "acme.example",
@@ -311,7 +313,7 @@ test("account_summary reads campaign by campaign when the tool cannot list every
   assert.equal(fewCampaigns.data.totals.people, 3);
   assert.equal(fewCampaigns.meta.complete, false);
   assert.deepEqual(fewCampaigns.meta.notes, [
-    "Stopped at 1 campaigns; more exist.",
+    "Stopped at 1 campaigns (max_campaigns); more exist.",
   ]);
 
   const fewLeads = await outbound.insights.accountSummary({
@@ -323,7 +325,7 @@ test("account_summary reads campaign by campaign when the tool cannot list every
   assert.equal(fewLeads.data.totals.leadsRead, 6);
   assert.equal(fewLeads.meta.complete, false);
   assert.deepEqual(fewLeads.meta.notes, [
-    "Stopped at 6 leads; more campaigns remain.",
+    "Stopped at 6 leads (max_leads); more campaigns remain.",
   ]);
 });
 

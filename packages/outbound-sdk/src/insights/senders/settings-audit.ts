@@ -351,7 +351,8 @@ export const settingsAudit = defineInsight({
             ? readCampaignSenders(
                 context,
                 campaign,
-                options.max_senders_per_campaign
+                options.max_senders_per_campaign,
+                "max_senders_per_campaign"
               )
             : null,
         ]);

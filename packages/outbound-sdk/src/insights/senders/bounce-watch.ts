@@ -167,7 +167,12 @@ const sendersOver = async (
     readonly read: SenderReader;
   }
 ): Promise<BounceSender[]> => {
-  const senders = await readCampaignSenders(context, campaign, options.max);
+  const senders = await readCampaignSenders(
+    context,
+    campaign,
+    options.max,
+    "max_senders_per_campaign"
+  );
 
   const read = await mapConcurrent(senders, async (sender) => ({
     counts: await options.read(sender.ref),
@@ -228,7 +233,8 @@ export const bounceWatch = defineInsight({
       context,
       (cap) => outbound.campaigns.listAll({ max: cap }),
       options.max_campaigns,
-      "campaigns"
+      "campaigns",
+      "max_campaigns"
     );
 
     const withSenders =

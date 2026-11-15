@@ -18,7 +18,14 @@ import {
   words,
   yesNo,
 } from "./format.ts";
-import { flagged, LEFT, RIGHT, verdict, withInterval } from "./parts.ts";
+import {
+  campaignsCapped,
+  flagged,
+  LEFT,
+  RIGHT,
+  verdict,
+  withInterval,
+} from "./parts.ts";
 import type { CardBuilder } from "./tool-cards.ts";
 
 const stepFunnel: CardBuilder = (data) => {
@@ -147,7 +154,10 @@ const copyReuse: CardBuilder = (data) => {
   const bestCopy = child(data, "bestCopy");
 
   return {
-    bullets: reused.map((piece) => show(piece, "finding")),
+    bullets: [
+      ...campaignsCapped(data),
+      ...reused.map((piece) => show(piece, "finding")),
+    ],
     finding:
       str(bestCopy, "contentHash") === null
         ? "No copy has enough results to name a best one."

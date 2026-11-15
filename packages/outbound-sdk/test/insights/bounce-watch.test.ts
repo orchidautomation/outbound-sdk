@@ -298,7 +298,9 @@ test("bounce_watch says so when a cap stops the campaigns or a campaign's sender
   assert.equal(fewCampaigns.data.totals.campaigns, 2);
   assert.equal(fewCampaigns.meta.complete, false);
   assert.ok(
-    fewCampaigns.meta.notes.includes("Stopped at 2 campaigns; more exist.")
+    fewCampaigns.meta.notes.includes(
+      "Stopped at 2 campaigns (max_campaigns); more exist."
+    )
   );
 
   const fewSenders = await single(DATA).insights.bounceWatch({
@@ -310,7 +312,7 @@ test("bounce_watch says so when a cap stops the campaigns or a campaign's sender
   assert.equal(fewSenders.meta.complete, false);
   assert.ok(
     fewSenders.meta.notes.includes(
-      "Stopped at 1 senders of campaign Hot; more exist."
+      "Stopped at 1 senders of campaign Hot (max_senders_per_campaign); more exist."
     )
   );
 });

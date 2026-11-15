@@ -399,7 +399,9 @@ test("dropped_replies says the answer is partial when max_replies stops the read
   assert.equal(result.data.totals.moreRepliesExist, true);
   assert.equal(result.data.dropped.length, 1);
   assert.equal(result.meta.complete, false);
-  assert.deepEqual(result.meta.notes, ["Stopped at 2 replies; more exist."]);
+  assert.deepEqual(result.meta.notes, [
+    "Stopped at 2 replies (max_replies); more exist.",
+  ]);
 });
 
 test("dropped_replies is refused without a list of replies", async () => {

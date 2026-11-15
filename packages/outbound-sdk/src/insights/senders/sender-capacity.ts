@@ -149,7 +149,12 @@ const readOne = async (
     // The senders are only compared with the campaign's own limit.
     senders:
       settings !== null && capabilities["senders.byCampaign"]
-        ? await readCampaignSenders(context, campaign, maxSenders)
+        ? await readCampaignSenders(
+            context,
+            campaign,
+            maxSenders,
+            "max_senders"
+          )
         : null,
   };
 };
@@ -330,7 +335,8 @@ export const senderCapacity = defineInsight({
       context,
       (cap) => outbound.senders.listAll({ max: cap }),
       maxSenders,
-      "senders"
+      "senders",
+      "max_senders"
     );
 
     const campaigns = await readCampaigns(context, ["active"], maxCampaigns);

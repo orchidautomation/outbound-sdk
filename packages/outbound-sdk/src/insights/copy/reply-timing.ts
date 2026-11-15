@@ -4,10 +4,10 @@ import { z } from "zod";
 
 import type { Message } from "../../internal/entities.ts";
 import { confirmCampaign } from "../campaign.ts";
+import { readCapped } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { median, percentile, rate, round } from "../stats.ts";
-import { readCapped } from "./shared.ts";
 
 const DAY_MS = 86_400_000;
 const HOUR_MS = 3_600_000;
@@ -247,7 +247,7 @@ const readMessages = async (
   const filters =
     outbound.capabilities["messages.since"] === false ? {} : { since };
 
-  const messages = await readCapped(
+  const { items: messages } = await readCapped(
     context,
     (cap) =>
       campaign === null
@@ -255,7 +255,7 @@ const readMessages = async (
         : outbound
             .campaign(campaign)
             .messages.listAll({ ...filters, max: cap }),
-    max
+    { input: "max_messages", max, what: "messages" }
   );
 
   // An unknown campaign lists no messages, which would read as nobody replied.

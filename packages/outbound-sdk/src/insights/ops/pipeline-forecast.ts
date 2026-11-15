@@ -4,17 +4,11 @@
 import { z } from "zod";
 
 import type { Campaign, Lead, LeadStatus } from "../../internal/entities.ts";
+import { readCapped } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { percent, round, spoken, total } from "../stats.ts";
-import {
-  labelOf,
-  lastDays,
-  ratesOf,
-  readDaily,
-  readTotals,
-  readUpTo,
-} from "./shared.ts";
+import { labelOf, lastDays, ratesOf, readDaily, readTotals } from "./shared.ts";
 import type { CampaignLabel, Measured } from "./shared.ts";
 
 const input = z.object({
@@ -134,19 +128,34 @@ const describe = (
     : `${leads}; expect about ${spoken(forecast.expected)} replies (between ${spoken(forecast.low)} and ${spoken(forecast.high)}). This is an estimate.`;
 };
 
+export interface ForecastOptions {
+  readonly days: number;
+  readonly maxLeads: number;
+  /** The input `maxLeads` came from, for the note when it stops the read. */
+  readonly leadsInput: string;
+  /** What `maxLeads` counts, for that note: `leads`, or `leads of a campaign`. */
+  readonly leadsWhat: string;
+}
+
 /** Reads one campaign's leads, totals and recent pace, and projects what is left. */
 export const forecastCampaign = async (
   context: InsightContext,
   campaign: Campaign,
-  options: { readonly days: number; readonly maxLeads: number }
+  options: ForecastOptions
 ): Promise<PipelineForecast> => {
   const handle = context.outbound.campaign(campaign.ref);
 
-  const { complete, items: leads } = await readUpTo(
+  const { capped, items: leads } = await readCapped(
     context,
     (max) => handle.leads.listAll({ max }),
-    options.maxLeads
+    {
+      input: options.leadsInput,
+      max: options.maxLeads,
+      what: options.leadsWhat,
+    }
   );
+
+  const complete = !capped;
 
   const byStatus = countStatuses(leads);
   const remaining = byStatus.active;
@@ -194,6 +203,8 @@ export const pipelineForecast = defineInsight({
 
     return await forecastCampaign(context, campaign, {
       days: options.days,
+      leadsInput: "max_leads",
+      leadsWhat: "leads",
       maxLeads: options.max_leads,
     });
   },

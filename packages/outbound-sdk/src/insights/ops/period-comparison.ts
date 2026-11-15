@@ -6,6 +6,8 @@ import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Campaign, CampaignStatus } from "../../internal/entities.ts";
 import { sumCounts } from "../../internal/metrics.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
+import { campaignsReadOf, readCampaignsIn } from "../capped.ts";
+import type { CampaignsRead } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { compareRates, percent, pText, round } from "../stats.ts";
@@ -18,7 +20,6 @@ import {
   partialNote,
   ratesAcross,
   ratesOf,
-  readCampaigns,
   readTotals,
   totalsOf,
   volumeOf,
@@ -76,7 +77,7 @@ export interface ThinCampaign extends CampaignLabel {
   readonly previousSent: number | null;
 }
 
-export interface PeriodComparison {
+export interface PeriodComparison extends CampaignsRead {
   readonly days: number;
   readonly current: DayRange;
   readonly previous: DayRange;
@@ -214,6 +215,7 @@ export interface Periods {
   readonly current: DayRange;
   readonly previous: DayRange;
   readonly campaigns: readonly CampaignPeriods[];
+  readonly read: CampaignsRead;
 }
 
 /** Each campaign's totals for the last `days` and the `days` before: two stats requests per campaign. */
@@ -228,14 +230,14 @@ export const readPeriods = async (
   const current = lastDays(context.now, options.days);
   const previous = lastDays(context.now, options.days, 1);
 
-  const found = await readCampaigns(
+  const listed = await readCampaignsIn(
     context,
     options.statuses,
     options.max_campaigns
   );
 
   const campaigns = await mapConcurrent(
-    found,
+    listed.items,
     async (campaign): Promise<CampaignPeriods> => {
       const [now, before] = await Promise.all([
         readTotals(context, campaign.ref, current),
@@ -246,7 +248,7 @@ export const readPeriods = async (
     }
   );
 
-  return { campaigns, current, previous };
+  return { campaigns, current, previous, read: campaignsReadOf(listed) };
 };
 
 /** Every campaign's two periods added together. */
@@ -332,6 +334,7 @@ export const periodComparison = defineInsight({
     }
 
     const comparison: PeriodComparison = {
+      ...periods.read,
       campaigns: campaigns.toSorted(
         (left, right) =>
           descending(

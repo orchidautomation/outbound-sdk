@@ -249,7 +249,12 @@ export const personalizationGaps = defineInsight({
     const leads =
       found.size === 0
         ? []
-        : await leadsOf(context, values.campaign, values.max_leads);
+        : await leadsOf(
+            context,
+            values.campaign,
+            values.max_leads,
+            "max_leads"
+          );
 
     if (found.size === 0) {
       context.note("The sequence uses no variables, so no lead was read.");

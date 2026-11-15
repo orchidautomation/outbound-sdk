@@ -356,7 +356,7 @@ test("reply_timing stops at max_messages and says the answer is partial", async 
   );
   assert.equal(result.meta.complete, false);
   assert.deepEqual(result.meta.notes, [
-    "A listing was cut off at its cap; more records exist.",
+    "Stopped at 5 messages (max_messages); more exist.",
   ]);
 });
 

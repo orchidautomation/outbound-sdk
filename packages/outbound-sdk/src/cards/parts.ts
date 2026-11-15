@@ -3,7 +3,17 @@
 
 import type { Json, JsonObject } from "../internal/json.ts";
 import type { Stat } from "./content.ts";
-import { child, int, mark, num, pctRange, show, words } from "./format.ts";
+import {
+  bool,
+  child,
+  int,
+  mark,
+  num,
+  pctRange,
+  plural,
+  show,
+  words,
+} from "./format.ts";
 
 export const LEFT = "left";
 export const RIGHT = "right";
@@ -72,3 +82,11 @@ export const range = (period: Json | undefined): string =>
 /** `4.2%` as a chart value: one decimal, or `null`. */
 export const percentPoint = (rate: number | null): number | null =>
   rate === null ? null : Math.round(rate * 1000) / 10;
+
+/** Says an answer stopped at `max_campaigns` with more campaigns left, or nothing. */
+export const campaignsCapped = (data: Json | undefined): string[] =>
+  bool(data, "moreCampaignsExist") === true
+    ? [
+        `🟡 Stopped at ${plural(num(data, "campaignsRead") ?? 0, "campaign")} read (max_campaigns); more exist and are not in this answer.`,
+      ]
+    : [];

@@ -9,7 +9,8 @@ import { campaignStatusSchema } from "../../internal/entities.ts";
 import type { Campaign, CampaignStatus } from "../../internal/entities.ts";
 import { sumCounts } from "../../internal/metrics.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
-import type { ListAll } from "../../internal/outbound/api.ts";
+import { campaignsReadOf, readCampaignsIn } from "../capped.ts";
+import type { CampaignsRead } from "../capped.ts";
 import type { InsightContext } from "../define.ts";
 import { rate, total, wilson } from "../stats.ts";
 
@@ -255,62 +256,6 @@ export const descending = (
   return right - left;
 };
 
-export interface Capped<Item> {
-  readonly items: Item[];
-  /** `false` when more records exist than the cap allowed. */
-  readonly complete: boolean;
-}
-
-/** Reads a listing up to `max` records, and says whether `max` cut it short. */
-export const readUpTo = async <Item>(
-  context: InsightContext,
-  list: (max: number) => ListAll<Item>,
-  max: number
-): Promise<Capped<Item>> => {
-  const walk = list(max);
-  const items = await context.all(walk);
-
-  return { complete: !walk.truncated, items };
-};
-
-/**
- * The campaigns in the given states, up to `max`. Asks the vendor per state
- * when it can filter, and filters after reading when it cannot.
- */
-export const readCampaigns = async (
-  context: InsightContext,
-  statuses: readonly CampaignStatus[],
-  max: number
-): Promise<Campaign[]> => {
-  const { campaigns } = context.outbound;
-  const wanted = [...new Set(statuses)];
-
-  if (context.outbound.capabilities["campaigns.status"] === false) {
-    const every = await readUpTo(
-      context,
-      (cap) => campaigns.listAll({ max: cap }),
-      max
-    );
-
-    return every.items.filter((campaign) => wanted.includes(campaign.status));
-  }
-
-  const found: Campaign[] = [];
-
-  for (const status of wanted) {
-    // oxlint-disable-next-line no-await-in-loop -- each status reads only the room the earlier ones left under the cap.
-    const listed = await readUpTo(
-      context,
-      (cap) => campaigns.listAll({ max: cap, status }),
-      max - found.length
-    );
-
-    found.push(...listed.items);
-  }
-
-  return found;
-};
-
 /** One campaign's counts over a range, added up. Every count is `null` when the vendor reports nothing. */
 export const readTotals = async (
   context: InsightContext,
@@ -328,6 +273,11 @@ export const readTotals = async (
 export interface CampaignTotals {
   readonly campaign: Campaign;
   readonly counts: MetricCounts;
+}
+
+export interface EveryCampaignTotals {
+  readonly entries: CampaignTotals[];
+  readonly read: CampaignsRead;
 }
 
 export interface ListInput extends OpenRange {
@@ -378,17 +328,19 @@ const readAllTotals = async (
 export const readCampaignTotals = async (
   context: InsightContext,
   input: ListInput
-): Promise<CampaignTotals[]> => {
-  const campaigns = await readCampaigns(
+): Promise<EveryCampaignTotals> => {
+  const listed = await readCampaignsIn(
     context,
     input.statuses,
     input.max_campaigns
   );
 
+  const campaigns = listed.items;
+
   const reported =
     campaigns.length > 1 ? await readAllTotals(context, input) : undefined;
 
-  return await mapConcurrent(
+  const entries = await mapConcurrent(
     campaigns,
     async (campaign): Promise<CampaignTotals> => ({
       campaign,
@@ -397,6 +349,8 @@ export const readCampaignTotals = async (
         (await readTotals(context, campaign.ref, input)),
     })
   );
+
+  return { entries, read: campaignsReadOf(listed) };
 };
 
 export interface DayCounts {

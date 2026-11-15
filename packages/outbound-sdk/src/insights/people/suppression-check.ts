@@ -235,7 +235,8 @@ export const suppressionCheck = defineInsight({
       context,
       (cap) => context.outbound.blocklist.listAll({ max: cap }),
       values.max_block_entries,
-      "block list entries"
+      "block list entries",
+      "max_block_entries"
     );
 
     const entries = listed.items;
@@ -262,7 +263,8 @@ export const suppressionCheck = defineInsight({
         (cap) =>
           context.outbound.campaign(campaign.ref).leads.listAll({ max: cap }),
         values.max_leads_per_campaign,
-        "leads of a campaign"
+        "leads of a campaign",
+        "max_leads_per_campaign"
       )),
     }));
 

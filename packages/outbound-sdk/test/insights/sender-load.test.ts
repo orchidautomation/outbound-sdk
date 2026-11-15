@@ -257,7 +257,9 @@ test("sender_load says so when a cap stops the campaigns or the senders", async 
   assert.deepEqual(fewCampaigns.data.overused, []);
   assert.equal(fewCampaigns.meta.complete, false);
   assert.ok(
-    fewCampaigns.meta.notes.includes("Stopped at 2 campaigns; more exist.")
+    fewCampaigns.meta.notes.includes(
+      "Stopped at 2 campaigns (max_campaigns); more exist."
+    )
   );
 
   // The cap is spent on active campaigns before the paused ones are reached.
@@ -270,7 +272,7 @@ test("sender_load says so when a cap stops the campaigns or the senders", async 
   assert.equal(spent.meta.complete, false);
   assert.ok(
     spent.meta.notes.includes(
-      "The cap of 6 campaigns was reached before paused campaigns were read."
+      "Stopped at 6 campaigns (max_campaigns); more exist."
     )
   );
 

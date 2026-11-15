@@ -50,7 +50,7 @@ Pass `meta.notes` on with the numbers. An answer cut short by a cap looks like a
 
 ## Caps
 
-Every read an insight makes has a cap you can set. The defaults keep one call to tens of requests on a real vendor. When a cap stops a read, `meta.complete` is `false` and a note names the cap. The answer is never padded or guessed.
+Every read an insight makes has a cap you can set. The defaults keep one call to tens of requests on a real vendor. When a cap stops a read, `meta.complete` is `false` and a note names the input to raise, for example "Stopped at 25 campaigns (max_campaigns); more exist." The answer is never padded or guessed.
 
 | Cap | Default | Where |
 | --- | --- | --- |
@@ -245,7 +245,7 @@ outbound insight client_report --input '{}'
 | `rows(stats)` | Records a stats read and returns its rows. |
 | `one(item)` | Records one lookup and returns the record. |
 | `page(page)` | Records one page and returns its items. An unfinished page marks the answer incomplete. |
-| `all(walk, cap)` | Walks a `listAll` to its end or its `max`, and marks the answer incomplete when `max` cut it short. |
+| `all(walk, cap)` | Walks a `listAll` to its end or its `max`, and marks the answer incomplete when `max` cut it short. `cap` (`{ max, what, input }`) names what was capped and the input that raises it, for the note. |
 | `note(text)` | Adds a note. The same note is kept once. |
 | `partial(reason)` | Marks the answer incomplete, with the reason as a note. |
 

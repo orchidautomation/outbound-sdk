@@ -181,7 +181,8 @@ export const leadCollisions = defineInsight({
       const leads = await leadsOf(
         context,
         campaign.ref,
-        values.max_leads_per_campaign
+        values.max_leads_per_campaign,
+        "max_leads_per_campaign"
       );
 
       return leads.map((lead): Entry => ({ campaign, lead }));
