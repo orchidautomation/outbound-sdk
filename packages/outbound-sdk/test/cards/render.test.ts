@@ -136,7 +136,7 @@ test("an insight's notes and an incomplete read are written under the card", () 
 
   includes(
     text,
-    "Note: Incomplete: a cap stopped a read early, so totals are a floor.",
+    "Note: Incomplete: a read stopped early or a tool did not answer, so totals are a floor.",
     "Note: Stopped at max_leads (100)."
   );
   excludes(read(cardFor("hot_leads", insight(hot(1)))), "Incomplete");

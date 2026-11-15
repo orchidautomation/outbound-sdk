@@ -27,6 +27,7 @@ import type {
   Workspace,
 } from "../entities.ts";
 import type { OutboundError } from "../errors.ts";
+import type { MemberFailure } from "../failures.ts";
 import type { Json } from "../json.ts";
 import type {
   NativeCatalog,
@@ -40,7 +41,7 @@ export interface ResultMeta {
   readonly evidence: Evidence;
   /** When the SDK got the answer, ISO 8601 UTC. */
   readonly fetchedAt: string;
-  /** `false` when more pages exist or a filter could not see everything. */
+  /** `false` when more pages exist, a filter could not see everything, or a tool on a combined instance did not answer. */
   readonly complete: boolean;
   /** Milliseconds spent waiting for the rate budget. */
   readonly throttledMs: number;
@@ -58,7 +59,15 @@ export interface PageResult<Item> {
   readonly items: readonly Item[];
   /** Pass back to `list` or `listAll` to continue. Absent on the last page. */
   readonly cursor?: string | undefined;
+  /** `false` when more pages exist, or when a tool on a combined instance did not answer. */
   readonly complete: boolean;
+  /**
+   * The tools on a combined instance that could not answer a person lookup
+   * while the others did. Their records are missing from `items`, so an
+   * empty page with a failure does not say the person is absent. Empty when
+   * every tool answered.
+   */
+  readonly failures: readonly MemberFailure[];
   readonly meta: ResultMeta;
 }
 
@@ -82,6 +91,11 @@ export interface ListAll<Item> extends AsyncIterable<Item> {
   readonly meta: ResultMeta | undefined;
   /** `true` once `max` stopped the walk while more records existed. */
   readonly truncated: boolean;
+  /**
+   * The tools on a combined instance that did not answer on any page fetched
+   * so far, each once. Their records are missing from the walk.
+   */
+  readonly failures: readonly MemberFailure[];
   /** Collects every record into an array. */
   readonly toArray: () => Promise<Item[]>;
 }

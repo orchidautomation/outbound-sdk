@@ -48,6 +48,12 @@ export const failover = (options: FailoverOptions): OutboundPlugin => {
       try {
         const output = await next(operation);
 
+        // An answer a tool is missing from is not kept: it would replace a
+        // whole one saved earlier.
+        if (output.failures !== undefined) {
+          return output;
+        }
+
         await options.store.set(
           key,
           { output, storedAt: fetchedAtOf(output.fetchedAt, now()) },

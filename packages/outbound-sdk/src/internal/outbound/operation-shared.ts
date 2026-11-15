@@ -6,6 +6,7 @@ import type { Capabilities } from "../capabilities.ts";
 import type { Entity } from "../entities-account.ts";
 import type { Evidence, MetricRow } from "../entities.ts";
 import { OutboundError } from "../errors.ts";
+import type { MemberFailure } from "../failures.ts";
 import type { Json } from "../json.ts";
 import { sourceIdFor } from "../ref.ts";
 
@@ -17,6 +18,11 @@ export interface OperationOutput {
   /** The adapter's continuation value, when there is another page. */
   readonly next?: Json | undefined;
   readonly evidence: Evidence;
+  /**
+   * Members of a combined instance that could not answer while the others
+   * did. Absent when every member answered.
+   */
+  readonly failures?: readonly MemberFailure[] | undefined;
   /** `true` when a plugin served an older answer because the vendor was down. */
   readonly stale?: boolean | undefined;
   /** When the answer was fetched, if a plugin served it from a store. ISO 8601 UTC. */
@@ -50,6 +56,7 @@ export const output = (
   evidence: derived ? "derived" : "exact",
   items: page.items,
   next: page.next,
+  ...(page.failures === undefined ? undefined : { failures: page.failures }),
 });
 
 export const single = (item: OutboundRecord): OperationOutput => ({

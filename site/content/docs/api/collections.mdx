@@ -15,7 +15,7 @@ A collection is a kind of record you can list: `outbound.campaigns`, `outbound.l
 
 | Method | Returns | Notes |
 | --- | --- | --- |
-| `list(options?)` | `Promise<PageResult<Item>>` | One page: `items`, `cursor`, `complete` and `meta`. |
+| `list(options?)` | `Promise<PageResult<Item>>` | One page: `items`, `cursor`, `complete`, `failures` and `meta`. |
 | `listAll(options?)` | `ListAll<Item>` | An async iterator over every page. Pages are fetched as you iterate, under the rate budget. |
 | `get(id, options?)` | `Promise<WithMeta<Item>>` | One record with `meta` on it. Throws `NotFound` for a missing record. |
 | `exists(id, options?)` | `Promise<boolean>` | `false` for a missing record. Any other failure still throws. |

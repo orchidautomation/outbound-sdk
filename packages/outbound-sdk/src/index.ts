@@ -61,6 +61,8 @@ export type {
 
 export { makeErrorMapper, OutboundError } from "./internal/errors.ts";
 
+export type { MemberFailure } from "./internal/failures.ts";
+
 export type {
   ErrorMapper,
   ErrorMapperOptions,

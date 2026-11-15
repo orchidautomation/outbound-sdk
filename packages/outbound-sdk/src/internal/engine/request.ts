@@ -2,7 +2,7 @@
 // around it. Every call is a read, so a timed-out attempt is safe to repeat.
 
 import type { Adapter, RequestSpec, VendorResponse } from "../adapter.ts";
-import { OutboundError } from "../errors.ts";
+import { callerLimit, OutboundError } from "../errors.ts";
 import type { HttpFailure } from "../errors.ts";
 import { fire } from "../hooks.ts";
 import type { OutboundHooks } from "../hooks.ts";
@@ -254,24 +254,27 @@ const assertRequestBudget = (environment: RequestEnvironment): void => {
   const { adapter, state } = environment;
 
   if (state.maxRequests !== undefined && state.requests >= state.maxRequests) {
-    throw new OutboundError(
-      "RateLimited",
-      `The call used its budget of ${state.maxRequests} request(s) to ${adapter.name}`,
-      { provider: adapter.name }
+    throw callerLimit(
+      new OutboundError(
+        "RateLimited",
+        `The call used its budget of ${state.maxRequests} request(s) to ${adapter.name}`,
+        { provider: adapter.name }
+      )
     );
   }
 };
 
-const exhausted = (error: OutboundError, timedOut: boolean): OutboundError =>
-  timedOut
-    ? new OutboundError(error.code, error.message, {
-        cause: error.cause,
-        provider: error.provider,
-        retryAfterMs: error.retryAfterMs,
-        status: error.status,
-        timedOut: true,
-      })
-    : error;
+/** The last failure, once the call's deadline leaves no room to try again. */
+const pastDeadline = (error: OutboundError): OutboundError =>
+  callerLimit(
+    new OutboundError(error.code, error.message, {
+      cause: error.cause,
+      provider: error.provider,
+      retryAfterMs: error.retryAfterMs,
+      status: error.status,
+      timedOut: true,
+    })
+  );
 
 /** Sends one request, retrying what is safe to retry. */
 export const execute = async (
@@ -300,7 +303,7 @@ export const execute = async (
       state.deadlineAt !== undefined &&
       runtime.now() + delayMs > state.deadlineAt
     ) {
-      throw exhausted(result.error, true);
+      throw pastDeadline(result.error);
     }
 
     fire(hooks.onRetry, {

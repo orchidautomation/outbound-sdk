@@ -83,7 +83,9 @@ const fetchPage = <Item, Filters>(
         infoFor(core, state)
       );
 
-      const complete = output.next === undefined;
+      const failures = output.failures ?? [];
+      // A tool that did not answer leaves the page short, whatever the cursor says.
+      const complete = output.next === undefined && failures.length === 0;
 
       const page: PageResult<Item> = {
         complete,
@@ -91,6 +93,7 @@ const fetchPage = <Item, Filters>(
           output.next === undefined
             ? undefined
             : encodeCursor(scope, output.next),
+        failures,
         items: checked(core, spec.schema, output.items, spec.action),
         meta: metaFor(core, state, {
           complete,

@@ -7,6 +7,8 @@ import type {
   PageQuery,
 } from "../internal/adapter.ts";
 import { OutboundError } from "../internal/errors.ts";
+import { isMemberUnavailable, toMemberFailure } from "../internal/failures.ts";
+import type { MemberFailure } from "../internal/failures.ts";
 import { count, field } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
 import { parseRef } from "../internal/ref.ts";
@@ -111,11 +113,23 @@ const waiting = (next: Json | undefined, size: number): readonly Position[] => {
   });
 };
 
+interface Asked<Item> {
+  readonly index: number;
+  readonly member: Adapter;
+  readonly answer: PromiseSettledResult<Page<Item>>;
+}
+
 /**
  * One page of a listing read from every member at the same time, for reads
  * that return few records, such as a lookup by exact address. Items keep the
  * members' order. The cursor holds each member still to finish, so the next
  * page asks only those, again side by side.
+ *
+ * A member that is unavailable (its key rejected, the tool down or rate
+ * limiting) does not cost the caller what the others returned: it is listed in
+ * `failures` and dropped from the cursor. The read still throws when no member
+ * has answered, when a failure is a mistake in the call, and when the
+ * caller's own abort signal, deadline or request budget stopped a member.
  */
 export const pageTogether = async <Item>(
   members: readonly Adapter[],
@@ -127,28 +141,60 @@ export const pageTogether = async <Item>(
     next: Json | undefined
   ) => Promise<Page<Item>>
 ): Promise<Page<Item>> => {
-  const pages = await Promise.all(
-    waiting(query.next, members.length).flatMap((at) => {
-      const member = members[at.index];
+  const asked = waiting(query.next, members.length).flatMap((at) => {
+    const member = members[at.index];
 
-      return member === undefined
-        ? []
-        : [
-            read(member, ctx.forAdapter(member), at.next).then((page) => ({
-              index: at.index,
-              page,
-            })),
-          ];
+    return member === undefined ? [] : [{ ...at, member }];
+  });
+
+  const settled: Asked<Item>[] = await Promise.all(
+    asked.map(async ({ index, member, next }) => {
+      const [answer] = await Promise.allSettled([
+        // Called inside the promise, so a read that throws at once is a
+        // rejection like any other.
+        (async () => await read(member, ctx.forAdapter(member), next))(),
+      ]);
+
+      return { answer, index, member };
     })
   );
 
-  const unfinished = pages.flatMap(({ index, page }) =>
-    page.next === undefined ? [] : [{ member: index, next: page.next }]
-  );
+  const items: Item[] = [];
+  const unfinished: Json[] = [];
+  const failures: MemberFailure[] = [];
+  let firstError: unknown;
 
-  const items = pages.flatMap(({ page }) => page.items);
+  for (const { answer, index, member } of settled) {
+    if (answer.status === "fulfilled") {
+      items.push(...answer.value.items);
 
-  return unfinished.length === 0
-    ? { items }
-    : { items, next: { together: unfinished } };
+      if (answer.value.next !== undefined) {
+        unfinished.push({ member: index, next: answer.value.next });
+      }
+    } else if (isMemberUnavailable(answer.reason)) {
+      firstError ??= answer.reason;
+      failures.push(toMemberFailure(member, answer.reason));
+    } else {
+      // A mistake in the call, or a cap the caller set: the call fails whole.
+      throw answer.reason;
+    }
+  }
+
+  // On the first page, nobody answering means there is nothing to return. On
+  // a later page the earlier answers stand, so the failures are reported.
+  if (
+    query.next === undefined &&
+    failures.length > 0 &&
+    failures.length === settled.length
+  ) {
+    throw firstError;
+  }
+
+  return {
+    items,
+    ...(failures.length === 0 ? undefined : { failures }),
+    ...(unfinished.length === 0
+      ? undefined
+      : { next: { together: unfinished } }),
+  };
 };

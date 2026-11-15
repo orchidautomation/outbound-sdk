@@ -7,6 +7,8 @@
 import { mapConcurrent } from "../internal/concurrency.ts";
 import type { Lead, Message } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
+import { mergeFailures } from "../internal/failures.ts";
+import type { MemberFailure } from "../internal/failures.ts";
 import type { Include, OutboundApi } from "../internal/outbound/api.ts";
 import type { OutboundRecord } from "../internal/outbound/operations.ts";
 import type { OutboundPlugin } from "../internal/outbound/plugins.ts";
@@ -35,6 +37,13 @@ export interface Person {
   readonly keys: readonly string[];
   /** `false` when no record carries the key: the link is unknown, not absent. */
   readonly found: boolean;
+  /**
+   * `false` when a tool on a combined instance did not answer the lookup. Its
+   * records are missing, so `found: false` then says nothing about that tool.
+   */
+  readonly complete: boolean;
+  /** The tools that did not answer, with the error code of each. Empty when every tool answered. */
+  readonly failures: readonly MemberFailure[];
   /** One record per tool or campaign the person is in. Linked, not merged. */
   readonly records: readonly Lead[];
   /** Every message to and from the person across tools, oldest first. */
@@ -129,14 +138,16 @@ const filterFor = (key: string): { email: string } | { linkedinUrl: string } =>
 /**
  * Asks the vendor for the person by each identifier, instead of walking every
  * lead. A record that carries a second identifier is looked up under that one
- * too, so an email can lead to a LinkedIn record and back.
+ * too, so an email can lead to a LinkedIn record and back. Returns the tools
+ * on a combined instance that did not answer.
  */
 const find = async (
   outbound: OutboundApi,
   keys: Set<string>,
   found: Map<string, Lead>
-): Promise<void> => {
+): Promise<MemberFailure[]> => {
   const asked = new Set<string>();
+  let failures: MemberFailure[] = [];
 
   for (
     let round = [...keys].filter((key) => !asked.has(key));
@@ -150,11 +161,19 @@ const find = async (
     // Every identifier known so far is asked for at once; an answer can name
     // another identifier, which the next round asks for.
     // oxlint-disable-next-line no-await-in-loop -- each round depends on the identifiers the previous one found.
-    const answers = await mapConcurrent(round, (key) =>
-      outbound.leads.listAll(filterFor(key)).toArray()
+    const answers = await mapConcurrent(round, async (key) => {
+      const walk = outbound.leads.listAll(filterFor(key));
+      const leads = await walk.toArray();
+
+      return { failures: walk.failures, leads };
+    });
+
+    failures = mergeFailures(
+      failures,
+      ...answers.map((answer) => answer.failures)
     );
 
-    for (const [index, leads] of answers.entries()) {
+    for (const [index, { leads }] of answers.entries()) {
       const asking = round[index];
 
       for (const lead of leads) {
@@ -172,6 +191,8 @@ const find = async (
       }
     }
   }
+
+  return failures;
 };
 
 interface Redacted {
@@ -226,12 +247,13 @@ const lookup = async (
 
   const keys = new Set([key]);
   const found = new Map<string, Lead>();
+  let failures: readonly MemberFailure[] = [];
 
   if (
     outbound.capabilities["leads.lookup"] &&
     options.campaignIds === undefined
   ) {
-    await find(outbound, keys, found);
+    failures = await find(outbound, keys, found);
   } else if (await collect(outbound, options, keys, found)) {
     // A record that links two identifiers (an email and a profile) can reveal
     // records seen earlier under the other one, so scan again when that happens.
@@ -252,6 +274,8 @@ const lookup = async (
     : [];
 
   return {
+    complete: failures.length === 0,
+    failures,
     found: records.length > 0,
     key,
     keys: [...keys].toSorted(),

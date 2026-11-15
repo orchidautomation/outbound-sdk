@@ -7,3 +7,13 @@ thread on one workspace: ok
 thread on one member: ok
 one key rejected: Unauthorized - emailtool responded 401
 the other client alone: ok
+lookup with one key rejected: [ 'emailtool:a:lead_1' ] complete: false
+[
+  {
+    code: 'Unauthorized',
+    message: 'emailtool responded 401',
+    provider: 'emailtool',
+    status: 401,
+    workspaceId: 'b'
+  }
+]

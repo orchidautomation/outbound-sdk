@@ -101,8 +101,9 @@ export const cache = (options: CacheOptions): OutboundPlugin => {
 
       const output = await next(operation);
 
-      // A stale answer is the failover plugin's stand-in for a failed read.
-      if (output.stale !== true) {
+      // A stale answer is the failover plugin's stand-in for a failed read, and
+      // an answer a tool is missing from would hide that tool once it is back.
+      if (output.stale !== true && output.failures === undefined) {
         // A layer inside that served the answer from a store says when the
         // vendor was asked; that time is kept, not the time of this write.
         const storedAt =

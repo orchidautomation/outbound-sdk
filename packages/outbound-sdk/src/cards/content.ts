@@ -32,7 +32,7 @@ export interface CardMeta {
   readonly evidence: string;
   readonly provider: string;
   readonly requests: number;
-  /** `false` when a cap stopped a read early. */
+  /** `false` when a cap stopped a read early or a tool did not answer. */
   readonly complete: boolean;
   readonly notes: readonly string[];
 }
@@ -121,7 +121,9 @@ const footer = (meta: CardMeta, notes: readonly string[]): CardNode => {
   const lines = [
     ...(meta.complete
       ? []
-      : ["Incomplete: a cap stopped a read early, so totals are a floor."]),
+      : [
+          "Incomplete: a read stopped early or a tool did not answer, so totals are a floor.",
+        ]),
     ...notes,
     ...meta.notes,
   ].map((note) => `Note: ${clip(note, MAX_BULLET)}`);
