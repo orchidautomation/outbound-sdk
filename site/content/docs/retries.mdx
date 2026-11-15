@@ -112,7 +112,7 @@ A deadline does not cut off an attempt already in flight. That is `timeout`. Set
 
 ### `maxRequests`
 
-The most vendor requests one call may send, retries included. When the count is reached the next request is not sent, and the call fails with `RateLimited` and the message shown above. It exists so one question cannot spend a vendor quota: an insight that reads every campaign, or a retry storm.
+The most vendor requests one call may send, retries included. When the count is reached the next request is not sent, and the call fails with `RateLimited`, `limit: "call"` and `permanent: true`, with the message shown above. Retrying the same call would stop at the same place. It exists so one question cannot spend a vendor quota: an insight that reads every campaign, or a retry storm.
 
 On a walk with `listAll` and on `getMany`, it covers all the pages or records together. `meta.requests` on a [result](/docs/api/results) is what a call spent, and [`outbound.estimate`](/docs/api#methods) is what it would spend.
 
@@ -151,7 +151,9 @@ A retried call that succeeds looks like any other to the caller. To see retries,
 
 By then the SDK has retried what could be retried. `error.permanent` says whether trying again later could work:
 
-- **`permanent: false`** (`Provider`, `RateLimited`): the vendor is down, slow or limiting. Try again later, after `error.retryAfterMs` when it is set. The [failover](/docs/plugins/failover) plugin can serve the last good answer meanwhile.
+- **`permanent: false`** (`Provider`, and `RateLimited` from the vendor or the rate budget): the vendor is down, slow or limiting. Try again later, after `error.retryAfterMs` when it is set. The [failover](/docs/plugins/failover) plugin can serve the last good answer meanwhile.
 - **`permanent: true`**: the same call will fail the same way. Fix the key, the id or the input.
+
+A request cap of your own (`maxRequests` or the [budget](/docs/plugins/budget) plugin) also stops a call with `RateLimited`, but with `permanent: true`, so a loop that retries while `!permanent` stops on it. `error.limit` tells the causes apart: `"vendor"` or `"deadline"` for a wait, `"call"` or `"run"` for your own cap. See [errors](/docs/api/errors#limit).
 
 See [errors](/docs/api/errors) for every field.

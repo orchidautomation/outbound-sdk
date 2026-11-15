@@ -149,7 +149,12 @@ export class Budget {
           throw new OutboundError(
             "RateLimited",
             `${provider} rate budget is full and the deadline would pass before it frees up`,
-            { provider, retryAfterMs: waitMs, timedOut: true }
+            {
+              limit: "deadline",
+              provider,
+              retryAfterMs: waitMs,
+              timedOut: true,
+            }
           );
         }
 

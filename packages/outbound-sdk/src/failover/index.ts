@@ -21,15 +21,15 @@ export interface FailoverOptions {
 
 const WEEK_SECONDS = 7 * 24 * 60 * 60;
 
-// A `RateLimited` the vendor sent carries the HTTP status (429). The ones the
-// SDK raises itself carry none: `maxRequests`, the budget plugin, and a
-// deadline that would pass while the local rate budget is full. Those are the
-// caller's own caps, not an outage.
+// A `RateLimited` the vendor sent has `limit: "vendor"`. The ones the SDK
+// raises itself do not: `maxRequests` and the budget plugin ("call", "run"),
+// and a deadline that would pass while the local rate budget is full
+// ("deadline"). Those are the caller's own caps, not an outage.
 const vendorIsDown = (cause: unknown): boolean =>
   OutboundError.is(cause) &&
   !cause.aborted &&
   (cause.code === "Provider" ||
-    (cause.code === "RateLimited" && cause.status !== undefined));
+    (cause.code === "RateLimited" && cause.limit === "vendor"));
 
 /** When the vendor was asked: an answer a layer inside served from a store says so itself. */
 const fetchedAtOf = (fetchedAt: string | undefined, now: number): number =>

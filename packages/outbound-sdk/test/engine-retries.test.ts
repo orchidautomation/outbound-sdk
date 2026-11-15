@@ -254,7 +254,25 @@ test("stops a call that reaches its request budget", async () => {
   const error = await failure(clock.settle(outbound.campaigns.list()));
   assert.equal(error.code, "RateLimited");
   assert.match(error.message, /budget of 2 request\(s\)/u);
+  assert.match(error.message, /Raise maxRequests or ask for less/u);
+  assert.equal(error.limit, "call");
+  assert.equal(error.permanent, true, "retrying stops at the same place");
+  assert.equal(error.status, undefined);
   assert.equal(http.requests.length, 2);
+});
+
+test("a cap set on the call stops it as permanently as the instance's", async () => {
+  const { clock, outbound } = setup(sequence(json({}, 500)), {
+    maxRequests: 5,
+  });
+
+  const error = await failure(
+    clock.settle(outbound.campaigns.list({ maxRequests: 1 }))
+  );
+
+  assert.match(error.message, /budget of 1 request\(s\)/u);
+  assert.equal(error.limit, "call");
+  assert.equal(error.permanent, true);
 });
 
 test("keeps the API key and email addresses out of errors and hooks", async () => {

@@ -176,6 +176,9 @@ test("a per-call budget stops a walk that would spend too many requests", async 
   assert.ok(OutboundError.is(error));
   assert.equal(error.code, "RateLimited");
   assert.match(error.message, /used its budget of 2 request\(s\)/u);
+  assert.match(error.message, /Raise budget\(\)'s maxRequests/u);
+  assert.equal(error.limit, "call");
+  assert.equal(error.permanent, true);
   assert.equal(http.requests.length, 2);
 
   // A new call gets a fresh allowance.
@@ -198,7 +201,13 @@ test("a per-run budget counts across calls until it is reset", async () => {
     (error) =>
       OutboundError.is(error) &&
       error.code === "RateLimited" &&
-      /The run used its budget of 3/u.test(error.message)
+      error.limit === "run" &&
+      error.permanent &&
+      error.retryAfterMs === undefined &&
+      /The run used its budget of 3 request\(s\) to testvendor\./u.test(
+        error.message
+      ) &&
+      /requestBudget\.reset\(\)/u.test(error.message)
   );
   assert.equal(
     http.requests.length,
@@ -209,6 +218,46 @@ test("a per-run budget counts across calls until it is reset", async () => {
   assert.equal(outbound.requestBudget.used(), 0);
   await clock.settle(outbound.campaigns.list());
   assert.equal(http.requests.length, 4);
+});
+
+test("a run budget that runs out part way through a walk stops it as a run cap", async () => {
+  const { clock, http, outbound } = setup([
+    budget({ maxRequests: 1, per: "run" }),
+  ]);
+
+  const error = await rejection(
+    clock.settle(outbound.campaigns.listAll().toArray())
+  );
+
+  assert.ok(OutboundError.is(error));
+  assert.equal(error.limit, "run");
+  assert.equal(error.permanent, true);
+  assert.match(error.message, /The run used its budget of 1 request\(s\)/u);
+  assert.equal(http.requests.length, 1, "the second page was never asked for");
+});
+
+test("a retry loop that follows error.permanent stops at a spent run budget", async () => {
+  const { clock, http, outbound } = setup(
+    [budget({ maxRequests: 1, per: "run" })],
+    () => json({ items: [{ id: "c1" }] })
+  );
+
+  await clock.settle(outbound.campaigns.list());
+  let attempts = 0;
+
+  // The loop the retries page describes: try again while the error is not permanent.
+  for (;;) {
+    attempts += 1;
+    // oxlint-disable-next-line no-await-in-loop -- the loop under test is sequential.
+    const error = await rejection(clock.settle(outbound.campaigns.list()));
+
+    if (!OutboundError.is(error) || error.permanent || attempts > 3) {
+      break;
+    }
+  }
+
+  assert.equal(attempts, 1, "a spent budget is not retried");
+  assert.equal(http.requests.length, 1);
 });
 
 test("a run budget counts retries, because each one is a vendor request", async () => {

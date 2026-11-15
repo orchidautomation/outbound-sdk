@@ -1,6 +1,6 @@
 deadline: RateLimited - instantly responded 429
-  requests 1, timedOut true, retryAfterMs 60000
-maxRequests: RateLimited - The call used its budget of 3 request(s) to instantly
-  requests 3, timedOut false, retryAfterMs undefined
+  limit vendor, permanent false, requests 1, timedOut true, retryAfterMs 60000
+maxRequests: RateLimited - The call used its budget of 3 request(s) to instantly. Raise maxRequests or ask for less in one call.
+  limit call, permanent true, requests 3, timedOut false, retryAfterMs undefined
 retries used up: RateLimited - instantly responded 429
-  requests 5, timedOut false, retryAfterMs 60000
+  limit vendor, permanent false, requests 5, timedOut false, retryAfterMs 60000

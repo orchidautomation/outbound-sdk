@@ -134,6 +134,7 @@ export class RequestEngine {
           ? undefined
           : this.now() + merged.deadline,
       maxRequests: merged.maxRequests,
+      maxRequestsSetBy: undefined,
       requests: 0,
       retry: resolveRetryPolicy(merged.retries),
       signal: merged.signal,
