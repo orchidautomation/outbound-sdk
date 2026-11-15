@@ -6,6 +6,7 @@ import { z } from "zod";
 import { mapConcurrent } from "../../internal/concurrency.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
+import { percent, spoken } from "../stats.ts";
 import { findAnomalies } from "./anomalies.ts";
 import type { Anomaly } from "./anomalies.ts";
 import { rankCampaigns } from "./campaign-ranking.ts";
@@ -16,7 +17,6 @@ import { forecastCampaign } from "./pipeline-forecast.ts";
 import {
   labelOf,
   listFields,
-  percent,
   ratesOf,
   readDaily,
   shiftDay,
@@ -258,7 +258,7 @@ const actionsOf = (report: Sections): ActionItem[] => {
       number: problem.rate,
     })),
     ...(report.runningOutOfLeads ?? []).map((runway) => ({
-      action: `Add leads to ${runway.name}: ${runway.remaining} leads remain, about ${runway.daysLeft} days of sending.`,
+      action: `Add leads to ${runway.name}: ${runway.remaining} ${runway.remaining === 1 ? "lead remains" : "leads remain"}, about ${spoken(runway.daysLeft)} days of sending.`,
       campaign: runway.campaign,
       campaignName: runway.name,
       kind: "add_leads" as const,

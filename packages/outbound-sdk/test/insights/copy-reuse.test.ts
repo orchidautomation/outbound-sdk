@@ -139,7 +139,7 @@ test("copy_reuse compares the same copy across campaigns and names the best copy
   );
   assert.equal(
     x.finding,
-    "The same copy gets 0.06 in Founders and 0.02 in Agencies; the gap is more than chance, so the audience or the sender differs, not the copy."
+    "The same copy gets 6% in Founders and 2% in Agencies; the gap is more than chance, so the audience or the sender differs, not the copy."
   );
 
   // Z: 3/40 in Retail is under the 100 needed, so one campaign is left and no spread is judged.

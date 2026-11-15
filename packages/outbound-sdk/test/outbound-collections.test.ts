@@ -308,7 +308,10 @@ test("an adapter that declares nothing supports only campaigns", async () => {
 });
 
 test("rejects malformed input as Invalid before any adapter call", async () => {
-  const spy = counting(memory({ data: demoData({ now: "2026-10-08T12:00:00.000Z" }) }));
+  const spy = counting(
+    memory({ data: demoData({ now: "2026-10-08T12:00:00.000Z" }) })
+  );
+
   const outbound = createOutbound({ adapter: spy.adapter });
 
   for (const action of [

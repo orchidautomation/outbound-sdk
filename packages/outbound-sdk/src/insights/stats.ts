@@ -184,6 +184,18 @@ export const compareRates = (
   };
 };
 
+/** A rate for a sentence: `0.0525` as `5.3%`. `unknown` for `null`. */
+export const percent = (value: number | null): string =>
+  value === null ? "unknown" : `${Math.round(value * 1000) / 10}%`;
+
+/**
+ * A count, average, length or score for a sentence, with at most one
+ * decimal: `1.3333` as `1.3`, and `unknown` for `null`. The answer's own
+ * fields keep full precision.
+ */
+export const spoken = (value: number | null): string =>
+  value === null ? "unknown" : String(Math.round(value * 10) / 10);
+
 /** A p-value for a sentence. One that rounds to 0 is written `p < 0.0001`, never `p = 0`. */
 export const pText = (pValue: number): string =>
   pValue < 1 / PLACES ? `p < ${1 / PLACES}` : `p = ${pValue}`;

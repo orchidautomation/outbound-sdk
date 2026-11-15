@@ -184,7 +184,7 @@ test("warmup_readiness adds DNS and warmup spam when check_health is on", async 
 
   assert.deepEqual(first?.findings, [
     "DKIM, MX failing",
-    "30 of 200 warmup emails landed in spam (0.15, over 0.1)",
+    "30 of 200 warmup emails landed in spam (15%, over 10%)",
   ]);
   assert.equal(checked.data.byReason.dns_failing, 1);
   assert.equal(checked.data.byReason.warmup_spam_high, 1);

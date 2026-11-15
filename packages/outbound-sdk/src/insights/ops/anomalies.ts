@@ -3,7 +3,7 @@
 import { z } from "zod";
 
 import { defineInsight } from "../define.ts";
-import { mean, round, zScore } from "../stats.ts";
+import { mean, round, spoken, zScore } from "../stats.ts";
 import { descending, lastDays, readDaily, shiftDay } from "./shared.ts";
 import type { DayCounts, DayRange } from "./shared.ts";
 
@@ -154,7 +154,7 @@ const judge = (
       ? null
       : {
           ...shared,
-          finding: `${metric} was ${point.value} on ${point.date}, against ${center} on each of the ${baseline.length} days with data before it (a flat baseline has no z-score: any other count is flagged).`,
+          finding: `${metric} was ${point.value} on ${point.date}, against ${spoken(center)} on each of the ${baseline.length} days with data before it (a flat baseline has no z-score: any other count is flagged).`,
           judgedBy: "flat_baseline",
           zScore: null,
         };
@@ -164,7 +164,7 @@ const judge = (
     ? null
     : {
         ...shared,
-        finding: `${metric} was ${point.value} on ${point.date}, against an average of ${center} over the ${baseline.length} days with data before it (z = ${round(score)}).`,
+        finding: `${metric} was ${point.value} on ${point.date}, against an average of ${spoken(center)} over the ${baseline.length} days with data before it (z = ${spoken(score)}).`,
         judgedBy: "z_score",
         zScore: round(score) ?? 0,
       };

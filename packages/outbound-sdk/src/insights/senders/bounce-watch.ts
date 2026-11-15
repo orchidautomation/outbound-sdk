@@ -6,7 +6,7 @@ import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Campaign, MetricRow } from "../../internal/entities.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
-import { rate, total, wilson } from "../stats.ts";
+import { percent, rate, total, wilson } from "../stats.ts";
 import type { Interval } from "../stats.ts";
 import { dayInput, readCampaignSenders, readCapped } from "./read.ts";
 
@@ -273,7 +273,7 @@ export const bounceWatch = defineInsight({
             entry: {
               ...entry,
               ...counts,
-              finding: `${counts.bounced} of ${counts.sent} sends bounced (${counts.rate}), over the ${threshold} threshold.`,
+              finding: `${counts.bounced} of ${counts.sent} sends bounced (${percent(counts.rate)}), over the ${percent(threshold)} threshold.`,
               senders: null,
             },
           });

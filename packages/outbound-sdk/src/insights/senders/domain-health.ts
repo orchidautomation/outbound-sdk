@@ -6,7 +6,7 @@ import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { SenderHealth } from "../../internal/entities-account.ts";
 import type { Sender } from "../../internal/entities.ts";
 import { defineInsight } from "../define.ts";
-import { rate, wilson } from "../stats.ts";
+import { percent, rate, wilson } from "../stats.ts";
 import type { Interval } from "../stats.ts";
 import {
   DNS_RECORDS,
@@ -186,7 +186,7 @@ const reportFor = (
       : []),
     ...(spamHigh
       ? [
-          `${warmup.spam} of ${warmup.sent} warmup emails landed in spam (${warmup.spamRate}, over ${threshold})`,
+          `${warmup.spam} of ${warmup.sent} warmup emails landed in spam (${percent(warmup.spamRate)}, over ${percent(threshold)})`,
         ]
       : []),
   ];

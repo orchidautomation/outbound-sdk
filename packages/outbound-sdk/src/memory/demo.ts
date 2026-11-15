@@ -12,6 +12,7 @@ interface Clock {
 
 const clockAt = (now: number): Clock => {
   const today = Math.floor(now / DAY) * DAY;
+
   const day = (days: number): string =>
     new Date(today - days * DAY).toISOString().slice(0, 10);
 
@@ -21,7 +22,10 @@ const clockAt = (now: number): Clock => {
   };
 };
 
-const campaigns = ({ at, day }: Clock): MemoryData["campaigns"] => [
+const campaigns = ({
+  at,
+  day,
+}: Clock): NonNullable<MemoryData["campaigns"]> => [
   {
     createdAt: at(16, "09:00"),
     id: "cmp_founders",
@@ -86,7 +90,7 @@ const campaigns = ({ at, day }: Clock): MemoryData["campaigns"] => [
   },
 ];
 
-const leads = ({ at }: Clock): MemoryData["leads"] => [
+const leads = ({ at }: Clock): NonNullable<MemoryData["leads"]> => [
   {
     campaignId: "cmp_founders",
     company: "Example Co",
@@ -132,7 +136,7 @@ const leads = ({ at }: Clock): MemoryData["leads"] => [
   },
 ];
 
-const messages = ({ at }: Clock): MemoryData["messages"] => [
+const messages = ({ at }: Clock): NonNullable<MemoryData["messages"]> => [
   {
     body: "Hi Alex, saw your launch.",
     campaignId: "cmp_founders",
@@ -173,7 +177,7 @@ const messages = ({ at }: Clock): MemoryData["messages"] => [
   },
 ];
 
-const senders = ({ at }: Clock): MemoryData["senders"] => [
+const senders = ({ at }: Clock): NonNullable<MemoryData["senders"]> => [
   {
     address: "outreach1@example.com",
     campaignIds: ["cmp_founders"],
@@ -211,7 +215,7 @@ const senders = ({ at }: Clock): MemoryData["senders"] => [
   },
 ];
 
-const stats = ({ day }: Clock): MemoryData["stats"] => [
+const stats = ({ day }: Clock): NonNullable<MemoryData["stats"]> => [
   {
     campaignId: "cmp_founders",
     counts: {

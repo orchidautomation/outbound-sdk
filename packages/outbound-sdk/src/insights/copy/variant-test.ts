@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import type { MetricCounts } from "../../internal/metrics.ts";
 import { defineInsight } from "../define.ts";
-import { compareRates } from "../stats.ts";
+import { compareRates, percent } from "../stats.ts";
 import type { Interval } from "../stats.ts";
 import {
   dayInput,
@@ -251,7 +251,7 @@ const testStep = (
       leader: leader.variantKey,
       moreSendsNeeded: null,
       pValue: closest?.pValue ?? null,
-      reason: `Variant ${leader.variantKey} (${leader.rate}) beats every other variant by more than chance at alpha ${settings.alpha}.${aside}`,
+      reason: `Variant ${leader.variantKey} (${percent(leader.rate)}) beats every other variant by more than chance at alpha ${settings.alpha}.${aside}`,
       step,
       variants,
       verdict: "winner",
@@ -269,7 +269,7 @@ const testStep = (
             settings.alpha
           ),
     pValue: closest?.pValue ?? null,
-    reason: `Variant ${leader.variantKey} (${leader.rate}) leads variant ${rival.variantKey} (${rival.rate}), but a gap this size could be chance.${aside}`,
+    reason: `Variant ${leader.variantKey} (${percent(leader.rate)}) leads variant ${rival.variantKey} (${percent(rival.rate)}), but a gap this size could be chance.${aside}`,
     step,
     variants,
     verdict: "no_difference_yet",

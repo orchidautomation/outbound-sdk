@@ -17,7 +17,11 @@ const instance = (
   plugins: readonly OutboundPlugin[] = []
 ) =>
   createOutbound({
-    adapter: memory({ capabilities, data: demoData({ now: "2026-10-08T12:00:00.000Z" }), workspaceId: "acme" }),
+    adapter: memory({
+      capabilities,
+      data: demoData({ now: "2026-10-08T12:00:00.000Z" }),
+      workspaceId: "acme",
+    }),
     plugins,
   });
 

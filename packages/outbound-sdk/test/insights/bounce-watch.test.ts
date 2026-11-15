@@ -54,7 +54,7 @@ test("bounce_watch lists the campaigns over the threshold worst first, with thei
     {
       bounced: 80,
       campaign: ref("c1"),
-      finding: "80 of 1000 sends bounced (0.08), over the 0.03 threshold.",
+      finding: "80 of 1000 sends bounced (8%), over the 3% threshold.",
       interval: { high: 0.0985, low: 0.0647 },
       name: "Hot",
       rate: 0.08,
@@ -85,7 +85,7 @@ test("bounce_watch lists the campaigns over the threshold worst first, with thei
     {
       bounced: 20,
       campaign: ref("c2"),
-      finding: "20 of 400 sends bounced (0.05), over the 0.03 threshold.",
+      finding: "20 of 400 sends bounced (5%), over the 3% threshold.",
       interval: { high: 0.076, low: 0.0326 },
       name: "Warm",
       rate: 0.05,

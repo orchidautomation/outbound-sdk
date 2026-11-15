@@ -243,10 +243,6 @@ export const partialNote = (
 export const volumeOf = (counts: Totals): number | null =>
   counts.sent ?? counts.contacted;
 
-/** `0.0525` as `5.3%`. */
-export const percent = (value: number | null): string =>
-  value === null ? "unknown" : `${Math.round(value * 1000) / 10}%`;
-
 /** Largest first, with unknown values last. */
 export const descending = (
   left: number | null,

@@ -7,7 +7,11 @@ import { demoData, memory } from "../src/memory/index.ts";
 import { createTools } from "../src/tools/index.ts";
 
 const adapter = (capabilities = {}) =>
-  memory({ capabilities, data: demoData({ now: "2026-10-08T12:00:00.000Z" }), workspaceId: "acme" });
+  memory({
+    capabilities,
+    data: demoData({ now: "2026-10-08T12:00:00.000Z" }),
+    workspaceId: "acme",
+  });
 
 const cli = async (...argv: string[]) => {
   const out: string[] = [];

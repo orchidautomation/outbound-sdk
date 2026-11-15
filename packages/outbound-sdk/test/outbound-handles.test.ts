@@ -7,7 +7,10 @@ import { createFetch, json, sequence, testAdapter } from "./helpers/http.ts";
 
 const client = () =>
   createOutbound({
-    adapter: memory({ data: demoData({ now: "2026-10-08T12:00:00.000Z" }), workspaceId: "client-a" }),
+    adapter: memory({
+      data: demoData({ now: "2026-10-08T12:00:00.000Z" }),
+      workspaceId: "client-a",
+    }),
   });
 
 const failure = async (action: () => unknown): Promise<OutboundError> => {

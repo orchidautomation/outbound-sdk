@@ -84,7 +84,7 @@ test("pipeline_forecast counts the leads left and projects replies from the repl
     // 20 replies of 200 contacted = 10%, interval 6.57% to 14.94%: 40 x each.
     expectedReplies: { expected: 4, high: 5.976, low: 2.628 },
     finding:
-      "40 leads remain; expect about 4 replies (between 2.628 and 5.976). This is an estimate.",
+      "40 leads remain; expect about 4 replies (between 2.6 and 6). This is an estimate.",
     leadsComplete: true,
     leadsRead: 46,
     name: "Pipeline",

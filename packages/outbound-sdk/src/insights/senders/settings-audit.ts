@@ -9,6 +9,7 @@ import type {
 } from "../../internal/entities-account.ts";
 import type { Campaign } from "../../internal/entities.ts";
 import { defineInsight } from "../define.ts";
+import { spoken } from "../stats.ts";
 import {
   dayFrom,
   readCampaigns,
@@ -196,13 +197,13 @@ const scheduleFindings = ({ bars, settings }: Audit): SettingsFinding[] => {
     ...when(
       longest > bars.maxWindowHours,
       "window_long",
-      `A sending window is ${longest} hours long, over ${bars.maxWindowHours}.`,
+      `A sending window is ${spoken(longest)} hours long, over ${bars.maxWindowHours}.`,
       longest
     ),
     ...when(
       shortest < bars.minWindowHours,
       "window_short",
-      `A sending window is ${shortest} hours long, under ${bars.minWindowHours}.`,
+      `A sending window is ${spoken(shortest)} hours long, under ${bars.minWindowHours}.`,
       shortest
     ),
     ...when(

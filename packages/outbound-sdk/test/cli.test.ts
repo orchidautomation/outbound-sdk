@@ -7,7 +7,11 @@ import { createMcpServer, PROTOCOL_VERSIONS, run } from "../src/cli/index.ts";
 import { createOutbound } from "../src/index.ts";
 import { demoData, memory } from "../src/memory/index.ts";
 
-const adapter = () => memory({ data: demoData({ now: "2026-10-08T12:00:00.000Z" }), workspaceId: "acme" });
+const adapter = () =>
+  memory({
+    data: demoData({ now: "2026-10-08T12:00:00.000Z" }),
+    workspaceId: "acme",
+  });
 
 const cli = async (...argv: string[]) => {
   const out: string[] = [];

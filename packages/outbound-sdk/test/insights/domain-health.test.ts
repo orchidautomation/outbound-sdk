@@ -96,7 +96,7 @@ test("domain_health groups mailboxes by domain and ranks the domains worst first
     "1 of 2 mailboxes are on a block list",
     "SPF failing",
     // 5 + 25 spam of 100 + 100 sent.
-    "30 of 200 warmup emails landed in spam (0.15, over 0.1)",
+    "30 of 200 warmup emails landed in spam (15%, over 10%)",
   ]);
   assert.deepEqual(bad?.failingDns, ["spf"]);
   assert.equal(bad?.blacklisted, 1);
@@ -350,7 +350,7 @@ test("domain_health pools one domain's mailboxes across two tools", async () => 
   assert.equal(shared?.warmup.spamRate, 0.12);
   assert.equal(shared?.risk, "high");
   assert.deepEqual(shared?.reasons, [
-    "12 of 100 warmup emails landed in spam (0.12, over 0.1)",
+    "12 of 100 warmup emails landed in spam (12%, over 10%)",
     "1 of 2 mailboxes are disconnected",
   ]);
   assert.equal(data.linkedinSeats[0]?.sender, "lntool:agency:seat");
