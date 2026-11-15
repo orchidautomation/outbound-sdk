@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import type { Lead, ReplyCategory } from "../../internal/entities.ts";
 import { OutboundError } from "../../internal/errors.ts";
+import { confirmCampaign } from "../campaign.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { round, total } from "../stats.ts";
@@ -285,6 +286,11 @@ const listLeads = async (
     `${maxLeads} ${campaign === null ? "leads" : "leads of a campaign"}`
   );
 
+  // An unknown campaign lists no leads, which would read as nobody engaged.
+  if (campaign !== null && leads.length === 0) {
+    await confirmCampaign(context, campaign);
+  }
+
   return { capped: walk.truncated, leads };
 };
 
@@ -361,7 +367,7 @@ const hottestFirst = (left: HotLead, right: HotLead): number =>
 
 export const hotLeads = defineInsight({
   description:
-    "Who to call first: leads ranked by a score built from what the vendor reports, namely a positive interest label, replies, clicks, opens and how recent the last reply is. Every score comes with its parts, and the weights are inputs. A lead with no label and no engagement data is left out and counted in totals.withoutData, never scored 0; unsubscribed and bounced leads are left out too. Give a campaign ref to rank one campaign, or none to rank every lead the tool lists. A lead the vendor labels out-of-office (its interest category, or a label reading out of office) earns no reply points, since a vendor's reply count may include automatic replies. Costs one request per page of leads read (max_leads sets the ceiling). When max_leads stops the listing with more leads left, totals.moreLeadsExist is true and it also reads up to 100 replies from the last recency_days days and one request per replied lead the listing missed, at most limit of them, so engaged leads past the cap are still ranked. A part that is null means the vendor does not report that signal.",
+    "Who to call first: leads ranked by a score built from what the vendor reports, namely a positive interest label, replies, clicks, opens and how recent the last reply is. Every score comes with its parts, and the weights are inputs. A lead with no label and no engagement data is left out and counted in totals.withoutData, never scored 0; unsubscribed and bounced leads are left out too. Give a campaign ref to rank one campaign (an unknown one is refused with NotFound), or none to rank every lead the tool lists. A lead the vendor labels out-of-office or bounced (its interest category, or a label reading out of office) earns no reply or recency points, since a vendor's reply count may include automatic replies; nor does a lead it labels negative (the negative or unsubscribe category, or a label reading not interested, wrong person, unsubscribed or do not contact), and its reason names the label. Costs one request per page of leads read (max_leads sets the ceiling). When max_leads stops the listing with more leads left, totals.moreLeadsExist is true and it also reads up to 100 replies from the last recency_days days and one request per replied lead the listing missed, at most limit of them, so engaged leads past the cap are still ranked. A part that is null means the vendor does not report that signal.",
   inputSchema: input,
   key: "hotLeads",
   name: "hot_leads",

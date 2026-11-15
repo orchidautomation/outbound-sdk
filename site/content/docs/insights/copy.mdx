@@ -221,7 +221,7 @@ How fast people reply, and on which days and hours.
 
 | Input | Default | Range | What it is |
 | --- | --- | --- | --- |
-| `campaign` | `null` | a campaign ref | Look at one campaign. `null` looks at every campaign. |
+| `campaign` | `null` | a campaign ref | Look at one campaign. An unknown campaign is `NotFound`. `null` looks at every campaign. |
 | `since` | `null` | ISO 8601 date and time with offset | Only messages from this time on. `null` means 30 days before now. |
 | `max_messages` | 2,000 | 1 to 50,000 | The most messages to read, sent and received together. |
 | `timezone_offset_minutes` | 0 | -720 to 840, whole | Minutes to add to UTC for the weekday and hour tables, for example -300 for New York in winter. |

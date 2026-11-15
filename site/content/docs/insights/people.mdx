@@ -238,7 +238,7 @@ Who to call first: leads ranked by a score built from what the vendor reports.
 
 | Input | Default | Range | What it is |
 | --- | --- | --- | --- |
-| `campaign` | `null` | a campaign ref | Rank one campaign's leads. `null` ranks every lead the adapter lists. |
+| `campaign` | `null` | a campaign ref | Rank one campaign's leads. An unknown campaign is `NotFound`. `null` ranks every lead the adapter lists. |
 | `limit` | 20 | 1 to 500 | How many leads to return. |
 | `max_leads` | 500 | 1 to 20,000 | The most leads to read and score. When more exist, the leads behind recent replies are read as well. |
 | `positive_labels` | `Interested`, `Meeting Booked`, `Meeting Completed` | at least 1 character each | Interest labels that count as positive. |

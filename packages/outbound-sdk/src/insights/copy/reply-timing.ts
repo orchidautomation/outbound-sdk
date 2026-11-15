@@ -3,6 +3,7 @@
 import { z } from "zod";
 
 import type { Message } from "../../internal/entities.ts";
+import { confirmCampaign } from "../campaign.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { median, percentile, rate, round } from "../stats.ts";
@@ -19,7 +20,7 @@ const input = z.object({
     .nullable()
     .default(null)
     .describe(
-      "A campaign's ref to look at one campaign. null looks at every campaign."
+      "A campaign's ref to look at one campaign; an unknown one is refused with NotFound. null looks at every campaign."
     ),
   max_messages: z
     .number()
@@ -256,6 +257,11 @@ const readMessages = async (
             .messages.listAll({ ...filters, max: cap }),
     max
   );
+
+  // An unknown campaign lists no messages, which would read as nobody replied.
+  if (campaign !== null && messages.length === 0) {
+    await confirmCampaign(context, campaign);
+  }
 
   if (outbound.capabilities["messages.since"] === false) {
     context.note(
