@@ -163,6 +163,42 @@ test("hot_leads gives an out-of-office reply no reply or recency points", async 
   assert.equal(result.data.totals.autoReplied, 2);
 });
 
+test("hot_leads reads an unmapped out-of-office label by a fixed rule", async () => {
+  const result = await single({
+    leads: [
+      {
+        campaignId: "c1",
+        email: "away@example.com",
+        engagement: {
+          lastRepliedAt: "2026-11-13T09:00:00.000Z",
+          opens: 1,
+          replies: 1,
+        },
+        id: "away",
+        interest: "Out Of Office",
+        status: "replied",
+      },
+      {
+        campaignId: "c1",
+        email: "office@example.com",
+        engagement: { opens: 0, replies: 1 },
+        id: "office",
+        interest: "Back in the office, interested",
+        status: "replied",
+      },
+    ],
+  }).insights.hotLeads({}, { now: NOW });
+
+  assert.deepEqual(
+    result.data.leads.map((each) => [each.email, each.score]),
+    [
+      ["office@example.com", 10],
+      ["away@example.com", 1],
+    ]
+  );
+  assert.equal(result.data.totals.autoReplied, 1);
+});
+
 test("hot_leads on Instantly past the cap counts every request it makes", async () => {
   const clock = createClock();
   const unrouted: string[] = [];

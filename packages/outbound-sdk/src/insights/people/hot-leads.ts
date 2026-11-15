@@ -20,6 +20,9 @@ const DAY = 86_400_000;
 /** The most recent replies read to find replied leads the lead listing missed. */
 const RECENT_REPLIES = 100;
 
+/** An interest label that says the lead's reply was an out-of-office. */
+const OUT_OF_OFFICE = /\bout[\s-]+of[\s-]+(?:the\s+)?office\b/iu;
+
 /** Reply categories that do not make a lead worth calling. */
 const NOT_ENGAGED: ReadonlySet<ReplyCategory> = new Set<ReplyCategory>([
   "bounce",
@@ -145,7 +148,10 @@ const capped = (
  * A vendor's per-lead reply count may include such replies, so they earn no
  * points, the way dropped_replies leaves automatic replies out.
  */
-const isAutoReplied = (lead: Lead): boolean => lead.interestCategory === "ooo";
+const isAutoReplied = (lead: Lead): boolean =>
+  lead.interestCategory === "ooo" ||
+  // A label the vendor did not map to a category is read by a fixed rule.
+  (lead.interestCategory === null && OUT_OF_OFFICE.test(lead.interest ?? ""));
 
 const partsOf = (lead: Lead, values: Input, now: number): HotLeadParts => {
   const engagement = lead.engagement ?? null;
@@ -341,7 +347,7 @@ const hottestFirst = (left: HotLead, right: HotLead): number =>
 
 export const hotLeads = defineInsight({
   description:
-    "Who to call first: leads ranked by a score built from what the vendor reports, namely a positive interest label, replies, clicks, opens and how recent the last reply is. Every score comes with its parts, and the weights are inputs. A lead with no label and no engagement data is left out and counted in totals.withoutData, never scored 0; unsubscribed and bounced leads are left out too. Give a campaign ref to rank one campaign, or none to rank every lead the tool lists. A lead the vendor labels out-of-office earns no reply points, since a vendor's reply count may include automatic replies. Costs one request per page of leads read (max_leads sets the ceiling). When max_leads stops the listing with more leads left, totals.moreLeadsExist is true and it also reads up to 100 replies from the last recency_days days and one request per replied lead the listing missed, at most limit of them, so engaged leads past the cap are still ranked. A part that is null means the vendor does not report that signal.",
+    "Who to call first: leads ranked by a score built from what the vendor reports, namely a positive interest label, replies, clicks, opens and how recent the last reply is. Every score comes with its parts, and the weights are inputs. A lead with no label and no engagement data is left out and counted in totals.withoutData, never scored 0; unsubscribed and bounced leads are left out too. Give a campaign ref to rank one campaign, or none to rank every lead the tool lists. A lead the vendor labels out-of-office (its interest category, or a label reading out of office) earns no reply points, since a vendor's reply count may include automatic replies. Costs one request per page of leads read (max_leads sets the ceiling). When max_leads stops the listing with more leads left, totals.moreLeadsExist is true and it also reads up to 100 replies from the last recency_days days and one request per replied lead the listing missed, at most limit of them, so engaged leads past the cap are still ranked. A part that is null means the vendor does not report that signal.",
   inputSchema: input,
   key: "hotLeads",
   name: "hot_leads",

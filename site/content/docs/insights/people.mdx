@@ -252,7 +252,7 @@ Who to call first: leads ranked by a score built from what the vendor reports.
 
 A lead listing comes in the vendor's order, usually the order leads were added, not by engagement. So when `max_leads` stops it with more leads left, `hotLeads` also reads up to 100 replies from the last `recency_days` days and reads the lead behind each one the listing missed, at most `limit` of them. Engaged leads past the cap are still ranked; the cold ones past it are not, and `moreLeadsExist` says so in the answer itself.
 
-A lead the vendor labels out-of-office (`interestCategory` is `ooo`) earns no reply or recency points and no "replied" reason: a vendor's per-lead reply count may include automatic replies. [Coverage](/docs/coverage) says, per vendor, what is known about that count.
+A lead the vendor labels out-of-office (`interestCategory` is `ooo`, or, where the vendor gives no category, an interest label that reads "out of office") earns no reply or recency points and no "replied" reason: a vendor's per-lead reply count may include automatic replies. [Coverage](/docs/coverage) says, per vendor, what is known about that count.
 
 - **Needs:** `leads.list`, or `leads.byCampaign` when `campaign` is given. Without `campaign` on an adapter that cannot list every lead it is `Unsupported`. Looking past the cap also needs `replies.list` and `leads.get`; without them the answer says `moreLeadsExist` and a note says the replied leads were not looked for.
 - **Costs:** one request per page of leads read. `max_leads` sets the ceiling. Past the cap, one or two more for the replies and one per replied lead the listing missed, at most `limit`: about 27 requests for a default call on Instantly with more than 500 leads.
