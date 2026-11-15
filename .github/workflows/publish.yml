@@ -97,7 +97,7 @@ jobs:
       - name: Check the digest again
         env:
           EXPECTED: ${{ github.event.inputs.digest }}
-          TARBALL: package/${{ needs.build.outputs.tarball }}
+          TARBALL: ./package/${{ needs.build.outputs.tarball }}
         run: |
           actual=$(sha256sum "$TARBALL" | cut -d ' ' -f 1)
           echo "Tarball $TARBALL has SHA-256 $actual"
@@ -105,4 +105,4 @@ jobs:
       - name: Publish those exact bytes
         run: npm publish "$TARBALL" --provenance --access public
         env:
-          TARBALL: package/${{ needs.build.outputs.tarball }}
+          TARBALL: ./package/${{ needs.build.outputs.tarball }}
