@@ -614,7 +614,7 @@ export interface InsightInputs {
     readonly max_campaigns?: number | undefined;
 
     /**
-     * A campaign's daily limit should not exceed this many sends per attached sender
+     * The sends a day assumed for an attached sender when the senders' own daily limits are not reported
      *
      * A number, 1 or more. Defaults to `50`.
      */

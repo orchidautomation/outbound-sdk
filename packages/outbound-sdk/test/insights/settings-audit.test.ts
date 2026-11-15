@@ -120,7 +120,7 @@ test("settings_audit lists each campaign's risky settings, the most serious firs
       check: "limit_over_senders",
       // 2 senders at 50 a day each.
       finding:
-        "The daily limit of 150 is over 50 a day for each of its 2 senders (100).",
+        "The daily limit of 150 is over 100 a day: its 2 senders do not all report a daily limit, so 50 each was assumed.",
       severity: "high",
       value: 150,
     },
@@ -287,6 +287,38 @@ test("settings_audit moves findings with each threshold", async () => {
   assert.equal((await audit({ min_window_hours: 1 })).Short, undefined);
   assert.deepEqual((await audit({ min_window_hours: 9 })).Clean, [
     "window_short",
+  ]);
+});
+
+/** An active campaign with only a daily limit set. */
+const limited = (id: string, dailyLimit: number) => ({
+  id,
+  name: id,
+  settings: { dailyLimit, schedule: [] },
+  status: "active" as const,
+});
+
+test("settings_audit holds a daily limit against the senders' own limits when they report them", async () => {
+  const result = await single({
+    campaigns: [limited("fits", 150), limited("over", 250)],
+    senders: [
+      { campaignIds: ["fits", "over"], dailyLimit: 100, id: "a" },
+      { campaignIds: ["fits", "over"], dailyLimit: 100, id: "b" },
+    ],
+  }).insights.settingsAudit({}, { now: NOW });
+
+  const limits = result.data.campaigns.flatMap((each) =>
+    each.findings
+      .filter((finding) => finding.check === "limit_over_senders")
+      .map((finding) => [each.name, finding.finding])
+  );
+
+  // 150 is over 50 a sender, but the two senders can send 200 between them.
+  assert.deepEqual(limits, [
+    [
+      "over",
+      "The daily limit of 250 is over the 200 a day its 2 senders can send.",
+    ],
   ]);
 });
 

@@ -79,6 +79,14 @@ test("domain_health on Smartlead keeps an unreported block list as null and an u
   assert.equal(result.data.totals.unknown, result.data.domains.length);
 });
 
+test("settings_audit on Instantly holds a daily limit against what the senders can send", async () => {
+  const { outbound, settle, unrouted } = over(instantly);
+  const result = await settle(outbound.insights.settingsAudit({}));
+
+  assert.deepEqual(unrouted, []);
+  assert.equal(result.data.byCheck.limit_over_senders, 0);
+});
+
 test("domain_health and warmup_readiness leave out a mailbox the vendor no longer finds", async () => {
   const domains = over(instantly, failing(404));
 

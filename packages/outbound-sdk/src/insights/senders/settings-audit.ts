@@ -7,7 +7,7 @@ import type {
   CampaignSettings,
   SendingWindow,
 } from "../../internal/entities-account.ts";
-import type { Campaign } from "../../internal/entities.ts";
+import type { Campaign, Sender } from "../../internal/entities.ts";
 import { defineInsight } from "../define.ts";
 import { spoken } from "../stats.ts";
 import {
@@ -32,7 +32,7 @@ const input = z.object({
     .min(1)
     .default(50)
     .describe(
-      "A campaign's daily limit should not exceed this many sends per attached sender"
+      "The sends a day assumed for an attached sender when the senders' own daily limits are not reported"
     ),
   max_senders_per_campaign: z
     .number()
@@ -121,7 +121,7 @@ interface Audit {
   readonly campaign: Campaign;
   readonly settings: CampaignSettings;
   /** `null` when the campaign's senders could not be listed. */
-  readonly senders: number | null;
+  readonly senders: readonly Sender[] | null;
   readonly today: string;
   readonly bars: Bars;
 }
@@ -217,8 +217,16 @@ const scheduleFindings = ({ bars, settings }: Audit): SettingsFinding[] => {
 const limitFindings = (audit: Audit): SettingsFinding[] => {
   const { bars, campaign, senders, settings, today } = audit;
   const { dailyLimit, endDate, gapMinutes } = settings;
+  const count = senders?.length ?? 0;
+
+  // The senders' own limits when each reports one, else a fixed share each.
+  const own =
+    senders?.every((sender) => sender.dailyLimit !== null) === true
+      ? senders.reduce((sum, sender) => sum + (sender.dailyLimit ?? 0), 0)
+      : null;
+
   // With no sender attached there is nothing to compare the limit with.
-  const allowed = (senders ?? 0) * bars.maxPerSender;
+  const allowed = own ?? count * bars.maxPerSender;
 
   return [
     ...when(
@@ -229,7 +237,9 @@ const limitFindings = (audit: Audit): SettingsFinding[] => {
     ...when(
       dailyLimit !== null && allowed > 0 && dailyLimit > allowed,
       "limit_over_senders",
-      `The daily limit of ${dailyLimit} is over ${bars.maxPerSender} a day for each of its ${senders} senders (${allowed}).`,
+      own === null
+        ? `The daily limit of ${dailyLimit} is over ${allowed} a day: its ${count} senders do not all report a daily limit, so ${bars.maxPerSender} each was assumed.`
+        : `The daily limit of ${dailyLimit} is over the ${own} a day its ${count} senders can send.`,
       dailyLimit
     ),
     ...when(
@@ -360,7 +370,7 @@ export const settingsAudit = defineInsight({
         return audit({
           bars,
           campaign,
-          senders: senders?.length ?? null,
+          senders,
           settings: context.one(settings),
           today: dayFrom(context.now, 0),
         });

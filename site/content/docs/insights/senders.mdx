@@ -262,7 +262,7 @@ Risky campaign settings, per campaign and by severity.
 | `max_window_hours` | 12 | 1 to 24 | A sending window longer than this is flagged. |
 | `min_window_hours` | 2 | 0 to 24 | A sending window shorter than this is flagged. |
 | `min_gap_minutes` | 5 | 0 or more | A wait between two sends shorter than this is flagged. |
-| `max_daily_limit_per_sender` | 50 | 1 or more | A campaign's daily limit should not exceed this many sends per attached sender. |
+| `max_daily_limit_per_sender` | 50 | 1 or more | The sends a day assumed for each attached sender when the senders' own daily limits are not reported. |
 | `max_campaigns` | 25 | 1 to 200 | The most campaigns to audit. |
 | `max_senders_per_campaign` | 100 | 1 to 1,000 | The most senders to count for one campaign. |
 
@@ -276,7 +276,7 @@ The checks:
 
 | Check | Severity | Fires when |
 | --- | --- | --- |
-| `limit_over_senders` | high | The daily limit is over `max_daily_limit_per_sender` times the number of attached senders. |
+| `limit_over_senders` | high | The daily limit is over what the attached senders can send: their own daily limits added up, or, when any of them reports none, `max_daily_limit_per_sender` times their number. The finding says when it assumed that share. |
 | `end_date_passed` | high | The campaign is active but its end date has passed. |
 | `reply_does_not_stop` | high | A lead who replies keeps getting the next steps. |
 | `no_window` | medium | No sending window is set or reported. |
