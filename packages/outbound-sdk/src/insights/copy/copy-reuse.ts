@@ -5,10 +5,10 @@ import { z } from "zod";
 import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Campaign, Sequence } from "../../internal/entities.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
-import { campaignStatusSchema } from "../../internal/vocabulary.ts";
 import { readCampaignsIn } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
+import { statusesInput } from "../fields.ts";
 import { compareRates, percent, round } from "../stats.ts";
 import type { Interval } from "../stats.ts";
 import { pooled, sharedBaseOf } from "./reuse-base.ts";
@@ -34,11 +34,7 @@ const input = z.object({
     .describe(
       "The smallest base (sends, or leads contacted when the vendor counts those) a campaign needs to count in the spread, and a piece of copy needs to be named the best."
     ),
-  statuses: z
-    .array(campaignStatusSchema)
-    .min(1)
-    .default(["active", "paused", "completed"])
-    .describe("The campaign statuses to read."),
+  statuses: statusesInput(["active", "paused", "completed"]),
 });
 
 export interface CopyUse {

@@ -4,20 +4,28 @@ import { z } from "zod";
 
 import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Campaign, MetricRow } from "../../internal/entities.ts";
+import { renamed } from "../../internal/renamed.ts";
+import { rangeOf } from "../copy/shared.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
+import { rangeFields, statusesInput } from "../fields.ts";
 import { percent, rate, total, wilson } from "../stats.ts";
 import type { Interval } from "../stats.ts";
-import { dayInput, readCampaignSenders, readCapped } from "./read.ts";
+import { readCampaigns, readCampaignSenders } from "./read.ts";
+
+const maxBounceRate = z.number().min(0).max(1);
 
 const input = z.object({
-  from: dayInput("First day to count"),
+  ...rangeFields,
   include_senders: z
     .boolean()
     .default(true)
     .describe(
       "Also check the senders of each campaign over the threshold. Costs 1 listing per such campaign and 1 request per sender."
     ),
+  max_bounce_rate: maxBounceRate
+    .default(0.03)
+    .describe("The bounce rate, bounced divided by sent, that is too high"),
   max_campaigns: z
     .number()
     .int()
@@ -40,13 +48,8 @@ const input = z.object({
     .describe(
       "A campaign or sender with fewer sends than this is too small to judge"
     ),
-  threshold: z
-    .number()
-    .min(0)
-    .max(1)
-    .default(0.03)
-    .describe("The bounce rate, bounced divided by sent, that is too high"),
-  to: dayInput("Last day to count"),
+  threshold: renamed("max_bounce_rate", maxBounceRate),
+  statuses: statusesInput(["active"]),
 });
 
 export interface BounceCounts {
@@ -250,15 +253,14 @@ export const bounceWatch = defineInsight({
   next: "Use domain_health on the senders named here, and settings_audit on the campaigns over the threshold.",
   run: async (context, options) => {
     const { outbound } = context;
-    const { min_sent: minSent, threshold } = options;
-    const range: Range = { from: options.from, to: options.to };
+    const { max_bounce_rate: threshold, min_sent: minSent } = options;
 
-    const campaigns = await readCapped(
+    const range: Range = rangeOf(options.from, options.to);
+
+    const campaigns = await readCampaigns(
       context,
-      (cap) => outbound.campaigns.listAll({ max: cap }),
-      options.max_campaigns,
-      "campaigns",
-      "max_campaigns"
+      options.statuses,
+      options.max_campaigns
     );
 
     const withSenders =

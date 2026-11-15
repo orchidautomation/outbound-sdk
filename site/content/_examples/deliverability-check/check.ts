@@ -12,7 +12,10 @@ export const deliverabilityCheck = async (
   outbound: Outbound & InsightsExtension
 ): Promise<string> => {
   const domains = await outbound.insights.domainHealth({});
-  const bounces = await outbound.insights.bounceWatch({ threshold: 0.03 });
+
+  const bounces = await outbound.insights.bounceWatch({
+    max_bounce_rate: 0.03,
+  });
 
   const lines = ["Domains:"];
 

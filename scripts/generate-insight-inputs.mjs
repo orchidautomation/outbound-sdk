@@ -173,7 +173,26 @@ export const rulesOf = (schema) => {
   return rules;
 };
 
+const block = (lines) =>
+  ["/**", ...lines.map((line) => ` * ${line}`.trimEnd()), " */"].join("\n");
+
 const commentOf = (schema, required) => {
+  // An old name kept for one release: the editor strikes it through, and it
+  // has no default of its own, since leaving it out sets nothing.
+  if (schema.deprecated === true) {
+    const rules = rulesOf(schema);
+
+    const why = (schema.description ?? "").replace(
+      /^Deprecated: (?<first>.)/u,
+      (_match, first) => first.toUpperCase()
+    );
+
+    return block([
+      `@deprecated ${why}`.trimEnd(),
+      ...(rules.length === 0 ? [] : ["", rules.join(" ")]),
+    ]);
+  }
+
   const facts = [
     ...rulesOf(schema),
     required
@@ -185,9 +204,7 @@ const commentOf = (schema, required) => {
     (line, index) => index !== 1 || schema.description !== undefined
   );
 
-  return ["/**", ...lines.map((line) => ` * ${line}`.trimEnd()), " */"].join(
-    "\n"
-  );
+  return block(lines);
 };
 
 /** The interface body for one insight's input, from its JSON Schema. */

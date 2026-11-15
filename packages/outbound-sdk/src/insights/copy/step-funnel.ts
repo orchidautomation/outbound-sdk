@@ -5,16 +5,10 @@ import { z } from "zod";
 import type { MetricRow, Sequence } from "../../internal/entities.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
 import { defineInsight } from "../define.ts";
+import { rangeFields } from "../fields.ts";
 import { rate, total } from "../stats.ts";
 import type { Interval } from "../stats.ts";
-import {
-  dayInput,
-  measure,
-  perLead,
-  rangeOf,
-  splitStats,
-  sumRows,
-} from "./shared.ts";
+import { measure, perLead, rangeOf, splitStats, sumRows } from "./shared.ts";
 import type { RateBasis, StepStats } from "./shared.ts";
 
 const input = z.object({
@@ -22,7 +16,7 @@ const input = z.object({
     .string()
     .min(1)
     .describe("The campaign's ref, for example `instantly:acme:abc123`"),
-  from: dayInput("First day to count, YYYY-MM-DD. null counts from the start."),
+  ...rangeFields,
   min_reply_rate: z
     .number()
     .min(0)
@@ -31,7 +25,6 @@ const input = z.object({
     .describe(
       "A step earns its place when the low end of its reply rate interval is above this. 0 asks only that the rate is reliably above zero."
     ),
-  to: dayInput("Last day to count, YYYY-MM-DD. null counts to today."),
 });
 
 export interface FunnelVariant {

@@ -5,12 +5,8 @@ import { z } from "zod";
 import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Campaign, Sender } from "../../internal/entities.ts";
 import { defineInsight } from "../define.ts";
-import {
-  readCampaigns,
-  readCampaignSenders,
-  readSenders,
-  statusesInput,
-} from "./read.ts";
+import { statusesInput } from "../fields.ts";
+import { readCampaigns, readCampaignSenders, readSenders } from "./read.ts";
 
 const input = z.object({
   max_campaigns: z
@@ -35,7 +31,7 @@ const input = z.object({
     .describe(
       "The most senders to read for the workspace, and for each campaign"
     ),
-  statuses: statusesInput,
+  statuses: statusesInput(["active"]),
 });
 
 export interface LoadedSender {

@@ -6,6 +6,7 @@ import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { SenderHealth } from "../../internal/entities-account.ts";
 import type { Sender } from "../../internal/entities.ts";
 import { noun, plural } from "../../internal/plural.ts";
+import { renamed } from "../../internal/renamed.ts";
 import { defineInsight } from "../define.ts";
 import { percent, rate, wilson } from "../stats.ts";
 import type { Interval } from "../stats.ts";
@@ -20,6 +21,8 @@ import {
 } from "./read.ts";
 import type { DnsRecord } from "./read.ts";
 
+const maxSpamRate = z.number().min(0).max(1);
+
 const input = z.object({
   max_senders: z
     .number()
@@ -28,14 +31,12 @@ const input = z.object({
     .max(500)
     .default(50)
     .describe("The most senders to check. Each costs 1 request."),
-  spam_rate_threshold: z
-    .number()
-    .min(0)
-    .max(1)
+  max_spam_rate: maxSpamRate
     .default(0.1)
     .describe(
       "A domain whose warmup emails land in spam more often than this share is high risk"
     ),
+  spam_rate_threshold: renamed("max_spam_rate", maxSpamRate),
 });
 
 export type DomainRisk = "high" | "low" | "medium" | "unknown";
@@ -261,7 +262,7 @@ export const domainHealth = defineInsight({
   next: "Use warmup_readiness to see which mailboxes of a risky domain are not ready, or bounce_watch to see whether bounces already rose.",
   run: async (
     context,
-    { max_senders: maxSenders, spam_rate_threshold: threshold }
+    { max_senders: maxSenders, max_spam_rate: threshold }
   ) => {
     const { items: senders } = await readSenders(context, maxSenders);
 

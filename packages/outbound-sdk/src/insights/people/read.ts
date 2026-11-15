@@ -11,10 +11,10 @@ import type {
 } from "../../internal/entities.ts";
 import type { BulkResult, ListAll } from "../../internal/outbound/api.ts";
 import { noun, plural } from "../../internal/plural.ts";
-import { campaignStatusSchema } from "../../internal/vocabulary.ts";
 import { readCampaignsIn, readCapped } from "../capped.ts";
 import type { Capped } from "../capped.ts";
 import type { InsightContext } from "../define.ts";
+import { statusesInput } from "../fields.ts";
 
 /** Reads at most `max` records, and says so in a note naming `input` when more exist. */
 export const readCappedFlag = <Item>(
@@ -60,11 +60,7 @@ export const readByRef = async <Item>(
   return new Map(found.results.map(({ id, value }) => [id, value]));
 };
 
-export const statusesField = z
-  .array(campaignStatusSchema)
-  .min(1)
-  .default(["active"])
-  .describe("Campaign statuses to consider, for example active or paused");
+export const statusesField = statusesInput(["active"]);
 
 /** Campaigns in the given statuses, up to `max_campaigns`. */
 export const campaignsIn = async (

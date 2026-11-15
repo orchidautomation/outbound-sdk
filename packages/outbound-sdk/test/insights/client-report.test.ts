@@ -76,7 +76,7 @@ const BOUNCE_NOTE =
 
 test("client_report composes totals, best and worst campaigns, bounce problems, unusual days, leads left and actions", async () => {
   const result = await single(DATA).insights.clientReport(
-    { top: 1 },
+    { limit: 1 },
     { now: NOW }
   );
 
@@ -381,7 +381,7 @@ test("client_report leaves out the sections the adapter cannot serve, and names 
 
   const noDays = await single(DATA, {
     "stats.byDay": false,
-  }).insights.clientReport({ top: 1 }, { now: NOW });
+  }).insights.clientReport({ limit: 1 }, { now: NOW });
 
   assert.equal(noDays.data.anomalies, null);
   assert.equal(noDays.data.runningOutOfLeads, null);
@@ -472,7 +472,7 @@ test("client_report covers the campaigns of two tools in one report", async () =
       row("k1", "2026-11-05", { contacted: 100, replied: 20, sent: 100 }),
       row("k1", "2026-11-12", { contacted: 100, replied: 25, sent: 100 }),
     ],
-  }).insights.clientReport({ top: 1 }, { now: NOW });
+  }).insights.clientReport({ limit: 1 }, { now: NOW });
 
   assert.equal(result.data.campaigns, 5);
   // 25 of 100 has a low end of 17.55%, above Winner's 12.3%.

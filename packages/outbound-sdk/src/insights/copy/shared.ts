@@ -1,22 +1,11 @@
 // What the copy insights share: the base a step's rate is divided by, and a
 // rate with its interval.
 
-import { z } from "zod";
-
 import type { MetricRow } from "../../internal/entities.ts";
 import { sumCounts } from "../../internal/metrics.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
 import { rate, wilson } from "../stats.ts";
 import type { Interval } from "../stats.ts";
-
-/** A `YYYY-MM-DD` input that defaults to `null`, meaning no bound. */
-export const dayInput = (description: string) =>
-  z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/u, "must be YYYY-MM-DD")
-    .nullable()
-    .default(null)
-    .describe(description);
 
 export interface DayRange {
   readonly from: string | undefined;

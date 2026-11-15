@@ -7,11 +7,11 @@ import type { MetricCounts } from "../../internal/metrics.ts";
 import { noun, plural } from "../../internal/plural.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
+import { rangeFields } from "../fields.ts";
 import { compareRates, percent } from "../stats.ts";
 import type { Interval } from "../stats.ts";
 import {
   basesInWords,
-  dayInput,
   measure,
   rangeOf,
   sharedBases,
@@ -36,7 +36,7 @@ const input = z.object({
     .string()
     .min(1)
     .describe("The campaign's ref, for example `instantly:acme:abc123`"),
-  from: dayInput("First day to count, YYYY-MM-DD. null counts from the start."),
+  ...rangeFields,
   metric: z
     .enum(METRICS)
     .default("replied")
@@ -51,7 +51,6 @@ const input = z.object({
     .describe(
       "A variant with a smaller base than this (sends, or leads contacted when the vendor counts those) is not compared."
     ),
-  to: dayInput("Last day to count, YYYY-MM-DD. null counts to today."),
 });
 
 export type VariantVerdict = "no_difference_yet" | "too_little_data" | "winner";

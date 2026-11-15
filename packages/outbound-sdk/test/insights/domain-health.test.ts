@@ -263,7 +263,7 @@ test("domain_health lists LinkedIn seats apart, disconnected first, and mailboxe
 test("domain_health moves a domain to high risk when the spam threshold drops under its rate", async () => {
   const risks = async (threshold: number) => {
     const { data } = await single(DATA).insights.domainHealth({
-      spam_rate_threshold: threshold,
+      max_spam_rate: threshold,
     });
 
     return Object.fromEntries(
@@ -282,7 +282,7 @@ test("domain_health moves a domain to high risk when the spam threshold drops un
   assert.equal((await risks(0.02))["good.example"], "high");
 
   const loose = await single(DATA).insights.domainHealth({
-    spam_rate_threshold: 0.2,
+    max_spam_rate: 0.2,
   });
 
   assert.deepEqual(loose.data.domains[0]?.reasons, [

@@ -4,6 +4,7 @@
 import { z } from "zod";
 
 import { mapConcurrent } from "../../internal/concurrency.ts";
+import { renamed } from "../../internal/renamed.ts";
 import type { CampaignsRead } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
@@ -25,6 +26,8 @@ import {
   volumeOf,
 } from "./shared.ts";
 import type { CampaignLabel, DayRange } from "./shared.ts";
+
+const limit = z.number().int().min(1).max(20);
 
 const input = z.object({
   ...listFields(
@@ -55,6 +58,7 @@ const input = z.object({
     .max(90)
     .default(7)
     .describe("The length of the period, in complete days ending yesterday"),
+  limit: limit.default(3).describe("How many best and worst campaigns to show"),
   max_bounce_rate: z
     .number()
     .min(0)
@@ -87,13 +91,7 @@ const input = z.object({
     .describe(
       "A campaign with this many days of leads left or fewer is flagged"
     ),
-  top: z
-    .number()
-    .int()
-    .min(1)
-    .max(20)
-    .default(3)
-    .describe("How many best and worst campaigns to show"),
+  top: renamed("limit", limit),
 });
 
 type Options = z.infer<typeof input>;
@@ -317,7 +315,7 @@ export const clientReport = defineInsight({
   key: "clientReport",
   name: "client_report",
   needs: ["stats.campaign"],
-  next: "Use campaign_diagnosis on a campaign an action item names, or period_comparison for every campaign's change.",
+  next: "Use campaign_diagnosis on a campaign an action item names, with from and to set to this report's `period`, or period_comparison for every campaign's change.",
   run: async (context, options) => {
     const periods = await readPeriods(context, options);
 
@@ -334,8 +332,8 @@ export const clientReport = defineInsight({
     const sections: Sections = {
       anomalies: await readAnomalies(context, periods.current, options),
       bottom: ranking.ranked
-        .slice(options.top)
-        .slice(-options.top)
+        .slice(options.limit)
+        .slice(-options.limit)
         .toReversed(),
       bounceProblems: bounceProblems(periods.campaigns, options),
       runningOutOfLeads: await readRunways(context, periods.campaigns, options),
@@ -371,7 +369,7 @@ export const clientReport = defineInsight({
       period: periods.current,
       previousPeriod: periods.previous,
       replyRateBasis: "sent",
-      top: ranking.ranked.slice(0, options.top),
+      top: ranking.ranked.slice(0, options.limit),
     };
 
     return report;

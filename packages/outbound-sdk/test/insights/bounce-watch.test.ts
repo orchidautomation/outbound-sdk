@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import { OutboundError } from "../../src/index.ts";
+import type { CampaignStatus } from "../../src/index.ts";
 import type { MemoryData } from "../../src/memory/index.ts";
 import { NOW, single } from "./helpers.ts";
 import { pair, ref, refused } from "./senders-helpers.ts";
@@ -45,8 +47,13 @@ const DATA: MemoryData = {
   ],
 };
 
+// Every status, as bounce_watch read before `statuses` defaulted to active.
+const EVERY: { readonly statuses: CampaignStatus[] } = {
+  statuses: ["active", "paused", "completed", "draft", "archived", "unknown"],
+};
+
 test("bounce_watch lists the campaigns over the threshold worst first, with their senders", async () => {
-  const result = await single(DATA).insights.bounceWatch({}, { now: NOW });
+  const result = await single(DATA).insights.bounceWatch(EVERY, { now: NOW });
   const { data } = result;
 
   assert.equal(result.insight, "bounce_watch");
@@ -149,7 +156,7 @@ test("bounce_watch does not flag a sender on fewer sends than min_sent", async (
 });
 
 test("bounce_watch sets small campaigns apart and never calls an unknown count clean", async () => {
-  const { data } = await single(DATA).insights.bounceWatch({});
+  const { data } = await single(DATA).insights.bounceWatch(EVERY);
 
   assert.deepEqual(data.tooFewSends, [
     {
@@ -198,7 +205,10 @@ test("bounce_watch sets small campaigns apart and never calls an unknown count c
 });
 
 test("bounce_watch moves campaigns and senders with the threshold and with min_sent", async () => {
-  const strict = await single(DATA).insights.bounceWatch({ threshold: 0.06 });
+  const strict = await single(DATA).insights.bounceWatch({
+    ...EVERY,
+    max_bounce_rate: 0.06,
+  });
 
   assert.deepEqual(
     strict.data.over.map((campaign) => campaign.name),
@@ -210,7 +220,10 @@ test("bounce_watch moves campaigns and senders with the threshold and with min_s
   );
   assert.equal(strict.data.totals.clean, 2);
 
-  const loose = await single(DATA).insights.bounceWatch({ threshold: 0.01 });
+  const loose = await single(DATA).insights.bounceWatch({
+    ...EVERY,
+    max_bounce_rate: 0.01,
+  });
 
   assert.deepEqual(
     loose.data.over.map((campaign) => campaign.name),
@@ -218,7 +231,10 @@ test("bounce_watch moves campaigns and senders with the threshold and with min_s
   );
   assert.equal(loose.data.totals.clean, 0);
 
-  const small = await single(DATA).insights.bounceWatch({ min_sent: 30 });
+  const small = await single(DATA).insights.bounceWatch({
+    ...EVERY,
+    min_sent: 30,
+  });
 
   assert.deepEqual(
     small.data.over.map((campaign) => [campaign.name, campaign.rate]),
@@ -230,7 +246,10 @@ test("bounce_watch moves campaigns and senders with the threshold and with min_s
   );
 
   // With no minimum, a campaign that sent nothing still cannot be judged.
-  const none = await single(DATA).insights.bounceWatch({ min_sent: 0 });
+  const none = await single(DATA).insights.bounceWatch({
+    ...EVERY,
+    min_sent: 0,
+  });
 
   assert.deepEqual(
     none.data.tooFewSends.map((campaign) => campaign.name),
@@ -239,7 +258,11 @@ test("bounce_watch moves campaigns and senders with the threshold and with min_s
 });
 
 test("bounce_watch counts only the days asked for", async () => {
-  const late = await single(DATA).insights.bounceWatch({ from: "2026-11-05" });
+  const late = await single(DATA).insights.bounceWatch({
+    ...EVERY,
+    from: "2026-11-05",
+  });
+
   const [hot] = late.data.over;
 
   assert.equal(hot?.sent, 400);
@@ -247,7 +270,10 @@ test("bounce_watch counts only the days asked for", async () => {
   assert.equal(hot?.rate, 0.15);
   assert.deepEqual(hot?.interval, { high: 0.1883, low: 0.1183 });
 
-  const early = await single(DATA).insights.bounceWatch({ to: "2026-11-05" });
+  const early = await single(DATA).insights.bounceWatch({
+    ...EVERY,
+    to: "2026-11-05",
+  });
 
   assert.deepEqual(
     early.data.over.map((campaign) => [
@@ -265,6 +291,7 @@ test("bounce_watch counts only the days asked for", async () => {
 
 test("bounce_watch leaves the senders out when asked to, or when the adapter cannot read them", async () => {
   const skipped = await single(DATA).insights.bounceWatch({
+    ...EVERY,
     include_senders: false,
   });
 
@@ -277,7 +304,7 @@ test("bounce_watch leaves the senders out when asked to, or when the adapter can
 
   const noStats = await single(DATA, {
     "stats.bySender": false,
-  }).insights.bounceWatch({});
+  }).insights.bounceWatch(EVERY);
 
   assert.equal(noStats.data.over[0]?.senders, null);
   assert.equal(noStats.data.over.length, 2);
@@ -285,7 +312,7 @@ test("bounce_watch leaves the senders out when asked to, or when the adapter can
 
   const noList = await single(DATA, {
     "senders.byCampaign": false,
-  }).insights.bounceWatch({});
+  }).insights.bounceWatch(EVERY);
 
   assert.equal(noList.data.over[1]?.senders, null);
   assert.deepEqual(noList.meta.notes, [note]);
@@ -321,6 +348,7 @@ test("bounce_watch has nothing to report with no campaigns", async () => {
 
 test("bounce_watch says so when a cap stops the campaigns or a campaign's senders", async () => {
   const fewCampaigns = await single(DATA).insights.bounceWatch({
+    ...EVERY,
     max_campaigns: 2,
   });
 
@@ -333,6 +361,7 @@ test("bounce_watch says so when a cap stops the campaigns or a campaign's sender
   );
 
   const fewSenders = await single(DATA).insights.bounceWatch({
+    ...EVERY,
     max_senders_per_campaign: 1,
   });
 
@@ -390,4 +419,41 @@ test("bounce_watch ranks campaigns of two tools together", async () => {
   );
   // 21 of 300.
   assert.equal(data.totals.rate, 0.07);
+});
+
+test("bounce_watch reads active campaigns unless asked for more, and never asks more often", async () => {
+  const active = await single(DATA).insights.bounceWatch({ from: null });
+
+  assert.ok(active.data.over.every((each) => each.status === "active"));
+  assert.ok(!active.data.over.some((each) => each.name === "Warm"));
+  assert.equal(active.data.totals.campaigns, 7);
+
+  const paused = await single(DATA).insights.bounceWatch({
+    statuses: ["active", "paused"],
+  });
+
+  assert.ok(paused.data.over.some((each) => each.name === "Warm"));
+  assert.equal(paused.data.totals.campaigns, 8);
+
+  // Before `statuses` it listed every campaign once, as an adapter that
+  // cannot filter by status still does.
+  const unfiltered = { "campaigns.status": false } as const;
+  const before = await single(DATA, unfiltered).insights.bounceWatch(EVERY);
+
+  const filterless = await single(DATA, unfiltered).insights.bounceWatch({});
+
+  assert.equal(before.data.totals.campaigns, 8);
+  assert.ok(active.meta.requests <= before.meta.requests);
+  assert.ok(filterless.meta.requests <= before.meta.requests);
+  assert.deepEqual(filterless.data, active.data);
+});
+
+test("bounce_watch refuses a day that does not exist", async () => {
+  await assert.rejects(
+    async () => await single(DATA).insights.bounceWatch({ from: "2026-02-30" }),
+    (error) =>
+      OutboundError.is(error) &&
+      error.code === "Invalid" &&
+      error.message.startsWith("bounce_watch: from ")
+  );
 });

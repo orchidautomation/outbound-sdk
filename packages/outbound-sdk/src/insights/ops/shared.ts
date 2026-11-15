@@ -8,10 +8,10 @@ import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Campaign, CampaignStatus } from "../../internal/entities.ts";
 import { sumCounts } from "../../internal/metrics.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
-import { campaignStatusSchema } from "../../internal/vocabulary.ts";
 import { campaignsReadOf, readCampaignsIn } from "../capped.ts";
 import type { CampaignsRead } from "../capped.ts";
 import type { InsightContext } from "../define.ts";
+import { statusesInput } from "../fields.ts";
 import { rate, total, wilson } from "../stats.ts";
 
 const DAY_MS = 86_400_000;
@@ -56,25 +56,8 @@ export const listFields = (costPerCampaign: string) => ({
     .max(200)
     .default(25)
     .describe(`The most campaigns to read. Each costs ${costPerCampaign}.`),
-  statuses: z
-    .array(campaignStatusSchema)
-    .min(1)
-    .default(["active", "paused", "completed"])
-    .describe("Only campaigns in one of these states are read"),
+  statuses: statusesInput(["active", "paused", "completed"]),
 });
-
-export const rangeFields = {
-  from: z.iso
-    .date()
-    .nullable()
-    .default(null)
-    .describe("First day counted, YYYY-MM-DD. null for the whole history."),
-  to: z.iso
-    .date()
-    .nullable()
-    .default(null)
-    .describe("Last day counted, YYYY-MM-DD. null for up to today."),
-};
 
 export interface CampaignLabel {
   /** The campaign's ref. */
