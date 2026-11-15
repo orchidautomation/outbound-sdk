@@ -180,7 +180,7 @@ test("deliverability_check lists senders with a problem first and computes the w
     ]
   );
   assert.equal(senders[0]?.domain, "example.com");
-  assert.equal(result.meta.requests, 1);
+  assert.equal(result.meta.requests, 0);
 
   const scoped = await call("deliverability_check", {
     campaign: "cmp_agencies",

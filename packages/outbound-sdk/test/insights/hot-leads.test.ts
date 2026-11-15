@@ -125,7 +125,7 @@ test("hot_leads ranks leads by a score whose parts are returned, and leaves out 
     opens: 3,
     parts: { clicks: 5, interest: 50, opens: 3, recency: 10, replies: 20 },
     reason:
-      "marked Meeting Booked, replied 2 time(s), last reply 7 day(s) ago, 1 click(s), 3 open(s).",
+      "marked Meeting Booked, replied 2 times, last reply 7 days ago, 1 click, 3 opens.",
     replies: 2,
     score: 88,
     status: "replied",
@@ -147,7 +147,7 @@ test("hot_leads ranks leads by a score whose parts are returned, and leaves out 
     replies: null,
   });
   assert.equal(data.leads[3]?.replies, null);
-  assert.equal(data.leads[3]?.reason, "replied 1 time(s).");
+  assert.equal(data.leads[3]?.reason, "replied 1 time.");
   assert.deepEqual(data.totals, {
     autoReplied: 0,
     // h8 unsubscribed and h9 bounced.

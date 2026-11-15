@@ -15,9 +15,12 @@ import {
   int,
   num,
   pct,
+  noun,
+  people,
   plural,
   rows,
   show,
+  stepOf,
   str,
   strings,
   words,
@@ -144,7 +147,7 @@ const winningSteps: CardBuilder = (data) => {
     finding:
       top === undefined
         ? "The vendor reports no reply rate by step for this campaign."
-        : `Step ${show(top, "step")}${
+        : `Step ${stepOf(top, "step")}${
             str(top, "variant") === null
               ? ""
               : ` variant ${show(top, "variant")}`
@@ -153,12 +156,12 @@ const winningSteps: CardBuilder = (data) => {
     table: {
       align: [LEFT, LEFT, RIGHT, RIGHT, RIGHT],
       headers: ["Step", "Variant", "Sent", "Replies", "Reply rate"],
-      rows: steps.map((step) => {
-        const metrics = child(step, "metrics");
+      rows: steps.map((each) => {
+        const metrics = child(each, "metrics");
 
         return [
-          show(step, "step"),
-          show(step, "variant"),
+          stepOf(each, "step"),
+          show(each, "variant"),
           int(num(metrics, "sent")),
           int(num(metrics, "replied")),
           pct(num(metrics, "reply_rate")),
@@ -256,7 +259,8 @@ const replySamples: CardBuilder = (data) => {
   return {
     bullets: replies.map(
       (reply) =>
-        `**${words(show(reply, "category"))}** · ${show(reply, "lead")} · ${day(
+        // The reply holds the lead's ref only, which is for code, not for a person.
+        `**${words(show(reply, "category"))}** · ${day(
           str(reply, "received_at")
         )}${quote(field(reply, "body"))}`
     ),
@@ -354,7 +358,7 @@ const crossChannelLead: CardBuilder = (data) => {
       ["Messages sent", int(timeline.length - inbound)],
       ["Replies", int(inbound)],
     ],
-    subtitle: strings(data, "identifiers").join(" · ") || null,
+    subtitle: people(data, "identifiers"),
     title: "One person, every channel",
   };
 };
@@ -416,7 +420,7 @@ const deliverabilityCheck: CardBuilder = (data) => {
       senders.length,
       broken === 0
         ? null
-        : `🔴 ${int(broken)} of ${int(senders.length)} senders have a problem.`,
+        : `🔴 ${int(broken)} of ${plural(senders.length, "sender")} ${noun(broken, "has", "have")} a problem.`,
       `No problem found on ${plural(senders.length, "sender")}.`
     ),
     table: {

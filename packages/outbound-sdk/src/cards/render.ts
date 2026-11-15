@@ -116,7 +116,8 @@ const EVIDENCE: ReadonlySet<string> = new Set(["derived", "exact", "sampled"]);
 const isEvidence = (value: string | null): value is Evidence =>
   EVIDENCE.has(value ?? "");
 
-const NOT_A_RESULT = "⚪ Nothing to show: this is not a tool or insight result.";
+const NOT_A_RESULT =
+  "⚪ Nothing to show: this is not a tool or insight result.";
 
 /**
  * What came in, as a tool result: an insight's answer is wrapped the way

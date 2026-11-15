@@ -7,6 +7,7 @@
 
 import { OutboundError } from "../internal/errors.ts";
 import type { OutboundPlugin } from "../internal/outbound/plugins.ts";
+import { plural } from "../internal/plural.ts";
 
 export interface BudgetOptions {
   /** The most vendor requests allowed. */
@@ -48,7 +49,7 @@ export const budget = (
   const spent = (provider: string): OutboundError =>
     new OutboundError(
       "RateLimited",
-      `The run used its budget of ${options.maxRequests} request(s) to ${provider}`,
+      `The run used its budget of ${plural(options.maxRequests, "request")} to ${provider}`,
       { provider }
     );
 

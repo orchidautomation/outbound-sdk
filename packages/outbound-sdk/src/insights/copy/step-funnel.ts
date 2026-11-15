@@ -192,7 +192,8 @@ const describe = (
     return "No step has a reply in this range.";
   }
 
-  const lead = `Step ${top.step} (counted from 0) brings the most replies: ${top.replies} of ${allReplies}.`;
+  // A person counts steps from 1; `step` in the answer counts from 0.
+  const lead = `Step ${top.step + 1} brings the most replies: ${top.replies} of ${allReplies}.`;
 
   if (last === null) {
     return `${lead} No step's reply rate is reliably above the bar yet.`;
@@ -203,8 +204,8 @@ const describe = (
   );
 
   return later.length === 0
-    ? `${lead} Every step up to step ${last.step} still earns its place.`
-    : `${lead} Step ${last.step} is the last whose reply rate is reliably above the bar; the ${later.length} later step(s) sent ${total(later.map((step) => step.sent))} messages for ${total(later.map((step) => step.replies)) ?? "an unknown number of"} replies.`;
+    ? `${lead} Every step up to step ${last.step + 1} still earns its place.`
+    : `${lead} Step ${last.step + 1} is the last whose reply rate is reliably above the bar; the ${later.length === 1 ? "1 later step" : `${later.length} later steps`} sent ${total(later.map((step) => step.sent))} messages for ${total(later.map((step) => step.replies)) ?? "an unknown number of"} replies.`;
 };
 
 const unattributedOf = (rows: readonly MetricRow[]) => {

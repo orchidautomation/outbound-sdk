@@ -10,6 +10,7 @@ import type {
   ReplyCategory,
 } from "../../internal/entities.ts";
 import type { BulkResult, ListAll } from "../../internal/outbound/api.ts";
+import { noun, plural } from "../../internal/plural.ts";
 import { campaignStatusSchema } from "../../internal/vocabulary.ts";
 import { readCampaignsIn, readCapped } from "../capped.ts";
 import type { Capped } from "../capped.ts";
@@ -33,7 +34,7 @@ export const readByRef = async <Item>(
   context: InsightContext,
   refs: readonly string[],
   read: (refs: readonly string[]) => Promise<BulkResult<Item>>,
-  what: string,
+  what: readonly [one: string, many: string],
   effect: string
 ): Promise<Map<string, Item>> => {
   if (refs.length === 0) {
@@ -44,7 +45,7 @@ export const readByRef = async <Item>(
 
   if (found.errors.length > 0) {
     context.note(
-      `${found.errors.length} ${what} could not be read, so ${found.errors.length === 1 ? "its" : "their"} ${effect}.`
+      `${plural(found.errors.length, ...what)} could not be read, so ${noun(found.errors.length, "its", "their")} ${effect}.`
     );
   }
 

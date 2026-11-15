@@ -18,6 +18,7 @@ import type {
   StatsResult,
   WithMeta,
 } from "../internal/outbound/api.ts";
+import { plural } from "../internal/plural.ts";
 
 export interface InsightMeta {
   /** `exact` only when every read behind the answer was exact. */
@@ -110,9 +111,19 @@ const stopNote = (cap: Cap | string | undefined): string => {
     : capNote(cap);
 };
 
+/**
+ * `cap.what` for a cap of one: its first plural word in the singular, so
+ * `recent replies looked through` becomes `recent reply looked through`.
+ */
+const oneOf = (what: string): string =>
+  what.replace(
+    /\b(?<stem>\w+?)(?<end>ies|s)\b/u,
+    (_match, stem: string, end: string) => (end === "ies" ? `${stem}y` : stem)
+  );
+
 /** The note for a listing that a cap stopped with more records left. */
 export const capNote = (cap: Cap): string =>
-  `Stopped at ${cap.max} ${cap.what} (${cap.input ?? "a fixed cap"}); more exist.`;
+  `Stopped at ${plural(cap.max, oneOf(cap.what), cap.what)} (${cap.input ?? "a fixed cap"}); more exist.`;
 
 /** What an insight reads through. Every helper records the read's cost and evidence. */
 export interface InsightContext {

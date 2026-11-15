@@ -9,6 +9,7 @@ import {
   mark,
   num,
   pct,
+  noun,
   plural,
   rows,
   show,
@@ -236,7 +237,7 @@ const warmupReadiness: CardBuilder = (data) => {
       num(data, "total"),
       notReady.length === 0
         ? null
-        : `🟡 ${int(num(data, "ready"))} of ${int(num(data, "total"))} senders are ${ready}${unchecked}.`,
+        : `🟡 ${int(num(data, "ready"))} of ${plural(num(data, "total") ?? 0, "sender")} ${noun(num(data, "ready") ?? 0, "is", "are")} ${ready}${unchecked}.`,
       `Every sender is ${ready} (${int(num(data, "total"))} checked)${unchecked}.`
     ),
     stats: [

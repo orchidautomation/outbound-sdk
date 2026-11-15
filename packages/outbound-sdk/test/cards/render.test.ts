@@ -550,6 +550,22 @@ test("alertCard shows what was measured against its limit", () => {
   );
 });
 
+test("alertCard names the subject when the alert has a name, and titles the rule in words", () => {
+  const text = read(
+    alertCard({
+      message: "Bounce rate is 20.0%, above 5.0%",
+      rule: "bounce-rate-above",
+      subject: "memory:default:c1",
+      subjectName: "Founders Q4",
+      threshold: 0.05,
+      value: 0.2,
+    })
+  );
+
+  includes(text, "🚨 Bounce rate above", "About: Founders Q4");
+  excludes(text, "memory:default:c1", "Bounce-rate-above");
+});
+
 test("safe makes mentions, links and code fences inert", () => {
   assert.equal(
     safe("<!channel> <@U1> <https://x.example|click>"),

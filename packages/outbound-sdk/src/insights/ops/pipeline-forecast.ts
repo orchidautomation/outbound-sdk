@@ -4,6 +4,7 @@
 import { z } from "zod";
 
 import type { Campaign, Lead, LeadStatus } from "../../internal/entities.ts";
+import { noun, plural } from "../../internal/plural.ts";
 import { readCapped } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
@@ -150,11 +151,22 @@ const describe = (
     return "No leads are left to contact; add leads to keep the campaign sending.";
   }
 
-  const leads = `${complete ? "" : "At least "}${remaining} leads remain`;
+  const leads = `${complete ? "" : "At least "}${plural(remaining, "lead")} ${noun(remaining, "remains", "remain")}`;
 
-  return forecast.expected === null
-    ? `${leads}; replies cannot be estimated because the vendor reports no reply rate yet.`
-    : `${leads}; expect about ${spoken(forecast.expected)} replies (between ${spoken(forecast.low)} and ${spoken(forecast.high)}). This is an estimate.`;
+  if (forecast.expected === null) {
+    return `${leads}; replies cannot be estimated because the vendor reports no reply rate yet.`;
+  }
+
+  const [expected, low, high] = [
+    forecast.expected,
+    forecast.low,
+    forecast.high,
+  ].map((value) => spoken(value));
+
+  // A range whose ends read the same says nothing, so it is left out.
+  const range = low === high ? "" : ` (between ${low} and ${high})`;
+
+  return `${leads}; expect about ${expected} ${noun(Number(expected), "reply", "replies")}${range}. This is an estimate.`;
 };
 
 export interface ForecastOptions {
@@ -201,7 +213,7 @@ export const forecastCampaign = async (
     ...labelOf(campaign),
     assumptions: [
       ...ASSUMPTIONS,
-      `The reply rate so far is ${percent(rates.replyRate.rate)}, from ${rates.replyRate.count ?? "unknown"} replies over ${rates.replyRate.of ?? "unknown"}.`,
+      `The reply rate so far is ${percent(rates.replyRate.rate)}, from ${rates.replyRate.count === null ? "an unknown number of replies" : plural(rates.replyRate.count, "reply", "replies")} over ${rates.replyRate.of ?? "unknown"}.`,
     ],
     byStatus,
     dailyContactRate: pace,

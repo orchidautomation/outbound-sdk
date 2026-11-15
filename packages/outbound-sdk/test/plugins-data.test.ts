@@ -154,6 +154,40 @@ test("alerts fire for a bounce spike, a weak reply rate, a dead sender and a sil
   );
 });
 
+test("an alert names its subject as a person knows it, once the instance has read it", async () => {
+  const notified: Alert[] = [];
+
+  const outbound = createOutbound({
+    adapter: memory({
+      data: { ...data(), campaigns: [{ id: "bad", name: "Founders Q4" }] },
+    }),
+    plugins: [
+      alerts({
+        notify: (fired) => {
+          notified.push(...fired);
+        },
+        rules: [bounceRateAbove(0.05), senderNotActive()],
+      }),
+    ],
+  });
+
+  // Before the campaign itself is read, only its ref is known.
+  await outbound.campaign("bad").stats();
+  await outbound.campaigns.list();
+  await outbound.campaign("bad").stats();
+  await outbound.senders.list();
+  await settle();
+
+  assert.deepEqual(
+    notified.map((alert) => [alert.rule, alert.subjectName]),
+    [
+      ["bounce-rate-above", null],
+      ["bounce-rate-above", "Founders Q4"],
+      ["sender-not-active", "down@example.com"],
+    ]
+  );
+});
+
 test("a rate rule ignores rows too small to mean anything, and evaluate() does not notify", async () => {
   let notifications = 0;
 

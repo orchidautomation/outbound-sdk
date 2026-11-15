@@ -5,6 +5,7 @@ import { z } from "zod";
 import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { SenderHealth } from "../../internal/entities-account.ts";
 import type { Sender } from "../../internal/entities.ts";
+import { noun, plural } from "../../internal/plural.ts";
 import { defineInsight } from "../define.ts";
 import { percent, rate, wilson } from "../stats.ts";
 import type { Interval } from "../stats.ts";
@@ -182,7 +183,9 @@ const reportFor = (
 
   const high = [
     ...((blacklisted ?? 0) > 0
-      ? [`${blacklisted} of ${checked.length} mailboxes are on a block list`]
+      ? [
+          `${blacklisted} of ${plural(checked.length, "mailbox", "mailboxes")} ${noun(blacklisted ?? 0, "is", "are")} on a block list`,
+        ]
       : []),
     ...(authFailing.length > 0
       ? [`${authFailing.join(", ").toUpperCase()} failing`]
@@ -197,7 +200,9 @@ const reportFor = (
   const medium = [
     ...(failing.includes("dmarc") ? ["DMARC failing"] : []),
     ...(disconnected > 0
-      ? [`${disconnected} of ${checked.length} mailboxes are disconnected`]
+      ? [
+          `${disconnected} of ${plural(checked.length, "mailbox", "mailboxes")} ${noun(disconnected, "is", "are")} disconnected`,
+        ]
       : []),
   ];
 

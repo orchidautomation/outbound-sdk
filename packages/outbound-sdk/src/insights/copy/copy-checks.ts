@@ -1,6 +1,8 @@
 // The text checks behind copy_audit. Each takes template text and returns
 // what it found, or nothing. Fixed rules only: no model reads the copy.
 
+import { noun, plural } from "../../internal/plural.ts";
+
 export type Severity = "high" | "low" | "medium";
 
 export const CHECKS = {
@@ -89,7 +91,7 @@ export const subjectTooLong = (
   subject.length > limits.maxSubjectChars
     ? {
         check: "subject_too_long",
-        finding: `The subject is ${subject.length} characters; the limit is ${limits.maxSubjectChars}.`,
+        finding: `The subject is ${plural(subject.length, "character")}; the limit is ${limits.maxSubjectChars}.`,
         text: clip(subject),
       }
     : null;
@@ -100,7 +102,7 @@ export const bodyTooLong = (body: string, limits: Limits): Problem | null => {
   return words.length > limits.maxBodyWords
     ? {
         check: "body_too_long",
-        finding: `The body is ${words.length} words; the limit is ${limits.maxBodyWords}.`,
+        finding: `The body is ${plural(words.length, "word")}; the limit is ${limits.maxBodyWords}.`,
         text: clip(words.slice(0, 12).join(" ")),
       }
     : null;
@@ -130,7 +132,7 @@ export const tooManyLinks = (body: string, limits: Limits): Problem | null => {
   return links.length > limits.maxLinks
     ? {
         check: "too_many_links",
-        finding: `The body has ${links.length} links; the limit is ${limits.maxLinks}.`,
+        finding: `The body has ${plural(links.length, "link")}; the limit is ${limits.maxLinks}.`,
         text: clip(links.join(" ")),
       }
     : null;
@@ -151,7 +153,7 @@ export const spamWords = (text: string, limits: Limits): Problem | null => {
   return hits.length > 0
     ? {
         check: "spam_words",
-        finding: `The copy uses ${hits.length} word(s) or phrase(s) that spam filters weigh.`,
+        finding: `The copy uses ${plural(hits.length, "word or phrase", "words or phrases")} that spam filters weigh.`,
         text: hits.join(", "),
       }
     : null;
@@ -195,7 +197,7 @@ export const allCaps = (text: string, limits: Limits): Problem | null => {
   return found.length > limits.maxCapsWords
     ? {
         check: "all_caps",
-        finding: `${found.length} word(s) of four or more letters are in capitals; the limit is ${limits.maxCapsWords}.`,
+        finding: `${plural(found.length, "word")} of four or more letters ${noun(found.length, "is", "are")} in capitals; the limit is ${limits.maxCapsWords}.`,
         text: clip(found.join(" ")),
       }
     : null;

@@ -175,7 +175,7 @@ test("a per-call budget stops a walk that would spend too many requests", async 
 
   assert.ok(OutboundError.is(error));
   assert.equal(error.code, "RateLimited");
-  assert.match(error.message, /used its budget of 2 request\(s\)/u);
+  assert.match(error.message, /used its budget of 2 requests/u);
   assert.equal(http.requests.length, 2);
 
   // A new call gets a fresh allowance.

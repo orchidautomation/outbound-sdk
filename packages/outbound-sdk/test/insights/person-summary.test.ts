@@ -187,7 +187,7 @@ test("person_summary stops at max_campaigns and rejects text that is not an addr
   assert.equal(capped.meta.complete, false);
   // The note names the cap, as the other insights do.
   assert.deepEqual(capped.meta.notes, [
-    "Stopped at 1 records of the person (max_campaigns); more exist.",
+    "Stopped at 1 record of the person (max_campaigns); more exist.",
   ]);
 
   await assert.rejects(

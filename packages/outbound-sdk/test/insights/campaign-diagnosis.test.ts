@@ -132,8 +132,7 @@ test("campaign_diagnosis lists what is wrong with a campaign, most serious first
     },
     {
       code: "inactive_sender",
-      finding:
-        "1 of 2 senders are not active: two@send.example (disconnected).",
+      finding: "1 of 2 senders is not active: two@send.example (disconnected).",
       next: "Reconnect or replace them; warmup_readiness shows which mailboxes are fit to send.",
       numbers: { inactive: 1, senders: 2 },
       severity: "high",
@@ -488,7 +487,7 @@ test("campaign_diagnosis reads a campaign of either tool on a combined instance"
   assert.deepEqual(
     result.data.findings.map((each) => [each.code, each.finding]),
     [
-      ["inactive_sender", "1 of 1 senders are not active: Seat one (paused)."],
+      ["inactive_sender", "1 of 1 sender is not active: Seat one (paused)."],
       [
         "short_sequence",
         "The sequence has 2 steps; follow-ups usually bring a large share of the replies.",

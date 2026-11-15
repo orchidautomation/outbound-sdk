@@ -304,7 +304,7 @@ export const copyReuse = defineInsight({
 
     if (without > 0) {
       context.note(
-        `${without} variant(s) have no counts of their own: the vendor reports their step as a whole, or not at all. Their copy is listed without numbers.`
+        `${without === 1 ? "1 variant has" : `${without} variants have`} no counts of their own: the vendor reports their step as a whole, or not at all. Their copy is listed without numbers.`
       );
     }
 

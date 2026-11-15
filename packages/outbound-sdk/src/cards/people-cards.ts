@@ -10,9 +10,11 @@ import {
   int,
   num,
   pct,
+  people,
   plural,
   rows,
   show,
+  stepsOf,
   str,
   strings,
   waiting,
@@ -38,12 +40,14 @@ const personSummary: CardBuilder = (data) => {
       ["Replies", int(num(totals, "replies"))],
       ...Object.keys(channels).map((channel): Stat => [
         words(channel),
-        `${int(num(child(channels, channel), "messagesSent"))} sent · ${int(
-          num(child(channels, channel), "replies")
-        )} replies`,
+        `${int(num(child(channels, channel), "messagesSent"))} sent · ${plural(
+          num(child(channels, channel), "replies"),
+          "reply",
+          "replies"
+        )}`,
       ]),
     ],
-    subtitle: strings(data, "identifiers").join(" · ") || null,
+    subtitle: people(data, "identifiers"),
     table: {
       align: [LEFT, LEFT, RIGHT, RIGHT, LEFT, LEFT],
       headers: [
@@ -291,7 +295,7 @@ const personalizationGaps: CardBuilder = (data) => {
         .map((variable) => [
           show(variable, "name"),
           show(variable, "source"),
-          strings(variable, "steps").join(", ") || DASH,
+          stepsOf(variable, "steps") || DASH,
           int(num(variable, "leadsWithoutValue")),
         ]),
     },

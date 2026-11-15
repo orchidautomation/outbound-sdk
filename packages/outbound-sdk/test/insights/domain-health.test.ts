@@ -93,7 +93,7 @@ test("domain_health groups mailboxes by domain and ranks the domains worst first
   const [bad, mid, good, part, quiet] = domains;
 
   assert.deepEqual(bad?.reasons, [
-    "1 of 2 mailboxes are on a block list",
+    "1 of 2 mailboxes is on a block list",
     "SPF failing",
     // 5 + 25 spam of 100 + 100 sent.
     "30 of 200 warmup emails landed in spam (15%, over 10%)",
@@ -132,7 +132,7 @@ test("domain_health groups mailboxes by domain and ranks the domains worst first
 
   assert.deepEqual(mid?.reasons, [
     "DMARC failing",
-    "1 of 1 mailboxes are disconnected",
+    "1 of 1 mailbox is disconnected",
   ]);
   // 5 of 50 is exactly the threshold, which is not over it.
   assert.deepEqual(mid?.warmup, {
@@ -286,7 +286,7 @@ test("domain_health moves a domain to high risk when the spam threshold drops un
   });
 
   assert.deepEqual(loose.data.domains[0]?.reasons, [
-    "1 of 2 mailboxes are on a block list",
+    "1 of 2 mailboxes is on a block list",
     "SPF failing",
   ]);
 });
@@ -381,7 +381,7 @@ test("domain_health pools one domain's mailboxes across two tools", async () => 
   assert.equal(shared?.risk, "high");
   assert.deepEqual(shared?.reasons, [
     "12 of 100 warmup emails landed in spam (12%, over 10%)",
-    "1 of 2 mailboxes are disconnected",
+    "1 of 2 mailboxes is disconnected",
   ]);
   assert.equal(data.linkedinSeats[0]?.sender, "lntool:agency:seat");
   assert.equal(meta.provider, "combined");

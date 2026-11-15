@@ -14,6 +14,7 @@ import {
   plural,
   rows,
   show,
+  stepOf,
   str,
   waiting,
   words,
@@ -38,7 +39,10 @@ const stepFunnel: CardBuilder = (data) => {
       "bar",
       "Replies by step",
       "Replies",
-      steps.map((step) => [`Step ${show(step, "step")}`, num(step, "replies")])
+      steps.map((each) => [
+        `Step ${stepOf(each, "step")}`,
+        num(each, "replies"),
+      ])
     ),
     finding: str(data, "finding"),
     notes:
@@ -56,13 +60,13 @@ const stepFunnel: CardBuilder = (data) => {
         "Share of replies",
         "Earns its place",
       ],
-      rows: steps.map((step) => [
-        show(step, "step"),
-        int(num(step, "sent")),
-        int(num(step, "replies")),
-        withInterval(step, "replyRate", "replyRateInterval"),
-        pct(num(step, "shareOfReplies")),
-        yesNo(bool(step, "earnsPlace")),
+      rows: steps.map((each) => [
+        stepOf(each, "step"),
+        int(num(each, "sent")),
+        int(num(each, "replies")),
+        withInterval(each, "replyRate", "replyRateInterval"),
+        pct(num(each, "shareOfReplies")),
+        yesNo(bool(each, "earnsPlace")),
       ]),
     },
     title: "Step funnel",
@@ -75,11 +79,11 @@ const VERDICT_MARKS = new Map([
   ["winner", "🟢"],
 ]);
 
-const verdictLine = (step: JsonObject): string =>
-  `${VERDICT_MARKS.get(show(step, "verdict")) ?? "⚪"} **Step ${show(
-    step,
+const verdictLine = (tested: JsonObject): string =>
+  `${VERDICT_MARKS.get(show(tested, "verdict")) ?? "⚪"} **Step ${stepOf(
+    tested,
     "step"
-  )}**: ${show(step, "reason")}`;
+  )}**: ${show(tested, "reason")}`;
 
 const variantFinding = (data: Json | undefined): string => {
   const totals = child(data, "totals");
@@ -113,11 +117,11 @@ const variantTest: CardBuilder = (data) => {
     table: {
       align: [LEFT, LEFT, RIGHT, RIGHT],
       headers: ["Step", "Variant", "Sent", "Rate"],
-      rows: steps.flatMap((step) =>
-        rows(step, "variants").map((variant) => [
-          show(step, "step"),
+      rows: steps.flatMap((tested) =>
+        rows(tested, "variants").map((variant) => [
+          stepOf(tested, "step"),
           `${show(variant, "variantKey")}${
-            str(step, "leader") === str(variant, "variantKey") ? " ★" : ""
+            str(tested, "leader") === str(variant, "variantKey") ? " ★" : ""
           }`,
           int(num(variant, "sent")),
           withInterval(variant, "rate", "interval"),
@@ -135,7 +139,7 @@ const copyAudit: CardBuilder = (data) => {
     bullets: rows(data, "findings").map((finding) =>
       flagged(
         finding,
-        `Step ${show(finding, "step")} ${show(finding, "variantKey")}: `
+        `Step ${stepOf(finding, "step")} ${show(finding, "variantKey")}: `
       )
     ),
     finding: verdict(
@@ -152,7 +156,7 @@ const copyAudit: CardBuilder = (data) => {
       ["Steps checked", int(num(data, "stepsChecked"))],
       ["Variants checked", int(num(data, "variantsChecked"))],
     ],
-    subtitle: show(data, "campaign"),
+    subtitle: str(data, "campaignName") ?? show(data, "campaign"),
     title: "Copy audit",
   };
 };

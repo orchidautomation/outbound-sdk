@@ -9,6 +9,7 @@ import type {
   Message,
   Reply,
 } from "../../internal/entities.ts";
+import { plural } from "../../internal/plural.ts";
 import { replyCategorySchema } from "../../internal/vocabulary.ts";
 import type { Capped } from "../capped.ts";
 import { defineInsight } from "../define.ts";
@@ -18,6 +19,13 @@ import { nameOf, readByRef, readCappedFlag } from "./read.ts";
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
+
+/** A wait as a person says it: in hours under two days, in whole days after. */
+const waited = (hours: number): string =>
+  hours >= 48
+    ? plural(Math.floor(hours / 24), "day")
+    : plural(Math.floor(hours), "hour");
+
 const DEFAULT_DAYS = 14;
 
 const input = z.object({
@@ -199,7 +207,7 @@ const toDropped = (
       category: first.category,
       channel: first.channel,
       checkedBy: by,
-      finding: `${/^[aeiou]/u.test(first.category) ? "An" : "A"} ${first.category} reply has waited ${Math.floor(hoursWaiting)} hours with nothing sent after it.`,
+      finding: `${/^[aeiou]/u.test(first.category) ? "An" : "A"} ${first.category} reply has waited ${waited(hoursWaiting)} with nothing sent after it.`,
       hoursWaiting,
       email: null,
       lead: first.leadRef,
@@ -249,14 +257,14 @@ const named = async (
       context,
       leadRefs,
       (refs) => outbound.leads.getMany(refs),
-      "lead(s)",
+      ["lead", "leads"],
       "names are null"
     ),
     readByRef<Campaign>(
       context,
       refsOf(dropped.map((each) => each.campaign)),
       (refs) => outbound.campaigns.getMany(refs),
-      "campaign(s)",
+      ["campaign", "campaigns"],
       "names are null"
     ),
   ]);

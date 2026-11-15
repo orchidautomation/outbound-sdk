@@ -43,7 +43,7 @@ Where a campaign's replies come from, one row per sequence step.
 - `finding`: what the numbers say, in one or two sentences.
 - `topStep`: the step with the most replies, or `null`.
 - `lastStepEarningPlace`: the last step whose reply rate is reliably above `min_reply_rate`, or `null`.
-- `steps`: one entry per step, counted from 0, with `action`, `delayDays`, `inSequence`, `sent`, `replies`, `replyRate`, `replyRateInterval`, `replyRateBasis`, `shareOfReplies`, `sentDrop` and `sentDropRate` (how far sends fell from the step before), `earnsPlace`, and `variants` (empty when the vendor does not split step stats by variant).
+- `steps`: one entry per step, counted from 0 (a sentence or card counts from 1, as a person does), with `action`, `delayDays`, `inSequence`, `sent`, `replies`, `replyRate`, `replyRateInterval`, `replyRateBasis`, `shareOfReplies`, `sentDrop` and `sentDropRate` (how far sends fell from the step before), `earnsPlace`, and `variants` (empty when the vendor does not split step stats by variant).
 - `totals`: `sent` and `replies`.
 - `unattributed`: counts the vendor tied to no step (`rows`, `sent`, `replies`). They are in no step's row.
 
@@ -133,7 +133,7 @@ The default `spam_words` are: 100% free, act now, buy now, cash bonus, click her
 
 `data` (`CopyAudit`):
 
-- `campaign`, `channel`.
+- `campaign`, `campaignName` (from the campaign record it reads), `channel`.
 - `clean`: `true` when no check found anything in the copy that could be read.
 - `findings`: one entry per problem, with `step`, `variantKey`, `action`, `check`, `severity`, a `finding` sentence and the `text` that triggered it. High severity first.
 - `byCheck`: every check that was run, with how often it fired.

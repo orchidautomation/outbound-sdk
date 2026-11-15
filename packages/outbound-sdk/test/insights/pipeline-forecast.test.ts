@@ -152,7 +152,7 @@ test("pipeline_forecast keeps unknowns unknown, and reports a drained campaign a
   );
   assert.equal(
     fresh.data.assumptions.at(-1),
-    "The reply rate so far is unknown, from unknown replies over 9."
+    "The reply rate so far is unknown, from an unknown number of replies over 9."
   );
 
   const drained = await outbound.insights.pipelineForecast(
@@ -332,4 +332,27 @@ test("client_report lists a campaign with no leads left first, with the action t
     kind: "add_leads",
     number: 0,
   });
+});
+
+test("pipeline_forecast writes one lead in the singular and leaves out a range whose ends read the same", async () => {
+  // c1 read up to its first lead, which has replied: at least 0 leads remain.
+  const none = await single(DATA).insights.pipelineForecast(
+    { ...C1, max_leads: 1 },
+    { now: NOW }
+  );
+
+  assert.equal(
+    none.data.finding,
+    "At least 0 leads remain; expect about 0 replies. This is an estimate."
+  );
+
+  const one = await single({
+    ...DATA,
+    leads: [lead("solo", "c1", "active")],
+  }).insights.pipelineForecast(C1, { now: NOW });
+
+  assert.match(
+    one.data.finding,
+    /^1 lead remains; expect about 0\.\d replies/u
+  );
 });

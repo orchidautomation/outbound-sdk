@@ -29,6 +29,7 @@ import type { FieldCoverage } from "../fields.ts";
 import { mergeHooks } from "../hooks.ts";
 import type { OutboundHooks } from "../hooks.ts";
 import type { NativeCatalog, NoNative } from "../native.ts";
+import { plural } from "../plural.ts";
 import type {
   CampaignFilters,
   CampaignHandle,
@@ -334,7 +335,10 @@ export class Outbound<
     const pageSize = query.limit ?? cost.pageSize;
 
     if (query.records === undefined || pageSize === undefined) {
-      return { basis: `${cost.perPage} request(s) per page`, requests: null };
+      return {
+        basis: `${plural(cost.perPage, "request")} per page`,
+        requests: null,
+      };
     }
 
     const pages = Math.max(1, Math.ceil(query.records / pageSize));
@@ -343,7 +347,7 @@ export class Outbound<
       pages * cost.perPage + query.records * (cost.perRecord ?? 0);
 
     return {
-      basis: `${pages} page(s) of ${pageSize} at ${cost.perPage} request(s) each, plus ${cost.perRecord ?? 0} per record`,
+      basis: `${plural(pages, "page")} of ${pageSize} at ${plural(cost.perPage, "request")} each, plus ${cost.perRecord ?? 0} per record`,
       requests,
     };
   }

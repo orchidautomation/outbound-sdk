@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import type { Lead } from "../../internal/entities.ts";
 import { OutboundError } from "../../internal/errors.ts";
+import { plural } from "../../internal/plural.ts";
 import type { Capped } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
@@ -207,7 +208,7 @@ const readLeads = async (
   for (const campaign of campaigns.items) {
     if (leads.length >= maxLeads) {
       context.partial(
-        `Stopped at ${maxLeads} leads (max_leads); more campaigns remain.`
+        `Stopped at ${plural(maxLeads, "lead")} (max_leads); more campaigns remain.`
       );
       capped = true;
       break;

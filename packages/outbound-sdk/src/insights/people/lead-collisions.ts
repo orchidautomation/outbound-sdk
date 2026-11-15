@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Campaign, Lead } from "../../internal/entities.ts";
+import { shownKey } from "../../internal/plural.ts";
 import { defineInsight, maskingOf } from "../define.ts";
 import { keysOfLead } from "./find.ts";
 import { campaignsIn, leadsOf, statusesField } from "./read.ts";
@@ -134,8 +135,8 @@ const toCollision = (group: Group): LeadCollision[] => {
       channels,
       finding:
         scope === "across_tools"
-          ? `${identifiers[0]} is in ${campaigns.length} campaigns across ${providers.join(" and ")} (${channels.join(" and ")}).`
-          : `${identifiers[0]} is in ${campaigns.length} ${providers[0]} campaigns at once.`,
+          ? `${shownKey(identifiers[0] ?? "")} is in ${campaigns.length} campaigns across ${providers.join(" and ")} (${channels.join(" and ")}).`
+          : `${shownKey(identifiers[0] ?? "")} is in ${campaigns.length} ${providers[0]} campaigns at once.`,
       identifiers,
       providers,
       scope,

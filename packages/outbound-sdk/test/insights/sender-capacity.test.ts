@@ -334,12 +334,12 @@ test("sender_capacity says so when a cap stops the senders or the campaigns", as
   assert.equal(fewSenders.meta.complete, false);
   assert.ok(
     fewSenders.meta.notes.includes(
-      "Stopped at 1 senders (max_senders); more exist."
+      "Stopped at 1 sender (max_senders); more exist."
     )
   );
   assert.ok(
     fewSenders.meta.notes.includes(
-      "Stopped at 1 senders of campaign Founders (max_senders); more exist."
+      "Stopped at 1 sender of campaign Founders (max_senders); more exist."
     )
   );
 

@@ -164,8 +164,7 @@ test("dropped_replies reports unanswered replies longest waiting first, and coun
       category: "positive",
       channel: "email",
       checkedBy: "thread",
-      finding:
-        "A positive reply has waited 100 hours with nothing sent after it.",
+      finding: "A positive reply has waited 4 days with nothing sent after it.",
       // 2026-11-10T08:00 to 2026-11-14T12:00 is 4 days and 4 hours.
       email: "person1@example.com",
       hoursWaiting: 100,
@@ -509,7 +508,7 @@ test("dropped_replies writes the article the category takes", async () => {
   }).insights.droppedReplies({ categories: ["unknown", "ooo"] }, { now: NOW });
 
   assert.deepEqual(result.data.dropped.map((each) => each.finding).toSorted(), [
-    "An ooo reply has waited 100 hours with nothing sent after it.",
-    "An unknown reply has waited 100 hours with nothing sent after it.",
+    "An ooo reply has waited 4 days with nothing sent after it.",
+    "An unknown reply has waited 4 days with nothing sent after it.",
   ]);
 });

@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import type { MetricRow } from "../../internal/entities.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
+import { noun, plural } from "../../internal/plural.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { compareRates, percent } from "../stats.ts";
@@ -259,7 +260,7 @@ const testStep = (
   const aside =
     skipped === 0
       ? ""
-      : ` ${skipped} variant(s) with too little data were left out.`;
+      : ` ${plural(skipped, "variant")} with too little data ${noun(skipped, "was", "were")} left out.`;
 
   const variants = candidates.map((each) => ({
     ...each,

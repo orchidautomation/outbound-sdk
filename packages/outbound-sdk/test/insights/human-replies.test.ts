@@ -77,7 +77,7 @@ test("hot_leads gives a lead labelled negative no reply or recency points, and i
   });
   assert.equal(
     angry?.reason,
-    "marked Not Interested, so replies earn nothing, 1 click(s)."
+    "marked Not Interested, so replies earn nothing, 1 click."
   );
   // The wrong person scores 0 and is not hot.
   assert.equal(result.data.totals.negative, 2);

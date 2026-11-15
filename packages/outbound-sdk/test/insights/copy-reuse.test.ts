@@ -332,7 +332,7 @@ test("copy_reuse leaves counts unknown when the vendor reports a split step as a
   assert.equal(result.data.variantsWithoutStats, 2);
   assert.ok(
     result.meta.notes.some((note) =>
-      note.startsWith("2 variant(s) have no counts of their own")
+      note.startsWith("2 variants have no counts of their own")
     )
   );
 });

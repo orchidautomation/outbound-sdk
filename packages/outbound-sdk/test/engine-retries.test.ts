@@ -253,7 +253,7 @@ test("stops a call that reaches its request budget", async () => {
 
   const error = await failure(clock.settle(outbound.campaigns.list()));
   assert.equal(error.code, "RateLimited");
-  assert.match(error.message, /budget of 2 request\(s\)/u);
+  assert.match(error.message, /budget of 2 requests/u);
   assert.equal(http.requests.length, 2);
 });
 

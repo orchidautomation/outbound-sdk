@@ -211,7 +211,7 @@ test("suppression_check says the answer is partial when a cap stops a read", asy
   assert.equal(fewEntries.data.totals.blockEntriesNotChecked, null);
   assert.equal(fewEntries.meta.complete, false);
   assert.deepEqual(fewEntries.meta.notes, [
-    "Stopped at 1 block list entries (max_block_entries); more exist.",
+    "Stopped at 1 block list entry (max_block_entries); more exist.",
   ]);
 
   const fewCampaigns = await single(MAIL).insights.suppressionCheck({

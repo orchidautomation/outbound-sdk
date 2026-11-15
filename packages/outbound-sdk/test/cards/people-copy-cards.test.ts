@@ -56,9 +56,9 @@ const person = (found: boolean): PersonSummary => ({
 test("person_summary shows one person across campaigns and channels", () => {
   includes(
     read(cardFor("person_summary", insight(person(true)))),
-    "email:person1@example.com",
+    "person1@example.com",
     "Replied in 1 of 2 campaigns.",
-    "Email: 3 sent · 1 replies",
+    "Email: 3 sent · 1 reply",
     "Founders Q4 | email   | 3    | 1       | Interested | 2026-11-06"
   );
   includes(
@@ -360,7 +360,7 @@ test("personalization_gaps shows only the variables with a gap", () => {
     text,
     "🔴 30 leads will get broken copy (15.0% of those read).",
     "• 🟡 `compnay` is not a field any lead has.",
-    "firstName | builtin | 0, 2  | 30"
+    "firstName | builtin | 1, 3  | 30"
   );
   excludes(text, "company  ");
   includes(
@@ -389,7 +389,7 @@ const step = (index: number, replies: number | null) => ({
 test("step_funnel charts replies by step and repeats the insight's finding", () => {
   const funnel: StepFunnel = {
     campaign: "c1",
-    finding: "Step 0 brings 92% of replies.",
+    finding: "Step 1 brings 92% of replies.",
     lastStepEarningPlace: 0,
     steps: [step(0, 24), step(1, 2), step(2, null)],
     topStep: 0,
@@ -399,12 +399,12 @@ test("step_funnel charts replies by step and repeats the insight's finding", () 
 
   includes(
     read(cardFor("step_funnel", insight(funnel))),
-    "Step 0 brings 92% of replies.",
-    "0    | 400  | 24      | 6.0% (4.0–8.0%) | 92.3%            | Yes",
-    "1    | 400  | 2       | 0.5% (4.0–8.0%) | 7.7%             | No",
-    "2    | 400  | —       | —               | —                | —",
+    "Step 1 brings 92% of replies.",
+    "1    | 400  | 24      | 6.0% (4.0–8.0%) | 92.3%            | Yes",
+    "2    | 400  | 2       | 0.5% (4.0–8.0%) | 7.7%             | No",
+    "3    | 400  | —       | —               | —                | —",
     "Replies by step",
-    "Step 0 | 24",
+    "Step 1 | 24",
     "1 stats row could not be tied to a step."
   );
 });
@@ -456,10 +456,10 @@ test("variant_test stars the leader and says why", () => {
   includes(
     read(cardFor("variant_test", insight(tested(true)))),
     "1 step with a real winner out of 2 tested.",
-    "• 🟢 **Step 0**: B is ahead by more than chance.",
-    "• ⚪ **Step 1**: Too few sends to compare.",
-    "0    | A       | 500  | 2.0% (1.0–7.0%)",
-    "0    | B ★     | 500  | 6.0% (1.0–7.0%)"
+    "• 🟢 **Step 1**: B is ahead by more than chance.",
+    "• ⚪ **Step 2**: Too few sends to compare.",
+    "1    | A       | 500  | 2.0% (1.0–7.0%)",
+    "1    | B ★     | 500  | 6.0% (1.0–7.0%)"
   );
   includes(
     read(cardFor("variant_test", insight(tested(false)))),
@@ -475,6 +475,7 @@ const audit = (clean: boolean, variantsChecked: number): CopyAudit => ({
   byCheck: [],
   bySeverity: { high: clean ? 0 : 1, low: 0, medium: clean ? 0 : 1 },
   campaign: "c1",
+  campaignName: "Founders Q4",
   channel: "email",
   clean,
   findings: clean
@@ -507,9 +508,10 @@ const audit = (clean: boolean, variantsChecked: number): CopyAudit => ({
 test("copy_audit marks each finding by severity", () => {
   includes(
     read(cardFor("copy_audit", insight(audit(false, 2)))),
+    "*Copy audit*\nFounders Q4",
     "2 problems found in the copy.",
-    "• 🔴 Step 0 A: The body uses 2 spam words.",
-    "• 🟡 Step 1 A: The body has 3 links.",
+    "• 🔴 Step 1 A: The body uses 2 spam words.",
+    "• 🟡 Step 2 A: The body has 3 links.",
     "High: 1"
   );
   includes(

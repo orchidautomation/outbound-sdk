@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import type { Lead, ReplyCategory } from "../../internal/entities.ts";
 import { OutboundError } from "../../internal/errors.ts";
+import { plural } from "../../internal/plural.ts";
 import { confirmCampaign } from "../campaign.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
@@ -202,6 +203,13 @@ const discountedReason = (lead: Lead): string => {
   return `marked ${lead.interest ?? fallback}, so replies earn nothing`;
 };
 
+/** `2 clicks` when the count earned points, otherwise nothing. */
+const counted = (
+  points: number | null | undefined,
+  amount: number | null | undefined,
+  what: string
+): string | null => ((points ?? 0) > 0 ? plural(amount ?? 0, what) : null);
+
 const reasonOf = (
   lead: Lead,
   parts: HotLeadParts,
@@ -216,13 +224,13 @@ const reasonOf = (
     (parts.interest ?? 0) > 0 ? `marked ${lead.interest}` : null,
     automatic ? discountedReason(lead) : null,
     (parts.replies ?? 0) > 0
-      ? `replied ${engagement?.replies ?? 1} time(s)`
+      ? `replied ${plural(engagement?.replies ?? 1, "time")}`
       : null,
     repliedAt === null
       ? null
-      : `last reply ${Math.floor(Math.max(0, now - Date.parse(repliedAt)) / DAY)} day(s) ago`,
-    (parts.clicks ?? 0) > 0 ? `${engagement?.clicks} click(s)` : null,
-    (parts.opens ?? 0) > 0 ? `${engagement?.opens} open(s)` : null,
+      : `last reply ${plural(Math.floor(Math.max(0, now - Date.parse(repliedAt)) / DAY), "day")} ago`,
+    counted(parts.clicks, engagement?.clicks, "click"),
+    counted(parts.opens, engagement?.opens, "open"),
   ].flatMap((fact) => (fact === null ? [] : [fact]));
 
   return `${facts.join(", ")}.`;
@@ -355,7 +363,7 @@ const repliedPastCap = async (
     context,
     [...new Set(refs)].slice(0, values.limit),
     (ids) => outbound.leads.getMany(ids),
-    "lead(s) that replied",
+    ["lead that replied", "leads that replied"],
     "scores are missing"
   );
 

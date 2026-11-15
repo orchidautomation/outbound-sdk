@@ -141,7 +141,10 @@ test("variant_test names a winner only when the gap is more than chance", async 
       ["C", 0.075, false, null],
     ]
   );
-  assert.match(second?.reason ?? "", /1 variant\(s\) with too little data/u);
+  assert.match(
+    second?.reason ?? "",
+    /1 variant with too little data was left out/u
+  );
   assert.equal(
     third?.reason,
     "Variant B (3%) leads variant A (2%), but a gap this size could be chance."

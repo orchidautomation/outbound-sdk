@@ -313,7 +313,7 @@ test("account_summary reads campaign by campaign when the tool cannot list every
   assert.equal(fewCampaigns.data.totals.people, 3);
   assert.equal(fewCampaigns.meta.complete, false);
   assert.deepEqual(fewCampaigns.meta.notes, [
-    "Stopped at 1 campaigns (max_campaigns); more exist.",
+    "Stopped at 1 campaign (max_campaigns); more exist.",
   ]);
 
   const fewLeads = await outbound.insights.accountSummary({

@@ -8,6 +8,7 @@ import { fire } from "../hooks.ts";
 import type { OutboundHooks } from "../hooks.ts";
 import { count, parseJson } from "../json.ts";
 import type { Json } from "../json.ts";
+import { plural } from "../plural.ts";
 import { redactUrl } from "../redact.ts";
 import { DEFAULT_LANE } from "./budget.ts";
 import type { Budget } from "./budget.ts";
@@ -256,7 +257,7 @@ const assertRequestBudget = (environment: RequestEnvironment): void => {
   if (state.maxRequests !== undefined && state.requests >= state.maxRequests) {
     throw new OutboundError(
       "RateLimited",
-      `The call used its budget of ${state.maxRequests} request(s) to ${adapter.name}`,
+      `The call used its budget of ${plural(state.maxRequests, "request")} to ${adapter.name}`,
       { provider: adapter.name }
     );
   }

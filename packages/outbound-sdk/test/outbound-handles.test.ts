@@ -360,7 +360,7 @@ test("estimate returns the request count before reading", () => {
   });
 
   assert.deepEqual(outbound.estimate({ action: "leads.list", records: 250 }), {
-    basis: "3 page(s) of 100 at 1 request(s) each, plus 1 per record",
+    basis: "3 pages of 100 at 1 request each, plus 1 per record",
     requests: 253,
   });
   assert.equal(outbound.estimate({ action: "leads.list" }).requests, null);

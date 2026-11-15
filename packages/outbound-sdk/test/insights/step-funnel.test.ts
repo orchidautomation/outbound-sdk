@@ -113,7 +113,7 @@ test("step_funnel reports each step's sends, replies, rate, share and the drop f
   });
   assert.equal(
     result.data.finding,
-    "Step 0 (counted from 0) brings the most replies: 30 of 42. Step 1 is the last whose reply rate is reliably above the bar; the 1 later step(s) sent 500 messages for 0 replies."
+    "Step 1 brings the most replies: 30 of 42. Step 2 is the last whose reply rate is reliably above the bar; the 1 later step sent 500 messages for 0 replies."
   );
 });
 
@@ -148,7 +148,7 @@ test("step_funnel raises the bar with min_reply_rate and narrows the days with f
   );
   assert.equal(firstDays.data.steps[0]?.shareOfReplies, 1);
   assert.equal(firstDays.data.lastStepEarningPlace, 0);
-  assert.match(firstDays.data.finding, /Every step up to step 0/u);
+  assert.match(firstDays.data.finding, /Every step up to step 1 /u);
 });
 
 test("step_funnel splits a step by variant, keeps counts tied to no step apart, and lists a step the sequence no longer has", async () => {

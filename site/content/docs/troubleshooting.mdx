@@ -132,7 +132,7 @@ The SDK waits out a vendor's 429 and retries on its own, so `RateLimited` reache
 | What you see | What stopped it | What to do |
 | --- | --- | --- |
 | `<vendor> responded 429`, `timedOut: true` | The wait the vendor asked for would end after the call's `deadline`. | Raise `deadline`, or try again after `retryAfterMs`. |
-| `The call used its budget of N request(s)` | `maxRequests`. The next request was not sent. | Raise `maxRequests`, or ask for less in one call: a smaller `max`, fewer campaigns. |
+| `The call used its budget of N requests` | `maxRequests`. The next request was not sent. | Raise `maxRequests`, or ask for less in one call: a smaller `max`, fewer campaigns. |
 | `<vendor> responded 429`, `timedOut: false` | The retries ran out and the vendor was still limiting. | Try again after `retryAfterMs`. Something else may be using the same key. |
 | `<vendor> rate budget is full and the deadline would pass before it frees up` | The SDK's own budget for the key was full, and waiting for room would pass the `deadline`. No request was sent. | Raise `deadline`, or spread the work out. |
 

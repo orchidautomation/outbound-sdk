@@ -55,7 +55,16 @@ const anomalies: CardBuilder = (data) => {
     notes: untested.map(
       (metric) => `${words(show(metric, "metric"))}: ${show(metric, "reason")}`
     ),
-    subtitle: `${show(data, "scope")} · ${range(child(data, "period"))}`,
+    // The answer names a campaign by its ref only, so the ref is a value, not a heading.
+    stats: [
+      [
+        "Scope",
+        str(data, "scope") === "workspace"
+          ? "Whole workspace"
+          : show(data, "scope"),
+      ],
+    ],
+    subtitle: range(child(data, "period")),
     title: "Anomalies",
   };
 };

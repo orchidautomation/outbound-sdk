@@ -447,7 +447,8 @@ const scan = (found: boolean, testable: boolean): Anomalies => ({
 test("anomalies points up or down for each day that stands out", () => {
   includes(
     read(cardFor("anomalies", insight(scan(true, true)))),
-    "workspace · 2026-10-15 to 2026-11-13",
+    "2026-10-15 to 2026-11-13",
+    "Scope: Whole workspace",
     "🟡 Days that stand out from the baseline: 2.",
     "• 🔺 Bounced was 31 on 2026-11-12, against a usual 4.",
     "• 🔻 Sent was 20 on 2026-11-13, against a usual 300."

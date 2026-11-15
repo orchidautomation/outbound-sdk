@@ -3,7 +3,7 @@
 // your `notify` function is called. It is fire-and-forget: a notifier that
 // fails cannot fail the read.
 
-import type { MetricRow, Sender } from "../internal/entities.ts";
+import type { Campaign, MetricRow, Sender } from "../internal/entities.ts";
 import { computeRates } from "../internal/metrics.ts";
 import type { OutboundRecord } from "../internal/outbound/operations.ts";
 import type { OutboundPlugin } from "../internal/outbound/plugins.ts";
@@ -13,6 +13,11 @@ export interface Alert {
   readonly rule: string;
   /** The ref of the campaign, sender or workspace it is about. */
   readonly subject: string;
+  /**
+   * The subject as a person knows it: the sender's address, or the campaign's
+   * name when this instance has read that campaign. `null` when neither is known.
+   */
+  readonly subjectName?: string | null | undefined;
   readonly message: string;
   /** What was measured. */
   readonly value: number | string | null;
@@ -70,6 +75,9 @@ const isMetricRow = (record: OutboundRecord): record is MetricRow =>
 
 const isSender = (record: OutboundRecord): record is Sender =>
   "kind" in record && "dailyLimit" in record;
+
+const isCampaign = (record: OutboundRecord): record is Campaign =>
+  "channel" in record && "tags" in record && "status" in record;
 
 const percent = (value: number): string => `${(value * 100).toFixed(1)}%`;
 
@@ -138,6 +146,7 @@ export const senderNotActive = (): AlertRule => ({
           message: `Sender is ${record.status}`,
           rule: "sender-not-active",
           subject: record.ref,
+          subjectName: record.address ?? record.name,
           threshold: "active",
           value: record.status,
         }
@@ -189,14 +198,33 @@ const fresh = async (
 export const alerts = (
   options: AlertsOptions
 ): OutboundPlugin<AlertsExtension> => {
-  const evaluate = (records: readonly OutboundRecord[]): Alert[] =>
-    records.flatMap((record) =>
+  // The names of the campaigns read so far, so an alert about a campaign's
+  // stats can name it without another read.
+  const names = new Map<string, string>();
+
+  const evaluate = (records: readonly OutboundRecord[]): Alert[] => {
+    for (const record of records) {
+      if (isCampaign(record)) {
+        names.set(record.ref, record.name);
+      }
+    }
+
+    return records.flatMap((record) =>
       options.rules.flatMap((rule) => {
         const alert = rule.check(record);
 
-        return alert === null ? [] : [alert];
+        return alert === null
+          ? []
+          : [
+              {
+                ...alert,
+                subjectName:
+                  alert.subjectName ?? names.get(alert.subject) ?? null,
+              },
+            ];
       })
     );
+  };
 
   const { dedupe } = options;
 
