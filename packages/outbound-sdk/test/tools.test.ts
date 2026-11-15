@@ -635,3 +635,52 @@ test("a Claude Agent SDK tool runs the read and returns MCP content", async () =
 
   assert.equal(failed?.isError, true, "a failed tool is an MCP error result");
 });
+
+test("every built-in tool names a required input it was not given", async () => {
+  const tools = createTools(full());
+  const required = new Map(
+    tools.flatMap((tool) => {
+      const fields = (tool.parameters as { required?: string[] }).required;
+
+      return fields === undefined || fields.length === 0
+        ? []
+        : [[tool.name, fields] as const];
+    })
+  );
+
+  assert.deepEqual(
+    [...required.keys()].toSorted(),
+    [
+      "campaign_setup",
+      "campaign_trend",
+      "cross_channel_lead",
+      "lead_runway",
+      "winning_steps",
+    ]
+  );
+
+  for (const [name, fields] of required) {
+    // oxlint-disable-next-line no-await-in-loop -- one tool at a time keeps the failing one in the message.
+    const result = await call(full(), name, {});
+
+    assert.ok(!result.ok, name);
+    assert.equal(result.error.code, "Invalid", name);
+    assert.ok(
+      fields.some(
+        (field) => result.error.message === `${name}: \`${field}\` is required`
+      ),
+      result.error.message
+    );
+  }
+
+  // A field given with the wrong value keeps the schema's own message.
+  const wrong = await call(plain(), "campaign_trend", {
+    campaign: "c1",
+    from: 5,
+    to: "2026-10-31",
+  });
+
+  assert.ok(!wrong.ok);
+  assert.match(wrong.error.message, /^campaign_trend: from /u);
+  assert.doesNotMatch(wrong.error.message, /is required/u);
+});

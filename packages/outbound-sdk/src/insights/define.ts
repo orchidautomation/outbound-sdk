@@ -20,6 +20,7 @@ import type {
 } from "../internal/outbound/api.ts";
 import { plural } from "../internal/plural.ts";
 import { applyRenames, liveKeys } from "../internal/renamed.ts";
+import { inputProblem } from "../tools/input-problem.ts";
 
 export interface InsightMeta {
   /** `exact` only when every read behind the answer was exact. */
@@ -314,20 +315,6 @@ const missing = (
 ): CapabilityKey[] =>
   needs.filter((key) => outbound.capabilities[key] === false);
 
-/** Whether the input leaves out the top-level field at `path`, so the message can say it is required. */
-const isAbsent = (
-  input: Json | undefined,
-  path: readonly PropertyKey[]
-): boolean => {
-  const [key] = path;
-
-  return (
-    path.length === 1 &&
-    key !== undefined &&
-    (!isJsonObject(input) || input[String(key)] === undefined)
-  );
-};
-
 interface Prepared<Input> {
   readonly input: Input;
   /** One note for each deprecated input name the caller used. */
@@ -378,11 +365,10 @@ const prepare = <Key extends string, Input, Data, Given>(
 
   if (!parsed.success) {
     const [issue] = parsed.error.issues;
-    const path = issue?.path.join(".") || "input";
 
     throw new OutboundError(
       "Invalid",
-      `${spec.name}: ${isAbsent(input, issue?.path ?? []) ? `\`${path}\` is required` : `${path} ${issue?.message ?? "is invalid"}`}`,
+      `${spec.name}: ${inputProblem(input, issue)}`,
       { provider: outbound.provider }
     );
   }

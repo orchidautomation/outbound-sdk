@@ -23,6 +23,7 @@ import {
   crossChannelLead,
   leadRunway,
 } from "./people-tools.ts";
+import { inputProblem } from "./input-problem.ts";
 import { failure } from "./shared.ts";
 import type { ToolResult } from "./shared.ts";
 
@@ -89,7 +90,7 @@ const bind = <Input>(
       return failure(
         new OutboundError(
           "Invalid",
-          `${definition.name}: ${issue?.path.join(".") ?? "input"} ${issue?.message ?? "is invalid"}`
+          `${definition.name}: ${inputProblem(input, issue)}`
         )
       );
     }
