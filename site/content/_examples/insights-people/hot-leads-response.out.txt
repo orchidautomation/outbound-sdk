@@ -1,0 +1,94 @@
+{
+  "data": {
+    "leads": [
+      {
+        "campaign": "mailtool:acme:founders",
+        "clicks": 1,
+        "company": "Northwind",
+        "email": "ana@northwind.example.com",
+        "interest": "Interested",
+        "lastRepliedAt": "2026-11-12T12:00:00.000Z",
+        "lead": "mailtool:acme:ana_founders",
+        "linkedinUrl": "https://www.linkedin.com/in/ana-ruiz-example",
+        "name": "Ana Ruiz",
+        "opens": 6,
+        "parts": {
+          "clicks": 5,
+          "interest": 50,
+          "opens": 5,
+          "recency": 17.1429,
+          "replies": 20
+        },
+        "reason": "marked Interested, replied 2 time(s), last reply 2 day(s) ago, 1 click(s), 6 open(s).",
+        "replies": 2,
+        "score": 97.1429,
+        "status": "replied",
+        "title": "CEO"
+      },
+      {
+        "campaign": "mailtool:acme:agencies",
+        "clicks": 2,
+        "company": null,
+        "email": "eli@example.com",
+        "interest": "Meeting Booked",
+        "lastRepliedAt": "2026-11-07T12:00:00.000Z",
+        "lead": "mailtool:acme:eli_agencies",
+        "linkedinUrl": null,
+        "name": "Eli Stone",
+        "opens": 4,
+        "parts": {
+          "clicks": 10,
+          "interest": 50,
+          "opens": 4,
+          "recency": 10,
+          "replies": 10
+        },
+        "reason": "marked Meeting Booked, replied 1 time(s), last reply 7 day(s) ago, 2 click(s), 4 open(s).",
+        "replies": 1,
+        "score": 84,
+        "status": "replied",
+        "title": null
+      },
+      {
+        "campaign": "mailtool:acme:founders",
+        "clicks": 0,
+        "company": "Northwind",
+        "email": "ben@northwind.example.com",
+        "interest": null,
+        "lastRepliedAt": null,
+        "lead": "mailtool:acme:ben_founders",
+        "linkedinUrl": null,
+        "name": "Ben Okafor",
+        "opens": 3,
+        "parts": {
+          "clicks": 0,
+          "interest": null,
+          "opens": 3,
+          "recency": null,
+          "replies": 0
+        },
+        "reason": "3 open(s).",
+        "replies": 0,
+        "score": 3,
+        "status": "active",
+        "title": "Head of Sales"
+      }
+    ],
+    "totals": {
+      "excluded": 1,
+      "hot": 4,
+      "leadsRead": 12,
+      "scored": 5,
+      "withoutData": 6
+    }
+  },
+  "insight": "hot_leads",
+  "meta": {
+    "complete": true,
+    "evidence": "exact",
+    "notes": [],
+    "requests": 0,
+    "computedAt": "2026-11-14T12:00:00.000Z",
+    "provider": "combined"
+  }
+}

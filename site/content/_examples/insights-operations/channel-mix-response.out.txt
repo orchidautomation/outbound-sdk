@@ -1,0 +1,141 @@
+{
+  "data": {
+    "comparison": {
+      "difference": 0.083,
+      "higher": "linkedin",
+      "test": {
+        "pValue": 0,
+        "significant": true,
+        "z": -5.9757
+      }
+    },
+    "finding": "The reply rate is 13.3% on LinkedIn against 5% on email; the difference is more than chance (p < 0.0001).",
+    "byProvider": [
+      {
+        "bounced": 96,
+        "contacted": 2960,
+        "positive": 36,
+        "replied": 149,
+        "sent": 5940,
+        "acceptance": null,
+        "campaigns": 4,
+        "channel": "email",
+        "positiveRate": {
+          "count": 36,
+          "high": 0.0168,
+          "low": 0.0088,
+          "of": 2960,
+          "rate": 0.0122
+        },
+        "replyRate": {
+          "count": 149,
+          "high": 0.0588,
+          "low": 0.043,
+          "of": 2960,
+          "rate": 0.0503
+        },
+        "provider": "memory"
+      },
+      {
+        "bounced": null,
+        "contacted": 315,
+        "positive": 21,
+        "replied": 42,
+        "sent": 630,
+        "acceptance": {
+          "count": 126,
+          "high": 0.455,
+          "low": 0.3474,
+          "of": 315,
+          "rate": 0.4
+        },
+        "campaigns": 1,
+        "channel": "linkedin",
+        "positiveRate": {
+          "count": 21,
+          "high": 0.0998,
+          "low": 0.044,
+          "of": 315,
+          "rate": 0.0667
+        },
+        "replyRate": {
+          "count": 42,
+          "high": 0.1753,
+          "low": 0.1002,
+          "of": 315,
+          "rate": 0.1333
+        },
+        "provider": "memory"
+      }
+    ],
+    "channels": [
+      {
+        "bounced": 96,
+        "contacted": 2960,
+        "positive": 36,
+        "replied": 149,
+        "sent": 5940,
+        "acceptance": null,
+        "campaigns": 4,
+        "channel": "email",
+        "positiveRate": {
+          "count": 36,
+          "high": 0.0168,
+          "low": 0.0088,
+          "of": 2960,
+          "rate": 0.0122
+        },
+        "replyRate": {
+          "count": 149,
+          "high": 0.0588,
+          "low": 0.043,
+          "of": 2960,
+          "rate": 0.0503
+        }
+      },
+      {
+        "bounced": null,
+        "contacted": 315,
+        "positive": 21,
+        "replied": 42,
+        "sent": 630,
+        "acceptance": {
+          "count": 126,
+          "high": 0.455,
+          "low": 0.3474,
+          "of": 315,
+          "rate": 0.4
+        },
+        "campaigns": 1,
+        "channel": "linkedin",
+        "positiveRate": {
+          "count": 21,
+          "high": 0.0998,
+          "low": 0.044,
+          "of": 315,
+          "rate": 0.0667
+        },
+        "replyRate": {
+          "count": 42,
+          "high": 0.1753,
+          "low": 0.1002,
+          "of": 315,
+          "rate": 0.1333
+        }
+      }
+    ],
+    "period": {
+      "from": null,
+      "to": null
+    }
+  },
+  "insight": "channel_mix",
+  "meta": {
+    "complete": true,
+    "evidence": "exact",
+    "notes": [],
+    "requests": 0,
+    "computedAt": "2026-11-14T12:00:00.000Z",
+    "provider": "memory"
+  }
+}

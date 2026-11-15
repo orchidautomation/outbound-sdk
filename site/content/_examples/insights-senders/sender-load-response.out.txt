@@ -1,0 +1,88 @@
+{
+  "data": {
+    "campaigns": [
+      {
+        "campaign": "memory:acme:agencies",
+        "finding": "Agency owners has 3 senders, 1 of them not active.",
+        "inactive": [
+          {
+            "address": "dee@send-two.example.com",
+            "dailyLimit": 30,
+            "name": null,
+            "sender": "memory:acme:dee",
+            "status": "disconnected"
+          }
+        ],
+        "issues": [
+          "inactive_sender"
+        ],
+        "name": "Agency owners",
+        "senders": 3
+      },
+      {
+        "campaign": "memory:acme:ecom",
+        "finding": "Ecommerce ops has 1 sender.",
+        "inactive": [],
+        "issues": [
+          "single_sender"
+        ],
+        "name": "Ecommerce ops",
+        "senders": 1
+      },
+      {
+        "campaign": "memory:acme:linkedin",
+        "finding": "LinkedIn founders has 1 sender.",
+        "inactive": [],
+        "issues": [
+          "single_sender"
+        ],
+        "name": "LinkedIn founders",
+        "senders": 1
+      }
+    ],
+    "maxCampaignsPerSender": 2,
+    "overused": [
+      {
+        "address": "ana@send-one.example.com",
+        "dailyLimit": 40,
+        "name": null,
+        "sender": "memory:acme:ana",
+        "status": "active",
+        "campaignRefs": [
+          "memory:acme:founders",
+          "memory:acme:agencies",
+          "memory:acme:ecom"
+        ],
+        "campaigns": 3,
+        "finding": "ana@send-one.example.com is attached to 3 campaigns, 1 over the limit of 2.",
+        "over": 1
+      }
+    ],
+    "totals": {
+      "activeSenders": 5,
+      "campaigns": 4,
+      "campaignsAtRisk": 3,
+      "overused": 1,
+      "senders": 6,
+      "unused": 1
+    },
+    "unused": [
+      {
+        "address": "eli@send-three.example.com",
+        "dailyLimit": null,
+        "name": null,
+        "sender": "memory:acme:eli",
+        "status": "active"
+      }
+    ]
+  },
+  "insight": "sender_load",
+  "meta": {
+    "complete": true,
+    "evidence": "exact",
+    "notes": [],
+    "requests": 0,
+    "computedAt": "2026-11-14T12:00:00.000Z",
+    "provider": "memory"
+  }
+}

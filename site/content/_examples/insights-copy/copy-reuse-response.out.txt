@@ -1,0 +1,140 @@
+{
+  "data": {
+    "bestCopy": {
+      "bodyPreview": "Hi {{firstName}}, I saw {{company}} is hiring two account executives. Worth a short call next week?",
+      "campaigns": 2,
+      "contentHash": "731acea1c4f447bf4082393883bf01b1",
+      "replies": 52,
+      "replyRate": 0.0473,
+      "replyRateInterval": {
+        "high": 0.0615,
+        "low": 0.0362
+      },
+      "sent": 1100,
+      "subject": "Quick question about {{company}}",
+      "trials": 1100
+    },
+    "campaignsRead": 2,
+    "piecesOfCopy": 5,
+    "reused": [
+      {
+        "bodyPreview": "Hi {{firstName}}, I saw {{company}} is hiring two account executives. Worth a short call next week?",
+        "campaigns": 2,
+        "contentHash": "731acea1c4f447bf4082393883bf01b1",
+        "replies": 52,
+        "replyRate": 0.0473,
+        "replyRateInterval": {
+          "high": 0.0615,
+          "low": 0.0362
+        },
+        "sent": 1100,
+        "subject": "Quick question about {{company}}",
+        "trials": 1100,
+        "best": "memory:acme:founders",
+        "finding": "The same copy gets 0.08 in SaaS founders and 0.02 in Agency owners; the gap is more than chance, so the audience or the sender differs, not the copy.",
+        "spread": 0.06,
+        "spreadIsReal": true,
+        "spreadPValue": 0,
+        "worst": "memory:acme:agencies",
+        "uses": [
+          {
+            "campaign": "memory:acme:founders",
+            "campaignName": "SaaS founders",
+            "places": [
+              "0:A"
+            ],
+            "provider": "memory",
+            "replies": 40,
+            "replyRate": 0.08,
+            "replyRateInterval": {
+              "high": 0.1071,
+              "low": 0.0593
+            },
+            "sent": 500,
+            "trials": 500
+          },
+          {
+            "campaign": "memory:acme:agencies",
+            "campaignName": "Agency owners",
+            "places": [
+              "0:A"
+            ],
+            "provider": "memory",
+            "replies": 12,
+            "replyRate": 0.02,
+            "replyRateInterval": {
+              "high": 0.0346,
+              "low": 0.0115
+            },
+            "sent": 600,
+            "trials": 600
+          }
+        ]
+      },
+      {
+        "bodyPreview": "Hi {{firstName}}, did my note reach you?",
+        "campaigns": 2,
+        "contentHash": "c06dbc8ddc1b8e6751f540a41c95f51c",
+        "replies": 19,
+        "replyRate": 0.0224,
+        "replyRateInterval": {
+          "high": 0.0346,
+          "low": 0.0144
+        },
+        "sent": 850,
+        "subject": null,
+        "trials": 850,
+        "best": "memory:acme:founders",
+        "finding": "The same copy gets 0.025 in SaaS founders and 0.02 in Agency owners; a gap this size could be chance.",
+        "spread": 0.005,
+        "spreadIsReal": false,
+        "spreadPValue": 0.6226,
+        "worst": "memory:acme:agencies",
+        "uses": [
+          {
+            "campaign": "memory:acme:founders",
+            "campaignName": "SaaS founders",
+            "places": [
+              "1:A"
+            ],
+            "provider": "memory",
+            "replies": 10,
+            "replyRate": 0.025,
+            "replyRateInterval": {
+              "high": 0.0454,
+              "low": 0.0136
+            },
+            "sent": 400,
+            "trials": 400
+          },
+          {
+            "campaign": "memory:acme:agencies",
+            "campaignName": "Agency owners",
+            "places": [
+              "1:A"
+            ],
+            "provider": "memory",
+            "replies": 9,
+            "replyRate": 0.02,
+            "replyRateInterval": {
+              "high": 0.0376,
+              "low": 0.0106
+            },
+            "sent": 450,
+            "trials": 450
+          }
+        ]
+      }
+    ],
+    "variantsWithoutStats": 0
+  },
+  "insight": "copy_reuse",
+  "meta": {
+    "complete": true,
+    "evidence": "exact",
+    "notes": [],
+    "requests": 0,
+    "computedAt": "2026-11-14T12:00:00.000Z",
+    "provider": "memory"
+  }
+}

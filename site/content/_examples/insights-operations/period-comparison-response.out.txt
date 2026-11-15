@@ -1,0 +1,291 @@
+{
+  "data": {
+    "campaigns": [
+      {
+        "campaign": "memory:acme:agencies",
+        "channel": "email",
+        "name": "Agency owners",
+        "provider": "memory",
+        "status": "active",
+        "change": {
+          "bounceRate": 0,
+          "bounced": 0,
+          "contacted": 0,
+          "positive": -7,
+          "positiveRate": -0.025,
+          "replied": -21,
+          "replyRate": -0.075,
+          "sent": 0
+        },
+        "current": {
+          "bounced": 7,
+          "contacted": 280,
+          "positive": 0,
+          "replied": 7,
+          "sent": 700,
+          "bounceRate": 0.01,
+          "positiveRate": 0,
+          "replyRate": 0.025
+        },
+        "finding": "Reply rate went from 10% to 2.5%; more than chance (p = 0.0002).",
+        "previous": {
+          "bounced": 7,
+          "contacted": 280,
+          "positive": 7,
+          "replied": 28,
+          "sent": 700,
+          "bounceRate": 0.01,
+          "positiveRate": 0.025,
+          "replyRate": 0.1
+        },
+        "replyRateTest": {
+          "pValue": 0.0002,
+          "significant": true,
+          "z": -3.6661
+        },
+        "verdict": "down"
+      },
+      {
+        "campaign": "memory:acme:ecom",
+        "channel": "email",
+        "name": "Ecommerce ops",
+        "provider": "memory",
+        "status": "active",
+        "change": {
+          "bounceRate": 0.0232,
+          "bounced": 13,
+          "contacted": 0,
+          "positive": 0,
+          "positiveRate": 0,
+          "replied": 0,
+          "replyRate": 0,
+          "sent": 0
+        },
+        "current": {
+          "bounced": 26,
+          "contacted": 350,
+          "positive": 0,
+          "replied": 7,
+          "sent": 560,
+          "bounceRate": 0.0464,
+          "positiveRate": 0,
+          "replyRate": 0.02
+        },
+        "finding": "Reply rate went from 2% to 2%; within what chance would give (p = 1).",
+        "previous": {
+          "bounced": 13,
+          "contacted": 350,
+          "positive": 0,
+          "replied": 7,
+          "sent": 560,
+          "bounceRate": 0.0232,
+          "positiveRate": 0,
+          "replyRate": 0.02
+        },
+        "replyRateTest": {
+          "pValue": 1,
+          "significant": false,
+          "z": 0
+        },
+        "verdict": "no_real_change"
+      },
+      {
+        "campaign": "memory:acme:linkedin",
+        "channel": "linkedin",
+        "name": "LinkedIn founders",
+        "provider": "memory",
+        "status": "active",
+        "change": {
+          "bounceRate": null,
+          "bounced": null,
+          "contacted": 0,
+          "positive": 0,
+          "positiveRate": 0,
+          "replied": 0,
+          "replyRate": 0,
+          "sent": 0
+        },
+        "current": {
+          "bounced": null,
+          "contacted": 105,
+          "positive": 7,
+          "replied": 14,
+          "sent": 210,
+          "bounceRate": null,
+          "positiveRate": 0.0667,
+          "replyRate": 0.1333
+        },
+        "finding": "Reply rate went from 13.3% to 13.3%; within what chance would give (p = 1).",
+        "previous": {
+          "bounced": null,
+          "contacted": 105,
+          "positive": 7,
+          "replied": 14,
+          "sent": 210,
+          "bounceRate": null,
+          "positiveRate": 0.0667,
+          "replyRate": 0.1333
+        },
+        "replyRateTest": {
+          "pValue": 1,
+          "significant": false,
+          "z": 0
+        },
+        "verdict": "no_real_change"
+      },
+      {
+        "campaign": "memory:acme:founders",
+        "channel": "email",
+        "name": "SaaS founders",
+        "provider": "memory",
+        "status": "active",
+        "change": {
+          "bounceRate": 0,
+          "bounced": 0,
+          "contacted": 0,
+          "positive": 0,
+          "positiveRate": 0,
+          "replied": 0,
+          "replyRate": 0,
+          "sent": 0
+        },
+        "current": {
+          "bounced": 7,
+          "contacted": 350,
+          "positive": 7,
+          "replied": 21,
+          "sent": 700,
+          "bounceRate": 0.01,
+          "positiveRate": 0.02,
+          "replyRate": 0.06
+        },
+        "finding": "Reply rate went from 6% to 6%; within what chance would give (p = 1).",
+        "previous": {
+          "bounced": 7,
+          "contacted": 350,
+          "positive": 7,
+          "replied": 21,
+          "sent": 700,
+          "bounceRate": 0.01,
+          "positiveRate": 0.02,
+          "replyRate": 0.06
+        },
+        "replyRateTest": {
+          "pValue": 1,
+          "significant": false,
+          "z": 0
+        },
+        "verdict": "no_real_change"
+      }
+    ],
+    "current": {
+      "from": "2026-11-07",
+      "to": "2026-11-13"
+    },
+    "days": 7,
+    "previous": {
+      "from": "2026-10-31",
+      "to": "2026-11-06"
+    },
+    "tooFewSends": [
+      {
+        "campaign": "memory:acme:pilot",
+        "channel": "email",
+        "name": "Pilot test",
+        "provider": "memory",
+        "status": "paused",
+        "currentSent": null,
+        "previousSent": null
+      }
+    ],
+    "total": {
+      "change": {
+        "bounceRate": 0.0066,
+        "bounced": 13,
+        "contacted": 0,
+        "positive": -7,
+        "positiveRate": -0.0065,
+        "replied": -21,
+        "replyRate": -0.0193,
+        "sent": 0
+      },
+      "current": {
+        "bounced": 40,
+        "contacted": 1085,
+        "positive": 14,
+        "replied": 49,
+        "sent": 2170,
+        "bounceRate": 0.0204,
+        "positiveRate": 0.0129,
+        "replyRate": 0.0452
+      },
+      "finding": "Reply rate went from 6.5% to 4.5%; more than chance (p = 0.0477).",
+      "previous": {
+        "bounced": 27,
+        "contacted": 1085,
+        "positive": 21,
+        "replied": 70,
+        "sent": 2170,
+        "bounceRate": 0.0138,
+        "positiveRate": 0.0194,
+        "replyRate": 0.0645
+      },
+      "replyRateTest": {
+        "pValue": 0.0477,
+        "significant": true,
+        "z": -1.9801
+      },
+      "verdict": "down"
+    },
+    "workspace": {
+      "change": {
+        "bounceRate": 0.006,
+        "bounced": 13,
+        "contacted": 0,
+        "positive": -7,
+        "positiveRate": -0.0065,
+        "replied": -21,
+        "replyRate": -0.0193,
+        "sent": 0
+      },
+      "current": {
+        "bounced": 40,
+        "contacted": 1085,
+        "positive": 14,
+        "replied": 49,
+        "sent": 2170,
+        "bounceRate": 0.0184,
+        "positiveRate": 0.0129,
+        "replyRate": 0.0452
+      },
+      "finding": "Reply rate went from 6.5% to 4.5%; more than chance (p = 0.0477).",
+      "previous": {
+        "bounced": 27,
+        "contacted": 1085,
+        "positive": 21,
+        "replied": 70,
+        "sent": 2170,
+        "bounceRate": 0.0124,
+        "positiveRate": 0.0194,
+        "replyRate": 0.0645
+      },
+      "replyRateTest": {
+        "pValue": 0.0477,
+        "significant": true,
+        "z": -1.9801
+      },
+      "verdict": "down"
+    }
+  },
+  "insight": "period_comparison",
+  "meta": {
+    "complete": true,
+    "evidence": "exact",
+    "notes": [
+      "Every campaign added together: this period's bounce rate (3 of 4), the earlier period's bounce rate (3 of 4) count only the campaigns that report both the count and what it is divided by. The others are left out of the rate, not counted as 0."
+    ],
+    "requests": 0,
+    "computedAt": "2026-11-14T12:00:00.000Z",
+    "provider": "memory"
+  }
+}

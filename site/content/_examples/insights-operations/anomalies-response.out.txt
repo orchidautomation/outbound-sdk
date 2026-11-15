@@ -1,0 +1,77 @@
+{
+  "data": {
+    "anomalies": [
+      {
+        "baselineMean": 4,
+        "baselinePoints": 14,
+        "date": "2026-11-11",
+        "direction": "above",
+        "metric": "bounced",
+        "value": 16,
+        "finding": "bounced was 16 on 2026-11-11, against an average of 4 over the 14 days with data before it (z = 11.5635).",
+        "judgedBy": "z_score",
+        "zScore": 11.5635
+      },
+      {
+        "baselineMean": 9.7857,
+        "baselinePoints": 14,
+        "date": "2026-11-08",
+        "direction": "below",
+        "metric": "replied",
+        "value": 7,
+        "finding": "replied was 7 on 2026-11-08, against an average of 9.7857 over the 14 days with data before it (z = -3.4744).",
+        "judgedBy": "z_score",
+        "zScore": -3.4744
+      },
+      {
+        "baselineMean": 10,
+        "baselinePoints": 14,
+        "date": "2026-11-07",
+        "direction": "below",
+        "metric": "replied",
+        "value": 7,
+        "finding": "replied was 7 on 2026-11-07, against 10 on each of the 14 days with data before it (a flat baseline has no z-score: any other count is flagged).",
+        "judgedBy": "flat_baseline",
+        "zScore": null
+      }
+    ],
+    "metrics": [
+      {
+        "daysTested": 16,
+        "daysWithData": 21,
+        "metric": "sent",
+        "reason": null,
+        "testable": true
+      },
+      {
+        "daysTested": 16,
+        "daysWithData": 21,
+        "metric": "replied",
+        "reason": null,
+        "testable": true
+      },
+      {
+        "daysTested": 16,
+        "daysWithData": 21,
+        "metric": "bounced",
+        "reason": null,
+        "testable": true
+      }
+    ],
+    "period": {
+      "from": "2026-10-15",
+      "to": "2026-11-13"
+    },
+    "scope": "workspace",
+    "threshold": 2.5
+  },
+  "insight": "anomalies",
+  "meta": {
+    "complete": true,
+    "evidence": "exact",
+    "notes": [],
+    "requests": 0,
+    "computedAt": "2026-11-14T12:00:00.000Z",
+    "provider": "memory"
+  }
+}

@@ -60,9 +60,17 @@ How the risk is set:
   ../../_examples/insights-senders/domain-health.ts
 </include>
 
-<include lang="text" meta='title="Output"'>
-  ../../_examples/insights-senders/domain-health.out.txt
-</include>
+<CodeGroup>
+  <include lang="text" meta='title="Output"'>
+    ../../_examples/insights-senders/domain-health.out.txt
+  </include>
+  <include lang="json" meta='title="Response"'>
+    ../../_examples/insights-senders/domain-health-response.out.txt
+  </include>
+  <include meta='title="domain-health-response.ts"'>
+    ../../_examples/insights-senders/domain-health-response.ts
+  </include>
+</CodeGroup>
 
 ## `senderCapacity`
 
@@ -94,9 +102,17 @@ Whether the senders can send what the campaigns ask.
   ../../_examples/insights-senders/sender-capacity.ts
 </include>
 
-<include lang="text" meta='title="Output"'>
-  ../../_examples/insights-senders/sender-capacity.out.txt
-</include>
+<CodeGroup>
+  <include lang="text" meta='title="Output"'>
+    ../../_examples/insights-senders/sender-capacity.out.txt
+  </include>
+  <include lang="json" meta='title="Response"'>
+    ../../_examples/insights-senders/sender-capacity-response.out.txt
+  </include>
+  <include meta='title="sender-capacity-response.ts"'>
+    ../../_examples/insights-senders/sender-capacity-response.ts
+  </include>
+</CodeGroup>
 
 Five senders are active, but one reports no daily limit, so the capacity of 130 is that of four, and the finding says so. "Ecommerce ops" reports no daily limit, so it is not checked.
 
@@ -131,9 +147,17 @@ The campaigns whose bounce rate (bounced divided by sent) is over a threshold, a
   ../../_examples/insights-senders/bounce-watch.ts
 </include>
 
-<include lang="text" meta='title="Output"'>
-  ../../_examples/insights-senders/bounce-watch.out.txt
-</include>
+<CodeGroup>
+  <include lang="text" meta='title="Output"'>
+    ../../_examples/insights-senders/bounce-watch.out.txt
+  </include>
+  <include lang="json" meta='title="Response"'>
+    ../../_examples/insights-senders/bounce-watch-response.out.txt
+  </include>
+  <include meta='title="bounce-watch-response.ts"'>
+    ../../_examples/insights-senders/bounce-watch-response.ts
+  </include>
+</CodeGroup>
 
 The third sender of "Agency owners", `ana@send-one.example.com`, bounced 6 of 420. That is under the threshold, so that sender is not listed.
 
@@ -176,9 +200,17 @@ The reasons:
   ../../_examples/insights-senders/warmup-readiness.ts
 </include>
 
-<include lang="text" meta='title="Output"'>
-  ../../_examples/insights-senders/warmup-readiness.out.txt
-</include>
+<CodeGroup>
+  <include lang="text" meta='title="Output"'>
+    ../../_examples/insights-senders/warmup-readiness.out.txt
+  </include>
+  <include lang="json" meta='title="Response"'>
+    ../../_examples/insights-senders/warmup-readiness-response.out.txt
+  </include>
+  <include meta='title="warmup-readiness-response.ts"'>
+    ../../_examples/insights-senders/warmup-readiness-response.ts
+  </include>
+</CodeGroup>
 
 ## `senderLoad`
 
@@ -208,9 +240,17 @@ Senders that are overused or unused, and campaigns that depend on too few sender
   ../../_examples/insights-senders/sender-load.ts
 </include>
 
-<include lang="text" meta='title="Output"'>
-  ../../_examples/insights-senders/sender-load.out.txt
-</include>
+<CodeGroup>
+  <include lang="text" meta='title="Output"'>
+    ../../_examples/insights-senders/sender-load.out.txt
+  </include>
+  <include lang="json" meta='title="Response"'>
+    ../../_examples/insights-senders/sender-load-response.out.txt
+  </include>
+  <include meta='title="sender-load-response.ts"'>
+    ../../_examples/insights-senders/sender-load-response.ts
+  </include>
+</CodeGroup>
 
 ## `settingsAudit`
 
@@ -258,8 +298,16 @@ The checks:
   ../../_examples/insights-senders/settings-audit.ts
 </include>
 
-<include lang="text" meta='title="Output"'>
-  ../../_examples/insights-senders/settings-audit.out.txt
-</include>
+<CodeGroup>
+  <include lang="text" meta='title="Output"'>
+    ../../_examples/insights-senders/settings-audit.out.txt
+  </include>
+  <include lang="json" meta='title="Response"'>
+    ../../_examples/insights-senders/settings-audit-response.out.txt
+  </include>
+  <include meta='title="settings-audit-response.ts"'>
+    ../../_examples/insights-senders/settings-audit-response.ts
+  </include>
+</CodeGroup>
 
 "Ecommerce ops" has no settings in the data, so it gets the two findings a tool that reports nothing would get.

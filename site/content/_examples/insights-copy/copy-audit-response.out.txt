@@ -1,0 +1,141 @@
+{
+  "data": {
+    "byCheck": [
+      {
+        "check": "malformed_variable",
+        "count": 1,
+        "severity": "high"
+      },
+      {
+        "check": "spam_words",
+        "count": 1,
+        "severity": "medium"
+      },
+      {
+        "check": "subject_breaks_thread",
+        "count": 1,
+        "severity": "medium"
+      },
+      {
+        "check": "too_many_links",
+        "count": 1,
+        "severity": "medium"
+      },
+      {
+        "check": "all_caps",
+        "count": 1,
+        "severity": "low"
+      },
+      {
+        "check": "exclamation_marks",
+        "count": 1,
+        "severity": "low"
+      },
+      {
+        "check": "subject_too_long",
+        "count": 1,
+        "severity": "low"
+      },
+      {
+        "check": "missing_subject",
+        "count": 0,
+        "severity": "high"
+      },
+      {
+        "check": "image",
+        "count": 0,
+        "severity": "medium"
+      },
+      {
+        "check": "body_too_long",
+        "count": 0,
+        "severity": "low"
+      }
+    ],
+    "bySeverity": {
+      "high": 1,
+      "low": 3,
+      "medium": 3
+    },
+    "campaign": "memory:acme:founders",
+    "channel": "email",
+    "clean": false,
+    "findings": [
+      {
+        "check": "malformed_variable",
+        "finding": "A variable's braces are not balanced, so it sends as raw text.",
+        "text": "bligation at all\nHi {{firstName}, see https://exam",
+        "action": "email",
+        "severity": "high",
+        "step": 2,
+        "variantKey": "A"
+      },
+      {
+        "check": "spam_words",
+        "finding": "The copy uses 2 word(s) or phrase(s) that spam filters weigh.",
+        "text": "free trial, no obligation",
+        "action": "email",
+        "severity": "medium",
+        "step": 2,
+        "variantKey": "A"
+      },
+      {
+        "check": "subject_breaks_thread",
+        "finding": "This follow-up has a subject that differs from the first email's, so it starts a new thread instead of continuing the first.",
+        "text": "Last chance: a free trial for {{company}}, with no obligation at all",
+        "action": "email",
+        "severity": "medium",
+        "step": 2,
+        "variantKey": "A"
+      },
+      {
+        "check": "too_many_links",
+        "finding": "The body has 2 links; the limit is 1.",
+        "text": "https://example.com/pricing https://example.com/demo",
+        "action": "email",
+        "severity": "medium",
+        "step": 2,
+        "variantKey": "A"
+      },
+      {
+        "check": "all_caps",
+        "finding": "2 word(s) of four or more letters are in capitals; the limit is 1.",
+        "text": "FRIDAY ENDS",
+        "action": "email",
+        "severity": "low",
+        "step": 2,
+        "variantKey": "A"
+      },
+      {
+        "check": "exclamation_marks",
+        "finding": "The copy has 2 exclamation marks; the limit is 1.",
+        "text": "!!",
+        "action": "email",
+        "severity": "low",
+        "step": 2,
+        "variantKey": "A"
+      },
+      {
+        "check": "subject_too_long",
+        "finding": "The subject is 68 characters; the limit is 60.",
+        "text": "Last chance: a free trial for {{company}}, with no obligation at all",
+        "action": "email",
+        "severity": "low",
+        "step": 2,
+        "variantKey": "A"
+      }
+    ],
+    "stepsChecked": 3,
+    "variantsChecked": 5,
+    "variantsWithoutBody": 0
+  },
+  "insight": "copy_audit",
+  "meta": {
+    "complete": true,
+    "evidence": "exact",
+    "notes": [],
+    "requests": 0,
+    "computedAt": "2026-11-14T12:00:00.000Z",
+    "provider": "memory"
+  }
+}

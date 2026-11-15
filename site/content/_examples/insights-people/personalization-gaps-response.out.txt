@@ -1,0 +1,141 @@
+{
+  "data": {
+    "campaign": "mailtool:acme:founders",
+    "leads": [
+      {
+        "email": "cy@example.com",
+        "lead": "mailtool:acme:cy_founders",
+        "linkedinUrl": null,
+        "missing": [
+          "firstName",
+          "icebreaker"
+        ],
+        "status": "active"
+      },
+      {
+        "email": "ben@northwind.example.com",
+        "lead": "mailtool:acme:ben_founders",
+        "linkedinUrl": null,
+        "missing": [
+          "icebreaker"
+        ],
+        "status": "active"
+      },
+      {
+        "email": "dee@example.com",
+        "lead": "mailtool:acme:dee_founders",
+        "linkedinUrl": null,
+        "missing": [
+          "company"
+        ],
+        "status": "unsubscribed"
+      }
+    ],
+    "totals": {
+      "affectedRate": 0.75,
+      "leadsAffected": 3,
+      "leadsRead": 4,
+      "steps": 2,
+      "variables": 4
+    },
+    "unknownVariables": [
+      "senderSignature"
+    ],
+    "variables": [
+      {
+        "gap": true,
+        "leadsAffected": 2,
+        "leadsWithoutValue": 2,
+        "name": "icebreaker",
+        "source": "custom",
+        "steps": [
+          0
+        ],
+        "uses": [
+          {
+            "fallback": false,
+            "field": "body",
+            "step": 0,
+            "variant": "A"
+          }
+        ]
+      },
+      {
+        "gap": true,
+        "leadsAffected": 1,
+        "leadsWithoutValue": 1,
+        "name": "company",
+        "source": "builtin",
+        "steps": [
+          0
+        ],
+        "uses": [
+          {
+            "fallback": false,
+            "field": "body",
+            "step": 0,
+            "variant": "A"
+          }
+        ]
+      },
+      {
+        "gap": true,
+        "leadsAffected": 1,
+        "leadsWithoutValue": 1,
+        "name": "firstName",
+        "source": "builtin",
+        "steps": [
+          0,
+          1
+        ],
+        "uses": [
+          {
+            "fallback": false,
+            "field": "subject",
+            "step": 0,
+            "variant": "A"
+          },
+          {
+            "fallback": false,
+            "field": "body",
+            "step": 0,
+            "variant": "A"
+          },
+          {
+            "fallback": true,
+            "field": "body",
+            "step": 1,
+            "variant": "A"
+          }
+        ]
+      },
+      {
+        "gap": false,
+        "leadsAffected": null,
+        "leadsWithoutValue": null,
+        "name": "senderSignature",
+        "source": "unknown",
+        "steps": [
+          0
+        ],
+        "uses": [
+          {
+            "fallback": false,
+            "field": "body",
+            "step": 0,
+            "variant": "A"
+          }
+        ]
+      }
+    ]
+  },
+  "insight": "personalization_gaps",
+  "meta": {
+    "complete": true,
+    "evidence": "exact",
+    "notes": [],
+    "requests": 0,
+    "computedAt": "2026-11-14T12:00:00.000Z",
+    "provider": "combined"
+  }
+}

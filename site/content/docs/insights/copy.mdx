@@ -56,9 +56,17 @@ Where a campaign's replies come from, one row per sequence step.
   ../../_examples/insights-copy/step-funnel.ts
 </include>
 
-<include lang="text" meta='title="Output"'>
-  ../../_examples/insights-copy/step-funnel.out.txt
-</include>
+<CodeGroup>
+  <include lang="text" meta='title="Output"'>
+    ../../_examples/insights-copy/step-funnel.out.txt
+  </include>
+  <include lang="json" meta='title="Response"'>
+    ../../_examples/insights-copy/step-funnel-response.out.txt
+  </include>
+  <include meta='title="step-funnel-response.ts"'>
+    ../../_examples/insights-copy/step-funnel-response.ts
+  </include>
+</CodeGroup>
 
 Step 2 has a reply, but one reply from 600 sends gives an interval of 0.03% to 0.94%, which does not clear the 1% bar set here.
 
@@ -91,9 +99,17 @@ Whether a step's A/B leader is ahead by more than chance.
   ../../_examples/insights-copy/variant-test.ts
 </include>
 
-<include lang="text" meta='title="Output"'>
-  ../../_examples/insights-copy/variant-test.out.txt
-</include>
+<CodeGroup>
+  <include lang="text" meta='title="Output"'>
+    ../../_examples/insights-copy/variant-test.out.txt
+  </include>
+  <include lang="json" meta='title="Response"'>
+    ../../_examples/insights-copy/variant-test-response.out.txt
+  </include>
+  <include meta='title="variant-test-response.ts"'>
+    ../../_examples/insights-copy/variant-test-response.ts
+  </include>
+</CodeGroup>
 
 On step 1, variant A leads 2.5% to 1.5%, but with 400 sends each that gap has a p-value of 0.31. Pausing B now would be a guess.
 
@@ -148,9 +164,17 @@ The checks:
   ../../_examples/insights-copy/copy-audit.ts
 </include>
 
-<include lang="text" meta='title="Output"'>
-  ../../_examples/insights-copy/copy-audit.out.txt
-</include>
+<CodeGroup>
+  <include lang="text" meta='title="Output"'>
+    ../../_examples/insights-copy/copy-audit.out.txt
+  </include>
+  <include lang="json" meta='title="Response"'>
+    ../../_examples/insights-copy/copy-audit-response.out.txt
+  </include>
+  <include meta='title="copy-audit-response.ts"'>
+    ../../_examples/insights-copy/copy-audit-response.ts
+  </include>
+</CodeGroup>
 
 ## `copyReuse`
 
@@ -177,9 +201,17 @@ How the same piece of copy performs in different campaigns. Variants are matched
   ../../_examples/insights-copy/copy-reuse.ts
 </include>
 
-<include lang="text" meta='title="Output"'>
-  ../../_examples/insights-copy/copy-reuse.out.txt
-</include>
+<CodeGroup>
+  <include lang="text" meta='title="Output"'>
+    ../../_examples/insights-copy/copy-reuse.out.txt
+  </include>
+  <include lang="json" meta='title="Response"'>
+    ../../_examples/insights-copy/copy-reuse-response.out.txt
+  </include>
+  <include meta='title="copy-reuse-response.ts"'>
+    ../../_examples/insights-copy/copy-reuse-response.ts
+  </include>
+</CodeGroup>
 
 The opener gets 8% in one campaign and 2% in the other. Same words, so the audience or the sender differs. The best copy's 4.73% is pooled: 52 replies over 1,100 sends in both campaigns.
 
@@ -211,8 +243,16 @@ How fast people reply, and on which days and hours.
   ../../_examples/insights-copy/reply-timing.ts
 </include>
 
-<include lang="text" meta='title="Output"'>
-  ../../_examples/insights-copy/reply-timing.out.txt
-</include>
+<CodeGroup>
+  <include lang="text" meta='title="Output"'>
+    ../../_examples/insights-copy/reply-timing.out.txt
+  </include>
+  <include lang="json" meta='title="Response"'>
+    ../../_examples/insights-copy/reply-timing-response.out.txt
+  </include>
+  <include meta='title="reply-timing-response.ts"'>
+    ../../_examples/insights-copy/reply-timing-response.ts
+  </include>
+</CodeGroup>
 
 Five replies could be paired, after 0.5, 6, 24, 48 and 96 hours. Every figure in `timeToReply` rests on those five: read `sample` before trusting a percentile.

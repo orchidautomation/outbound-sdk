@@ -1,0 +1,359 @@
+{
+  "data": {
+    "campaign": null,
+    "counts": {
+      "followOnReplies": 1,
+      "messagesRead": 12,
+      "paired": 5,
+      "received": 7,
+      "sent": 5,
+      "unpaired": 1
+    },
+    "replies": {
+      "byHour": [
+        {
+          "count": 0,
+          "hour": 0,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 1,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 2,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 3,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 4,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 5,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 6,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 7,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 8,
+          "share": 0
+        },
+        {
+          "count": 3,
+          "hour": 9,
+          "share": 0.4286
+        },
+        {
+          "count": 2,
+          "hour": 10,
+          "share": 0.2857
+        },
+        {
+          "count": 0,
+          "hour": 11,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 12,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 13,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 14,
+          "share": 0
+        },
+        {
+          "count": 2,
+          "hour": 15,
+          "share": 0.2857
+        },
+        {
+          "count": 0,
+          "hour": 16,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 17,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 18,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 19,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 20,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 21,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 22,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 23,
+          "share": 0
+        }
+      ],
+      "byWeekday": [
+        {
+          "count": 2,
+          "share": 0.2857,
+          "weekday": "Monday"
+        },
+        {
+          "count": 0,
+          "share": 0,
+          "weekday": "Tuesday"
+        },
+        {
+          "count": 2,
+          "share": 0.2857,
+          "weekday": "Wednesday"
+        },
+        {
+          "count": 2,
+          "share": 0.2857,
+          "weekday": "Thursday"
+        },
+        {
+          "count": 1,
+          "share": 0.1429,
+          "weekday": "Friday"
+        },
+        {
+          "count": 0,
+          "share": 0,
+          "weekday": "Saturday"
+        },
+        {
+          "count": 0,
+          "share": 0,
+          "weekday": "Sunday"
+        }
+      ],
+      "topHour": 9,
+      "topWeekday": "Monday"
+    },
+    "sendsThatDrewReplies": {
+      "byHour": [
+        {
+          "count": 0,
+          "hour": 0,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 1,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 2,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 3,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 4,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 5,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 6,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 7,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 8,
+          "share": 0
+        },
+        {
+          "count": 4,
+          "hour": 9,
+          "share": 0.8
+        },
+        {
+          "count": 1,
+          "hour": 10,
+          "share": 0.2
+        },
+        {
+          "count": 0,
+          "hour": 11,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 12,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 13,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 14,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 15,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 16,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 17,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 18,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 19,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 20,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 21,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 22,
+          "share": 0
+        },
+        {
+          "count": 0,
+          "hour": 23,
+          "share": 0
+        }
+      ],
+      "byWeekday": [
+        {
+          "count": 3,
+          "share": 0.6,
+          "weekday": "Monday"
+        },
+        {
+          "count": 2,
+          "share": 0.4,
+          "weekday": "Tuesday"
+        },
+        {
+          "count": 0,
+          "share": 0,
+          "weekday": "Wednesday"
+        },
+        {
+          "count": 0,
+          "share": 0,
+          "weekday": "Thursday"
+        },
+        {
+          "count": 0,
+          "share": 0,
+          "weekday": "Friday"
+        },
+        {
+          "count": 0,
+          "share": 0,
+          "weekday": "Saturday"
+        },
+        {
+          "count": 0,
+          "share": 0,
+          "weekday": "Sunday"
+        }
+      ],
+      "topHour": 9,
+      "topWeekday": "Monday"
+    },
+    "since": "2026-10-15T12:00:00.000Z",
+    "timeToReply": {
+      "medianHours": 24,
+      "p75Hours": 48,
+      "p90Hours": 76.8,
+      "sample": 5,
+      "within1Hour": 0.2,
+      "within24Hours": 0.6,
+      "within72Hours": 0.8
+    },
+    "timezoneOffsetMinutes": 0
+  },
+  "insight": "reply_timing",
+  "meta": {
+    "complete": true,
+    "evidence": "exact",
+    "notes": [],
+    "requests": 0,
+    "computedAt": "2026-11-14T12:00:00.000Z",
+    "provider": "memory"
+  }
+}

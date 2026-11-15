@@ -51,9 +51,17 @@ Everything about one person across campaigns and channels: each campaign they ar
   ../../_examples/insights-people/person-summary.ts
 </include>
 
-<include lang="text" meta='title="Output"'>
-  ../../_examples/insights-people/person-summary.out.txt
-</include>
+<CodeGroup>
+  <include lang="text" meta='title="Output"'>
+    ../../_examples/insights-people/person-summary.out.txt
+  </include>
+  <include lang="json" meta='title="Response"'>
+    ../../_examples/insights-people/person-summary-response.out.txt
+  </include>
+  <include meta='title="person-summary-response.ts"'>
+    ../../_examples/insights-people/person-summary-response.ts
+  </include>
+</CodeGroup>
 
 The email address found the LinkedIn record because the lead in "SaaS founders" carries both the address and the profile. The LinkedIn messages in this data carry no step, so `repliedSteps` is empty there.
 
@@ -85,9 +93,17 @@ Everyone at one company, across campaigns and tools, by exact email domain.
   ../../_examples/insights-people/account-summary.ts
 </include>
 
-<include lang="text" meta='title="Output"'>
-  ../../_examples/insights-people/account-summary.out.txt
-</include>
+<CodeGroup>
+  <include lang="text" meta='title="Output"'>
+    ../../_examples/insights-people/account-summary.out.txt
+  </include>
+  <include lang="json" meta='title="Response"'>
+    ../../_examples/insights-people/account-summary-response.out.txt
+  </include>
+  <include meta='title="account-summary-response.ts"'>
+    ../../_examples/insights-people/account-summary-response.ts
+  </include>
+</CodeGroup>
 
 Ben is `interested: false` because his only label, `Not Interested`, is not a positive one. A person with no label at all is `null`.
 
@@ -115,9 +131,17 @@ People who are in two or more campaigns at once, so they get overlapping outreac
   ../../_examples/insights-people/lead-collisions.ts
 </include>
 
-<include lang="text" meta='title="Output"'>
-  ../../_examples/insights-people/lead-collisions.out.txt
-</include>
+<CodeGroup>
+  <include lang="text" meta='title="Output"'>
+    ../../_examples/insights-people/lead-collisions.out.txt
+  </include>
+  <include lang="json" meta='title="Response"'>
+    ../../_examples/insights-people/lead-collisions-response.out.txt
+  </include>
+  <include meta='title="lead-collisions-response.ts"'>
+    ../../_examples/insights-people/lead-collisions-response.ts
+  </include>
+</CodeGroup>
 
 Ben is also in "Summer push", but that campaign is completed, so it is not read.
 
@@ -147,9 +171,17 @@ Leads sitting in campaigns although they are on the block list.
   ../../_examples/insights-people/suppression-check.ts
 </include>
 
-<include lang="text" meta='title="Output"'>
-  ../../_examples/insights-people/suppression-check.out.txt
-</include>
+<CodeGroup>
+  <include lang="text" meta='title="Output"'>
+    ../../_examples/insights-people/suppression-check.out.txt
+  </include>
+  <include lang="json" meta='title="Response"'>
+    ../../_examples/insights-people/suppression-check-response.out.txt
+  </include>
+  <include meta='title="suppression-check-response.ts"'>
+    ../../_examples/insights-people/suppression-check-response.ts
+  </include>
+</CodeGroup>
 
 The block list is the email tool's. On a combined instance an entry on one tool's list is also matched against the other tools' leads, and marked `sameTool: false`: that tool does not know about the entry and will keep sending.
 
@@ -180,9 +212,17 @@ Replies from prospects that nobody answered, longest waiting first.
   ../../_examples/insights-people/dropped-replies.ts
 </include>
 
-<include lang="text" meta='title="Output"'>
-  ../../_examples/insights-people/dropped-replies.out.txt
-</include>
+<CodeGroup>
+  <include lang="text" meta='title="Output"'>
+    ../../_examples/insights-people/dropped-replies.out.txt
+  </include>
+  <include lang="json" meta='title="Response"'>
+    ../../_examples/insights-people/dropped-replies-response.out.txt
+  </include>
+  <include meta='title="dropped-replies-response.ts"'>
+    ../../_examples/insights-people/dropped-replies-response.ts
+  </include>
+</CodeGroup>
 
 Eight replies were read. One was an unsubscribe and one was automatic. Of the five conversations left, two were answered, one is 16 hours old and so too recent, and two are dropped. Both were checked by timeline because a [combined](/docs/adapters/combine) instance cannot read a thread by its id.
 
@@ -218,9 +258,17 @@ Who to call first: leads ranked by a score built from what the vendor reports.
   ../../_examples/insights-people/hot-leads.ts
 </include>
 
-<include lang="text" meta='title="Output"'>
-  ../../_examples/insights-people/hot-leads.out.txt
-</include>
+<CodeGroup>
+  <include lang="text" meta='title="Output"'>
+    ../../_examples/insights-people/hot-leads.out.txt
+  </include>
+  <include lang="json" meta='title="Response"'>
+    ../../_examples/insights-people/hot-leads-response.out.txt
+  </include>
+  <include meta='title="hot-leads-response.ts"'>
+    ../../_examples/insights-people/hot-leads-response.ts
+  </include>
+</CodeGroup>
 
 Ana's 6 opens earn 5 points, the cap. Her reply two days ago earns 20 x (1 - 2/14) = 17.1429 recency points.
 
@@ -251,8 +299,16 @@ Leads in one campaign who will get broken copy because a merge variable has no v
   ../../_examples/insights-people/personalization-gaps.ts
 </include>
 
-<include lang="text" meta='title="Output"'>
-  ../../_examples/insights-people/personalization-gaps.out.txt
-</include>
+<CodeGroup>
+  <include lang="text" meta='title="Output"'>
+    ../../_examples/insights-people/personalization-gaps.out.txt
+  </include>
+  <include lang="json" meta='title="Response"'>
+    ../../_examples/insights-people/personalization-gaps-response.out.txt
+  </include>
+  <include meta='title="personalization-gaps-response.ts"'>
+    ../../_examples/insights-people/personalization-gaps-response.ts
+  </include>
+</CodeGroup>
 
 `firstName` is a gap although step 1 writes `{{firstName|there}}`, because step 0 uses it with no fallback. Cy has an `icebreaker` field, but it is empty, which counts as no value.

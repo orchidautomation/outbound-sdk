@@ -1,0 +1,101 @@
+{
+  "data": {
+    "alpha": 0.05,
+    "campaign": "memory:acme:founders",
+    "metric": "replied",
+    "steps": [
+      {
+        "leader": "A",
+        "moreSendsNeeded": null,
+        "pValue": 0.0077,
+        "reason": "Variant A (0.08) beats every other variant by more than chance at alpha 0.05.",
+        "step": 0,
+        "variants": [
+          {
+            "basis": "sent",
+            "count": 40,
+            "interval": {
+              "high": 0.1071,
+              "low": 0.0593
+            },
+            "rate": 0.08,
+            "trials": 500,
+            "enoughData": true,
+            "sent": 500,
+            "variantKey": "A",
+            "pValueVsLeader": null
+          },
+          {
+            "basis": "sent",
+            "count": 20,
+            "interval": {
+              "high": 0.061,
+              "low": 0.026
+            },
+            "rate": 0.04,
+            "trials": 500,
+            "enoughData": true,
+            "sent": 500,
+            "variantKey": "B",
+            "pValueVsLeader": 0.0077
+          }
+        ],
+        "verdict": "winner"
+      },
+      {
+        "leader": "A",
+        "moreSendsNeeded": 2213,
+        "pValue": 0.3124,
+        "reason": "Variant A (0.025) leads variant B (0.015), but a gap this size could be chance.",
+        "step": 1,
+        "variants": [
+          {
+            "basis": "sent",
+            "count": 10,
+            "interval": {
+              "high": 0.0454,
+              "low": 0.0136
+            },
+            "rate": 0.025,
+            "trials": 400,
+            "enoughData": true,
+            "sent": 400,
+            "variantKey": "A",
+            "pValueVsLeader": null
+          },
+          {
+            "basis": "sent",
+            "count": 6,
+            "interval": {
+              "high": 0.0323,
+              "low": 0.0069
+            },
+            "rate": 0.015,
+            "trials": 400,
+            "enoughData": true,
+            "sent": 400,
+            "variantKey": "B",
+            "pValueVsLeader": 0.3124
+          }
+        ],
+        "verdict": "no_difference_yet"
+      }
+    ],
+    "totals": {
+      "noDifferenceYet": 1,
+      "stepsTested": 2,
+      "tooLittleData": 0,
+      "winners": 1
+    },
+    "variantStatsReported": true
+  },
+  "insight": "variant_test",
+  "meta": {
+    "complete": true,
+    "evidence": "exact",
+    "notes": [],
+    "requests": 0,
+    "computedAt": "2026-11-14T12:00:00.000Z",
+    "provider": "memory"
+  }
+}

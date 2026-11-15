@@ -1,0 +1,165 @@
+{
+  "data": {
+    "domains": [
+      {
+        "blacklisted": 1,
+        "disconnected": 1,
+        "domain": "send-two.example.com",
+        "failingDns": [
+          "dkim",
+          "dmarc"
+        ],
+        "mailboxes": [
+          {
+            "address": "cy@send-two.example.com",
+            "blacklisted": false,
+            "connected": true,
+            "failingDns": [
+              "dkim",
+              "dmarc"
+            ],
+            "issues": [],
+            "sender": "memory:acme:cy",
+            "status": "active"
+          },
+          {
+            "address": "dee@send-two.example.com",
+            "blacklisted": true,
+            "connected": false,
+            "failingDns": [
+              "dkim",
+              "dmarc"
+            ],
+            "issues": [
+              "Sign-in failed"
+            ],
+            "sender": "memory:acme:dee",
+            "status": "disconnected"
+          }
+        ],
+        "notReported": [],
+        "reasons": [
+          "1 of 2 mailboxes are on a block list",
+          "DKIM failing",
+          "30 of 200 warmup emails landed in spam (0.15, over 0.1)",
+          "DMARC failing",
+          "1 of 2 mailboxes are disconnected"
+        ],
+        "risk": "high",
+        "warmup": {
+          "interval": {
+            "high": 0.2061,
+            "low": 0.1071
+          },
+          "mailboxes": 2,
+          "sent": 200,
+          "spam": 30,
+          "spamRate": 0.15
+        }
+      },
+      {
+        "blacklisted": 0,
+        "disconnected": 0,
+        "domain": "send-one.example.com",
+        "failingDns": [],
+        "mailboxes": [
+          {
+            "address": "ana@send-one.example.com",
+            "blacklisted": false,
+            "connected": true,
+            "failingDns": [],
+            "issues": [],
+            "sender": "memory:acme:ana",
+            "status": "active"
+          },
+          {
+            "address": "ben@send-one.example.com",
+            "blacklisted": false,
+            "connected": true,
+            "failingDns": [],
+            "issues": [],
+            "sender": "memory:acme:ben",
+            "status": "active"
+          }
+        ],
+        "notReported": [],
+        "reasons": [],
+        "risk": "low",
+        "warmup": {
+          "interval": {
+            "high": 0.0454,
+            "low": 0.0136
+          },
+          "mailboxes": 2,
+          "sent": 400,
+          "spam": 10,
+          "spamRate": 0.025
+        }
+      },
+      {
+        "blacklisted": 0,
+        "disconnected": 0,
+        "domain": "send-three.example.com",
+        "failingDns": [],
+        "mailboxes": [
+          {
+            "address": "eli@send-three.example.com",
+            "blacklisted": null,
+            "connected": null,
+            "failingDns": [],
+            "issues": [],
+            "sender": "memory:acme:eli",
+            "status": "active"
+          }
+        ],
+        "notReported": [
+          "spf",
+          "dkim",
+          "dmarc",
+          "mx",
+          "connection",
+          "blocklist",
+          "warmup"
+        ],
+        "reasons": [],
+        "risk": "unknown",
+        "warmup": {
+          "interval": null,
+          "mailboxes": 0,
+          "sent": null,
+          "spam": null,
+          "spamRate": null
+        }
+      }
+    ],
+    "linkedinSeats": [
+      {
+        "connected": true,
+        "issues": [],
+        "linkedinUrl": "https://www.linkedin.com/in/fay-lin-example",
+        "name": "Fay Lin",
+        "sender": "memory:acme:fay",
+        "status": "active"
+      }
+    ],
+    "mailboxesWithoutDomain": [],
+    "totals": {
+      "domains": 3,
+      "high": 1,
+      "linkedinSeats": 1,
+      "low": 1,
+      "medium": 0,
+      "senders": 6,
+      "unknown": 1
+    }
+  },
+  "insight": "domain_health",
+  "meta": {
+    "complete": true,
+    "evidence": "exact",
+    "notes": [],
+    "requests": 0,
+    "computedAt": "2026-11-14T12:00:00.000Z",
+    "provider": "memory"
+  }
+}
