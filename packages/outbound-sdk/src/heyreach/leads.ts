@@ -8,7 +8,15 @@ import type {
   Page,
 } from "../internal/adapter.ts";
 import type { Lead } from "../internal/entities.ts";
-import { count, field, isJsonObject, list, text } from "../internal/json.ts";
+import { OutboundError } from "../internal/errors.ts";
+import {
+  count,
+  field,
+  isJsonObject,
+  isString,
+  list,
+  text,
+} from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
 import { mapPage } from "../internal/page.ts";
 import { LIST_LEADS_PAGE_SIZE, PAGE_SIZE } from "./capabilities.ts";
@@ -79,7 +87,9 @@ const campaignLeads = async (
       "/campaign/GetLeadsFromCampaign",
       campaignLeadsBody(client, query, offset)
     ),
-    offset
+    offset,
+    client.identity.provider,
+    "/campaign/GetLeadsFromCampaign"
   );
 
   // Not `mapPage`: the walk over every campaign needs `next` as a number.
@@ -136,7 +146,9 @@ const nextCampaigns = async (
 
   const envelope = listEnvelope(
     await client.post(ctx, "/campaign/GetAll", { limit: PAGE_SIZE, offset }),
-    offset
+    offset,
+    client.identity.provider,
+    "/campaign/GetAll"
   );
 
   return {
@@ -194,6 +206,18 @@ export const leadReaders = (
       client.post(ctx, "/lead/GetTags", { profileUrl }),
     ]);
 
+    // How GetTags answers is not documented (an empty schema, a `"string"`
+    // example, a Postman `{ tags: [...] }` that is not valid JSON), so it is
+    // read leniently: an empty body or an object without `tags` is no tags.
+    // Only a body that is not JSON at all is an error.
+    if (isString(tags)) {
+      throw new OutboundError(
+        "Provider",
+        "HeyReach returned no JSON for /lead/GetTags",
+        { provider: client.identity.provider }
+      );
+    }
+
     return toLead(
       client.identity,
       client.object(lead, path),
@@ -215,7 +239,9 @@ export const leadReaders = (
           "/list/GetLeadsFromList",
           listLeadsBody(client, { ...query, listId }, offset)
         ),
-        offset
+        offset,
+        client.identity.provider,
+        "/list/GetLeadsFromList"
       );
 
       return mapPage(envelope, (item) => toLead(client.identity, item));

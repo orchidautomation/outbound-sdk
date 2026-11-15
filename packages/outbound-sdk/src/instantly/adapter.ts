@@ -270,7 +270,9 @@ const leadReaders = (
     }
 
     const envelope = listEnvelope(
-      await client.post(ctx, "/leads/list", leadListBody(query))
+      await client.post(ctx, "/leads/list", leadListBody(query)),
+      client.identity.provider,
+      "/leads/list"
     );
 
     const labels = await readLabels(

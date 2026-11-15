@@ -9,7 +9,9 @@ import type {
 import { createVendorClient } from "../internal/client.ts";
 import type { VendorClient } from "../internal/client.ts";
 import { requireObject } from "../internal/errors.ts";
+import { objects } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
+import { listIn } from "../internal/lists.ts";
 import type { Identity } from "../internal/record.ts";
 import { BASE_URL } from "./capabilities.ts";
 
@@ -24,6 +26,8 @@ export interface HeyReachClient extends VendorClient {
   readonly raw: RawDescriptor;
   /** Narrows a response to one object, or throws a `Provider` error. */
   readonly object: (body: Json, path: string) => JsonObject;
+  /** The `items` array every HeyReach list answers with, or a `Provider` error. */
+  readonly items: (body: Json | undefined, path: string) => JsonObject[];
 }
 
 // Every documented POST that only reads. Anything else sent with POST writes.
@@ -111,6 +115,15 @@ export const createClient = (options: ClientOptions): HeyReachClient => {
   return {
     ...createVendorClient(baseUrl, authorize),
     identity: options.identity,
+    items: (body, path) =>
+      objects(
+        listIn(body, {
+          key: "items",
+          path,
+          provider: options.identity.provider,
+          vendor: "HeyReach",
+        })
+      ),
     object: (body, path) =>
       requireObject(
         body,

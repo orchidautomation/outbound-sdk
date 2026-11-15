@@ -63,6 +63,7 @@ What "retried" covers, and how to change it, is on the [retries](/docs/retries) 
 
 - A timeout is a `Provider` error with `timedOut: true`. It is retried like any other vendor failure, because every method is a read and a read is safe to repeat. A [`raw`](/docs/api/raw) request that is not a known read is the exception and is sent once.
 - An abort is a `Provider` error with `aborted: true` and `permanent: true`. It is never retried. Check `aborted` before you log a call you cancelled yourself as a vendor failure.
+- A list read answered 200 with a body that is not the list the vendor documents (an HTML maintenance page, `{}`, `{ items: null }`, an array where an object is due) is a `Provider` error, never an empty page. Its message names the request and what was expected: "Instantly returned no list for /campaigns: expected a JSON object with an array in `items`". A documented empty list, such as `{ items: [] }`, is still zero records. The request is sent once. Three reads whose answers are not documented precisely stay lenient and fail only on a body that is not JSON: Smartlead's `GET /leads/{id}/campaigns` (legacy docs only), Smartlead's lookup by email (`{}` is its documented "not found") and HeyReach's `GetTags`.
 - `cause` is set for a network failure. A timeout and an abort have none.
 
 ### `cause`

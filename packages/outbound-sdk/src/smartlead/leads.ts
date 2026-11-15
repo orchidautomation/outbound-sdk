@@ -4,11 +4,11 @@
 import type { AdapterContext, LeadQuery, Page } from "../internal/adapter.ts";
 import type { Lead } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
-import { count, field, isJsonObject, objects, text } from "../internal/json.ts";
+import { count, field, isJsonObject, text } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
 import type { SmartleadClient } from "./client.ts";
 import { leadsByEmail } from "./lookup.ts";
-import { NO_CATEGORIES, toCampaignLead, toLead, unwrap } from "./map.ts";
+import { NO_CATEGORIES, toCampaignLead, toLead } from "./map.ts";
 import type { LeadCategories } from "./map.ts";
 import {
   campaignIds,
@@ -17,6 +17,7 @@ import {
   leadCategories,
   objectOf,
   pageSize,
+  rowsOf,
   segment,
 } from "./shared.ts";
 
@@ -44,7 +45,14 @@ const campaignLeads = async (
     { query: { limit: place.limit, offset: place.offset } }
   );
 
-  const rows = objects(field(body, "data"));
+  // `{ total_leads, offset, limit, data }`, with `data` required.
+  const rows = rowsOf(
+    client,
+    body,
+    `/campaigns/${place.campaignId}/leads`,
+    "data"
+  );
+
   // A string in the newer example and a number in the older one.
   const total = count(field(body, "total_leads"));
   const end = place.offset + rows.length;
@@ -177,7 +185,9 @@ export const getLead = async (
   return toLead(
     client.identity,
     lead,
-    objects(unwrap(tags)).flatMap((tag) => text(tag.name) ?? []),
+    rowsOf(client, tags, "/crm/leads/tags").flatMap(
+      (tag) => text(tag.name) ?? []
+    ),
     categories
   );
 };

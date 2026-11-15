@@ -10,7 +10,9 @@ import type {
 import { createVendorClient } from "../internal/client.ts";
 import type { RequestOptions, VendorClient } from "../internal/client.ts";
 import { requireObject } from "../internal/errors.ts";
+import { objects } from "../internal/json.ts";
 import type { JsonObject } from "../internal/json.ts";
+import { listIn } from "../internal/lists.ts";
 import type { NativeRead } from "../internal/native.ts";
 import type { Identity } from "../internal/record.ts";
 import { BASE_URL } from "./capabilities.ts";
@@ -38,6 +40,12 @@ export interface InstantlyClient extends VendorClient {
     path: string,
     options?: GetOptions
   ) => Promise<JsonObject>;
+  /** `get`, for an analytics report: a bare array, or a `Provider` error. */
+  readonly getRows: (
+    ctx: AdapterContext,
+    path: string,
+    options?: GetOptions
+  ) => Promise<JsonObject[]>;
 }
 
 // Instantly lists leads, reads warmup analytics and tests a mailbox's DNS
@@ -124,6 +132,14 @@ export const createClient = (options: ClientOptions): InstantlyClient => {
         await http.get(ctx, path, request),
         options.identity.provider,
         `Instantly returned no object for ${path}`
+      ),
+    getRows: async (ctx, path, request) =>
+      objects(
+        listIn(await http.get(ctx, path, request), {
+          path,
+          provider: options.identity.provider,
+          vendor: "Instantly",
+        })
       ),
     identity: options.identity,
     raw: { authorize, baseUrl, isRead, isSecret },

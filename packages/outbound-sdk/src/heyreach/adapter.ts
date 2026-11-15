@@ -170,7 +170,9 @@ export const readers = (client: HeyReachClient): Readers => {
 
       const envelope = listEnvelope(
         await client.post(ctx, "/campaign/GetAll", body),
-        offset
+        offset,
+        identity.provider,
+        "/campaign/GetAll"
       );
 
       return mapPage(envelope, (item) => toCampaign(identity, item));
@@ -189,7 +191,9 @@ export const readers = (client: HeyReachClient): Readers => {
           limit: pageSize(query.limit),
           offset,
         }),
-        offset
+        offset,
+        identity.provider,
+        "/li_account/GetAll"
       );
 
       return mapPage(envelope, (item) => toSender(identity, item));

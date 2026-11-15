@@ -103,7 +103,9 @@ const listEmails = async (
         search: threadId === undefined ? undefined : `thread:${threadId}`,
         starting_after: cursor.after,
       },
-    })
+    }),
+    client.identity.provider,
+    "/emails"
   );
 
   const sent = envelope.items.filter((item) => !isScheduled(item));

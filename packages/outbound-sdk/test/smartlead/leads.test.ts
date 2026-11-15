@@ -75,22 +75,25 @@ test("smartlead: every documented lead status maps to a status", async () => {
   ] as const;
 
   for (const [vendor, unsubscribed, status] of expected) {
-    const { outbound, settle } = harness(suite, () =>
-      Response.json({
-        data: [
-          {
-            created_at: "2025-11-25T12:54:54.000Z",
-            lead: {
-              email: " Person1@Example.com ",
-              id: 7,
-              is_unsubscribed: unsubscribed,
-            },
-            status: vendor,
-          },
-        ],
-        // A number in the older documentation.
-        total_leads: 1,
-      })
+    // Only the campaign's leads: the category list keeps its fixture.
+    const { outbound, settle } = harness(suite, (request) =>
+      urlOf(request).pathname.endsWith("/leads")
+        ? Response.json({
+            data: [
+              {
+                created_at: "2025-11-25T12:54:54.000Z",
+                lead: {
+                  email: " Person1@Example.com ",
+                  id: 7,
+                  is_unsubscribed: unsubscribed,
+                },
+                status: vendor,
+              },
+            ],
+            // A number in the older documentation.
+            total_leads: 1,
+          })
+        : undefined
     );
 
     const page = await settle(outbound.campaign(CAMPAIGN).leads.list());
@@ -104,12 +107,14 @@ const leadRow = (id: number) => ({ lead: { id }, status: "STARTED" });
 
 test("smartlead: without a total, a full page of leads means there may be more", async () => {
   const { outbound, requests, settle } = harness(suite, (request) =>
-    Response.json({
-      data:
-        urlOf(request).searchParams.get("offset") === "0"
-          ? [leadRow(1), leadRow(2)]
-          : [leadRow(3)],
-    })
+    urlOf(request).pathname.endsWith("/leads")
+      ? Response.json({
+          data:
+            urlOf(request).searchParams.get("offset") === "0"
+              ? [leadRow(1), leadRow(2)]
+              : [leadRow(3)],
+        })
+      : undefined
   );
 
   const leads = await settle(

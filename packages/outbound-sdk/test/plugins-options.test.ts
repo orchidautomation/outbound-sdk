@@ -94,9 +94,10 @@ test("alerts with a dedupe store notify once per rule and subject, however many 
     once.map((fired) => fired.map((alert) => alert.subject)),
     [["memory:default:s2"]]
   );
-  assert.deepEqual([...seen], [
-    "sender-not-active|memory:default:s2|disconnected",
-  ]);
+  assert.deepEqual(
+    [...seen],
+    ["sender-not-active|memory:default:s2|disconnected"]
+  );
 
   // A later run with the same store stays quiet about what it already told.
   const later: Alert[][] = [];

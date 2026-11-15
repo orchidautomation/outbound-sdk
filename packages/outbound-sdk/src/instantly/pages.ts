@@ -36,7 +36,9 @@ export const listPage = async (
         limit: pageSize(query.limit),
         starting_after: after(query.next),
       },
-    })
+    }),
+    client.identity.provider,
+    path
   );
 
 interface Lookup {

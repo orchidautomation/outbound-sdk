@@ -8,25 +8,20 @@ import type {
   SenderQuery,
 } from "../internal/adapter.ts";
 import type { Sender } from "../internal/entities.ts";
-import { count, objects, text } from "../internal/json.ts";
+import { count, text } from "../internal/json.ts";
 import { mapPage } from "../internal/page.ts";
 import { accountReaders } from "./account.ts";
 import type { SmartleadClient } from "./client.ts";
 import { getLead, listLeads } from "./leads.ts";
 import { listMessages, listReplies } from "./mail.ts";
-import {
-  toCampaign,
-  toSender,
-  toSequence,
-  toWorkspace,
-  unwrap,
-} from "./map.ts";
+import { toCampaign, toSender, toSequence, toWorkspace } from "./map.ts";
 import {
   campaignList,
   idList,
   objectOf,
   offsetPage,
   pageSize,
+  rowsOf,
   segment,
 } from "./shared.ts";
 import { readStats } from "./stats.ts";
@@ -64,13 +59,10 @@ const listSenders = async (
 ): Promise<Page<Sender>> => {
   if (query.campaignId !== undefined) {
     // A campaign's mailboxes come in one response, bare or wrapped.
-    const attached = await client.get(
-      ctx,
-      `/campaigns/${segment(query.campaignId)}/email-accounts`
-    );
+    const path = `/campaigns/${segment(query.campaignId)}/email-accounts`;
 
     return {
-      items: objects(unwrap(attached)).map((account) =>
+      items: rowsOf(client, await client.get(ctx, path), path).map((account) =>
         toSender(client.identity, account)
       ),
     };
@@ -152,8 +144,8 @@ export const readers = (client: SmartleadClient): Readers => {
     listReplies: (query, ctx) => listReplies(client, ctx, query),
     listSenders: (query, ctx) => listSenders(client, ctx, query),
     listWorkspaces: async (_query, ctx) => ({
-      items: objects(unwrap(await client.get(ctx, "/client/"))).map((raw) =>
-        toWorkspace(identity, raw)
+      items: rowsOf(client, await client.get(ctx, "/client/"), "/client/").map(
+        (raw) => toWorkspace(identity, raw)
       ),
     }),
     stats: (query, ctx) => readStats(client, ctx, query),

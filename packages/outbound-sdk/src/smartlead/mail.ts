@@ -42,7 +42,7 @@ import {
 } from "./map-messages.ts";
 import type { CategoryMap } from "./map-messages.ts";
 import { unwrap } from "./map.ts";
-import { idList, objectOf, segment } from "./shared.ts";
+import { idList, legacyRows, objectOf, rowsOf, segment } from "./shared.ts";
 
 const DAY_MS = 86_400_000;
 
@@ -71,7 +71,7 @@ const listActivities = async (
     },
   });
 
-  const rows = objects(field(body, "data"));
+  const rows = rowsOf(client, body, "/campaigns/all-leads-activities", "data");
   const more = flag(field(body, "hasMore")) === true && rows.length > 0;
 
   return {
@@ -103,12 +103,9 @@ const leadCampaigns = async (
     return [query.campaignId];
   }
 
-  const campaigns = await client.get(
-    ctx,
-    `/leads/${encodeURIComponent(leadId)}/campaigns`
-  );
+  const path = `/leads/${encodeURIComponent(leadId)}/campaigns`;
 
-  return objects(unwrap(campaigns)).flatMap(
+  return legacyRows(client, await client.get(ctx, path), path).flatMap(
     (campaign) => text(campaign.id) ?? []
   );
 };
@@ -200,7 +197,13 @@ const readCategories = async (
 ): Promise<CategoryMap> =>
   isJsonObject(next)
     ? categoriesFromJson(next.categories)
-    : toCategoryMap(unwrap(await client.get(ctx, "/leads/fetch-categories")));
+    : toCategoryMap(
+        rowsOf(
+          client,
+          await client.get(ctx, "/leads/fetch-categories"),
+          "/leads/fetch-categories"
+        )
+      );
 
 const inboxFilters = (query: ReplyQuery, wanted: number[]): JsonObject => {
   const filters: JsonObject = {};
@@ -253,7 +256,13 @@ export const listReplies = async (
     { query: { fetch_message_history: true } }
   );
 
-  const threads = objects(field(unwrap(body), "messages"));
+  const threads = rowsOf(
+    client,
+    body,
+    "/master-inbox/inbox-replies",
+    "messages"
+  );
+
   const total = count(field(unwrap(body), "total_count"));
   const end = offset + threads.length;
 

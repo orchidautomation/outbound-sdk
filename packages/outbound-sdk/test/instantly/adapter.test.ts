@@ -33,11 +33,14 @@ test("instantly: every documented campaign status number maps to a status", asyn
   ] as const;
 
   for (const [code, status] of expected) {
-    const { outbound, settle } = harness(suite, () =>
-      Response.json({
-        ...(fixture("instantly", "getCampaign.json") as object),
-        status: code,
-      })
+    // Only the campaign read: its tags come from their own list.
+    const { outbound, settle } = harness(suite, (request) =>
+      new URL(request.url).pathname.endsWith(`/campaigns/${CAMPAIGN}`)
+        ? Response.json({
+            ...(fixture("instantly", "getCampaign.json") as object),
+            status: code,
+          })
+        : undefined
     );
 
     const campaign = await settle(outbound.campaigns.get(CAMPAIGN));
