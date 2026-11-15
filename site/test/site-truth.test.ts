@@ -89,6 +89,39 @@ test("while the package is unpublished, no page shows an install command for it"
   assert.match(read("site/blume.config.ts"), /not on npm yet/u);
 });
 
+// Wording that says the package cannot be installed from npm.
+const claimsUnpublished =
+  /not on npm|npm yet|not (?:yet )?(?:been )?published|unpublished/iu;
+
+test("once the package is published, nothing on the site says it is not on npm", () => {
+  assert.ok(claimsUnpublished.test("Preview · not on npm yet"));
+  assert.ok(claimsUnpublished.test("It has not been published yet."));
+  assert.ok(!claimsUnpublished.test("Preview · on npm as 0.x"));
+  assert.ok(!claimsUnpublished.test("To run an unreleased commit, build it."));
+
+  if (unpublished) {
+    return;
+  }
+
+  // The custom pages (the home page) and the banner are not under content/.
+  const surfaces = [
+    ...pages,
+    ...walk(path.join(ROOT, "site/pages")).filter((file) =>
+      file.endsWith(".astro")
+    ),
+    path.join(ROOT, "site/blume.config.ts"),
+  ];
+
+  for (const file of surfaces) {
+    for (const line of readFileSync(file, "utf-8").split("\n")) {
+      assert.ok(
+        !claimsUnpublished.test(line),
+        `${path.relative(ROOT, file)} says the package is not on npm: ${line.trim()}`
+      );
+    }
+  }
+});
+
 test("every public subpath has a page", () => {
   const home: Readonly<Record<string, string>> = {
     ".": "docs/usage.mdx",
