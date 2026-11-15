@@ -539,3 +539,42 @@ Source: `https://api.smartlead.ai/llms-full.txt`, fetched fresh. Nothing here wa
 - **One list, one webhook (`lists.get`, `webhooks.get`).** `GET /lead-list/{id}` (api-reference/lead-lists/get-by-id): `{ ok, data: { id, name, lead_count, created_at, updated_at } }`. `GET /webhook/{webhook_id}`: `{ ok, data: { id, email_campaign_id, name, webhook_url, event_type_map, category_id_map, created_at, updated_at } }`. It names events as the keys of `event_type_map` whose value is true, where the per-campaign list uses an `event_types` array; the mapper reads either.
 - **Campaign progress (`campaigns.progress`).** `GET /campaigns/{id}/analytics` carries `campaign_lead_stats { total, notStarted, inprogress, completed, stopped, blocked }` in the documented example.
 - **Placement tests (`placementTests.list`).** SmartDelivery, `POST https://smartdelivery.smartlead.ai/api/v1/spam-test/report` with an empty body: a bare array of `{ spam_test_id, test_name, test_type (automated | manual), status (active | completed), schedule_start_time, test_end_date, every_days, current_test_run_no }`. The page says to contact support for access. No paging is documented. Results (`/spam-test/report/{id}/providerwise`, `/sender-account-wise`) are rates and stay native.
+
+## Response shapes for list endpoints (2026-11-15, for OUT-73)
+
+Fetched fresh on 2026-11-15 to decide which 200 bodies a list read may accept:
+
+- https://api.smartlead.ai/llms.txt (now a short index; it no longer lists every page)
+- https://api.smartlead.ai/llms-full.txt (262 pages, the same count as on 2026-11-14), read by page: `api-reference/campaigns/` get-all, get-email-accounts, get-leads, get-webhooks, all-leads-activities, get-lead-history; `api-reference/leads/` get-by-campaign, categories, activities, get-by-email; `api-reference/email-accounts/` get-all, tags; `api-reference/email-account-tags/get-all`; `api-reference/lead-lists/get-all`; `api-reference/utilities/domain-block-list`; `api-reference/clients/get-all`; `api-reference/lead-tags/get-all`; `api-reference/inbox/get-messages`; `api-reference/smart-delivery/list-tests`
+- https://api.smartlead.ai/sitemap.xml (262 URLs)
+
+There is still no OpenAPI spec, so "documented" below means the page's own 200 example. `unwrap` means the adapter's existing rule: a body `{ ok | success, data }` is read as its `data`.
+
+| Endpoint | Read by | Documented 200 body | List field | Paging |
+| --- | --- | --- | --- | --- |
+| `GET /campaigns/` | `campaigns.list`, the campaign walk behind `leads.list`, `webhooks.list`, `sequence.subsequences` | bare array ("Response (Actual from API - Direct Array)", and a note: "returns a direct array of campaigns, not wrapped") | the body | none |
+| `GET /campaigns/{id}/email-accounts` | `senders.list({ campaignId })` | `{ ok, data: [...] }` on the current page; bare array in the legacy docs | `data`, or the body | none |
+| `GET /email-accounts/` | `senders.list` | bare array | the body | `offset`, `limit` (max 100); no total, no marker |
+| `GET /campaigns/{id}/leads` | `leads.list`, `campaign.leads` | `{ total_leads, offset, limit, data: [...] }` (`leads/get-by-campaign`) | `data` | `offset`, `limit` (max 100); `total_leads` a string |
+| same URL, page `campaigns/get-leads` | (not followed) | `{ total, leads: [...] }` with flat lead rows | `leads` | `total` |
+| `GET /leads/fetch-categories` | category names (lookup) | bare array | the body | none |
+| `GET /campaigns/all-leads-activities` | `messages.list` | `{ data: [...], hasMore }` (`leads/activities`); `{ total, data: [...] }` with flat event rows (`campaigns/all-leads-activities`) | `data` in both | `offset`, `limit`; `hasMore` |
+| `POST /master-inbox/inbox-replies` | `replies.list` | `{ messages: [...], total_count, offset, limit }` | `messages` | `offset`, `limit` (max 20) in the body; `total_count` |
+| `GET /lead-list/` | `lists.list` | `{ ok, data: [...] }` | `data` | `offset`, `limit` (1 to 1000) |
+| `GET /leads/get-domain-block-list` | `blocklist` | bare array | the body | `offset`, `limit` (max 1000) |
+| `GET /email-accounts/tags` | `tags.list` | bare array | the body | none |
+| `GET /crm/leads/tags?leadId=` | `leads.get` (the lead's tags) | `{ ok, data: [...] }` (`lead-tags/get-all`) | `data` | none |
+| `GET /client/` | `workspaces.list` | `{ ok, data: [...] }` on the current page; bare array in the legacy docs | `data`, or the body | none |
+| `GET /campaigns/{id}/webhooks` | `webhooks.list` | `{ success, data: [...] }` on the current page; bare array in the legacy docs | `data`, or the body | none |
+| `POST smartdelivery.smartlead.ai/api/v1/spam-test/report` | `placementTests.list` | bare array (`smart-delivery/list-tests`) | the body | none |
+| `GET /leads/{id}/campaigns` | `messages.list({ leadId })`, `leads.lookup` | not in the current reference; legacy docs only, bare array | the body | none |
+| `GET /leads/?email=` | `leads.lookup`, `leads.exists` | one lead object; `{}` with 200 when not found (unchanged) | not a list | none |
+
+Ambiguous or not documented:
+
+- **`GET /campaigns/` contradicts itself.** The field list on the same page says the response is `success` (boolean) and `campaigns` (array), and its Python, JavaScript and PHP samples read `data['campaigns']`. The example labelled "Actual from API" and the note under it say a bare array. The bare array is followed; `{ campaigns: [...] }` is accepted too because the page names it.
+- **Bare or wrapped.** `campaigns/{id}/email-accounts`, `/client/` and `campaigns/{id}/webhooks` show a wrapped example on the current page and a bare array in the legacy docs. Both stay accepted.
+- **Two pages for one URL.** `GET /campaigns/{id}/leads` (`{ total, leads }` on `campaigns/get-leads`) and `GET /campaigns/all-leads-activities` (`{ total, data }` with flat rows on `campaigns/all-leads-activities`). Both alternates look hand-written. The leads alternate has no `data`, so under a strict rule it fails instead of reading as empty.
+- **`GET /leads/{id}/campaigns` is not in the current reference.** Only the deprecated Notion docs show it.
+- No page documents what an empty list looks like. A documented empty list is read as `[]`, `{ ok: true, data: [] }`, or an object whose list field is `[]`.
+- `fixtures/smartlead/` matches these shapes, with both forms kept where the docs disagree (`*.newdocs.json`).

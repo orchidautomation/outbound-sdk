@@ -514,3 +514,35 @@ Source: `https://docs.heyreach.io/openapi.json`, fetched fresh (105 paths). Noth
 - **Per-campaign rows are synthesized.** The reference gives a schema for `GetOverallStatsByCampaign` and no example, so `fixtures/heyreach/getOverallStatsByCampaign.json` is built from the schema.
 - **One list, one webhook (`lists.get`, `webhooks.get`).** `GET /list/GetById?listId=` returns `id`, `name`, `totalItemsCount`, `listType`, `creationTime` and `campaignIds`, the list item's fields. `GET /webhooks/GetWebhookById?webhookId=&includeCustomHeaders=` returns `id`, `webhookName`, `webhookUrl`, `eventType`, `campaignIds`, `isActive` and, when asked, `customHeaders`. The client always sends `includeCustomHeaders=false`.
 - **Campaign progress (`campaigns.progress`).** `GET /campaign/GetById` returns `progressStats { totalUsers, totalUsersInProgress, totalUsersPending, totalUsersFinished, totalUsersFailed, totalUsersManuallyStopped, totalUsersExcluded }` (the documented example, and seen live in the earlier run). Excluded has no equivalent and stays in raw.
+
+## Response shapes for list endpoints (2026-11-15, for OUT-73)
+
+Fetched fresh on 2026-11-15 to decide which 200 bodies a list read may accept:
+
+- https://docs.heyreach.io/llms.txt
+- https://docs.heyreach.io/openapi.json (the 200 schema of each endpoint below was read directly)
+- https://docs.heyreach.io/hey-reach-api/campaigns/get-all.md, /leads/get-tags.md, /inbox/get-conversations-v-3.md, /blacklist/get-leads.md
+- https://documenter.getpostman.com/api/collections/23808049/2sA2xb5F75?segregateAuth=true&versionTag=latest (`publishDate` 2026-09-16, unchanged)
+
+Every list the adapter reads is documented as an object with `items` and `totalCount`, both in `required`. None is documented as a bare array, and none documents `items` as nullable. The OpenAPI file still types `totalCount` as `string` on several endpoints because the Postman examples hold `"<integer>"`; the Postman examples with real values and the live run show a number. `count()` reads both.
+
+| Endpoint | Read by | Documented 200 body | List field | Paging |
+| --- | --- | --- | --- | --- |
+| `POST /campaign/GetAll` | `campaigns.list`, the campaign walk behind `leads.list` | `{ totalCount, items }` | `items` (required) | `offset`, `limit` (max 100) in the body; no marker, next offset computed from `totalCount` |
+| `POST /campaign/GetLeadsFromCampaign` | `leads.list({ campaignId })`, `campaign.leads` | `{ totalCount, items }` | `items` | same |
+| `POST /list/GetLeadsFromList` | `leads.list({ listId })`, `lists.leads`, email lookup | `{ totalCount, items }` | `items` | same |
+| `POST /list/GetAll` | `lists.list` | `{ totalCount, items }` | `items` | same |
+| `POST /li_account/GetAll` | `senders.list`, `senders.byCampaign` | `{ totalCount, items }` | `items` | same |
+| `POST /webhooks/GetAllWebhooks` | `webhooks.list` | `{ totalCount, items }` | `items` | same |
+| `POST /blacklist/GetLeads`, `POST /blacklist/GetCompanies` | `blocklist` | `{ totalCount, items }` | `items` | same |
+| `POST /campaign/GetCampaignsForLead` | `leads.lookup` | `{ leadFullName, totalCount, items }` | `items` | same; 404 for a person HeyReach does not know |
+| `POST /list/GetListsForLead` | email lookup | `{ totalCount, items }` | `items` | same; 404 seen live for a lead in no list |
+| `POST /inbox/GetConversationsV3` | `messages.list`, `replies.list` | `{ items, totalCount, nextCursor, hasNextPage }`, all four required | `items` | `cursor`, `limit` in; `nextCursor` (`null` on the last page), `hasNextPage` |
+| `POST /lead/GetTags` | `leads.get` (the lead's tags) | not documented (see below) | `tags` | none |
+
+Ambiguous or not documented:
+
+- **`POST /lead/GetTags` has no documented shape.** The OpenAPI 200 schema is an empty object with no properties, the `.md` page's example response is the placeholder `"string"`, and the Postman example is `{ "tags": [ "atag1" "btag2", "ctag3" ] }`, which is not valid JSON. The adapter reads `tags` and keeps an object without it as "no tags" (a test holds this).
+- `POST /campaign/GetAll` documents a 404 `{ errorMessage }` without saying when. It is already an error, not an empty list.
+- No page says what an empty list looks like; `{ totalCount: 0, items: [] }` is assumed.
+- `fixtures/heyreach/` matches the table: every list fixture is `{ totalCount, items }`, `getConversations*.json` adds `hasNextPage` and `nextCursor`, and `getLeadTags.json` is `{ tags: [...] }`.
