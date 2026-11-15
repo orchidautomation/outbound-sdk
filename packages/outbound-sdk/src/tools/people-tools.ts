@@ -1,16 +1,12 @@
 import { z } from "zod";
 
-import { mapConcurrent } from "../internal/concurrency.ts";
 import type { Lead, Message } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
 import type { Json } from "../internal/json.ts";
-import { emptyCounts, sumCounts } from "../internal/metrics.ts";
 import type { MetricCounts } from "../internal/metrics.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
-import { untrusted } from "./shared.ts";
+import { optionalRange, untrusted } from "./shared.ts";
 import type { ToolDefinition } from "./shared.ts";
-
-const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/u, "Use YYYY-MM-DD");
 
 const DAY_MS = 86_400_000;
 
@@ -81,51 +77,28 @@ export const leadRunway: ToolDefinition<z.infer<typeof runwayInput>> = {
   },
 };
 
-/** Each client's campaigns added together, read here so every request is counted. */
-const statsByClient = async (
-  outbound: OutboundApi,
-  range: { from?: string | undefined; to?: string | undefined }
-) => {
-  const walk = outbound.campaigns.listAll();
-  const campaigns = await walk.toArray();
-  const byClient = new Map<string, MetricCounts[]>();
-  let requests = walk.meta?.requests ?? 0;
+interface WithClients {
+  readonly clients: {
+    readonly read: (range: {
+      from?: string | undefined;
+      to?: string | undefined;
+    }) => Promise<{
+      readonly clients: readonly {
+        readonly client: string;
+        readonly campaigns: number;
+        readonly counts: MetricCounts;
+      }[];
+      readonly requests: number;
+    }>;
+  };
+}
 
-  const read = await mapConcurrent(campaigns, async (campaign) => ({
-    campaign,
-    stats: await outbound.campaign(campaign.ref).stats(range),
-  }));
-
-  for (const { campaign, stats } of read) {
-    // SAFETY: the clients plugin's wrap adds `client` to every campaign it reads.
-    const { client } = campaign as typeof campaign & {
-      readonly client: string;
-    };
-
-    requests += stats.meta.requests;
-    byClient.set(client, [...(byClient.get(client) ?? []), ...stats.rows]);
-  }
-
-  const entries = [...byClient.entries()]
-    .map(([client, rows]) => ({
-      campaigns: rows.length,
-      client,
-      counts: rows.length === 0 ? emptyCounts() : sumCounts(rows),
-    }))
-    .toSorted((left, right) => left.client.localeCompare(right.client));
-
-  return { entries, requests };
-};
+const hasClients = (
+  outbound: OutboundApi
+): outbound is OutboundApi & WithClients => "clients" in outbound;
 
 const compareInput = z.object({
-  from: day
-    .optional()
-    .describe(
-      "First day, YYYY-MM-DD. Leave out for the whole history. Do not guess the date: every result gives today as meta.today"
-    ),
-  to: day
-    .optional()
-    .describe("Last day, YYYY-MM-DD. Leave out for up to today"),
+  ...optionalRange,
 });
 
 export const compareClients: ToolDefinition<z.infer<typeof compareInput>> = {
@@ -135,14 +108,14 @@ export const compareClients: ToolDefinition<z.infer<typeof compareInput>> = {
   name: "compare_clients",
   needs: ["clients", "stats.campaign"],
   run: async (outbound, input) => {
-    if (!("clients" in outbound)) {
+    if (!hasClients(outbound)) {
       throw new OutboundError(
         "Unsupported",
         "compare_clients needs the clients plugin on the instance"
       );
     }
 
-    const { entries, requests } = await statsByClient(outbound, {
+    const { clients: entries, requests } = await outbound.clients.read({
       from: input.from,
       to: input.to,
     });

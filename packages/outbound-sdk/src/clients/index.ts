@@ -12,6 +12,7 @@ export type {
   ClientRule,
   ClientStats,
   ClientStatsOptions,
+  ClientStatsRead,
   ClientsExtension,
   ClientsOptions,
 } from "./plugin.ts";

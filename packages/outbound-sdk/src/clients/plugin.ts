@@ -58,7 +58,15 @@ export interface ClientsExtension {
      * campaigns. It costs one stats request per campaign.
      */
     readonly stats: (options?: ClientStatsOptions) => Promise<ClientStats[]>;
+    /** `stats()` with the vendor requests it made, listing included. */
+    readonly read: (options?: ClientStatsOptions) => Promise<ClientStatsRead>;
   };
+}
+
+export interface ClientStatsRead {
+  readonly clients: ClientStats[];
+  /** Vendor requests made: the campaign listing and each campaign's stats. */
+  readonly requests: number;
 }
 
 interface CampaignFacts {
@@ -170,9 +178,11 @@ class Assigner {
 const clientStats = async (
   outbound: OutboundApi,
   options: ClientStatsOptions
-): Promise<ClientStats[]> => {
-  const campaigns = await outbound.campaigns.listAll(options).toArray();
+): Promise<ClientStatsRead> => {
+  const walk = outbound.campaigns.listAll(options);
+  const campaigns = await walk.toArray();
   const byClient = new Map<string, MetricCounts[]>();
+  let requests = walk.meta?.requests ?? 0;
 
   const read = await mapConcurrent(campaigns, async (campaign) => ({
     campaign,
@@ -185,16 +195,19 @@ const clientStats = async (
       readonly client: string;
     };
 
+    requests += stats.meta.requests;
     byClient.set(client, [...(byClient.get(client) ?? []), ...stats.rows]);
   }
 
-  return [...byClient.entries()]
+  const clientsRead = [...byClient.entries()]
     .map(([client, rows]) => ({
       campaigns: rows.length,
       client,
       counts: rows.length === 0 ? emptyCounts() : sumCounts(rows),
     }))
     .toSorted((left, right) => left.client.localeCompare(right.client));
+
+  return { clients: clientsRead, requests };
 };
 
 /** Tags every record with the client it belongs to. */
@@ -207,7 +220,12 @@ export const clients = (
     extend: (outbound) => ({
       clients: {
         names: () => assigner.names(),
-        stats: (statsOptions = {}) => clientStats(outbound, statsOptions),
+        read: (statsOptions = {}) => clientStats(outbound, statsOptions),
+        stats: async (statsOptions = {}) => {
+          const read = await clientStats(outbound, statsOptions);
+
+          return read.clients;
+        },
       },
     }),
     name: "clients",
