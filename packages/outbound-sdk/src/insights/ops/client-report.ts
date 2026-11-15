@@ -109,7 +109,7 @@ export interface LeadRunway extends CampaignLabel {
   /** Leads still active in the campaign. */
   readonly remaining: number;
   readonly dailyContactRate: number | null;
-  /** An estimate: `remaining` at the recent daily pace. */
+  /** An estimate: `remaining` at the recent daily pace. `0` when no lead is left. */
   readonly daysLeft: number;
 }
 
@@ -240,6 +240,7 @@ const readRunways = async (
       : []
   );
 
+  // A campaign with no leads left is first: it has stopped sending already.
   return runways.toSorted((left, right) => left.daysLeft - right.daysLeft);
 };
 
@@ -261,7 +262,10 @@ const actionsOf = (report: Sections): ActionItem[] => {
       number: problem.rate,
     })),
     ...(report.runningOutOfLeads ?? []).map((runway) => ({
-      action: `Add leads to ${runway.name}: ${runway.remaining} ${runway.remaining === 1 ? "lead remains" : "leads remain"}, about ${spoken(runway.daysLeft)} days of sending.`,
+      action:
+        runway.remaining === 0
+          ? `Add leads to ${runway.name}: no leads are left to contact, so it is not sending.`
+          : `Add leads to ${runway.name}: ${runway.remaining} ${runway.remaining === 1 ? "lead remains" : "leads remain"}, about ${spoken(runway.daysLeft)} days of sending.`,
       campaign: runway.campaign,
       campaignName: runway.name,
       kind: "add_leads" as const,

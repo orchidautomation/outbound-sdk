@@ -47,7 +47,12 @@ export interface PipelineForecast extends CampaignLabel {
   readonly remaining: number;
   /** New leads contacted per day over the last `days`. `null` when the vendor has no daily contacted count. */
   readonly dailyContactRate: number | null;
-  /** `remaining` divided by `dailyContactRate`. */
+  /**
+   * `remaining` divided by `dailyContactRate`, and `0` when every lead was
+   * read and none is left. `null` when the remaining leads are unknown (the
+   * cap stopped the read, or a lead's status is unknown) or some remain with
+   * no contact rate to divide by.
+   */
   readonly daysLeft: number | null;
   /** The campaign's reply rate so far, over its whole history. */
   readonly replyRate: Measured;
@@ -116,11 +121,35 @@ const ASSUMPTIONS = [
   "The daily pace stays what it was over the recent days. Days with no report count as no sends.",
 ];
 
-const describe = (
-  remaining: number,
+interface Left {
+  readonly remaining: number;
+  readonly complete: boolean;
+  readonly daysLeft: number | null;
+}
+
+/** Days of sending left. See `PipelineForecast.daysLeft`. */
+const daysLeftOf = (
+  byStatus: Readonly<Record<LeadStatus, number>>,
   complete: boolean,
+  pace: number | null
+): number | null => {
+  const remaining = byStatus.active;
+
+  if (remaining === 0) {
+    return complete && byStatus.unknown === 0 ? 0 : null;
+  }
+
+  return pace === null || pace <= 0 ? null : round(remaining / pace);
+};
+
+const describe = (
+  { complete, daysLeft, remaining }: Left,
   forecast: Estimate
 ): string => {
+  if (daysLeft === 0) {
+    return "No leads are left to contact; add leads to keep the campaign sending.";
+  }
+
   const leads = `${complete ? "" : "At least "}${remaining} leads remain`;
 
   return forecast.expected === null
@@ -166,6 +195,7 @@ export const forecastCampaign = async (
 
   const pace = await paceOf(context, campaign.ref, options.days);
   const expectedReplies = project(remaining, rates.replyRate);
+  const daysLeft = daysLeftOf(byStatus, complete, pace);
 
   return {
     ...labelOf(campaign),
@@ -175,11 +205,11 @@ export const forecastCampaign = async (
     ],
     byStatus,
     dailyContactRate: pace,
-    daysLeft: pace === null || pace <= 0 ? null : round(remaining / pace),
+    daysLeft,
     estimate: true,
     expectedPositive: project(remaining, rates.positiveRate),
     expectedReplies,
-    finding: describe(remaining, complete, expectedReplies),
+    finding: describe({ complete, daysLeft, remaining }, expectedReplies),
     leadsComplete: complete,
     leadsRead: leads.length,
     positiveRate: rates.positiveRate,

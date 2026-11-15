@@ -246,3 +246,90 @@ test("pipeline_forecast reads a campaign of either tool on a combined instance",
     low: 0.0552,
   });
 });
+
+// An active campaign whose leads are all finished: it stopped contacting new
+// leads ten days ago, so it has no recent contact rate (OUT-56).
+const FINISHED: MemoryData = {
+  campaigns: [
+    { id: "done", name: "Founders", status: "active" },
+    { id: "busy", name: "Agencies", status: "active" },
+  ],
+  leads: [
+    ...Array.from({ length: 40 }, (_, index) =>
+      lead(`d${index}`, "done", "completed")
+    ),
+    ...Array.from({ length: 6 }, (_, index) =>
+      lead(`b${index}`, "busy", "active")
+    ),
+  ],
+  stats: [
+    row("done", "2026-11-03", { contacted: 40, replied: 2, sent: 80 }),
+    row("done", "2026-11-11", { contacted: 0, replied: 1, sent: 60 }),
+    row("busy", "2026-11-11", { contacted: 7, replied: 1, sent: 70 }),
+  ],
+};
+
+test("pipeline_forecast gives a campaign with no leads left 0 days, even with no contact rate", async () => {
+  const outbound = single(FINISHED);
+
+  const done = await outbound.insights.pipelineForecast(
+    { campaign: "memory:agency:done" },
+    { now: NOW }
+  );
+
+  assert.equal(done.data.remaining, 0);
+  assert.equal(done.data.dailyContactRate, 0);
+  assert.equal(done.data.daysLeft, 0);
+  assert.equal(
+    done.data.finding,
+    "No leads are left to contact; add leads to keep the campaign sending."
+  );
+
+  // Cut off by the cap, the leads left are unknown, so the days left are too.
+  const capped = await outbound.insights.pipelineForecast(
+    { campaign: "memory:agency:done", max_leads: 10 },
+    { now: NOW }
+  );
+
+  assert.equal(capped.data.remaining, 0);
+  assert.equal(capped.data.daysLeft, null);
+
+  // Leads whose status the vendor does not say may still be waiting.
+  const unknown = await single({
+    ...FINISHED,
+    leads: [lead("u1", "done", "unknown")],
+  }).insights.pipelineForecast(
+    { campaign: "memory:agency:done" },
+    { now: NOW }
+  );
+
+  assert.equal(unknown.data.daysLeft, null);
+});
+
+test("client_report lists a campaign with no leads left first, with the action to add leads", async () => {
+  const report = await single(FINISHED).insights.clientReport(
+    { min_sent: 1 },
+    { now: NOW }
+  );
+
+  assert.deepEqual(
+    report.data.runningOutOfLeads?.map((each) => [each.name, each.daysLeft]),
+    [
+      ["Founders", 0],
+      ["Agencies", 6],
+    ]
+  );
+
+  const first = report.data.actions.find(
+    (action) => action.kind === "add_leads"
+  );
+
+  assert.deepEqual(first, {
+    action:
+      "Add leads to Founders: no leads are left to contact, so it is not sending.",
+    campaign: "memory:agency:done",
+    campaignName: "Founders",
+    kind: "add_leads",
+    number: 0,
+  });
+});

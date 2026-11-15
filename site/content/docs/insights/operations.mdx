@@ -126,7 +126,7 @@ The leads one campaign has left, and what they should produce. It is an estimate
 - `estimate`: always `true`. Every figure below `remaining` is a projection, not a count.
 - `leadsRead`, `leadsComplete` (`false` when `max_leads` stopped the read, so `remaining` is a minimum), `byStatus`.
 - `remaining`: leads still `active` in the campaign.
-- `dailyContactRate`: new leads contacted per day over the last `days`. `daysLeft`: `remaining` divided by it.
+- `dailyContactRate`: new leads contacted per day over the last `days`. `daysLeft`: `remaining` divided by it, and `0` when every lead was read and none is left, whatever the pace; the `finding` then says to add leads. `daysLeft` is `null` only when the leads left are unknown (`max_leads` stopped the read, or a lead's status is `unknown`), or when some remain and there is no contact rate to divide by.
 - `replyRate`, `positiveRate`: the campaign's rates so far, over its whole history.
 - `expectedReplies`, `expectedPositive`: `expected`, `low` and `high`, from the rate and the ends of its interval.
 - `assumptions`: what the estimate assumes, as sentences.
@@ -385,7 +385,7 @@ One report for one client or workspace over the last `days` complete days, compo
 - `top`, `bottom`: the best and worst campaigns by the low end of the reply rate interval. `bottom` never repeats a campaign in `top`.
 - `bounceProblems`: campaigns over `max_bounce_rate`, worst first.
 - `anomalies`: unusual days in the period, workspace-wide. `null` when the adapter cannot serve them.
-- `runningOutOfLeads`: active campaigns with `runway_days` of leads or fewer, with `remaining`, `dailyContactRate` and `daysLeft`. `null` when the adapter cannot serve them.
+- `runningOutOfLeads`: active campaigns with `runway_days` of leads or fewer, with `remaining`, `dailyContactRate` and `daysLeft`, soonest first. A campaign with no leads left has `daysLeft` 0, so it comes first and gets an `add_leads` action. `null` when the adapter cannot serve them.
 - `actions`: what to do, most pressing first. Each has a `kind` (`fix_bounces`, `add_leads`, `reply_rate_fell`, `review_campaign` or `check_anomaly`), the `campaign` and `campaignName` it is about, an `action` sentence and the `number` behind it.
 - `leftOut`: the sections left out because the adapter cannot serve them.
 
