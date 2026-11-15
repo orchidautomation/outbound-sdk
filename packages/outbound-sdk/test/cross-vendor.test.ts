@@ -4,6 +4,7 @@ import { test } from "node:test";
 import { combine } from "../src/combine/index.ts";
 import { createOutbound, MemoryRateLimitStore } from "../src/index.ts";
 import { parse, webhookProviders } from "../src/webhooks/index.ts";
+import { suite as emailbison } from "./emailbison/suite.ts";
 import { fixtureHandler } from "./helpers/adapter-suite.ts";
 import { createClock } from "./helpers/clock.ts";
 import { fixtureText } from "./helpers/fixtures.ts";
@@ -138,9 +139,14 @@ test("a campaign is read from the vendor that owns it", async () => {
 });
 
 test("webhook auto-detection never hands one vendor's payload to another vendor's parser", async () => {
-  assert.deepEqual(webhookProviders(), ["heyreach", "instantly", "smartlead"]);
+  assert.deepEqual(webhookProviders(), [
+    "emailbison",
+    "heyreach",
+    "instantly",
+    "smartlead",
+  ]);
 
-  for (const suite of suites) {
+  for (const suite of [...suites, emailbison]) {
     for (const [file, type] of Object.entries(suite.webhooks)) {
       const request = new Request("https://app.example.com/hooks/outbound", {
         body: fixtureText(suite.provider, file),

@@ -31,14 +31,14 @@ Invalid: Unknown command "send". Run "outbound help"
 (exit code 1)
 
 $ outbound campaigns --provider mailchimp
-Invalid: Unknown provider "mailchimp". Known providers: heyreach, instantly, memory, smartlead, or all
+Invalid: Unknown provider "mailchimp". Known providers: emailbison, heyreach, instantly, memory, smartlead, or all
 (exit code 1)
 
 $ unset OUTBOUND_SDK_PROVIDER INSTANTLY_API_KEY SMARTLEAD_API_KEY HEYREACH_API_KEY
 $ outbound campaigns
-Invalid: No provider key is set. Set at least one of: INSTANTLY_API_KEY, SMARTLEAD_API_KEY, HEYREACH_API_KEY, or set OUTBOUND_SDK_PROVIDER to one of: instantly, smartlead, heyreach, memory
+Invalid: No provider key is set. Set at least one of: INSTANTLY_API_KEY, SMARTLEAD_API_KEY, HEYREACH_API_KEY, EMAILBISON_API_KEY, or set OUTBOUND_SDK_PROVIDER to one of: instantly, smartlead, heyreach, emailbison, memory
 (exit code 1)
 
 $ outbound providers --compact
-[{"channels":["email"],"envVars":[{"name":"INSTANTLY_API_KEY","required":true},{"name":"INSTANTLY_WORKSPACE_ID","required":false}],"id":"instantly","maturity":"beta","name":"Instantly","note":"Its reads were run, read-only, against one live workspace. Fixtures are built from the documentation."},{"channels":["email"],"envVars":[{"name":"SMARTLEAD_API_KEY","required":true},{"name":"SMARTLEAD_WORKSPACE_ID","required":false}],"id":"smartlead","maturity":"unverified","name":"Smartlead","note":"Never run against a live account. Written from the public documentation and tested offline only."},{"channels":["linkedin"],"envVars":[{"name":"HEYREACH_API_KEY","required":true},{"name":"HEYREACH_WORKSPACE_ID","required":false}],"id":"heyreach","maturity":"beta","name":"HeyReach","note":"Its reads were run, read-only, against one live workspace. Fixtures are built from the documentation."},{"channels":["email","linkedin"],"envVars":[],"id":"memory","maturity":"stable","name":"In-memory (tests and demos)","note":"Holds data in memory. For tests and demos; there is no vendor behind it."}]
+[{"channels":["email"],"envVars":[{"name":"INSTANTLY_API_KEY","required":true},{"name":"INSTANTLY_WORKSPACE_ID","required":false}],"id":"instantly","maturity":"beta","name":"Instantly","note":"Its reads were run, read-only, against one live workspace. Fixtures are built from the documentation."},{"channels":["email"],"envVars":[{"name":"SMARTLEAD_API_KEY","required":true},{"name":"SMARTLEAD_WORKSPACE_ID","required":false}],"id":"smartlead","maturity":"unverified","name":"Smartlead","note":"Never run against a live account. Written from the public documentation and tested offline only."},{"channels":["linkedin"],"envVars":[{"name":"HEYREACH_API_KEY","required":true},{"name":"HEYREACH_WORKSPACE_ID","required":false}],"id":"heyreach","maturity":"beta","name":"HeyReach","note":"Its reads were run, read-only, against one live workspace. Fixtures are built from the documentation."},{"channels":["email"],"envVars":[{"name":"EMAILBISON_API_KEY","required":true},{"name":"EMAILBISON_BASE_URL","required":false},{"name":"EMAILBISON_WORKSPACE_ID","required":false}],"id":"emailbison","maturity":"unverified","name":"EmailBison","note":"Never run against a live account. Written from the public documentation and tested offline only."},{"channels":["email","linkedin"],"envVars":[],"id":"memory","maturity":"stable","name":"In-memory (tests and demos)","note":"Holds data in memory. For tests and demos; there is no vendor behind it."}]
 

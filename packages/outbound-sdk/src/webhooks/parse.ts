@@ -9,6 +9,7 @@
 // Events are hints: a webhook can arrive late, twice or not at all. Treat
 // `event.id` as the idempotency key and reconcile against list calls.
 
+import { emailbisonEvents } from "../emailbison/webhooks.ts";
 import { heyreachEvents } from "../heyreach/webhooks.ts";
 import { instantlyEvents } from "../instantly/webhooks.ts";
 import type { EventFormat, WebhookRequest } from "../internal/adapter.ts";
@@ -27,6 +28,7 @@ const FORMATS = new Map<string, EventFormat>([
   ["instantly", instantlyEvents("instantly")],
   ["smartlead", smartleadEvents("smartlead")],
   ["heyreach", heyreachEvents("heyreach")],
+  ["emailbison", emailbisonEvents("emailbison")],
 ]);
 
 /** The providers whose webhooks can be parsed. */
@@ -263,6 +265,10 @@ export const setupInstructions = (provider: string): string => {
     [
       "heyreach",
       "HeyReach: Integrations > Webhooks > Create webhook, one per event type. HeyReach does not sign payloads, so put a secret in the URL (https://your.app/hooks/<secret>) or add it as a custom header named x-webhook-secret, and pass the same value as `secret`.",
+    ],
+    [
+      "emailbison",
+      "EmailBison: Settings > Webhooks > New Webhook URL, per workspace. The SDK cannot check EmailBison's signature, whose scheme is undocumented, so put a secret in the URL (https://your.app/hooks/<secret>) and pass the same value as `secret`.",
     ],
     [
       "instantly",

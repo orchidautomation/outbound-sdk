@@ -1,0 +1,202 @@
+---
+title: EmailBison coverage
+description: "Every endpoint in EmailBison's API reference and how outbound-sdk reaches it: a normalized read, a native read, excluded with a reason, or a write."
+sidebar:
+  label: EmailBison
+related:
+  - /docs/coverage
+  - /docs/adapters/emailbison
+  - /docs/native
+---
+
+Inventoried on 2026-11-15 from EmailBison's API reference at `https://dedi.emailbison.com/api/reference`, read through the OpenAPI document behind it (`https://dedi.emailbison.com/api/reference.openapi`, 180 operations). The table has 180 endpoints: 28 normalized, 32 native, 5 excluded and 115 writes. Paths are relative to your instance, the URL you log in to EmailBison with.
+
+Notes on the count:
+
+- Nothing here was checked against a live account. The adapter is `unverified`.
+- `POST /api/campaigns/{campaign_id}/stats` only reads, so it counts as a read.
+- Two reads stay in the native catalog and are also used by a normalized read: `messages.list` reads `GET /api/scheduled-emails` (sent emails only), and `stats.byDay` and `stats.bySender` read `GET /api/campaign-events/stats` for one sender.
+- The workspace reads are excluded because each workspace carries its webhook signing secret. `workspaces` still lists them through `GET /api/workspaces/v1.1`, and drops the secret from every record.
+
+| Method | Path | Reads | Coverage | Through |
+| --- | --- | --- | --- | --- |
+| `GET` | `/api/blacklisted-domains` | Get all blacklisted domains | normalized | `blocklist` |
+| `POST` | `/api/blacklisted-domains` | Create blacklisted domain | write |  |
+| `POST` | `/api/blacklisted-domains/bulk` | Bulk create blacklisted domains | write |  |
+| `GET` | `/api/blacklisted-domains/{blacklisted_domain_id}` | Get blacklisted domain | native | `blacklistedDomain` |
+| `DELETE` | `/api/blacklisted-domains/{blacklisted_domain_id}` | Remove blacklisted domain | write |  |
+| `GET` | `/api/blacklisted-emails` | Get all blacklisted emails | normalized | `blocklist` |
+| `POST` | `/api/blacklisted-emails` | Create blacklisted email | write |  |
+| `POST` | `/api/blacklisted-emails/bulk` | Bulk create blacklisted emails | write |  |
+| `GET` | `/api/blacklisted-emails/{blacklisted_email_id}` | Get blacklisted email | native | `blacklistedEmail` |
+| `DELETE` | `/api/blacklisted-emails/{blacklisted_email_id}` | Remove blacklisted email | write |  |
+| `GET` | `/api/campaign-events/stats` | Breakdown of events by date | native | `campaignEventStats` |
+| `GET` | `/api/campaigns` | List campaigns | normalized | `campaigns.list`, `campaigns.status` |
+| `POST` | `/api/campaigns` | Create a campaign | write |  |
+| `DELETE` | `/api/campaigns/bulk` | Bulk delete campaigns by ID | write |  |
+| `GET` | `/api/campaigns/schedule/available-timezones` | View all available schedule timezones | native | `scheduleTimezones` |
+| `GET` | `/api/campaigns/schedule/templates` | View all schedule templates | native | `scheduleTemplates` |
+| `GET` | `/api/campaigns/sending-schedules` | Show sending schedules for campaigns | native | `sendingSchedules` |
+| `PUT` | `/api/campaigns/sequence-steps/{sequence_id}` | Update sequence steps (deprecated) | write |  |
+| `DELETE` | `/api/campaigns/sequence-steps/{sequence_step_id}` | Delete sequence step | write |  |
+| `PATCH` | `/api/campaigns/sequence-steps/{sequence_step_id}/activate-or-deactivate` | Activate or deactivate a sequence step variant | write |  |
+| `POST` | `/api/campaigns/sequence-steps/{sequence_step_id}/test-email` | Send sequence step test email | write |  |
+| `PUT` | `/api/campaigns/v1.1/sequence-steps/{sequence_id}` | Update sequence steps (v1.1) | write |  |
+| `GET` | `/api/campaigns/v1.1/{campaign_id}/sequence-steps` | View campaign sequence steps (v1.1) | normalized | `sequence`, `stats.byStep` |
+| `POST` | `/api/campaigns/v1.1/{campaign_id}/sequence-steps` | Create sequence steps (v1.1) | write |  |
+| `DELETE` | `/api/campaigns/{campaign_id}` | Delete a campaign | write |  |
+| `PATCH` | `/api/campaigns/{campaign_id}/archive` | Archive campaign | write |  |
+| `POST` | `/api/campaigns/{campaign_id}/attach-sender-emails` | Import sender emails by ID | write |  |
+| `POST` | `/api/campaigns/{campaign_id}/create-schedule-from-template` | Create campaign schedule from template | write |  |
+| `POST` | `/api/campaigns/{campaign_id}/duplicate` | Duplicate campaign | write |  |
+| `GET` | `/api/campaigns/{campaign_id}/leads` | Get all leads for campaign | normalized | `leads.byCampaign` |
+| `DELETE` | `/api/campaigns/{campaign_id}/leads` | Remove leads from a campaign | write |  |
+| `POST` | `/api/campaigns/{campaign_id}/leads/attach-lead-list` | Import leads from existing list | write |  |
+| `POST` | `/api/campaigns/{campaign_id}/leads/attach-leads` | Import leads by IDs | write |  |
+| `POST` | `/api/campaigns/{campaign_id}/leads/move-to-another-campaign` | Move leads to another campaign | write |  |
+| `POST` | `/api/campaigns/{campaign_id}/leads/stop-future-emails` | Stop future emails for leads | write |  |
+| `GET` | `/api/campaigns/{campaign_id}/line-area-chart-stats` | Get full normalized stats by date | normalized | `stats.byDay` |
+| `PATCH` | `/api/campaigns/{campaign_id}/pause` | Pause campaign | write |  |
+| `DELETE` | `/api/campaigns/{campaign_id}/remove-sender-emails` | Remove sender emails by ID | write |  |
+| `GET` | `/api/campaigns/{campaign_id}/replies` | Get campaign replies | native | `campaignReplies` |
+| `PATCH` | `/api/campaigns/{campaign_id}/resume` | Resume campaign | write |  |
+| `GET` | `/api/campaigns/{campaign_id}/schedule` | View campaign schedule | normalized | `campaigns.settings` |
+| `POST` | `/api/campaigns/{campaign_id}/schedule` | Create campaign schedule | write |  |
+| `PUT` | `/api/campaigns/{campaign_id}/schedule` | Update campaign schedule | write |  |
+| `GET` | `/api/campaigns/{campaign_id}/scheduled-emails` | Get all scheduled emails for campaign | native | `campaignScheduledEmails` |
+| `GET` | `/api/campaigns/{campaign_id}/sender-emails` | Get all campaign sender emails | normalized | `senders.byCampaign` |
+| `GET` | `/api/campaigns/{campaign_id}/sending-schedule` | Show sending schedule for campaign | native | `campaignSendingSchedule` |
+| `GET` | `/api/campaigns/{campaign_id}/sequence-steps` | View campaign sequence steps (deprecated) | excluded | Deprecated; it duplicates the v1.1 sequence steps read exactly. |
+| `POST` | `/api/campaigns/{campaign_id}/sequence-steps` | Create sequence steps (deprecated) | write |  |
+| `POST` | `/api/campaigns/{campaign_id}/stats` | Get campaign stats (summary) | normalized | `stats.campaign`, `stats.byStep` |
+| `GET` | `/api/campaigns/{id}` | Campaign details | normalized | `campaigns.get`, `campaigns.settings` |
+| `PATCH` | `/api/campaigns/{id}/update` | Update campaign settings | write |  |
+| `GET` | `/api/custom-tracking-domain` | Get all custom tracking domains | native | `trackingDomains` |
+| `POST` | `/api/custom-tracking-domain` | Create custom tracking domain | write |  |
+| `DELETE` | `/api/custom-tracking-domain/{custom_tracking_domain_id}` | Remove custom tracking domain | write |  |
+| `GET` | `/api/custom-tracking-domain/{id}` | Get a custom tracking domains | native | `trackingDomain` |
+| `GET` | `/api/custom-variables` | Get all custom variables | native | `customVariables` |
+| `POST` | `/api/custom-variables` | Create a new custom variable | write |  |
+| `DELETE` | `/api/custom-variables/{custom_variable_id}` | Remove custom variable | write |  |
+| `GET` | `/api/events` | Get all events (up to 10 days) | native | `events` |
+| `GET` | `/api/events/{id}` | Get event | native | `event` |
+| `GET` | `/api/ignore-phrases` | Get all ignore phrases | native | `ignorePhrases` |
+| `POST` | `/api/ignore-phrases` | Create ignore phrase | write |  |
+| `GET` | `/api/ignore-phrases/{ignore_phrase_id}` | Get single ignore phrase | native | `ignorePhrase` |
+| `DELETE` | `/api/ignore-phrases/{ignore_phrase_id}` | Remove ignore phrase | write |  |
+| `GET` | `/api/lead-lists` | Get all lead lists for workspace | normalized | `lists.list` |
+| `POST` | `/api/lead-lists` | Create lead list | write |  |
+| `GET` | `/api/lead-lists/{id}` | View lead list | normalized | `lists.get` |
+| `PUT` | `/api/lead-lists/{id}` | Rename lead list | write |  |
+| `GET` | `/api/leads` | Get all leads | normalized | `leads.list` |
+| `POST` | `/api/leads` | Create lead | write |  |
+| `DELETE` | `/api/leads/bulk` | Bulk delete leads by ID | write |  |
+| `PATCH` | `/api/leads/bulk-update-status` | Bulk update lead status | write |  |
+| `POST` | `/api/leads/bulk/csv` | Bulk create leads using CSV | write |  |
+| `POST` | `/api/leads/create-or-update/multiple` | Update or create multiple leads | write |  |
+| `POST` | `/api/leads/create-or-update/{lead_id}` | Update or create lead | write |  |
+| `POST` | `/api/leads/multiple` | Bulk create leads | write |  |
+| `GET` | `/api/leads/{lead_id}` | Get single lead | normalized | `leads.get`, `leads.lookup` |
+| `PUT` | `/api/leads/{lead_id}` | Update lead | write |  |
+| `PATCH` | `/api/leads/{lead_id}` | Update lead | write |  |
+| `DELETE` | `/api/leads/{lead_id}` | Delete a lead | write |  |
+| `POST` | `/api/leads/{lead_id}/blacklist` | Add lead to blacklist | write |  |
+| `GET` | `/api/leads/{lead_id}/replies` | Get all replies for lead | normalized | `leads.timeline` |
+| `GET` | `/api/leads/{lead_id}/scheduled-emails` | Get all scheduled emails | native | `leadScheduledEmails` |
+| `GET` | `/api/leads/{lead_id}/sent-emails` | Get all sent emails for a lead | normalized | `leads.timeline` |
+| `PATCH` | `/api/leads/{lead_id}/unsubscribe` | Unsubscribe lead | write |  |
+| `PATCH` | `/api/leads/{lead_id}/update-status` | Update lead status | write |  |
+| `POST` | `/api/oauth-sessions/google` | Create Google oAuth Session | write |  |
+| `POST` | `/api/oauth-sessions/microsoft` | Create Microsoft oAuth Session | write |  |
+| `GET` | `/api/oauth-sessions/{id}` | View oAuth Session | native | `oauthSession` |
+| `GET` | `/api/replies` | Get all replies | normalized | `replies.list`, `replies.category`, `replies.unread` |
+| `POST` | `/api/replies/new` | Compose new email | write |  |
+| `GET` | `/api/replies/{id}` | Get reply | native | `reply` |
+| `DELETE` | `/api/replies/{reply_id}` | Delete reply | write |  |
+| `POST` | `/api/replies/{reply_id}/attach-scheduled-email-to-reply` | Attach scheduled email to reply | write |  |
+| `GET` | `/api/replies/{reply_id}/conversation-thread` | Get reply conversation thread | normalized | `messages.byThread` |
+| `POST` | `/api/replies/{reply_id}/followup-campaign/push` | Push reply (and lead) to "reply followup campaign" | write |  |
+| `POST` | `/api/replies/{reply_id}/forward` | Forward reply | write |  |
+| `PATCH` | `/api/replies/{reply_id}/mark-as-automated-or-not-automated` | Mark as automated or not automated | write |  |
+| `PATCH` | `/api/replies/{reply_id}/mark-as-interested` | Mark as interested | write |  |
+| `PATCH` | `/api/replies/{reply_id}/mark-as-not-interested` | Mark as not interested | write |  |
+| `PATCH` | `/api/replies/{reply_id}/mark-as-read-or-unread` | Mark as read or unread | write |  |
+| `POST` | `/api/replies/{reply_id}/reply` | Create new reply | write |  |
+| `PATCH` | `/api/replies/{reply_id}/unsubscribe` | Unsubscribe contact that replied | write |  |
+| `GET` | `/api/reply-templates` | Get all reply templates | native | `replyTemplates` |
+| `POST` | `/api/reply-templates` | Create a reply template | write |  |
+| `GET` | `/api/reply-templates/{id}` | Reply template details | native | `replyTemplate` |
+| `PUT` | `/api/reply-templates/{id}` | Update a reply template | write |  |
+| `DELETE` | `/api/reply-templates/{reply_template_id}` | Delete reply template | write |  |
+| `GET` | `/api/scheduled-emails` | Get all scheduled emails | native | `scheduledEmails` |
+| `GET` | `/api/scheduled-emails/{id}` | Get scheduled email | native | `scheduledEmail` |
+| `GET` | `/api/sender-emails` | List email accounts | normalized | `senders.list` |
+| `POST` | `/api/sender-emails/bulk` | Bulk add sender emails | write |  |
+| `POST` | `/api/sender-emails/bulk-check-missing-mx-records` | Bulk check missing MX records | write |  |
+| `PATCH` | `/api/sender-emails/daily-limits/bulk` | Bulk update email daily limits | write |  |
+| `POST` | `/api/sender-emails/imap-smtp` | Create IMAP/SMTP Email Account | write |  |
+| `POST` | `/api/sender-emails/move-to-another-workspace-bulk` | Move sender emails to another workspace (bulk) | write |  |
+| `PATCH` | `/api/sender-emails/signatures/bulk` | Bulk update email signatures | write |  |
+| `GET` | `/api/sender-emails/{senderEmailId}` | Show email account details | normalized | `senders.get`, `senders.warmup`, `senders.health`, `stats.bySender` |
+| `PATCH` | `/api/sender-emails/{senderEmailId}` | Update sender email | write |  |
+| `DELETE` | `/api/sender-emails/{senderEmailId}` | Delete email account | write |  |
+| `GET` | `/api/sender-emails/{senderEmailId}/campaigns` | Show Email Account Campaigns | normalized | `campaigns.bySender` |
+| `POST` | `/api/sender-emails/{senderEmailId}/check-mx-records` | Check MX records | write |  |
+| `POST` | `/api/sender-emails/{senderEmailId}/move-to-another-workspace` | Move sender email to another workspace | write |  |
+| `GET` | `/api/sender-emails/{senderEmailId}/oauth-access-token` | Get email account oAuth access token | excluded | Returns secrets: the mailbox's OAuth access token. |
+| `GET` | `/api/sender-emails/{senderEmailId}/replies` | Get email account replies | native | `senderReplies` |
+| `GET` | `/api/tags` | Get all tags for workspace | normalized | `tags` |
+| `POST` | `/api/tags` | Create tag | write |  |
+| `POST` | `/api/tags/attach-to-campaigns` | Attach tags to campaigns | write |  |
+| `POST` | `/api/tags/attach-to-leads` | Attach tags to leads | write |  |
+| `POST` | `/api/tags/attach-to-sender-emails` | Attach tags to email accounts | write |  |
+| `POST` | `/api/tags/remove-from-campaigns` | Remove tags from campaigns | write |  |
+| `POST` | `/api/tags/remove-from-leads` | Remove tags from leads | write |  |
+| `POST` | `/api/tags/remove-from-sender-emails` | Remove tags from email accounts | write |  |
+| `GET` | `/api/tags/{id}` | View tag | native | `tag` |
+| `DELETE` | `/api/tags/{tag_id}` | Remove tag | write |  |
+| `GET` | `/api/users` | Account Details | native | `account` |
+| `POST` | `/api/users/headless-ui-token` | Generate headless UI token (deprecated) | write |  |
+| `PUT` | `/api/users/password` | Update Password | write |  |
+| `POST` | `/api/users/profile-picture` | Update Profile Picture | write |  |
+| `GET` | `/api/warmup/sender-emails` | List email accounts with warmup stats | native | `warmupSenders` |
+| `PATCH` | `/api/warmup/sender-emails/disable` | Disable warmup for email accounts | write |  |
+| `PATCH` | `/api/warmup/sender-emails/enable` | Enable warmup for email accounts | write |  |
+| `PATCH` | `/api/warmup/sender-emails/update-daily-warmup-limits` | Update daily warmup limits for email accounts | write |  |
+| `GET` | `/api/warmup/sender-emails/{senderEmailId}` | Show single email account with warmup details | normalized | `senders.health` |
+| `GET` | `/api/webhook-attempts/{id}` | Get webhook attempt | native | `webhookAttempt` |
+| `POST` | `/api/webhook-attempts/{webhook_attempt_id}/retry` | Retry webhook attempt | write |  |
+| `GET` | `/api/webhook-deliveries/{id}` | Get webhook delivery | native | `webhookDelivery` |
+| `GET` | `/api/webhook-events/event-types` | Get all webhook event types | native | `webhookEventTypes` |
+| `GET` | `/api/webhook-events/sample-payload` | Get sample webhook event payload | native | `webhookSamplePayload` |
+| `POST` | `/api/webhook-events/test-event` | Send a test webhook event | write |  |
+| `GET` | `/api/webhook-url` | Get all webhooks | normalized | `webhooks.list` |
+| `POST` | `/api/webhook-url` | Create a new webhook | write |  |
+| `GET` | `/api/webhook-url/{id}` | Get a single webhook | normalized | `webhooks.get` |
+| `PUT` | `/api/webhook-url/{id}` | Update a webhook | write |  |
+| `DELETE` | `/api/webhook-url/{webhook_url_id}` | Delete a webhook | write |  |
+| `GET` | `/api/workspaces` | List Workspaces | excluded | Returns secrets: each workspace's webhooks_secret_key. |
+| `POST` | `/api/workspaces` | Create Workspace | write |  |
+| `POST` | `/api/workspaces/accept/{team_invitation_id}` | Accept Workspace Invitation | write |  |
+| `POST` | `/api/workspaces/invite-members` | Invite Team Member | write |  |
+| `PUT` | `/api/workspaces/members/{user_id}` | Update Workspace Member | write |  |
+| `DELETE` | `/api/workspaces/members/{user_id}` | Delete Workspace Member | write |  |
+| `POST` | `/api/workspaces/switch-workspace` | Switch Workspace | write |  |
+| `GET` | `/api/workspaces/v1.1` | List Workspaces | normalized | `workspaces` |
+| `POST` | `/api/workspaces/v1.1` | Create Workspace | write |  |
+| `POST` | `/api/workspaces/v1.1/accept/{team_invitation_id}` | Accept Workspace Invitation | write |  |
+| `POST` | `/api/workspaces/v1.1/invite-members` | Invite Team Member | write |  |
+| `GET` | `/api/workspaces/v1.1/line-area-chart-stats` | Get full normalized stats by date | normalized | `stats.byDay` |
+| `GET` | `/api/workspaces/v1.1/master-inbox-settings` | Get Master Inbox Settings | native | `masterInboxSettings` |
+| `PATCH` | `/api/workspaces/v1.1/master-inbox-settings` | Update Master Inbox Settings | write |  |
+| `PUT` | `/api/workspaces/v1.1/members/{user_id}` | Update Workspace Member Role | write |  |
+| `DELETE` | `/api/workspaces/v1.1/members/{user_id}` | Delete Workspace Member | write |  |
+| `GET` | `/api/workspaces/v1.1/stats` | Get workspace stats (summary) | normalized | `stats.workspace` |
+| `POST` | `/api/workspaces/v1.1/switch-workspace` | Switch Workspace | write |  |
+| `POST` | `/api/workspaces/v1.1/users` | Create User (and add to workspace) | write |  |
+| `GET` | `/api/workspaces/v1.1/{team_id}` | Workspace Details | excluded | Returns secrets: the workspace's webhooks_secret_key. |
+| `PUT` | `/api/workspaces/v1.1/{team_id}` | Update Workspace | write |  |
+| `DELETE` | `/api/workspaces/v1.1/{team_id}` | Delete Workspace | write |  |
+| `POST` | `/api/workspaces/v1.1/{team_id}/api-tokens` | Create API token for workspace | write |  |
+| `GET` | `/api/workspaces/{team_id}` | Workspace Details | excluded | Returns secrets: the workspace's webhooks_secret_key. |
+| `PUT` | `/api/workspaces/{team_id}` | Update Workspace | write |  |

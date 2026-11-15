@@ -1,4 +1,12 @@
 provider   documented payload                   type                      data.category
+emailbison EMAIL_ACCOUNT_DISCONNECTED           sender.status_changed
+emailbison EMAIL_BOUNCED                        message.bounced
+emailbison EMAIL_SENT                           message.sent
+emailbison LEAD_INTERESTED                      reply.categorized         positive
+emailbison LEAD_REPLIED                         reply.received
+emailbison MANUAL_EMAIL_SENT                    message.sent
+emailbison TAG_ATTACHED                         unknown
+emailbison UNTRACKED_REPLY_RECEIVED             reply.received
 heyreach   message_sent.THIRD_PARTY             linkedin.message_sent
 heyreach   voice_note_received                  linkedin.message_received
 instantly  account_error                        sender.status_changed

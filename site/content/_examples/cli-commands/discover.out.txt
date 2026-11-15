@@ -59,6 +59,29 @@ $ outbound providers
   },
   {
     "channels": [
+      "email"
+    ],
+    "envVars": [
+      {
+        "name": "EMAILBISON_API_KEY",
+        "required": true
+      },
+      {
+        "name": "EMAILBISON_BASE_URL",
+        "required": false
+      },
+      {
+        "name": "EMAILBISON_WORKSPACE_ID",
+        "required": false
+      }
+    ],
+    "id": "emailbison",
+    "maturity": "unverified",
+    "name": "EmailBison",
+    "note": "Never run against a live account. Written from the public documentation and tested offline only."
+  },
+  {
+    "channels": [
       "email",
       "linkedin"
     ],

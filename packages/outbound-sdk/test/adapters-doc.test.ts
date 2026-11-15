@@ -6,6 +6,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 
+import { emailbison } from "../src/emailbison/index.ts";
 import { heyreach } from "../src/heyreach/index.ts";
 import { CAPABILITY_KEYS, resolveCapabilities } from "../src/index.ts";
 import { instantly } from "../src/instantly/index.ts";
@@ -22,6 +23,7 @@ const COLUMNS = [
   resolveCapabilities(instantly({ apiKey: "test-key" }).capabilities),
   resolveCapabilities(smartlead({ apiKey: "test-key" }).capabilities),
   resolveCapabilities(heyreach({ apiKey: "test-key" }).capabilities),
+  resolveCapabilities(emailbison({ apiKey: "test-key" }).capabilities),
 ];
 
 const word = (value: boolean | string): string => {

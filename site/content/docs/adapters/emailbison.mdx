@@ -1,0 +1,111 @@
+---
+title: EmailBison adapter
+description: Construct the EmailBison adapter, point it at your own instance, know what it can and cannot read, what its reads cost in requests, the rate limit it assumes and what it has not confirmed.
+sidebar:
+  label: EmailBison
+related:
+  - /docs/adapters
+  - /docs/coverage/emailbison
+  - /docs/status
+---
+
+`outbound-sdk/emailbison` reads EmailBison's API. It is an email adapter. It is `unverified`: it has never been run against a live account, and no EmailBison account is available to the project yet. It was added after 0.4.0 and is in no published version until the next release. See [what is verified](/docs/status).
+
+<Callout type="warning" title="Written from documentation only">
+  EmailBison's API reference is generated from its code, but its response
+  examples are hand-written and several are not valid JSON. The adapter follows
+  the documented field names. Expect differences on a live account, and check
+  `outbound.caveats` before relying on a field.
+</Callout>
+
+## Construct it
+
+<include meta='title="emailbison.ts"'>
+  ../../_examples/adapters-emailbison/adapter.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/adapters-emailbison/adapter.out.txt
+</include>
+
+| Option | Default | What it is |
+| --- | --- | --- |
+| `apiKey` | `EMAILBISON_API_KEY` | An `api-user` key, scoped to one workspace. A `super-admin` key follows whichever workspace its user is in. |
+| `baseUrl` | `EMAILBISON_BASE_URL`, then `https://dedi.emailbison.com` | The URL you log in to EmailBison with, such as `https://send.example.com`. Each customer has their own instance. |
+| `workspaceId` | `EMAILBISON_WORKSPACE_ID`, then `default` | Your own label for the workspace. It is part of every ref and may not contain a colon. |
+| `leadFields` | none | Which of a lead's custom variables holds a value EmailBison has no field for, such as `{ linkedinUrl: "linkedin_url" }`. Read only where the vendor's own field is empty. See [field grades](/docs/capabilities#field-grades). |
+| `capabilities` | what the adapter declares | Overrides single capabilities, for example on a key some endpoints refuse. |
+
+The module also exports `envVars` (the three variable names), `NATIVE` and `PROVIDER` (`"emailbison"`).
+
+## Key and scope
+
+- EmailBison takes the key as `Authorization: Bearer <key>`.
+- Every request is scoped to one workspace, whichever key type you use. Use one adapter per workspace, and [`combine`](/docs/adapters/combine) them for an agency view.
+- `outbound.workspaces` lists the workspaces the key's user belongs to. EmailBison returns each with its webhook signing secret; the SDK drops it from every record, and `outbound.raw` refuses the workspace reads.
+
+## What it can and cannot do
+
+Against the [table](/docs/adapters#what-each-adapter-can-do), EmailBison lacks these capabilities and applies these filters on the client:
+
+| Capability | Value | Why |
+| --- | --- | --- |
+| `campaigns.progress` | `no` | No read counts a campaign's leads by where they are in the sequence. |
+| `lists.leads` | `no` | No read returns the leads of a lead list. |
+| `sequence.subsequences` | `no` | EmailBison has no follow-up sequences. |
+| `stats.allCampaigns` | `no` | No read has a row per campaign for a date range. |
+| `placementTests.list` | `no` | EmailBison has no inbox placement tests. |
+| `campaigns.status` | `client` | The status filter takes 11 vendor values, and one SDK status covers several. |
+| `leads.since`, `messages.since`, `replies.since` | `client` | The SDK filters on the time after fetching and marks the result `derived`. |
+| `events.verify` | `secret` | EmailBison's signing scheme is undocumented. Put a secret in the webhook URL. |
+
+`leads.lookup` works by email only: `GET /api/leads/{lead_id}` takes the address in place of the id. No read finds a lead by LinkedIn profile, so that lookup returns nothing and sends no request.
+
+## Rate limits
+
+EmailBison's API reference documents no rate limit. A marketing page says "up to 3,000 requests per minute", and the developer page says limits are per key and a `429` carries `retry_after`. The adapter declares 3,000 per minute; at the default `share` of 0.5 that is 1,500, as the output above shows. The number is a guess until it is checked on a live account. See [rate limits](/docs/rate-limits).
+
+## What reads cost
+
+Every list answers 15 records per page, and no page size can be asked for. Lists that document cursor pagination are read by cursor.
+
+| Read | Vendor requests |
+| --- | --- |
+| Campaign settings | 2: the campaign, then its schedule |
+| Find a person by email | 1 |
+| Sender health | 2: the sender, then its warmup over the last 7 days |
+| A lead's timeline | 1 for its sent emails, then 1 per 15 inbox messages |
+| A campaign's step rows | 2: the campaign's stats, then its steps |
+| A sender's dated totals | 1: its daily events, added up |
+| Any other listing | 1 per page of 15 |
+
+## Vendor behavior that affects your code
+
+- **Point it at your instance.** Without `baseUrl` or `EMAILBISON_BASE_URL`, requests go to `https://dedi.emailbison.com`, the reference's server.
+- **A lead's status is its email verification.** `bounced` and `unsubscribed` come from it; `replied` is a reply count above 0. `progress` is known only for a campaign's leads.
+- **Engagement is across every campaign**: `overall_stats` has total opens and replies, and no clicks or dates.
+- **Messages are sent campaign emails.** `outbound.messages` reads them from `GET /api/scheduled-emails`; their ids start with `scheduled-` so they never collide with inbox messages. A lead's timeline adds the lead's inbox messages, in and out.
+- **A thread id is a reply id.** EmailBison returns the messages before and after that reply.
+- **Reply categories:** `positive` when EmailBison marks the reply interested, `ooo` when it marks it automated, otherwise `unknown`.
+- **Dated statistics need both dates.** A missing end is today (UTC); a missing start is 2000-01-01 for totals, or 30 days before the end for daily rows. No read says which timezone its days are in, so `timezone` is `null`.
+- **No clicks, no delivered count and no automatic-reply count** are reported.
+
+## Caveats
+
+`outbound.caveats` is the adapter's own list of what it assumes and has not confirmed.
+
+<include meta='title="caveats.ts"'>
+  ../../_examples/adapters-emailbison/caveats.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/adapters-emailbison/caveats.out.txt
+</include>
+
+## Webhooks
+
+Verification mode: `secret`. Register the webhook in EmailBison under Settings > Webhooks > New Webhook URL, with a secret in the URL (`https://your.app/hooks/<secret>`), and pass the same value as `secret` when parsing. Each workspace has a webhook signing secret, but no page says how a delivery is signed, so the SDK cannot check a signature. Only three events have documented payloads (`EMAIL_SENT`, `MANUAL_EMAIL_SENT`, `TAG_ATTACHED`); the others are read with the same keys. Payloads carry no event id, so the SDK derives a stable one. See [webhook verification](/docs/webhooks/verification).
+
+## Coverage
+
+[EmailBison coverage](/docs/coverage/emailbison) lists 180 endpoints of the API reference: 28 behind normalized reads, 32 in the [native catalog](/docs/native), 5 excluded and 115 writes. The research note the adapter was written from is in the repository at `docs/research/emailbison.md`.

@@ -1,0 +1,15 @@
+{
+  "event": {
+    "type": "TAG_ATTACHED",
+    "name": "Tag Attached",
+    "instance_url": "https://dedi.emailbison.com",
+    "workspace_id": 2,
+    "workspace_name": "Example Client"
+  },
+  "data": {
+    "tag_id": 1,
+    "tag_name": "Interested",
+    "taggable_id": 20,
+    "taggable_type": "Campaign"
+  }
+}

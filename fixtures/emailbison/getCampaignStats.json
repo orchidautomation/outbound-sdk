@@ -1,0 +1,53 @@
+{
+  "data": {
+    "emails_sent": "70",
+    "total_leads_contacted": "40",
+    "opened": "12",
+    "opened_percentage": "30",
+    "unique_opens_per_contact": "9",
+    "unique_opens_per_contact_percentage": "22",
+    "unique_replies_per_contact": "5",
+    "unique_replies_per_contact_percentage": "12",
+    "bounced": "2",
+    "bounced_percentage": "5",
+    "unsubscribed": "1",
+    "unsubscribed_percentage": "2",
+    "interested": "3",
+    "interested_percentage": "8",
+    "sequence_step_stats": [
+      {
+        "sequence_step_id": 760,
+        "email_subject": "Quick question",
+        "sent": 40,
+        "leads_contacted": 40,
+        "unique_opens": 7,
+        "unique_replies": 3,
+        "unsubscribed": 1,
+        "bounced": 2,
+        "interested": 2
+      },
+      {
+        "sequence_step_id": 761,
+        "email_subject": "Re: Quick question",
+        "sent": 18,
+        "leads_contacted": 18,
+        "unique_opens": 1,
+        "unique_replies": 1,
+        "unsubscribed": 0,
+        "bounced": 0,
+        "interested": 1
+      },
+      {
+        "sequence_step_id": 762,
+        "email_subject": "Re: Quick question",
+        "sent": 12,
+        "leads_contacted": 12,
+        "unique_opens": 1,
+        "unique_replies": 1,
+        "unsubscribed": 0,
+        "bounced": 0,
+        "interested": 0
+      }
+    ]
+  }
+}

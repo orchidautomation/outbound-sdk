@@ -1,0 +1,51 @@
+{
+  "data": [
+    {
+      "id": 5003,
+      "campaign_id": 1,
+      "sequence_step_id": 761,
+      "thread_reply": true,
+      "email_subject": "Re: Quick question",
+      "email_body": "<p>Hi Alex,</p><p>Worth a quick chat?</p>",
+      "status": "sent",
+      "scheduled_date": "2025-11-28T15:00:00.000000Z",
+      "scheduled_date_local": "2025-11-28T15:00:00.000000Z",
+      "sent_at": "2025-11-28T15:00:00.000000Z",
+      "opens": 1,
+      "clicks": 0,
+      "replies": 0,
+      "interested": false,
+      "unique_replies": 0,
+      "unique_opens": 1,
+      "raw_message_id": "<message-5003@example.com>",
+      "campaign": {
+        "id": 1,
+        "name": "Example Campaign A",
+        "status": "active"
+      },
+      "lead": {
+        "id": 101,
+        "first_name": "Alex",
+        "last_name": "Example",
+        "email": "Person1@Example.com"
+      },
+      "sender_email": {
+        "id": 1,
+        "name": "Sam Sender",
+        "email": "sender1@example.com"
+      }
+    }
+  ],
+  "links": {
+    "first": null,
+    "last": null,
+    "prev": null,
+    "next": null
+  },
+  "meta": {
+    "path": "https://dedi.emailbison.com/api/scheduled-emails",
+    "per_page": 15,
+    "next_cursor": null,
+    "prev_cursor": null
+  }
+}

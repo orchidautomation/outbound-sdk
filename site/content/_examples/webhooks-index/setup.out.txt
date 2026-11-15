@@ -1,3 +1,6 @@
+emailbison
+EmailBison: Settings > Webhooks > New Webhook URL, per workspace. The SDK cannot check EmailBison's signature, whose scheme is undocumented, so put a secret in the URL (https://your.app/hooks/<secret>) and pass the same value as `secret`.
+
 heyreach
 HeyReach: Integrations > Webhooks > Create webhook, one per event type. HeyReach does not sign payloads, so put a secret in the URL (https://your.app/hooks/<secret>) or add it as a custom header named x-webhook-secret, and pass the same value as `secret`.
 

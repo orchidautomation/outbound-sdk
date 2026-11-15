@@ -1,13 +1,13 @@
 # outbound-sdk
 
-One small, typed, read-only TypeScript API over outbound sending tools: Instantly, Smartlead and HeyReach.
+One small, typed, read-only TypeScript API over outbound sending tools: Instantly, Smartlead, HeyReach and EmailBison.
 
 - **Read-only.** It never sends, pauses, edits or deletes anything in a vendor tool.
 - **Stores nothing.** A plugin that keeps state takes a store you supply.
 - **Calls no AI model.** Your agent does the reasoning; the SDK supplies the numbers.
 - **Swap the adapter, keep the code.**
 
-> HeyReach and Instantly are `beta`: their reads were run against a live workspace each. Smartlead ships untested: it has never been run against a live account, and is written from public documentation and tested offline only.
+> HeyReach and Instantly are `beta`: their reads were run against a live workspace each. Smartlead ships untested: it has never been run against a live account, and is written from public documentation and tested offline only. EmailBison ships untested too: no live account has been available, so it is written from EmailBison's API reference and tested offline only.
 
 ## Install
 

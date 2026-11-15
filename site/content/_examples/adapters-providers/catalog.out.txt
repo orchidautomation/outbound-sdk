@@ -1,8 +1,9 @@
 instantly beta [ 'email' ] [ 'INSTANTLY_API_KEY' ]
 smartlead unverified [ 'email' ] [ 'SMARTLEAD_API_KEY' ]
 heyreach beta [ 'linkedin' ] [ 'HEYREACH_API_KEY' ]
+emailbison unverified [ 'email' ] [ 'EMAILBISON_API_KEY' ]
 memory stable [ 'email', 'linkedin' ] []
-[ 'heyreach', 'instantly', 'memory', 'smartlead' ]
+[ 'emailbison', 'heyreach', 'instantly', 'memory', 'smartlead' ]
 heyreach true
 nope false
 all false

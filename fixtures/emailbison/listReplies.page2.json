@@ -1,0 +1,72 @@
+{
+  "data": [
+    {
+      "id": 47,
+      "uuid": "9f7a2718-aa56-43k2-a52b-a44dc183a647",
+      "folder": "Inbox",
+      "subject": "Re: Quick question",
+      "read": true,
+      "interested": false,
+      "automated_reply": false,
+      "html_body": "<div dir=\"ltr\">Not interested, thanks.</div>",
+      "text_body": "Not interested, thanks.",
+      "raw_body": null,
+      "headers": null,
+      "date_received": "2025-11-29T11:00:00.000000Z",
+      "type": "Untracked Reply",
+      "tracked_reply": false,
+      "scheduled_email_id": null,
+      "campaign_id": null,
+      "lead_id": 101,
+      "lead": {
+        "id": 101,
+        "first_name": "Alex",
+        "last_name": "Example",
+        "email": "person1@example.com",
+        "title": "Engineer",
+        "company": "Example Co",
+        "notes": null,
+        "status": "verified",
+        "custom_variables": [],
+        "overall_stats": {
+          "emails_sent": 3,
+          "opens": 2,
+          "replies": 1,
+          "unique_replies": 1,
+          "unique_opens": 1
+        },
+        "created_at": "2025-04-14T16:59:21.000000Z",
+        "updated_at": "2025-05-18T12:53:32.000000Z"
+      },
+      "sender_email_id": 2,
+      "raw_message_id": "<reply-47@example.com>",
+      "from_name": "Alex Example",
+      "from_email_address": "person1@example.com",
+      "primary_to_email_address": "sender1@example.com",
+      "to": [
+        {
+          "name": "Sam Sender",
+          "address": "sender1@example.com"
+        }
+      ],
+      "cc": null,
+      "bcc": null,
+      "parent_id": null,
+      "attachments": [],
+      "created_at": "2025-11-29T11:00:00.000000Z",
+      "updated_at": "2025-11-29T11:00:00.000000Z"
+    }
+  ],
+  "links": {
+    "first": null,
+    "last": null,
+    "prev": null,
+    "next": null
+  },
+  "meta": {
+    "path": "https://dedi.emailbison.com/api/replies",
+    "per_page": 15,
+    "next_cursor": null,
+    "prev_cursor": null
+  }
+}

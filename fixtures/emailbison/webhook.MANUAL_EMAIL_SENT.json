@@ -1,0 +1,63 @@
+{
+  "event": {
+    "type": "MANUAL_EMAIL_SENT",
+    "name": "Manual Email Sent",
+    "instance_url": "https://dedi.emailbison.com",
+    "workspace_id": 1,
+    "workspace_name": "Example Agency"
+  },
+  "data": {
+    "reply": {
+      "id": 65135,
+      "uuid": "9f4251c7-1831-4ec4-a96d-b7bdb8ca7800",
+      "email_subject": "test",
+      "interested": false,
+      "automated_reply": false,
+      "html_body": "<p>test</p>",
+      "text_body": "test",
+      "raw_body": null,
+      "headers": null,
+      "date_received": "2025-06-28T00:51:26.000000Z",
+      "type": "Outgoing Email",
+      "folder": "Sent",
+      "raw_message_id": "<manual-65135@example.com>",
+      "from_name": "Sam Sender",
+      "from_email_address": "sender1@example.com",
+      "primary_to_email_address": "person9@example.com",
+      "to": [
+        {
+          "name": null,
+          "address": "person9@example.com"
+        }
+      ],
+      "cc": null,
+      "bcc": null,
+      "parent_id": null,
+      "created_at": "2025-06-28T00:51:26.000000Z",
+      "updated_at": "2025-09-05T01:36:39.000000Z",
+      "attachments": []
+    },
+    "sender_email": {
+      "id": 1,
+      "name": "Sam Sender",
+      "email": "sender1@example.com",
+      "status": "connected",
+      "type": "custom",
+      "daily_limit": 50,
+      "emails_sent": 1,
+      "replied": 0,
+      "opened": 0,
+      "unsubscribed": 0,
+      "bounced": 0,
+      "unique_replies": 0,
+      "unique_opens": 0,
+      "total_leads_contacted": 1,
+      "interested": 0,
+      "created_at": "2024-08-02T06:06:40.000000Z",
+      "updated_at": "2024-08-02T06:08:38.000000Z"
+    },
+    "lead": null,
+    "campaign": null,
+    "scheduled_email": null
+  }
+}
