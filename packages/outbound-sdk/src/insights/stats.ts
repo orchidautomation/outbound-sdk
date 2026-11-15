@@ -1,6 +1,8 @@
 // Plain arithmetic the insights share. No model, no fitting: counts, rates
 // and two textbook tests, so every number can be checked by hand.
 
+import { count, percentOf } from "../internal/plural.ts";
+
 const PLACES = 10_000;
 
 /** Rounds to four decimal places. `null` stays `null`. */
@@ -186,7 +188,7 @@ export const compareRates = (
 
 /** A rate for a sentence: `0.0525` as `5.3%`. `unknown` for `null`. */
 export const percent = (value: number | null): string =>
-  value === null ? "unknown" : `${Math.round(value * 1000) / 10}%`;
+  value === null ? "unknown" : percentOf(value);
 
 /**
  * A count, average, length or score for a sentence, with at most one
@@ -194,7 +196,7 @@ export const percent = (value: number | null): string =>
  * fields keep full precision.
  */
 export const spoken = (value: number | null): string =>
-  value === null ? "unknown" : String(Math.round(value * 10) / 10);
+  value === null ? "unknown" : count(value);
 
 /** A p-value for a sentence. One that rounds to 0 is written `p < 0.0001`, never `p = 0`. */
 export const pText = (pValue: number): string =>

@@ -34,8 +34,8 @@ test("campaign_overview names the leader and writes each count as returned", () 
     text,
     "Campaign overview",
     "3 campaigns",
-    "Agencies Q4 leads at 8.0% reply rate.",
-    "Founders Q4 | 1,200 | 60      | 5.0%",
+    "Agencies Q4 leads at 8% reply rate.",
+    "Founders Q4 | 1,200 | 60      | 5%",
     "exact · instantly · 3 requests"
   );
 });
@@ -116,7 +116,7 @@ test("winning_steps leads with the best step that has a rate", () => {
     )
   );
 
-  includes(text, "Step 2 variant B leads at 6.0%.", "1    | —       | 410");
+  includes(text, "Step 2 variant B leads at 6%.", "1    | —       | 410");
 
   includes(
     read(cardFor("winning_steps", tool({ campaign: "c1", steps: [] }))),
@@ -382,7 +382,7 @@ test("compare_clients puts clients side by side", () => {
   includes(
     read(spec),
     "2 clients",
-    "Acme       | 2         | 600  | 30      | 5.0%       | 4",
+    "Acme       | 2         | 600  | 30      | 5%         | 4",
     "unassigned | 1         | —    | 10      | —          | —"
   );
   assert.deepEqual(spec.elements["card-2"]?.props.chart, {
@@ -512,7 +512,7 @@ test("deliverability_check lists each sender's failing records", () => {
     text,
     "🔴 1 of 2 senders has a problem.",
     "🔴 **out2@example.com**: DKIM record fails; the vendor cannot sign in",
-    "out2@example.com | ✓   | ✗    | —     | ✓  | No        | 25.0%",
+    "out2@example.com | ✓   | ✗    | —     | ✓  | No        | 25%",
     "out1@example.com | ✓   | ✓    | ✓     | ✓  | Yes       | —"
   );
   includes(

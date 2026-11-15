@@ -7,6 +7,7 @@ import type { Campaign, MetricRow, Sender } from "../internal/entities.ts";
 import { computeRates } from "../internal/metrics.ts";
 import type { OutboundRecord } from "../internal/outbound/operations.ts";
 import type { OutboundPlugin } from "../internal/outbound/plugins.ts";
+import { percentOf } from "../internal/plural.ts";
 
 export interface Alert {
   /** The rule's name. */
@@ -91,7 +92,6 @@ const isSender = (record: OutboundRecord): record is Sender =>
 const isCampaign = (record: OutboundRecord): record is Campaign =>
   "channel" in record && "tags" in record && "status" in record;
 
-const percent = (value: number): string => `${(value * 100).toFixed(1)}%`;
 
 export interface RateRuleOptions {
   /** Ignore rows with fewer sends than this, where a rate is noise. Defaults to 50. */
@@ -112,7 +112,7 @@ export const bounceRateAbove = (
 
     return value !== null && value > threshold
       ? {
-          message: `Bounce rate is ${percent(value)}, above ${percent(threshold)}`,
+          message: `Bounce rate is ${percentOf(value)}, above ${percentOf(threshold)}`,
           day: record.date,
           rule: "bounce-rate-above",
           subject: record.scopeRef,
@@ -138,7 +138,7 @@ export const replyRateBelow = (
 
     return value !== null && value < threshold
       ? {
-          message: `Reply rate is ${percent(value)}, below ${percent(threshold)}`,
+          message: `Reply rate is ${percentOf(value)}, below ${percentOf(threshold)}`,
           day: record.date,
           rule: "reply-rate-below",
           subject: record.scopeRef,

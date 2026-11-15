@@ -298,3 +298,45 @@ test("the machine-output check catches what it is meant to", () => {
     assert.equal(machineLike(sentence), null, sentence);
   }
 });
+
+test("a number reads the same in a sentence and on its card: one percent style, counts grouped", async () => {
+  // 10 bounces from 200 sends is exactly 5%; 2,100 block entries pass the
+  // default cap of 2,000.
+  const outbound = createOutbound({
+    adapter: memory({
+      data: {
+        blocklist: Array.from({ length: 2100 }, (_, index) => ({
+          id: `b${index}`,
+          value: `blocked${index}@example.com`,
+        })),
+        campaigns: [{ id: "c1", name: "Founders", status: "active" }],
+        leads: [{ campaignId: "c1", email: "person1@example.com", id: "l1" }],
+        stats: [
+          {
+            campaignId: "c1",
+            counts: { bounced: 10, contacted: 200, sent: 200 },
+            date: "2026-11-10",
+          },
+        ],
+      },
+    }),
+    plugins: [insights()],
+  });
+
+  const bounces = await outbound.insights.bounceWatch(
+    { from: "2026-11-01", to: "2026-11-13" },
+    { now: NOW }
+  );
+  const [over] = bounces.data.over;
+  const card = JSON.stringify(cardText(cardFor("bounce_watch", bounces)));
+
+  assert.match(over?.finding ?? "", /\b5%/u);
+  assert.match(card, /\b5%/u);
+  assert.doesNotMatch(`${over?.finding} ${card}`, /5\.0%/u);
+
+  const suppression = await outbound.insights.suppressionCheck({});
+  const notes = suppression.meta.notes.join(" ");
+
+  assert.match(notes, /2,000 block list entries/u);
+  assert.doesNotMatch(notes, /\b2000\b/u);
+});

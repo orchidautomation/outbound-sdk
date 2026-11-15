@@ -12,7 +12,7 @@ import {
   text,
 } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
-import { noun, shownKey } from "../internal/plural.ts";
+import { noun, percentOf, points, shownKey } from "../internal/plural.ts";
 
 export { noun } from "../internal/plural.ts";
 
@@ -114,7 +114,7 @@ export const stepsOf = (value: Json | undefined, key: string): string =>
 
 /** A rate between 0 and 1 as a percentage with one decimal, or a dash. */
 export const pct = (rate: number | null): string =>
-  rate === null ? DASH : `${(rate * 100).toFixed(1)}%`;
+  rate === null ? DASH : percentOf(rate);
 
 /** A rate with its interval, as `4.2% (3.1–5.6%)`. */
 export const pctRange = (
@@ -124,7 +124,7 @@ export const pctRange = (
 ): string =>
   rate === null || low === null || high === null
     ? pct(rate)
-    : `${pct(rate)} (${(low * 100).toFixed(1)}–${pct(high)})`;
+    : `${pct(rate)} (${points(low)}–${pct(high)})`;
 
 export const yesNo = (value: boolean | null): string => {
   if (value === null) {

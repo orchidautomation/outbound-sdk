@@ -139,7 +139,7 @@ test("alerts fire for a bounce spike, a weak reply rate, a dead sender and a sil
       ["reply-rate-below", "memory:default:bad", 0.01, 0.02],
     ]
   );
-  assert.equal(notified[0]?.[0]?.message, "Bounce rate is 12.0%, above 5.0%");
+  assert.equal(notified[0]?.[0]?.message, "Bounce rate is 12%, above 5%");
 
   await outbound.senders.list();
   await outbound.campaign("bad").stats({ by: "day" });

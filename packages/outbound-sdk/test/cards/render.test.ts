@@ -557,8 +557,8 @@ test("alertCard shows what was measured against its limit", () => {
     "🚨 Bounce rate above",
     "Founders Q4 bounces at 8% ‹!channel›",
     "About: instantly:acme:c1",
-    "Measured: 8.0%",
-    "Limit: 3.0%"
+    "Measured: 8%",
+    "Limit: 3%"
   );
   includes(
     read(
@@ -578,7 +578,7 @@ test("alertCard shows what was measured against its limit", () => {
 test("alertCard names the subject when the alert has a name, and titles the rule in words", () => {
   const text = read(
     alertCard({
-      message: "Bounce rate is 20.0%, above 5.0%",
+      message: "Bounce rate is 20%, above 5%",
       rule: "bounce-rate-above",
       subject: "memory:default:c1",
       subjectName: "Founders Q4",

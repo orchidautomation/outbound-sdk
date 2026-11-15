@@ -358,7 +358,7 @@ test("personalization_gaps shows only the variables with a gap", () => {
 
   includes(
     text,
-    "🔴 30 leads will get broken copy (15.0% of those read).",
+    "🔴 30 leads will get broken copy (15% of those read).",
     "• 🟡 `compnay` is not a field any lead has.",
     "firstName | builtin | 1, 3  | 30"
   );
@@ -410,9 +410,9 @@ test("step_funnel charts replies by step and repeats the insight's finding", () 
   includes(
     read(cardFor("step_funnel", insight(funnel))),
     "Step 1 brings 92% of replies.",
-    "1    | 400  | 24      | 6.0% (4.0–8.0%) | 92.3%            | Yes",
-    "2    | 400  | 2       | 0.5% (4.0–8.0%) | 7.7%             | No",
-    "3    | 400  | —       | —               | —                | —",
+    "1    | 400  | 24      | 6% (4–8%)   | 92.3%            | Yes",
+    "2    | 400  | 2       | 0.5% (4–8%) | 7.7%             | No",
+    "3    | 400  | —       | —           | —                | —",
     "Replies by step",
     "Step 1 | 24",
     "1 stats row could not be tied to a step."
@@ -435,7 +435,7 @@ test("step_funnel still draws a result stored before rates.replyRate", () => {
         })
       )
     ),
-    "1    | 400  | 24      | 6.0% (4.0–8.0%)"
+    "1    | 400  | 24      | 6% (4–8%)"
   );
 });
 
@@ -491,8 +491,8 @@ test("variant_test stars the leader and says why", () => {
     "1 step with a real winner out of 2 tested.",
     "• 🟢 **Step 1**: B is ahead by more than chance.",
     "• ⚪ **Step 2**: Too few sends to compare.",
-    "1    | A       | 500  | 2.0% (1.0–7.0%)",
-    "1    | B ★     | 500  | 6.0% (1.0–7.0%)"
+    "1    | A       | 500  | 2% (1–7%)",
+    "1    | B ★     | 500  | 6% (1–7%)"
   );
   includes(
     read(cardFor("variant_test", insight(tested(false)))),
@@ -602,9 +602,9 @@ test("copy_reuse names the best copy and each reused piece", () => {
 
   includes(
     read(cardFor("copy_reuse", insight(reuse(true)))),
-    'Best copy: "Quick question" at 6.0% (4.0–8.0%).',
+    'Best copy: "Quick question" at 6% (4–8%).',
     "• The same copy gets 8% in Founders and 4% in Agencies.",
-    "Saw you are hiring | 2         | 500  | 6.0%       | 4.0%"
+    "Saw you are hiring | 2         | 500  | 6%         | 4%"
   );
   includes(
     read(cardFor("copy_reuse", insight(reuse(false)))),
@@ -657,7 +657,7 @@ test("reply_timing says when replies arrive", () => {
     "Most replies arrive on Tuesday around 10:00.",
     "Median time to reply: 5h",
     "90% reply within: 3d",
-    "Within 24 hours: 70.0%",
+    "Within 24 hours: 70%",
     "Tue | 12"
   );
   includes(
