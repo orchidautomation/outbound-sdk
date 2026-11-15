@@ -7,7 +7,8 @@ import type { Lead, Message } from "../../internal/entities.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { rate } from "../stats.ts";
-import { findPerson } from "./find.ts";
+import { findPerson, isLeadRef } from "./find.ts";
+import { isAutoReplied } from "./read.ts";
 
 const input = z.object({
   max_campaigns: z
@@ -20,7 +21,9 @@ const input = z.object({
   person: z
     .string()
     .min(3)
-    .describe("The person's email address or LinkedIn profile URL"),
+    .describe(
+      "The person's email address or LinkedIn profile URL, or a lead ref as the other people insights return"
+    ),
 });
 
 export interface PersonCampaign {
@@ -235,11 +238,20 @@ const byChannel = (campaigns: readonly PersonCampaign[]) => {
 
 export const personSummary = defineInsight({
   description:
-    "Everything about one person across campaigns and channels, from their email address or LinkedIn profile: each campaign they are in, how many messages they were sent, whether and how often they replied, which steps they replied to, their interest label, and totals by channel. Records are linked by exact identifier only, so an email finds a LinkedIn record only when a tool holds both for that person. Costs one lookup per identifier, then up to 2 requests per campaign.",
+    "Everything about one person across campaigns and channels, from their email address, LinkedIn profile or a lead ref: each campaign they are in, how many messages they were sent, whether and how often they replied, which steps they replied to, their interest label, and totals by channel. Records are linked by exact identifier only, so an email finds a LinkedIn record only when a tool holds both for that person. A record the vendor labels out-of-office or bounced counts no replies, since they were automatic. Costs one lookup per identifier, one request to read a lead ref, then up to 2 requests per campaign.",
   inputSchema: input,
   key: "personSummary",
   name: "person_summary",
+  maskedOut: (masking) => {
+    // With one kind masked the person is looked up by the other.
+    const masked = new Set(masking.fields);
+
+    return masked.has("email") && masked.has("linkedin")
+      ? "email addresses and LinkedIn profiles, which it looks a person up by"
+      : null;
+  },
   needs: ["leads.lookup", "leads.timeline"],
+  needsFor: ({ person }) => (isLeadRef(person) ? ["leads.get"] : []),
   next: "Use account_summary with their email domain to see everyone at the same company.",
   run: async (context, { max_campaigns: maxCampaigns, person }) => {
     const found = await findPerson(context, person, maxCampaigns);

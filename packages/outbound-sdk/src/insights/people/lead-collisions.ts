@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Campaign, Lead } from "../../internal/entities.ts";
-import { defineInsight } from "../define.ts";
+import { defineInsight, maskingOf } from "../define.ts";
 import { keysOfLead } from "./find.ts";
 import { campaignsIn, leadsOf, statusesField } from "./read.ts";
 
@@ -155,10 +155,22 @@ export const leadCollisions = defineInsight({
     "People who are in two or more campaigns at once, so they get overlapping outreach. Reads the campaigns in the given statuses (active by default) and their leads, matches people by exact email address or LinkedIn profile, and returns each person with their campaigns, channel and tool, most campaigns first. A collision across tools (for example email in one and LinkedIn in another) is marked across_tools; one inside a tool is within_tool. Costs one request per page of campaigns plus one per page of each campaign's leads; the caps make the answer incomplete rather than slow.",
   inputSchema: input,
   key: "leadCollisions",
+  // A masked address is the same text for every lead, so every lead would
+  // collide with every other. A hashed one still tells people apart.
+  maskedOut: ({ fields, strategy }) =>
+    fields.includes("email") && strategy === "mask"
+      ? "email addresses, which it matches people by"
+      : null,
   name: "lead_collisions",
   needs: ["leads.byCampaign"],
-  next: "Use person_summary with one of the identifiers to see what that person was sent and whether they replied.",
+  next: "Use person_summary with one of the identifiers or lead refs to see what that person was sent and whether they replied.",
   run: async (context, values) => {
+    if (maskingOf(context.outbound)?.fields.includes("linkedin") === true) {
+      context.partial(
+        "The redact plugin masks LinkedIn profiles, so people were matched by email address only."
+      );
+    }
+
     const campaigns = await campaignsIn(
       context,
       values.statuses,

@@ -104,9 +104,9 @@ Rates, interval ends and p-values are rounded to four decimal places. A p-value 
 
 ## Inputs are checked
 
-An input is checked twice: by the method's type when you compile, and by the insight's schema when it runs. The method's type is generated from the schema, so hovering a field such as `max_leads` in an editor shows its default and its range. `InsightInputs["hotLeads"]` is that type, for code that builds an input before calling. A key the insight does not take is refused as `Invalid`, with the list of inputs it does take. It is never dropped, because a dropped filter would quietly answer a wider question than the one asked.
+An input is checked twice: by the method's type when you compile, and by the insight's schema when it runs. The method's type is generated from the schema, so hovering a field such as `max_leads` in an editor shows its default and its range. `InsightInputs["hotLeads"]` is that type, for code that builds an input before calling. A key the insight does not take is refused as `Invalid`, with the list of inputs it does take. It is never dropped, because a dropped filter would quietly answer a wider question than the one asked. A missing required input is refused as `Invalid` too, for example ``step_funnel: `campaign` is required``. A `campaign` that does not exist is refused as `NotFound`, for the same reason: an empty campaign would answer as "nothing happened".
 
-An insight that needs a capability the adapter lacks is refused as `Unsupported` before any request is made, and is left out of the tool list, so a model is never offered a tool that cannot work.
+An insight that needs a capability the adapter lacks is refused as `Unsupported` before any request is made, and is left out of the tool list, so a model is never offered a tool that cannot work. So is an insight that matches records by a field the [`redact` plugin](/docs/plugins/redact) masks, such as `accountSummary` while emails are masked. A tool's `next` hint never names a tool that is not on offer.
 
 <include meta='title="input-checking.ts"'>
   ../../_examples/insights-index/input-checking.ts

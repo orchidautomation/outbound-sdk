@@ -306,12 +306,17 @@ const lastReplyOf = (
 
 export const accountSummary = defineInsight({
   description:
-    "Everyone at one company across campaigns and tools, from the company's domain or any email address at it: each person with their name, title, campaigns, status, interest label and open, click and reply counts, plus totals and who replied most recently. People are matched by exact email domain, so a lead with only a LinkedIn profile is not found, and an email provider domain such as gmail.com is refused unless allow_free_domains is true. Costs one request per page of leads read (max_leads sets the ceiling); a count the vendor does not report is null.",
+    "Everyone at one company across campaigns and tools, from the company's domain or any email address at it: each person with their name, title, campaigns, status, interest label and open, click and reply counts, plus totals and who replied most recently. People are matched by exact email domain, so a lead with only a LinkedIn profile is not found, and an email provider domain such as gmail.com is refused unless allow_free_domains is true. A record the vendor labels out-of-office or bounced is marked autoReplied and its replies do not count as the person replying. Costs one request per page of leads read (max_leads sets the ceiling); totals.moreLeadsExist is true when that ceiling left leads unread. A count the vendor does not report is null.",
   inputSchema: input,
   key: "accountSummary",
+  // Every address is masked, so no lead's domain can be read.
+  maskedOut: ({ fields }) =>
+    fields.includes("email")
+      ? "email addresses, whose domain it matches people by"
+      : null,
   name: "account_summary",
   needs: [],
-  next: "Use person_summary with one person's email address for their full history, message by message.",
+  next: "Use person_summary with one person's email address or lead ref for their full history, message by message.",
   run: async (context, values) => {
     const domain = parseDomain(values.domain, context.outbound.provider);
 

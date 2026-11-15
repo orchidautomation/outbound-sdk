@@ -4,7 +4,9 @@
 import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Lead } from "../../internal/entities.ts";
 import { OutboundError } from "../../internal/errors.ts";
+import { parseRef } from "../../internal/ref.ts";
 import { profileSlug } from "../../internal/url.ts";
+import { maskingOf } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 
 /** `email:<address>` or `linkedin:<slug>`, or `null` when the text is neither. */
@@ -45,59 +47,104 @@ export interface FoundPerson {
   readonly records: readonly Lead[];
 }
 
-interface Redacted {
-  readonly redacted: { readonly fields: readonly string[] };
-}
-
 type Outbound = InsightContext["outbound"];
 
-// The redact plugin says what it masks on the instance. Told apart by shape,
-// so the insights do not import that plugin.
-const isRedacted = (outbound: Outbound): outbound is Outbound & Redacted =>
-  "redacted" in outbound;
+type Identifier = "email" | "linkedin";
 
-const maskedIdentifiers = (outbound: Outbound): string[] =>
-  isRedacted(outbound)
-    ? outbound.redacted.fields.filter(
-        (field) => field === "email" || field === "linkedin"
-      )
-    : [];
+const kindOf = (key: string): Identifier =>
+  key.startsWith("email:") ? "email" : "linkedin";
+
+/** The person identifiers the redact plugin masks here. */
+const maskedIdentifiers = (outbound: Outbound): Identifier[] =>
+  (maskingOf(outbound)?.fields ?? []).flatMap((field) =>
+    field === "email" || field === "linkedin" ? [field] : []
+  );
+
+const WORDS: Readonly<Record<Identifier, string>> = {
+  email: "email addresses",
+  linkedin: "LinkedIn profiles",
+};
+
+const refuse = (outbound: Outbound, masked: readonly Identifier[]) =>
+  new OutboundError(
+    "Unsupported",
+    `A person cannot be looked up while the redact plugin masks ${masked.map((kind) => WORDS[kind]).join(" and ")}: the records could not be matched to the identifier`,
+    { provider: outbound.provider }
+  );
+
+/** A lead ref, as the other people insights return, rather than an identifier. */
+export const isLeadRef = (identifier: string): boolean =>
+  personKey(identifier) === null && parseRef(identifier.trim()) !== null;
+
+interface Start {
+  readonly keys: readonly string[];
+  readonly records: readonly Lead[];
+}
+
+/** The identifiers to look the person up by, and the lead a ref names. */
+const startFrom = async (
+  context: InsightContext,
+  identifier: string,
+  masked: readonly Identifier[]
+): Promise<Start> => {
+  const { outbound } = context;
+  const key = personKey(identifier);
+
+  if (key !== null) {
+    // The records come back masked, so an identifier of a masked kind would
+    // match none of them: refuse instead of reporting a known person as not found.
+    if (masked.includes(kindOf(key))) {
+      throw refuse(outbound, masked);
+    }
+
+    return { keys: [key], records: [] };
+  }
+
+  if (!isLeadRef(identifier)) {
+    throw new OutboundError(
+      "Invalid",
+      "Give an email address, a LinkedIn profile URL or a lead ref",
+      { provider: outbound.provider }
+    );
+  }
+
+  if (masked.length > 0) {
+    throw refuse(outbound, masked);
+  }
+
+  const lead = context.one(await outbound.leads.get(identifier.trim()));
+
+  return { keys: keysOfLead(lead), records: [lead] };
+};
 
 /**
  * Asks the vendor for the person by each identifier. A record that carries a
  * second identifier is looked up under that one too, so an email address can
- * lead to a LinkedIn record. Needs `leads.lookup`.
+ * lead to a LinkedIn record. A lead ref is read first (`leads.get`) for its
+ * identifiers. Needs `leads.lookup`. While redact masks one kind of
+ * identifier the person is looked up by the other, and records found only
+ * under the masked one are missed, which the answer says.
  */
 export const findPerson = async (
   context: InsightContext,
   identifier: string,
   maxRecords: number
 ): Promise<FoundPerson> => {
-  const first = personKey(identifier);
-
-  if (first === null) {
-    throw new OutboundError(
-      "Invalid",
-      "Give an email address or a LinkedIn profile URL",
-      { provider: context.outbound.provider }
-    );
-  }
-
-  // The records come back masked, so the identifier asked for would match
-  // none of them: refuse instead of reporting a known person as not found.
   const masked = maskedIdentifiers(context.outbound);
+  const start = await startFrom(context, identifier, masked);
 
   if (masked.length > 0) {
-    throw new OutboundError(
-      "Unsupported",
-      `A person cannot be looked up while the redact plugin masks ${masked.join(" and ")}: the records could not be matched to the identifier`,
-      { provider: context.outbound.provider }
+    context.partial(
+      `The redact plugin masks ${masked.map((kind) => WORDS[kind]).join(" and ")}, so records found only under that identifier were not linked.`
     );
   }
 
-  const keys = new Set([first]);
+  const keys = new Set(start.keys);
   const asked = new Set<string>();
-  const records = new Map<string, Lead>();
+
+  const records = new Map<string, Lead>(
+    start.records.map((lead) => [`${lead.ref} ${lead.campaignRef ?? ""}`, lead])
+  );
 
   for (
     let round = [...keys].filter((key) => !asked.has(key));
@@ -129,8 +176,11 @@ export const findPerson = async (
           // One record per campaign: a vendor can use one lead id in all of them.
           records.set(`${lead.ref} ${lead.campaignRef ?? ""}`, lead);
 
+          // A masked identifier cannot be asked for or matched.
           for (const key of leadKeys) {
-            keys.add(key);
+            if (!masked.includes(kindOf(key))) {
+              keys.add(key);
+            }
           }
         }
       }

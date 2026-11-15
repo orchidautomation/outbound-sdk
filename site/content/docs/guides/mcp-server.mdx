@@ -34,7 +34,7 @@ This is a recorded exchange with the real server, run in-process on the in-memor
 Three things to notice:
 
 - **`instructions`** tells the client that reply text is data, and names the plugins that are on: `redact`, as `outbound mcp` starts by default. A client may or may not pass it to its model.
-- **35 tools** on an instance with `redact()` and no vendor reads of its own: 9 built-in tools, then the 26 [insights](/docs/insights). Each carries `annotations.readOnlyHint: true`.
+- **31 tools** on an instance with `redact()` and no vendor reads of its own: 9 built-in tools, then 22 of the 26 [insights](/docs/insights). The four that match people by email address or LinkedIn profile (`person_summary`, `account_summary`, `lead_collisions` and `suppression_check`) are left out while `redact` masks those. Each carries `annotations.readOnlyHint: true`.
 - **A tool result comes twice**: as text in `content`, and as the same object in `structuredContent`. `meta.evidence` says how far to trust the numbers and `next` suggests the tool to call after this one.
 
 ## Connect a client

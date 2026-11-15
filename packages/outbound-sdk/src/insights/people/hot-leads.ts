@@ -366,7 +366,7 @@ export const hotLeads = defineInsight({
   key: "hotLeads",
   name: "hot_leads",
   needs: [],
-  next: "Use person_summary with a lead's email address or LinkedIn profile to read the conversation before calling.",
+  next: "Use person_summary with a lead's ref, email address or LinkedIn profile to read the conversation before calling.",
   run: async (context, values) => {
     const listed = await listLeads(context, values);
 

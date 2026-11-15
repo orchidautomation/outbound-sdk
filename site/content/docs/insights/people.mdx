@@ -32,21 +32,23 @@ Everything about one person across campaigns and channels: each campaign they ar
 
 | Input | Default | Range | What it is |
 | --- | --- | --- | --- |
-| `person` | required | at least 3 characters | An email address or a LinkedIn profile URL. Anything else is `Invalid`. |
+| `person` | required | at least 3 characters | An email address, a LinkedIn profile URL, or a lead ref as the other people insights return it. Anything else is `Invalid`. |
 | `max_campaigns` | 20 | 1 to 50 | The most campaigns to report on. |
 
 `data` (`PersonSummary`):
 
 - `found`: `false` when no record matched.
 - `identifiers`: every exact identifier the records carry, as `email:` and `linkedin:` keys.
-- `campaigns`: one entry per campaign, with `campaignName`, `campaignStatus`, `channel`, `provider`, `lead`, `leadStatus`, `interest` (the vendor's own label), `messagesSent`, `replies`, `replied`, `repliedSteps` (counted from 0), `lastStep`, `firstContactedAt`, `lastContactedAt` and `lastRepliedAt`.
+- `campaigns`: one entry per campaign, with `campaignName`, `campaignStatus`, `channel`, `provider`, `lead`, `leadStatus`, `interest` (the vendor's own label), `messagesSent`, `replies`, `replied`, `autoReplied`, `repliedSteps` (counted from 0), `lastStep`, `firstContactedAt`, `lastContactedAt` and `lastRepliedAt`.
 - `totals`: `campaigns`, `campaignsReplied`, `campaignReplyRate` (campaigns they replied in, divided by campaigns that sent them at least one message), `messagesSent`, `replies` and `byChannel`.
 
-- **Needs:** `leads.lookup`, `leads.timeline`.
-- **Costs:** one lookup per identifier, then up to 2 requests per campaign (the lead's timeline and the campaign).
-- **Notes it can add:** a thread held fewer sent messages than the lead's last step, so messages sent is counted from the last step.
+A record the vendor labels out-of-office or bounced (the same rule as [`hotLeads`](#hotleads)) is `autoReplied: true`: its replies were automatic, so it counts 0 `replies`, is not `replied` and adds nothing to `campaignsReplied`.
+
+- **Needs:** `leads.lookup`, `leads.timeline`, and `leads.get` for a lead ref.
+- **Costs:** one lookup per identifier, one read of the lead for a lead ref, then up to 2 requests per campaign (the lead's timeline and the campaign).
+- **Notes it can add:** a thread held fewer sent messages than the lead's last step, so messages sent is counted from the last step; a record labelled out-of-office or bounced had replies that are not counted; redact masks one kind of identifier, so records found only under it were not linked.
 - **Does not:** match by name, or find a LinkedIn record from an email address unless some tool holds both for that person. `repliedSteps` is empty when the vendor ties a reply to no step.
-- **Refuses:** with `Unsupported`, before any read, while the [`redact` plugin](/docs/plugins/redact) masks `email` or `linkedin`, as `outbound mcp` does by default. Masked records could not be matched, so it does not report a known person as not found.
+- **Refuses:** with `Unsupported`, before any read, while the [`redact` plugin](/docs/plugins/redact) masks the kind of identifier asked for, or masks any identifier when given a lead ref. Masked records could not be matched, so it does not report a known person as not found. While redact masks both `email` and `linkedin`, as `outbound mcp` does by default, it is not offered as a tool.
 
 <include meta='title="person-summary.ts"'>
   ../../_examples/insights-people/person-summary.ts
@@ -89,6 +91,7 @@ Everyone at one company, across campaigns and tools, by exact email domain.
 - **Costs:** one request per page of leads read. `max_leads` sets the ceiling.
 - **Notes it can add:** the tool reports no per-lead open, click or reply counts, so those are `null`; a cap was reached. On a combined instance the note names only the tools whose records carry no counts, and is left out when every tool's records carry them: records from a tool that reports counts keep them.
 - **Does not:** find a lead that has only a LinkedIn profile (they are counted in `leadsWithoutEmail`), or treat a subdomain as the same company. It reads leads and filters them here, so it costs the same whether the company has one lead or fifty.
+- **Refuses:** with `Unsupported`, before any read, while the [`redact` plugin](/docs/plugins/redact) masks `email`, which leaves no domain to match. It is then not offered as a tool.
 
 <include meta='title="account-summary.ts"'>
   ../../_examples/insights-people/account-summary.ts
@@ -127,6 +130,7 @@ People who are in two or more campaigns at once, so they get overlapping outreac
 - **Costs:** one request per page of campaigns, plus one per page of each campaign's leads.
 - **Notes it can add:** a cap was reached.
 - **Does not:** count the same person twice in one campaign as a collision, or look at campaigns outside `statuses`. A lead with neither an email address nor a profile cannot be matched and is counted in `leadsWithoutIdentifier`.
+- **Refuses:** with `Unsupported`, before any read, while the [`redact` plugin](/docs/plugins/redact) masks `email` with its default `mask` strategy, since every address would read the same. It is then not offered as a tool. Under `strategy: "hash"` it matches by the hashed address, and notes that LinkedIn profiles could not be matched when those are masked too.
 
 <include meta='title="lead-collisions.ts"'>
   ../../_examples/insights-people/lead-collisions.ts
@@ -167,6 +171,7 @@ Leads sitting in campaigns although they are on the block list.
 - **Costs:** one request per page of block entries, plus one per page of each campaign's leads.
 - **Notes it can add:** a cap was reached.
 - **Does not:** match a company name or an entry of the vendor's kind `other`. Those are counted in `blockEntriesNotChecked`. It reports a lead once, by its most specific match: the address, then the profile, then the domain. It removes nobody from a campaign.
+- **Refuses:** with `Unsupported`, before any read, while the [`redact` plugin](/docs/plugins/redact) masks `email` with its default `mask` strategy. It is then not offered as a tool. Under `strategy: "hash"` it still matches an exact address, and says the domain entries (and, when profiles are masked, the profile entries) could not be matched.
 
 <include meta='title="suppression-check.ts"'>
   ../../_examples/insights-people/suppression-check.ts

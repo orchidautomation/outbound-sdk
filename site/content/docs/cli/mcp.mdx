@@ -121,7 +121,7 @@ There are no resources, prompts, sampling or list-change notifications. `PROTOCO
   ../../_examples/cli-mcp/server.out.txt
 </include>
 
-That is 9 built-in tools and 26 insights on the in-memory adapter. Three things change the list on a real setup:
+That is 9 built-in tools and 22 of the 26 insights on the in-memory adapter: `person_summary`, `account_summary`, `lead_collisions` and `suppression_check` match people by email address or LinkedIn profile, which `redact` masks, so they are offered only with `--no-redact`. Three things change the list on a real setup:
 
 - A real adapter also serves `vendor_read`, because it has [native reads](/docs/native), but only with `--no-redact`: a native read returns the vendor's payload unmasked, so `redact` turns native reads off.
 - `outbound mcp` serves `compare_clients` only with the `clients` plugin from a config file, and `cross_channel_lead` only with `--no-redact`, because `redact` masks the identifiers it matches on. The CLI always installs the `identity` plugin it needs.

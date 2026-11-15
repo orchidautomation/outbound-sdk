@@ -8,7 +8,7 @@ import type { ZodObject, ZodType } from "zod";
 import type { CapabilityKey } from "../internal/capabilities.ts";
 import type { Evidence, MetricRow } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
-import { toJson, unknownKey } from "../internal/json.ts";
+import { isJsonObject, toJson, unknownKey } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
 import type {
   ListAll,
@@ -32,6 +32,44 @@ export interface InsightMeta {
   /** When the insight was computed, ISO 8601 UTC. */
   readonly computedAt: string;
 }
+
+/** What the redact plugin masks on an instance. */
+export interface Masking {
+  readonly fields: readonly string[];
+  readonly strategy: "hash" | "mask";
+}
+
+/**
+ * Says why an insight cannot answer with these fields masked, for example
+ * `email addresses, which it matches people by`, or `null` when it can.
+ */
+export type MaskedOut = (masking: Masking) => string | null;
+
+interface Redacted {
+  readonly redacted: Masking;
+}
+
+// The redact plugin says what it masks on the instance. Told apart by shape,
+// so the insights do not import that plugin.
+const isRedacted = (
+  outbound: OutboundApi
+): outbound is OutboundApi & Redacted => "redacted" in outbound;
+
+/** What the redact plugin masks here, or `null` without it. */
+export const maskingOf = (outbound: OutboundApi): Masking | null =>
+  isRedacted(outbound) ? outbound.redacted : null;
+
+/** Why the entry cannot answer under this instance's redact plugin, or `null`. */
+export const maskedOutBy = (
+  outbound: OutboundApi,
+  entry: Pick<InsightEntry, "maskedOut">
+): string | null => {
+  const masking = maskingOf(outbound);
+
+  return masking === null || entry.maskedOut === undefined
+    ? null
+    : entry.maskedOut(masking);
+};
 
 export interface InsightResult<Data> {
   readonly insight: string;
@@ -81,6 +119,8 @@ export interface InsightEntry {
   readonly needs: readonly CapabilityKey[];
   /** What to ask next, for an agent. */
   readonly next: string;
+  /** Why the insight cannot answer while the redact plugin masks what it matches on. */
+  readonly maskedOut?: MaskedOut | undefined;
   /** Checks the input and the capabilities, then runs the insight. */
   readonly execute: (
     outbound: OutboundApi,
@@ -105,6 +145,12 @@ export interface InsightSpec<Key extends string, Input, Data, Given = Input> {
    */
   readonly needsFor?: ((input: Input) => readonly CapabilityKey[]) | undefined;
   readonly next: string;
+  /**
+   * What makes the insight unable to answer under the redact plugin, for an
+   * insight that matches records by a field redact can mask. Checked before
+   * any request, and an insight it refuses is not offered as a tool.
+   */
+  readonly maskedOut?: MaskedOut | undefined;
   readonly run: (context: InsightContext, input: Input) => Promise<Data>;
 }
 
@@ -208,6 +254,20 @@ const missing = (
 ): CapabilityKey[] =>
   needs.filter((key) => outbound.capabilities[key] === false);
 
+/** Whether the input leaves out the top-level field at `path`, so the message can say it is required. */
+const isAbsent = (
+  input: Json | undefined,
+  path: readonly PropertyKey[]
+): boolean => {
+  const [key] = path;
+
+  return (
+    path.length === 1 &&
+    key !== undefined &&
+    (!isJsonObject(input) || input[String(key)] === undefined)
+  );
+};
+
 const prepare = <Key extends string, Input, Data, Given>(
   outbound: OutboundApi,
   spec: InsightSpec<Key, Input, Data, Given>,
@@ -227,10 +287,21 @@ const prepare = <Key extends string, Input, Data, Given>(
 
   if (!parsed.success) {
     const [issue] = parsed.error.issues;
+    const path = issue?.path.join(".") || "input";
 
     throw new OutboundError(
       "Invalid",
-      `${spec.name}: ${issue?.path.join(".") || "input"} ${issue?.message ?? "is invalid"}`,
+      `${spec.name}: ${isAbsent(input, issue?.path ?? []) ? `\`${path}\` is required` : `${path} ${issue?.message ?? "is invalid"}`}`,
+      { provider: outbound.provider }
+    );
+  }
+
+  const blocked = maskedOutBy(outbound, spec);
+
+  if (blocked !== null) {
+    throw new OutboundError(
+      "Unsupported",
+      `${spec.name} is not available while the redact plugin masks ${blocked}`,
       { provider: outbound.provider }
     );
   }

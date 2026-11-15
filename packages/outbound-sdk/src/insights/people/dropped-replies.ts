@@ -307,7 +307,7 @@ export const droppedReplies = defineInsight({
   key: "droppedReplies",
   name: "dropped_replies",
   needs: ["replies.list"],
-  next: "Use person_summary with the lead's email address to read what was sent before answering, or hot_leads to see who else to contact first.",
+  next: "Use person_summary with the lead's ref or email address to read what was sent before answering. Use hot_leads to see who else to contact first.",
   run: async (context, values) => {
     const since = new Date(
       values.since === null

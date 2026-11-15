@@ -122,6 +122,42 @@ test("outbound mcp masks personal fields by default and says so", async () => {
   assert.deepEqual(callResult(session, 2).error?.code, "Unsupported");
 });
 
+test("outbound mcp leaves out the insights redact keeps from matching, and no hint names them", async () => {
+  const hotLeads = {
+    id: 3,
+    jsonrpc: "2.0",
+    method: "tools/call",
+    params: { arguments: {}, name: "hot_leads" },
+  };
+
+  const session = await outbound(["mcp"], [initialize, list, hotLeads]);
+  const names = toolNames(session);
+
+  const left = [
+    "person_summary",
+    "account_summary",
+    "lead_collisions",
+    "suppression_check",
+  ];
+
+  assert.ok(names.includes("hot_leads"), names.join(", "));
+  assert.deepEqual(
+    names.filter((name) => left.includes(name)),
+    []
+  );
+
+  const called = resultAt<{ structuredContent: { ok: boolean; next: string } }>(
+    session,
+    2
+  ).structuredContent;
+
+  assert.equal(called.ok, true);
+  assert.ok(
+    left.every((name) => !called.next.includes(name)),
+    called.next
+  );
+});
+
 test("outbound mcp reports the package's version as serverInfo.version", async () => {
   const manifest = JSON.parse(
     await readFile(

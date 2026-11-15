@@ -46,11 +46,11 @@ The test suite checks this page against the SDK. Every tool and insight appears 
 | Which replies has nobody answered? | `dropped_replies` |
 | How fast do people reply, and on which days and hours? | `reply_timing` |
 | Who should I call first? | `hot_leads` |
-| What has happened with this one person? (refused while `redact` masks emails or LinkedIn) | `person_summary` |
+| What has happened with this one person? Takes an email, a profile or a lead ref (not offered while `redact` masks both emails and LinkedIn) | `person_summary` |
 | Every record and message for one person, across tools (needs the `identity` plugin, which the CLI and `outbound mcp` always add; not offered while `redact` masks emails or LinkedIn) | `cross_channel_lead` |
-| Who at this company have we contacted? | `account_summary` |
-| Who is in two campaigns at once? | `lead_collisions` |
-| Is anyone on the block list still in a campaign? | `suppression_check` |
+| Who at this company have we contacted? (not offered while `redact` masks emails) | `account_summary` |
+| Who is in two campaigns at once? (not offered while `redact` masks emails, as `outbound mcp` does) | `lead_collisions` |
+| Is anyone on the block list still in a campaign? (not offered while `redact` masks emails, as `outbound mcp` does) | `suppression_check` |
 | Which leads will get broken copy from an empty merge variable? | `personalization_gaps` |
 | What lead lists exist, and how big are they? | `audience_lists` |
 
