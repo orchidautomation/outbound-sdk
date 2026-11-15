@@ -1,8 +1,10 @@
 import { z } from "zod";
 
+import { mapConcurrent } from "../internal/concurrency.ts";
 import type { Lead, Message } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
 import type { Json } from "../internal/json.ts";
+import { emptyCounts, sumCounts } from "../internal/metrics.ts";
 import type { MetricCounts } from "../internal/metrics.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
 import { untrusted } from "./shared.ts";
@@ -79,24 +81,41 @@ export const leadRunway: ToolDefinition<z.infer<typeof runwayInput>> = {
   },
 };
 
-interface ClientStatsEntry {
-  readonly client: string;
-  readonly campaigns: number;
-  readonly counts: MetricCounts;
-}
+/** Each client's campaigns added together, read here so every request is counted. */
+const statsByClient = async (
+  outbound: OutboundApi,
+  range: { from?: string | undefined; to?: string | undefined }
+) => {
+  const walk = outbound.campaigns.listAll();
+  const campaigns = await walk.toArray();
+  const byClient = new Map<string, MetricCounts[]>();
+  let requests = walk.meta?.requests ?? 0;
 
-interface WithClients {
-  readonly clients: {
-    readonly stats: (options: {
-      from?: string | undefined;
-      to?: string | undefined;
-    }) => Promise<ClientStatsEntry[]>;
-  };
-}
+  const read = await mapConcurrent(campaigns, async (campaign) => ({
+    campaign,
+    stats: await outbound.campaign(campaign.ref).stats(range),
+  }));
 
-const hasClients = (
-  outbound: OutboundApi
-): outbound is OutboundApi & WithClients => "clients" in outbound;
+  for (const { campaign, stats } of read) {
+    // SAFETY: the clients plugin's wrap adds `client` to every campaign it reads.
+    const { client } = campaign as typeof campaign & {
+      readonly client: string;
+    };
+
+    requests += stats.meta.requests;
+    byClient.set(client, [...(byClient.get(client) ?? []), ...stats.rows]);
+  }
+
+  const entries = [...byClient.entries()]
+    .map(([client, rows]) => ({
+      campaigns: rows.length,
+      client,
+      counts: rows.length === 0 ? emptyCounts() : sumCounts(rows),
+    }))
+    .toSorted((left, right) => left.client.localeCompare(right.client));
+
+  return { entries, requests };
+};
 
 const compareInput = z.object({
   from: day
@@ -116,21 +135,21 @@ export const compareClients: ToolDefinition<z.infer<typeof compareInput>> = {
   name: "compare_clients",
   needs: ["clients", "stats.campaign"],
   run: async (outbound, input) => {
-    if (!hasClients(outbound)) {
+    if (!("clients" in outbound)) {
       throw new OutboundError(
         "Unsupported",
         "compare_clients needs the clients plugin on the instance"
       );
     }
 
-    const stats = await outbound.clients.stats({
+    const { entries, requests } = await statsByClient(outbound, {
       from: input.from,
       to: input.to,
     });
 
     return {
       data: {
-        clients: stats.map((entry) => ({
+        clients: entries.map((entry) => ({
           campaigns: entry.campaigns,
           client: entry.client,
           contacted: entry.counts.contacted,
@@ -150,7 +169,7 @@ export const compareClients: ToolDefinition<z.infer<typeof compareInput>> = {
       meta: {
         evidence: "derived",
         provider: outbound.provider,
-        requests: stats.length,
+        requests,
       },
       next: "A client named unassigned holds campaigns that matched no client rule.",
       ok: true,
@@ -164,6 +183,7 @@ interface PersonResult {
   readonly keys: readonly string[];
   readonly records: readonly Lead[];
   readonly timeline: readonly Message[];
+  readonly requests: number;
 }
 
 interface WithPerson {
@@ -231,7 +251,7 @@ export const crossChannelLead: ToolDefinition<z.infer<typeof personInput>> = {
       meta: {
         evidence: "derived",
         provider: outbound.provider,
-        requests: person.records.length,
+        requests: person.requests,
       },
       next: "Use reply_samples to read replies across a whole campaign.",
       ok: true,

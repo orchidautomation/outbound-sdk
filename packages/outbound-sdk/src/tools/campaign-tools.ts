@@ -40,13 +40,15 @@ export const campaignOverview: ToolDefinition<z.infer<typeof overviewInput>> = {
   name: "campaign_overview",
   needs: ["campaigns.status", "stats.campaign"],
   run: async (outbound, input) => {
-    const campaigns = await outbound.campaigns
-      .listAll({ max: input.limit, status: input.status })
-      .toArray();
+    const walk = outbound.campaigns.listAll({
+      max: input.limit,
+      status: input.status,
+    });
 
+    const campaigns = await walk.toArray();
     const rows: Json[] = [];
     const evidence: Evidence[] = [];
-    let requests = 1;
+    let requests = walk.meta?.requests ?? 0;
 
     const read = await mapConcurrent(campaigns, async (campaign) => ({
       campaign,

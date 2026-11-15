@@ -20,3 +20,4 @@
 - `settingsAudit`'s `limit_over_senders` holds a daily limit against the attached senders' own limits added up, and falls back to `max_daily_limit_per_sender` each, saying so, only when one reports none.
 - `bounceWatch` names the senders whose stats could not be read, reports `sendersRead`, and applies `min_sent` to senders as well as campaigns.
 - `domainHealth` and `warmupReadiness` leave out a sender whose health read answers `NotFound`, name it in a note and set `meta.complete` to `false`. Other errors still throw.
+- Every built-in tool's `meta.requests` is the number of vendor requests it made: `campaign_overview` and `deliverability_check` count their listing's pages, `compare_clients` and `cross_channel_lead` count every read behind them, and the memory adapter reports 0. `outbound.person()` returns `requests`.
