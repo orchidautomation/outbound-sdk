@@ -136,3 +136,63 @@ test("campaign --stats --sequence prints both", async () => {
 
   assert.ok(Array.isArray(stats.rows));
 });
+
+test("records print without raw unless --raw asks for it", async () => {
+  const base = memory({
+    data: demoData({ now: "2026-10-08T12:00:00.000Z" }),
+    workspaceId: "acme",
+  });
+
+  // A vendor like Instantly puts the whole quoted thread in raw, bodies or not.
+  const quoted = {
+    body: { html: "<div>old thread</div>", text: "old thread" },
+  };
+
+  const { listReplies } = base;
+
+  assert.ok(listReplies);
+
+  const adapter: typeof base = {
+    ...base,
+    listReplies: async (query, ctx) => {
+      const page = await listReplies(query, ctx);
+
+      return {
+        ...page,
+        items: page.items.map((reply) => ({ ...reply, raw: quoted })),
+      };
+    },
+  };
+
+  const replies = async (...flags: string[]) => {
+    const out: string[] = [];
+
+    const code = await run(["replies", "--compact", ...flags], {
+      adapter,
+      stderr: () => {},
+      stdout: (text) => {
+        out.push(text);
+      },
+    });
+
+    assert.equal(code, 0);
+
+    return JSON.parse(out.join("")) as Record<string, unknown>[];
+  };
+
+  const lean = await replies();
+
+  assert.ok(lean.length > 0);
+  assert.ok(lean.every((reply) => !("raw" in reply)));
+  assert.ok(lean.every((reply) => typeof reply.ref === "string"));
+
+  const full = await replies("--raw");
+
+  assert.deepEqual(full[0]?.raw, quoted);
+
+  // A command that prints no records is untouched, raw key or not.
+  const tags = await cli("tags", "--compact");
+
+  assert.ok(!tags.out.includes('"raw"'));
+  assert.equal((await cli("help")).out.includes("--raw"), true);
+});

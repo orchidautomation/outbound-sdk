@@ -195,6 +195,7 @@ export const GLOBAL_FLAGS = [
   "max-requests",
   "no-redact",
   "provider",
+  "raw",
   "redact",
 ];
 
@@ -512,6 +513,7 @@ const GLOBAL_HELP = [
   "Options:",
   "  --provider <id>          the adapter to use, or all for every provider whose key is set (default: OUTBOUND_SDK_PROVIDER)",
   "  --compact                print JSON on one line",
+  "  --raw                    keep each record's raw vendor payload (left out by default)",
   "  --config <file>          load plugins from a file whose default export is defineConfig({ plugins })",
   "  --redact                 mask personal fields (on by default for mcp)",
   "  --no-redact              do not mask personal fields, even for mcp",

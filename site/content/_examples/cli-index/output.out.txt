@@ -2,7 +2,6 @@ $ outbound tags
 [
   {
     "provider": "memory",
-    "raw": null,
     "ref": "memory:default:tag_a",
     "schemaVersion": 1,
     "sourceId": "tag_a",
@@ -13,5 +12,5 @@ $ outbound tags
 ]
 
 $ outbound tags --compact
-[{"provider":"memory","raw":null,"ref":"memory:default:tag_a","schemaVersion":1,"sourceId":"tag_a","workspaceId":"default","description":"Work for client A","name":"client-a"}]
+[{"provider":"memory","ref":"memory:default:tag_a","schemaVersion":1,"sourceId":"tag_a","workspaceId":"default","description":"Work for client A","name":"client-a"}]
 

@@ -5,7 +5,6 @@ import { parseArgs } from "node:util";
 import type { Adapter } from "../internal/adapter.ts";
 import { OutboundError } from "../internal/errors.ts";
 import { field } from "../internal/json.ts";
-import type { Json } from "../internal/json.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
 import { createOutbound } from "../internal/outbound/create.ts";
 import { fromEnv } from "../loader/index.ts";
@@ -19,6 +18,7 @@ import {
 } from "./commands.ts";
 import { pluginsFor } from "./config.ts";
 import { createMcpServer } from "./mcp.ts";
+import { printAnswer } from "./output.ts";
 import { serveStdio } from "./stdio.ts";
 import { runNpm, runSelf, STANDALONE } from "./update.ts";
 import { packageVersion } from "./version.ts";
@@ -65,6 +65,7 @@ const OPTIONS = {
   "max-requests": { type: "string" },
   "no-redact": { type: "boolean" },
   provider: { type: "string" },
+  raw: { type: "boolean" },
   redact: { type: "boolean" },
   sequence: { type: "boolean" },
   settings: { type: "boolean" },
@@ -109,10 +110,6 @@ const serve = async (
   });
 
   await serveStdio(server, { input: io.stdin?.() ?? [], write: io.stdout });
-};
-
-const print = (io: CliIo, value: Json, compact: boolean): void => {
-  io.stdout(compact ? JSON.stringify(value) : JSON.stringify(value, null, 2));
 };
 
 const parseStrict = (argv: readonly string[]) =>
@@ -187,7 +184,6 @@ export const run = async (
 ): Promise<number> => {
   try {
     const { help, name, rest, values } = parse(argv);
-    const compact = values.compact === true;
 
     if (await runSelf(name, values, io.npm ?? runNpm, io.stdout)) {
       return 0;
@@ -200,7 +196,7 @@ export const run = async (
     }
 
     if (name === "providers") {
-      print(io, listProviders(), compact);
+      printAnswer(io.stdout, listProviders(), values);
 
       return 0;
     }
@@ -234,7 +230,7 @@ export const run = async (
       positionals: rest,
     });
 
-    print(io, answer, compact);
+    printAnswer(io.stdout, answer, values);
 
     // A tool never throws: its failure is a result, printed like any other.
     // The exit code still says the command did not get an answer.

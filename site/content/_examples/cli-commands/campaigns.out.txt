@@ -2,7 +2,6 @@ $ outbound campaigns --status paused --limit 1
 [
   {
     "provider": "memory",
-    "raw": null,
     "ref": "memory:default:cmp_agencies",
     "schemaVersion": 1,
     "sourceId": "cmp_agencies",
@@ -20,7 +19,6 @@ $ outbound campaigns --status paused --limit 1
 $ outbound campaign cmp_founders
 {
   "provider": "memory",
-  "raw": null,
   "ref": "memory:default:cmp_founders",
   "schemaVersion": 1,
   "sourceId": "cmp_founders",
@@ -94,7 +92,6 @@ $ outbound campaign cmp_founders --stats --by day --compact
 $ outbound campaign cmp_founders --sequence
 {
   "provider": "memory",
-  "raw": null,
   "ref": "memory:default:cmp_founders",
   "schemaVersion": 1,
   "sourceId": "cmp_founders",
@@ -158,7 +155,6 @@ $ outbound campaign cmp_founders --subsequences
 $ outbound campaign cmp_founders --settings
 {
   "provider": "memory",
-  "raw": null,
   "ref": "memory:default:cmp_founders",
   "schemaVersion": 1,
   "sourceId": "cmp_founders",
@@ -204,5 +200,5 @@ $ outbound campaign cmp_founders --settings
 }
 
 $ outbound campaign cmp_founders --stats --sequence --compact
-{"sequence":{"provider":"memory","raw":null,"ref":"memory:default:cmp_founders","schemaVersion":1,"sourceId":"cmp_founders","workspaceId":"default","campaignRef":"memory:default:cmp_founders","kind":"main","name":null,"steps":[{"action":"email","branch":null,"delayDays":0,"index":0,"parentIndex":null,"variants":[{"body":"Hi {{firstName}}, saw your launch.","contentHash":"28fb467faa618689dfaee79904da9c3b","subject":"Quick question","variantKey":"A"},{"body":"Hi {{firstName}}, congrats on the launch.","contentHash":"80f4d9383d1b9f8bae94be6987499bea","subject":"Congrats","variantKey":"B"}]},{"action":"email","branch":null,"delayDays":3,"index":1,"parentIndex":0,"variants":[{"body":"Following up on my note.","contentHash":"5833739aa6392ea853ae5c668a76121b","subject":"Following up","variantKey":"A"}]}],"meta":{"complete":true,"evidence":"exact","fetchedAt":"2026-11-14T12:00:00.000Z","provider":"memory","requests":0,"stale":false,"throttledMs":0,"workspaceId":"default"}},"stats":{"meta":{"complete":true,"evidence":"exact","fetchedAt":"2026-11-14T12:00:00.000Z","provider":"memory","requests":0,"stale":false,"throttledMs":0,"workspaceId":"default"},"rows":[{"bounced":19,"clicked":null,"clickedTotal":null,"connectionsAccepted":null,"connectionsSent":null,"contacted":630,"delivered":924,"inmailsSent":null,"opened":516,"openedTotal":null,"positive":19,"replied":32,"repliedAuto":null,"sent":943,"unsubscribed":null,"contentHash":null,"date":null,"evidence":"exact","provider":"memory","schemaVersion":1,"scope":"campaign","scopeRef":"memory:default:cmp_founders","stepIndex":null,"timezone":null,"variantKey":null,"workspaceId":"default"}]}}
+{"sequence":{"provider":"memory","ref":"memory:default:cmp_founders","schemaVersion":1,"sourceId":"cmp_founders","workspaceId":"default","campaignRef":"memory:default:cmp_founders","kind":"main","name":null,"steps":[{"action":"email","branch":null,"delayDays":0,"index":0,"parentIndex":null,"variants":[{"body":"Hi {{firstName}}, saw your launch.","contentHash":"28fb467faa618689dfaee79904da9c3b","subject":"Quick question","variantKey":"A"},{"body":"Hi {{firstName}}, congrats on the launch.","contentHash":"80f4d9383d1b9f8bae94be6987499bea","subject":"Congrats","variantKey":"B"}]},{"action":"email","branch":null,"delayDays":3,"index":1,"parentIndex":0,"variants":[{"body":"Following up on my note.","contentHash":"5833739aa6392ea853ae5c668a76121b","subject":"Following up","variantKey":"A"}]}],"meta":{"complete":true,"evidence":"exact","fetchedAt":"2026-11-14T12:00:00.000Z","provider":"memory","requests":0,"stale":false,"throttledMs":0,"workspaceId":"default"}},"stats":{"meta":{"complete":true,"evidence":"exact","fetchedAt":"2026-11-14T12:00:00.000Z","provider":"memory","requests":0,"stale":false,"throttledMs":0,"workspaceId":"default"},"rows":[{"bounced":19,"clicked":null,"clickedTotal":null,"connectionsAccepted":null,"connectionsSent":null,"contacted":630,"delivered":924,"inmailsSent":null,"opened":516,"openedTotal":null,"positive":19,"replied":32,"repliedAuto":null,"sent":943,"unsubscribed":null,"contentHash":null,"date":null,"evidence":"exact","provider":"memory","schemaVersion":1,"scope":"campaign","scopeRef":"memory:default:cmp_founders","stepIndex":null,"timezone":null,"variantKey":null,"workspaceId":"default"}]}}
 
