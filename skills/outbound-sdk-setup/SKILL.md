@@ -11,7 +11,7 @@ Before you start, confirm what the user has. Do not assume a working key.
 
 ## 1. Install it
 
-Install it from npm in the user's project. 0.1.0 is the first release; the built package runs on Node 22 or later:
+Install it from npm in the user's project. It is a 0.x preview; the built package runs on Node 22 or later:
 
 ```sh
 npm install outbound-sdk
