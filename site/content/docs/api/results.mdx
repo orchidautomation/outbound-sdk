@@ -13,9 +13,17 @@ Every read returns its data and a `meta` object beside it. `meta` is how you tel
 
 <include meta='title="meta.ts"'>../../_examples/api-results/meta.ts</include>
 
-<include lang="text" meta='title="Output"'>
-  ../../_examples/api-results/meta.out.txt
-</include>
+<CodeGroup>
+  <include lang="text" meta='title="Output"'>
+    ../../_examples/api-results/meta.out.txt
+  </include>
+  <include lang="json" meta='title="Response"'>
+    ../../_examples/api-results/meta-response.out.txt
+  </include>
+  <include meta='title="meta-response.ts"'>
+    ../../_examples/api-results/meta-response.ts
+  </include>
+</CodeGroup>
 
 The in-memory adapter sends no HTTP requests, so `requests` is 0 here. On a vendor adapter, a read that reaches the vendor counts at least 1.
 

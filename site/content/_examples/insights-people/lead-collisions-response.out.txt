@@ -1,0 +1,100 @@
+{
+  "data": {
+    "collisions": [
+      {
+        "campaignCount": 3,
+        "campaigns": [
+          {
+            "campaign": "mailtool:acme:founders",
+            "campaignName": "SaaS founders",
+            "channel": "email",
+            "lead": "mailtool:acme:ana_founders",
+            "leadStatus": "replied",
+            "provider": "mailtool"
+          },
+          {
+            "campaign": "mailtool:acme:agencies",
+            "campaignName": "Agency owners",
+            "channel": "email",
+            "lead": "mailtool:acme:ana_agencies",
+            "leadStatus": "active",
+            "provider": "mailtool"
+          },
+          {
+            "campaign": "linkedintool:acme:li_founders",
+            "campaignName": "LinkedIn founders",
+            "channel": "linkedin",
+            "lead": "linkedintool:acme:ana_linkedin",
+            "leadStatus": "active",
+            "provider": "linkedintool"
+          }
+        ],
+        "channels": [
+          "email",
+          "linkedin"
+        ],
+        "finding": "email:ana@northwind.example.com is in 3 campaigns across mailtool and linkedintool (email and linkedin).",
+        "identifiers": [
+          "email:ana@northwind.example.com",
+          "linkedin:ana-ruiz-example"
+        ],
+        "providers": [
+          "mailtool",
+          "linkedintool"
+        ],
+        "scope": "across_tools",
+        "stillActive": 2
+      },
+      {
+        "campaignCount": 2,
+        "campaigns": [
+          {
+            "campaign": "mailtool:acme:founders",
+            "campaignName": "SaaS founders",
+            "channel": "email",
+            "lead": "mailtool:acme:cy_founders",
+            "leadStatus": "active",
+            "provider": "mailtool"
+          },
+          {
+            "campaign": "mailtool:acme:agencies",
+            "campaignName": "Agency owners",
+            "channel": "email",
+            "lead": "mailtool:acme:cy_agencies",
+            "leadStatus": "active",
+            "provider": "mailtool"
+          }
+        ],
+        "channels": [
+          "email"
+        ],
+        "finding": "email:cy@example.com is in 2 mailtool campaigns at once.",
+        "identifiers": [
+          "email:cy@example.com"
+        ],
+        "providers": [
+          "mailtool"
+        ],
+        "scope": "within_tool",
+        "stillActive": 2
+      }
+    ],
+    "totals": {
+      "acrossTools": 1,
+      "campaignsRead": 3,
+      "collisions": 2,
+      "leadsRead": 11,
+      "leadsWithoutIdentifier": 0,
+      "withinTool": 1
+    }
+  },
+  "insight": "lead_collisions",
+  "meta": {
+    "complete": true,
+    "evidence": "exact",
+    "notes": [],
+    "requests": 0,
+    "computedAt": "2026-11-14T12:00:00.000Z",
+    "provider": "combined"
+  }
+}

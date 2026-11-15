@@ -1,0 +1,98 @@
+{
+  "data": {
+    "gap": {
+      "difference": 0.0583,
+      "median": 0.075,
+      "top": 0.1333
+    },
+    "ranked": [
+      {
+        "campaign": "memory:acme:linkedin",
+        "channel": "linkedin",
+        "name": "LinkedIn founders",
+        "provider": "memory",
+        "status": "active",
+        "count": 42,
+        "high": 0.1753,
+        "low": 0.1002,
+        "of": 315,
+        "rate": 0.1333,
+        "sent": 630,
+        "rank": 1
+      },
+      {
+        "campaign": "memory:acme:agencies",
+        "channel": "email",
+        "name": "Agency owners",
+        "provider": "memory",
+        "status": "active",
+        "count": 63,
+        "high": 0.0948,
+        "low": 0.0591,
+        "of": 840,
+        "rate": 0.075,
+        "sent": 2100,
+        "rank": 2
+      },
+      {
+        "campaign": "memory:acme:founders",
+        "channel": "email",
+        "name": "SaaS founders",
+        "provider": "memory",
+        "status": "active",
+        "count": 63,
+        "high": 0.076,
+        "low": 0.0472,
+        "of": 1050,
+        "rate": 0.06,
+        "sent": 2100,
+        "rank": 3
+      },
+      {
+        "campaign": "memory:acme:pilot",
+        "channel": "email",
+        "name": "Pilot test",
+        "provider": "memory",
+        "status": "paused",
+        "count": 2,
+        "high": 0.301,
+        "low": 0.0279,
+        "of": 20,
+        "rate": 0.1,
+        "sent": 60,
+        "rank": 4
+      },
+      {
+        "campaign": "memory:acme:ecom",
+        "channel": "email",
+        "name": "Ecommerce ops",
+        "provider": "memory",
+        "status": "active",
+        "count": 21,
+        "high": 0.0304,
+        "low": 0.0131,
+        "of": 1050,
+        "rate": 0.02,
+        "sent": 1680,
+        "rank": 5
+      }
+    ],
+    "tooFewSends": [],
+    "unknown": [],
+    "better": "higher",
+    "metric": "reply_rate",
+    "period": {
+      "from": null,
+      "to": null
+    }
+  },
+  "insight": "campaign_ranking",
+  "meta": {
+    "complete": true,
+    "evidence": "exact",
+    "notes": [],
+    "requests": 0,
+    "computedAt": "2026-11-14T12:00:00.000Z",
+    "provider": "memory"
+  }
+}

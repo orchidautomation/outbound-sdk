@@ -1,0 +1,25 @@
+{
+  "provider": "memory",
+  "raw": null,
+  "ref": "memory:acme:cmp_founders",
+  "schemaVersion": 1,
+  "sourceId": "cmp_founders",
+  "workspaceId": "acme",
+  "channel": "email",
+  "createdAt": "2026-10-01T09:00:00.000Z",
+  "name": "Q4 SaaS founders",
+  "status": "active",
+  "tags": [
+    "client-a"
+  ],
+  "meta": {
+    "complete": true,
+    "evidence": "exact",
+    "fetchedAt": "2026-11-14T12:00:00.000Z",
+    "provider": "memory",
+    "requests": 0,
+    "stale": false,
+    "throttledMs": 0,
+    "workspaceId": "acme"
+  }
+}

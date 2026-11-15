@@ -1,0 +1,93 @@
+{
+  "data": {
+    "campaigns": [
+      {
+        "firstContactedAt": "2026-11-03T09:00:00.000Z",
+        "lastContactedAt": "2026-11-06T09:00:00.000Z",
+        "lastRepliedAt": "2026-11-12T12:00:00.000Z",
+        "lastStep": 1,
+        "messagesSent": 2,
+        "replies": 2,
+        "campaign": "mailtool:acme:founders",
+        "campaignName": "SaaS founders",
+        "campaignStatus": "active",
+        "channel": "email",
+        "interest": "Interested",
+        "lead": "mailtool:acme:ana_founders",
+        "leadStatus": "replied",
+        "provider": "mailtool",
+        "replied": true,
+        "repliedSteps": [
+          1
+        ]
+      },
+      {
+        "firstContactedAt": "2026-11-10T09:00:00.000Z",
+        "lastContactedAt": "2026-11-10T09:00:00.000Z",
+        "lastRepliedAt": null,
+        "lastStep": 0,
+        "messagesSent": 1,
+        "replies": 0,
+        "campaign": "mailtool:acme:agencies",
+        "campaignName": "Agency owners",
+        "campaignStatus": "active",
+        "channel": "email",
+        "interest": null,
+        "lead": "mailtool:acme:ana_agencies",
+        "leadStatus": "active",
+        "provider": "mailtool",
+        "replied": false,
+        "repliedSteps": []
+      },
+      {
+        "firstContactedAt": "2026-11-04T09:00:00.000Z",
+        "lastContactedAt": "2026-11-05T15:00:00.000Z",
+        "lastRepliedAt": "2026-11-05T09:00:00.000Z",
+        "lastStep": null,
+        "messagesSent": 2,
+        "replies": 1,
+        "campaign": "linkedintool:acme:li_founders",
+        "campaignName": "LinkedIn founders",
+        "campaignStatus": "active",
+        "channel": "linkedin",
+        "interest": null,
+        "lead": "linkedintool:acme:ana_linkedin",
+        "leadStatus": "active",
+        "provider": "linkedintool",
+        "replied": true,
+        "repliedSteps": []
+      }
+    ],
+    "found": true,
+    "identifiers": [
+      "email:ana@northwind.example.com",
+      "linkedin:ana-ruiz-example"
+    ],
+    "totals": {
+      "byChannel": {
+        "email": {
+          "messagesSent": 3,
+          "replies": 2
+        },
+        "linkedin": {
+          "messagesSent": 2,
+          "replies": 1
+        }
+      },
+      "campaignReplyRate": 0.6667,
+      "campaigns": 3,
+      "campaignsReplied": 2,
+      "messagesSent": 5,
+      "replies": 3
+    }
+  },
+  "insight": "person_summary",
+  "meta": {
+    "complete": true,
+    "evidence": "exact",
+    "notes": [],
+    "requests": 0,
+    "computedAt": "2026-11-14T12:00:00.000Z",
+    "provider": "combined"
+  }
+}

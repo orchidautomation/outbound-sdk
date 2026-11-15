@@ -1,0 +1,42 @@
+{
+  "meta": {
+    "complete": true,
+    "evidence": "exact",
+    "fetchedAt": "2026-11-14T12:00:00.000Z",
+    "provider": "memory",
+    "requests": 0,
+    "stale": false,
+    "throttledMs": 0,
+    "workspaceId": "default"
+  },
+  "rows": [
+    {
+      "bounced": 6,
+      "clicked": null,
+      "clickedTotal": null,
+      "connectionsAccepted": null,
+      "connectionsSent": null,
+      "contacted": 300,
+      "delivered": 344,
+      "inmailsSent": null,
+      "opened": 158,
+      "openedTotal": null,
+      "positive": 6,
+      "replied": 15,
+      "repliedAuto": null,
+      "sent": 350,
+      "unsubscribed": 1,
+      "contentHash": null,
+      "date": null,
+      "evidence": "exact",
+      "provider": "memory",
+      "schemaVersion": 1,
+      "scope": "campaign",
+      "scopeRef": "memory:default:cmp_launch",
+      "stepIndex": null,
+      "timezone": null,
+      "variantKey": null,
+      "workspaceId": "default"
+    }
+  ]
+}

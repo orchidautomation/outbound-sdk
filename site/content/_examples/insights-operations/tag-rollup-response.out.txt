@@ -1,0 +1,143 @@
+{
+  "data": {
+    "campaigns": 5,
+    "period": {
+      "from": null,
+      "to": null
+    },
+    "tags": [
+      {
+        "bounced": 21,
+        "contacted": 1365,
+        "positive": 42,
+        "replied": 105,
+        "sent": 2730,
+        "bounceRate": {
+          "count": 21,
+          "high": 0.0152,
+          "low": 0.0065,
+          "of": 2100,
+          "rate": 0.01
+        },
+        "positiveRate": {
+          "count": 42,
+          "high": 0.0413,
+          "low": 0.0228,
+          "of": 1365,
+          "rate": 0.0308
+        },
+        "replyRate": {
+          "count": 105,
+          "high": 0.0923,
+          "low": 0.0639,
+          "of": 1365,
+          "rate": 0.0769
+        },
+        "campaigns": 2,
+        "tag": "saas"
+      },
+      {
+        "bounced": 21,
+        "contacted": 840,
+        "positive": 14,
+        "replied": 63,
+        "sent": 2100,
+        "bounceRate": {
+          "count": 21,
+          "high": 0.0152,
+          "low": 0.0065,
+          "of": 2100,
+          "rate": 0.01
+        },
+        "positiveRate": {
+          "count": 14,
+          "high": 0.0278,
+          "low": 0.01,
+          "of": 840,
+          "rate": 0.0167
+        },
+        "replyRate": {
+          "count": 63,
+          "high": 0.0948,
+          "low": 0.0591,
+          "of": 840,
+          "rate": 0.075
+        },
+        "campaigns": 1,
+        "tag": "agency"
+      },
+      {
+        "bounced": 0,
+        "contacted": 20,
+        "positive": 1,
+        "replied": 2,
+        "sent": 60,
+        "bounceRate": {
+          "count": 0,
+          "high": 0.0602,
+          "low": 0,
+          "of": 60,
+          "rate": 0
+        },
+        "positiveRate": {
+          "count": 1,
+          "high": 0.2361,
+          "low": 0.0089,
+          "of": 20,
+          "rate": 0.05
+        },
+        "replyRate": {
+          "count": 2,
+          "high": 0.301,
+          "low": 0.0279,
+          "of": 20,
+          "rate": 0.1
+        },
+        "campaigns": 1,
+        "tag": null
+      },
+      {
+        "bounced": 54,
+        "contacted": 1050,
+        "positive": 0,
+        "replied": 21,
+        "sent": 1680,
+        "bounceRate": {
+          "count": 54,
+          "high": 0.0417,
+          "low": 0.0247,
+          "of": 1680,
+          "rate": 0.0321
+        },
+        "positiveRate": {
+          "count": 0,
+          "high": 0.0036,
+          "low": 0,
+          "of": 1050,
+          "rate": 0
+        },
+        "replyRate": {
+          "count": 21,
+          "high": 0.0304,
+          "low": 0.0131,
+          "of": 1050,
+          "rate": 0.02
+        },
+        "campaigns": 1,
+        "tag": "ecommerce"
+      }
+    ],
+    "tooFewSends": []
+  },
+  "insight": "tag_rollup",
+  "meta": {
+    "complete": true,
+    "evidence": "exact",
+    "notes": [
+      "Tag saas: bounce rate (1 of 2) counts only the campaigns that report both the count and what it is divided by. The others are left out of the rate, not counted as 0."
+    ],
+    "requests": 0,
+    "computedAt": "2026-11-14T12:00:00.000Z",
+    "provider": "memory"
+  }
+}

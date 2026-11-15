@@ -1,0 +1,116 @@
+{
+  "data": {
+    "domain": "northwind.example.com",
+    "lastReply": {
+      "at": "2026-11-12T12:00:00.000Z",
+      "campaign": "mailtool:acme:founders",
+      "email": "ana@northwind.example.com",
+      "lead": "mailtool:acme:ana_founders",
+      "name": "Ana Ruiz"
+    },
+    "people": [
+      {
+        "campaigns": [
+          "mailtool:acme:founders",
+          "mailtool:acme:agencies"
+        ],
+        "clicks": 1,
+        "company": "Northwind",
+        "email": "ana@northwind.example.com",
+        "interested": true,
+        "lastRepliedAt": "2026-11-12T12:00:00.000Z",
+        "name": "Ana Ruiz",
+        "opens": 8,
+        "records": [
+          {
+            "campaign": "mailtool:acme:founders",
+            "clicks": 1,
+            "interest": "Interested",
+            "lastContactedAt": null,
+            "lastRepliedAt": "2026-11-12T12:00:00.000Z",
+            "lead": "mailtool:acme:ana_founders",
+            "opens": 6,
+            "provider": "mailtool",
+            "replies": 2,
+            "status": "replied"
+          },
+          {
+            "campaign": "mailtool:acme:agencies",
+            "clicks": null,
+            "interest": null,
+            "lastContactedAt": null,
+            "lastRepliedAt": null,
+            "lead": "mailtool:acme:ana_agencies",
+            "opens": 2,
+            "provider": "mailtool",
+            "replies": null,
+            "status": "active"
+          }
+        ],
+        "replied": true,
+        "replies": 2,
+        "title": "CEO"
+      },
+      {
+        "campaigns": [
+          "mailtool:acme:founders",
+          "mailtool:acme:summer"
+        ],
+        "clicks": 0,
+        "company": "Northwind",
+        "email": "ben@northwind.example.com",
+        "interested": false,
+        "lastRepliedAt": null,
+        "name": "Ben Okafor",
+        "opens": 3,
+        "records": [
+          {
+            "campaign": "mailtool:acme:founders",
+            "clicks": 0,
+            "interest": null,
+            "lastContactedAt": null,
+            "lastRepliedAt": null,
+            "lead": "mailtool:acme:ben_founders",
+            "opens": 3,
+            "provider": "mailtool",
+            "replies": 0,
+            "status": "active"
+          },
+          {
+            "campaign": "mailtool:acme:summer",
+            "clicks": null,
+            "interest": "Not Interested",
+            "lastContactedAt": null,
+            "lastRepliedAt": null,
+            "lead": "mailtool:acme:ben_summer",
+            "opens": null,
+            "provider": "mailtool",
+            "replies": null,
+            "status": "completed"
+          }
+        ],
+        "replied": false,
+        "replies": 0,
+        "title": "Head of Sales"
+      }
+    ],
+    "totals": {
+      "campaigns": 3,
+      "interested": 1,
+      "leadsRead": 12,
+      "leadsWithoutEmail": 2,
+      "people": 2,
+      "records": 4,
+      "replied": 1
+    }
+  },
+  "insight": "account_summary",
+  "meta": {
+    "complete": true,
+    "evidence": "exact",
+    "notes": [],
+    "requests": 0,
+    "computedAt": "2026-11-14T12:00:00.000Z",
+    "provider": "combined"
+  }
+}

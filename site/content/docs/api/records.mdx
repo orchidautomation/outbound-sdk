@@ -32,9 +32,17 @@ Which fields a vendor can fill is an adapter fact: see the [adapter pages](/docs
 
 <include meta='title="refs.ts"'>../../_examples/api-records/refs.ts</include>
 
-<include lang="text" meta='title="Output"'>
-  ../../_examples/api-records/refs.out.txt
-</include>
+<CodeGroup>
+  <include lang="text" meta='title="Output"'>
+    ../../_examples/api-records/refs.out.txt
+  </include>
+  <include lang="json" meta='title="Response"'>
+    ../../_examples/api-records/refs-response.out.txt
+  </include>
+  <include meta='title="refs-response.ts"'>
+    ../../_examples/api-records/refs-response.ts
+  </include>
+</CodeGroup>
 
 - **A ref names one record on one credential.** Two clients on the same vendor, or one client on two vendors, can never be confused, because the workspace label and the provider are in the ref.
 - **Wherever the SDK takes an id, it takes a ref.** On an instance with one adapter both work. A ref from another workspace is refused with `Invalid`.

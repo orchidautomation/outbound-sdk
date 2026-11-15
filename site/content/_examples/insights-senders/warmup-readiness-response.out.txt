@@ -1,0 +1,90 @@
+{
+  "data": {
+    "byReason": {
+      "dns_failing": 2,
+      "no_daily_limit": 1,
+      "not_active": 1,
+      "score_low": 1,
+      "score_unknown": 2,
+      "warmup_off": 1,
+      "warmup_spam_high": 2
+    },
+    "healthChecked": true,
+    "linkedinSeats": 1,
+    "notReady": [
+      {
+        "address": "dee@send-two.example.com",
+        "dailyLimit": 30,
+        "findings": [
+          "Status is disconnected",
+          "Warmup is off",
+          "The vendor reports no warmup score",
+          "DKIM, DMARC failing",
+          "12 of 100 warmup emails landed in spam (0.12, over 0.1)"
+        ],
+        "kind": "mailbox",
+        "name": null,
+        "reasons": [
+          "not_active",
+          "warmup_off",
+          "score_unknown",
+          "dns_failing",
+          "warmup_spam_high"
+        ],
+        "score": null,
+        "sender": "memory:acme:dee",
+        "status": "disconnected",
+        "warmupEnabled": false
+      },
+      {
+        "address": "cy@send-two.example.com",
+        "dailyLimit": 30,
+        "findings": [
+          "Warmup score 72 is under 90",
+          "DKIM, DMARC failing",
+          "18 of 100 warmup emails landed in spam (0.18, over 0.1)"
+        ],
+        "kind": "mailbox",
+        "name": null,
+        "reasons": [
+          "score_low",
+          "dns_failing",
+          "warmup_spam_high"
+        ],
+        "score": 72,
+        "sender": "memory:acme:cy",
+        "status": "active",
+        "warmupEnabled": true
+      },
+      {
+        "address": "eli@send-three.example.com",
+        "dailyLimit": null,
+        "findings": [
+          "The vendor reports no warmup score",
+          "No daily limit is set or reported"
+        ],
+        "kind": "mailbox",
+        "name": null,
+        "reasons": [
+          "score_unknown",
+          "no_daily_limit"
+        ],
+        "score": null,
+        "sender": "memory:acme:eli",
+        "status": "active",
+        "warmupEnabled": null
+      }
+    ],
+    "ready": 3,
+    "total": 6
+  },
+  "insight": "warmup_readiness",
+  "meta": {
+    "complete": true,
+    "evidence": "exact",
+    "notes": [],
+    "requests": 0,
+    "computedAt": "2026-11-14T12:00:00.000Z",
+    "provider": "memory"
+  }
+}

@@ -1,0 +1,123 @@
+{
+  "data": {
+    "campaign": "memory:acme:ecom",
+    "channel": "email",
+    "name": "Ecommerce ops",
+    "provider": "memory",
+    "status": "active",
+    "findings": [
+      {
+        "code": "high_bounce_rate",
+        "finding": "Bounce rate is 3.2% (54 of 1680 sends), over the 3% limit.",
+        "next": "Use bounce_watch to find the senders behind it, and verify the lead list.",
+        "numbers": {
+          "bounced": 54,
+          "high": 0.0417,
+          "limit": 0.03,
+          "low": 0.0247,
+          "rate": 0.0321,
+          "sent": 1680
+        },
+        "severity": "high"
+      },
+      {
+        "code": "inactive_sender",
+        "finding": "1 of 2 senders are not active: ben@send.example.com (error).",
+        "next": "Reconnect or replace them; warmup_readiness shows which mailboxes are fit to send.",
+        "numbers": {
+          "inactive": 1,
+          "senders": 2
+        },
+        "severity": "high"
+      },
+      {
+        "code": "few_positive_replies",
+        "finding": "Only 0 of 21 replies (0%) are positive, under the 20% expected. With 21 replies the 95% interval is 0% to 15.5%.",
+        "next": "Read the replies: the offer or the audience may be off.",
+        "numbers": {
+          "high": 0.1546,
+          "limit": 0.2,
+          "low": 0,
+          "positive": 0,
+          "sample": 21,
+          "share": 0
+        },
+        "severity": "medium"
+      },
+      {
+        "code": "short_sequence",
+        "finding": "The sequence has 2 steps; follow-ups usually bring a large share of the replies.",
+        "next": "Add follow-up steps; step_funnel shows what each step earns.",
+        "numbers": {
+          "steps": 2
+        },
+        "severity": "medium"
+      },
+      {
+        "code": "schedule_limits_volume",
+        "finding": "The sending windows are open 15 hours a week, under 20. Recent sending days average 80 sends against a daily limit of 80, so the limit is what holds volume back.",
+        "next": "Use settings_audit to review the schedule and the limits.",
+        "numbers": {
+          "averageDailySent": 80,
+          "dailyLimit": 80,
+          "weeklyHours": 15
+        },
+        "severity": "low"
+      },
+      {
+        "code": "tracking_off",
+        "finding": "Open tracking is off, so the missing open count is expected and not a fault.",
+        "next": "Judge this campaign on replies, not opens.",
+        "numbers": {
+          "opened": null
+        },
+        "severity": "low"
+      }
+    ],
+    "notChecked": [],
+    "period": {
+      "from": null,
+      "to": null
+    },
+    "rates": {
+      "bounceRate": {
+        "count": 54,
+        "high": 0.0417,
+        "low": 0.0247,
+        "of": 1680,
+        "rate": 0.0321
+      },
+      "positiveRate": {
+        "count": 0,
+        "high": 0.0036,
+        "low": 0,
+        "of": 1050,
+        "rate": 0
+      },
+      "replyRate": {
+        "count": 21,
+        "high": 0.0304,
+        "low": 0.0131,
+        "of": 1050,
+        "rate": 0.02
+      }
+    },
+    "summary": "6 findings. Most serious: Bounce rate is 3.2% (54 of 1680 sends), over the 3% limit.",
+    "totals": {
+      "bounced": 54,
+      "contacted": 1050,
+      "positive": 0,
+      "replied": 21,
+      "sent": 1680
+    }
+  },
+  "insight": "campaign_diagnosis",
+  "meta": {
+    "complete": true,
+    "evidence": "exact",
+    "notes": [],
+    "requests": 0,
+    "computedAt": "2026-11-14T12:00:00.000Z",
+    "provider": "memory"
+  }
+}

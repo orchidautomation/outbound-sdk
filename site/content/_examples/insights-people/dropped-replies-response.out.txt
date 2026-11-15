@@ -1,0 +1,55 @@
+{
+  "data": {
+    "dropped": [
+      {
+        "campaign": "mailtool:acme:founders",
+        "category": "positive",
+        "channel": "email",
+        "checkedBy": "timeline",
+        "finding": "A positive reply has waited 170 hours with nothing sent after it.",
+        "hoursWaiting": 170,
+        "lead": "mailtool:acme:ana_founders",
+        "provider": "mailtool",
+        "receivedAt": "2026-11-07T10:00:00.000Z",
+        "reply": "mailtool:acme:m3",
+        "subject": "Re: Quick question, Ana",
+        "unansweredReplies": 2
+      },
+      {
+        "campaign": "linkedintool:acme:li_founders",
+        "category": "unknown",
+        "channel": "linkedin",
+        "checkedBy": "timeline",
+        "finding": "An unknown reply has waited 72 hours with nothing sent after it.",
+        "hoursWaiting": 72,
+        "lead": "linkedintool:acme:hal_linkedin",
+        "provider": "linkedintool",
+        "receivedAt": "2026-11-11T12:00:00.000Z",
+        "reply": "linkedintool:acme:d5",
+        "subject": null,
+        "unansweredReplies": 1
+      }
+    ],
+    "olderThanHours": 24,
+    "since": "2026-10-31T12:00:00.000Z",
+    "totals": {
+      "answered": 2,
+      "conversations": 5,
+      "dropped": 2,
+      "repliesRead": 8,
+      "skippedAuto": 1,
+      "skippedByCategory": 1,
+      "tooRecent": 1,
+      "unchecked": 0
+    }
+  },
+  "insight": "dropped_replies",
+  "meta": {
+    "complete": true,
+    "evidence": "exact",
+    "notes": [],
+    "requests": 0,
+    "computedAt": "2026-11-14T12:00:00.000Z",
+    "provider": "combined"
+  }
+}

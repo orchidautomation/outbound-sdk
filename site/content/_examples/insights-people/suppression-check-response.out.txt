@@ -1,0 +1,86 @@
+{
+  "data": {
+    "byCampaign": [
+      {
+        "campaign": "mailtool:acme:agencies",
+        "campaignName": "Agency owners",
+        "leadsRead": 5,
+        "violations": 2
+      },
+      {
+        "campaign": "linkedintool:acme:li_founders",
+        "campaignName": "LinkedIn founders",
+        "leadsRead": 2,
+        "violations": 1
+      },
+      {
+        "campaign": "mailtool:acme:founders",
+        "campaignName": "SaaS founders",
+        "leadsRead": 4,
+        "violations": 0
+      }
+    ],
+    "totals": {
+      "blockEntriesNotChecked": 1,
+      "blockEntriesRead": 4,
+      "byMatch": {
+        "domain": 1,
+        "email": 1,
+        "linkedin": 1
+      },
+      "campaignsRead": 3,
+      "leadsRead": 11,
+      "violations": 3
+    },
+    "violations": [
+      {
+        "campaign": "linkedintool:acme:li_founders",
+        "campaignName": "LinkedIn founders",
+        "email": null,
+        "entry": "mailtool:acme:block_hal",
+        "entryValue": "https://www.linkedin.com/in/hal-voss-example",
+        "finding": "https://www.linkedin.com/in/hal-voss-example is in \"LinkedIn founders\" but the block list holds the linkedin https://www.linkedin.com/in/hal-voss-example.",
+        "lead": "linkedintool:acme:hal_linkedin",
+        "leadStatus": "active",
+        "linkedinUrl": "https://www.linkedin.com/in/hal-voss-example",
+        "matchedBy": "linkedin",
+        "sameTool": false
+      },
+      {
+        "campaign": "mailtool:acme:agencies",
+        "campaignName": "Agency owners",
+        "email": "fay@blocked.example.com",
+        "entry": "mailtool:acme:block_domain",
+        "entryValue": "blocked.example.com",
+        "finding": "fay@blocked.example.com is in \"Agency owners\" but the block list holds the domain blocked.example.com.",
+        "lead": "mailtool:acme:fay_agencies",
+        "leadStatus": "active",
+        "linkedinUrl": null,
+        "matchedBy": "domain",
+        "sameTool": true
+      },
+      {
+        "campaign": "mailtool:acme:agencies",
+        "campaignName": "Agency owners",
+        "email": "gus@example.com",
+        "entry": "mailtool:acme:block_gus",
+        "entryValue": "gus@example.com",
+        "finding": "gus@example.com is in \"Agency owners\" but the block list holds the email gus@example.com.",
+        "lead": "mailtool:acme:gus_agencies",
+        "leadStatus": "active",
+        "linkedinUrl": null,
+        "matchedBy": "email",
+        "sameTool": true
+      }
+    ]
+  },
+  "insight": "suppression_check",
+  "meta": {
+    "complete": true,
+    "evidence": "exact",
+    "notes": [],
+    "requests": 0,
+    "computedAt": "2026-11-14T12:00:00.000Z",
+    "provider": "combined"
+  }
+}

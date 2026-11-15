@@ -1,0 +1,53 @@
+{
+  "data": {
+    "ask": {
+      "campaigns": 4,
+      "daily": 280,
+      "withLimit": 3,
+      "withoutLimit": 1
+    },
+    "askRatio": 2.1538,
+    "capacity": {
+      "activeSenders": 5,
+      "daily": 130,
+      "inactiveSenders": 1,
+      "linkedinDaily": 20,
+      "mailboxDaily": 110,
+      "withLimit": 4,
+      "withoutLimit": 1
+    },
+    "finding": "The 4 active senders that report a daily limit can send 130 a day; 1 more reports no limit and is not counted. Active campaigns ask for 280, which is 150 more than that. 115 a day were sent on average over the last 7 days.",
+    "sends": {
+      "from": "2026-11-07",
+      "to": "2026-11-13",
+      "averageDaily": 115,
+      "days": 7,
+      "daysWithData": 7,
+      "scope": "workspace",
+      "total": 805
+    },
+    "shortCampaigns": [
+      {
+        "activeSenders": 2,
+        "campaign": "memory:acme:agencies",
+        "dailyLimit": 200,
+        "finding": "Agency owners asks for 200 a day but its 2 active senders can send 70.",
+        "name": "Agency owners",
+        "senderCapacity": 70,
+        "senders": 3,
+        "shortBy": 130
+      }
+    ],
+    "uncheckedCampaigns": 1,
+    "utilization": 0.8846
+  },
+  "insight": "sender_capacity",
+  "meta": {
+    "complete": true,
+    "evidence": "exact",
+    "notes": [],
+    "requests": 0,
+    "computedAt": "2026-11-14T12:00:00.000Z",
+    "provider": "memory"
+  }
+}

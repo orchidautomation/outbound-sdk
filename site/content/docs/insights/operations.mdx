@@ -96,9 +96,17 @@ The findings:
   ../../_examples/insights-operations/campaign-diagnosis.ts
 </include>
 
-<include lang="text" meta='title="Output"'>
-  ../../_examples/insights-operations/campaign-diagnosis.out.txt
-</include>
+<CodeGroup>
+  <include lang="text" meta='title="Output"'>
+    ../../_examples/insights-operations/campaign-diagnosis.out.txt
+  </include>
+  <include lang="json" meta='title="Response"'>
+    ../../_examples/insights-operations/campaign-diagnosis-response.out.txt
+  </include>
+  <include meta='title="campaign-diagnosis-response.ts"'>
+    ../../_examples/insights-operations/campaign-diagnosis-response.ts
+  </include>
+</CodeGroup>
 
 ## `pipelineForecast`
 
@@ -131,9 +139,17 @@ The leads one campaign has left, and what they should produce. It is an estimate
   ../../_examples/insights-operations/pipeline-forecast.ts
 </include>
 
-<include lang="text" meta='title="Output"'>
-  ../../_examples/insights-operations/pipeline-forecast.out.txt
-</include>
+<CodeGroup>
+  <include lang="text" meta='title="Output"'>
+    ../../_examples/insights-operations/pipeline-forecast.out.txt
+  </include>
+  <include lang="json" meta='title="Response"'>
+    ../../_examples/insights-operations/pipeline-forecast-response.out.txt
+  </include>
+  <include meta='title="pipeline-forecast-response.ts"'>
+    ../../_examples/insights-operations/pipeline-forecast-response.ts
+  </include>
+</CodeGroup>
 
 The expected 6 replies are 100 leads at the 6% rate so far. The range, 4.72 to 7.6, is 100 leads at the two ends of that rate's interval.
 
@@ -166,9 +182,17 @@ Days that broke from trend, for one campaign or the whole workspace.
   ../../_examples/insights-operations/anomalies.ts
 </include>
 
-<include lang="text" meta='title="Output"'>
-  ../../_examples/insights-operations/anomalies.out.txt
-</include>
+<CodeGroup>
+  <include lang="text" meta='title="Output"'>
+    ../../_examples/insights-operations/anomalies.out.txt
+  </include>
+  <include lang="json" meta='title="Response"'>
+    ../../_examples/insights-operations/anomalies-response.out.txt
+  </include>
+  <include meta='title="anomalies-response.ts"'>
+    ../../_examples/insights-operations/anomalies-response.ts
+  </include>
+</CodeGroup>
 
 Workspace replies fell from 10 a day to 7 a day on 2026-11-07. That day is flagged against a flat baseline: the 14 days before it were all 10. The next day is flagged by its z-score, 3.47 standard deviations below a baseline that now holds one lower day. The days after are not, because the baseline by then holds more of the lower days. The first 5 of the 21 days with data have fewer than five earlier days, so 16 are tested. Sends are 310 every day: each day is tested and none differs. Real data is rarely this flat.
 
@@ -200,9 +224,17 @@ The last `days` complete days against the `days` before, per campaign and in tot
   ../../_examples/insights-operations/period-comparison.ts
 </include>
 
-<include lang="text" meta='title="Output"'>
-  ../../_examples/insights-operations/period-comparison.out.txt
-</include>
+<CodeGroup>
+  <include lang="text" meta='title="Output"'>
+    ../../_examples/insights-operations/period-comparison.out.txt
+  </include>
+  <include lang="json" meta='title="Response"'>
+    ../../_examples/insights-operations/period-comparison-response.out.txt
+  </include>
+  <include meta='title="period-comparison-response.ts"'>
+    ../../_examples/insights-operations/period-comparison-response.ts
+  </include>
+</CodeGroup>
 
 "Pilot test" sent nothing in either week, so it is listed apart.
 
@@ -233,9 +265,17 @@ Which campaigns are best, ranked so a small sample cannot win on luck.
   ../../_examples/insights-operations/campaign-ranking.ts
 </include>
 
-<include lang="text" meta='title="Output"'>
-  ../../_examples/insights-operations/campaign-ranking.out.txt
-</include>
+<CodeGroup>
+  <include lang="text" meta='title="Output"'>
+    ../../_examples/insights-operations/campaign-ranking.out.txt
+  </include>
+  <include lang="json" meta='title="Response"'>
+    ../../_examples/insights-operations/campaign-ranking-response.out.txt
+  </include>
+  <include meta='title="campaign-ranking-response.ts"'>
+    ../../_examples/insights-operations/campaign-ranking-response.ts
+  </include>
+</CodeGroup>
 
 "Pilot test" has the second highest raw rate, 10%, but from 20 leads. Its interval reaches down to 2.79%, so it ranks fourth, under two campaigns whose 6% and 7.5% rest on about a thousand leads each.
 
@@ -265,9 +305,17 @@ Email against LinkedIn, from campaign totals added up per channel.
   ../../_examples/insights-operations/channel-mix.ts
 </include>
 
-<include lang="text" meta='title="Output"'>
-  ../../_examples/insights-operations/channel-mix.out.txt
-</include>
+<CodeGroup>
+  <include lang="text" meta='title="Output"'>
+    ../../_examples/insights-operations/channel-mix.out.txt
+  </include>
+  <include lang="json" meta='title="Response"'>
+    ../../_examples/insights-operations/channel-mix-response.out.txt
+  </include>
+  <include meta='title="channel-mix-response.ts"'>
+    ../../_examples/insights-operations/channel-mix-response.ts
+  </include>
+</CodeGroup>
 
 `p < 0.0001` is how a finding writes a p-value that rounds to 0 at four places. The `pValue` field beside it is `0`.
 
@@ -295,9 +343,17 @@ Results grouped by campaign tag, for example one tag per client, offer or audien
   ../../_examples/insights-operations/tag-rollup.ts
 </include>
 
-<include lang="text" meta='title="Output"'>
-  ../../_examples/insights-operations/tag-rollup.out.txt
-</include>
+<CodeGroup>
+  <include lang="text" meta='title="Output"'>
+    ../../_examples/insights-operations/tag-rollup.out.txt
+  </include>
+  <include lang="json" meta='title="Response"'>
+    ../../_examples/insights-operations/tag-rollup-response.out.txt
+  </include>
+  <include meta='title="tag-rollup-response.ts"'>
+    ../../_examples/insights-operations/tag-rollup-response.ts
+  </include>
+</CodeGroup>
 
 The `saas` tag shows that last rule. It sent 2,730 messages, but 630 of them are the LinkedIn campaign's, which reports no bounces. Its bounce rate is the email campaign's 21 bounces over that campaign's 2,100 sends, or 0.01, and the note says one of the two campaigns is counted.
 
@@ -339,8 +395,16 @@ One report for one client or workspace over the last `days` complete days, compo
   ../../_examples/insights-operations/client-report.ts
 </include>
 
-<include lang="text" meta='title="Output"'>
-  ../../_examples/insights-operations/client-report.out.txt
-</include>
+<CodeGroup>
+  <include lang="text" meta='title="Output"'>
+    ../../_examples/insights-operations/client-report.out.txt
+  </include>
+  <include lang="json" meta='title="Response"'>
+    ../../_examples/insights-operations/client-report-response.out.txt
+  </include>
+  <include meta='title="client-report-response.ts"'>
+    ../../_examples/insights-operations/client-report-response.ts
+  </include>
+</CodeGroup>
 
 The [weekly client report](/docs/guides/weekly-client-report) guide turns this answer into text a client can read.
