@@ -13,6 +13,7 @@ import { COMMANDS, helpText, listProviders } from "./commands.ts";
 import { pluginsFor } from "./config.ts";
 import { createMcpServer } from "./mcp.ts";
 import { serveStdio } from "./stdio.ts";
+import { packageVersion } from "./version.ts";
 
 export { defineConfig } from "./config.ts";
 
@@ -66,7 +67,11 @@ const OPTIONS = {
 const serve = async (outbound: OutboundApi, io: CliIo): Promise<void> => {
   // Loaded on demand, so the other commands do not pay for the insights.
   const { insightTools } = await import("../insights/index.ts");
-  const server = createMcpServer(outbound, { extra: insightTools(outbound) });
+
+  const server = createMcpServer(outbound, {
+    extra: insightTools(outbound),
+    version: packageVersion(),
+  });
 
   await serveStdio(server, { input: io.stdin?.() ?? [], write: io.stdout });
 };

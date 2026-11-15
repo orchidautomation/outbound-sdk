@@ -155,4 +155,4 @@ A tool that fails is a normal result with `isError: true`, so the model can read
 | `handle(message)` | One parsed JSON-RPC message | The response object, or `undefined` for a notification |
 | `handleLine(line)` | One line of text | The response as a JSON string, or `undefined` for a notification or a blank line |
 
-Options are `only` and `extra` from [`createTools`](/docs/tools#options), plus `version`, which is reported as `serverInfo.version` and defaults to `0.0.0`. Use it when you want the instance built in your own code, a subset of the tools, or a transport other than stdio. A server you build has only the plugins you give it: `redact()` is the CLI's default, not `createMcpServer`'s.
+Options are `only` and `extra` from [`createTools`](/docs/tools#options), plus `version`, which is reported as `serverInfo.version` and defaults to `0.0.0`. `outbound mcp` passes the installed package's version. Use it when you want the instance built in your own code, a subset of the tools, or a transport other than stdio. A server you build has only the plugins you give it: `redact()` is the CLI's default, not `createMcpServer`'s.

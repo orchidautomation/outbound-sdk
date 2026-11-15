@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import process from "node:process";
@@ -120,6 +120,24 @@ test("outbound mcp masks personal fields by default and says so", async () => {
     "the person lookup needs identifiers redact masks"
   );
   assert.deepEqual(callResult(session, 2).error?.code, "Unsupported");
+});
+
+test("outbound mcp reports the package's version as serverInfo.version", async () => {
+  const manifest = JSON.parse(
+    await readFile(
+      path.resolve(import.meta.dirname, "../package.json"),
+      "utf-8"
+    )
+  ) as { version: string };
+
+  const session = await outbound(["mcp"], [initialize]);
+
+  assert.equal(session.code, 0);
+  assert.match(manifest.version, /^\d+\.\d+\.\d+/u);
+  assert.deepEqual(resultAt<{ serverInfo: unknown }>(session, 0).serverInfo, {
+    name: "outbound-sdk",
+    version: manifest.version,
+  });
 });
 
 test("--no-redact serves records unmasked, and reply text on request", async () => {
