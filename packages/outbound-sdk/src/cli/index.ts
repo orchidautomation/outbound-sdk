@@ -17,6 +17,7 @@ import {
   listProviders,
 } from "./commands.ts";
 import { pluginsFor } from "./config.ts";
+import { createTools } from "../tools/index.ts";
 import { createMcpServer } from "./mcp.ts";
 import { serveStdio } from "./stdio.ts";
 import { packageVersion } from "./version.ts";
@@ -70,12 +71,34 @@ const OPTIONS = {
   to: { type: "string" },
 } as const;
 
-const serve = async (outbound: OutboundApi, io: CliIo): Promise<void> => {
+const serve = async (
+  outbound: OutboundApi,
+  io: CliIo,
+  unmasked: OutboundApi | undefined
+): Promise<void> => {
   // Loaded on demand, so the other commands do not pay for the insights.
   const { insightTools } = await import("../insights/index.ts");
 
+  const offered = (instance: OutboundApi) =>
+    createTools(instance, { extra: insightTools(instance) }).map(
+      (tool) => tool.name
+    );
+
+  // A tool offered without redact but not with it was left out by redact.
+  const here = new Set(offered(outbound));
+
+  const leftOut = Object.fromEntries(
+    (unmasked === undefined ? [] : offered(unmasked))
+      .filter((name) => !here.has(name))
+      .map((name) => [
+        name,
+        `${name} is left out while the redact plugin is on: it needs what redact masks. Start the server with --no-redact to offer it; personal fields are then not masked.`,
+      ])
+  );
+
   const server = createMcpServer(outbound, {
     extra: insightTools(outbound),
+    leftOut,
     version: packageVersion(),
   });
 
@@ -182,7 +205,15 @@ export const run = async (
     const outbound = createOutbound({ adapter, plugins });
 
     if (command === undefined) {
-      await serve(outbound, io);
+      // The same instance without redact, to tell which tools redact left out.
+      const unmasked = plugins.some((plugin) => plugin.name === "redact")
+        ? createOutbound({
+            adapter,
+            plugins: plugins.filter((plugin) => plugin.name !== "redact"),
+          })
+        : undefined;
+
+      await serve(outbound, io, unmasked);
 
       return 0;
     }

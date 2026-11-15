@@ -31,6 +31,11 @@ const INVALID_PARAMS = -32_602;
 
 export interface McpServerOptions extends ToolsOptions {
   readonly version?: string | undefined;
+  /**
+   * Tools left out of this server, by name, with the reason. A call to one
+   * is answered with the reason instead of `Unknown tool`.
+   */
+  readonly leftOut?: Readonly<Record<string, string>> | undefined;
 }
 
 export interface McpServer {
@@ -137,10 +142,12 @@ export const createMcpServer = (
     const tool = isString(name) ? byName.get(name) : undefined;
 
     if (tool === undefined) {
+      const why = isString(name) ? options.leftOut?.[name] : undefined;
+
       return failure(
         id,
         INVALID_PARAMS,
-        `Unknown tool: ${isString(name) ? name : "(none)"}`
+        why ?? `Unknown tool: ${isString(name) ? name : "(none)"}`
       );
     }
 
