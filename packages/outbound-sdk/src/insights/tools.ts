@@ -8,6 +8,8 @@ import { jsonInput } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
 import type { OutboundTool } from "../tools/index.ts";
+import { capNext, failure } from "../tools/shared.ts";
+import { capStopOf } from "./cost.ts";
 import { maskedOutBy } from "./define.ts";
 import type { InsightEntry } from "./define.ts";
 import { ENTRIES } from "./registry.ts";
@@ -15,7 +17,18 @@ import { ENTRIES } from "./registry.ts";
 export interface InsightToolsOptions {
   /** Offer only these insights, by tool name. Defaults to every one the adapter can serve. */
   readonly only?: readonly string[] | undefined;
+  /**
+   * The most vendor requests one tool call may send, retries included,
+   * across every read the insight makes. Without it a call may send what its
+   * input can cost (the insight's default cap), but never more than 500, so a
+   * model cannot buy a larger cap by raising a `max_*` input. `Infinity`
+   * removes the default.
+   */
+  readonly maxRequestsPerToolCall?: number | undefined;
 }
+
+/** The most an insight tool call may send when no cap is set, whatever its input. */
+export const INSIGHT_TOOL_CEILING = 500;
 
 /** What `next` says when every hint an insight wrote names a tool that is not on offer. */
 const NEXT_FALLBACK = "Pick another of the listed tools to go further.";
@@ -39,9 +52,12 @@ const hintFor = (next: string, offered: ReadonlySet<string>): string => {
 const toTool = (
   outbound: OutboundApi,
   definition: InsightEntry,
-  next: string
+  next: string,
+  perCall: number | undefined
 ): OutboundTool => ({
-  call: async (given) => {
+  call: async (given, callOptions) => {
+    const set = callOptions?.maxRequests ?? perCall;
+
     try {
       const input = jsonInput(given);
 
@@ -52,7 +68,16 @@ const toTool = (
         );
       }
 
-      const result = await definition.execute(outbound, input);
+      const result = await definition.execute(
+        outbound,
+        input,
+        set === undefined
+          ? {
+              capCeiling: INSIGHT_TOOL_CEILING,
+              capSetting: "maxRequestsPerToolCall",
+            }
+          : { capSetting: "maxRequestsPerToolCall", maxRequests: set }
+      );
 
       return {
         data: {
@@ -69,19 +94,23 @@ const toTool = (
         ok: true,
       };
     } catch (error) {
-      const known = OutboundError.is(error);
+      const stop = capStopOf(error);
 
-      return {
-        error: {
-          code: known ? error.code : "Provider",
-          message: error instanceof Error ? error.message : String(error),
-        },
-        next:
-          known && error.code === "Unsupported"
-            ? "This insight cannot answer here; the message says why. Try another tool."
-            : "Check the input and try again.",
-        ok: false,
-      };
+      if (stop !== undefined) {
+        return failure(
+          error,
+          stop.requests,
+          capNext(stop.cap, stop.isDefault, stop.lower)
+        );
+      }
+
+      return failure(
+        error,
+        undefined,
+        OutboundError.is(error) && error.code === "Unsupported"
+          ? "This insight cannot answer here; the message says why. Try another tool."
+          : undefined
+      );
     }
   },
   description: definition.description,
@@ -119,6 +148,11 @@ export const insightTools = (
   const names = new Set(offered.map((definition) => definition.name));
 
   return offered.map((definition) =>
-    toTool(outbound, definition, hintFor(definition.next, names))
+    toTool(
+      outbound,
+      definition,
+      hintFor(definition.next, names),
+      options.maxRequestsPerToolCall
+    )
   );
 };

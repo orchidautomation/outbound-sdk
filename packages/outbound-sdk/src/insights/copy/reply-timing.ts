@@ -310,6 +310,10 @@ export const replyTiming = defineInsight({
     "How fast people reply and when. Pairs each received message with the last message sent before it in the same thread (or to the same lead) and returns the median, 75th and 90th percentile of hours to reply, the share of replies within 1, 24 and 72 hours, replies by weekday and by hour of day, the weekday and hour of the sends that drew replies, and how many replies could not be paired; over a quarter unpaired, the answer is marked partial, since a reply to a send from before `since` cannot pair and those are the slow ones. Use it to choose follow-up delays and sending hours. Costs 1 request per page of messages, up to max_messages. A null figure means no reply could be paired; auto-replies are not separated, because messages carry no auto flag.",
   inputSchema: input,
   key: "replyTiming",
+  cost: (values, price) =>
+    price.list("messages.list", values.max_messages) +
+    (values.campaign === null ? 0 : price.upTo(1) * price.one("campaigns.get")),
+  scales: "max_messages",
   name: "reply_timing",
   needs: ["messages.list"],
   next: "Use step_funnel to see which step the replies answer, then set follow-up delays near the median time to reply.",

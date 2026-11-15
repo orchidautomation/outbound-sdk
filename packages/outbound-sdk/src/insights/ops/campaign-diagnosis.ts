@@ -196,6 +196,23 @@ export const campaignDiagnosis = defineInsight({
     "Why one campaign is underperforming: a list of findings, most serious first, each with a code, a plain-language finding, the numbers behind it and what to look at next. It checks for too little volume to judge, a low reply rate (with its 95% interval), a high bounce rate, few positive replies among replies, sends falling or stopped over the last days, a one or two step sequence, a sender that is not active, open tracking being off, and a schedule or daily limit that holds volume back. Also returns what could not be checked; an empty list means nothing was found, not that all is well. Costs up to 7 requests.",
   inputSchema: input,
   key: "campaignDiagnosis",
+  cost: (values, price) => {
+    const { capabilities } = price;
+
+    return (
+      price.one("campaigns.get") +
+      price.one("stats") +
+      (capabilities["campaigns.settings"] === false
+        ? 0
+        : price.one("campaigns.settings")) +
+      (capabilities.sequence === false ? 0 : price.one("sequence.get")) +
+      (capabilities["senders.byCampaign"] === false
+        ? 0
+        : price.list("senders.list", values.max_senders)) +
+      (capabilities["stats.byDay"] === false ? 0 : price.one("stats"))
+    );
+  },
+  scales: "max_senders",
   name: "campaign_diagnosis",
   needs: ["stats.campaign"],
   next: "Follow the `next` of the first finding, for example bounce_watch, step_funnel or pipeline_forecast.",

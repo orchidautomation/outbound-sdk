@@ -30,6 +30,8 @@ import { mergeHooks } from "../hooks.ts";
 import type { OutboundHooks } from "../hooks.ts";
 import type { NativeCatalog, NoNative } from "../native.ts";
 import { plural } from "../plural.ts";
+import { CAPPED } from "../request-cap.ts";
+import type { CappedAccess } from "../request-cap.ts";
 import type {
   CampaignFilters,
   CampaignHandle,
@@ -177,6 +179,8 @@ export class Outbound<
   readonly #core: Core;
   readonly #options: OutboundOptions;
   readonly #plugins: readonly OutboundPlugin[];
+  // Innermost layers a shared request cap adds; never listed in `plugins`.
+  readonly #layers: readonly OutboundPlugin[];
   readonly campaigns: Collection<Campaign, CampaignFilters>;
   readonly senders: Collection<Sender, SenderFilters>;
   readonly leads: Collection<Lead, LeadFilters>;
@@ -193,7 +197,8 @@ export class Outbound<
 
   constructor(
     options: OutboundOptions<Native>,
-    engine: RequestEngine = engineFor(options)
+    engine: RequestEngine = engineFor(options),
+    layers: readonly OutboundPlugin[] = []
   ) {
     const { adapter } = options;
     const plugins = options.plugins ?? [];
@@ -201,7 +206,7 @@ export class Outbound<
     const declared = resolveCapabilities(adapter.capabilities);
     const narrowed = narrowCapabilities(declared, plugins);
 
-    const run = composeOperations(plugins, (operation, info) =>
+    const run = composeOperations([...plugins, ...layers], (operation, info) =>
       dispatch(
         {
           adapter,
@@ -214,6 +219,7 @@ export class Outbound<
 
     this.#options = options;
     this.#plugins = plugins;
+    this.#layers = layers;
     this.#core = {
       adapter,
       allowWrites: options.allowWrites ?? false,
@@ -340,12 +346,33 @@ export class Outbound<
       );
     }
 
-    const scoped = new Outbound({ ...this.#options, adapter: member }, engine);
+    const scoped = new Outbound(
+      { ...this.#options, adapter: member },
+      engine,
+      this.#layers
+    );
 
     installExtensions(scoped, this.#plugins);
 
     // SAFETY: the scoped instance has this one's class, options and plugins, and so everything they add.
     return scoped as this;
+  }
+
+  /** For a cap shared across calls, as insights and tools use. Not public. */
+  get [CAPPED](): CappedAccess {
+    return {
+      costs: this.#core.adapter.costs,
+      guarded: (layer) => {
+        const copy = new Outbound(this.#options, this.#core.engine, [
+          ...this.#layers,
+          layer,
+        ]);
+
+        installExtensions(copy, this.#plugins);
+
+        return copy;
+      },
+    };
   }
 
   stats(options?: TopLevelStatsOptions): Promise<StatsResult> {

@@ -2,7 +2,8 @@ An argument the tool does not take
 {
   "error": {
     "code": "Invalid",
-    "message": "campaign_overview: \"client\" is not an input. It takes: from, limit, status, to"
+    "message": "campaign_overview: \"client\" is not an input. It takes: from, limit, status, to",
+    "retryable": false
   },
   "next": "Check the input and try again.",
   "ok": false
@@ -12,7 +13,8 @@ A value of the wrong shape
 {
   "error": {
     "code": "Invalid",
-    "message": "campaign_trend: from Use YYYY-MM-DD"
+    "message": "campaign_trend: from Use YYYY-MM-DD",
+    "retryable": false
   },
   "next": "Check the input and try again.",
   "ok": false
@@ -22,7 +24,8 @@ A record that does not exist
 {
   "error": {
     "code": "NotFound",
-    "message": "Campaign no-such-campaign was not found"
+    "message": "Campaign no-such-campaign was not found",
+    "retryable": false
   },
   "next": "Check the input and try again.",
   "ok": false
@@ -32,7 +35,8 @@ A read the adapter cannot serve
 {
   "error": {
     "code": "Unsupported",
-    "message": "Filtering replies by category is not available: the memory adapter does not support it (replies.category)"
+    "message": "Filtering replies by category is not available: the memory adapter does not support it (replies.category)",
+    "retryable": false
   },
   "next": "This tool is not available with the current adapter or plugins. Try another tool.",
   "ok": false

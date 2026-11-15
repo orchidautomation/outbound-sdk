@@ -183,6 +183,12 @@ export const warmupReadiness = defineInsight({
     "Which senders are not ready to send, each with its reasons: warmup off, warmup score under the bar or not reported, status not active, no daily limit and, with check_health, failing DNS records or too many warmup emails in spam. Returns counts by reason and how many are ready. A LinkedIn seat is judged on its status only. Use it before attaching mailboxes to a campaign or raising their limits. Costs one listing of senders, plus 1 request per mailbox with check_health. A null score means the vendor does not report one, which counts as not ready, not as 0.",
   inputSchema: input,
   key: "warmupReadiness",
+  cost: (values, price) =>
+    price.list("senders.list", values.max_senders) +
+    (values.check_health && price.capabilities["senders.health"] !== false
+      ? price.upTo(values.max_senders) * price.one("senders.health")
+      : 0),
+  scales: "max_senders",
   name: "warmup_readiness",
   needs: ["senders.list"],
   next: "Use domain_health for the domains of the mailboxes that are not ready, or sender_capacity to see what the ready ones can send.",

@@ -6,7 +6,8 @@ import { OutboundError } from "../internal/errors.ts";
 import type { Json } from "../internal/json.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
 import type { OutboundPlugin } from "../internal/outbound/plugins.ts";
-import type { InsightResult, RunOptions } from "./define.ts";
+import { boundsOf, defaultCap } from "./cost.ts";
+import type { InsightEntry, InsightResult, RunOptions } from "./define.ts";
 import type { InsightInputs } from "./inputs.generated.ts";
 import { ENTRIES } from "./registry.ts";
 import type { AnyInsight } from "./registry.ts";
@@ -33,13 +34,7 @@ export interface InsightsExtension {
   readonly insights: Insights;
 }
 
-/** Runs one insight by its tool name or method name, with JSON input. Rejects with `Invalid` for an unknown name. */
-export const runInsightByName = async (
-  outbound: OutboundApi,
-  name: string,
-  input: Json = {},
-  options: RunOptions = {}
-): Promise<InsightResult<Json>> => {
+const entryNamed = (outbound: OutboundApi, name: string): InsightEntry => {
   const entry = ENTRIES.find(
     (candidate) => candidate.name === name || candidate.key === name
   );
@@ -52,7 +47,57 @@ export const runInsightByName = async (
     );
   }
 
-  return await entry.execute(outbound, input, options);
+  return entry;
+};
+
+/** Runs one insight by its tool name or method name, with JSON input. Rejects with `Invalid` for an unknown name. */
+export const runInsightByName = async (
+  outbound: OutboundApi,
+  name: string,
+  input: Json = {},
+  options: RunOptions = {}
+): Promise<InsightResult<Json>> =>
+  await entryNamed(outbound, name).execute(outbound, input, options);
+
+/** What one run of an insight can cost, in vendor requests. */
+export interface InsightCostEstimate {
+  /** The least it can send: what is refused before any request when over the cap. */
+  readonly min: number;
+  /** The most it can send without retries, every cap in its input reached. */
+  readonly max: number;
+  /** The cap it runs under when none is set. */
+  readonly defaultCap: number;
+}
+
+/**
+ * What an insight costs for this input on this instance, or `null` when the
+ * adapter declares no costs (a combined instance) or the insight states none.
+ * Throws `Invalid` for an unknown insight or an input its schema refuses.
+ *
+ * ```ts
+ * insightCost(outbound, "client_report"); // { min: 3, max: 226, defaultCap: 287 }
+ * ```
+ */
+export const insightCost = (
+  outbound: OutboundApi,
+  name: string,
+  input: Json = {}
+): InsightCostEstimate | null => {
+  const entry = entryNamed(outbound, name);
+  const parsed = entry.inputSchema.safeParse(input);
+
+  if (!parsed.success) {
+    throw new OutboundError(
+      "Invalid",
+      `${entry.name}: ${parsed.error.issues[0]?.message ?? "the input is not valid"}`,
+      { provider: outbound.provider }
+    );
+  }
+
+  // SAFETY: the entry's own schema parsed the input, which is what its cost takes.
+  const bounds = boundsOf(outbound, entry.cost, parsed.data as never);
+
+  return bounds === null ? null : { ...bounds, defaultCap: defaultCap(bounds) };
 };
 
 export interface ListedInsight {

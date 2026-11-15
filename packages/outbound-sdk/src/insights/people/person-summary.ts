@@ -241,6 +241,15 @@ export const personSummary = defineInsight({
     "Everything about one person across campaigns and channels, from their email address, LinkedIn profile or a lead ref: each campaign they are in, how many messages they were sent, whether and how often they replied, which steps they replied to, their interest label, and totals by channel. Records are linked by exact identifier only, so an email finds a LinkedIn record only when a tool holds both for that person. A record the vendor labels out-of-office or bounced counts no replies, since they were automatic. Costs one lookup per identifier, one request to read a lead ref, then up to 2 requests per campaign.",
   inputSchema: input,
   key: "personSummary",
+  cost: (values, price) =>
+    (isLeadRef(values.person)
+      ? price.one("leads.get") +
+        price.upTo(2) * price.lookup(values.max_campaigns)
+      : price.lookup(values.max_campaigns) +
+        price.upTo(1) * price.lookup(values.max_campaigns)) +
+    price.upTo(values.max_campaigns) *
+      (price.one("campaigns.get") + price.walk("messages.list")),
+  scales: "max_campaigns",
   name: "person_summary",
   maskedOut: (masking) => {
     // With one kind masked the person is looked up by the other, and a

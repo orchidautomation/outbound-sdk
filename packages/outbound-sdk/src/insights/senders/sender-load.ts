@@ -130,6 +130,12 @@ export const senderLoad = defineInsight({
     "Senders that are overused or unused: the senders attached to more campaigns than allowed, the active senders attached to no campaign, and the campaigns that run on a single sender, on none, or on a sender that is not active. Use it when sends are uneven or before adding a campaign. Costs one listing of senders and of campaigns, then 1 request per campaign. Only campaigns in the given statuses are counted, so a sender used only by a paused campaign shows as unused unless paused is included.",
   inputSchema: input,
   key: "senderLoad",
+  cost: (values, price) =>
+    price.list("senders.list", values.max_senders) +
+    price.campaignsIn(new Set(values.statuses).size, values.max_campaigns) +
+    price.campaigns(values.max_campaigns) *
+      price.list("senders.list", values.max_senders),
+  scales: "max_campaigns",
   name: "sender_load",
   needs: ["senders.list", "senders.byCampaign"],
   next: "Use sender_capacity to see whether the senders can cover the campaigns' daily limits, or warmup_readiness for the senders that are not active.",

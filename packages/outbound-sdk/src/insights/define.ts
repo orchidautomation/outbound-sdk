@@ -21,6 +21,9 @@ import type {
 } from "../internal/outbound/api.ts";
 import { applyRenames, liveKeys } from "../internal/renamed.ts";
 import { inputProblem } from "../tools/input-problem.ts";
+import type { InsightCost } from "./cost.ts";
+import { runCap } from "./run-cap.ts";
+import type { CapOptions } from "./run-cap.ts";
 
 export interface InsightMeta {
   /** `exact` only when every read behind the answer was exact. */
@@ -155,9 +158,14 @@ export interface InsightContext {
   readonly note: (text: string) => void;
   /** Marks the answer as covering part of the data, with the reason as a note. */
   readonly partial: (reason: string) => void;
+  /**
+   * Says how many campaigns the insight found, once its campaign listing is
+   * read. A run whose least cost for that many is over its cap stops there.
+   */
+  readonly campaignsFound: (count: number) => void;
 }
 
-export interface RunOptions {
+export interface RunOptions extends CapOptions {
   /** Replaces the clock. Meant for tests. */
   readonly now?: number | undefined;
 }
@@ -180,6 +188,10 @@ export interface InsightEntry {
   readonly maskedOut?: MaskedOut | undefined;
   /** What the adapter does not report that the insight needs, beyond a capability. */
   readonly lacks?: Lacks | undefined;
+  /** What a run costs, for the default cap and the check before the first request. */
+  readonly cost?: InsightCost<never> | undefined;
+  /** The input that makes the insight cheaper when lowered, named in cap messages. */
+  readonly scales?: string | undefined;
   /** Checks the input and the capabilities, then runs the insight. */
   readonly execute: (
     outbound: OutboundApi,
@@ -216,6 +228,15 @@ export interface InsightSpec<Key extends string, Input, Data, Given = Input> {
    * request, and an insight it refuses is not offered as a tool.
    */
   readonly lacks?: Lacks | undefined;
+  /**
+   * What a run costs in vendor requests, written once with `price`. It is
+   * worked out at the least and the most every read can cost: the most sets
+   * the default cap, and a run whose least is over its cap is refused before
+   * the first request. Without it the insight has no default cap.
+   */
+  readonly cost?: InsightCost<Input> | undefined;
+  /** The input that makes a run cheaper when lowered, such as `max_campaigns`. */
+  readonly scales?: (keyof Input & string) | undefined;
   readonly run: (context: InsightContext, input: Input) => Promise<Data>;
 }
 
@@ -228,6 +249,7 @@ export interface InsightDefinition<
   readonly key: Key;
   readonly inputSchema: ZodObject & ZodType<Input, Given>;
   readonly run: (context: InsightContext, input: Input) => Promise<Data>;
+  readonly cost?: InsightCost<Input> | undefined;
   /** Never set. It carries the caller's input type to `outbound.insights`. */
   readonly given?: Given;
 }
@@ -243,7 +265,11 @@ interface Tracker {
   readonly meta: () => Omit<InsightMeta, "computedAt" | "provider">;
 }
 
-const track = (outbound: OutboundApi, now: number): Tracker => {
+const track = (
+  outbound: OutboundApi,
+  now: number,
+  campaignsFound: (count: number) => void
+): Tracker => {
   const notes: string[] = [];
   let requests = 0;
   let evidence: Evidence = "exact";
@@ -281,6 +307,7 @@ const track = (outbound: OutboundApi, now: number): Tracker => {
 
         return items;
       },
+      campaignsFound,
       note,
       now,
       one: (item) => {
@@ -415,14 +442,21 @@ const execute = async <Key extends string, Input, Data, Given>(
   options: RunOptions = {}
 ): Promise<InsightResult<Data>> => {
   const checked = prepare(outbound, spec, input);
+  const cap = runCap(outbound, spec, checked.input, options);
   const now = options.now ?? Date.now();
-  const tracker = track(outbound, now);
+  const tracker = track(cap.outbound, now, cap.campaignsFound);
 
   for (const note of checked.notes) {
     tracker.context.note(note);
   }
 
-  const data = await spec.run(tracker.context, checked.input);
+  const data = await spec.run(tracker.context, checked.input).catch(cap.failed);
+
+  const short = cap.shortNote();
+
+  if (short !== undefined) {
+    tracker.context.partial(short);
+  }
 
   return {
     data,

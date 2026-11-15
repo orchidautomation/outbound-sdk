@@ -21,7 +21,8 @@ heyreach native: true -> false
 {
   error: {
     code: 'Unsupported',
-    message: 'Reading reply bodies is not available: the redact plugin turned it off (messages.body)'
+    message: 'Reading reply bodies is not available: the redact plugin turned it off (messages.body)',
+    retryable: false
   },
   next: 'This tool is not available with the current adapter or plugins. Try another tool.',
   ok: false

@@ -119,7 +119,12 @@ HeyReach's adapter declares no per-step stats and no campaign settings, so `winn
 | A value of the wrong type or shape | `Invalid` | The field and what was wrong with it |
 | A record that does not exist | `NotFound` | Which record |
 | A read the adapter or a plugin does not allow | `Unsupported` | Which capability is missing, and to try another tool |
+| The call reached its [request cap](#request-caps) | `RateLimited` | Not to call again with the same input: the input to lower, when one would fit, or to ask the user to raise `maxRequestsPerToolCall`. `meta.requests` says what it spent. |
+| A `budget()` or `maxRequestsPerCall` cap the user set | `RateLimited` | That a cap the user set was reached, and not to call again with the same input |
+| The vendor's rate limit, past the SDK's retries | `RateLimited` | To wait a minute before calling again |
 | Anything that is not an `OutboundError` | `Provider` | The error's message |
+
+Every failure has `error.retryable`: `false` when the same call would fail the same way again (bad input, a missing record, a read that is not allowed, a cap of your own), `true` when it may work later (the vendor's rate limit or an outage). A cap stop is never retryable, so a model is not invited to loop on it.
 
 Input is strict. An argument a tool does not take is reported as `Invalid`, never dropped, so a model that invents a filter learns that the filter did nothing. The other codes are the ones on the [errors](/docs/api/errors) page.
 
@@ -141,6 +146,20 @@ An insight tool wraps its answer as `data.result`, with `data.complete` and `dat
 | --- | --- |
 | `only` | Offer only these built-in tools, by name. Defaults to every tool the instance can serve. |
 | `extra` | More tools to offer after the built-in ones. `only` does not filter them. |
+| `maxRequestsPerToolCall` | The most vendor requests one tool call may send, retries included. Applies to the built-in tools and is passed to each `extra` tool's `call`. See below. |
+
+## Request caps
+
+Each tool call gets a fresh allowance of vendor requests, counted across every read the call makes, including reads that run side by side. A model calling tools in a loop therefore cannot spend a vendor's quota on one question, and you do not have to add [`budget()`](/docs/plugins/budget) to get that.
+
+| Tool | Default allowance per call |
+| --- | --- |
+| A built-in tool | 100 requests (`DEFAULT_TOOL_REQUESTS`) |
+| An [insight tool](/docs/insights#request-caps) | What its input can cost, a quarter more for retries and 4 on top, but never more than 500 (`INSIGHT_TOOL_CEILING`) |
+
+The 500 ceiling keeps a model from buying itself a larger allowance by raising a `max_*` input. `maxRequestsPerToolCall` on `createTools` (or on `insightTools`) replaces the default; `Infinity` removes it. A `maxRequestsPerCall` on the instance and a `budget()` still apply under it, and the lowest cap stops the call. A caller can also pass `{ maxRequests }` as the second argument of one tool's `call`.
+
+A call that reaches its allowance stops before the next request and returns `ok: false` with `RateLimited`, `retryable: false`, `meta.requests` and a `next` such as `Do not call again with the same input. Lower max_campaigns to 13, or ask the user to raise maxRequestsPerToolCall (default 287 here).` An insight tool that cannot fit is refused before it spends anything; see [insights](/docs/insights#request-caps).
 
 ## Reply text
 

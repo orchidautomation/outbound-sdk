@@ -235,6 +235,32 @@ export const senderCapacity = defineInsight({
     "Whether the senders can send what the campaigns ask: total daily capacity (the daily limits of active senders added up), the total daily ask of active campaigns, the average messages sent per day over the last days, utilization, and the campaigns whose own senders cannot cover their daily limit. Use it before adding campaigns or when sends fall short. Costs one listing of senders and of active campaigns, then up to 2 requests per campaign and 1 for daily stats, plus 1 per inactive or unlimited sender with split_uncounted. Utilization counts only the sends of the senders in capacity. A null means the vendor does not report the number; a sender or campaign with no reported limit is counted apart, never as 0.",
   inputSchema: input,
   key: "senderCapacity",
+  cost: (values, price) => {
+    const { capabilities } = price;
+    const campaigns = price.campaigns(values.max_campaigns);
+
+    const sends =
+      capabilities["stats.workspace"] === false
+        ? campaigns * price.one("stats")
+        : price.one("stats") +
+          (values.split_uncounted && capabilities["stats.bySender"] !== false
+            ? price.upTo(values.max_senders) * price.one("stats")
+            : 0);
+
+    return (
+      price.list("senders.list", values.max_senders) +
+      price.campaignsIn(1, values.max_campaigns) +
+      (capabilities["campaigns.settings"] === false
+        ? 0
+        : campaigns *
+          (price.one("campaigns.settings") +
+            (capabilities["senders.byCampaign"] === false
+              ? 0
+              : price.list("senders.list", values.max_senders)))) +
+      (capabilities["stats.byDay"] === false ? 0 : sends)
+    );
+  },
+  scales: "max_campaigns",
   name: "sender_capacity",
   needs: ["senders.list"],
   next: "Use sender_load to see which senders are shared by too many campaigns, or warmup_readiness before raising a sender's limit.",

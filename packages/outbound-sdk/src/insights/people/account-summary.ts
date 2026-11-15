@@ -326,6 +326,13 @@ export const accountSummary = defineInsight({
       ? 'email addresses, whose domain it matches people by (under strategy "hash" too: a hashed address keeps no domain)'
       : "email addresses, whose domain it matches people by";
   },
+  cost: (values, price) =>
+    price.capabilities["leads.list"] === false
+      ? price.list("campaigns.list", values.max_campaigns) +
+        price.upTo(values.max_campaigns - 1) * price.list("leads.list", 1) +
+        price.upTo(1) * price.list("leads.list", values.max_leads)
+      : price.list("leads.list", values.max_leads),
+  scales: "max_leads",
   name: "account_summary",
   needs: [],
   next: "Use person_summary with one person's email address or lead ref for their full history, message by message.",

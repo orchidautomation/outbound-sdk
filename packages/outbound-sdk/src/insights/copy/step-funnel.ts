@@ -229,6 +229,7 @@ export const stepFunnel = defineInsight({
     "Where a campaign's replies come from: one row per sequence step with its action, delay, sends, replies, reply rate with a 95% interval, its share of all replies and how far sends fell from the step before, plus rows per variant when the vendor splits them. Names the step with the most replies and the last step that still earns its place. Use it to decide whether to cut or rewrite follow-ups. Costs 2 requests. A null count means the vendor does not report it; it is never 0.",
   inputSchema: input,
   key: "stepFunnel",
+  cost: (_input, price) => price.one("sequence.get") + price.one("stats"),
   name: "step_funnel",
   needs: ["sequence", "stats.byStep"],
   next: "Use variant_test on the same campaign to see whether a step's A/B winner is real, or copy_audit to check the copy of a weak step.",

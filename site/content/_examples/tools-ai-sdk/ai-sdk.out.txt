@@ -35,4 +35,4 @@ How every campaign is doing right now: sends, replies, positive replies, bounces
   "next": "Pick another of the listed tools to go further.",
   "ok": true
 }
-{"error":{"code":"Invalid","message":"campaign_overview: \"client\" is not an input. It takes: from, limit, status, to"},"next":"Check the input and try again.","ok":false}
+{"error":{"code":"Invalid","message":"campaign_overview: \"client\" is not an input. It takes: from, limit, status, to","retryable":false},"next":"Check the input and try again.","ok":false}

@@ -164,31 +164,31 @@ export const costs = {
   "campaigns.settings": { perPage: 1 },
   // The lead, then its tags, then the category list when the lead has a
   // category.
-  "leads.get": { perPage: 2 },
+  "leads.get": { perPage: 2, perWalk: 1 },
   // The first page also reads the lead category list and, without a
   // campaign, the campaign list. A lookup by address is one request, two
   // when a campaign gives a lead category, and never walks leads.
-  "leads.list": { pageSize: PAGE_SIZE, perPage: 1 },
+  "leads.list": { pageSize: PAGE_SIZE, perPage: 1, perWalk: 2 },
   "lists.list": { pageSize: PAGE_SIZE, perPage: 1 },
   // A lead's timeline costs one request per campaign the lead is in, plus one
   // to find those campaigns. A thread is one request.
   "messages.list": { pageSize: ACTIVITIES_PAGE_SIZE, perPage: 1 },
   // The first page of a walk also reads the lead category list.
-  "replies.list": { pageSize: INBOX_PAGE_SIZE, perPage: 1 },
+  "replies.list": { pageSize: INBOX_PAGE_SIZE, perPage: 1, perWalk: 1 },
   "senders.get": { perPage: 1 },
   // The mailbox, then its warmup statistics.
   "senders.health": { perPage: 2 },
   "senders.list": { pageSize: PAGE_SIZE, perPage: 1 },
   "sequence.get": { perPage: 1 },
   // One subsequence per page; the first page also reads the campaign list.
-  "sequence.subsequences": { pageSize: 1, perPage: 1 },
+  "sequence.subsequences": { pageSize: 1, perPage: 1, perWalk: 1 },
   // A mailbox's totals cost two: the mailbox for its address, then the list.
   // Daily rows cost two: the day-wise counts, then the positive replies.
   stats: { perPage: 1 },
   "tags.list": { perPage: 1 },
   // One campaign per page; without a campaign, the first page also reads the
   // campaign list.
-  "webhooks.list": { perPage: 1 },
+  "webhooks.list": { perPage: 1, perWalk: 1 },
   "workspaces.list": { perPage: 1 },
 } satisfies Record<string, OperationCost>;
 

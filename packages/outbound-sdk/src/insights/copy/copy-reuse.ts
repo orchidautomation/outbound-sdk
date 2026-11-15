@@ -299,6 +299,11 @@ export const copyReuse = defineInsight({
     "How the same piece of copy performs in different campaigns. Reads each campaign's sequence and step stats, matches variants by the hash of their subject and body, and returns every piece of copy used in two or more campaigns with its totals, its reply rate per campaign and the spread between its best and worst campaign, plus the copy with the highest pooled reply rate. Use it to tell a copy problem from an audience problem. Every rate is divided by the same base, leads contacted when every campaign counts them and messages sent otherwise; campaigns with no base in common are listed but not compared. Costs 2 requests per campaign plus the campaign listing. A null count means the vendor does not report it for that variant; it is never 0.",
   inputSchema: input,
   key: "copyReuse",
+  cost: (values, price) =>
+    price.campaignsIn(new Set(values.statuses).size, values.max_campaigns) +
+    price.campaigns(values.max_campaigns) *
+      (price.one("sequence.get") + price.one("stats")),
+  scales: "max_campaigns",
   name: "copy_reuse",
   needs: ["sequence", "stats.byStep"],
   next: "Use step_funnel on the campaign where the copy does worst, or variant_test where the copy runs against another variant.",

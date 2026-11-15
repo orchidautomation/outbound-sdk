@@ -237,6 +237,10 @@ export const personalizationGaps = defineInsight({
     "Leads in one campaign who will get broken copy because a merge variable has no value for them. Reads the campaign's sequence, finds every {{variable}}, {variable} and %variable% in subjects and bodies, and checks each lead for a value: first name, last name, company, title, email, or a custom field of the same name without regard to case, spaces, underscores or hyphens. Returns the variables with the steps that use them, how many leads each one affects, and the leads missing at least one. A variable with a fallback such as {{firstName|there}} is not a gap. A variable no lead has, such as a sender signature the tool fills in, is listed as unknown, not counted against leads. Costs one request for the sequence plus one per page of leads.",
   inputSchema: input,
   key: "personalizationGaps",
+  cost: (values, price) =>
+    price.one("sequence.get") +
+    price.upTo(1) * price.list("leads.list", values.max_leads),
+  scales: "max_leads",
   name: "personalization_gaps",
   needs: ["sequence", "leads.byCampaign"],
   next: "Fix the leads' fields or add a fallback in the tool, then use lead_collisions to check the same leads are not in another campaign.",

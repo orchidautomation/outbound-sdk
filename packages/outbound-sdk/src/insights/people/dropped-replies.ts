@@ -314,6 +314,15 @@ export const droppedReplies = defineInsight({
     "Replies from prospects that nobody answered. Reads the replies since a date (14 days before now by default), keeps the categories that need an answer, and for each conversation reads its thread, or the lead's timeline when there is no thread, and reports it as dropped when nothing was sent after the reply and it has waited longer than older_than_hours. Returns the dropped replies longest waiting first with hours waiting, category, the campaign and its name, and the lead with their name, email and LinkedIn profile. A reply that could not be checked is counted in totals.unchecked, never reported as dropped. Costs one request per page of replies, one per conversation checked, and one per lead and per campaign among the dropped replies to name them, so at most about three times max_replies requests. totals.moreRepliesExist is true when max_replies left replies unread.",
   inputSchema: input,
   key: "droppedReplies",
+  cost: (values, price) =>
+    price.list("replies.list", values.max_replies) +
+    price.upTo(values.max_replies) *
+      (price.walk("messages.list") +
+        (price.capabilities["leads.get"] === false
+          ? 0
+          : price.one("leads.get")) +
+        price.one("campaigns.get")),
+  scales: "max_replies",
   name: "dropped_replies",
   needs: ["replies.list"],
   next: "Use person_summary with the lead's ref or email address to read what was sent before answering. Use hot_leads to see who else to contact first.",

@@ -264,6 +264,10 @@ export const domainHealth = defineInsight({
     "Deliverability per sending domain: for each domain its mailboxes, which DNS records (SPF, DKIM, DMARC, MX) fail, how many mailboxes are disconnected or on a block list, the share of warmup emails landing in spam pooled over its mailboxes, and a risk level with the reasons, worst domain first. LinkedIn seats are listed apart with their connection state. Use it before scaling volume or when replies drop. Costs one listing of senders plus 1 request per sender. A null count or rate means the vendor does not report it; a domain with no DNS record reported has the risk `unknown`, not `low`.",
   inputSchema: input,
   key: "domainHealth",
+  cost: (values, price) =>
+    price.list("senders.list", values.max_senders) +
+    price.upTo(values.max_senders) * price.one("senders.health"),
+  scales: "max_senders",
   name: "domain_health",
   needs: ["senders.list", "senders.health"],
   next: "Use warmup_readiness to see which mailboxes of a risky domain are not ready, or bounce_watch to see whether bounces already rose.",

@@ -72,6 +72,40 @@ The range of each cap is on the insight's own section. Thresholds (a bounce rate
 
 `maxRequestsPerCall` on `createOutbound` is a different limit. It is the most vendor requests one call may make, and a call that reaches it fails with `RateLimited` instead of returning part of an answer.
 
+## Request caps
+
+Each insight also has a cap on the vendor requests the whole run may send, retries included, counted across every read it makes, even reads that run side by side. You do not have to set one.
+
+Each insight states what it costs as arithmetic over the reads it makes and the costs the adapter declares. That cost is worked out twice for the input you pass: at the least every read can cost, and at the most, with every `max_*` cap in the input reached.
+
+- **The default cap** is the most, a quarter more for retries (each retry is a request) and 4 on top. An insight that works at its inputs today is not stopped by its default.
+- **`maxRequests`**, the second argument's option, replaces the default: `outbound.insights.clientReport({}, { maxRequests: 100 })`. `maxRequests: Infinity` removes the default. A `maxRequestsPerCall` on the instance and a [`budget()`](/docs/plugins/budget) still apply under it, and the lowest cap stops the run.
+- **`insightCost(outbound, name, input)`** returns `{ min, max, defaultCap }` for an input, or `null` where the cost is unknown.
+
+<include meta='title="costs.ts"'>
+  ../../_examples/insights-index/costs.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/insights-index/costs.out.txt
+</include>
+
+A `-` is an insight that adapter cannot serve. `bounceWatch` is the one whose default inputs can cost more than an [insight tool call](/docs/tools#request-caps) may spend, 500 requests: 50 campaigns, each over the bounce rate with 10 senders to read, is about 600. Such a tool call stops at 500, and its result names the `max_campaigns` to ask for.
+
+### Refused before the first request
+
+An insight whose **least** cost for the input is over its cap, or over what a `budget({ per: "run" })` has left, is refused before it sends anything: `RateLimited`, `limit: "call"`, `permanent: true`, with the least, the most, the cap and the input to lower. The check uses the lower bound on purpose. The most an input can cost assumes every cap is reached, which a small workspace never comes near, so refusing on it would turn away calls that fit.
+
+An insight that lists campaigns checks again once the listing is read. The number of campaigns is then known, so the least is closer to the truth, and a run that cannot afford even that stops there, having spent only the listing. The message has the same form.
+
+Where the adapter declares no costs, as a [combined](/docs/adapters/combine) instance does, nothing is checked and there is no default cap: the run behaves as it always has. Scope it with `outbound.workspace(id)` to get both.
+
+### Stopped part way
+
+A run that reaches its cap part way stops before the next request. The answer cannot be finished from what was read, so it fails with `RateLimited`, `limit: "call"`, the requests it sent and the input to lower. An insight that counts a failed read as unchecked, such as `droppedReplies`, finishes instead, with `meta.complete: false` and a note naming the cap.
+
+Costs are read from the adapter's declared costs, which state the usual case. A read that costs more than declared (a custom lead label on Instantly, for example) is in the margin; a thread or timeline is priced as one page.
+
 ## Counts that are null
 
 A count a vendor does not report is `null`, never `0`, and so is every rate built on it. An insight sets such a record apart and says why. It does not rank it last or count it as clean.
@@ -262,6 +296,8 @@ outbound insight client_report --input '{}'
 
 `run` receives a context. Read through its helpers so the cost and the evidence of every read reach `meta`.
 
+Give the definition a `cost` to have a default cap and the check before the first request: `cost: (input, price) => price.one("stats") + price.list("leads.list", input.max_leads)`. `price` has `one(action)`, `list(action, max)`, `walk(action)`, `lookup(max)`, `campaignsIn(statuses, max)`, `campaigns(max)`, `upTo(max)` and `capabilities`; the cost is worked out once at the least each of them can be and once at the most. `scales` names the input a cap message tells the caller to lower. Without `cost` an insight has no default cap.
+
 | On the context | What it does |
 | --- | --- |
 | `outbound` | The instance to read through. |
@@ -272,6 +308,7 @@ outbound insight client_report --input '{}'
 | `all(walk, cap)` | Walks a `listAll` to its end or its `max`, and marks the answer incomplete when `max` cut it short. `cap` (`{ max, what, input }`) names what was capped and the input that raises it, for the note. |
 | `note(text)` | Adds a note. The same note is kept once. |
 | `partial(reason)` | Marks the answer incomplete, with the reason as a note. |
+| `campaignsFound(count)` | Says how many campaigns were found, once they are listed. A run whose least cost for that many is over its cap stops there. The built-in insights call it after their campaign listing. |
 
 The arithmetic is exported from `outbound-sdk/insights` as plain functions:
 

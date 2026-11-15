@@ -227,6 +227,12 @@ export const suppressionCheck = defineInsight({
     fields.includes("email") && strategy === "mask"
       ? "email addresses, which it matches leads to the block list by"
       : null,
+  cost: (values, price) =>
+    price.list("blocklist.list", values.max_block_entries) +
+    price.campaignsIn(new Set(values.statuses).size, values.max_campaigns) +
+    price.campaigns(values.max_campaigns) *
+      price.list("leads.list", values.max_leads_per_campaign),
+  scales: "max_campaigns",
   name: "suppression_check",
   needs: ["blocklist", "leads.byCampaign"],
   next: "Use person_summary with a violating lead's ref or email address to see what they were already sent.",

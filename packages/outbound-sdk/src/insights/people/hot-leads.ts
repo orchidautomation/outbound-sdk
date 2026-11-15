@@ -407,6 +407,18 @@ export const hotLeads = defineInsight({
     "Who to call first: leads ranked by a score built from what the vendor reports, namely a positive interest label, replies, clicks, opens and how recent the last reply is. Every score comes with its parts, and the weights are inputs. A lead with no label and no engagement data is left out and counted in totals.withoutData, never scored 0; unsubscribed and bounced leads are left out too. Give a campaign ref to rank one campaign (an unknown one is refused with NotFound), or none to rank every lead the tool lists. A lead the vendor labels out-of-office or bounced (its interest category, or a label reading out of office) earns no reply or recency points, since a vendor's reply count may include automatic replies; a lead it labels negative (the negative or unsubscribe category, or a label reading not interested, wrong person, unsubscribed or do not contact) earns no points at all, from clicks and opens either, and is listed after every lead with a score above 0 while limit leaves room; its reason names the label. Costs one request per page of leads read (max_leads sets the ceiling). When max_leads stops the listing with more leads left, totals.moreLeadsExist is true and it also reads up to 100 replies from the last recency_days days and one request per replied lead the listing missed, at most limit of them, so engaged leads past the cap are still ranked. A part that is null means the vendor does not report that signal.",
   inputSchema: input,
   key: "hotLeads",
+  cost: (values, price) =>
+    price.list("leads.list", values.max_leads) +
+    (values.campaign === null
+      ? 0
+      : price.upTo(1) * price.one("campaigns.get")) +
+    (price.capabilities["replies.list"] === false ||
+    price.capabilities["leads.get"] === false
+      ? 0
+      : price.upTo(1) *
+        (price.list("replies.list", 100) +
+          price.upTo(values.limit) * price.one("leads.get"))),
+  scales: "max_leads",
   name: "hot_leads",
   needs: [],
   next: "Use person_summary with a lead's ref, email address or LinkedIn profile to read the conversation before calling.",

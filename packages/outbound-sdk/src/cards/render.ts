@@ -134,6 +134,7 @@ const asToolResult = (input: CardInput): ToolResult | null => {
       error: {
         code: text(field(error, "code")) ?? "Unknown",
         message: text(field(error, "message")) ?? "No message was given.",
+        retryable: flag(field(error, "retryable")) ?? false,
       },
       next: "",
       ok: false,
