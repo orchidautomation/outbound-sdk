@@ -74,7 +74,7 @@ A command runs with one [plugin](/docs/plugins) by default, [identity](/docs/plu
 
 ## Output
 
-A command prints one JSON value on standard output: indented by default, on one line with `--compact`. Records are the SDK's [records](/docs/api/records), with `meta` on a single read. List commands print a plain array and stop at `--limit`, which defaults to 50.
+A command prints one JSON value on standard output: indented by default, on one line with `--compact`. Records are the SDK's [records](/docs/api/records), with `meta` on a single read, less `raw`, the vendor's own payload; `--raw` keeps it. List commands print a plain array and stop at `--limit`, which defaults to 50.
 
 <include meta='title="output.ts"'>../../_examples/cli-index/output.ts</include>
 

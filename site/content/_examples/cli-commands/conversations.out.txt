@@ -2,7 +2,6 @@ $ outbound replies --category positive --limit 1
 [
   {
     "provider": "memory",
-    "raw": null,
     "ref": "memory:default:msg_2",
     "schemaVersion": 1,
     "sourceId": "msg_2",
@@ -27,7 +26,7 @@ $ outbound replies --category positive --limit 1
 ]
 
 $ outbound replies --campaign cmp_founders --since 2026-11-12T00:00:00Z --bodies --compact
-[{"provider":"memory","raw":null,"ref":"memory:default:msg_2","schemaVersion":1,"sourceId":"msg_2","workspaceId":"default","bodyHtml":null,"bodyText":"Thanks, happy to chat next week.","campaignRef":"memory:default:cmp_founders","channel":"email","leadRef":"memory:default:lead_1","senderRef":"memory:default:mbx_1","sentAt":"2026-11-12T09:30:00.000Z","stepIndex":null,"subject":"Re: Quick question","threadId":"thr_1","variantKey":null,"category":"positive","categorySource":"vendor","direction":"in","isAuto":false,"unread":null}]
+[{"provider":"memory","ref":"memory:default:msg_2","schemaVersion":1,"sourceId":"msg_2","workspaceId":"default","bodyHtml":null,"bodyText":"Thanks, happy to chat next week.","campaignRef":"memory:default:cmp_founders","channel":"email","leadRef":"memory:default:lead_1","senderRef":"memory:default:mbx_1","sentAt":"2026-11-12T09:30:00.000Z","stepIndex":null,"subject":"Re: Quick question","threadId":"thr_1","variantKey":null,"category":"positive","categorySource":"vendor","direction":"in","isAuto":false,"unread":null}]
 
 $ outbound thread thr_1 --bodies
 {
@@ -35,7 +34,6 @@ $ outbound thread thr_1 --bodies
   "items": [
     {
       "provider": "memory",
-      "raw": null,
       "ref": "memory:default:msg_1",
       "schemaVersion": 1,
       "sourceId": "msg_1",
@@ -55,7 +53,6 @@ $ outbound thread thr_1 --bodies
     },
     {
       "provider": "memory",
-      "raw": null,
       "ref": "memory:default:msg_2",
       "schemaVersion": 1,
       "sourceId": "msg_2",

@@ -49,7 +49,6 @@ $ outbound tags
 [
   {
     "provider": "memory",
-    "raw": null,
     "ref": "memory:default:tag_a",
     "schemaVersion": 1,
     "sourceId": "tag_a",
@@ -63,7 +62,6 @@ $ outbound blocklist
 [
   {
     "provider": "memory",
-    "raw": null,
     "ref": "memory:default:blk_1",
     "schemaVersion": 1,
     "sourceId": "blk_1",
@@ -78,7 +76,6 @@ $ outbound webhooks
 [
   {
     "provider": "memory",
-    "raw": null,
     "ref": "memory:default:wh_1",
     "schemaVersion": 1,
     "sourceId": "wh_1",
