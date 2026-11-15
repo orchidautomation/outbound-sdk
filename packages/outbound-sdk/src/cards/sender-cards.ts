@@ -69,9 +69,16 @@ const RISK_ORDER = ["high", "medium", "unknown", "low"];
 const riskMark = (risk: string | null): string =>
   risk === "low" ? mark("ok") : mark(risk);
 
+// Silence about DNS is not good news, so it is not told as "no high risk".
+const unknownRisk = (unknown: number): string | null =>
+  unknown === 0
+    ? null
+    : `⚪ ${plural(unknown, "sending domain")} of unknown risk: the vendor reports none of SPF, DKIM, DMARC and MX for ${unknown === 1 ? "it" : "them"}. No domain is at high risk on what it reports.`;
+
 const domainHealth: CardBuilder = (data) => {
   const totals = child(data, "totals");
   const high = num(totals, "high") ?? 0;
+  const unknown = num(totals, "unknown") ?? 0;
 
   const domains = rows(data, "domains").toSorted(
     (left, right) =>
@@ -91,7 +98,9 @@ const domainHealth: CardBuilder = (data) => {
     }),
     finding: verdict(
       num(totals, "domains"),
-      high === 0 ? null : `🔴 ${plural(high, "sending domain")} at high risk.`,
+      high > 0
+        ? `🔴 ${plural(high, "sending domain")} at high risk.`
+        : unknownRisk(unknown),
       "No sending domain is at high risk."
     ),
     stats: [
@@ -99,17 +108,26 @@ const domainHealth: CardBuilder = (data) => {
       ["High risk", int(high)],
       ["Medium risk", int(num(totals, "medium"))],
       ["Low risk", int(num(totals, "low"))],
+      ["Unknown risk", int(unknown)],
       ["LinkedIn seats", int(num(totals, "linkedinSeats"))],
     ],
     table: {
-      align: [LEFT, LEFT, RIGHT, LEFT, RIGHT],
-      headers: ["Domain", "Risk", "Mailboxes", "Failing DNS", "Warmup spam"],
+      align: [LEFT, LEFT, RIGHT, LEFT, RIGHT, LEFT],
+      headers: [
+        "Domain",
+        "Risk",
+        "Mailboxes",
+        "Failing DNS",
+        "Warmup spam",
+        "Not reported",
+      ],
       rows: domains.map((domain) => [
         show(domain, "domain"),
         `${riskMark(str(domain, "risk"))} ${show(domain, "risk")}`,
         int(rows(domain, "mailboxes").length),
         strings(domain, "failingDns").join(" ").toUpperCase() || DASH,
         pct(num(child(domain, "warmup"), "spamRate")),
+        strings(domain, "notReported").join(", ") || DASH,
       ]),
     },
     title: "Domain health",

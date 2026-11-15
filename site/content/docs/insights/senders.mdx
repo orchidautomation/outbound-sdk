@@ -37,7 +37,7 @@ Deliverability per sending domain: DNS records, sign-in, block lists and the sha
 
 `data` (`DomainHealth`):
 
-- `domains`: one entry per domain, worst first, with `risk` (`high`, `medium`, `low` or `unknown`), `reasons`, `mailboxes` (each with `address`, `status`, `connected`, `blacklisted`, `failingDns` and the vendor's own `issues`), `failingDns`, `disconnected`, `blacklisted`, `warmup` (pooled over the mailboxes that report it: `mailboxes`, `sent`, `spam`, `spamRate`, `interval`) and `notReported`.
+- `domains`: one entry per domain, worst first, with `risk` (`high`, `medium`, `low` or `unknown`), `reasons`, `mailboxes` (each with `address`, `status`, `connected`, `blacklisted`, `failingDns` and the vendor's own `issues`), `failingDns`, `disconnected`, `blacklisted` (`null` when no mailbox of the domain reports its block list status), `warmup` (pooled over the mailboxes that report it: `mailboxes`, `sent`, `spam`, `spamRate`, `interval`) and `notReported`.
 - `linkedinSeats`: seats have no domain. Each has `name`, `linkedinUrl`, `status`, `connected` and `issues`. Disconnected seats first.
 - `mailboxesWithoutDomain`: sender refs whose domain is not known.
 - `totals`: `senders`, `domains`, `high`, `medium`, `low`, `unknown` and `linkedinSeats`.
@@ -48,13 +48,13 @@ How the risk is set:
 | --- | --- |
 | `high` | A mailbox is on a block list, SPF, DKIM or MX fails, or the pooled warmup spam rate is over the threshold. |
 | `medium` | DMARC fails, or a mailbox is disconnected. |
-| `low` | None of the above, and the vendor reported at least one check. |
-| `unknown` | The vendor reported nothing for any mailbox of the domain. |
+| `low` | None of the above, and the vendor reported at least one of SPF, DKIM, DMARC and MX. |
+| `unknown` | None of the above, and the vendor reported none of SPF, DKIM, DMARC and MX for any mailbox of the domain. |
 
 - **Needs:** `senders.list`, `senders.health`.
 - **Costs:** one listing of senders, plus 1 request per sender.
 - **Notes it can add:** a cap was reached.
-- **Does not:** look up DNS itself. It reports what the vendor says about each mailbox. A check the vendor reports for no mailbox of a domain is named in `notReported`, and a domain with nothing reported is `unknown`, not `low`.
+- **Does not:** look up DNS itself. It reports what the vendor says about each mailbox. A check the vendor reports for no mailbox of a domain is named in `notReported`, and a domain with no DNS record reported is `unknown`, not `low`. The card lists what is not reported per domain.
 
 <include meta='title="domain-health.ts"'>
   ../../_examples/insights-senders/domain-health.ts

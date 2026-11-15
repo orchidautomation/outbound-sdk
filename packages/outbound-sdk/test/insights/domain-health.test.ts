@@ -148,6 +148,7 @@ test("domain_health groups mailboxes by domain and ranks the domains worst first
   assert.deepEqual(good?.reasons, []);
   assert.equal(good?.mailboxes[0]?.address, "d@good.example");
 
+  assert.equal(part?.blacklisted, null);
   assert.deepEqual(part?.notReported, [
     "dkim",
     "dmarc",
@@ -199,7 +200,32 @@ test("domain_health keeps what the vendor does not report as null, and a silent 
     sender: ref("s5"),
     status: "active",
   });
-  assert.equal(quiet?.blacklisted, 0);
+  // No mailbox reports a block list status, so the count is unknown, not 0.
+  assert.equal(quiet?.blacklisted, null);
+});
+
+test("domain_health calls a domain unknown, not low, when the vendor reports none of its DNS records", async () => {
+  const result = await single({
+    senders: [
+      {
+        address: "a@nodns.example",
+        health: {
+          blacklisted: false,
+          connected: true,
+          warmup: { sent: 100, spam: 1 },
+        },
+        id: "s1",
+      },
+    ],
+  }).insights.domainHealth({});
+
+  const [domain] = result.data.domains;
+
+  assert.equal(domain?.risk, "unknown");
+  assert.deepEqual(domain?.reasons, []);
+  assert.equal(domain?.blacklisted, 0);
+  assert.deepEqual(domain?.notReported, ["spf", "dkim", "dmarc", "mx"]);
+  assert.equal(result.data.totals.unknown, 1);
 });
 
 test("domain_health lists LinkedIn seats apart, disconnected first, and mailboxes with no domain", async () => {

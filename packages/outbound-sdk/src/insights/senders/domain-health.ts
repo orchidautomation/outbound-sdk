@@ -69,7 +69,8 @@ export interface DomainReport {
   /** DNS records that fail on at least one mailbox. */
   readonly failingDns: readonly DnsRecord[];
   readonly disconnected: number;
-  readonly blacklisted: number;
+  /** Mailboxes on a block list. `null` when no mailbox of the domain reports its block list status. */
+  readonly blacklisted: number | null;
   readonly warmup: DomainWarmup;
   /** Checks the vendor reported for no mailbox of the domain. */
   readonly notReported: readonly string[];
@@ -154,8 +155,6 @@ const missingChecks = (
   ...(warmup.mailboxes === 0 ? ["warmup"] : []),
 ];
 
-const CHECKS = DNS_RECORDS.length + 3;
-
 const reportFor = (
   domain: string,
   checked: readonly Checked[],
@@ -165,20 +164,22 @@ const reportFor = (
     checked.some(({ health }) => health.dns[record] === false)
   );
 
-  const blacklisted = checked.filter(
-    ({ health }) => health.blacklisted === true
-  ).length;
+  const warmup = pooledWarmup(checked);
+  const notReported = missingChecks(checked, warmup);
+
+  const blacklisted = notReported.includes("blocklist")
+    ? null
+    : checked.filter(({ health }) => health.blacklisted === true).length;
 
   const disconnected = checked.filter(
     ({ health }) => health.connected === false
   ).length;
 
-  const warmup = pooledWarmup(checked);
   const authFailing = failing.filter((record) => record !== "dmarc");
   const spamHigh = warmup.spamRate !== null && warmup.spamRate > threshold;
 
   const high = [
-    ...(blacklisted > 0
+    ...((blacklisted ?? 0) > 0
       ? [`${blacklisted} of ${checked.length} mailboxes are on a block list`]
       : []),
     ...(authFailing.length > 0
@@ -198,9 +199,12 @@ const reportFor = (
       : []),
   ];
 
-  const notReported = missingChecks(checked, warmup);
-
-  const calm: DomainRisk = notReported.length === CHECKS ? "unknown" : "low";
+  // With no DNS record reported, nothing says the domain is sound.
+  const calm: DomainRisk = DNS_RECORDS.every((record) =>
+    notReported.includes(record)
+  )
+    ? "unknown"
+    : "low";
 
   const lesser: DomainRisk = medium.length > 0 ? "medium" : calm;
 
@@ -242,7 +246,7 @@ const seatRank = (seat: LinkedinSeat): number => {
 
 export const domainHealth = defineInsight({
   description:
-    "Deliverability per sending domain: for each domain its mailboxes, which DNS records (SPF, DKIM, DMARC, MX) fail, how many mailboxes are disconnected or on a block list, the share of warmup emails landing in spam pooled over its mailboxes, and a risk level with the reasons, worst domain first. LinkedIn seats are listed apart with their connection state. Use it before scaling volume or when replies drop. Costs one listing of senders plus 1 request per sender. A null count or rate means the vendor does not report it; a domain with nothing reported has the risk `unknown`, not `low`.",
+    "Deliverability per sending domain: for each domain its mailboxes, which DNS records (SPF, DKIM, DMARC, MX) fail, how many mailboxes are disconnected or on a block list, the share of warmup emails landing in spam pooled over its mailboxes, and a risk level with the reasons, worst domain first. LinkedIn seats are listed apart with their connection state. Use it before scaling volume or when replies drop. Costs one listing of senders plus 1 request per sender. A null count or rate means the vendor does not report it; a domain with no DNS record reported has the risk `unknown`, not `low`.",
   inputSchema: input,
   key: "domainHealth",
   name: "domain_health",

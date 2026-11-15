@@ -157,6 +157,30 @@ test("domain_health puts the riskiest domain first", () => {
   includes(read(cardFor("domain_health", insight(domains([])))), NOTHING);
 });
 
+test("domain_health says a domain with no DNS checks reported is of unknown risk, and lists what is not reported", () => {
+  const silent: DomainReport = {
+    ...domain("quiet.example", "unknown"),
+    notReported: ["spf", "dkim", "dmarc", "mx", "blocklist"],
+    reasons: [],
+  };
+
+  const report = domains([silent]);
+
+  const text = read(
+    cardFor(
+      "domain_health",
+      insight({ ...report, totals: { ...report.totals, unknown: 1 } })
+    )
+  );
+
+  includes(
+    text,
+    "⚪ 1 sending domain of unknown risk: the vendor reports none of SPF, DKIM, DMARC and MX for it.",
+    "spf, dkim, dmarc, mx, blocklist"
+  );
+  excludes(text, "🟢");
+});
+
 test("sender_capacity repeats the finding and lists short campaigns", () => {
   const capacity: SenderCapacity = {
     ask: { campaigns: 3, daily: 500, withLimit: 3, withoutLimit: 0 },

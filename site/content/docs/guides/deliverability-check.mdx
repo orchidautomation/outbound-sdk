@@ -41,7 +41,7 @@ The first part is the function's return value. The last part is what the notifie
 
 How the two insights judge:
 
-- **A domain is `high` risk** when a mailbox is on a block list, when SPF, DKIM or MX fails, or when warmup emails land in spam more often than `spam_rate_threshold` (default 0.1), pooled over the domain's mailboxes. It is `medium` when DMARC fails or a mailbox is disconnected. It is `unknown`, not `low`, when the vendor reports none of the seven checks. `notReported` lists the checks the vendor reported for no mailbox of the domain.
+- **A domain is `high` risk** when a mailbox is on a block list, when SPF, DKIM or MX fails, or when warmup emails land in spam more often than `spam_rate_threshold` (default 0.1), pooled over the domain's mailboxes. It is `medium` when DMARC fails or a mailbox is disconnected. It is `unknown`, not `low`, when nothing above applies and the vendor reports none of SPF, DKIM, DMARC and MX. `blacklisted` is `null`, not 0, when no mailbox of the domain reports its block list status. `notReported` lists the checks the vendor reported for no mailbox of the domain.
 - **A campaign is "over"** when bounced divided by sent is above `threshold` (default 0.03) and it has at least `min_sent` sends (default 100). A campaign with fewer sends goes in `tooFewSends`, and one with no sent or bounce count goes in `unknown`. Neither is counted as clean.
 - **Senders under a campaign** are counted over everything each sender sent in the period, not that campaign alone. A sender shared by two campaigns shows the same numbers under both.
 - **Rates carry an interval.** Each bounce rate and each pooled warmup spam rate has a 95% Wilson interval, wide on few sends.
@@ -98,7 +98,7 @@ The same function, run on the in-memory adapter limited to what each vendor's ad
   ../../_examples/deliverability-check/vendors.out.txt
 </include>
 
-All three declare what the function needs. What each vendor reports inside a health record differs, and the adapters say so in their caveats: Instantly reports no block list state, Smartlead reports no DNS records or block list state, and HeyReach's health is a LinkedIn account's connection state only. Those checks show up in `notReported`.
+All three declare what the function needs. What each vendor reports inside a health record differs, and the adapters say so in their caveats: Instantly reports no block list state, Smartlead reports no DNS records or block list state, and HeyReach's health is a LinkedIn account's connection state only. Those checks show up in `notReported`, so a Smartlead domain with nothing else wrong comes back `unknown`, not `low`.
 
 ## What it costs in vendor requests
 
@@ -121,7 +121,7 @@ All three declare what the function needs. What each vendor reports inside a hea
 | --- | --- | --- |
 | The notifier throws or rejects | The read succeeds. The failure is swallowed and reported nowhere. | Catch and log inside your notifier. A check that returns no alerts is not proof the notifier works. |
 | More senders than `max_senders` | `meta.complete` is `false` and a note says where it stopped | Raise the cap (up to 500), or accept a check of the first senders. |
-| The vendor reports nothing for a domain | Risk `unknown`, with every check in `notReported` | Check the domain's DNS with another tool. |
+| The vendor reports no DNS record for a domain | Risk `unknown`, with `spf`, `dkim`, `dmarc` and `mx` in `notReported` | Check the domain's DNS with another tool. |
 | The adapter has no stats per sender, or cannot list a campaign's senders | Campaigns are still checked; `senders` is `null` and a note says why | Find the sender in the vendor tool. |
 | The adapter cannot read sender health | `Unsupported` for `domainHealth`, before any request | Run `bounceWatch` alone. |
 | The scheduler did not run | Nothing. No read, no alert, no error. | Monitor the scheduled job itself. |
