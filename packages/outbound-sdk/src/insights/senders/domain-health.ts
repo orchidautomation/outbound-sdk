@@ -12,7 +12,8 @@ import {
   DNS_RECORDS,
   domainOf,
   failingDns,
-  readCapped,
+  readHealth,
+  readSenders,
   unknownDns,
   warmupSpam,
 } from "./read.ts";
@@ -93,6 +94,7 @@ export interface DomainHealth {
   /** Mailboxes whose domain is not known, by sender ref. */
   readonly mailboxesWithoutDomain: readonly string[];
   readonly totals: {
+    /** Senders checked. One the vendor no longer finds is left out, with a note. */
     readonly senders: number;
     readonly domains: number;
     readonly high: number;
@@ -256,24 +258,21 @@ export const domainHealth = defineInsight({
     context,
     { max_senders: maxSenders, spam_rate_threshold: threshold }
   ) => {
-    const { outbound } = context;
-
-    const senders = await readCapped(
-      context,
-      (cap) => outbound.senders.listAll({ max: cap }),
-      maxSenders,
-      "senders",
-      "max_senders"
-    );
+    const senders = await readSenders(context, maxSenders);
 
     const byDomain = new Map<string, Checked[]>();
     const linkedinSeats: LinkedinSeat[] = [];
     const mailboxesWithoutDomain: string[] = [];
 
-    const checks = await mapConcurrent(senders, async (sender) => ({
-      health: context.one(await outbound.sender(sender.ref).health()),
+    const read = await mapConcurrent(senders, async (sender) => ({
+      health: await readHealth(context, sender),
       sender,
     }));
+
+    // A sender the vendor no longer finds is left out, with a note.
+    const checks = read.flatMap(({ health, sender }) =>
+      health === null ? [] : [{ health, sender }]
+    );
 
     for (const { health, sender } of checks) {
       const domain = health.domain ?? domainOf(sender.address);
@@ -316,7 +315,7 @@ export const domainHealth = defineInsight({
         linkedinSeats: linkedinSeats.length,
         low: count("low"),
         medium: count("medium"),
-        senders: senders.length,
+        senders: checks.length,
         unknown: count("unknown"),
       },
     };

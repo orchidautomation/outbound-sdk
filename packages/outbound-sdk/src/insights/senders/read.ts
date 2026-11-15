@@ -10,6 +10,7 @@ import type {
   CampaignStatus,
   Sender,
 } from "../../internal/entities.ts";
+import { OutboundError } from "../../internal/errors.ts";
 import type { ListAll } from "../../internal/outbound/api.ts";
 import { readCampaignsIn, readCapped as readUpTo } from "../capped.ts";
 import type { InsightContext } from "../define.ts";
@@ -70,6 +71,43 @@ export const readCampaignSenders = (
     `senders of campaign ${campaign.name}`,
     input
   );
+
+/** Every sender of the workspace, up to `max_senders`. */
+export const readSenders = (
+  context: InsightContext,
+  max: number
+): Promise<Sender[]> =>
+  readCapped(
+    context,
+    (cap) => context.outbound.senders.listAll({ max: cap }),
+    max,
+    "senders",
+    "max_senders"
+  );
+
+/**
+ * One sender's health, or `null` when the vendor no longer finds the sender,
+ * for example a mailbox deleted mid-run. That sender is left out with a note
+ * naming it, and the answer is marked incomplete. Any other error throws.
+ */
+export const readHealth = async (
+  context: InsightContext,
+  sender: Sender
+): Promise<SenderHealth | null> => {
+  try {
+    return context.one(await context.outbound.sender(sender.ref).health());
+  } catch (error) {
+    if (!OutboundError.is(error) || error.code !== "NotFound") {
+      throw error;
+    }
+
+    context.partial(
+      `Left out ${sender.address ?? sender.ref}: the vendor no longer finds this sender.`
+    );
+
+    return null;
+  }
+};
 
 /** The part after the `@`, lowercased. `null` for a LinkedIn seat. */
 export const domainOf = (address: string | null): string | null => {

@@ -8,7 +8,7 @@ import { defineInsight } from "../define.ts";
 import {
   readCampaigns,
   readCampaignSenders,
-  readCapped,
+  readSenders,
   statusesInput,
 } from "./read.ts";
 
@@ -135,16 +135,9 @@ export const senderLoad = defineInsight({
   needs: ["senders.list", "senders.byCampaign"],
   next: "Use sender_capacity to see whether the senders can cover the campaigns' daily limits, or warmup_readiness for the senders that are not active.",
   run: async (context, options) => {
-    const { outbound } = context;
     const allowed = options.max_campaigns_per_sender;
 
-    const senders = await readCapped(
-      context,
-      (cap) => outbound.senders.listAll({ max: cap }),
-      options.max_senders,
-      "senders",
-      "max_senders"
-    );
+    const senders = await readSenders(context, options.max_senders);
 
     const campaigns = await readCampaigns(
       context,

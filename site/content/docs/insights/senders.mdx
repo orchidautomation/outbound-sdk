@@ -53,7 +53,7 @@ How the risk is set:
 
 - **Needs:** `senders.list`, `senders.health`.
 - **Costs:** one listing of senders, plus 1 request per sender.
-- **Notes it can add:** a cap was reached.
+- **Notes it can add:** a cap was reached; a sender the vendor no longer finds (its health read answered `NotFound`) was left out, which also sets `meta.complete` to `false`. Any other error, such as a refused key or an outage, still throws.
 - **Does not:** look up DNS itself. It reports what the vendor says about each mailbox. A check the vendor reports for no mailbox of a domain is named in `notReported`, and a domain with no DNS record reported is `unknown`, not `low`. The card lists what is not reported per domain.
 
 <include meta='title="domain-health.ts"'>
@@ -193,7 +193,7 @@ The reasons:
 
 - **Needs:** `senders.list`. `check_health` also needs `senders.health`.
 - **Costs:** one listing of senders, plus 1 request per mailbox with `check_health`.
-- **Notes it can add:** DNS records and warmup spam were not checked because the adapter cannot read a sender's health; a cap was reached.
+- **Notes it can add:** DNS records and warmup spam were not checked because the adapter cannot read a sender's health; a cap was reached; with `check_health`, a mailbox the vendor no longer finds was left out, which also sets `meta.complete` to `false`.
 - **Does not:** treat a missing score as 0. A `null` score means the vendor does not report one, which counts as not ready under its own reason. A LinkedIn seat is judged on its status only.
 
 <include meta='title="warmup-readiness.ts"'>

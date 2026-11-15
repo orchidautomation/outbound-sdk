@@ -11,7 +11,7 @@ import {
   dayFrom,
   readCampaigns,
   readCampaignSenders,
-  readCapped,
+  readSenders,
 } from "./read.ts";
 
 const input = z.object({
@@ -331,13 +331,7 @@ export const senderCapacity = defineInsight({
     const { outbound } = context;
     const { capabilities } = outbound;
 
-    const senders = await readCapped(
-      context,
-      (cap) => outbound.senders.listAll({ max: cap }),
-      maxSenders,
-      "senders",
-      "max_senders"
-    );
+    const senders = await readSenders(context, maxSenders);
 
     const campaigns = await readCampaigns(context, ["active"], maxCampaigns);
 

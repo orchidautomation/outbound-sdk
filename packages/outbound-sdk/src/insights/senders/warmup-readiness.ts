@@ -7,7 +7,7 @@ import type { SenderHealth } from "../../internal/entities-account.ts";
 import type { Sender } from "../../internal/entities.ts";
 import { defineInsight } from "../define.ts";
 import { percent, rate, spoken } from "../stats.ts";
-import { failingDns, readCapped, warmupSpam } from "./read.ts";
+import { failingDns, readHealth, readSenders, warmupSpam } from "./read.ts";
 
 const input = z.object({
   check_health: z
@@ -196,13 +196,7 @@ export const warmupReadiness = defineInsight({
       minScore: options.min_score,
     };
 
-    const senders = await readCapped(
-      context,
-      (cap) => outbound.senders.listAll({ max: cap }),
-      options.max_senders,
-      "senders",
-      "max_senders"
-    );
+    const senders = await readSenders(context, options.max_senders);
 
     const healthChecked =
       options.check_health && outbound.capabilities["senders.health"];
@@ -213,17 +207,18 @@ export const warmupReadiness = defineInsight({
       );
     }
 
-    const judged: UnreadySender[] = await mapConcurrent(
-      senders,
-      async (sender) => {
-        const health =
-          healthChecked && sender.kind === "mailbox"
-            ? context.one(await outbound.sender(sender.ref).health())
-            : null;
-
-        return judge(sender, health, bars);
+    const each = await mapConcurrent(senders, async (sender) => {
+      if (!healthChecked || sender.kind !== "mailbox") {
+        return [judge(sender, null, bars)];
       }
-    );
+
+      // A mailbox the vendor no longer finds is left out, with a note.
+      const health = await readHealth(context, sender);
+
+      return health === null ? [] : [judge(sender, health, bars)];
+    });
+
+    const judged: UnreadySender[] = each.flat();
 
     const notReady = judged
       .filter((sender) => sender.reasons.length > 0)
