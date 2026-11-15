@@ -17,7 +17,7 @@ Merge variables: 3 of 5 leads would get broken copy
   cara@example.com is missing company
 
 Settings: 6 findings
-  [high] The daily limit of 200 is over 50 a day for each of its 2 senders (100).
+  [high] The daily limit of 200 is over the 60 a day its 2 senders can send.
   [high] A lead who replies keeps getting the next steps.
   [medium] A sending window is 14 hours long, over 12.
   [medium] Open tracking is on, a deliverability risk.

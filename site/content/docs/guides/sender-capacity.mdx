@@ -104,6 +104,7 @@ The function above reads the senders three times and each campaign's senders twi
 | No active sender reports a daily limit | `capacity.daily` is `null` and the finding says capacity is unknown | Read the limits in the vendor tool. Do not treat it as 0. |
 | The adapter cannot read campaign settings | `ask` is `null`, with a note | State capacity and recent sends only, as the function does. |
 | More active campaigns than `max_campaigns` | `meta.complete` is `false`; the ask covers the campaigns read, so it is too low | Raise the cap (up to 200). |
+| What inactive senders or senders with no limit sent cannot be told apart | `sends.fromUncounted` and `utilization` are `null`, with a note | Compare `sends.averageDaily` with capacity yourself, knowing it may include senders outside it. |
 | Input out of range | `Invalid`, before any request | Fix the value. |
 | The adapter cannot list senders | `Unsupported`, before any request | None of the three insights can run. |
 | The adapter cannot list a campaign's senders | `senderLoad` is `Unsupported`; `senderCapacity` returns `shortCampaigns` `null` with a note | Use `senderCapacity` and `warmupReadiness` alone. |

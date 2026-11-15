@@ -1,4 +1,4 @@
-4 active senders can send 120 a day. Active campaigns ask for 110, which fits. 93 a day were sent on average over the last 7 days.
+4 active senders can send 120 a day. Active campaigns ask for 110, which fits. 93 a day were sent on average over the last 7 days; senders not counted in capacity sent 60 of the 651.
 Headroom is 10 a day. A campaign of 40 a day does not fit: short by 30.
 
 Before you count on that capacity:
@@ -8,3 +8,6 @@ Before you count on that capacity:
   - Ecommerce ops has 3 senders, 1 of them not active.
 
 Active senders attached to no campaign: eve@example.com
+
+Read this before relying on the numbers:
+  - DNS records and warmup spam were not checked, so a ready mailbox is ready on warmup alone. Pass check_health: true to check them, at 1 more request per mailbox.

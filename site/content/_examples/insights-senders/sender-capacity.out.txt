@@ -9,6 +9,6 @@ capacity: {
   withoutLimit: 1
 }
 ask: { campaigns: 4, daily: 280, withLimit: 3, withoutLimit: 1 }
-utilization 0.8846, ask ratio 2.1538, sends counted over 7 days
+utilization null, ask ratio 2.1538, sends counted over 7 days
 short by 130: Agency owners asks for 200 a day but its 2 active senders can send 70.
 campaigns not checked: 1

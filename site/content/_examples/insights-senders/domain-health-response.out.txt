@@ -97,7 +97,7 @@
         }
       },
       {
-        "blacklisted": 0,
+        "blacklisted": null,
         "disconnected": 0,
         "domain": "send-three.example.com",
         "failingDns": [],

@@ -11,7 +11,7 @@
 {"text":"• 🔴 *example.com*: DKIM failing; 29 of 200 warmup emails landed in spam (14.5%, over 10%)","type":"mrkdwn"}
 "divider"
 {"text":"*Warmup readiness*","type":"mrkdwn"}
-{"text":"🟡 1 of 2 senders are ready to send.","type":"mrkdwn"}
+{"text":"🟡 1 of 2 senders are ready on warmup alone; DNS and warmup spam were not checked.","type":"mrkdwn"}
 [{"items":[{"block":{"text":{"text":"Ready\n*1*","type":"mrkdwn"},"type":"section"}},{"block":{"text":{"text":"Not ready\n*1*","type":"mrkdwn"},"type":"section"}}]}]
 {"text":"• outreach2@example.com · active · 88 · score low","type":"mrkdwn"}
 [{"text":"memory · 0 requests","type":"mrkdwn"}]

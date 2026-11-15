@@ -89,11 +89,11 @@ $ outbound tools
     "name": "reply_timing"
   },
   {
-    "description": "Deliverability per sending domain: for each domain its mailboxes, which DNS records (SPF, DKIM, DMARC, MX) fail, how many mailboxes are disconnected or on a block list, the share of warmup emails landing in spam pooled over its mailboxes, and a risk level with the reasons, worst domain first. LinkedIn seats are listed apart with their connection state. Use it before scaling volume or when replies drop. Costs one listing of senders plus 1 request per sender. A null count or rate means the vendor does not report it; a domain with nothing reported has the risk `unknown`, not `low`.",
+    "description": "Deliverability per sending domain: for each domain its mailboxes, which DNS records (SPF, DKIM, DMARC, MX) fail, how many mailboxes are disconnected or on a block list, the share of warmup emails landing in spam pooled over its mailboxes, and a risk level with the reasons, worst domain first. LinkedIn seats are listed apart with their connection state. Use it before scaling volume or when replies drop. Costs one listing of senders plus 1 request per sender. A null count or rate means the vendor does not report it; a domain with no DNS record reported has the risk `unknown`, not `low`.",
     "name": "domain_health"
   },
   {
-    "description": "Whether the senders can send what the campaigns ask: total daily capacity (the daily limits of active senders added up), the total daily ask of active campaigns, the average messages sent per day over the last days, utilization, and the campaigns whose own senders cannot cover their daily limit. Use it before adding campaigns or when sends fall short. Costs one listing of senders and of active campaigns, then up to 2 requests per campaign and 1 for daily stats. A null means the vendor does not report the number; a sender or campaign with no reported limit is counted apart, never as 0.",
+    "description": "Whether the senders can send what the campaigns ask: total daily capacity (the daily limits of active senders added up), the total daily ask of active campaigns, the average messages sent per day over the last days, utilization, and the campaigns whose own senders cannot cover their daily limit. Use it before adding campaigns or when sends fall short. Costs one listing of senders and of active campaigns, then up to 2 requests per campaign and 1 for daily stats, plus 1 per inactive or unlimited sender. Utilization counts only the sends of the senders in capacity. A null means the vendor does not report the number; a sender or campaign with no reported limit is counted apart, never as 0.",
     "name": "sender_capacity"
   },
   {

@@ -16,18 +16,6 @@
         "finding": "21 of 280 sends bounced (7.5%), over the 3% threshold.",
         "senders": [
           {
-            "bounced": 9,
-            "interval": {
-              "high": 0.1792,
-              "low": 0.0535
-            },
-            "rate": 0.1,
-            "sent": 90,
-            "address": "dee@send-two.example.com",
-            "name": null,
-            "sender": "memory:acme:dee"
-          },
-          {
             "bounced": 12,
             "interval": {
               "high": 0.1346,
@@ -42,6 +30,7 @@
         ]
       }
     ],
+    "sendersRead": 3,
     "threshold": 0.03,
     "tooFewSends": [
       {
