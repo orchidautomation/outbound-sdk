@@ -126,10 +126,10 @@ export const rankCampaigns = (
   for (const { campaign, counts } of entries) {
     const label = labelOf(campaign);
     const volume = volumeOf(counts);
+
     const basis =
-      metric === "bounce_rate"
-        ? "sent"
-        : (replyBasis ?? perLeadBasis(counts));
+      metric === "bounce_rate" ? "sent" : (replyBasis ?? perLeadBasis(counts));
+
     const result = measured(counts, metric, basis);
 
     if (volume === null) {

@@ -166,12 +166,31 @@ const saidNo = (lead: Lead, labels: readonly string[]): boolean =>
 const repliesDiscounted = (lead: Lead, labels: readonly string[]): boolean =>
   isAutoReplied(lead) || saidNo(lead, labels);
 
+/** Points for clicks and opens. A person who said no earns none from either. */
+const engagementParts = (
+  lead: Lead,
+  values: Input
+): Pick<HotLeadParts, "clicks" | "opens"> => {
+  const unwanted = saidNo(lead, values.positive_labels);
+
+  return {
+    clicks: capped(
+      lead.engagement?.clicks ?? null,
+      unwanted ? 0 : values.weight_click,
+      values.count_cap
+    ),
+    opens: capped(
+      lead.engagement?.opens ?? null,
+      unwanted ? 0 : values.weight_open,
+      values.count_cap
+    ),
+  };
+};
+
 const partsOf = (lead: Lead, values: Input, now: number): HotLeadParts => {
   const engagement = lead.engagement ?? null;
   const positive = isPositive(lead.interest, values.positive_labels);
   const automatic = repliesDiscounted(lead, values.positive_labels);
-  // A click or open from a person who said no earns nothing either.
-  const unwanted = saidNo(lead, values.positive_labels);
 
   // A vendor that only sets the status still says the lead replied once.
   const counted = engagement?.replies ?? (lead.replied === true ? 1 : null);
@@ -188,18 +207,9 @@ const partsOf = (lead: Lead, values: Input, now: number): HotLeadParts => {
   const fresh = age === null ? null : Math.max(0, 1 - age);
 
   return {
-    clicks: capped(
-      engagement?.clicks ?? null,
-      unwanted ? 0 : values.weight_click,
-      values.count_cap
-    ),
+    ...engagementParts(lead, values),
     interest:
       positive === null ? null : Number(positive) * values.weight_interest,
-    opens: capped(
-      engagement?.opens ?? null,
-      unwanted ? 0 : values.weight_open,
-      values.count_cap
-    ),
     recency:
       automatic && counted !== null
         ? 0
@@ -426,6 +436,7 @@ export const hotLeads = defineInsight({
 
     // Leads who said no score 0 and fill what room `limit` leaves.
     const refused = new Set(negative.map((lead) => lead.ref));
+
     const after = scored
       .filter((lead) => lead.score <= 0 && refused.has(lead.lead))
       .toSorted(hottestFirst);

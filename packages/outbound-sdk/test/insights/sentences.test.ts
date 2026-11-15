@@ -327,6 +327,7 @@ test("a number reads the same in a sentence and on its card: one percent style, 
     { from: "2026-11-01", to: "2026-11-13" },
     { now: NOW }
   );
+
   const [over] = bounces.data.over;
   const card = JSON.stringify(cardText(cardFor("bounce_watch", bounces)));
 

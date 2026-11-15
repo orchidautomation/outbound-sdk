@@ -9,6 +9,7 @@ import type { Json } from "../internal/json.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
 import { createOutbound } from "../internal/outbound/create.ts";
 import { fromEnv } from "../loader/index.ts";
+import { createTools } from "../tools/index.ts";
 import {
   checkFlags,
   commandHelp,
@@ -17,7 +18,6 @@ import {
   listProviders,
 } from "./commands.ts";
 import { pluginsFor } from "./config.ts";
-import { createTools } from "../tools/index.ts";
 import { createMcpServer } from "./mcp.ts";
 import { serveStdio } from "./stdio.ts";
 import { packageVersion } from "./version.ts";

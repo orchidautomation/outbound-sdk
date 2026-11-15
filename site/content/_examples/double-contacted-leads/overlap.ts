@@ -67,10 +67,11 @@ export const blockListReport = async (
   // how many of the rest cannot be matched is not known.
   lines.push(
     "",
-    `Read ${totals.blockEntriesRead} block list entries and ${totals.leadsRead} leads. ` +
-      (totals.blockEntriesNotChecked === null
+    `Read ${totals.blockEntriesRead} block list entries and ${totals.leadsRead} leads. ${
+      totals.blockEntriesNotChecked === null
         ? "More entries exist than were read, so how many cannot be matched to a lead is not known."
-        : `${totals.blockEntriesNotChecked} entries are of a kind that cannot be matched to a lead, such as a company name.`)
+        : `${totals.blockEntriesNotChecked} entries are of a kind that cannot be matched to a lead, such as a company name.`
+    }`
   );
 
   if (!meta.complete || meta.notes.length > 0) {

@@ -158,17 +158,22 @@ test("outbound mcp leaves out the insights redact keeps from matching, and no hi
   );
 });
 
-test("outbound mcp answers a call to a tool redact left out by naming redact and --no-redact", async () => {
-  const call = (id: number, name: string) => ({
-    id,
-    jsonrpc: "2.0",
-    method: "tools/call",
-    params: { arguments: { person: "person1@example.com" }, name },
-  });
+/** A call to the tool `name` about one person. */
+const personCall = (id: number, name: string) => ({
+  id,
+  jsonrpc: "2.0",
+  method: "tools/call",
+  params: { arguments: { person: "person1@example.com" }, name },
+});
 
+test("outbound mcp answers a call to a tool redact left out by naming redact and --no-redact", async () => {
   const session = await outbound(
     ["mcp"],
-    [call(1, "person_summary"), call(2, "cross_channel_lead"), call(3, "no_such_tool")]
+    [
+      personCall(1, "person_summary"),
+      personCall(2, "cross_channel_lead"),
+      personCall(3, "no_such_tool"),
+    ]
   );
 
   const errors = session.responses.map(
@@ -180,12 +185,18 @@ test("outbound mcp answers a call to a tool redact left out by naming redact and
     errors[0]?.message,
     "person_summary is left out while the redact plugin is on: it needs what redact masks. Start the server with --no-redact to offer it; personal fields are then not masked."
   );
-  assert.match(errors[1]?.message ?? "", /^cross_channel_lead is left out while the redact plugin is on/u);
+  assert.match(
+    errors[1]?.message ?? "",
+    /^cross_channel_lead is left out while the redact plugin is on/u
+  );
   // A name no tool has is still unknown.
   assert.equal(errors[2]?.message, "Unknown tool: no_such_tool");
 
   // Without redact the same call is answered.
-  const open = await outbound(["mcp", "--no-redact"], [call(1, "person_summary")]);
+  const open = await outbound(
+    ["mcp", "--no-redact"],
+    [personCall(1, "person_summary")]
+  );
 
   assert.equal(
     resultAt<{ structuredContent: { ok: boolean } }>(open, 0).structuredContent

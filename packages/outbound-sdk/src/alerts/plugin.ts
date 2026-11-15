@@ -92,7 +92,6 @@ const isSender = (record: OutboundRecord): record is Sender =>
 const isCampaign = (record: OutboundRecord): record is Campaign =>
   "channel" in record && "tags" in record && "status" in record;
 
-
 export interface RateRuleOptions {
   /** Ignore rows with fewer sends than this, where a rate is noise. Defaults to 50. */
   readonly minSent?: number | undefined;

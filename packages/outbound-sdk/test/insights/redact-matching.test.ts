@@ -215,9 +215,9 @@ test("a hashing redact still finds an address on the block list", async () => {
 test("person_summary takes a lead ref while the identifier it is looked up by is left unmasked", async () => {
   // lead_1 has an email address and no LinkedIn profile: with only LinkedIn
   // masked it is looked up by its address, in both campaigns.
-  const byRef = await build({ fields: ["linkedin"] }).outbound.insights.personSummary(
-    { person: "memory:default:lead_1" }
-  );
+  const byRef = await build({
+    fields: ["linkedin"],
+  }).outbound.insights.personSummary({ person: "memory:default:lead_1" });
 
   assert.equal(byRef.data.found, true);
   assert.deepEqual(byRef.data.identifiers, ["email:person1@example.com"]);

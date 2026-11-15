@@ -80,7 +80,11 @@ const WORDS: Readonly<Record<Identifier, string>> = {
 const maskedWords = (masked: readonly Identifier[]): string =>
   masked.map((kind) => WORDS[kind]).join(" and ");
 
-const refuse = (outbound: Outbound, masked: readonly Identifier[], why: string) =>
+const refuse = (
+  outbound: Outbound,
+  masked: readonly Identifier[],
+  why: string
+) =>
   new OutboundError(
     "Unsupported",
     `A person cannot be looked up while the redact plugin masks ${maskedWords(masked)}: ${why}`,
@@ -114,7 +118,10 @@ interface Start {
   readonly keys: readonly string[];
   readonly records: readonly Lead[];
   /** The tokens a hashed record holds for the identifier given, and the key to show for it. */
-  readonly hashed: { readonly tokens: ReadonlySet<string>; readonly shown: string } | null;
+  readonly hashed: {
+    readonly tokens: ReadonlySet<string>;
+    readonly shown: string;
+  } | null;
 }
 
 /** The identifiers to look the person up by, and the lead a ref names. */
@@ -178,10 +185,12 @@ const startFrom = async (
   const lead = context.one(await outbound.leads.get(identifier.trim()));
 
   // A ref is looked up by the lead's address, or else its profile, whichever is not masked.
-  const keys = keysOfLead(lead).filter((each) => !masked.includes(kindOf(each)));
+  const keys = keysOfLead(lead).filter(
+    (each) => !masked.includes(kindOf(each))
+  );
 
   if (keys.length === 0 && masked.length > 0) {
-    const [other] = (["email", "linkedin"] as const).filter(
+    const other = (["email", "linkedin"] as const).find(
       (kind) => !masked.includes(kind)
     );
 

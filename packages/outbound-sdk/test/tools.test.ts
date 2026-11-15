@@ -639,6 +639,7 @@ test("a Claude Agent SDK tool runs the read and returns MCP content", async () =
 
 test("every built-in tool names a required input it was not given", async () => {
   const tools = createTools(full());
+
   const required = new Map(
     tools.flatMap((tool) => {
       const fields = (tool.parameters as { required?: string[] }).required;
@@ -649,16 +650,13 @@ test("every built-in tool names a required input it was not given", async () => 
     })
   );
 
-  assert.deepEqual(
-    [...required.keys()].toSorted(),
-    [
-      "campaign_setup",
-      "campaign_trend",
-      "cross_channel_lead",
-      "lead_runway",
-      "winning_steps",
-    ]
-  );
+  assert.deepEqual([...required.keys()].toSorted(), [
+    "campaign_setup",
+    "campaign_trend",
+    "cross_channel_lead",
+    "lead_runway",
+    "winning_steps",
+  ]);
 
   for (const [name, fields] of required) {
     // oxlint-disable-next-line no-await-in-loop -- one tool at a time keeps the failing one in the message.

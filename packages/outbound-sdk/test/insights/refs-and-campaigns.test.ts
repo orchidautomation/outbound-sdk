@@ -55,13 +55,14 @@ test("person_summary reads the lead once for a ref, and counts it in meta.reques
   assert.equal(seen.filter((kind) => kind === "leads.get").length, 1);
 });
 
-test("person_summary looks a lead ref up by what redact leaves, refuses it when nothing is left, and needs leads.get for one", async () => {
-  const under = (fields: readonly ("email" | "linkedin")[]) =>
-    createOutbound({
-      adapter: memory({ data: EMAIL_TOOL, workspaceId: "agency" }),
-      plugins: [redact({ fields }), insights()],
-    });
+/** The email tool behind a redact that masks these fields. */
+const under = (fields: readonly ("email" | "linkedin")[]) =>
+  createOutbound({
+    adapter: memory({ data: EMAIL_TOOL, workspaceId: "agency" }),
+    plugins: [redact({ fields }), insights()],
+  });
 
+test("person_summary looks a lead ref up by what redact leaves, refuses it when nothing is left, and needs leads.get for one", async () => {
   // l1 has a LinkedIn profile too, which is left unmasked.
   const byProfile = await under(["email"]).insights.personSummary({
     person: "memory:agency:l1",

@@ -522,7 +522,10 @@ test("client_report divides by leads contacted when the vendor reports no messag
   assert.equal(result.data.replyRateBasis, "contacted");
   assert.equal(result.data.totals.replyRateBasis, "contacted");
   assert.deepEqual(
-    [result.data.totals.previous.replyRate, result.data.totals.current.replyRate],
+    [
+      result.data.totals.previous.replyRate,
+      result.data.totals.current.replyRate,
+    ],
     [0.03, 0.15]
   );
   assert.match(

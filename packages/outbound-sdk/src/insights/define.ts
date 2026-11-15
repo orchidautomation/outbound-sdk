@@ -8,7 +8,7 @@ import type { ZodObject, ZodType } from "zod";
 import type { CapabilityKey } from "../internal/capabilities.ts";
 import type { Evidence, MetricRow } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
-import { isJsonObject, toJson, unknownKey } from "../internal/json.ts";
+import { toJson, unknownKey } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
 import type {
   ListAll,

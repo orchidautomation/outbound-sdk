@@ -77,10 +77,7 @@ test("hot_leads gives a lead labelled negative no points at all, lists it after 
     recency: 0,
     replies: 0,
   });
-  assert.equal(
-    angry?.reason,
-    "marked Not Interested, so it earns no points."
-  );
+  assert.equal(angry?.reason, "marked Not Interested, so it earns no points.");
   assert.equal(result.data.totals.negative, 2);
   assert.equal(result.data.totals.autoReplied, 0);
   // Only the leads with a score above 0.
@@ -108,6 +105,7 @@ test("hot_leads ranks a negative lead with many clicks and opens below a lead th
       },
     ],
   };
+
   const outbound = single(data);
 
   const all = await outbound.insights.hotLeads({}, { now: NOW });

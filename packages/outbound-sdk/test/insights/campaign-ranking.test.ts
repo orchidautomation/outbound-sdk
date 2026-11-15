@@ -281,6 +281,7 @@ test("campaign_ranking names what each rate divides by, and its card shows that 
       row("s", "2026-11-09", { replied: 4, sent: 80 }),
     ],
   });
+
   const result = await outbound.insights.campaignRanking(NOVEMBER, {
     now: NOW,
   });

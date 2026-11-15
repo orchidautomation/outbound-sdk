@@ -18,12 +18,12 @@ import {
   senderHealth,
   winningSteps,
 } from "./campaign-tools.ts";
+import { inputProblem } from "./input-problem.ts";
 import {
   compareClients,
   crossChannelLead,
   leadRunway,
 } from "./people-tools.ts";
-import { inputProblem } from "./input-problem.ts";
 import { failure } from "./shared.ts";
 import type { ToolResult } from "./shared.ts";
 

@@ -143,10 +143,7 @@ export const perLeadBase: Base = (counts) => counts[perLeadBasis(counts)];
  * far fewer than its replies. Otherwise leads contacted for both, so the
  * two rates are never over different bases.
  */
-export const periodBasis = (
-  current: Totals,
-  previous: Totals
-): ReplyBasis =>
+export const periodBasis = (current: Totals, previous: Totals): ReplyBasis =>
   current.sent !== null && previous.sent !== null ? "sent" : "contacted";
 
 /** The rate's name, to start a sentence: "Replies per message sent". */
