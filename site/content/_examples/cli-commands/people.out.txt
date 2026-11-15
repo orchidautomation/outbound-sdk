@@ -1,4 +1,5 @@
 $ outbound senders --limit 1
+Stopped at 1 sender; more exist. Pass --limit to read more.
 [
   {
     "provider": "memory",
@@ -62,6 +63,7 @@ $ outbound health mbx_1
 }
 
 $ outbound leads --campaign cmp_founders --limit 1
+Stopped at 1 lead; more exist. Pass --limit to read more.
 [
   {
     "provider": "memory",
@@ -126,4 +128,8 @@ $ outbound lists
     "size": 2
   }
 ]
+
+$ outbound leads --since 2030-01-01
+Invalid: --since is not an option of leads
+(exit code 1)
 

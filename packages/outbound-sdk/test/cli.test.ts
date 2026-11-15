@@ -146,7 +146,10 @@ test("a wrong command or argument exits 1 with a one-line reason on stderr", asy
       /--input must be valid JSON/u,
     ],
     [["campaign", "missing"], /NotFound: Campaign missing was not found/u],
-    [["campaigns", "--bogus"], /Unknown option/u],
+    [
+      ["campaigns", "--bogus"],
+      /^Invalid: --bogus is not an option of campaigns$/u,
+    ],
   ] as const) {
     const result = await cli(...argv);
     assert.equal(result.code, 1, argv.join(" "));
