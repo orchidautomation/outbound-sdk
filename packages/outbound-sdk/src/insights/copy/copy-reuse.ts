@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 
+import { mapConcurrent } from "../../internal/concurrency.ts";
 import { campaignStatusSchema } from "../../internal/entities.ts";
 import type { Campaign, Sequence } from "../../internal/entities.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
@@ -259,19 +260,22 @@ const readPlacements = async (
   context: InsightContext,
   campaigns: readonly Campaign[]
 ): Promise<Placement[]> => {
-  const placements: Placement[] = [];
-
-  for (const campaign of campaigns) {
+  const perCampaign = await mapConcurrent(campaigns, async (campaign) => {
     const handle = context.outbound.campaign(campaign.ref);
-    // oxlint-disable-next-line no-await-in-loop -- one campaign at a time keeps the rate budget predictable.
-    const sequence = context.one(await handle.sequence());
-    // oxlint-disable-next-line no-await-in-loop -- one campaign at a time keeps the rate budget predictable.
-    const rows = context.rows(await handle.stats({ scope: "step" }));
 
-    placements.push(...placementsOf(campaign, sequence, splitStats(rows)));
-  }
+    const [sequence, stats] = await Promise.all([
+      handle.sequence(),
+      handle.stats({ scope: "step" }),
+    ]);
 
-  return placements;
+    return placementsOf(
+      campaign,
+      context.one(sequence),
+      splitStats(context.rows(stats))
+    );
+  });
+
+  return perCampaign.flat();
 };
 
 export const copyReuse = defineInsight({

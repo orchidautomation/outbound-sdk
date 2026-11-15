@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 
+import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Campaign, MetricRow } from "../../internal/entities.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
@@ -133,20 +134,25 @@ const whyUnknown = (row: MetricRow | undefined): string => {
     : "The vendor does not report a bounce count.";
 };
 
-/** Reads each sender's stats once, however many campaigns share it. */
+/**
+ * Reads each sender's stats once, however many campaigns share it. The read
+ * is shared while in flight, so campaigns checked side by side ask once.
+ */
 const senderReader = (context: InsightContext, range: Range) => {
-  const seen = new Map<string, BounceCounts | null>();
+  const seen = new Map<string, Promise<BounceCounts | null>>();
 
-  return async (ref: string): Promise<BounceCounts | null> => {
-    if (!seen.has(ref)) {
-      const [row] = context.rows(
-        await context.outbound.sender(ref).stats(range)
-      );
+  return (ref: string): Promise<BounceCounts | null> => {
+    let counts = seen.get(ref);
 
-      seen.set(ref, known(row));
+    if (counts === undefined) {
+      counts = context.outbound
+        .sender(ref)
+        .stats(range)
+        .then((stats) => known(context.rows(stats)[0]));
+      seen.set(ref, counts);
     }
 
-    return seen.get(ref) ?? null;
+    return counts;
   };
 };
 
@@ -162,21 +168,24 @@ const sendersOver = async (
   }
 ): Promise<BounceSender[]> => {
   const senders = await readCampaignSenders(context, campaign, options.max);
-  const over: BounceSender[] = [];
 
-  for (const sender of senders) {
-    // oxlint-disable-next-line no-await-in-loop -- one sender at a time keeps the rate budget predictable.
-    const counts = await options.read(sender.ref);
+  const read = await mapConcurrent(senders, async (sender) => ({
+    counts: await options.read(sender.ref),
+    sender,
+  }));
 
-    if (counts !== null && isOver(counts, options.threshold)) {
-      over.push({
-        ...counts,
-        address: sender.address,
-        name: sender.name,
-        sender: sender.ref,
-      });
-    }
-  }
+  const over: BounceSender[] = read.flatMap(({ counts, sender }) =>
+    counts !== null && isOver(counts, options.threshold)
+      ? [
+          {
+            ...counts,
+            address: sender.address,
+            name: sender.name,
+            sender: sender.ref,
+          },
+        ]
+      : []
+  );
 
   return over.toSorted((left, right) => (right.rate ?? 0) - (left.rate ?? 0));
 };
@@ -226,17 +235,17 @@ export const bounceWatch = defineInsight({
       campaigns.length > 0 && canCheckSenders(context, options.include_senders);
 
     const read = senderReader(context, range);
-    const over: BounceCampaign[] = [];
+    const overBy: { campaign: Campaign; entry: BounceCampaign }[] = [];
     const tooFewSends: BounceCampaign[] = [];
     const unknown: BounceUnknown[] = [];
     const counted: BounceCounts[] = [];
 
-    for (const campaign of campaigns) {
-      const [row] = context.rows(
-        // oxlint-disable-next-line no-await-in-loop -- one campaign at a time keeps the rate budget predictable.
-        await outbound.campaign(campaign.ref).stats(range)
-      );
+    const rows = await mapConcurrent(campaigns, async (campaign) => ({
+      campaign,
+      row: context.rows(await outbound.campaign(campaign.ref).stats(range))[0],
+    }));
 
+    for (const { campaign, row } of rows) {
       const counts = known(row);
 
       const entry = {
@@ -259,22 +268,33 @@ export const bounceWatch = defineInsight({
         counted.push(counts);
 
         if (isOver(counts, threshold)) {
-          over.push({
-            ...entry,
-            ...counts,
-            finding: `${counts.bounced} of ${counts.sent} sends bounced (${counts.rate}), over the ${threshold} threshold.`,
-            senders: withSenders
-              ? // oxlint-disable-next-line no-await-in-loop -- one campaign at a time keeps the rate budget predictable.
-                await sendersOver(context, campaign, {
-                  max: options.max_senders_per_campaign,
-                  read,
-                  threshold,
-                })
-              : null,
+          overBy.push({
+            campaign,
+            entry: {
+              ...entry,
+              ...counts,
+              finding: `${counts.bounced} of ${counts.sent} sends bounced (${counts.rate}), over the ${threshold} threshold.`,
+              senders: null,
+            },
           });
         }
       }
     }
+
+    const over = await mapConcurrent(
+      overBy,
+      async ({ campaign, entry }): Promise<BounceCampaign> =>
+        withSenders
+          ? {
+              ...entry,
+              senders: await sendersOver(context, campaign, {
+                max: options.max_senders_per_campaign,
+                read,
+                threshold,
+              }),
+            }
+          : entry
+    );
 
     const bounced = total(counted.map((each) => each.bounced));
     const sent = total(counted.map((each) => each.sent));

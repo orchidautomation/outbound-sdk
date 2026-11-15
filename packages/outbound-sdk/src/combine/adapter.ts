@@ -10,13 +10,13 @@ import {
   intersectCapabilities,
   resolveCapabilities,
 } from "../internal/capabilities.ts";
-import type { MetricRow } from "../internal/entities.ts";
+import type { Lead, MetricRow } from "../internal/entities.ts";
 import { makeErrorMapper, OutboundError } from "../internal/errors.ts";
 import { mergeFields, resolveFields } from "../internal/fields.ts";
 import type { Json } from "../internal/json.ts";
 import { recordBase } from "../internal/record.ts";
 import { accountReads } from "./account.ts";
-import { COMBINED, pageAcross, routeRef } from "./route.ts";
+import { COMBINED, pageAcross, pageTogether, routeRef } from "./route.ts";
 
 const MATURITY_ORDER = ["unverified", "beta", "stable"] as const;
 
@@ -137,13 +137,33 @@ const lists = (members: readonly Adapter[]): Lists => ({
       );
     }
 
-    return scopedOrAcross(members, ctx, query, (member, memberCtx, scoped) => {
+    const readLeads = (
+      member: Adapter,
+      memberCtx: AdapterContext,
+      scoped: typeof query
+    ): Promise<Page<Lead>> => {
       if (member.listLeads === undefined) {
         throw missing(member, "listLeads");
       }
 
       return member.listLeads(scoped, memberCtx);
-    });
+    };
+
+    const lookup = query.email !== undefined || query.linkedinUrl !== undefined;
+
+    // A person lookup returns a record or two from each tool, so every tool is
+    // asked at once instead of one after another.
+    if (lookup && query.campaignId === undefined) {
+      return pageTogether(
+        members,
+        ctx,
+        query,
+        async (member, memberCtx, next) =>
+          await readLeads(member, memberCtx, { ...query, next })
+      );
+    }
+
+    return scopedOrAcross(members, ctx, query, readLeads);
   },
   listMessages: (query, ctx) => {
     const lead =

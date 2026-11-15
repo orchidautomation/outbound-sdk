@@ -93,6 +93,17 @@ Swap the adapters. Nothing else changes.
   ../../_examples/person-across-email-and-linkedin/production.ts
 </include>
 
+From a shell there is nothing to write. Set each tool's key and the [CLI](/docs/cli) reads all of them; `outbound person` runs this lookup:
+
+```sh
+export INSTANTLY_API_KEY=...
+export HEYREACH_API_KEY=...
+outbound person someone@example.com
+outbound person https://www.linkedin.com/in/someone
+```
+
+Those lines are not run by the test suite; the CLI's own tests run `outbound person` on two in-memory tools.
+
 Whether an address reaches the LinkedIn side depends on what each tool stores. These come from the adapters' own notes, not from this guide's data:
 
 - **Instantly** leads carry no LinkedIn profile. A lookup by profile returns nothing from Instantly, and an Instantly record never links an address to a profile.

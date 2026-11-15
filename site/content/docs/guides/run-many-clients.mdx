@@ -154,6 +154,6 @@ To get a capability back, scope to one member. A label that is on one adapter do
 
 - A combined instance cannot be nested inside another.
 - Rows from different members are never merged. The same person in two tools is two leads; the `identity` plugin links them without merging.
-- `clients.stats()` reads every campaign's stats one at a time. On many clients it is the most expensive call on this page.
+- `clients.stats()` reads every campaign's stats, a few campaigns at a time. On many clients it is the most expensive call on this page.
 - One failing member fails a combined read. There is no partial result.
 - The numbers are only as good as each vendor's. The combined instance's maturity is that of its least verified member.

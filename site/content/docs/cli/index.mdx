@@ -38,22 +38,41 @@ Every command shown in this section went through `run`, the function the `outbou
 A command that reads data needs an adapter. The CLI builds one from the environment:
 
 1. `--provider <id>` if given, otherwise the `OUTBOUND_SDK_PROVIDER` environment variable.
-2. The id is one of `instantly`, `smartlead`, `heyreach` or `memory`.
-3. The adapter reads its own key from the environment: `INSTANTLY_API_KEY`, `SMARTLEAD_API_KEY` or `HEYREACH_API_KEY`. `outbound providers` lists the variables each one reads.
+2. An id is one of `instantly`, `smartlead`, `heyreach` or `memory`, or `all`.
+3. `all` builds every provider whose key is set (`INSTANTLY_API_KEY`, `SMARTLEAD_API_KEY`, `HEYREACH_API_KEY`), with no list to maintain: one key gives that provider alone, several give one [combined](/docs/adapters/combine) instance, where every record keeps its own provider, so `outbound person` looks a person up in all of them. Set another key and its tool is included the next time the command starts. `memory` is never part of `all`.
+4. With neither `--provider` nor `OUTBOUND_SDK_PROVIDER` set, the CLI does the same as `all`. With no key set either, the command exits with code 1 and names the variables.
+5. Each adapter reads its own key from the environment. `outbound providers` lists the variables each one reads.
 
 `memory` needs no key. It runs on a small built-in demo data set, the same one behind `demoData()` in `outbound-sdk/memory`: two campaigns, three leads, a few messages. Use it to try a command before pointing the CLI at a real account.
 
 ```sh
 # a real account
-export OUTBOUND_SDK_PROVIDER=instantly
 export INSTANTLY_API_KEY=...
 outbound campaigns --status active
+
+# two tools: both are read, and one person is found in each
+export HEYREACH_API_KEY=...
+outbound person someone@example.com
 
 # the demo data, for one command
 outbound campaigns --provider memory
 ```
 
-Those shell lines are not run by the test suite. The CLI takes no key on the command line and reads no configuration file. It builds a plain instance with no [plugins](/docs/plugins) and one adapter, so there is no CLI flag for a cache, redaction or several clients. How far each real adapter has been checked is on [what is verified](/docs/status).
+Those shell lines are not run by the test suite. The CLI takes no key on the command line.
+
+## Plugins
+
+A command runs with one [plugin](/docs/plugins) by default, [identity](/docs/plugins/identity), which links one person's records across tools for `outbound person`. `outbound mcp` is the exception: it runs with [`redact()`](/docs/plugins/redact) unless given `--no-redact`, because what it returns goes to a model. Any command takes these options:
+
+| Option | Adds |
+| --- | --- |
+| `--redact` | `redact()`: masks personal fields. On by default for `outbound mcp` only. |
+| `--no-redact` | Turns the default `redact()` off for `outbound mcp`. |
+| `--cache <seconds>` | `cache()` with that time to live. |
+| `--max-requests <n>` | `budget({ maxRequests: n, per: "run" })`. A command is one run; on the MCP server each tool call is one. |
+| `--config <file>` | The plugins a file lists as `export default defineConfig({ plugins: [...] })`. |
+
+[The MCP server page](/docs/cli/mcp#plugins) has a run of each, the order the plugins are placed in, and what a config file may hold. How far each real adapter has been checked is on [what is verified](/docs/status).
 
 `help` and `providers` need no adapter and work with nothing set.
 

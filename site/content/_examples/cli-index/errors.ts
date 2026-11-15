@@ -21,10 +21,20 @@ await outbound("send");
 
 await outbound("campaigns", "--provider", "mailchimp");
 
-// With no provider chosen, a command that needs an adapter says what to set.
-delete process.env.OUTBOUND_SDK_PROVIDER;
+// With no provider chosen and no vendor key set, a command that needs an
+// adapter says what to set. With keys set, it reads every vendor that has one.
+for (const name of [
+  "OUTBOUND_SDK_PROVIDER",
+  "INSTANTLY_API_KEY",
+  "SMARTLEAD_API_KEY",
+  "HEYREACH_API_KEY",
+]) {
+  Reflect.deleteProperty(process.env, name);
+}
 
-console.log("$ unset OUTBOUND_SDK_PROVIDER");
+console.log(
+  "$ unset OUTBOUND_SDK_PROVIDER INSTANTLY_API_KEY SMARTLEAD_API_KEY HEYREACH_API_KEY"
+);
 
 await outbound("campaigns");
 

@@ -358,6 +358,8 @@ export interface OutboundApi {
   readonly workspaceId: string;
   /** What this instance can do, after plugins narrowed it. */
   readonly capabilities: Capabilities;
+  /** The plugins on this instance, outermost first. */
+  readonly plugins: readonly { readonly name: string }[];
   /** How far the adapter has been verified. */
   readonly maturity: "beta" | "stable" | "unverified";
   /** What the adapter assumes and has not confirmed against the live API. */

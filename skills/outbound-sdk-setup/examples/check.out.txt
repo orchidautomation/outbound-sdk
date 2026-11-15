@@ -1,3 +1,6 @@
 {"id":1,"jsonrpc":"2.0","result":{}}
 2: 35 tools, 35 marked read-only
 {"id":3,"jsonrpc":"2.0","result":{"content":[{"text":"{\"error\":{\"code\":\"Unsupported\",\"message\":\"Reading reply bodies is not available: the redact plugin turned it off (messages.body)\"},\"next\":\"This tool is not available with the current adapter or plugins. Try another tool.\",\"ok\":false}","type":"text"}],"isError":true,"structuredContent":{"error":{"code":"Unsupported","message":"Reading reply bodies is not available: the redact plugin turned it off (messages.body)"},"next":"This tool is not available with the current adapter or plugins. Try another tool.","ok":false}}}
+
+config plugins: clients
+4: Plugins on: redact, clients, identity. redact masks personal fields such as emails and names, and reply text is not available.

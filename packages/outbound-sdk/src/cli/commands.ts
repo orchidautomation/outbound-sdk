@@ -11,7 +11,7 @@ import type { Json } from "../internal/json.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
 import { providers } from "../providers/index.ts";
 import { createTools } from "../tools/index.ts";
-import type { ToolResult } from "../tools/index.ts";
+import type { OutboundTool, ToolResult } from "../tools/index.ts";
 
 export interface CommandInput {
   readonly positionals: readonly string[];
@@ -125,6 +125,40 @@ const drawn = async (
   return asJson(input.flags.slack === true ? toSlackMessage(card) : card);
 };
 
+/** The tools `outbound mcp` offers: the built-in ones, then the insights. */
+export const offeredTools = async (
+  outbound: OutboundApi
+): Promise<OutboundTool[]> => {
+  // Loaded on demand, so the other commands do not pay for the insights.
+  const { insightTools } = await import("../insights/index.ts");
+
+  return createTools(outbound, { extra: insightTools(outbound) });
+};
+
+/** Lists the insights, or runs the one the first argument names. */
+const runInsight: Command = async (outbound, input) => {
+  // Loaded on demand, so the other commands do not pay for the insights.
+  const { insightTools, listInsights, runInsightByName } =
+    await import("../insights/index.ts");
+
+  const [name] = input.positionals;
+
+  if (name === undefined) {
+    return asJson(listInsights());
+  }
+
+  const insightInput = parseInput(text(input, "input"));
+
+  // A card is drawn from the tool form of the answer.
+  const [asTool] = wantsCard(input)
+    ? insightTools(outbound, { only: [name] })
+    : [];
+
+  return asTool === undefined
+    ? asJson(await runInsightByName(outbound, name, insightInput))
+    : drawn(name, await asTool.call(insightInput), input);
+};
+
 export interface CommandSpec {
   readonly help: string;
   readonly run: Command;
@@ -195,28 +229,7 @@ const COMMAND_TABLE = {
   },
   insight: {
     help: "insight [name] [--input JSON] [--card | --slack]  computed answers; no name lists them",
-    run: async (outbound, input) => {
-      // Loaded on demand, so the other commands do not pay for the insights.
-      const { insightTools, listInsights, runInsightByName } =
-        await import("../insights/index.ts");
-
-      const [name] = input.positionals;
-
-      if (name === undefined) {
-        return asJson(listInsights());
-      }
-
-      const insightInput = parseInput(text(input, "input"));
-
-      // A card is drawn from the tool form of the answer.
-      const [asTool] = wantsCard(input)
-        ? insightTools(outbound, { only: [name] })
-        : [];
-
-      return asTool === undefined
-        ? asJson(await runInsightByName(outbound, name, insightInput))
-        : drawn(name, await asTool.call(insightInput), input);
-    },
+    run: runInsight,
   },
   leads: {
     help: "leads [--campaign ID | --list ID] [--limit N]",
@@ -255,6 +268,21 @@ const COMMAND_TABLE = {
 
       return asJson(await outbound.native.read(name, params));
     },
+  },
+  person: {
+    help: "person <email or LinkedIn URL> [--limit N] [--card | --slack]  one person's campaigns across every tool",
+    // The person_summary insight, with its input taken from the arguments.
+    run: (outbound, input) =>
+      runInsight(outbound, {
+        flags: {
+          ...input.flags,
+          input: JSON.stringify({
+            max_campaigns: count(input, "limit", 20),
+            person: required(input, 0, "an email address or a LinkedIn URL"),
+          }),
+        },
+        positionals: ["person_summary"],
+      }),
   },
   replies: {
     help: "replies [--campaign ID] [--category positive|negative|neutral|ooo|...] [--since ISO] [--limit N] [--bodies]",
@@ -304,9 +332,8 @@ const COMMAND_TABLE = {
     run: async (outbound, input) => {
       const name = required(input, 0, "a tool name");
 
-      const tool = createTools(outbound).find(
-        (candidate) => candidate.name === name
-      );
+      const offered = await offeredTools(outbound);
+      const tool = offered.find((candidate) => candidate.name === name);
 
       if (tool === undefined) {
         throw new OutboundError(
@@ -324,13 +351,14 @@ const COMMAND_TABLE = {
   },
   tools: {
     help: "tools",
-    run: (outbound) =>
-      Promise.resolve(
-        createTools(outbound).map((tool) => ({
-          description: tool.description,
-          name: tool.name,
-        }))
-      ),
+    run: async (outbound) => {
+      const offered = await offeredTools(outbound);
+
+      return offered.map((tool) => ({
+        description: tool.description,
+        name: tool.name,
+      }));
+    },
   },
   webhooks: {
     help: "webhooks [--campaign ID] [--limit N]",
@@ -370,11 +398,16 @@ export const helpText = (): string =>
     "",
     "  providers",
     ...[...COMMANDS.values()].map((command) => `  ${command.help}`),
-    "  mcp                      start a local MCP server on stdio",
+    "  mcp                      start a local MCP server on stdio (redact is on)",
     "",
     "Options:",
-    "  --provider <id>          the adapter to use (default: OUTBOUND_SDK_PROVIDER)",
+    "  --provider <id>          the adapter to use, or all for every provider whose key is set (default: OUTBOUND_SDK_PROVIDER)",
     "  --compact                print JSON on one line",
+    "  --config <file>          load plugins from a file whose default export is defineConfig({ plugins })",
+    "  --redact                 mask personal fields (on by default for mcp)",
+    "  --no-redact              do not mask personal fields, even for mcp",
+    "  --cache <seconds>        reuse an answer for this long",
+    "  --max-requests <n>       the most vendor requests one command, or one MCP tool call, may make",
     "",
     "Each adapter reads its own key from the environment, for example INSTANTLY_API_KEY.",
   ].join("\n");

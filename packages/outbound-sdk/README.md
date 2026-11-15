@@ -11,7 +11,7 @@ One small, typed, read-only TypeScript API over outbound sending tools: Instantl
 
 ## Install
 
-> Not published yet. Until the first release this command does not work; [installation](https://outbound-sdk.dev/docs/installation) says how to use the package today.
+> Not on npm yet. Until it is, this command does not work; [installation](https://outbound-sdk.dev/docs/installation) says how to install 0.1.0 from its GitHub release.
 
 ```sh
 npm install outbound-sdk

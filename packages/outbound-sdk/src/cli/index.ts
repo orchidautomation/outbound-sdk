@@ -10,17 +10,27 @@ import type { OutboundApi } from "../internal/outbound/api.ts";
 import { createOutbound } from "../internal/outbound/create.ts";
 import { fromEnv } from "../loader/index.ts";
 import { COMMANDS, helpText, listProviders } from "./commands.ts";
+import { pluginsFor } from "./config.ts";
 import { createMcpServer } from "./mcp.ts";
+import { serveStdio } from "./stdio.ts";
+
+export { defineConfig } from "./config.ts";
+
+export type { CliConfig } from "./config.ts";
 
 export { createMcpServer, PROTOCOL_VERSIONS } from "./mcp.ts";
 
 export type { McpServer, McpServerOptions } from "./mcp.ts";
 
+export { serveStdio } from "./stdio.ts";
+
+export type { StdioOptions } from "./stdio.ts";
+
 export interface CliIo {
   readonly stdout: (text: string) => void;
   readonly stderr: (text: string) => void;
   /** Opens standard input as lines. Called only by `outbound mcp`, so other commands exit when done. */
-  readonly stdin?: (() => AsyncIterable<string>) | undefined;
+  readonly stdin?: (() => AsyncIterable<string> | Iterable<string>) | undefined;
   /** Replaces the adapter the environment would choose. Meant for tests. */
   readonly adapter?: Adapter | undefined;
 }
@@ -28,16 +38,21 @@ export interface CliIo {
 const OPTIONS = {
   bodies: { type: "boolean" },
   by: { type: "string" },
+  cache: { type: "string" },
   campaign: { type: "string" },
   card: { type: "boolean" },
   category: { type: "string" },
   compact: { type: "boolean" },
+  config: { type: "string" },
   from: { type: "string" },
   help: { short: "h", type: "boolean" },
   input: { type: "string" },
   limit: { type: "string" },
   list: { type: "string" },
+  "max-requests": { type: "string" },
+  "no-redact": { type: "boolean" },
   provider: { type: "string" },
+  redact: { type: "boolean" },
   sequence: { type: "boolean" },
   settings: { type: "boolean" },
   since: { type: "string" },
@@ -53,13 +68,7 @@ const serve = async (outbound: OutboundApi, io: CliIo): Promise<void> => {
   const { insightTools } = await import("../insights/index.ts");
   const server = createMcpServer(outbound, { extra: insightTools(outbound) });
 
-  for await (const line of io.stdin?.() ?? []) {
-    const response = await server.handleLine(line);
-
-    if (response !== undefined) {
-      io.stdout(response);
-    }
-  }
+  await serveStdio(server, { input: io.stdin?.() ?? [], write: io.stdout });
 };
 
 const print = (io: CliIo, value: Json, compact: boolean): void => {
@@ -105,7 +114,8 @@ export const run = async (
     const adapter =
       io.adapter ?? (await fromEnv({ provider: values.provider }));
 
-    const outbound = createOutbound({ adapter });
+    const plugins = await pluginsFor(values, command === undefined);
+    const outbound = createOutbound({ adapter, plugins });
 
     if (command === undefined) {
       await serve(outbound, io);

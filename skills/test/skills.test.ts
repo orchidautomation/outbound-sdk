@@ -169,10 +169,9 @@ for (const skill of skills) {
 const INSTALL =
   /(?:npm (?:i|install|add)|pnpm add|yarn add|bun add|npx(?: -y)?) +(?:-\S+ +)*outbound-sdk(?![\w/-]*\.tgz)/u;
 
-const unpublished =
-  JSON.parse(
-    readFileSync(path.join(ROOT, "packages/outbound-sdk/package.json"), "utf-8")
-  ).version === "0.0.0";
+// Set by hand with the same constant in site/test/site-truth.test.ts, in the
+// pull request that first publishes to npm.
+const unpublished = true;
 
 test("while the package is unpublished, no skill shows an install command for it", () => {
   if (!unpublished) {

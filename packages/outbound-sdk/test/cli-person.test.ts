@@ -1,0 +1,100 @@
+// `outbound person`, and the person tools on the CLI's tool list, over two
+// in-memory tools combined: an email tool and a LinkedIn tool.
+
+import assert from "node:assert/strict";
+import { test } from "node:test";
+
+import { run } from "../src/cli/index.ts";
+import { combine } from "../src/combine/index.ts";
+import type { Adapter } from "../src/index.ts";
+import { memory } from "../src/memory/index.ts";
+import { EMAIL_TOOL, LINKEDIN_TOOL, PROFILE } from "./insights/helpers.ts";
+
+const cliOn = async (adapter: Adapter, ...argv: string[]) => {
+  const out: string[] = [];
+
+  const code = await run([...argv, "--compact"], {
+    adapter,
+    stderr: () => {},
+    stdout: (text) => {
+      out.push(text);
+    },
+  });
+
+  return { code, json: () => JSON.parse(out.join("")) as never };
+};
+
+const twoTools = () =>
+  combine([
+    memory({ data: EMAIL_TOOL, name: "mailtool", workspaceId: "agency" }),
+    memory({ data: LINKEDIN_TOOL, name: "lntool", workspaceId: "acme" }),
+  ]);
+
+test("person finds one person in every tool, from an email or a LinkedIn URL", async () => {
+  const person = async (...argv: string[]) => {
+    const out: string[] = [];
+
+    const code = await run(["person", ...argv, "--compact"], {
+      adapter: twoTools(),
+      stderr: () => {},
+      stdout: (text) => {
+        out.push(text);
+      },
+    });
+
+    return { code, data: (JSON.parse(out.join("")) as { data: never }).data };
+  };
+
+  for (const identifier of ["person1@example.com", PROFILE]) {
+    const { code, data } = await person(identifier);
+
+    const summary = data as {
+      found: boolean;
+      identifiers: string[];
+      campaigns: { provider: string }[];
+    };
+
+    assert.equal(code, 0);
+    assert.equal(summary.found, true);
+    assert.deepEqual(summary.identifiers, [
+      "email:person1@example.com",
+      "linkedin:example-person-1",
+    ]);
+    assert.deepEqual(
+      [...new Set(summary.campaigns.map((entry) => entry.provider))].toSorted(),
+      ["lntool", "mailtool"],
+      `${identifier} reaches both tools`
+    );
+  }
+
+  const missing = await run(["person"], {
+    adapter: twoTools(),
+    stderr: () => {},
+    stdout: () => {},
+  });
+
+  assert.equal(missing, 1);
+});
+
+test("tools offers the person tools, as outbound mcp does", async () => {
+  const names = new Set(
+    ((await cliOn(twoTools(), "tools")).json() as { name: string }[]).map(
+      (tool) => tool.name
+    )
+  );
+
+  assert.ok(names.has("cross_channel_lead"), "identity is installed");
+  assert.ok(names.has("person_summary"), "insights are offered");
+  assert.equal(
+    (
+      await cliOn(
+        twoTools(),
+        "tool",
+        "person_summary",
+        "--input",
+        '{"person":"nobody@example.com"}'
+      )
+    ).code,
+    0
+  );
+});
