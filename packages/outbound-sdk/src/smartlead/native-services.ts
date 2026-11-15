@@ -3,19 +3,16 @@
 // SmartDelivery (inbox placement tests), SmartProspect (the contact
 // database), SmartSenders (bought domains) and SmartServers (dedicated IPs).
 
-import { defineNative } from "../internal/native.ts";
+import { defineNative, inBody, inPath, inQuery } from "../internal/native.ts";
 import {
-  body,
   DELIVERY_URL,
   DOCS,
-  path,
   PROSPECT_URL,
-  query,
   SENDERS_URL,
   SERVERS_URL,
 } from "./native-params.ts";
 
-const TEST = { spamTestId: path("The placement test's id.") };
+const TEST = { spamTestId: inPath("The placement test's id.") };
 
 export interface ServiceRead<Params> {
   readonly baseUrl: string;
@@ -42,8 +39,8 @@ const report = (
 
 /** SmartProspect takes paging numbers as strings. */
 const SEARCHES = {
-  limit: query("string", "Searches per page; 10 by default."),
-  offset: query("string", "Searches to skip."),
+  limit: inQuery("string", "Searches per page; 10 by default."),
+  offset: inQuery("string", "Searches to skip."),
 };
 
 /** One of SmartProspect's lists of searches. */
@@ -80,7 +77,7 @@ export const DELIVERY = defineNative({
     description: "One folder of placement tests.",
     docs: `${DOCS}/smart-delivery/get-folder-by-id`,
     method: "GET",
-    params: { folderId: path("The folder's id.") },
+    params: { folderId: inPath("The folder's id.") },
     path: "/spam-test/folder/{folderId}",
   },
   deliveryFolders: {
@@ -141,7 +138,7 @@ export const DELIVERY = defineNative({
     description: "The headers of one email a placement test received.",
     docs: `${DOCS}/smart-delivery/reply-headers`,
     method: "GET",
-    params: { ...TEST, replyId: path("The received email's reply id.") },
+    params: { ...TEST, replyId: inPath("The received email's reply id.") },
     path: "/spam-test/report/{spamTestId}/sender-account-wise/{replyId}/email-headers",
   },
   deliveryScheduleHistory: report(
@@ -202,16 +199,19 @@ export const SERVICES = defineNative({
     docs: `${DOCS}/smart-prospect/get-contacts`,
     method: "POST",
     params: {
-      catch_all_status: body(
+      catch_all_status: inBody(
         "string",
         "catch_all_verified, catch_all_soft_bounced, catch_all_hard_bounced, catch_all_unknown or catch_all_bounced."
       ),
-      filter_id: body("number", "The search filter whose contacts to read."),
-      id: body("json", "Contact ids (adapt_ids), as an array of at most 200."),
-      limit: body("number", "Contacts per page, 1 to 1000, with filter_id."),
-      offset: body("number", "Contacts to skip, with filter_id."),
-      search: body("string", "Matches the first, last or full name."),
-      verification_status: body("string", "valid, catch_all or invalid."),
+      filter_id: inBody("number", "The search filter whose contacts to read."),
+      id: inBody(
+        "json",
+        "Contact ids (adapt_ids), as an array of at most 200."
+      ),
+      limit: inBody("number", "Contacts per page, 1 to 1000, with filter_id."),
+      offset: inBody("number", "Contacts to skip, with filter_id."),
+      search: inBody("string", "Matches the first, last or full name."),
+      verification_status: inBody("string", "valid, catch_all or invalid."),
     },
     path: "/search-email-leads/get-contacts",
   },
@@ -241,7 +241,7 @@ export const SERVICES = defineNative({
       "SmartProspect leads found, emails fetched and credits left, with the monthly trend.",
     docs: `${DOCS}/smart-prospect/search-analytics`,
     method: "GET",
-    params: { filter_id: query("string", "Only this search filter.") },
+    params: { filter_id: inQuery("string", "Only this search filter.") },
     path: "/search-email-leads/search-analytics",
   },
   smartSendersDomains: {
@@ -258,11 +258,11 @@ export const SERVICES = defineNative({
     docs: `${DOCS}/smart-servers/list-servers`,
     method: "GET",
     params: {
-      unmapped: query(
+      unmapped: inQuery(
         "string",
         'Set to "true" for only servers on no campaign or client.'
       ),
-      withCampaignData: query(
+      withCampaignData: inQuery(
         "string",
         'Set to "true" to add each server\'s campaigns, client and region.'
       ),
@@ -275,7 +275,7 @@ export const SERVICES = defineNative({
       "The dedicated IP attached to a campaign; only one is returned when it has several.",
     docs: `${DOCS}/smart-servers/get-campaign-servers`,
     method: "GET",
-    params: { campaign_id: path("The campaign's id.") },
+    params: { campaign_id: inPath("The campaign's id.") },
     path: "/smart-server/all/campaign/{campaign_id}",
   },
 });

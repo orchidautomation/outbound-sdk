@@ -12,8 +12,8 @@ import {
 } from "../internal/json.ts";
 import type { JsonObject } from "../internal/json.ts";
 import type { SmartleadClient } from "./client.ts";
-import { toFoundLead, unwrap } from "./map.ts";
-import { categoryNames, segment } from "./shared.ts";
+import { NO_CATEGORIES, toFoundLead, unwrap } from "./map.ts";
+import { leadCategories, segment } from "./shared.ts";
 
 const NONE: Page<Lead> = { items: [] };
 
@@ -91,8 +91,8 @@ export const leadsByEmail = async (
   );
 
   const categories = categorized
-    ? await categoryNames(client, ctx, undefined)
-    : {};
+    ? await leadCategories(client, ctx, undefined)
+    : NO_CATEGORIES;
 
   return {
     items: wanted.map((membership) =>

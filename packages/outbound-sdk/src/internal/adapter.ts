@@ -5,8 +5,10 @@
 import type { CapabilityDeclaration } from "./capabilities.ts";
 import type {
   BlockEntry,
+  CampaignProgress,
   CampaignSettings,
   LeadList,
+  PlacementTest,
   SenderHealth,
   Tag,
   WebhookSubscription,
@@ -26,6 +28,7 @@ import type {
   Workspace,
 } from "./entities.ts";
 import type { ErrorMapper } from "./errors.ts";
+import type { FieldCoverage, FieldDeclaration } from "./fields.ts";
 import type { Json } from "./json.ts";
 import type { LimitDeclaration } from "./limits.ts";
 import type { NativeCatalog, NoNative } from "./native.ts";
@@ -69,6 +72,8 @@ export interface PageQuery {
 
 export interface CampaignQuery extends PageQuery {
   readonly status?: CampaignStatus | undefined;
+  /** Only the campaigns this sender is attached to. */
+  readonly senderId?: string | undefined;
 }
 
 export interface SenderQuery extends PageQuery {
@@ -104,6 +109,8 @@ export interface MessageQuery extends PageQuery, TimeRange {
 export interface ReplyQuery extends PageQuery, TimeRange {
   readonly campaignId?: string | undefined;
   readonly category?: ReplyCategory | undefined;
+  /** `true` for unread replies only, `false` for read ones only. */
+  readonly unread?: boolean | undefined;
   readonly includeBody: boolean;
 }
 
@@ -117,7 +124,10 @@ export interface WebhookQuery extends PageQuery {
 
 export interface StatsQuery {
   readonly scope: MetricScope;
-  /** The campaign or sender id. Not used for the workspace scope. */
+  /**
+   * The campaign or sender id. Not used for the workspace scope. The
+   * campaign scope without one asks for a row per campaign.
+   */
   readonly scopeId?: string | undefined;
   /** Inclusive `YYYY-MM-DD`. */
   readonly from?: string | undefined;
@@ -204,6 +214,16 @@ export interface Adapter<Native extends NativeCatalog = NoNative> {
   readonly events?: EventFormat | undefined;
   /** What is assumed and not yet confirmed against the live API. */
   readonly caveats?: readonly string[] | undefined;
+  /**
+   * The fields this adapter derives or never fills, by record. Omitted: every
+   * field is one the vendor reports.
+   */
+  readonly fields?: FieldDeclaration | undefined;
+  /**
+   * Set by `combine()` in place of `fields`: the coverage of the members read
+   * as one.
+   */
+  readonly fieldCoverage?: FieldCoverage | undefined;
   /** Request costs by operation kind, for `outbound.estimate()`. */
   readonly costs?: Readonly<Record<string, OperationCost>> | undefined;
   /**
@@ -261,6 +281,10 @@ export interface Adapter<Native extends NativeCatalog = NoNative> {
     campaignId: string,
     ctx: AdapterContext
   ) => Promise<CampaignSettings>;
+  readonly getCampaignProgress?: (
+    campaignId: string,
+    ctx: AdapterContext
+  ) => Promise<CampaignProgress>;
   readonly listSubsequences?: (
     query: SubsequenceQuery,
     ctx: AdapterContext
@@ -273,10 +297,15 @@ export interface Adapter<Native extends NativeCatalog = NoNative> {
     query: PageQuery,
     ctx: AdapterContext
   ) => Promise<Page<LeadList>>;
+  readonly getList?: (id: string, ctx: AdapterContext) => Promise<LeadList>;
   readonly listBlocklist?: (
     query: PageQuery,
     ctx: AdapterContext
   ) => Promise<Page<BlockEntry>>;
+  readonly listPlacementTests?: (
+    query: PageQuery,
+    ctx: AdapterContext
+  ) => Promise<Page<PlacementTest>>;
   readonly listTags?: (
     query: PageQuery,
     ctx: AdapterContext
@@ -285,4 +314,8 @@ export interface Adapter<Native extends NativeCatalog = NoNative> {
     query: WebhookQuery,
     ctx: AdapterContext
   ) => Promise<Page<WebhookSubscription>>;
+  readonly getWebhook?: (
+    id: string,
+    ctx: AdapterContext
+  ) => Promise<WebhookSubscription>;
 }

@@ -2,7 +2,10 @@
 // computes a reply rate the same way. Vendor percentages are never trusted:
 // rates are always recomputed from counts.
 
-import type { MetricRow } from "./entities.ts";
+import { SCHEMA_VERSION } from "./entities.ts";
+import type { MetricRow, MetricScope } from "./entities.ts";
+import type { Identity } from "./record.ts";
+import { makeRef } from "./ref.ts";
 
 export interface MetricDefinition {
   readonly name: string;
@@ -88,6 +91,7 @@ export const computeRates = (row: MetricRow): Record<MetricName, Rate> => ({
 const COUNT_KEYS = [
   "bounced",
   "clicked",
+  "clickedTotal",
   "connectionsAccepted",
   "connectionsSent",
   "contacted",
@@ -108,6 +112,7 @@ export type MetricCounts = Pick<MetricRow, (typeof COUNT_KEYS)[number]>;
 export const emptyCounts = (): MetricCounts => ({
   bounced: null,
   clicked: null,
+  clickedTotal: null,
   connectionsAccepted: null,
   connectionsSent: null,
   contacted: null,
@@ -142,3 +147,38 @@ export const sumCounts = (rows: readonly MetricCounts[]): MetricCounts => {
 
   return total;
 };
+
+/** What a row of counts is for: a workspace, a campaign, a step or a sender. */
+export interface RowScope extends Identity {
+  readonly scope: MetricScope;
+  readonly scopeId: string;
+}
+
+/**
+ * One `MetricRow` from the counts an adapter read. A total with nothing else
+ * to say needs only the scope and the counts; a daily, step or derived row
+ * says so in `extra`.
+ */
+export const metricRow = (
+  scope: RowScope,
+  counts: MetricCounts,
+  extra: Partial<
+    Pick<
+      MetricRow,
+      "date" | "evidence" | "stepIndex" | "timezone" | "variantKey"
+    >
+  > = {}
+): MetricRow => ({
+  ...counts,
+  contentHash: null,
+  date: extra.date ?? null,
+  evidence: extra.evidence ?? "exact",
+  provider: scope.provider,
+  schemaVersion: SCHEMA_VERSION,
+  scope: scope.scope,
+  scopeRef: makeRef(scope.provider, scope.workspaceId, scope.scopeId),
+  stepIndex: extra.stepIndex ?? null,
+  timezone: extra.timezone ?? null,
+  variantKey: extra.variantKey ?? null,
+  workspaceId: scope.workspaceId,
+});

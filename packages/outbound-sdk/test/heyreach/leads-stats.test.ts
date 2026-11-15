@@ -14,6 +14,9 @@ import {
   withCampaignLeads,
 } from "./suite.ts";
 
+const pathOf = (request: { url: string }): string =>
+  new URL(request.url).pathname;
+
 const bodyOf = (request: { body: string | undefined } | undefined): unknown =>
   JSON.parse(request?.body ?? "{}");
 
@@ -95,23 +98,103 @@ test("heyreach: a lead's own emailAddress wins and is lowercased", async () => {
   );
 });
 
-test("heyreach: there is no list of every lead, so only a campaign's leads can be read", async () => {
+test("heyreach: every lead is read by walking the campaigns, one page of one campaign per call", async () => {
   const { outbound, requests, settle } = harness(suite);
-  assert.equal(outbound.capabilities["leads.list"], false);
-  assert.equal(outbound.capabilities["leads.byCampaign"], true);
-  await assert.rejects(
-    async () => await outbound.leads.list(),
-    isCode("Unsupported")
+  assert.equal(outbound.capabilities["leads.list"], true);
+
+  const first = await settle(outbound.leads.list());
+  assert.deepEqual(
+    requests.map((request) => [pathOf(request), bodyOf(request)]),
+    [
+      ["/api/public/campaign/GetAll", { limit: 100, offset: 0 }],
+      [
+        "/api/public/campaign/GetLeadsFromCampaign",
+        { campaignId: 274_079, limit: 100, offset: 0 },
+      ],
+    ],
+    "the first page reads the campaigns, then the first campaign's leads"
+  );
+  assert.equal(first.items[0]?.campaignRef, "heyreach:client-a:274079");
+  assert.equal(first.complete, false);
+
+  const second = await settle(outbound.leads.list({ cursor: first.cursor }));
+  assert.deepEqual(
+    requests.slice(2).map((request) => [pathOf(request), bodyOf(request)]),
+    [
+      [
+        "/api/public/campaign/GetLeadsFromCampaign",
+        { campaignId: 274_079, limit: 100, offset: 2 },
+      ],
+    ],
+    "the campaigns travel in the cursor, so a later page is one request"
+  );
+  assert.equal(second.items[0]?.campaignRef, "heyreach:client-a:274079");
+});
+
+test("heyreach: the walk moves to the next campaign and the next page of campaigns, then ends", async () => {
+  const { outbound, requests, settle } = harness(suite);
+  const pages: string[][] = [];
+  let cursor: string | undefined;
+
+  do {
+    // oxlint-disable-next-line no-await-in-loop -- each page needs the previous page's cursor.
+    const page = await settle(outbound.leads.list({ cursor }));
+    pages.push(page.items.map((lead) => lead.campaignRef ?? ""));
+    ({ cursor } = page);
+  } while (cursor !== undefined);
+
+  assert.deepEqual(
+    [...new Set(pages.flat())],
+    [
+      "heyreach:client-a:274079",
+      "heyreach:client-a:274080",
+      "heyreach:client-a:274081",
+    ],
+    "all three campaigns, the third from the second page of campaigns"
+  );
+  assert.deepEqual(
+    requests
+      .filter((request) => pathOf(request).endsWith("/campaign/GetAll"))
+      .map((request) => bodyOf(request)),
+    [
+      { limit: 100, offset: 0 },
+      { limit: 100, offset: 2 },
+    ],
+    "each page of campaigns is read once"
   );
   assert.equal(
-    requests.length,
-    0,
-    "the un-scoped list is refused before any request"
+    pages.flat().length,
+    9,
+    "three leads in each of three campaigns"
   );
 
-  const page = await settle(outbound.campaign(CAMPAIGN).leads.list());
-  assert.ok(page.items.length > 0);
-  assert.equal(requests.length, 1);
+  const all = await settle(outbound.leads.listAll().toArray());
+  assert.equal(
+    all.length,
+    3,
+    "listAll returns a person once, although each fixture campaign holds the same three"
+  );
+});
+
+test("heyreach: a walk keeps the date filter and an account with no campaigns has no leads", async () => {
+  const dated = harness(suite);
+  await dated.settle(dated.outbound.leads.list({ since: "2024-09-01" }));
+  assert.deepEqual(bodyOf(dated.requests[1]), {
+    campaignId: 274_079,
+    limit: 100,
+    offset: 0,
+    timeFilter: "CreationTime",
+    timeFrom: "2024-09-01T00:00:00.000Z",
+  });
+
+  const empty = harness(suite, () =>
+    Response.json({ items: [], totalCount: 0 })
+  );
+
+  const page = await empty.settle(empty.outbound.leads.list());
+  assert.deepEqual(page.items, []);
+  assert.equal(page.cursor, undefined);
+  assert.equal(empty.requests.length, 1, "only the campaign list is read");
 });
 
 test("heyreach: a campaign's leads are listed with POST by offset", async () => {
@@ -186,15 +269,9 @@ test("heyreach: a date range on a campaign's leads filters by creation time on t
   });
 });
 
-test("heyreach: an un-scoped lead list and a non-numeric campaign id are refused", async () => {
+test("heyreach: a non-numeric campaign id is refused before any request", async () => {
   const { outbound, requests, settle } = harness(withCampaignLeads);
 
-  await assert.rejects(
-    async () => await settle(outbound.leads.list()),
-    (error) =>
-      isCode("Unsupported")(error) &&
-      /does not support it \(leads\.list\)/u.test((error as Error).message)
-  );
   await assert.rejects(
     async () => await settle(outbound.campaign("spring-launch").leads.list()),
     (error) =>

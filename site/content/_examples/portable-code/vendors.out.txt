@@ -17,4 +17,4 @@ heyreach
   totals: sent 420, replied 21, opened not reported (evidence exact)
   by step: this vendor has no per-step stats
   settings: this vendor does not expose campaign settings
-  replies: 2 (this vendor does not categorise replies)
+  positive replies: 1

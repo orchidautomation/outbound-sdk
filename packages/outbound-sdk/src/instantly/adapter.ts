@@ -19,6 +19,7 @@ import {
   text,
 } from "../internal/json.ts";
 import type { JsonObject } from "../internal/json.ts";
+import { mapPage } from "../internal/page.ts";
 import { accountReaders } from "./adapter-account.ts";
 import { mailReaders } from "./adapter-mail.ts";
 import { TAG_PAGES } from "./capabilities.ts";
@@ -96,6 +97,48 @@ const campaignTags = async (
   return tags;
 };
 
+// `GET /account-campaign-mappings/{email}`: the campaigns a mailbox is used
+// by, each with its id, name, status and creation time and nothing else.
+const senderCampaigns = async (
+  client: InstantlyClient,
+  ctx: AdapterContext,
+  query: CampaignQuery & { readonly senderId: string }
+): Promise<Page<Campaign>> => {
+  const page = await listPage(
+    client,
+    ctx,
+    `/account-campaign-mappings/${encodeURIComponent(query.senderId)}`,
+    query
+  );
+
+  const tags = await campaignTags(
+    client,
+    ctx,
+    texts(page.items, "campaign_id")
+  );
+
+  const campaigns = page.items.map((item) =>
+    toCampaign(
+      client.identity,
+      // The mapping names the campaign's id and name with a prefix.
+      {
+        ...item,
+        id: item.campaign_id ?? null,
+        name: item.campaign_name ?? null,
+      },
+      tags.get(text(item.campaign_id) ?? "")
+    )
+  );
+
+  return {
+    items:
+      query.status === undefined
+        ? campaigns
+        : campaigns.filter((campaign) => campaign.status === query.status),
+    next: page.next,
+  };
+};
+
 const listCampaigns = async (
   client: InstantlyClient,
   ctx: AdapterContext,
@@ -104,6 +147,13 @@ const listCampaigns = async (
   if (query.status === "archived" || query.status === "unknown") {
     // Instantly has no archived or unknown campaigns.
     return { items: [] };
+  }
+
+  if (query.senderId !== undefined) {
+    return await senderCampaigns(client, ctx, {
+      ...query,
+      senderId: query.senderId,
+    });
   }
 
   const page = await listPage(client, ctx, "/campaigns", query, {
@@ -286,12 +336,11 @@ export const readers = (
         });
       }
 
-      const page = await listPage(client, ctx, "/accounts", query);
+      const page = await listPage(client, ctx, "/accounts", query, {
+        include_tags: true,
+      });
 
-      return {
-        items: page.items.map((item) => toSender(identity, item)),
-        next: page.next,
-      };
+      return mapPage(page, (item) => toSender(identity, item));
     },
     listWorkspaces: async (_query, ctx) => {
       const workspace = await client.get(ctx, "/workspaces/current");

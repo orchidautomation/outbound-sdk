@@ -6,7 +6,11 @@
 
 import type { EventFormat, WebhookRequest } from "../internal/adapter.ts";
 import { SCHEMA_VERSION } from "../internal/entities.ts";
-import type { EventType, OutboundEvent } from "../internal/entities.ts";
+import type {
+  EventData,
+  EventType,
+  OutboundEvent,
+} from "../internal/entities.ts";
 import {
   compactObject,
   emailAddress,
@@ -20,13 +24,13 @@ import {
   timestamp,
 } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
-import { refTo } from "../internal/record.ts";
+import { eventData, refTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
 import { stableId } from "../internal/sha256.ts";
 
 // The 13 documented event types, by the lowercase name the payload carries.
 // Follows, post likes and profile views have no normalized type.
-const EVENT_TYPES = new Map<string, EventType>([
+export const EVENT_TYPES = new Map<string, EventType>([
   ["campaign_completed", "campaign.status_changed"],
   ["connection_request_accepted", "linkedin.connection_accepted"],
   ["connection_request_sent", "linkedin.connection_sent"],
@@ -57,21 +61,25 @@ const recentMessages = (value: Json | undefined): Json[] | undefined => {
   return messages.length === 0 ? undefined : messages;
 };
 
-const eventData = (name: string, body: JsonObject): JsonObject => {
+const dataOf = (name: string, body: JsonObject): EventData => {
   const tags = list(field(body.lead, "tags")).filter((tag) => isString(tag));
 
-  return compactObject({
-    campaignName: text(field(body.campaign, "name")),
-    conversationId: text(body.conversation_id),
-    externalReference: text(body.external_reference),
-    isInmail: flag(body.is_inmail),
-    leadEmail: emailAddress(field(body.lead, "email_address")),
-    leadLinkedinId: text(field(body.lead, "id")),
-    leadName: text(field(body.lead, "full_name")),
-    recentMessages: recentMessages(body.recent_messages),
-    tags: tags.length === 0 ? undefined : tags,
-    vendorEvent: name,
-  });
+  return eventData(
+    {
+      campaignName: text(field(body.campaign, "name")),
+      isInmail: flag(body.is_inmail),
+      leadEmail: emailAddress(field(body.lead, "email_address")),
+      leadName: text(field(body.lead, "full_name")),
+      vendorEvent: name,
+    },
+    {
+      conversationId: text(body.conversation_id),
+      externalReference: text(body.external_reference),
+      leadLinkedinId: text(field(body.lead, "id")),
+      recentMessages: recentMessages(body.recent_messages),
+      tags: tags.length === 0 ? undefined : tags,
+    }
+  );
 };
 
 const toEvent = (identity: Identity, body: JsonObject): OutboundEvent => {
@@ -82,7 +90,7 @@ const toEvent = (identity: Identity, body: JsonObject): OutboundEvent => {
 
   return {
     campaignRef: refTo(identity, text(field(body.campaign, "id"))),
-    data: eventData(name, body),
+    data: dataOf(name, body),
     // `correlation_id` is the only identifier HeyReach sends. Two event types
     // can describe one reply, so the name is part of the id.
     id:

@@ -10,6 +10,8 @@ import {
 } from "../internal/errors.ts";
 import type { ErrorMapper } from "../internal/errors.ts";
 import { field } from "../internal/json.ts";
+import { withLeadFields, withMappedFields } from "../internal/lead-fields.ts";
+import type { LeadFieldMap } from "../internal/lead-fields.ts";
 import { assertWorkspaceId } from "../internal/ref.ts";
 import { readers } from "./adapter.ts";
 import {
@@ -17,6 +19,7 @@ import {
   capabilities,
   caveats,
   costs,
+  fields,
   limits,
   WORKSPACE_ENV,
 } from "./capabilities.ts";
@@ -41,6 +44,12 @@ export interface HeyReachOptions {
   readonly baseUrl?: string | undefined;
   /** Overrides what the adapter declares. */
   readonly capabilities?: CapabilityDeclaration | undefined;
+  /**
+   * Which of a lead's custom fields holds a value this vendor has no field
+   * for, for example `{ title: "job_title" }`. Read only where the vendor's
+   * own field is empty.
+   */
+  readonly leadFields?: LeadFieldMap | undefined;
 }
 
 // Sequence reads answer 404 CAMPAIGN_API_NOT_ENABLED when the account's plan
@@ -76,11 +85,12 @@ export const heyreach = (
   });
 
   return {
-    ...readers(client),
+    ...withLeadFields(readers(client), options.leadFields),
     capabilities: { ...capabilities, ...options.capabilities },
     caveats,
     costs,
     events: heyreachEvents(PROVIDER),
+    fields: withMappedFields(fields, options.leadFields),
     limits,
     mapError: errorMapper(apiKey),
     // Read-only checks passed against one live workspace on 2026-11-14.

@@ -6,8 +6,10 @@ import type { Capabilities } from "../capabilities.ts";
 import type { LimitsSnapshot, OperationOptions } from "../engine/engine.ts";
 import type {
   BlockEntry,
+  CampaignProgress,
   CampaignSettings,
   LeadList,
+  PlacementTest,
   SenderHealth,
   Tag,
   WebhookSubscription,
@@ -27,6 +29,7 @@ import type {
   Workspace,
 } from "../entities.ts";
 import type { OutboundError } from "../errors.ts";
+import type { FieldCoverage } from "../fields.ts";
 import type { Json } from "../json.ts";
 import type {
   NativeCatalog,
@@ -132,6 +135,8 @@ export type Include = "body";
 
 export interface CampaignFilters {
   readonly status?: CampaignStatus | undefined;
+  /** Only the campaigns this sender is attached to. */
+  readonly senderId?: string | undefined;
 }
 
 export interface SenderFilters {
@@ -163,6 +168,8 @@ export interface MessageFilters extends TimeRange {
 export interface ReplyFilters extends TimeRange {
   readonly campaignId?: string | undefined;
   readonly category?: ReplyCategory | undefined;
+  /** `true` for unread replies only, `false` for read ones only. */
+  readonly unread?: boolean | undefined;
   readonly include?: readonly Include[] | undefined;
 }
 
@@ -177,7 +184,10 @@ export interface StatsOptions extends OperationOptions {
 
 export interface TopLevelStatsOptions extends StatsOptions {
   readonly scope?: MetricScope | undefined;
-  /** The campaign or sender, for the `campaign`, `step` and `sender` scopes. */
+  /**
+   * The campaign or sender, for the `campaign`, `step` and `sender` scopes.
+   * The `campaign` scope without one returns a row per campaign, in one call.
+   */
   readonly scopeId?: string | undefined;
 }
 
@@ -198,6 +208,10 @@ export interface CampaignHandle {
   readonly settings: (
     options?: OperationOptions
   ) => Promise<WithMeta<CampaignSettings>>;
+  /** How many of the campaign's leads are waiting, in progress, finished or stopped. */
+  readonly progress: (
+    options?: OperationOptions
+  ) => Promise<WithMeta<CampaignProgress>>;
   /** The follow-up sequences attached to the campaign. */
   readonly subsequences: ReadCollection<Sequence, Record<never, never>>;
   readonly webhooks: ReadCollection<WebhookSubscription, Record<never, never>>;
@@ -222,6 +236,11 @@ export interface CampaignHandle {
 export interface SenderHandle {
   readonly id: string;
   readonly get: (options?: OperationOptions) => Promise<WithMeta<Sender>>;
+  /** The campaigns the sender is attached to. */
+  readonly campaigns: ReadCollection<
+    Campaign,
+    Scoped<CampaignFilters, "senderId">
+  >;
   readonly stats: (options?: StatsOptions) => Promise<StatsResult>;
   readonly warmup: (
     options?: OperationOptions
@@ -234,6 +253,7 @@ export interface SenderHandle {
 
 export interface ListHandle {
   readonly id: string;
+  readonly get: (options?: OperationOptions) => Promise<WithMeta<LeadList>>;
   readonly leads: ReadCollection<
     Lead,
     Scoped<LeadFilters, "campaignId" | "listId">
@@ -344,6 +364,12 @@ export interface OutboundApi {
   readonly maturity: "beta" | "stable" | "unverified";
   /** What the adapter assumes and has not confirmed against the live API. */
   readonly caveats: readonly string[];
+  /**
+   * Which fields of each record this adapter fills: `exact` from the vendor,
+   * `derived` by the adapter, or `false` when a `null` means the vendor has no
+   * such field.
+   */
+  readonly fields: FieldCoverage;
   readonly campaigns: Collection<Campaign, CampaignFilters>;
   readonly senders: Collection<Sender, SenderFilters>;
   readonly leads: Collection<Lead, LeadFilters>;
@@ -351,12 +377,14 @@ export interface OutboundApi {
   readonly replies: ReadCollection<Reply, ReplyFilters>;
   readonly workspaces: ReadCollection<Workspace, Record<never, never>>;
   /** Saved lead lists. */
-  readonly lists: ReadCollection<LeadList, Record<never, never>>;
+  readonly lists: Collection<LeadList, Record<never, never>>;
   /** The addresses, domains and profiles the account never contacts. */
   readonly blocklist: ReadCollection<BlockEntry, Record<never, never>>;
   readonly tags: ReadCollection<Tag, Record<never, never>>;
+  /** The inbox placement tests the account has set up. Their results are native reads. */
+  readonly placementTests: ReadCollection<PlacementTest, Record<never, never>>;
   /** The webhooks registered with the vendor. */
-  readonly webhooks: ReadCollection<WebhookSubscription, WebhookFilters>;
+  readonly webhooks: Collection<WebhookSubscription, WebhookFilters>;
   readonly raw: RawClient;
   /** The vendor's own reads, by name, for what has no normalized form. */
   readonly native: NativeClient;

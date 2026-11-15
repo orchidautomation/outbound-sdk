@@ -11,6 +11,7 @@ import type { Runtime } from "../engine/runtime.ts";
 import type {
   BlockEntry,
   LeadList,
+  PlacementTest,
   Tag,
   WebhookSubscription,
 } from "../entities-account.ts";
@@ -23,6 +24,8 @@ import type {
   Workspace,
 } from "../entities.ts";
 import { OutboundError } from "../errors.ts";
+import { resolveFields } from "../fields.ts";
+import type { FieldCoverage } from "../fields.ts";
 import { mergeHooks } from "../hooks.ts";
 import type { OutboundHooks } from "../hooks.ts";
 import type { NativeCatalog, NoNative } from "../native.ts";
@@ -69,8 +72,11 @@ import type { OutboundPlugin } from "./plugins.ts";
 import { makeRawClient } from "./raw.ts";
 import {
   blocklistList,
+  listGet,
   listList,
+  placementTestList,
   tagList,
+  webhookGet,
   webhookList,
 } from "./specs-account.ts";
 import {
@@ -138,10 +144,11 @@ export class Outbound<
   readonly messages: ReadCollection<Message, MessageFilters>;
   readonly replies: ReadCollection<Reply, ReplyFilters>;
   readonly workspaces: ReadCollection<Workspace, Record<never, never>>;
-  readonly lists: ReadCollection<LeadList, Record<never, never>>;
+  readonly lists: Collection<LeadList, Record<never, never>>;
   readonly blocklist: ReadCollection<BlockEntry, Record<never, never>>;
   readonly tags: ReadCollection<Tag, Record<never, never>>;
-  readonly webhooks: ReadCollection<WebhookSubscription, WebhookFilters>;
+  readonly placementTests: ReadCollection<PlacementTest, Record<never, never>>;
+  readonly webhooks: Collection<WebhookSubscription, WebhookFilters>;
   readonly raw: RawClient;
   readonly native: NativeClient<Native>;
 
@@ -193,10 +200,22 @@ export class Outbound<
     this.messages = makeReadCollection(this.#core, messageList(this.#core));
     this.replies = makeReadCollection(this.#core, replyList(this.#core));
     this.workspaces = makeReadCollection(this.#core, workspaceList(this.#core));
-    this.lists = makeReadCollection(this.#core, listList(this.#core));
+    this.lists = makeCollection(
+      this.#core,
+      listList(this.#core),
+      listGet(this.#core)
+    );
     this.blocklist = makeReadCollection(this.#core, blocklistList(this.#core));
     this.tags = makeReadCollection(this.#core, tagList(this.#core));
-    this.webhooks = makeReadCollection(this.#core, webhookList(this.#core));
+    this.placementTests = makeReadCollection(
+      this.#core,
+      placementTestList(this.#core)
+    );
+    this.webhooks = makeCollection(
+      this.#core,
+      webhookList(this.#core),
+      webhookGet(this.#core)
+    );
     this.raw = makeRawClient(
       this.#core,
       // Asked as if the adapter had native reads: a plugin that would turn
@@ -226,6 +245,12 @@ export class Outbound<
 
   get caveats(): readonly string[] {
     return this.#core.adapter.caveats ?? [];
+  }
+
+  get fields(): FieldCoverage {
+    const { adapter } = this.#core;
+
+    return adapter.fieldCoverage ?? resolveFields(adapter.fields);
   }
 
   /** The plugins on this instance, outermost first. */

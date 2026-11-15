@@ -85,6 +85,19 @@ const required = (input: CommandInput, index: number, what: string): string => {
 
 const asJson = toJson;
 
+// Only what is not read straight from the vendor: the fields the adapter
+// derives, and the ones it never fills (`false`). Most fields are neither.
+const fieldExceptions = (outbound: OutboundApi): Json =>
+  Object.fromEntries(
+    Object.entries(outbound.fields).flatMap(([record, grades]) => {
+      const stated = Object.entries(grades).filter(
+        ([, grade]) => grade !== "exact"
+      );
+
+      return stated.length === 0 ? [] : [[record, Object.fromEntries(stated)]];
+    })
+  );
+
 const listing = async <Item>(walk: {
   readonly toArray: () => Promise<Item[]>;
 }): Promise<Json> => asJson(await walk.toArray());
@@ -203,6 +216,7 @@ const COMMAND_TABLE = {
       Promise.resolve({
         capabilities: { ...outbound.capabilities },
         caveats: [...outbound.caveats],
+        fields: fieldExceptions(outbound),
         maturity: outbound.maturity,
         provider: outbound.provider,
         workspaceId: outbound.workspaceId,

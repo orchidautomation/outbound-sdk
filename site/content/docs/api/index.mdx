@@ -43,19 +43,20 @@ related:
 
 ## Collections
 
-Each has `list` for one page and `listAll` for every page. Three also have `get`, `exists` and `getMany`. See [collections](/docs/api/collections).
+Each has `list` for one page and `listAll` for every page. Five also have `get`, `exists` and `getMany`. See [collections](/docs/api/collections).
 
 | Collection | Record | Filters | `get`, `exists`, `getMany` |
 | --- | --- | --- | --- |
-| `outbound.campaigns` | `Campaign` | `status` | yes |
+| `outbound.campaigns` | `Campaign` | `status`, `senderId` | yes |
 | `outbound.senders` | `Sender` | `campaignId` | yes |
 | `outbound.leads` | `Lead` | `campaignId`, `listId`, `email`, `linkedinUrl`, `since`, `until` | yes |
 | `outbound.messages` | `Message` | `campaignId`, `leadId`, `threadId`, `since`, `until`, `include` | no |
-| `outbound.replies` | `Reply` | `campaignId`, `category`, `since`, `until`, `include` | no |
-| `outbound.lists` | `LeadList` | none | no |
+| `outbound.replies` | `Reply` | `campaignId`, `category`, `unread`, `since`, `until`, `include` | no |
+| `outbound.lists` | `LeadList` | none | yes |
 | `outbound.tags` | `Tag` | none | no |
+| `outbound.placementTests` | `PlacementTest` | none | no |
 | `outbound.blocklist` | `BlockEntry` | none | no |
-| `outbound.webhooks` | `WebhookSubscription` | `campaignId` | no |
+| `outbound.webhooks` | `WebhookSubscription` | `campaignId` | yes |
 | `outbound.workspaces` | `Workspace` | none | no |
 
 ## Handles
@@ -64,10 +65,10 @@ A handle is one record and what hangs off it. Making one sends nothing. See [han
 
 | Handle | Methods | Collections under it |
 | --- | --- | --- |
-| `outbound.campaign(id)` | `get`, `sequence`, `settings`, `stats` | `senders`, `leads`, `messages`, `replies`, `subsequences`, `webhooks` |
-| `outbound.sender(id)` | `get`, `stats`, `warmup`, `health` | none |
+| `outbound.campaign(id)` | `get`, `sequence`, `settings`, `progress`, `stats` | `senders`, `leads`, `messages`, `replies`, `subsequences`, `webhooks` |
+| `outbound.sender(id)` | `get`, `stats`, `warmup`, `health` | `campaigns` |
 | `outbound.lead(id)` | `get`, `timeline` | none |
-| `outbound.list(id)` | none | `leads` |
+| `outbound.list(id)` | `get` | `leads` |
 | `outbound.thread(id)` | `messages` | none |
 
 ## Methods

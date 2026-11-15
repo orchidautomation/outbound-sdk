@@ -73,7 +73,7 @@ To run a test as a particular vendor, limit the in-memory adapter to what that v
   ../../_examples/test-without-a-key/vendors.out.txt
 </include>
 
-This shows which calls a vendor's adapter would refuse. It does not show what that vendor's API returns. HeyReach does not label replies, so the summary reports `null` for positive replies there and does not call the filter.
+This shows which calls a vendor's adapter would refuse. It does not show what that vendor's API returns. All three adapters declare `replies.category`, so the summary counts positive replies on each; on an adapter that does not, it reports `null` and does not call the filter.
 
 ## Inject failures with a plugin
 

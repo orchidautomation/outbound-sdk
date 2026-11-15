@@ -46,7 +46,8 @@ export const campaignSchema = z.object({
   ...base,
   channel: channelSchema,
   createdAt: isoDateTime,
-  name: z.string(),
+  /** The vendor's name for it, or its id when the vendor gave none. Never empty. */
+  name: z.string().min(1),
   status: campaignStatusSchema,
   tags: z.array(z.string()),
 });
@@ -103,6 +104,15 @@ export const senderStatusSchema = z.enum([
 
 export type SenderStatus = z.infer<typeof senderStatusSchema>;
 
+export const mailProviderSchema = z.enum([
+  "google",
+  "microsoft",
+  "other",
+  "smtp",
+]);
+
+export type MailProvider = z.infer<typeof mailProviderSchema>;
+
 export const senderSchema = z.object({
   ...base,
   /** Lowercased mailbox address. `null` for a LinkedIn seat. */
@@ -110,8 +120,12 @@ export const senderSchema = z.object({
   dailyLimit: count,
   kind: z.enum(["linkedin", "mailbox"]),
   linkedinUrl: z.string().nullable(),
+  /** Who hosts the mailbox. `null` for a LinkedIn seat and when the vendor does not say. */
+  mailProvider: mailProviderSchema.nullable(),
   name: z.string().nullable(),
   status: senderStatusSchema,
+  /** The names of the tags on the sender. */
+  tags: z.array(z.string()),
   warmup: z
     .object({
       enabled: z.boolean().nullable(),
@@ -121,6 +135,18 @@ export const senderSchema = z.object({
 });
 
 export type Sender = z.infer<typeof senderSchema>;
+
+export const replyCategorySchema = z.enum([
+  "bounce",
+  "negative",
+  "neutral",
+  "ooo",
+  "positive",
+  "unknown",
+  "unsubscribe",
+]);
+
+export type ReplyCategory = z.infer<typeof replyCategorySchema>;
 
 export const leadStatusSchema = z.enum([
   "active",
@@ -133,6 +159,16 @@ export const leadStatusSchema = z.enum([
 ]);
 
 export type LeadStatus = z.infer<typeof leadStatusSchema>;
+
+/** Where a lead is in its sequence, whatever came back from it. */
+export const leadProgressSchema = z.enum([
+  "active",
+  "completed",
+  "paused",
+  "unknown",
+]);
+
+export type LeadProgress = z.infer<typeof leadProgressSchema>;
 
 /** What a lead did with the campaign's messages, as the vendor counts it. */
 export const leadEngagementSchema = z.object({
@@ -152,8 +188,12 @@ export type LeadEngagement = z.infer<typeof leadEngagementSchema>;
 
 export const leadSchema = z.object({
   ...base,
+  /** `true` once a message to the lead bounced. `null` when the vendor does not say. */
+  bounced: z.boolean().nullable(),
   campaignRef: z.string().nullable(),
   company: z.string().nullable(),
+  /** The company's LinkedIn page. */
+  companyLinkedinUrl: z.string().nullable(),
   createdAt: isoDateTime,
   /** The lead's custom fields as the vendor stores them. */
   custom: z.record(z.string(), z.string()),
@@ -164,11 +204,31 @@ export const leadSchema = z.object({
   firstName: z.string().nullable(),
   /** The vendor's own label for how interested the lead is, for example `Meeting Booked`. */
   interest: z.string().nullable(),
+  /**
+   * What `interest` means, in the categories a reply uses. `null` when the
+   * lead has no label or the vendor does not say what the label means.
+   */
+  interestCategory: replyCategorySchema.nullable(),
   lastName: z.string().nullable(),
   linkedinUrl: z.string().nullable(),
+  /** Where the lead is, in the vendor's own words. */
+  location: z.string().nullable(),
+  phone: z.string().nullable(),
+  /** Where the lead is in its sequence, whatever came back from it. */
+  progress: leadProgressSchema,
+  /** `true` once the lead replied. `null` when the vendor does not say. */
+  replied: z.boolean().nullable(),
+  /**
+   * The headline: `unsubscribed`, `bounced` or `replied` when one of them is
+   * known to be true, in that order, and `progress` otherwise.
+   */
   status: leadStatusSchema,
   tags: z.array(z.string()),
   title: z.string().nullable(),
+  /** `true` once the lead unsubscribed. `null` when the vendor does not say. */
+  unsubscribed: z.boolean().nullable(),
+  /** The company's website or domain, as the vendor stores it. */
+  website: z.string().nullable(),
 });
 
 export type Lead = z.infer<typeof leadSchema>;
@@ -197,26 +257,20 @@ export const messageSchema = z.object({
 
 export type Message = z.infer<typeof messageSchema>;
 
-export const replyCategorySchema = z.enum([
-  "bounce",
-  "negative",
-  "neutral",
-  "ooo",
-  "positive",
-  "unknown",
-  "unsubscribe",
-]);
-
-export type ReplyCategory = z.infer<typeof replyCategorySchema>;
-
 export const replySchema = z.object({
   ...messageFields,
   category: replyCategorySchema,
-  /** Who decided the category. `null` when it is `unknown`. Never a model. */
-  categorySource: z.enum(["rule", "vendor"]).nullable(),
+  /**
+   * Who decided the category: `vendor` when the vendor labelled this reply,
+   * `lead` when it is the vendor's label for the lead who sent it, `rule` for
+   * a fixed rule. `null` when the category is `unknown`. Never a model.
+   */
+  categorySource: z.enum(["lead", "rule", "vendor"]).nullable(),
   direction: z.literal("in"),
   /** `true` for an auto-reply, `null` when the vendor does not say. */
   isAuto: z.boolean().nullable(),
+  /** `true` while the reply, or the thread it is in, is unread in the vendor's inbox. */
+  unread: z.boolean().nullable(),
 });
 
 export type Reply = z.infer<typeof replySchema>;
@@ -240,7 +294,10 @@ export type Evidence = z.infer<typeof evidenceSchema>;
  */
 export const metricRowSchema = z.object({
   bounced: count,
+  /** Unique clicks: leads who clicked at least once. */
   clicked: count,
+  /** Every click, repeats included. */
+  clickedTotal: count,
   /** LinkedIn only. */
   connectionsAccepted: count,
   /** LinkedIn only. */
@@ -268,7 +325,11 @@ export const metricRowSchema = z.object({
   /** Messages sent. Email sends, or LinkedIn messages. */
   sent: count,
   stepIndex: z.number().int().nonnegative().nullable(),
-  /** The vendor's timezone for daily rows. A vendor's "day" is not always UTC. */
+  /**
+   * The timezone the row's day boundaries are in: a daily row's `date`, or the
+   * ends of a dated total. `null` when the vendor does not say, and for a
+   * lifetime total. A vendor's "day" is not always UTC.
+   */
   timezone: z.string().nullable(),
   unsubscribed: count,
   variantKey: z.string().nullable(),
@@ -279,7 +340,7 @@ export type MetricRow = z.infer<typeof metricRowSchema>;
 
 export const workspaceSchema = z.object({
   ...base,
-  name: z.string(),
+  name: z.string().min(1),
 });
 
 export type Workspace = z.infer<typeof workspaceSchema>;
@@ -305,11 +366,53 @@ export const eventTypeSchema = z.enum([
 
 export type EventType = z.infer<typeof eventTypeSchema>;
 
+const said = z.string().nullable().optional();
+const told = z.boolean().nullable().optional();
+
+/**
+ * What an event says beyond its refs. The keys below mean the same on every
+ * vendor and are checked; a vendor's own extras ride along beside them. A key
+ * is absent when the vendor's payload does not carry it.
+ */
+export const eventDataSchema = z
+  .object({
+    campaignName: said,
+    /** What a categorized reply was categorized as. */
+    category: replyCategorySchema.nullable().optional(),
+    /** The vendor's own name for that category. */
+    categoryName: said,
+    /** `true` for an automatic reply. */
+    isAuto: told,
+    /** `true` for the first event of its kind for the lead. */
+    isFirst: told,
+    /** `true` for a LinkedIn InMail. */
+    isInmail: told,
+    /** `true` for a test delivery the vendor sent on request. */
+    isTest: told,
+    /** Lowercased. */
+    leadEmail: said,
+    leadName: said,
+    senderEmail: said,
+    /** The step the message belongs to, counted from 0. */
+    stepIndex: z.number().int().nonnegative().nullable().optional(),
+    subject: said,
+    /** The message or reply text, when the vendor sends it. */
+    text: said,
+    /** `true` for a reply the vendor could not tie to a campaign. */
+    untracked: told,
+    variantKey: said,
+    /** The event's name in the vendor's own words. */
+    vendorEvent: said,
+  })
+  .catchall(z.json());
+
+export type EventData = z.infer<typeof eventDataSchema>;
+
 /** Every webhook and every sync diff becomes this one shape. */
 export const outboundEventSchema = z.object({
   campaignRef: z.string().nullable(),
-  /** The type-specific normalized payload. */
-  data: z.record(z.string(), z.json()),
+  /** What the event says beyond its refs: shared keys, then the vendor's extras. */
+  data: eventDataSchema,
   /** Stable across redelivery, so handling an event twice is a no-op. */
   id: z.string().min(1),
   leadRef: z.string().nullable(),

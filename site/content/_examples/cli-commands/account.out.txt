@@ -14,6 +14,7 @@ $ outbound stats --from 2026-10-01 --to 2026-10-31
     {
       "bounced": 5,
       "clicked": null,
+      "clickedTotal": null,
       "connectionsAccepted": null,
       "connectionsSent": null,
       "contacted": 150,
@@ -42,7 +43,7 @@ $ outbound stats --from 2026-10-01 --to 2026-10-31
 }
 
 $ outbound stats --by day --compact
-{"meta":{"complete":true,"evidence":"exact","fetchedAt":"2026-11-14T12:00:00.000Z","provider":"memory","requests":0,"stale":false,"throttledMs":0,"workspaceId":"default"},"rows":[{"bounced":5,"clicked":null,"connectionsAccepted":null,"connectionsSent":null,"contacted":110,"delivered":105,"inmailsSent":null,"opened":48,"openedTotal":null,"positive":2,"replied":5,"repliedAuto":null,"sent":110,"unsubscribed":null,"contentHash":null,"date":"2026-10-05","evidence":"exact","provider":"memory","schemaVersion":1,"scope":"workspace","scopeRef":"memory:default:default","stepIndex":null,"timezone":"UTC","variantKey":null,"workspaceId":"default"},{"bounced":0,"clicked":null,"connectionsAccepted":null,"connectionsSent":null,"contacted":40,"delivered":40,"inmailsSent":null,"opened":22,"openedTotal":null,"positive":1,"replied":3,"repliedAuto":null,"sent":40,"unsubscribed":null,"contentHash":null,"date":"2026-10-06","evidence":"exact","provider":"memory","schemaVersion":1,"scope":"workspace","scopeRef":"memory:default:default","stepIndex":null,"timezone":"UTC","variantKey":null,"workspaceId":"default"}]}
+{"meta":{"complete":true,"evidence":"exact","fetchedAt":"2026-11-14T12:00:00.000Z","provider":"memory","requests":0,"stale":false,"throttledMs":0,"workspaceId":"default"},"rows":[{"bounced":5,"clicked":null,"clickedTotal":null,"connectionsAccepted":null,"connectionsSent":null,"contacted":110,"delivered":105,"inmailsSent":null,"opened":48,"openedTotal":null,"positive":2,"replied":5,"repliedAuto":null,"sent":110,"unsubscribed":null,"contentHash":null,"date":"2026-10-05","evidence":"exact","provider":"memory","schemaVersion":1,"scope":"workspace","scopeRef":"memory:default:default","stepIndex":null,"timezone":"UTC","variantKey":null,"workspaceId":"default"},{"bounced":0,"clicked":null,"clickedTotal":null,"connectionsAccepted":null,"connectionsSent":null,"contacted":40,"delivered":40,"inmailsSent":null,"opened":22,"openedTotal":null,"positive":1,"replied":3,"repliedAuto":null,"sent":40,"unsubscribed":null,"contentHash":null,"date":"2026-10-06","evidence":"exact","provider":"memory","schemaVersion":1,"scope":"workspace","scopeRef":"memory:default:default","stepIndex":null,"timezone":"UTC","variantKey":null,"workspaceId":"default"}]}
 
 $ outbound tags
 [
@@ -85,6 +86,7 @@ $ outbound webhooks
     "active": true,
     "campaignRefs": [],
     "createdAt": null,
+    "eventTypes": [],
     "events": [
       "reply_received"
     ],

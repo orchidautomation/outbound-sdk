@@ -1,5 +1,5 @@
 import { isJsonObject, isString } from "./json.ts";
-import type { Json } from "./json.ts";
+import type { Json, JsonObject } from "./json.ts";
 import { redactCause, redactText } from "./redact.ts";
 
 export type OutboundErrorCode =
@@ -180,3 +180,19 @@ export const makeErrorMapper =
       }
     );
   };
+
+/**
+ * A vendor response that must be one object. Anything else is the vendor's
+ * fault, so it is a `Provider` error with the adapter's own message.
+ */
+export const requireObject = (
+  body: Json | undefined,
+  provider: string,
+  message: string
+): JsonObject => {
+  if (!isJsonObject(body)) {
+    throw new OutboundError("Provider", message, { provider });
+  }
+
+  return body;
+};

@@ -1,0 +1,105 @@
+{
+  "byDayStats": {
+    "2024-12-17T00:00:00Z": [
+      {
+        "campaignId": 274079,
+        "campaignName": "Example campaign 1",
+        "isCampaignDeleted": false,
+        "profileViews": 11,
+        "postLikes": 12,
+        "follows": 13,
+        "messagesSent": 14,
+        "totalMessageStarted": 15,
+        "totalMessageReplies": 16,
+        "inmailMessagesSent": 17,
+        "totalInmailStarted": 18,
+        "totalInmailReplies": 19,
+        "connectionsSent": 20,
+        "connectionsAccepted": 21,
+        "messageReplyRate": 0.5,
+        "inMailReplyRate": 0.5,
+        "connectionAcceptanceRate": 0.5
+      },
+      {
+        "campaignId": 274080,
+        "campaignName": "Example campaign 2",
+        "isCampaignDeleted": false,
+        "profileViews": 31,
+        "postLikes": 32,
+        "follows": 33,
+        "messagesSent": 34,
+        "totalMessageStarted": 35,
+        "totalMessageReplies": 36,
+        "inmailMessagesSent": 37,
+        "totalInmailStarted": 38,
+        "totalInmailReplies": 39,
+        "connectionsSent": 40,
+        "connectionsAccepted": 41,
+        "messageReplyRate": 0.5,
+        "inMailReplyRate": 0.5,
+        "connectionAcceptanceRate": 0.5
+      }
+    ],
+    "2024-12-18T00:00:00Z": [
+      {
+        "campaignId": 274079,
+        "campaignName": "Example campaign 1",
+        "isCampaignDeleted": false,
+        "profileViews": 51,
+        "postLikes": 52,
+        "follows": 53,
+        "messagesSent": 54,
+        "totalMessageStarted": 55,
+        "totalMessageReplies": 56,
+        "inmailMessagesSent": 57,
+        "totalInmailStarted": 58,
+        "totalInmailReplies": 59,
+        "connectionsSent": 60,
+        "connectionsAccepted": 61,
+        "messageReplyRate": 0.5,
+        "inMailReplyRate": 0.5,
+        "connectionAcceptanceRate": 0.5
+      }
+    ]
+  },
+  "overallStats": [
+    {
+      "campaignId": 274079,
+      "campaignName": "Example campaign 1",
+      "isCampaignDeleted": false,
+      "profileViews": 101,
+      "postLikes": 102,
+      "follows": 103,
+      "messagesSent": 104,
+      "totalMessageStarted": 105,
+      "totalMessageReplies": 106,
+      "inmailMessagesSent": 107,
+      "totalInmailStarted": 108,
+      "totalInmailReplies": 109,
+      "connectionsSent": 110,
+      "connectionsAccepted": 111,
+      "messageReplyRate": 0.5,
+      "inMailReplyRate": 0.5,
+      "connectionAcceptanceRate": 0.5
+    },
+    {
+      "campaignId": 274080,
+      "campaignName": "Example campaign 2",
+      "isCampaignDeleted": false,
+      "profileViews": 201,
+      "postLikes": 202,
+      "follows": 203,
+      "messagesSent": 204,
+      "totalMessageStarted": 205,
+      "totalMessageReplies": 206,
+      "inmailMessagesSent": 207,
+      "totalInmailStarted": 208,
+      "totalInmailReplies": 209,
+      "connectionsSent": 210,
+      "connectionsAccepted": 211,
+      "messageReplyRate": 0.5,
+      "inMailReplyRate": 0.5,
+      "connectionAcceptanceRate": 0.5
+    }
+  ]
+}

@@ -130,7 +130,7 @@ The same export, run on the in-memory adapter limited to what each vendor's adap
   ../../_examples/export-leads/vendors.out.txt
 </include>
 
-HeyReach is refused because it has no list of every lead: leads exist only inside a campaign or a saved list. Export `outbound.campaign(id).leads.listAll()` once per campaign, as the fallback above does for one. A person in two campaigns is then two rows.
+All three adapters list every lead. Smartlead and HeyReach have no such endpoint, so their adapters walk the campaigns and read each one's leads: a lead in no campaign is not exported, and `listAll` returns a person in two campaigns once. The fallback above is for an adapter that does not declare `leads.list`: it exports `outbound.campaign(id).leads.listAll()` for one campaign.
 
 ## What it costs in vendor requests
 

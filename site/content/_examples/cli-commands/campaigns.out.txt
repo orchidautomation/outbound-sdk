@@ -60,6 +60,7 @@ $ outbound campaign cmp_founders --stats --from 2026-10-05 --to 2026-10-05
     {
       "bounced": 1,
       "clicked": null,
+      "clickedTotal": null,
       "connectionsAccepted": null,
       "connectionsSent": null,
       "contacted": 50,
@@ -88,7 +89,7 @@ $ outbound campaign cmp_founders --stats --from 2026-10-05 --to 2026-10-05
 }
 
 $ outbound campaign cmp_founders --stats --by day --compact
-{"meta":{"complete":true,"evidence":"exact","fetchedAt":"2026-11-14T12:00:00.000Z","provider":"memory","requests":0,"stale":false,"throttledMs":0,"workspaceId":"default"},"rows":[{"bounced":1,"clicked":null,"connectionsAccepted":null,"connectionsSent":null,"contacted":50,"delivered":49,"inmailsSent":null,"opened":30,"openedTotal":null,"positive":2,"replied":4,"repliedAuto":null,"sent":50,"unsubscribed":null,"contentHash":null,"date":"2026-10-05","evidence":"exact","provider":"memory","schemaVersion":1,"scope":"campaign","scopeRef":"memory:default:cmp_founders","stepIndex":null,"timezone":"UTC","variantKey":null,"workspaceId":"default"},{"bounced":0,"clicked":null,"connectionsAccepted":null,"connectionsSent":null,"contacted":40,"delivered":40,"inmailsSent":null,"opened":22,"openedTotal":null,"positive":1,"replied":3,"repliedAuto":null,"sent":40,"unsubscribed":null,"contentHash":null,"date":"2026-10-06","evidence":"exact","provider":"memory","schemaVersion":1,"scope":"campaign","scopeRef":"memory:default:cmp_founders","stepIndex":null,"timezone":"UTC","variantKey":null,"workspaceId":"default"}]}
+{"meta":{"complete":true,"evidence":"exact","fetchedAt":"2026-11-14T12:00:00.000Z","provider":"memory","requests":0,"stale":false,"throttledMs":0,"workspaceId":"default"},"rows":[{"bounced":1,"clicked":null,"clickedTotal":null,"connectionsAccepted":null,"connectionsSent":null,"contacted":50,"delivered":49,"inmailsSent":null,"opened":30,"openedTotal":null,"positive":2,"replied":4,"repliedAuto":null,"sent":50,"unsubscribed":null,"contentHash":null,"date":"2026-10-05","evidence":"exact","provider":"memory","schemaVersion":1,"scope":"campaign","scopeRef":"memory:default:cmp_founders","stepIndex":null,"timezone":"UTC","variantKey":null,"workspaceId":"default"},{"bounced":0,"clicked":null,"clickedTotal":null,"connectionsAccepted":null,"connectionsSent":null,"contacted":40,"delivered":40,"inmailsSent":null,"opened":22,"openedTotal":null,"positive":1,"replied":3,"repliedAuto":null,"sent":40,"unsubscribed":null,"contentHash":null,"date":"2026-10-06","evidence":"exact","provider":"memory","schemaVersion":1,"scope":"campaign","scopeRef":"memory:default:cmp_founders","stepIndex":null,"timezone":"UTC","variantKey":null,"workspaceId":"default"}]}
 
 $ outbound campaign cmp_founders --sequence
 {

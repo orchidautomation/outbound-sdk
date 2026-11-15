@@ -271,7 +271,12 @@ test("smartlead: replies come from the master inbox with a fetched category", as
     "positive",
     "category 1 has a positive sentiment"
   );
-  assert.equal(reply?.categorySource, "vendor");
+  assert.equal(
+    reply?.categorySource,
+    "lead",
+    "the category is the lead's, not one message's"
+  );
+  assert.equal(reply?.unread, true, "is_read is false on the thread");
   assert.equal(reply?.isAuto, null);
   assert.equal(reply?.bodyText, null);
 });
@@ -369,10 +374,10 @@ test("smartlead: a category follows sentiment_type, and Out Of Office by name", 
       reply.isAuto,
     ]),
     [
-      ["positive", "vendor", null],
-      ["negative", "vendor", null],
-      ["neutral", "vendor", null],
-      ["ooo", "vendor", true],
+      ["positive", "lead", null],
+      ["negative", "lead", null],
+      ["neutral", "lead", null],
+      ["ooo", "lead", true],
       ["unknown", null, null],
       ["unknown", null, null],
       ["unknown", null, null],

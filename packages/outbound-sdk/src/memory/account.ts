@@ -5,11 +5,13 @@ import type {
   BlockEntry,
   CampaignSettings,
   LeadList,
+  PlacementTest,
   SenderHealth,
   SendingWindow,
   Tag,
   WebhookSubscription,
 } from "../internal/entities-account.ts";
+import type { EventType } from "../internal/entities.ts";
 import { recordBase, refsTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
 import { makeRef } from "../internal/ref.ts";
@@ -66,11 +68,24 @@ export interface MemoryTag {
   readonly description?: string;
 }
 
+export interface MemoryPlacementTest {
+  readonly id: string;
+  readonly name?: string;
+  readonly status?: PlacementTest["status"];
+  readonly kind?: NonNullable<PlacementTest["kind"]>;
+  readonly campaignId?: string;
+  readonly createdAt?: string;
+  readonly nextRunAt?: string;
+  readonly startsAt?: string;
+  readonly endsAt?: string;
+}
+
 export interface MemoryWebhook {
   readonly id: string;
   readonly url: string;
   readonly name?: string;
   readonly events?: readonly string[];
+  readonly eventTypes?: readonly EventType[];
   readonly active?: boolean;
   readonly campaignId?: string;
   readonly createdAt?: string;
@@ -173,7 +188,26 @@ export const toWebhook = (
   active: seed.active ?? true,
   campaignRefs: refsTo(identity, [seed.campaignId]),
   createdAt: seed.createdAt ?? null,
+  eventTypes: [...(seed.eventTypes ?? [])],
   events: [...(seed.events ?? [])],
   name: seed.name ?? null,
   url: seed.url,
+});
+
+export const toPlacementTest = (
+  identity: Identity,
+  seed: MemoryPlacementTest
+): PlacementTest => ({
+  ...base(identity, seed.id),
+  campaignRef:
+    seed.campaignId === undefined
+      ? null
+      : makeRef(identity.provider, identity.workspaceId, seed.campaignId),
+  createdAt: seed.createdAt ?? null,
+  endsAt: seed.endsAt ?? null,
+  kind: seed.kind ?? null,
+  name: seed.name ?? seed.id,
+  nextRunAt: seed.nextRunAt ?? null,
+  startsAt: seed.startsAt ?? null,
+  status: seed.status ?? "active",
 });

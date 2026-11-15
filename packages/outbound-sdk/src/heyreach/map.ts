@@ -5,7 +5,8 @@ import type {
   Campaign,
   CampaignStatus,
   Lead,
-  LeadStatus,
+  LeadProgress,
+  ReplyCategory,
   Sender,
   SenderStatus,
 } from "../internal/entities.ts";
@@ -14,6 +15,7 @@ import {
   emailAddress,
   field,
   flag,
+  fullName,
   isJsonObject,
   list,
   objects,
@@ -21,6 +23,7 @@ import {
   timestamp,
 } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
+import { leadStanding } from "../internal/lead-status.ts";
 import { recordBase, refTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
 
@@ -48,18 +51,10 @@ export const toCampaign = (identity: Identity, raw: JsonObject): Campaign => ({
   ...recordBase(identity, text(raw.id) ?? "", raw),
   channel: "linkedin",
   createdAt: timestamp(raw.creationTime),
-  name: text(raw.name) ?? "",
+  name: text(raw.name) ?? text(raw.id) ?? "",
   status: CAMPAIGN_STATUS.get(text(raw.status) ?? "") ?? "unknown",
   tags: [],
 });
-
-const fullName = (raw: JsonObject): string | null => {
-  const name = [text(raw.firstName), text(raw.lastName)]
-    .filter((part) => part !== null)
-    .join(" ");
-
-  return name === "" ? null : name;
-};
 
 // A LinkedIn account has no status enum, only two booleans the docs leave
 // undefined. An invalid login is the clearer signal, so it wins.
@@ -85,12 +80,15 @@ export const toSender = (identity: Identity, raw: JsonObject): Sender => ({
   dailyLimit: null,
   kind: "linkedin",
   linkedinUrl: text(raw.profileUrl),
-  name: fullName(raw),
+  mailProvider: null,
+  name: fullName(raw.firstName, raw.lastName),
   status: senderStatus(raw),
+  // HeyReach has no tags on a LinkedIn account.
+  tags: [],
   warmup: null,
 });
 
-const LEAD_STATUS = new Map<string, LeadStatus>([
+const LEAD_PROGRESS = new Map<string, LeadProgress>([
   ["Finished", "completed"],
   ["InSequence", "active"],
   ["Paused", "paused"],
@@ -99,13 +97,20 @@ const LEAD_STATUS = new Map<string, LeadStatus>([
 
 // Excluded and PendingOrExcludedToBeCalculated, which only
 // GetCampaignsForLead reports, have no equivalent and stay unknown.
-const campaignLeadStatus = (value: Json | undefined): LeadStatus =>
-  LEAD_STATUS.get(text(value) ?? "") ?? "unknown";
+const campaignProgress = (value: Json | undefined): LeadProgress =>
+  LEAD_PROGRESS.get(text(value) ?? "") ?? "unknown";
 
-const leadStatus = (raw: JsonObject): LeadStatus =>
-  text(raw.leadMessageStatus) === "MessageReply"
-    ? "replied"
-    : campaignLeadStatus(raw.leadCampaignStatus);
+// LinkedIn has no bounce and no unsubscribe. A campaign's lead row says
+// whether the lead replied (`leadMessageStatus`); no other lead shape does.
+const standing = (progress: LeadProgress, messageStatus?: Json | undefined) => {
+  const said = text(messageStatus);
+
+  return leadStanding(progress, {
+    bounced: null,
+    replied: said === null ? null : said === "MessageReply",
+    unsubscribed: null,
+  });
+};
 
 /** A lead's manual tags: `tags` is an array of names. */
 export const tagNames = (value: Json | undefined): string[] =>
@@ -127,6 +132,20 @@ const interest = (profile: Json | undefined): string | null => {
 
   return text(newest?.name);
 };
+
+// The three auto-tags HeyReach's help center names. The API reference does
+// not list the strings it returns, so any other name means nothing here.
+const AUTO_TAG = new Map<string, ReplyCategory>([
+  ["generic", "neutral"],
+  ["interested", "positive"],
+  ["not interested", "negative"],
+]);
+
+/** What a profile's newest auto-tag means, or `null`. */
+export const interestCategory = (
+  profile: Json | undefined
+): ReplyCategory | null =>
+  AUTO_TAG.get(interest(profile)?.toLowerCase() ?? "") ?? null;
 
 // `customFields` is an array of `{ name, value }` pairs.
 const customFields = (profile: Json | undefined): Record<string, string> =>
@@ -154,6 +173,8 @@ const profileFields = (
     raw
   ),
   company: text(field(profile, "companyName")),
+  // `companyUrl` is the company's LinkedIn page, not its website.
+  companyLinkedinUrl: text(field(profile, "companyUrl")),
   custom: customFields(profile),
   email:
     emailAddress(field(profile, "emailAddress")) ??
@@ -163,10 +184,15 @@ const profileFields = (
   engagement: null,
   firstName: text(field(profile, "firstName")),
   interest: interest(profile),
+  interestCategory: interestCategory(profile),
   lastName: text(field(profile, "lastName")),
   tags: tagNames(field(profile, "tags")),
   linkedinUrl: text(field(profile, "profileUrl")),
+  location: text(field(profile, "location")),
+  // HeyReach profiles carry no phone number and no company website.
+  phone: null,
   title: text(field(profile, "position")),
+  website: null,
 });
 
 /**
@@ -183,9 +209,9 @@ export const toLead = (
 
   return {
     ...lead,
+    ...standing("unknown"),
     campaignRef: null,
     createdAt: null,
-    status: "unknown",
     tags: tags === undefined ? lead.tags : tagNames(tags),
   };
 };
@@ -197,9 +223,12 @@ export const toCampaignLead = (
   campaignId: string
 ): Lead => ({
   ...profileFields(identity, raw.linkedInUserProfile, raw),
+  ...standing(
+    campaignProgress(raw.leadCampaignStatus),
+    raw.leadMessageStatus ?? null
+  ),
   campaignRef: refTo(identity, campaignId),
   createdAt: timestamp(raw.creationTime),
-  status: leadStatus(raw),
 });
 
 /** Every address a `POST /lead/GetLead` profile carries, lowercased. */
@@ -231,10 +260,10 @@ export const toLookupLead = (
   // The core tells looked-up records apart by their campaign.
   return {
     ...lead,
+    ...standing(campaignProgress(campaign?.leadStatus)),
     campaignRef: refTo(identity, text(campaign?.campaignId)),
     createdAt: null,
     email: email ?? lead.email,
-    status: campaignLeadStatus(campaign?.leadStatus),
   };
 };
 

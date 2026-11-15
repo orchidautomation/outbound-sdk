@@ -7,13 +7,12 @@
 import type { EventFormat, WebhookRequest } from "../internal/adapter.ts";
 import { SCHEMA_VERSION } from "../internal/entities.ts";
 import type {
+  EventData,
   EventType,
   OutboundEvent,
   ReplyCategory,
 } from "../internal/entities.ts";
 import {
-  compactObject,
-  count,
   emailAddress,
   flag,
   isJsonObject,
@@ -21,13 +20,13 @@ import {
   text,
   timestamp,
 } from "../internal/json.ts";
-import type { Json, JsonObject } from "../internal/json.ts";
-import { refTo } from "../internal/record.ts";
+import type { JsonObject } from "../internal/json.ts";
+import { eventData, refTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
+import { fromOne, variantKey } from "../internal/sequence.ts";
 import { stableId } from "../internal/sha256.ts";
-import { variantKey } from "./map.ts";
 
-const EVENT_TYPES = new Map<string, EventType>([
+export const EVENT_TYPES = new Map<string, EventType>([
   ["account_error", "sender.status_changed"],
   ["auto_reply_received", "reply.received"],
   ["campaign_completed", "campaign.status_changed"],
@@ -58,16 +57,10 @@ const CATEGORIES = new Map<string, ReplyCategory>([
 ]);
 
 // Webhooks number steps and variants from 1.
-const fromOne = (value: Json | undefined): number | null => {
-  const number = count(value);
-
-  return number === null || number < 1 ? null : number - 1;
-};
-
-const eventData = (name: string, body: JsonObject): JsonObject => {
+const dataOf = (name: string, body: JsonObject): EventData => {
   const variant = fromOne(body.variant);
 
-  return compactObject({
+  return eventData({
     campaignName: text(body.campaign_name),
     category: CATEGORIES.get(name),
     isAuto: name === "auto_reply_received" ? true : undefined,
@@ -89,7 +82,7 @@ const toEvent = (identity: Identity, body: JsonObject): OutboundEvent => {
 
   return {
     campaignRef: refTo(identity, campaignId),
-    data: eventData(name, body),
+    data: dataOf(name, body),
     // Instantly sends no event id, so the id is built from what identifies the event.
     id: stableId(
       identity.provider,

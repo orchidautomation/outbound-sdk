@@ -5,6 +5,7 @@
 
 import type { OperationCost } from "../internal/adapter.ts";
 import type { CapabilityDeclaration } from "../internal/capabilities.ts";
+import type { FieldDeclaration } from "../internal/fields.ts";
 import type { LimitDeclaration } from "../internal/limits.ts";
 
 export const BASE_URL = "https://api.instantly.ai/api/v2";
@@ -27,6 +28,10 @@ export const TAG_PAGES = 10;
 
 export const capabilities: CapabilityDeclaration = {
   blocklist: true,
+  // GET /account-campaign-mappings/{email}.
+  "campaigns.bySender": true,
+  // GET /campaigns/analytics for one id: leads_count and completed_count.
+  "campaigns.progress": true,
   "campaigns.settings": true,
   // Draft and completed are filtered by Instantly. Active and paused each
   // cover several Instantly statuses, so the adapter matches those itself.
@@ -44,6 +49,10 @@ export const capabilities: CapabilityDeclaration = {
   // POST /leads/list has no date filter, so the wrapper filters after fetching.
   "leads.since": "client",
   "leads.timeline": true,
+  // GET /inbox-placement-tests.
+  "placementTests.list": true,
+  // GET /lead-lists/{id}, then its verification-stats for the size.
+  "lists.get": true,
   "lists.leads": true,
   "lists.list": true,
   // A list response can cut a large body short (`body_fallback_reason`); the
@@ -56,6 +65,8 @@ export const capabilities: CapabilityDeclaration = {
   native: true,
   "replies.category": "vendor",
   "replies.list": true,
+  // GET /emails takes is_unread.
+  "replies.unread": "server",
   "replies.since": "server",
   "senders.byCampaign": true,
   "senders.get": true,
@@ -68,11 +79,47 @@ export const capabilities: CapabilityDeclaration = {
   // Per-mailbox numbers exist by day only; a total is summed by the adapter.
   "stats.bySender": "derived",
   "stats.byStep": "exact",
+  // GET /campaigns/analytics with no id: a row per campaign, totals only.
+  // Partial: it has no count of interested leads and no total of opens.
+  "stats.allCampaigns": "partial",
   "stats.campaign": "exact",
   "stats.workspace": "exact",
   tags: true,
+  // GET /webhooks/{id}.
+  "webhooks.get": true,
   "webhooks.list": true,
   workspaces: true,
+};
+
+// What an Instantly record never carries. A lead has no LinkedIn fields, no
+// location and no tags, and no report says how many emails were delivered.
+export const fields: FieldDeclaration = {
+  // The per-campaign report counts every lead and the finished ones only.
+  campaignProgress: {
+    blocked: false,
+    failed: false,
+    inProgress: false,
+    notStarted: false,
+    stopped: false,
+  },
+  lead: {
+    companyLinkedinUrl: false,
+    linkedinUrl: false,
+    location: false,
+    tags: false,
+  },
+  metricRow: {
+    connectionsAccepted: false,
+    connectionsSent: false,
+    contentHash: false,
+    delivered: false,
+    inmailsSent: false,
+    timezone: false,
+  },
+  // A test has a creation time and a next run, and no start or end date.
+  placementTest: { endsAt: false, startsAt: false },
+  sender: { linkedinUrl: false },
+  senderHealth: { blacklisted: false, checkedAt: false },
 };
 
 export const limits: LimitDeclaration = {
@@ -118,6 +165,9 @@ export const costs = {
 
 export const caveats: readonly string[] = [
   "The reads were run once, read-only, against one live workspace on 2026-11-14. Fixtures are still built from the API V2 documentation, and subsequences, a campaign's own webhooks and a second page of most lists were not exercised because that workspace had none or too few.",
+  "Added from the API reference after that live run and not run against a live workspace: stats for every campaign (GET /campaigns/analytics with no id, where open_count is leads and no interested count exists), a mailbox's campaigns (GET /account-campaign-mappings), the unread filter (is_unread), lists.get with its size from verification-stats, webhooks.get, and a sender's tags and mailProvider.",
+  "A lead's progress is its status when that is 1 (active), 2 (paused) or 3 (completed). Status -1 is bounced and -2 unsubscribed: they say what came back, so progress is then unknown. replied is email_reply_count above 0, and a lead that replied has the status replied whatever its progress.",
+  "A placement test's kind reads type 1 as a one-time test and 2 as an automated one: the reference names the two kinds in that order and gives the numbers no names. A test's results stay native, because Instantly reports them as one row per test email.",
   "Instantly sends next_starting_after on a last page too (seen live), and the page after it is empty. A listing therefore ends one request late; the small lookups for tags and labels stop at the first page that is not full.",
   "A reply's category is read from the email's i_status using the lead interest status values (seen live: 0, 1, -1 and -2). A received email carries the lead's address but no lead id, so a reply's leadRef is null; a sent message has one. Instantly does not mark an email as automatic, so isAuto is null.",
   "An email's step and a lead's last step are ids of the form sequence_step_variant, each counted from 0 (seen live, not documented); any other form gives a null step. Step analytics count steps from 0 too, and can hold a row with no step for counts Instantly could not tie to one.",
@@ -134,7 +184,7 @@ export const caveats: readonly string[] = [
   "A lead's engagement.stepIndex is the last step sent, read from its status summary; lastOpenedAt is null when open tracking is off. A lead has no tags in Instantly, and the lead object was seen without a job title.",
   "A lead is found by email with the contacts filter of POST /leads/list, documented only as the emails a lead needs to have. Whether it compares whole addresses and ignores case is not documented and was not run live, so the adapter keeps only the records whose address equals the one asked for, and a page can hold fewer records than Instantly returned. One record comes back per campaign or list the address is in. A lead has no LinkedIn profile: a lookup by profile returns nothing and sends no request.",
   "A lead's interest is the documented label for lt_interest_status. A custom label costs one more read (lead-labels, first 100 labels), made only when a page holds a status that is not a built-in one; the same read gives a reply with a custom status its category.",
-  "A lead list's size is null: the list object has no count, and the count costs one more read per list. The native read leadListVerificationStats returns total_leads for one list. kind is always leads.",
+  "A listed lead list's size is null: the list object has no count. lists.get reads GET /lead-lists/{id}/verification-stats as well and takes total_leads from it, so one list by id costs two requests. kind is always leads.",
   "Native reads return what Instantly sends, unmapped. dfyAccounts never asks for passwords. Instantly refuses per-mailbox daily analytics (413) on a large workspace unless a mailbox is named, which the per-sender stats always do.",
   "The daily limits of leadLabelPrediction, localBusinessFilters and localBusinessSearch are counted in this process only; a restart forgets what was used.",
   "A webhook made for a custom lead label has no event_type, so its events are empty; custom_interest_value stays in raw. The headers Instantly sends with a delivery can carry a credential, so they are left out of a webhook record's raw. The native read webhook returns them and is not offered to the vendor_read tool; outbound.raw returns a response as it is.",

@@ -27,6 +27,7 @@ related:
 | `workspaceId` | `INSTANTLY_WORKSPACE_ID`, then `default` | Your own label for the client or workspace. It is part of every ref and may not contain a colon. |
 | `asWorkspace` | none | For the key of an agency's admin workspace: the id of the sub workspace to act as. Sent as the `x-as-workspace` header on every request. |
 | `baseUrl` | `https://api.instantly.ai/api/v2` | For a proxy or a test server. |
+| `leadFields` | none | Which of a lead's custom fields holds a value the vendor has no field for, such as `{ title: "job_title" }`. Read only where the vendor's own field is empty. See [field grades](/docs/capabilities#field-grades). |
 | `capabilities` | what the adapter declares | Overrides single capabilities. |
 
 The module also exports `envVars` (the two variable names), `PROVIDER` (`"instantly"`) and `NATIVE` (the native catalog).
@@ -80,7 +81,7 @@ A page of campaigns reads at most 10 pages of 100 tag assignments. A page with m
 - **A listing ends one request late.** Instantly sends a next-page marker on the last page too, and the page after it is empty.
 - **Open counts come back even with open tracking off.** The analytics response does not say whether tracking was on.
 - **`isAuto` is always `null`** on replies, and daily stats rows have a `null` timezone.
-- **A lead list's `size` is `null`.** The count costs one more request per list; the native read `leadListVerificationStats` returns it for one list.
+- **A lead list's `size` is `null` on a listing.** The list object has no count. `outbound.lists.get(id)` reads the list's verification statistics as well, so one list by id has its size and costs two requests.
 - **Webhooks need Instantly's Hyper Growth plan or above**, by Instantly's documentation.
 
 ## Caveats

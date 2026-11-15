@@ -2,17 +2,17 @@
 // number here is the vendor's own; see "How Analytics Metrics Are Calculated"
 // in the reference for which counts may be added up across days.
 
-import { defineNative } from "../internal/native.ts";
+import { defineNative, inQuery, inQueryRequired } from "../internal/native.ts";
 import { DOMAIN_HEALTH_LANE } from "./capabilities.ts";
-import { DOCS, query, queryRequired } from "./native-params.ts";
+import { DOCS } from "./native-params.ts";
 
 const CLIENTS = {
-  client_ids: query("string", "Only these clients: ids separated by commas."),
+  client_ids: inQuery("string", "Only these clients: ids separated by commas."),
 };
 
 const SCOPE = {
   ...CLIENTS,
-  campaign_ids: query(
+  campaign_ids: inQuery(
     "string",
     "Only these campaigns: ids separated by commas."
   ),
@@ -20,28 +20,28 @@ const SCOPE = {
 
 /** Both days are included. The analytics spell the zone `timezone`. */
 const WINDOW = {
-  end_date: queryRequired("string", "Last day, YYYY-MM-DD."),
-  start_date: queryRequired("string", "First day, YYYY-MM-DD."),
-  timezone: query("string", "IANA time zone, for example America/New_York."),
+  end_date: inQueryRequired("string", "Last day, YYYY-MM-DD."),
+  start_date: inQueryRequired("string", "First day, YYYY-MM-DD."),
+  timezone: inQuery("string", "IANA time zone, for example America/New_York."),
 };
 
 /** The by-sent-time reads require the zone. */
 const ZONED_WINDOW = {
   ...WINDOW,
-  timezone: queryRequired(
+  timezone: inQueryRequired(
     "string",
     "IANA time zone, for example America/New_York."
   ),
 };
 
 const FULL = {
-  full_data: query("string", 'Set to "true" for the full data set.'),
+  full_data: inQuery("string", 'Set to "true" for the full data set.'),
 };
 
 /** The analytics take paging numbers as strings. */
 const PAGE = {
-  limit: query("string", "Most rows to return."),
-  offset: query("string", "Rows to skip."),
+  limit: inQuery("string", "Most rows to return."),
+  offset: inQuery("string", "Rows to skip."),
 };
 
 export const ANALYTICS = defineNative({
@@ -120,7 +120,7 @@ export const ANALYTICS = defineNative({
       ...CLIENTS,
       ...PAGE,
       ...FULL,
-      filter: query("string", "Filter value for the client rows."),
+      filter: inQuery("string", "Filter value for the client rows."),
     },
     path: "/analytics/client/overall-stats",
   },

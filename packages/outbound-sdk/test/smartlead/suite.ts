@@ -36,7 +36,14 @@ export const urlOf = (request: RecordedRequest | undefined): URL =>
   new URL(request?.url ?? "");
 
 export const suite: AdapterSuite = {
-  ids: { campaign: CAMPAIGN, lead: LEAD, sender: SENDER, thread: THREAD },
+  ids: {
+    campaign: CAMPAIGN,
+    lead: LEAD,
+    list: "500",
+    sender: SENDER,
+    thread: THREAD,
+    webhook: "456",
+  },
   // The key is the `api_key` query parameter and is sent nowhere else.
   isAuthorized: (request) =>
     urlOf(request).searchParams.get("api_key") === KEY &&
@@ -44,7 +51,24 @@ export const suite: AdapterSuite = {
   make: () => smartlead({ apiKey: KEY, workspaceId: "client-a" }),
   origin: "https://server.smartlead.ai",
   provider: "smartlead",
+  // SmartDelivery serves the placement tests on its own host.
+  sisterOrigins: ["https://smartdelivery.smartlead.ai"],
   routes: [
+    {
+      fixture: "listSpamTests.json",
+      method: "POST",
+      path: `${API}/spam-test/report`,
+    },
+    {
+      fixture: "getLeadList.json",
+      method: "GET",
+      path: /^\/api\/v1\/lead-list\/\d+$/u,
+    },
+    {
+      fixture: "getWebhook.json",
+      method: "GET",
+      path: /^\/api\/v1\/webhook\/\d+$/u,
+    },
     { fixture: "listCampaigns.json", method: "GET", path: `${API}/campaigns/` },
     {
       fixture: paged("listAllLeadsActivities"),
@@ -132,6 +156,16 @@ export const suite: AdapterSuite = {
       method: "GET",
       path: `${API}/analytics/day-wise-overall-stats`,
     },
+    {
+      fixture: "analyticsDayWisePositiveReplyStats.json",
+      method: "GET",
+      path: `${API}/analytics/day-wise-positive-reply-stats`,
+    },
+    {
+      fixture: "analyticsCampaignOverallStats.json",
+      method: "GET",
+      path: `${API}/analytics/campaign/overall-stats`,
+    },
     { fixture: "listClients.json", method: "GET", path: `${API}/client/` },
     {
       fixture: "getEmailAccountWarmupStats.json",
@@ -182,6 +216,34 @@ export const suite: AdapterSuite = {
   // same way. Webhooks: both fixture campaigns answer with the same two, and
   // each is returned once. Subsequences have their own tests, because the
   // shared campaign list holds no child campaign.
+  unsampled: {
+    campaignSettings: {
+      dailyLimit:
+        "sending_limit is in the newer example only (getCampaign.newdocs.json)",
+      startDate: "no documented campaign shows schedule_start_time",
+      stopOnAutoReply:
+        "out_of_office_detection_settings is documented on the settings update only",
+    },
+    message: {
+      senderRef:
+        "only a thread names its mailbox by id, and the documented thread has no email_account",
+    },
+    reply: {
+      bodyHtml: "the documented replies are plain text",
+      isAuto: "no documented thread is in the Out Of Office category",
+      leadRef:
+        "the documented threads name the lead by address; listInboxReplies.history.json adds an id",
+    },
+    senderHealth: {
+      issues: "the documented mailbox has no failure and no blocked warmup",
+    },
+    sequence: {
+      name: "only a subsequence has a name; listCampaigns.subsequences.json has them",
+    },
+    webhook: {
+      active: "is_active is in the newer example only",
+    },
+  },
   totals: {
     blocklist: 2,
     campaigns: 2,

@@ -171,7 +171,7 @@ test("smartlead: every inbound message of a thread's history is a reply", async 
     assert.equal(reply.senderRef, "smartlead:client-a:789");
     assert.equal(reply.campaignRef, "smartlead:client-a:12345");
     assert.equal(reply.category, "positive", "the thread's category");
-    assert.equal(reply.categorySource, "vendor");
+    assert.equal(reply.categorySource, "lead");
   }
 
   assert.equal(page.complete, true);

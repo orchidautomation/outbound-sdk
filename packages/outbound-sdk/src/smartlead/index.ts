@@ -4,6 +4,8 @@ import type { Adapter } from "../internal/adapter.ts";
 import type { CapabilityDeclaration } from "../internal/capabilities.ts";
 import { readEnv, requireCredential } from "../internal/env.ts";
 import { makeErrorMapper } from "../internal/errors.ts";
+import { withLeadFields, withMappedFields } from "../internal/lead-fields.ts";
+import type { LeadFieldMap } from "../internal/lead-fields.ts";
 import { assertWorkspaceId } from "../internal/ref.ts";
 import { readers } from "./adapter.ts";
 import {
@@ -11,6 +13,7 @@ import {
   capabilities,
   caveats,
   costs,
+  fields,
   limits,
   WORKSPACE_ENV,
 } from "./capabilities.ts";
@@ -32,6 +35,12 @@ export interface SmartleadOptions {
   readonly baseUrl?: string | undefined;
   /** Overrides what the adapter declares, for example on a key some endpoints refuse. */
   readonly capabilities?: CapabilityDeclaration | undefined;
+  /**
+   * Which of a lead's custom fields holds a value this vendor has no field
+   * for, for example `{ title: "job_title" }`. Read only where the vendor's
+   * own field is empty.
+   */
+  readonly leadFields?: LeadFieldMap | undefined;
 }
 
 export type { SmartleadNative } from "./native.ts";
@@ -53,11 +62,12 @@ export const smartlead = (
   });
 
   return {
-    ...readers(client),
+    ...withLeadFields(readers(client), options.leadFields),
     capabilities: { ...capabilities, ...options.capabilities },
     caveats,
     costs,
     events: smartleadEvents(PROVIDER),
+    fields: withMappedFields(fields, options.leadFields),
     limits,
     mapError: makeErrorMapper(PROVIDER, { secrets: [apiKey] }),
     maturity: "unverified",

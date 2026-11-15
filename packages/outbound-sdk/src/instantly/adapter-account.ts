@@ -2,12 +2,16 @@
 // mailbox's health, lead lists, the block list, tags and webhooks.
 
 import type { Adapter } from "../internal/adapter.ts";
-import { emailAddress } from "../internal/json.ts";
+import { OutboundError } from "../internal/errors.ts";
+import { count, emailAddress, field, objects, text } from "../internal/json.ts";
+import { flatMapPage, mapPage } from "../internal/page.ts";
 import type { InstantlyClient } from "./client.ts";
 import {
   toBlockEntry,
+  toCampaignProgress,
   toCampaignSettings,
   toLeadList,
+  toPlacementTest,
   toSenderHealth,
   toTag,
   toWebhook,
@@ -17,10 +21,14 @@ import { listPage } from "./pages.ts";
 
 type AccountReaders = Pick<
   Adapter,
+  | "getCampaignProgress"
   | "getCampaignSettings"
+  | "getList"
   | "getSenderHealth"
+  | "getWebhook"
   | "listBlocklist"
   | "listLists"
+  | "listPlacementTests"
   | "listSubsequences"
   | "listTags"
   | "listWebhooks"
@@ -30,6 +38,22 @@ export const accountReaders = (client: InstantlyClient): AccountReaders => {
   const { identity } = client;
 
   return {
+    // The per-campaign report, asked for one campaign: an array of one row.
+    getCampaignProgress: async (id, ctx) => {
+      const rows = objects(
+        await client.get(ctx, "/campaigns/analytics", { query: { id } })
+      );
+
+      const row = rows.find((each) => text(each.campaign_id) === id) ?? rows[0];
+
+      if (row === undefined) {
+        throw new OutboundError("NotFound", `Campaign ${id} was not found`, {
+          provider: identity.provider,
+        });
+      }
+
+      return toCampaignProgress(identity, id, row);
+    },
     getCampaignSettings: async (id, ctx) =>
       toCampaignSettings(
         identity,
@@ -54,51 +78,55 @@ export const accountReaders = (client: InstantlyClient): AccountReaders => {
 
       return toSenderHealth(identity, id, { account, vitals, warmup });
     },
+    // The list itself carries no count of its leads; its verification
+    // statistics do, so a single list costs two requests and has a size.
+    getList: async (id, ctx) => {
+      const path = `/lead-lists/${encodeURIComponent(id)}`;
+      const list = await client.getObject(ctx, path);
+      const stats = await client.get(ctx, `${path}/verification-stats`);
+
+      return toLeadList(identity, list, count(field(stats, "total_leads")));
+    },
+    getWebhook: async (id, ctx) =>
+      toWebhook(
+        identity,
+        await client.getObject(ctx, `/webhooks/${encodeURIComponent(id)}`)
+      ),
     listBlocklist: async (query, ctx) => {
       const page = await listPage(client, ctx, "/block-lists-entries", query);
 
-      return {
-        items: page.items.map((item) => toBlockEntry(identity, item)),
-        next: page.next,
-      };
+      return flatMapPage(page, (item) => toBlockEntry(identity, item));
     },
     listLists: async (query, ctx) => {
       const page = await listPage(client, ctx, "/lead-lists", query);
 
-      return {
-        items: page.items.map((item) => toLeadList(identity, item)),
-        next: page.next,
-      };
+      return mapPage(page, (item) => toLeadList(identity, item));
+    },
+    listPlacementTests: async (query, ctx) => {
+      const page = await listPage(client, ctx, "/inbox-placement-tests", query);
+
+      return mapPage(page, (item) => toPlacementTest(identity, item));
     },
     listSubsequences: async (query, ctx) => {
       const page = await listPage(client, ctx, "/subsequences", query, {
         parent_campaign: query.campaignId,
       });
 
-      return {
-        items: page.items.map((item) =>
-          toSubsequence(identity, item, query.campaignId)
-        ),
-        next: page.next,
-      };
+      return mapPage(page, (item) =>
+        toSubsequence(identity, item, query.campaignId)
+      );
     },
     listTags: async (query, ctx) => {
       const page = await listPage(client, ctx, "/custom-tags", query);
 
-      return {
-        items: page.items.map((item) => toTag(identity, item)),
-        next: page.next,
-      };
+      return mapPage(page, (item) => toTag(identity, item));
     },
     listWebhooks: async (query, ctx) => {
       const page = await listPage(client, ctx, "/webhooks", query, {
         campaign: query.campaignId,
       });
 
-      return {
-        items: page.items.map((item) => toWebhook(identity, item)),
-        next: page.next,
-      };
+      return mapPage(page, (item) => toWebhook(identity, item));
     },
   };
 };

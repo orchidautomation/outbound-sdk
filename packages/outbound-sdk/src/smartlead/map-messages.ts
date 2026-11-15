@@ -6,6 +6,7 @@ import { replyCategorySchema } from "../internal/entities.ts";
 import {
   count,
   field,
+  flag,
   isJsonObject,
   objects,
   text,
@@ -14,6 +15,7 @@ import {
 import type { Json, JsonObject } from "../internal/json.ts";
 import { recordBase, refTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
+import { fromOne } from "../internal/sequence.ts";
 import { stableId } from "../internal/sha256.ts";
 import { normalizeBody } from "../internal/text.ts";
 
@@ -120,12 +122,6 @@ const messageFields = (
   variantKey: null,
 });
 
-const stepIndex = (value: Json | undefined): number | null => {
-  const number = count(value);
-
-  return number === null || number < 1 ? null : number - 1;
-};
-
 // One sent email, and the reply to it when there is one. `thread_replies` is
 // documented by name only, so it is not read.
 const activityMessages = (
@@ -137,7 +133,7 @@ const activityMessages = (
   const place: MessagePlace = {
     campaignId: text(row.campaign_id),
     leadId: text(row.lead_id),
-    stepIndex: stepIndex(activity.email_seq_number),
+    stepIndex: fromOne(activity.email_seq_number),
     // The lead-in-campaign mapping id is the master inbox's thread id.
     threadId: text(row.email_lead_map_id),
   };
@@ -311,12 +307,17 @@ export const toInboxReplies = (
           },
         ];
 
+  const read = flag(item.is_read);
+
   return parts.map((part) => ({
     ...messageFields(identity, place, part, includeBody),
     category: category ?? "unknown",
-    categorySource: category === undefined ? null : "vendor",
+    // The category is the lead's, not one message's.
+    categorySource: category === undefined ? null : "lead",
     direction: "in",
     // Smartlead's only automatic-reply signal is the Out Of Office category.
     isAuto: category === "ooo" ? true : null,
+    // `is_read` is the thread's.
+    unread: read === null ? null : !read,
   }));
 };

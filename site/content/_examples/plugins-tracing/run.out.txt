@@ -3,7 +3,7 @@ outbound.http GET [ok] {
   'outbound.attempt': 1,
   'outbound.lane': 'default',
   'outbound.provider': 'instantly',
-  'url.full': 'https://api.instantly.ai/api/v2/accounts?limit=100',
+  'url.full': 'https://api.instantly.ai/api/v2/accounts?include_tags=true&limit=100',
   'http.response.status_code': 200
 }
 outbound.senders.list [ok] {

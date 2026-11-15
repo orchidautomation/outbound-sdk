@@ -1,9 +1,15 @@
 import type { AdapterContext, StatsQuery } from "../internal/adapter.ts";
 import type { MetricRow } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
-import { objects } from "../internal/json.ts";
+import { objects, text } from "../internal/json.ts";
 import type { InstantlyClient } from "./client.ts";
-import { dailyRow, overviewRow, stepRow, summedRow } from "./map-stats.ts";
+import {
+  campaignRow,
+  dailyRow,
+  overviewRow,
+  stepRow,
+  summedRow,
+} from "./map-stats.ts";
 import type { RowScope } from "./map-stats.ts";
 
 const range = (query: StatsQuery) => ({
@@ -44,6 +50,29 @@ export const readStats = async (
 
   if (query.scope === "sender") {
     return await senderStats(client, ctx, scope, query);
+  }
+
+  if (query.scope === "campaign" && query.scopeId === undefined) {
+    if (query.by === "day") {
+      throw new OutboundError(
+        "Unsupported",
+        "Instantly reports every campaign in one call as totals only; read one campaign for its days",
+        { provider: identity.provider }
+      );
+    }
+
+    // With no `id` the endpoint answers for every campaign, a row each.
+    const campaigns = await client.get(ctx, "/campaigns/analytics", {
+      query: range(query),
+    });
+
+    return objects(campaigns).flatMap((campaign) => {
+      const scopeId = text(campaign.campaign_id);
+
+      return scopeId === null
+        ? []
+        : [campaignRow({ ...scope, scopeId }, campaign)];
+    });
   }
 
   if (query.scope === "step") {

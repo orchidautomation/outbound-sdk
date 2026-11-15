@@ -1,15 +1,15 @@
 // Tags, the block list, lead labels, lead lists, email verification and the Unibox count.
 // Each entry is one read Instantly documents; site/content/docs/coverage/instantly.mdx lists them all.
 
-import { defineNative } from "../internal/native.ts";
-import { LABEL_PREDICTION_LANE } from "./capabilities.ts";
 import {
-  docs,
+  defineNative,
   inBody,
   inBodyRequired,
   inPath,
   inQuery,
-} from "./native-params.ts";
+} from "../internal/native.ts";
+import { LABEL_PREDICTION_LANE } from "./capabilities.ts";
+import { docs } from "./native-params.ts";
 
 export const LEAD_READS = defineNative({
   blocklistCsv: {

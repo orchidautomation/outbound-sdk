@@ -8,7 +8,8 @@ import type {
   SenderQuery,
 } from "../internal/adapter.ts";
 import type { Sender } from "../internal/entities.ts";
-import { count, objects } from "../internal/json.ts";
+import { count, objects, text } from "../internal/json.ts";
+import { mapPage } from "../internal/page.ts";
 import { accountReaders } from "./account.ts";
 import type { SmartleadClient } from "./client.ts";
 import { getLead, listLeads } from "./leads.ts";
@@ -22,6 +23,7 @@ import {
 } from "./map.ts";
 import {
   campaignList,
+  idList,
   objectOf,
   offsetPage,
   pageSize,
@@ -32,16 +34,20 @@ import { readStats } from "./stats.ts";
 type Readers = Pick<
   Adapter,
   | "getCampaign"
+  | "getCampaignProgress"
   | "getCampaignSettings"
   | "getLead"
+  | "getList"
   | "getSender"
   | "getSenderHealth"
   | "getSequence"
+  | "getWebhook"
   | "listBlocklist"
   | "listCampaigns"
   | "listLeads"
   | "listLists"
   | "listMessages"
+  | "listPlacementTests"
   | "listReplies"
   | "listSenders"
   | "listSubsequences"
@@ -75,10 +81,7 @@ const listSenders = async (
     offset: count(query.next) ?? 0,
   });
 
-  return {
-    items: page.rows.map((account) => toSender(client.identity, account)),
-    next: page.next,
-  };
+  return mapPage(page, (account) => toSender(client.identity, account));
 };
 
 export const readers = (client: SmartleadClient): Readers => {
@@ -114,11 +117,34 @@ export const readers = (client: SmartleadClient): Readers => {
         id,
         await client.get(ctx, `/campaigns/${segment(id)}/sequences`)
       ),
-    listCampaigns: async (_query, ctx) => {
+    listCampaigns: async (query, ctx) => {
+      const { senderId } = query;
+
+      // A mailbox names its campaigns by id when asked to, so the campaign
+      // list is narrowed to those: two requests.
+      const attached =
+        senderId === undefined
+          ? undefined
+          : idList(
+              objectOf(
+                client,
+                await client.get(ctx, `/email-accounts/${segment(senderId)}/`, {
+                  query: { fetch_campaigns: true },
+                }),
+                "the email account"
+              ).campaign_ids
+            );
+
       const campaigns = await campaignList(client, ctx);
 
       return {
-        items: campaigns.map((campaign) => toCampaign(identity, campaign)),
+        items: campaigns
+          .filter(
+            (campaign) =>
+              attached === undefined ||
+              attached.includes(text(campaign.id) ?? "")
+          )
+          .map((campaign) => toCampaign(identity, campaign)),
       };
     },
     listLeads: (query, ctx) => listLeads(client, ctx, query),

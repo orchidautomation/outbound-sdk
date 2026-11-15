@@ -97,7 +97,10 @@ const listCampaigns = async (
   target: DispatchTarget,
   query: CampaignQuery
 ): Promise<OperationOutput> => {
-  const page = await target.adapter.listCampaigns(query, target.ctx);
+  const page = await target.adapter.listCampaigns(
+    { ...query, senderId: optionalId(target.adapter, query.senderId) },
+    target.ctx
+  );
 
   if (
     target.capabilities["campaigns.status"] !== "client" ||
@@ -195,7 +198,24 @@ const listReplies = async (
     (reply) => reply.sentAt
   );
 
-  return output(filtered.page, filtered.derived);
+  // A vendor that reports the flag but cannot filter by it: the wrapper
+  // keeps the replies that match, and a reply that does not say is dropped.
+  if (
+    capabilities["replies.unread"] !== "client" ||
+    query.unread === undefined
+  ) {
+    return output(filtered.page, filtered.derived);
+  }
+
+  return output(
+    {
+      items: filtered.page.items.filter(
+        (reply) => reply.unread === query.unread
+      ),
+      next: filtered.page.next,
+    },
+    true
+  );
 };
 
 const listSenders = async (

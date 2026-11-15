@@ -339,7 +339,46 @@ export interface ListInput extends OpenRange {
   readonly statuses: readonly CampaignStatus[];
 }
 
-/** Every campaign in the given states with its totals for the range: one stats request each. */
+// Every campaign's totals from one request, by campaign ref. Only where the
+// vendor's per-campaign report carries every count the read of one campaign
+// does (`stats.allCampaigns` is `full`), so nothing is lost by using it.
+const readAllTotals = async (
+  context: InsightContext,
+  range: OpenRange
+): Promise<Map<string, MetricCounts> | undefined> => {
+  if (context.outbound.capabilities["stats.allCampaigns"] !== "full") {
+    return undefined;
+  }
+
+  const rows = context.rows(
+    await context.outbound.stats({
+      from: range.from ?? undefined,
+      scope: "campaign",
+      to: range.to ?? undefined,
+    })
+  );
+
+  const byCampaign = new Map<string, MetricCounts[]>();
+
+  for (const row of rows) {
+    byCampaign.set(row.scopeRef, [
+      ...(byCampaign.get(row.scopeRef) ?? []),
+      row,
+    ]);
+  }
+
+  return new Map(
+    [...byCampaign].map(([ref, counts]) => [ref, sumCounts(counts)])
+  );
+};
+
+/**
+ * Every campaign in the given states with its totals for the range: one
+ * stats request for all of them where the vendor reports every campaign in
+ * one call with every count, otherwise one request each. A campaign the
+ * one-call report leaves out is read on its own, so it is never shown as
+ * having no counts when it has some.
+ */
 export const readCampaignTotals = async (
   context: InsightContext,
   input: ListInput
@@ -350,11 +389,16 @@ export const readCampaignTotals = async (
     input.max_campaigns
   );
 
+  const reported =
+    campaigns.length > 1 ? await readAllTotals(context, input) : undefined;
+
   return await mapConcurrent(
     campaigns,
     async (campaign): Promise<CampaignTotals> => ({
       campaign,
-      counts: await readTotals(context, campaign.ref, input),
+      counts:
+        reported?.get(campaign.ref) ??
+        (await readTotals(context, campaign.ref, input)),
     })
   );
 };

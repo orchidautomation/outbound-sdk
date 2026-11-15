@@ -5,8 +5,10 @@
 
 import type {
   BlockEntry,
+  CampaignProgress,
   CampaignSettings,
   LeadList,
+  PlacementTest,
   SenderHealth,
   SendingWindow,
   Tag,
@@ -26,9 +28,10 @@ import {
   timestamp,
 } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
-import { recordBase, refTo, refsTo } from "../internal/record.ts";
+import { eventTypesOf, recordBase, refTo, refsTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
 import { reputation, withoutSecrets } from "./map.ts";
+import { EVENT_TYPES } from "./webhooks.ts";
 
 // The older documentation shows the schedule and the tracking list as JSON
 // strings; the current one shows an object and an array.
@@ -144,6 +147,32 @@ export const toSettings = (
   };
 };
 
+/**
+ * `GET /campaigns/{id}/analytics`: `campaign_lead_stats` counts the
+ * campaign's leads by how far they got. `blocked` is Smartlead's own word
+ * for a lead stopped by a bounce or the block list.
+ */
+export const toCampaignProgress = (
+  identity: Identity,
+  campaignId: string,
+  raw: JsonObject
+): CampaignProgress => {
+  const stats = raw.campaign_lead_stats;
+
+  return {
+    ...recordBase(identity, campaignId, raw),
+    blocked: count(field(stats, "blocked")),
+    campaignRef: refTo(identity, campaignId) ?? "",
+    completed: count(field(stats, "completed")),
+    // Smartlead has no count of leads a campaign failed for.
+    failed: null,
+    inProgress: count(field(stats, "inprogress")),
+    leads: count(field(stats, "total")),
+    notStarted: count(field(stats, "notStarted")),
+    stopped: count(field(stats, "stopped")),
+  };
+};
+
 const connected = (account: JsonObject): boolean | null => {
   const smtp = flag(account.is_smtp_success);
   const imap = flag(account.is_imap_success);
@@ -206,12 +235,46 @@ export const toHealth = (
   };
 };
 
+const TEST_STATUS = new Map<string, PlacementTest["status"]>([
+  ["active", "active"],
+  ["completed", "completed"],
+  ["paused", "paused"],
+]);
+
+const TEST_KIND = new Map<string, NonNullable<PlacementTest["kind"]>>([
+  ["automated", "automated"],
+  ["manual", "one_time"],
+]);
+
+/**
+ * One item of SmartDelivery's `POST /spam-test/report`. The list gives a
+ * test's schedule and no creation time, next run or campaign.
+ */
+export const toPlacementTest = (
+  identity: Identity,
+  raw: JsonObject
+): PlacementTest => {
+  const id = text(raw.spam_test_id) ?? text(raw.id) ?? "";
+
+  return {
+    ...recordBase(identity, id, raw),
+    campaignRef: null,
+    createdAt: null,
+    endsAt: timestamp(raw.test_end_date),
+    kind: TEST_KIND.get(text(raw.test_type)?.toLowerCase() ?? "") ?? null,
+    name: text(raw.test_name) ?? id,
+    nextRunAt: null,
+    startsAt: timestamp(raw.schedule_start_time),
+    status: TEST_STATUS.get(text(raw.status)?.toLowerCase() ?? "") ?? "unknown",
+  };
+};
+
 /** One item of `GET /lead-list/`. */
 export const toList = (identity: Identity, raw: JsonObject): LeadList => ({
   ...recordBase(identity, text(raw.id) ?? "", raw),
   createdAt: timestamp(raw.created_at),
   kind: "leads",
-  name: text(raw.name) ?? "",
+  name: text(raw.name) ?? text(raw.id) ?? "",
   size: count(raw.lead_count),
 });
 
@@ -219,39 +282,65 @@ export const toList = (identity: Identity, raw: JsonObject): LeadList => ({
 export const toBlockEntry = (
   identity: Identity,
   raw: JsonObject
-): BlockEntry => {
-  const value = (text(raw.email_or_domain) ?? "").toLowerCase();
+): BlockEntry[] => {
+  const value = text(raw.email_or_domain)?.toLowerCase();
 
-  return {
-    ...recordBase(identity, text(raw.id) ?? "", raw),
-    createdAt: timestamp(raw.created_at),
-    kind: value.includes("@") ? "email" : "domain",
-    value,
-  };
+  // An entry with no value blocks nothing that can be named, so it is skipped.
+  return value === undefined
+    ? []
+    : [
+        {
+          ...recordBase(identity, text(raw.id) ?? "", raw),
+          createdAt: timestamp(raw.created_at),
+          kind: value.includes("@") ? "email" : "domain",
+          value,
+        },
+      ];
 };
 
 /** One item of `GET /email-accounts/tags`. Smartlead tags have no description. */
 export const toTag = (identity: Identity, raw: JsonObject): Tag => ({
   ...recordBase(identity, text(raw.id) ?? "", raw),
   description: null,
-  name: text(raw.name) ?? "",
+  name: text(raw.name) ?? text(raw.id) ?? "",
 });
 
+// The per-campaign list names a webhook's events in an array
+// (`event_types`); the single webhook names them as the keys of a map whose
+// value is true (`event_type_map`).
+const eventNames = (raw: JsonObject): string[] => {
+  const listed = list(raw.event_types).flatMap((event) => text(event) ?? []);
+
+  if (listed.length > 0 || !isJsonObject(raw.event_type_map)) {
+    return listed;
+  }
+
+  return Object.entries(raw.event_type_map).flatMap(([name, on]) =>
+    on === true ? [name] : []
+  );
+};
+
 /**
- * One item of `GET /campaigns/{id}/webhooks`. `campaignId` is the campaign
- * that was asked, used when the item does not name its own.
+ * One item of `GET /campaigns/{id}/webhooks`, or `GET /webhook/{id}`.
+ * `campaignId` is the campaign that was asked, used when the item does not
+ * name its own; a webhook read by its id has none to fall back on.
  */
 export const toWebhook = (
   identity: Identity,
-  campaignId: string,
+  campaignId: string | null,
   raw: JsonObject
-): WebhookSubscription => ({
-  ...recordBase(identity, text(raw.id) ?? "", withoutSecrets(raw)),
-  // Only the newer example carries is_active.
-  active: flag(raw.is_active),
-  campaignRefs: refsTo(identity, [text(raw.email_campaign_id) ?? campaignId]),
-  createdAt: timestamp(raw.created_at),
-  events: list(raw.event_types).flatMap((event) => text(event) ?? []),
-  name: text(raw.name),
-  url: text(raw.webhook_url) ?? "",
-});
+): WebhookSubscription => {
+  const events = eventNames(raw);
+
+  return {
+    ...recordBase(identity, text(raw.id) ?? "", withoutSecrets(raw)),
+    // Only the newer example carries is_active.
+    active: flag(raw.is_active),
+    campaignRefs: refsTo(identity, [text(raw.email_campaign_id) ?? campaignId]),
+    createdAt: timestamp(raw.created_at),
+    eventTypes: eventTypesOf(events, EVENT_TYPES),
+    events,
+    name: text(raw.name),
+    url: text(raw.webhook_url) ?? "",
+  };
+};

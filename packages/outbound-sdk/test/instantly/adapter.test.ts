@@ -189,7 +189,9 @@ test("instantly: leads are listed with POST, scoped by campaign in the body", as
   assert.equal(lead?.lastName, "Example");
   assert.equal(lead?.company, "Example Co");
   assert.equal(lead?.title, "Head of Growth");
-  assert.equal(lead?.status, "active", "status 1 is Active");
+  assert.equal(lead?.progress, "active", "status 1 is Active");
+  assert.equal(lead?.replied, true, "email_reply_count is 1");
+  assert.equal(lead?.status, "replied", "a reply is the headline");
   assert.equal(lead?.custom.jobTitle, "Head of Growth");
   assert.equal(
     lead?.campaignRef,

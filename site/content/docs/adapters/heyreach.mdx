@@ -26,6 +26,7 @@ related:
 | `apiKey` | `HEYREACH_API_KEY` | A workspace API key. |
 | `workspaceId` | `HEYREACH_WORKSPACE_ID`, then `default` | Your own label for the client or workspace. It is part of every ref and may not contain a colon. |
 | `baseUrl` | `https://api.heyreach.io/api/public` | For a proxy or a test server. |
+| `leadFields` | none | Which of a lead's custom fields holds a value the vendor has no field for, such as `{ title: "job_title" }`. Read only where the vendor's own field is empty. See [field grades](/docs/capabilities#field-grades). |
 | `capabilities` | what the adapter declares | Overrides single capabilities. |
 
 The module also exports `envVars` (the two variable names), `PROVIDER` (`"heyreach"`) and `NATIVE` (the native catalog).
@@ -45,8 +46,6 @@ HeyReach is the adapter with the most `no` in the [table](/docs/adapters#what-ea
 | --- | --- | --- |
 | `campaigns.settings` | `no` | A campaign's schedule can be written through the API but not read. |
 | `leads.engagement` | `no` | No lead shape carries open, click or reply counts. |
-| `leads.list` | `no` | There is no list of every lead. Read leads per campaign or per saved list. |
-| `replies.category` | `no` | HeyReach's auto-tags describe the lead, not a message. The newest one is the lead's `interest`. |
 | `senders.warmup` | `no` | LinkedIn accounts have no warmup. |
 | `sequence.subsequences` | `no` | A campaign has one sequence tree and nothing attached to it. |
 | `stats.byStep` | `no` | The API has no per-step stats. |
@@ -54,7 +53,9 @@ HeyReach is the adapter with the most `no` in the [table](/docs/adapters#what-ea
 | `workspaces` | `no` | Only an organization key can list workspaces. |
 | `events.verify` | `secret` | HeyReach does not sign webhooks. |
 
-`outbound.campaign(id).leads` and `outbound.list(id).leads` work. `outbound.leads.list()` is refused. `leads.lookup` works by LinkedIn profile URL and by email.
+`outbound.campaign(id).leads` and `outbound.list(id).leads` read one campaign's or one saved list's leads. HeyReach has no endpoint that lists every lead, so `outbound.leads.list()` walks the campaigns and reads each one's leads: a lead in no campaign is never returned, and each page of campaigns costs one more request. `leads.lookup` works by LinkedIn profile URL and by email.
+
+A reply's `category` is its lead's. HeyReach classifies a lead from its first campaign reply (Interested, Not Interested or Generic) and keeps the result on the lead, with no link to a message. Every reply in a conversation takes the lead's newest label and carries `categorySource: "lead"`. The API reference does not list the label names; any other name is `unknown`.
 
 ## Rate limits
 

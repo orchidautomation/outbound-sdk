@@ -12,8 +12,8 @@ import {
   field,
   isJsonObject,
   objects,
+  text,
 } from "../internal/json.ts";
-import type { Json, JsonObject } from "../internal/json.ts";
 import type { SmartleadClient } from "./client.ts";
 import {
   dayRow,
@@ -26,6 +26,7 @@ import {
 } from "./map-stats.ts";
 import type { RowScope } from "./map-stats.ts";
 import { unwrap } from "./map.ts";
+import { objectOf } from "./shared.ts";
 
 const DAY_MS = 86_400_000;
 
@@ -65,24 +66,6 @@ const unsupported = (client: SmartleadClient, message: string): OutboundError =>
     provider: client.identity.provider,
   });
 
-const dataOf = (
-  client: SmartleadClient,
-  body: Json,
-  what: string
-): JsonObject => {
-  const data = unwrap(body);
-
-  if (!isJsonObject(data)) {
-    throw new OutboundError(
-      "Provider",
-      `Smartlead returned no object for ${what}`,
-      { provider: client.identity.provider }
-    );
-  }
-
-  return data;
-};
-
 const campaignPath = (scope: RowScope, leaf: string): string =>
   `/campaigns/${encodeURIComponent(scope.scopeId)}/${leaf}`;
 
@@ -95,7 +78,9 @@ const campaignTotal = async (
   if (query.from === undefined && query.to === undefined) {
     const lifetime = await client.get(ctx, campaignPath(scope, "analytics"));
 
-    return [lifetimeRow(scope, dataOf(client, lifetime, "campaign analytics"))];
+    return [
+      lifetimeRow(scope, objectOf(client, lifetime, "campaign analytics")),
+    ];
   }
 
   const range = resolveRange(query, true);
@@ -119,7 +104,7 @@ const campaignTotal = async (
     }
   );
 
-  return [windowRow(scope, dataOf(client, window, "campaign analytics"))];
+  return [windowRow(scope, objectOf(client, window, "campaign analytics"))];
 };
 
 // The daily endpoint is account-wide; campaign_ids narrows it to one campaign.
@@ -131,17 +116,31 @@ const dailyRows = async (
 ): Promise<MetricRow[]> => {
   const range = resolveRange(query, true);
 
-  const body = await client.get(ctx, "/analytics/day-wise-overall-stats", {
+  const request = {
     query: {
       campaign_ids: scope.scope === "campaign" ? scope.scopeId : undefined,
       end_date: range.to,
       start_date: range.from,
       timezone: TIMEZONE,
     },
-  });
+  };
+
+  // Positive replies per day are a report of their own, counted on the day of
+  // the reply like the counts beside them.
+  const [body, positive] = await Promise.all([
+    client.get(ctx, "/analytics/day-wise-overall-stats", request),
+    client.get(ctx, "/analytics/day-wise-positive-reply-stats", request),
+  ]);
+
+  const positiveByDay = new Map(
+    objects(field(unwrap(positive), "day_wise_stats")).map((day) => [
+      text(day.date),
+      day.positive_replied,
+    ])
+  );
 
   return objects(field(unwrap(body), "day_wise_stats")).map((day) =>
-    dayRow(scope, day)
+    dayRow(scope, day, positiveByDay.get(text(day.date)))
   );
 };
 
@@ -157,9 +156,46 @@ const workspaceTotal = async (
     query: { end_date: range.to, start_date: range.from, timezone: TIMEZONE },
   });
 
-  const stats = field(dataOf(client, body, "overall stats"), "overall_stats");
+  const stats = field(objectOf(client, body, "overall stats"), "overall_stats");
 
   return [overallRow(scope, isJsonObject(stats) ? stats : {})];
+};
+
+// One row per campaign in a window, with the same counts as the account's
+// totals. `full_data` asks for every campaign and not a page of them.
+const everyCampaign = async (
+  client: SmartleadClient,
+  ctx: AdapterContext,
+  query: StatsQuery
+): Promise<MetricRow[]> => {
+  const range = resolveRange(query, false);
+
+  const body = await client.get(ctx, "/analytics/campaign/overall-stats", {
+    query: {
+      end_date: range.to,
+      full_data: true,
+      start_date: range.from,
+      timezone: TIMEZONE,
+    },
+  });
+
+  const campaigns = field(
+    objectOf(client, body, "campaign performance"),
+    "campaign_wise_performance"
+  );
+
+  return objects(campaigns).flatMap((campaign) => {
+    const scopeId = text(campaign.id);
+
+    return scopeId === null
+      ? []
+      : [
+          overallRow(
+            { ...client.identity, scope: "campaign", scopeId },
+            campaign
+          ),
+        ];
+  });
 };
 
 // This endpoint takes ISO 8601 datetimes, not days.
@@ -196,7 +232,7 @@ const senderTotal = async (
   scope: RowScope,
   query: StatsQuery
 ): Promise<MetricRow[]> => {
-  const account = dataOf(
+  const account = objectOf(
     client,
     await client.get(
       ctx,
@@ -238,6 +274,17 @@ export const readStats = async (
     scope: query.scope,
     scopeId: query.scopeId ?? client.identity.workspaceId,
   };
+
+  if (query.scope === "campaign" && query.scopeId === undefined) {
+    if (query.by === "day") {
+      throw unsupported(
+        client,
+        "Smartlead reports every campaign in one call as totals only; read one campaign for its days"
+      );
+    }
+
+    return await everyCampaign(client, ctx, query);
+  }
 
   if (query.scope === "sender" || query.scope === "step") {
     if (query.by === "day") {

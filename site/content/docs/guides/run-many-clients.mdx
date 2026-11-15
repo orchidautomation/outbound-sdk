@@ -120,7 +120,7 @@ A combined instance promises only what every member can do. This is the in-memor
   ../../_examples/run-many-clients/vendors.out.txt
 </include>
 
-Combining an email tool with HeyReach turns off what HeyReach lacks, for every member: reply categories, per-step stats, the list of every lead. Two capabilities are off on every combined instance whatever the members: `messages.byThread`, because a thread id is the vendor's own and names no member, and `native`, because a native read belongs to one vendor.
+Combining an email tool with HeyReach turns off what HeyReach lacks, for every member: per-step stats, campaign settings, tags, warmup. Two capabilities are off on every combined instance whatever the members: `messages.byThread`, because a thread id is the vendor's own and names no member, and `native`, because a native read belongs to one vendor.
 
 To get a capability back, scope to one member. A label that is on one adapter does that. For a client on two tools, `outbound.workspace("acme")` still covers both and is still limited to what both can do; name the member as `provider:label`, for example `outbound.workspace("emailtool:acme")`.
 

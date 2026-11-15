@@ -156,7 +156,7 @@ export const rankCampaigns = (
 
 export const campaignRanking = defineInsight({
   description:
-    "Which campaigns are best, ranked fairly: by the low end of the 95% Wilson interval of the reply rate (or positive reply rate; for bounce rate, by the high end, lowest first), so 2 replies from 10 sends cannot outrank 150 from 1,000. Use it to pick winners and losers across a workspace. Returns each campaign with its count, rate, interval and rank, the campaigns left out for too few sends, those whose count the vendor does not report (a null rate is unknown, not zero), and the gap between the top and the median. Costs one listing per status plus one stats request per campaign.",
+    "Which campaigns are best, ranked fairly: by the low end of the 95% Wilson interval of the reply rate (or positive reply rate; for bounce rate, by the high end, lowest first), so 2 replies from 10 sends cannot outrank 150 from 1,000. Use it to pick winners and losers across a workspace. Returns each campaign with its count, rate, interval and rank, the campaigns left out for too few sends, those whose count the vendor does not report (a null rate is unknown, not zero), and the gap between the top and the median. Costs one listing per status plus one stats request per campaign (one for all of them on a vendor that reports every campaign in one call with every count).",
   inputSchema: input,
   key: "campaignRanking",
   name: "campaign_ranking",

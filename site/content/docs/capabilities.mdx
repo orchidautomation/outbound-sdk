@@ -9,7 +9,7 @@ related:
   - /docs/guides/portable-code
 ---
 
-The vendors do not offer the same reads. One has no list of every lead, another cannot report stats per step. Each adapter declares what it can do as a flat map of keys, and `outbound.capabilities` is that map. Reading it sends nothing.
+The vendors do not offer the same reads. One cannot read a campaign's settings, another cannot list the leads of a saved list. Each adapter declares what it can do as a flat map of keys, and `outbound.capabilities` is that map. Reading it sends nothing.
 
 Two rules follow from the map:
 
@@ -47,6 +47,8 @@ A value is `false` or something truthy, so `if (outbound.capabilities["leads.lis
 | Key | Values | Gates |
 | --- | --- | --- |
 | `campaigns.status` | `server`, `client`, `false` | The `status` filter on `campaigns.list` |
+| `campaigns.bySender` | boolean | `campaigns.list({ senderId })` and `sender(id).campaigns` |
+| `campaigns.progress` | boolean | `campaign(id).progress()` |
 | `campaigns.settings` | boolean | `campaign(id).settings()` |
 | `sequence` | boolean | `campaign(id).sequence()` |
 | `sequence.subsequences` | boolean | `campaign(id).subsequences` |
@@ -75,6 +77,7 @@ Listing campaigns and reading one need no key. Every adapter can.
 | `leads.timeline` | boolean | `lead(id).timeline()` |
 | `leads.engagement` | boolean | No read on the instance. It says whether leads carry `engagement`: open, click and reply counts. Some [insights](/docs/insights) check it. |
 | `lists.list` | boolean | `lists.list` |
+| `lists.get` | boolean | `lists.get(id)` and `list(id).get()` |
 | `lists.leads` | boolean | `leads.list({ listId })` and `list(id).leads` |
 
 ### Messages and replies
@@ -88,6 +91,7 @@ Listing campaigns and reading one need no key. Every adapter can.
 | `replies.list` | boolean | `replies.list` and `campaign(id).replies` |
 | `replies.category` | `vendor`, `false` | The `category` filter on replies |
 | `replies.since` | `server`, `client`, `false` | The `since` and `until` filters on replies |
+| `replies.unread` | `server`, `client`, `false` | The `unread` filter on replies |
 
 `messages.body` is `full` when the vendor returns every body and `sampled` when it returns some. `replies.category` is `vendor` when the categories come from the vendor. The SDK never asks a model to classify a reply.
 
@@ -97,6 +101,7 @@ Listing campaigns and reading one need no key. Every adapter can.
 | --- | --- | --- |
 | `stats.workspace` | `exact`, `derived`, `false` | `outbound.stats()` |
 | `stats.campaign` | `exact`, `derived`, `false` | `campaign(id).stats()` |
+| `stats.allCampaigns` | `full`, `partial`, `false` | `stats({ scope: "campaign" })` with no `scopeId`: a row per campaign in one call. `full` when each row has every count the read of one campaign has, `partial` when the vendor's report has fewer. |
 | `stats.byStep` | `exact`, `derived`, `false` | `campaign(id).stats({ scope: "step" })` |
 | `stats.bySender` | `exact`, `derived`, `false` | `sender(id).stats()` |
 | `stats.byDay` | `exact`, `derived`, `false` | `by: "day"` on any of the four, in addition to the scope's own key |
@@ -108,7 +113,9 @@ Listing campaigns and reading one need no key. Every adapter can.
 | `workspaces` | boolean | `workspaces.list` |
 | `tags` | boolean | `tags.list` |
 | `blocklist` | boolean | `blocklist.list` |
+| `placementTests.list` | boolean | `placementTests.list()`: the inbox placement tests the account has set up |
 | `webhooks.list` | boolean | `webhooks.list` and `campaign(id).webhooks` |
+| `webhooks.get` | boolean | `webhooks.get(id)` |
 | `native` | boolean | `outbound.native`: see [native reads](/docs/native) |
 
 ### Webhooks and sync
@@ -148,6 +155,26 @@ Without the filter the same listing is `exact`. The grade only applies when the 
 ## Stat grades
 
 A stat key is `exact`, `derived` or `false`: the vendor reports the numbers, the adapter computes them from other vendor data, or they are not available. A stats result is `derived` when any of its rows is. See [stats](/docs/api/stats#grades).
+
+## Field grades
+
+A capability says whether a read exists. `outbound.fields` says what the read can tell you: for every field of every record, whether this adapter fills it.
+
+| Grade | Means |
+| --- | --- |
+| `exact` | The vendor reports the field and the adapter reads it. A `null` means this record has no value. |
+| `derived` | The adapter computes the field, or takes it from a neighbouring record. A reply's category on Smartlead and HeyReach is the lead's label, not a label on the message. |
+| `false` | The adapter never fills the field. It is always `null`, `[]`, `{}` or `unknown`, because the vendor has no such field. |
+
+<include meta='title="fields.ts"'>../_examples/capabilities/fields.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/capabilities/fields.out.txt
+</include>
+
+A vendor with no field for a job title or a LinkedIn profile often still holds one in a custom field the account named itself. The SDK never guesses which. Pass `leadFields` to the adapter, naming the custom field for `title`, `company`, `phone`, `website`, `location`, `linkedinUrl` or `companyLinkedinUrl`, and the adapter reads it wherever the vendor's own field is empty. A field that was `false` then reports `derived`.
+
+A record the adapter never returns has every field `false`. On a [combined](/docs/adapters/combine) instance a field is filled when any adapter behind it fills it. The repository's test suite holds each adapter to its declaration both ways: a field declared `false` is empty in every record its fixtures produce, and every other field is filled in at least one.
 
 ## Change what an adapter declares
 

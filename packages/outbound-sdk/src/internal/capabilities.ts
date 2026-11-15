@@ -13,6 +13,10 @@ export type StatGrade = "derived" | "exact" | false;
 export interface Capabilities {
   /** Filter campaigns by status. */
   "campaigns.status": FilterGrade;
+  /** List the campaigns one sender is attached to. */
+  "campaigns.bySender": boolean;
+  /** How many of a campaign's leads are waiting, in progress, finished or stopped. */
+  "campaigns.progress": boolean;
   /** A campaign's schedule, daily caps, tracking and stop rules. */
   "campaigns.settings": boolean;
   /** A campaign's steps and variants. */
@@ -39,6 +43,8 @@ export interface Capabilities {
   "leads.engagement": boolean;
   /** List the saved lead lists. */
   "lists.list": boolean;
+  /** One saved lead list by id. */
+  "lists.get": boolean;
   /** List the leads of one saved list. */
   "lists.leads": boolean;
   /** Every message for one lead, in order. */
@@ -53,17 +59,29 @@ export interface Capabilities {
   /** Reply categories come from the vendor, or are not available. */
   "replies.category": "vendor" | false;
   "replies.since": FilterGrade;
+  /** Only the replies that are unread, or only the ones that are read. */
+  "replies.unread": FilterGrade;
   "stats.workspace": StatGrade;
   "stats.campaign": StatGrade;
+  /**
+   * One row per campaign in a single call: `stats({ scope: "campaign" })` with
+   * no campaign named. `full` when each row carries every count the read of
+   * one campaign does, `partial` when the vendor's report has fewer.
+   */
+  "stats.allCampaigns": "full" | "partial" | false;
   "stats.byDay": StatGrade;
   "stats.byStep": StatGrade;
   "stats.bySender": StatGrade;
   workspaces: boolean;
   /** The addresses, domains and profiles the account never contacts. */
   blocklist: boolean;
+  /** List the inbox placement tests the account has set up. */
+  "placementTests.list": boolean;
   tags: boolean;
   /** The webhooks registered with the vendor. */
   "webhooks.list": boolean;
+  /** One webhook subscription by id. */
+  "webhooks.get": boolean;
   /** The vendor's own reads are available by name through `outbound.native`. */
   native: boolean;
   /** Webhook payloads can be parsed into `OutboundEvent`s. */
@@ -82,6 +100,8 @@ type CapabilityValue = Capabilities[CapabilityKey];
 
 export const NO_CAPABILITIES: Capabilities = {
   blocklist: false,
+  "campaigns.bySender": false,
+  "campaigns.progress": false,
   "campaigns.settings": false,
   "campaigns.status": false,
   deletionDetection: false,
@@ -94,6 +114,7 @@ export const NO_CAPABILITIES: Capabilities = {
   "leads.lookup": false,
   "leads.since": false,
   "leads.timeline": false,
+  "lists.get": false,
   "lists.leads": false,
   "lists.list": false,
   "messages.body": false,
@@ -101,9 +122,11 @@ export const NO_CAPABILITIES: Capabilities = {
   "messages.list": false,
   "messages.since": false,
   native: false,
+  "placementTests.list": false,
   "replies.category": false,
   "replies.list": false,
   "replies.since": false,
+  "replies.unread": false,
   "senders.byCampaign": false,
   "senders.get": false,
   "senders.health": false,
@@ -114,9 +137,11 @@ export const NO_CAPABILITIES: Capabilities = {
   "stats.byDay": false,
   "stats.bySender": false,
   "stats.byStep": false,
+  "stats.allCampaigns": false,
   "stats.campaign": false,
   "stats.workspace": false,
   tags: false,
+  "webhooks.get": false,
   "webhooks.list": false,
   workspaces: false,
 };
@@ -128,6 +153,7 @@ const RANK = new Map<string, number>([
   ["exact", 2],
   ["false", 0],
   ["full", 2],
+  ["partial", 1],
   ["sampled", 1],
   ["secret", 1],
   ["server", 2],

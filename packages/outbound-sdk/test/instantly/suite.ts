@@ -25,12 +25,38 @@ export const suite: AdapterSuite = {
     list: LIST,
     sender: SENDER,
     thread: THREAD,
+    webhook: "01a1d77f-5ea4-7b53-a085-00338a94f591",
   },
   isAuthorized: (request) => request.headers.authorization === `Bearer ${KEY}`,
   make: () => instantly({ apiKey: KEY, workspaceId: "client-a" }),
   origin: "https://api.instantly.ai",
   provider: "instantly",
   routes: [
+    {
+      fixture: paged("listInboxPlacementTests"),
+      method: "GET",
+      path: "/api/v2/inbox-placement-tests",
+    },
+    {
+      fixture: "getLeadListVerificationStats.json",
+      method: "GET",
+      path: /^\/api\/v2\/lead-lists\/[^/]+\/verification-stats$/u,
+    },
+    {
+      fixture: "getLeadList.json",
+      method: "GET",
+      path: /^\/api\/v2\/lead-lists\/[^/]+$/u,
+    },
+    {
+      fixture: "getWebhook.json",
+      method: "GET",
+      path: /^\/api\/v2\/webhooks\/[^/]+$/u,
+    },
+    {
+      fixture: "getCampaignsAnalytics.json",
+      method: "GET",
+      path: "/api/v2/campaigns/analytics",
+    },
     {
       fixture: paged("listCampaigns"),
       method: "GET",
@@ -57,6 +83,11 @@ export const suite: AdapterSuite = {
       path: /^\/api\/v2\/campaigns\/[\w-]+$/u,
     },
     { fixture: paged("listAccounts"), method: "GET", path: "/api/v2/accounts" },
+    {
+      fixture: paged("listAccountCampaignMappings"),
+      method: "GET",
+      path: /^\/api\/v2\/account-campaign-mappings\/[^/]+$/u,
+    },
     {
       fixture: "getAccountDailyAnalytics.json",
       method: "GET",
@@ -154,6 +185,16 @@ export const suite: AdapterSuite = {
     },
   ],
   secret: KEY,
+  unsampled: {
+    message: {
+      senderRef:
+        "the documented example's eaccount is the placeholder eaccount-123, not an address",
+    },
+    reply: {
+      senderRef:
+        "the documented example's eaccount is the placeholder eaccount-123, not an address",
+    },
+  },
   totals: {
     blocklist: 3,
     campaigns: 3,

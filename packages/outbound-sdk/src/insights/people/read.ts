@@ -130,7 +130,7 @@ export const isPositive = (
 
 /** Whether the vendor says the lead replied: a status, a count or a time. */
 export const hasReplied = (lead: Lead): boolean =>
-  lead.status === "replied" ||
+  lead.replied === true ||
   (lead.engagement?.replies ?? 0) > 0 ||
   (lead.engagement?.lastRepliedAt ?? null) !== null;
 

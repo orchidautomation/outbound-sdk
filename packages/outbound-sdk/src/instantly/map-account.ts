@@ -4,8 +4,10 @@
 
 import type {
   BlockEntry,
+  CampaignProgress,
   CampaignSettings,
   LeadList,
+  PlacementTest,
   SenderHealth,
   SendingWindow,
   Tag,
@@ -21,10 +23,12 @@ import {
   objects,
   text,
   timestamp,
+  withoutKeys,
 } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
-import { recordBase, refTo, refsTo } from "../internal/record.ts";
+import { eventTypesOf, recordBase, refTo, refsTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
+import { EVENT_TYPES } from "./webhooks.ts";
 
 const CLOCK = /^\d{2}:\d{2}$/u;
 const DATE = /^\d{4}-\d{2}-\d{2}$/u;
@@ -77,6 +81,27 @@ export const toCampaignSettings = (
     },
   };
 };
+
+/**
+ * One campaign's row of `GET /campaigns/analytics`: `leads_count` is every
+ * lead and `completed_count` the leads the campaign was completed for. The
+ * report does not split the rest.
+ */
+export const toCampaignProgress = (
+  identity: Identity,
+  campaignId: string,
+  raw: JsonObject
+): CampaignProgress => ({
+  ...recordBase(identity, campaignId, raw),
+  blocked: null,
+  campaignRef: refTo(identity, campaignId) ?? "",
+  completed: count(raw.completed_count),
+  failed: null,
+  inProgress: null,
+  leads: count(raw.leads_count),
+  notStarted: null,
+  stopped: null,
+});
 
 /** The three responses a mailbox's health is read from. */
 export interface HealthParts {
@@ -205,8 +230,16 @@ export const toSenderHealth = (
   };
 };
 
-/** `GET /lead-lists`. The list object carries no count of its leads. */
-export const toLeadList = (identity: Identity, raw: JsonObject): LeadList => {
+/**
+ * `GET /lead-lists`. The list object carries no count of its leads, so `size`
+ * is the `total_leads` of the list's verification statistics when the read
+ * fetched them, and `null` on a listing.
+ */
+export const toLeadList = (
+  identity: Identity,
+  raw: JsonObject,
+  size: number | null = null
+): LeadList => {
   const id = text(raw.id) ?? "";
 
   return {
@@ -214,7 +247,7 @@ export const toLeadList = (identity: Identity, raw: JsonObject): LeadList => {
     createdAt: timestamp(raw.timestamp_created),
     kind: "leads",
     name: text(raw.name) ?? id,
-    size: null,
+    size,
   };
 };
 
@@ -228,16 +261,27 @@ const blockKind = (raw: JsonObject): BlockEntry["kind"] => {
   return isDomain ? "domain" : "email";
 };
 
-/** `GET /block-lists-entries`: an address or a whole domain. */
+/**
+ * `GET /block-lists-entries`: an address or a whole domain. An entry with no
+ * value blocks nothing that can be named, so it is skipped.
+ */
 export const toBlockEntry = (
   identity: Identity,
   raw: JsonObject
-): BlockEntry => ({
-  ...recordBase(identity, text(raw.id) ?? "", raw),
-  createdAt: timestamp(raw.timestamp_created),
-  kind: blockKind(raw),
-  value: (text(raw.bl_value) ?? "").toLowerCase(),
-});
+): BlockEntry[] => {
+  const value = text(raw.bl_value)?.toLowerCase();
+
+  return value === undefined
+    ? []
+    : [
+        {
+          ...recordBase(identity, text(raw.id) ?? "", raw),
+          createdAt: timestamp(raw.timestamp_created),
+          kind: blockKind(raw),
+          value,
+        },
+      ];
+};
 
 /** `GET /custom-tags`: a tag for mailboxes and campaigns. */
 export const toTag = (identity: Identity, raw: JsonObject): Tag => {
@@ -247,6 +291,39 @@ export const toTag = (identity: Identity, raw: JsonObject): Tag => {
     ...recordBase(identity, id, raw),
     description: text(raw.description),
     name: text(raw.label) ?? id,
+  };
+};
+
+const TEST_STATUS = new Map<number, PlacementTest["status"]>([
+  [1, "active"],
+  [2, "paused"],
+  [3, "completed"],
+]);
+
+// `type` is documented as "a one-time test or an automated test" with the
+// values 1 and 2 and no names beside them, so they are read in that order.
+const TEST_KIND = new Map<number, NonNullable<PlacementTest["kind"]>>([
+  [1, "one_time"],
+  [2, "automated"],
+]);
+
+/** `GET /inbox-placement-tests`. Instantly gives a test no start or end date. */
+export const toPlacementTest = (
+  identity: Identity,
+  raw: JsonObject
+): PlacementTest => {
+  const id = text(raw.id) ?? "";
+
+  return {
+    ...recordBase(identity, id, raw),
+    campaignRef: refTo(identity, text(raw.campaign_id)),
+    createdAt: timestamp(raw.timestamp_created),
+    endsAt: null,
+    kind: TEST_KIND.get(count(raw.type) ?? Number.NaN) ?? null,
+    name: text(raw.name) ?? id,
+    nextRunAt: timestamp(raw.timestamp_next_run),
+    startsAt: null,
+    status: TEST_STATUS.get(count(raw.status) ?? Number.NaN) ?? "unknown",
   };
 };
 
@@ -263,10 +340,8 @@ const webhookActive = (raw: JsonObject): boolean | null => {
 
 // The headers Instantly sends with each delivery can carry a credential, so
 // they are left out of the payload kept on the record.
-const withoutHeaders = (raw: JsonObject): JsonObject =>
-  Object.fromEntries(
-    Object.entries(raw).filter(([key]) => key.toLowerCase() !== "headers")
-  );
+const withoutHeaders = (raw: JsonObject): Json =>
+  withoutKeys(raw, /^headers$/iu);
 
 /** `GET /webhooks`: one webhook listens for one event type, or `all_events`. */
 export const toWebhook = (
@@ -277,6 +352,13 @@ export const toWebhook = (
   active: webhookActive(raw),
   campaignRefs: refsTo(identity, [text(raw.campaign)]),
   createdAt: timestamp(raw.timestamp_created),
+  // `all_events` is every event Instantly sends.
+  eventTypes: eventTypesOf(
+    text(raw.event_type) === "all_events"
+      ? [...EVENT_TYPES.keys()]
+      : [text(raw.event_type) ?? ""],
+    EVENT_TYPES
+  ),
   // A webhook for a custom lead label has no event type.
   events: [text(raw.event_type)].flatMap((event) => event ?? []),
   name: text(raw.name),

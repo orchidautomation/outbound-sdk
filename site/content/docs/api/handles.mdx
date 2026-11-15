@@ -38,6 +38,7 @@ Every method takes the per-call options as its last argument: `timeout`, `retrie
 | `get()` | `WithMeta<Campaign>` | nothing |
 | `sequence()` | `WithMeta<Sequence>`: the steps and their variants | `sequence` |
 | `settings()` | `WithMeta<CampaignSettings>`: schedule, daily caps, tracking, stop rules | `campaigns.settings` |
+| `progress()` | `WithMeta<CampaignProgress>`: how many leads are waiting, in progress, finished or stopped | `campaigns.progress` |
 | `stats(options?)` | `StatsResult` | `stats.campaign`, or `stats.byStep` for `scope: "step"`; `stats.byDay` for `by: "day"` |
 | `senders` | `list`, `listAll` of `Sender` | `senders.byCampaign` |
 | `leads` | `list`, `listAll` of `Lead`. Filters: `email`, `linkedinUrl`, `since`, `until` | `leads.byCampaign` |
@@ -65,6 +66,7 @@ A sequence holds template text, never a rendered message. The text a lead receiv
 | `get()` | `WithMeta<Sender>` | `senders.get` |
 | `warmup()` | `{ enabled, score }` | `senders.warmup` and `senders.get` |
 | `health()` | `WithMeta<SenderHealth>`: DNS records, connection state, warmup traffic | `senders.health` |
+| `campaigns.list()`, `campaigns.listAll()` | The campaigns the sender is attached to | `campaigns.bySender` |
 | `stats(options?)` | `StatsResult` for this sender | `stats.bySender`; `stats.byDay` for `by: "day"` |
 
 `warmup()` reads the sender and returns its `warmup` field. It throws `NotFound` when the sender has no warmup data, so you never get `null` from it. It is the one handle method whose result has no `meta`.
@@ -90,6 +92,7 @@ A sequence holds template text, never a rendered message. The text a lead receiv
 
 | Member | Returns | Needs |
 | --- | --- | --- |
+| `get()` | `WithMeta<LeadList>` | `lists.get` |
 | `leads` | `list`, `listAll` of `Lead`. Filters: `email`, `linkedinUrl`, `since`, `until` | `lists.leads` |
 
 `outbound.list(id).leads` is `outbound.leads` with `listId` filled in. The lists themselves come from `outbound.lists.list()`, which needs `lists.list`. The sample above reads one.

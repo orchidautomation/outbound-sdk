@@ -68,8 +68,12 @@ test("heyreach: a list's leads carry tags, custom fields, the newest auto-tag an
   const { provider, raw, ref, schemaVersion, workspaceId, ...mapped } = first;
   assert.equal(ref, `heyreach:client-a:${first.sourceId}`);
   assert.deepEqual(mapped, {
+    // LinkedIn has no bounce, and a list row does not say whether it replied.
+    bounced: null,
     campaignRef: null,
     company: "Example Co 11",
+    // `companyUrl` is a LinkedIn company page, not a website.
+    companyLinkedinUrl: "https://www.linkedin.com/company/example-co-11",
     createdAt: null,
     custom: { favorite_color: "blue", plan: "growth" },
     // emailAddress wins over the enriched and the custom address.
@@ -78,17 +82,26 @@ test("heyreach: a list's leads carry tags, custom fields, the newest auto-tag an
     firstName: "Alex",
     // The newest auto-tag.
     interest: "Interested",
+    // What that auto-tag means.
+    interestCategory: "positive",
     lastName: "Listed",
     linkedinUrl: "https://www.linkedin.com/in/example-person-11",
+    location: "Example City 11",
+    phone: null,
+    progress: "unknown",
+    replied: null,
     // The profile URL is the id, as everywhere else.
     sourceId: "https://www.linkedin.com/in/example-person-11",
     // A list row carries no status.
     status: "unknown",
     tags: ["priority", "warm"],
     title: "Position 11",
+    unsubscribed: null,
+    website: null,
   });
   assert.equal(second.email, "custom12@example.com", "the last fallback");
   assert.equal(second.interest, null);
+  assert.equal(second.interestCategory, null, "no auto-tag, no meaning");
   assert.deepEqual(second.tags, []);
   assert.deepEqual(second.custom, {});
 });

@@ -4,6 +4,6 @@ instantly: messages.body full, replies.category vendor
 smartlead: messages.body full, replies.category vendor
   positive replies with text: ok
   with redact(): Unsupported
-heyreach: messages.body full, replies.category false
-  positive replies with text: Unsupported: Filtering replies by category is not available: the heyreach adapter does not support it (replies.category)
+heyreach: messages.body full, replies.category vendor
+  positive replies with text: ok
   with redact(): Unsupported

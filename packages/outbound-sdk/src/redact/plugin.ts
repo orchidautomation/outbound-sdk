@@ -33,6 +33,7 @@ export type RedactField =
   | "email"
   | "linkedin"
   | "name"
+  | "phone"
   | "subject";
 
 export interface RedactOptions {
@@ -52,6 +53,7 @@ export const ALL_FIELDS: readonly RedactField[] = [
   "email",
   "linkedin",
   "name",
+  "phone",
   "subject",
 ];
 
@@ -203,12 +205,16 @@ const redactFields = (masks: Masks, record: OutboundRecord): OutboundRecord => {
     return {
       ...record,
       company: maskIf(masks, "company", record.company),
+      // The company's LinkedIn page and its website name the company too.
+      companyLinkedinUrl: maskIf(masks, "company", record.companyLinkedinUrl),
       custom: maskCustom(masks, record.custom),
       email: maskIf(masks, "email", record.email),
       firstName: maskIf(masks, "name", record.firstName),
       lastName: maskIf(masks, "name", record.lastName),
       linkedinUrl: maskIf(masks, "linkedin", record.linkedinUrl),
+      phone: maskIf(masks, "phone", record.phone),
       raw: null,
+      website: maskIf(masks, "company", record.website),
     };
   }
 
@@ -228,14 +234,16 @@ const redactFields = (masks: Masks, record: OutboundRecord): OutboundRecord => {
 
   if (
     "steps" in record ||
+    "inProgress" in record ||
+    "nextRunAt" in record ||
     "schedule" in record ||
     "dns" in record ||
     "size" in record ||
     "url" in record ||
     "description" in record
   ) {
-    // Sequences hold template text; settings, health, lists, webhooks and
-    // tags hold no person.
+    // Sequences hold template text; progress, settings, health, lists,
+    // webhooks and tags hold no person.
     return { ...record, raw: null };
   }
 

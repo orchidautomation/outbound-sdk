@@ -3,4 +3,3 @@ smartlead: 36 tools
 heyreach: 30 tools
   winning_steps: not offered
   campaign_setup: not offered
-  reply_samples: Unsupported: Filtering replies by category is not available: the heyreach adapter does not support it (replies.category)

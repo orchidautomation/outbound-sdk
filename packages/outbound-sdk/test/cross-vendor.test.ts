@@ -61,15 +61,20 @@ test("the combined instance promises only what Instantly, Smartlead and HeyReach
   const { capabilities } = outbound;
   assert.equal(
     capabilities["leads.list"],
-    false,
-    "HeyReach has no list of every lead"
+    true,
+    "HeyReach and Smartlead walk their campaigns"
   );
   assert.equal(capabilities["leads.byCampaign"], true);
   assert.equal(capabilities["replies.list"], true);
   assert.equal(
     capabilities["replies.category"],
-    false,
-    "HeyReach replies carry no category"
+    "vendor",
+    "all three say what a reply's category is"
+  );
+  assert.equal(
+    capabilities["replies.unread"],
+    "client",
+    "the weakest grade: Smartlead cannot filter by it"
   );
   assert.equal(capabilities["leads.timeline"], true);
   assert.equal(capabilities["senders.list"], true);

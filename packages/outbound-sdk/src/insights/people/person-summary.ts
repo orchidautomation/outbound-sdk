@@ -189,7 +189,7 @@ const summarize = async (
     lead: lead.ref,
     leadStatus: lead.status,
     provider: lead.provider,
-    replied: activity.replies > 0 || lead.status === "replied",
+    replied: activity.replies > 0 || lead.replied === true,
     repliedSteps: repliedSteps(lead, messages),
   };
 };

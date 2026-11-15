@@ -7,13 +7,12 @@ import type {
   RawDescriptor,
   RequestSpec,
 } from "../internal/adapter.ts";
-import { OutboundError } from "../internal/errors.ts";
-import { isJsonObject } from "../internal/json.ts";
-import type { Json, JsonObject } from "../internal/json.ts";
+import { createVendorClient } from "../internal/client.ts";
+import type { RequestOptions, VendorClient } from "../internal/client.ts";
+import { requireObject } from "../internal/errors.ts";
+import type { JsonObject } from "../internal/json.ts";
 import type { NativeRead } from "../internal/native.ts";
 import type { Identity } from "../internal/record.ts";
-import { buildUrl } from "../internal/url.ts";
-import type { QueryValue } from "../internal/url.ts";
 import { BASE_URL } from "./capabilities.ts";
 import { NATIVE } from "./native.ts";
 
@@ -26,24 +25,11 @@ export interface ClientOptions {
   readonly readTags: boolean;
 }
 
-export interface GetOptions {
-  readonly query?: Readonly<Record<string, QueryValue>> | undefined;
-  readonly lane?: string | undefined;
-}
+export type GetOptions = RequestOptions;
 
-export interface InstantlyClient {
+export interface InstantlyClient extends VendorClient {
   readonly identity: Identity;
   readonly raw: RawDescriptor;
-  readonly get: (
-    ctx: AdapterContext,
-    path: string,
-    options?: GetOptions
-  ) => Promise<Json>;
-  readonly post: (
-    ctx: AdapterContext,
-    path: string,
-    body: JsonObject
-  ) => Promise<Json>;
   /** `false` when the caller turned the `tags` capability off. */
   readonly readTags: boolean;
   /** `get`, for an endpoint that returns one object. */
@@ -129,47 +115,17 @@ export const createClient = (options: ClientOptions): InstantlyClient => {
     },
   });
 
-  const get = async (
-    ctx: AdapterContext,
-    path: string,
-    request: GetOptions = {}
-  ): Promise<Json> => {
-    const response = await ctx.request(
-      authorize({
-        lane: request.lane,
-        method: "GET",
-        url: buildUrl(baseUrl, path, request.query),
-      })
-    );
-
-    return response.body;
-  };
+  const http = createVendorClient(baseUrl, authorize);
 
   return {
-    get,
-    getObject: async (ctx, path, request) => {
-      const body = await get(ctx, path, request);
-
-      if (!isJsonObject(body)) {
-        throw new OutboundError(
-          "Provider",
-          `Instantly returned no object for ${path}`,
-          {
-            provider: options.identity.provider,
-          }
-        );
-      }
-
-      return body;
-    },
+    ...http,
+    getObject: async (ctx, path, request) =>
+      requireObject(
+        await http.get(ctx, path, request),
+        options.identity.provider,
+        `Instantly returned no object for ${path}`
+      ),
     identity: options.identity,
-    post: async (ctx, path, body) => {
-      const response = await ctx.request(
-        authorize({ body, method: "POST", url: buildUrl(baseUrl, path) })
-      );
-
-      return response.body;
-    },
     raw: { authorize, baseUrl, isRead, isSecret },
     readTags: options.readTags,
   };

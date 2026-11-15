@@ -4,7 +4,7 @@
 
 import { z } from "zod";
 
-import { baseFields, count, isoDateTime } from "./entities.ts";
+import { baseFields, count, eventTypeSchema, isoDateTime } from "./entities.ts";
 import type {
   Campaign,
   Lead,
@@ -61,6 +61,31 @@ export const campaignSettingsSchema = z.object({
 
 export type CampaignSettings = z.infer<typeof campaignSettingsSchema>;
 
+/**
+ * How far a campaign's leads have got, as counts of leads. `sourceId` is the
+ * campaign's id. Stats count messages and replies; this counts people.
+ */
+export const campaignProgressSchema = z.object({
+  ...baseFields,
+  /** Leads the vendor stopped for a bounce or a block list. */
+  blocked: count,
+  campaignRef: z.string(),
+  /** Leads who reached the end of the sequence. */
+  completed: count,
+  /** Leads the campaign could not run for. */
+  failed: count,
+  /** Leads who have had a step and have more to come. */
+  inProgress: count,
+  /** Every lead in the campaign. */
+  leads: count,
+  /** Leads still waiting for their first step. */
+  notStarted: count,
+  /** Leads taken out of the sequence before its end. */
+  stopped: count,
+});
+
+export type CampaignProgress = z.infer<typeof campaignProgressSchema>;
+
 /** What the vendor knows about a sender's deliverability. `sourceId` is the sender's id. */
 export const senderHealthSchema = z.object({
   ...baseFields,
@@ -96,7 +121,8 @@ export const leadListSchema = z.object({
   ...baseFields,
   createdAt: isoDateTime,
   kind: z.enum(["companies", "leads"]),
-  name: z.string(),
+  /** The vendor's name for it, or its id when the vendor gave none. Never empty. */
+  name: z.string().min(1),
   /** How many records the list holds. */
   size: count,
 });
@@ -108,8 +134,8 @@ export const blockEntrySchema = z.object({
   ...baseFields,
   createdAt: isoDateTime,
   kind: z.enum(["company", "domain", "email", "linkedin", "other"]),
-  /** Lowercased for emails and domains. */
-  value: z.string(),
+  /** Lowercased for emails and domains. Never empty. */
+  value: z.string().min(1),
 });
 
 export type BlockEntry = z.infer<typeof blockEntrySchema>;
@@ -117,10 +143,35 @@ export type BlockEntry = z.infer<typeof blockEntrySchema>;
 export const tagSchema = z.object({
   ...baseFields,
   description: z.string().nullable(),
-  name: z.string(),
+  name: z.string().min(1),
 });
 
 export type Tag = z.infer<typeof tagSchema>;
+
+/**
+ * An inbox placement test: the vendor sends a campaign's email to seed
+ * mailboxes and reports where it landed. This is the test itself. Its
+ * results stay native, because one vendor reports them as a row per email
+ * and another as rates.
+ */
+export const placementTestSchema = z.object({
+  ...baseFields,
+  /** The campaign whose email the test sends. */
+  campaignRef: z.string().nullable(),
+  createdAt: isoDateTime,
+  /** When a scheduled test stops running. */
+  endsAt: isoDateTime,
+  /** `one_time` for a test run once, `automated` for one on a schedule. */
+  kind: z.enum(["automated", "one_time"]).nullable(),
+  name: z.string().min(1),
+  /** When an automated test runs next. */
+  nextRunAt: isoDateTime,
+  /** When a scheduled test starts running. */
+  startsAt: isoDateTime,
+  status: z.enum(["active", "completed", "paused", "unknown"]),
+});
+
+export type PlacementTest = z.infer<typeof placementTestSchema>;
 
 /** A webhook registered with the vendor. */
 export const webhookSubscriptionSchema = z.object({
@@ -129,6 +180,11 @@ export const webhookSubscriptionSchema = z.object({
   /** The campaigns the webhook is limited to. Empty for every campaign. */
   campaignRefs: z.array(z.string()),
   createdAt: isoDateTime,
+  /**
+   * What those events become when they arrive: the SDK's own event types,
+   * without repeats. Empty when no event name is one the adapter knows.
+   */
+  eventTypes: z.array(eventTypeSchema),
   /** Event names in the vendor's own words. */
   events: z.array(z.string()),
   name: z.string().nullable(),
@@ -142,10 +198,12 @@ export type WebhookSubscription = z.infer<typeof webhookSubscriptionSchema>;
 export type Entity =
   | BlockEntry
   | Campaign
+  | CampaignProgress
   | CampaignSettings
   | Lead
   | LeadList
   | Message
+  | PlacementTest
   | Reply
   | Sender
   | SenderHealth

@@ -41,7 +41,8 @@ All three return a `StatsResult`: `rows`, an array of [`MetricRow`](#the-counts)
 
 Plus the per-call options every read takes: see [retries](/docs/retries).
 
-- `from` and `to` are calendar days, not timestamps. Anything else, such as `2026-11-09T00:00:00Z`, is `Invalid`. So is a `from` after `to`, and a scope other than `workspace` without a `scopeId`.
+- `from` and `to` are calendar days, not timestamps. Anything else, such as `2026-11-09T00:00:00Z`, is `Invalid`. So is a `from` after `to`, and the `step` or `sender` scope without a `scopeId`.
+- `scope: "campaign"` without a `scopeId` returns one row per campaign from a single vendor request, each with the campaign's `scopeRef`. Instantly and Smartlead serve it as totals only; `by: "day"` there is `Unsupported`.
 - With no `from` or `to`, the SDK passes no range and the adapter decides what the vendor is asked for. Pass both when the number matters.
 - `scope: "step"` returns one row per step, each with its `stepIndex`.
 - A scope with nothing to report returns no rows. An empty `rows` is not a row of zeros.
@@ -50,13 +51,14 @@ Plus the per-call options every read takes: see [retries](/docs/retries).
 
 Each scope needs a capability, and `by: "day"` needs one more. A scope the adapter cannot serve is refused with `Unsupported` before any request.
 
-| Request                   | Needs                 |
-| ------------------------- | --------------------- |
-| `scope: "workspace"`      | `stats.workspace`     |
-| `scope: "campaign"`       | `stats.campaign`      |
-| `scope: "step"`           | `stats.byStep`        |
-| `scope: "sender"`         | `stats.bySender`      |
-| `by: "day"`, on any scope | `stats.byDay` as well |
+| Request                           | Needs                 |
+| --------------------------------- | --------------------- |
+| `scope: "workspace"`              | `stats.workspace`     |
+| `scope: "campaign"`               | `stats.campaign`      |
+| `scope: "campaign"`, no `scopeId` | `stats.allCampaigns`  |
+| `scope: "step"`                   | `stats.byStep`        |
+| `scope: "sender"`                 | `stats.bySender`      |
+| `by: "day"`, on any scope         | `stats.byDay` as well |
 
 ### Grades
 
@@ -81,7 +83,8 @@ Every count on a `MetricRow` is a non-negative number, or `null` when the vendor
 | `contacted` | Unique leads contacted. |
 | `opened` | Unique opens. `null` when open tracking is off. |
 | `openedTotal` | Every open, repeats included. |
-| `clicked` | Clicks. |
+| `clicked` | Unique clicks: leads who clicked at least once. |
+| `clickedTotal` | Every click, repeats included. |
 | `replied` | Replies from people. Auto-replies are counted in `repliedAuto` where the vendor separates them. |
 | `repliedAuto` | Automatic replies. |
 | `positive` | Replies the vendor marked positive. |

@@ -460,7 +460,8 @@ const event = (
 test("eventCard announces a webhook event and hides prospect text unless asked", () => {
   const reply = event({
     campaignName: "Founders Q4",
-    category: "interested",
+    category: "positive",
+    categoryName: "Interested",
     leadEmail: "person1@example.com",
     stepIndex: 1,
     subject: "Re: quick question <!here>",

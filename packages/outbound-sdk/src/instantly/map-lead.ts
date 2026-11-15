@@ -4,7 +4,7 @@
 import type {
   Lead,
   LeadEngagement,
-  LeadStatus,
+  LeadProgress,
   Message,
   Reply,
   ReplyCategory,
@@ -19,8 +19,10 @@ import {
   timestamp,
 } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
+import { leadStanding } from "../internal/lead-status.ts";
 import { recordBase, refTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
+import { variantKey } from "../internal/sequence.ts";
 import { normalizeBody } from "../internal/text.ts";
 
 // The built-in interest statuses, with the names the reference gives them.
@@ -91,14 +93,27 @@ const category = (
   );
 };
 
-// -3 is "Skipped", which has no equivalent here.
-const LEAD_STATUS = new Map<number, LeadStatus>([
-  [-2, "unsubscribed"],
-  [-1, "bounced"],
+// 1 active, 2 paused, 3 completed. -1 is bounced and -2 unsubscribed, which
+// say what came back and not where the lead is; -3 is "Skipped".
+const LEAD_PROGRESS = new Map<number, LeadProgress>([
   [1, "active"],
   [2, "paused"],
   [3, "completed"],
 ]);
+
+const BOUNCED = -1;
+const UNSUBSCRIBED = -2;
+
+const standing = (raw: JsonObject) => {
+  const code = count(raw.status);
+  const replies = count(raw.email_reply_count);
+
+  return leadStanding(LEAD_PROGRESS.get(code ?? Number.NaN) ?? "unknown", {
+    bounced: code === null ? null : code === BOUNCED,
+    replied: replies === null ? null : replies > 0,
+    unsubscribed: code === null ? null : code === UNSUBSCRIBED,
+  });
+};
 
 /**
  * A step as Instantly names it on an email and on a lead's last step:
@@ -119,7 +134,7 @@ const stepPosition = (value: Json | undefined): StepPosition => {
     ? { stepIndex: null, variantKey: null }
     : {
         stepIndex: Number(groups.step),
-        variantKey: String.fromCodePoint(65 + Number(groups.variant)),
+        variantKey: variantKey(Number(groups.variant)),
       };
 };
 
@@ -158,20 +173,26 @@ export const toLead = (
   labels: Labels = NO_LABELS
 ): Lead => ({
   ...recordBase(identity, text(raw.id) ?? "", raw),
+  ...standing(raw),
   campaignRef: refTo(identity, text(raw.campaign)),
   company: text(raw.company_name),
+  // An Instantly lead has no LinkedIn fields of its own.
+  companyLinkedinUrl: null,
   createdAt: timestamp(raw.timestamp_created),
   custom: stringMap(raw.payload),
   email: emailAddress(raw.email),
   engagement: engagement(raw),
   firstName: text(raw.first_name),
   interest: interest(raw.lt_interest_status, labels),
+  interestCategory: category(raw.lt_interest_status, labels) ?? null,
   lastName: text(raw.last_name),
   linkedinUrl: null,
-  status: LEAD_STATUS.get(count(raw.status) ?? Number.NaN) ?? "unknown",
+  location: null,
+  phone: text(raw.phone),
   // Instantly tags mailboxes and campaigns, never leads.
   tags: [],
   title: text(raw.job_title),
+  website: text(raw.website) ?? text(raw.company_domain),
 });
 
 /** `ue_type`: 1 sent from a campaign, 2 received, 3 sent by hand, 4 scheduled. */
@@ -215,11 +236,9 @@ export const toMessage = (
   direction: count(raw.ue_type) === RECEIVED ? "in" : "out",
 });
 
-const isAuto = (raw: JsonObject): boolean | null => {
-  const value = raw.is_auto_reply;
-
-  return flag(value) ?? (count(value) === null ? null : count(value) === 1);
-};
+// `is_auto_reply` and `is_unread` are documented as 0 or 1.
+const oneOrZero = (value: Json | undefined): boolean | null =>
+  flag(value) ?? (count(value) === null ? null : count(value) === 1);
 
 export const toReply = (
   identity: Identity,
@@ -234,6 +253,7 @@ export const toReply = (
     category: mapped ?? "unknown",
     categorySource: mapped === undefined ? null : "vendor",
     direction: "in",
-    isAuto: isAuto(raw),
+    isAuto: oneOrZero(raw.is_auto_reply),
+    unread: oneOrZero(raw.is_unread),
   };
 };

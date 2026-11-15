@@ -12,8 +12,9 @@ const matchesScope = (row: MemoryStats, query: StatsQuery): boolean => {
     }
 
     case "campaign": {
+      // With no campaign named, every campaign's rows, grouped below.
       return (
-        row.campaignId === query.scopeId &&
+        (query.scopeId === undefined || row.campaignId === query.scopeId) &&
         row.senderId === undefined &&
         row.stepIndex === undefined
       );
@@ -41,6 +42,7 @@ const inRange = (row: MemoryStats, query: StatsQuery): boolean =>
 
 const groupKey = (row: MemoryStats, query: StatsQuery): string =>
   [
+    query.scope === "campaign" ? row.campaignId : "",
     query.by === "day" ? row.date : "",
     query.scope === "step" ? row.stepIndex : "",
     query.scope === "step" ? (row.variantKey ?? "") : "",
@@ -70,7 +72,10 @@ export const queryStats = (
           ...identity,
           date: query.by === "day" ? (first?.date ?? null) : null,
           scope: query.scope,
-          scopeId: query.scopeId ?? identity.workspaceId,
+          scopeId:
+            query.scopeId ??
+            (query.scope === "campaign" ? first?.campaignId : undefined) ??
+            identity.workspaceId,
           stepIndex: query.scope === "step" ? (first?.stepIndex ?? null) : null,
           variantKey:
             query.scope === "step" ? (first?.variantKey ?? null) : null,

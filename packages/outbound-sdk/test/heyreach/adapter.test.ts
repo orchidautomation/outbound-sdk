@@ -430,7 +430,7 @@ test("heyreach: an adapter lists what it has not confirmed against the live API"
     outbound.caveats.some((caveat) => /300 requests per minute/u.test(caveat))
   );
   assert.equal(outbound.capabilities["messages.list"], true);
-  assert.equal(outbound.capabilities["replies.category"], false);
+  assert.equal(outbound.capabilities["replies.category"], "vendor");
   assert.equal(outbound.capabilities.workspaces, false);
   assert.equal(outbound.capabilities["events.verify"], "secret");
 });

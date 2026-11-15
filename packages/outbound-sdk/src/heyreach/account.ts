@@ -17,10 +17,12 @@ import {
   list,
 } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
+import { mapPage } from "../internal/page.ts";
 import type { HeyReachClient } from "./client.ts";
 import {
   toBlockedCompany,
   toBlockedLead,
+  toCampaignProgress,
   toLeadList,
   toSenderHealth,
   toWebhook,
@@ -32,7 +34,13 @@ import { numericId, offsetOf, pageSize } from "./paging.ts";
 type AccountReaders = Required<
   Pick<
     Adapter,
-    "getSenderHealth" | "listBlocklist" | "listLists" | "listWebhooks"
+    | "getCampaignProgress"
+    | "getList"
+    | "getSenderHealth"
+    | "getWebhook"
+    | "listBlocklist"
+    | "listLists"
+    | "listWebhooks"
   >
 >;
 
@@ -88,6 +96,47 @@ export const accountReaders = (client: HeyReachClient): AccountReaders => ({
       client.object(await client.get(ctx, path), path)
     );
   },
+  getCampaignProgress: async (id, ctx) => {
+    const path = "/campaign/GetById";
+
+    return toCampaignProgress(
+      client.identity,
+      id,
+      client.object(
+        await client.get(ctx, path, {
+          query: { campaignId: numericId(client, id, "campaign") },
+        }),
+        path
+      )
+    );
+  },
+  getList: async (id, ctx) => {
+    const path = "/list/GetById";
+
+    return toLeadList(
+      client.identity,
+      client.object(
+        await client.get(ctx, path, {
+          query: { listId: numericId(client, id, "list") },
+        }),
+        path
+      )
+    );
+  },
+  getWebhook: async (id, ctx) => {
+    const path = "/webhooks/GetWebhookById";
+
+    // The client asks for this read without the webhook's custom headers.
+    return toWebhook(
+      client.identity,
+      client.object(
+        await client.get(ctx, path, {
+          query: { webhookId: numericId(client, id, "webhook") },
+        }),
+        path
+      )
+    );
+  },
   listBlocklist: listBlocklist(client),
   listLists: async (query, ctx) => {
     const offset = offsetOf(query.next);
@@ -100,10 +149,7 @@ export const accountReaders = (client: HeyReachClient): AccountReaders => ({
       offset
     );
 
-    return {
-      items: envelope.items.map((item) => toLeadList(client.identity, item)),
-      next: envelope.next,
-    };
+    return mapPage(envelope, (item) => toLeadList(client.identity, item));
   },
   listWebhooks: async (query, ctx) => {
     const offset = offsetOf(query.next);
@@ -158,7 +204,7 @@ const campaignAccountIds = async (
 
   const campaign = client.object(
     await client.get(ctx, path, {
-      campaignId: numericId(client, query.campaignId, "campaign"),
+      query: { campaignId: numericId(client, query.campaignId, "campaign") },
     }),
     path
   );

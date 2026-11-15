@@ -3,16 +3,20 @@
 import { requireCapability } from "../capabilities.ts";
 import {
   blockEntrySchema,
+  campaignProgressSchema,
   campaignSettingsSchema,
   leadListSchema,
+  placementTestSchema,
   senderHealthSchema,
   tagSchema,
   webhookSubscriptionSchema,
 } from "../entities-account.ts";
 import type {
   BlockEntry,
+  CampaignProgress,
   CampaignSettings,
   LeadList,
+  PlacementTest,
   SenderHealth,
   Tag,
   WebhookSubscription,
@@ -40,6 +44,20 @@ export const settingsGet = (core: Core): GetSpec<CampaignSettings> => ({
   schema: campaignSettingsSchema,
   toOperation: (id) => ({ id, kind: "campaigns.settings" }),
   what: "Settings for campaign",
+});
+
+export const progressGet = (core: Core): GetSpec<CampaignProgress> => ({
+  action: "campaigns.progress",
+  prepare: () => {
+    requireCapability(
+      core.gate,
+      "campaigns.progress",
+      "Reading a campaign's progress"
+    );
+  },
+  schema: campaignProgressSchema,
+  toOperation: (id) => ({ id, kind: "campaigns.progress" }),
+  what: "Progress for campaign",
 });
 
 export const healthGet = (core: Core): GetSpec<SenderHealth> => ({
@@ -91,6 +109,26 @@ export const listList = (core: Core): ListSpec<LeadList, NoFilters> => ({
   toOperation: (_filters, page) => ({ kind: "lists.list", query: page }),
 });
 
+export const listGet = (core: Core): GetSpec<LeadList> => ({
+  action: "lists.get",
+  prepare: () => {
+    requireCapability(core.gate, "lists.get", "Reading a lead list");
+  },
+  schema: leadListSchema,
+  toOperation: (id) => ({ id, kind: "lists.get" }),
+  what: "List",
+});
+
+export const webhookGet = (core: Core): GetSpec<WebhookSubscription> => ({
+  action: "webhooks.get",
+  prepare: () => {
+    requireCapability(core.gate, "webhooks.get", "Reading a webhook");
+  },
+  schema: webhookSubscriptionSchema,
+  toOperation: (id) => ({ id, kind: "webhooks.get" }),
+  what: "Webhook",
+});
+
 export const blocklistList = (core: Core): ListSpec<BlockEntry, NoFilters> => ({
   action: "blocklist.list",
   keyOf: refOf,
@@ -101,6 +139,27 @@ export const blocklistList = (core: Core): ListSpec<BlockEntry, NoFilters> => ({
   },
   schema: blockEntrySchema,
   toOperation: (_filters, page) => ({ kind: "blocklist.list", query: page }),
+});
+
+export const placementTestList = (
+  core: Core
+): ListSpec<PlacementTest, NoFilters> => ({
+  action: "placementTests.list",
+  keyOf: refOf,
+  prepare: () => {
+    requireCapability(
+      core.gate,
+      "placementTests.list",
+      "Listing inbox placement tests"
+    );
+
+    return {};
+  },
+  schema: placementTestSchema,
+  toOperation: (_filters, page) => ({
+    kind: "placementTests.list",
+    query: page,
+  }),
 });
 
 export const tagList = (core: Core): ListSpec<Tag, NoFilters> => ({

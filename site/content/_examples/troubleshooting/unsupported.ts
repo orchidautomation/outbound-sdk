@@ -16,8 +16,8 @@ const show = async <Result>(call: () => Promise<Result>): Promise<void> => {
   }
 };
 
-// HeyReach has no list of every lead: leads exist per campaign.
-await show(() => outbound.leads.list());
+// HeyReach cannot list a workspace's tags: a lead's tags come with the lead.
+await show(() => outbound.tags.list());
 
 await show(() => outbound.campaign("123").settings());
 
@@ -26,7 +26,4 @@ await show(() => outbound.campaign("123").stats({ scope: "step" }));
 console.log("requests sent:", vendor.count());
 
 // Ask before calling.
-console.log(
-  outbound.capabilities["leads.list"],
-  outbound.capabilities["leads.byCampaign"]
-);
+console.log(outbound.capabilities.tags, outbound.capabilities["leads.get"]);

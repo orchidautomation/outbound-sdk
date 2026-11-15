@@ -56,6 +56,18 @@ export const count = (value: Json | undefined): number | null => {
   return null;
 };
 
+/** A first and a last name as one, or `null` when the vendor gave neither. */
+export const fullName = (
+  first: Json | undefined,
+  last: Json | undefined
+): string | null => {
+  const name = [text(first), text(last)]
+    .filter((part) => part !== null)
+    .join(" ");
+
+  return name === "" ? null : name;
+};
+
 export const flag = (value: Json | undefined): boolean | null =>
   isBoolean(value) ? value : null;
 
@@ -147,4 +159,26 @@ export const unknownKey = (
   return stray === undefined
     ? undefined
     : `"${stray}" is not an input. It takes: ${known.toSorted().join(", ") || "nothing"}`;
+};
+
+/**
+ * A copy of `value` without any key that matches `secret`, at any depth. A
+ * vendor payload kept on a record's `raw` can carry a mailbox password, a
+ * webhook's signing secret or the headers it sends, and none of them belongs
+ * in a record a caller logs or stores.
+ */
+export const withoutKeys = (value: Json, secret: RegExp): Json => {
+  if (isJsonArray(value)) {
+    return value.map((entry) => withoutKeys(entry, secret));
+  }
+
+  if (!isJsonObject(value)) {
+    return value;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).flatMap(([key, entry]) =>
+      secret.test(key) ? [] : [[key, withoutKeys(entry, secret)] as const]
+    )
+  );
 };

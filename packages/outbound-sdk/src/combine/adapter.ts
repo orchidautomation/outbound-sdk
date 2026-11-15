@@ -12,6 +12,7 @@ import {
 } from "../internal/capabilities.ts";
 import type { Lead, MetricRow } from "../internal/entities.ts";
 import { makeErrorMapper, OutboundError } from "../internal/errors.ts";
+import { mergeFields, resolveFields } from "../internal/fields.ts";
 import type { Json } from "../internal/json.ts";
 import { recordBase } from "../internal/record.ts";
 import { accountReads } from "./account.ts";
@@ -106,10 +107,21 @@ const scopedOrAcross = <
 };
 
 const lists = (members: readonly Adapter[]): Lists => ({
-  listCampaigns: (query, ctx) =>
-    pageAcross(members, ctx, query, (member, memberCtx, next) =>
+  listCampaigns: (query, ctx) => {
+    if (query.senderId !== undefined) {
+      // A sender lives in exactly one member, and so do its campaigns.
+      const routed = routeRef(members, ctx, query.senderId, "Sender");
+
+      return routed.member.listCampaigns(
+        { ...query, senderId: routed.id },
+        routed.ctx
+      );
+    }
+
+    return pageAcross(members, ctx, query, (member, memberCtx, next) =>
       member.listCampaigns({ ...query, next }, memberCtx)
-    ),
+    );
+  },
   listLeads: (query, ctx) => {
     if (query.listId !== undefined) {
       // A saved list lives in exactly one member.
@@ -297,6 +309,11 @@ export const combine = (members: readonly Adapter[]): Adapter => {
       // A combined instance always knows its workspaces: they are its members.
       workspaces: true,
     },
+    fieldCoverage: mergeFields(
+      members.map(
+        (member) => member.fieldCoverage ?? resolveFields(member.fields)
+      )
+    ),
     caveats: members.flatMap((member) =>
       (member.caveats ?? []).map(
         (caveat) => `${member.name} (${member.workspaceId}): ${caveat}`

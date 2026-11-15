@@ -7,6 +7,7 @@ import { API, CAMPAIGN, KEY, SENDER, suite, urlOf } from "./suite.ts";
 const counts = (row: Record<string, unknown> | undefined) => ({
   bounced: row?.bounced,
   clicked: row?.clicked,
+  clickedTotal: row?.clickedTotal,
   contacted: row?.contacted,
   delivered: row?.delivered,
   opened: row?.opened,
@@ -77,6 +78,7 @@ test("smartlead: each lifetime count is read from its own field", async () => {
   assert.deepEqual(counts(row), {
     bounced: 12,
     clicked: 23,
+    clickedTotal: 16,
     contacted: 25,
     delivered: null,
     opened: 24,
@@ -106,13 +108,15 @@ test("smartlead: a campaign's dated totals use time_zone and leave out-of-office
   assert.deepEqual(counts(row), {
     bounced: 1234,
     clicked: 489,
+    clickedTotal: 612,
     contacted: 18_262,
     delivered: null,
     opened: 5133,
     openedTotal: 7420,
     positive: null,
     replied: 1502,
-    repliedAuto: null,
+    // total_reply_count 3929 less non_ooo_reply_count 1502.
+    repliedAuto: 2427,
     sent: 23_918,
     unsubscribed: 18,
   });
@@ -225,6 +229,7 @@ test("smartlead: workspace totals use timezone and read each field", async () =>
   assert.deepEqual(counts(each), {
     bounced: 42,
     clicked: null,
+    clickedTotal: null,
     contacted: 50,
     delivered: null,
     opened: 51,
@@ -293,6 +298,41 @@ test("smartlead: daily rows come from the day-wise endpoint, without its bounces
     "the endpoint always reports 0 bounces, so bounced is null"
   );
   assert.equal(stats.meta.evidence, "exact");
+
+  const positive = urlOf(requests[1]);
+  assert.equal(
+    positive.pathname,
+    `${API}/analytics/day-wise-positive-reply-stats`
+  );
+  assert.equal(positive.search, url.search, "the same window and timezone");
+  assert.deepEqual(
+    stats.rows.map((row) => row.positive),
+    [5, 7],
+    "positive_replied of the same day"
+  );
+});
+
+test("smartlead: a day the positive-reply report leaves out has no positive count", async () => {
+  const { outbound, settle } = harness(suite, (request) =>
+    new URL(request.url).pathname.endsWith("positive-reply-stats")
+      ? Response.json({
+          data: {
+            day_wise_stats: [{ date: "2024-01-16", positive_replied: 3 }],
+          },
+          ok: true,
+        })
+      : undefined
+  );
+
+  const stats = await settle(
+    outbound.stats({ by: "day", from: "2024-01-15", to: "2024-01-16" })
+  );
+
+  assert.deepEqual(
+    stats.rows.map((row) => row.positive),
+    [null, 3],
+    "unknown, not zero"
+  );
 });
 
 test("smartlead: a campaign's daily rows filter the same endpoint, 30 days by default", async () => {
@@ -338,7 +378,8 @@ test("smartlead: step totals take datetimes and return a row per variant", async
   assert.equal(row?.variantKey, "A");
   assert.deepEqual(counts(row), {
     bounced: 9,
-    clicked: 50,
+    clicked: null,
+    clickedTotal: 50,
     contacted: null,
     delivered: null,
     opened: null,
@@ -402,7 +443,8 @@ test("smartlead: a step without variants returns its total, and steps have no da
     );
     assert.deepEqual(counts(stats.rows[0]), {
       bounced: 61,
-      clicked: 62,
+      clicked: null,
+      clickedTotal: 62,
       contacted: null,
       delivered: null,
       opened: null,
@@ -454,6 +496,7 @@ test("smartlead: a mailbox's totals are its row of the per-mailbox list, found b
     assert.deepEqual(counts(row), {
       bounced: 5,
       clicked: null,
+      clickedTotal: null,
       contacted: null,
       delivered: null,
       opened: null,

@@ -1,0 +1,69 @@
+{
+  "items": [
+    {
+      "id": "01a1d77f-6a01-7b11-9c21-2f5e8a1b3c41",
+      "organization_id": "01a1d77f-5e21-7d05-8d6e-1b2c3d4e5f60",
+      "name": "Weekly placement check",
+      "delivery_mode": 1,
+      "description": null,
+      "type": 2,
+      "sending_method": 1,
+      "campaign_id": "01a1d77f-5e23-7a9a-9112-a6f7089f329f",
+      "email_subject": "Quick question",
+      "email_body": "Hello there",
+      "emails": [
+        "person1@example.com"
+      ],
+      "test_code": null,
+      "tags": null,
+      "text_only": false,
+      "recipients": [],
+      "recipients_labels": [
+        {
+          "region": "North America",
+          "sub_region": "US",
+          "type": "Professional",
+          "esp": "Google"
+        }
+      ],
+      "timestamp_created": "2026-11-01T09:00:00.000Z",
+      "timestamp_next_run": "2026-11-15T09:00:00.000Z",
+      "automations": null,
+      "status": 1,
+      "not_sending_status": ""
+    },
+    {
+      "id": "01a1d77f-6a02-7b11-9c21-2f5e8a1b3c42",
+      "organization_id": "01a1d77f-5e21-7d05-8d6e-1b2c3d4e5f60",
+      "name": "Launch check",
+      "delivery_mode": 1,
+      "description": null,
+      "type": 1,
+      "sending_method": 1,
+      "campaign_id": null,
+      "email_subject": "Quick question",
+      "email_body": "Hello there",
+      "emails": [
+        "person1@example.com"
+      ],
+      "test_code": null,
+      "tags": null,
+      "text_only": false,
+      "recipients": [],
+      "recipients_labels": [
+        {
+          "region": "North America",
+          "sub_region": "US",
+          "type": "Professional",
+          "esp": "Google"
+        }
+      ],
+      "timestamp_created": "2026-11-02T09:00:00.000Z",
+      "timestamp_next_run": null,
+      "automations": null,
+      "status": 3,
+      "not_sending_status": ""
+    }
+  ],
+  "next_starting_after": "01a1d77f-6a02-7b11-9c21-2f5e8a1b3c42"
+}

@@ -31,6 +31,7 @@ Every vendor factory takes the same core options:
 | `apiKey` | the key variable above | The vendor key. A missing key throws when the adapter is constructed. |
 | `workspaceId` | `<PROVIDER>_WORKSPACE_ID`, then `default` | Your own label for the client or workspace. It is part of every ref (`provider:workspace:id`). |
 | `baseUrl` | the vendor's API | For a proxy or a test server. |
+| `leadFields` | none | Which of a lead's custom fields holds a value the vendor has no field for, such as `{ title: "job_title" }`. Read only where the vendor's own field is empty. See [field grades](/docs/capabilities#field-grades). |
 | `capabilities` | what the adapter declares | Overrides single capabilities, for example to turn one off on a plan without the endpoint. |
 
 Constructing an adapter makes no request.
@@ -53,6 +54,8 @@ A filter is `server` (the vendor filters), `client` (the SDK filters after fetch
 | Capability              | Instantly | Smartlead | HeyReach |
 | ----------------------- | --------- | --------- | -------- |
 | `blocklist`             | yes       | yes       | yes      |
+| `campaigns.bySender`    | yes       | yes       | yes      |
+| `campaigns.progress`    | yes       | yes       | yes      |
 | `campaigns.settings`    | yes       | yes       | no       |
 | `campaigns.status`      | server    | client    | server   |
 | `deletionDetection`     | no        | no        | no       |
@@ -61,10 +64,11 @@ A filter is `server` (the vendor filters), `client` (the SDK filters after fetch
 | `leads.byCampaign`      | yes       | yes       | yes      |
 | `leads.engagement`      | yes       | no        | no       |
 | `leads.get`             | yes       | yes       | yes      |
-| `leads.list`            | yes       | yes       | no       |
+| `leads.list`            | yes       | yes       | yes      |
 | `leads.lookup`          | yes       | yes       | yes      |
 | `leads.since`           | client    | client    | server   |
 | `leads.timeline`        | yes       | yes       | yes      |
+| `lists.get`             | yes       | yes       | yes      |
 | `lists.leads`           | yes       | no        | yes      |
 | `lists.list`            | yes       | yes       | yes      |
 | `messages.body`         | full      | full      | full     |
@@ -72,9 +76,11 @@ A filter is `server` (the vendor filters), `client` (the SDK filters after fetch
 | `messages.list`         | yes       | yes       | yes      |
 | `messages.since`        | server    | client    | server   |
 | `native`                | yes       | yes       | yes      |
-| `replies.category`      | vendor    | vendor    | no       |
+| `placementTests.list`   | yes       | yes       | no       |
+| `replies.category`      | vendor    | vendor    | vendor   |
 | `replies.list`          | yes       | yes       | yes      |
 | `replies.since`         | server    | client    | server   |
+| `replies.unread`        | server    | client    | server   |
 | `senders.byCampaign`    | yes       | yes       | yes      |
 | `senders.get`           | yes       | yes       | yes      |
 | `senders.health`        | yes       | yes       | yes      |
@@ -82,12 +88,14 @@ A filter is `server` (the vendor filters), `client` (the SDK filters after fetch
 | `senders.warmup`        | yes       | yes       | no       |
 | `sequence`              | yes       | yes       | yes      |
 | `sequence.subsequences` | yes       | yes       | no       |
+| `stats.allCampaigns`    | partial   | partial   | full     |
 | `stats.byDay`           | exact     | exact     | exact    |
 | `stats.bySender`        | derived   | exact     | exact    |
 | `stats.byStep`          | exact     | exact     | no       |
 | `stats.campaign`        | exact     | exact     | exact    |
 | `stats.workspace`       | exact     | exact     | exact    |
 | `tags`                  | yes       | yes       | no       |
+| `webhooks.get`          | yes       | yes       | yes      |
 | `webhooks.list`         | yes       | yes       | yes      |
 | `workspaces`            | yes       | yes       | no       |
 
@@ -98,9 +106,9 @@ The in-memory adapter declares everything except `native`, `events.parse`, `even
 What a vendor's API cannot answer stays `no`. The SDK does not fill the gap with a guess.
 
 - **HeyReach has no campaign settings, subsequences, tags or per-lead counts.** Its API can set a campaign's schedule but not read it, a campaign has one sequence tree, no endpoint lists the workspace's tags, and no lead carries open or reply counts.
-- **HeyReach has no per-step stats** and no warmup: LinkedIn accounts are not warmed up.
-- **HeyReach replies carry no category.** Its auto-tags describe the lead, not a message; the newest one is the lead's `interest`.
-- **HeyReach has no list of every lead.** Leads are read per campaign or per saved list, or found by profile or email.
+- **HeyReach has no per-step stats**, no warmup and no inbox placement tests: LinkedIn accounts are not warmed up and have no inbox to test.
+- **Smartlead and HeyReach have no endpoint that lists every lead.** `leads.list` is `yes` because each adapter walks the campaigns and reads their leads. A lead in no campaign is never returned.
+- **On Smartlead and HeyReach a reply's category is its lead's.** Neither vendor labels a message. The reply carries `categorySource: "lead"` to say so, and `outbound.fields.reply.category` is `derived`.
 - **HeyReach cannot list workspaces** with a workspace key.
 - **Smartlead cannot list the leads of a saved list**, and its per-lead counts are documented only as a placeholder response.
 - **Instantly's per-mailbox stats are `derived`:** its mailbox analytics exist per day only, so the adapter sums them.

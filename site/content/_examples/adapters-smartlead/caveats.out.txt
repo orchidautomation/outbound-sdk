@@ -16,7 +16,7 @@
 
 - A lead's status, campaign and creation time are per campaign; leads.get returns no campaign and its example looks illustrative.
 
-- STOPPED maps to paused; lead status BLOCKED maps to bounced.
+- STOPPED maps to paused. A lead's status BLOCKED, which Smartlead describes as bounced or on the block list, sets bounced and leaves progress unknown. unsubscribed is is_unsubscribed. replied is email_stats.is_replied, which only leads.get carries, so a listed lead's replied is null.
 
 - Messages come from GET /campaigns/all-leads-activities (10 requests per 60 s, no campaign filter, pages of leads): campaign(id).messages reads the whole feed, and thread_replies is not read.
 
@@ -32,11 +32,11 @@
 
 - Dated statistics need both dates: a missing end is today (UTC), a missing start 2000-01-01 for totals, or 30 days before the end for daily rows and a campaign's dated total.
 
-- No delivered or automatic-reply count exists. A campaign's dated total uses non_ooo_reply_count for replied when present; lifetime reply_count includes out-of-office replies.
+- No delivered count exists. A campaign's dated total uses non_ooo_reply_count for replied and total_reply_count less non_ooo_reply_count for repliedAuto, which is out-of-office replies only; lifetime reply_count includes out-of-office replies and has no automatic-reply count.
 
-- Daily rows have sent, total opens and replies; the daily endpoint always reports 0 bounces, so bounced is null.
+- Daily rows have sent, total opens and replies, plus positive replies from a second request (GET /analytics/day-wise-positive-reply-stats); the daily endpoint always reports 0 bounces, so bounced is null.
 
-- Step statistics do not say whether opens and clicks are unique (mapped to openedTotal and clicked). A step with variants has a row per variant and no total.
+- Step statistics do not say whether opens and clicks are unique (mapped to openedTotal and clickedTotal). A step with variants has a row per variant and no total.
 
 - A sender is disconnected when is_smtp_success or is_imap_success is false, active when both are true, else unknown. warmup_reputation may be a number or a string such as 95%.
 
@@ -63,6 +63,8 @@
 - Tags come from GET /email-accounts/tags; whether campaign tags share that list is unconfirmed.
 
 - Webhooks are listed per campaign; without one the adapter walks the campaigns and returns each once. User-level or client-level webhooks may appear under none.
+
+- Placement tests are read from SmartDelivery (smartdelivery.smartlead.ai) with the same key: an account without the product is refused. The list is documented without pages, and manual is read as a one-time test. A test's results stay native, because SmartDelivery reports them as rates.
 
 - Block list entries with an @ are emails, the rest domains.
 

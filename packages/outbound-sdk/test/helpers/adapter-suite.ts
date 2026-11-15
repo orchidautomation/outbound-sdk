@@ -19,6 +19,8 @@ import type {
   Outbound,
 } from "../../src/index.ts";
 import { createClock } from "./clock.ts";
+import { fieldCoverageTests } from "./field-coverage.ts";
+import type { CoverageSuite } from "./field-coverage.ts";
 import { fixture, fixtureText } from "./fixtures.ts";
 import { createFetch, json } from "./http.ts";
 import type { Handler, RecordedRequest } from "./http.ts";
@@ -44,6 +46,8 @@ export interface AdapterSuite {
   readonly secret: string;
   /** Every request must go to this origin. */
   readonly origin: string;
+  /** A sister service the vendor serves on another host with the same key. */
+  readonly sisterOrigins?: readonly string[];
   readonly routes: readonly FixtureRoute[];
   readonly isAuthorized: (request: RecordedRequest) => boolean;
   /** Ids that exist in the fixtures. */
@@ -55,6 +59,8 @@ export interface AdapterSuite {
     readonly list?: string;
     /** A `threadId` that messages in the fixtures carry. */
     readonly thread?: string;
+    /** A webhook subscription. */
+    readonly webhook?: string;
   };
   /** Records across every fixture page, per listing the adapter supports. */
   readonly totals: Partial<
@@ -74,6 +80,8 @@ export interface AdapterSuite {
   >;
   /** Webhook fixture file -> the event type it must become. */
   readonly webhooks: Readonly<Record<string, EventType>>;
+  /** Fields the adapter fills that the default fixtures do not show. */
+  readonly unsampled?: CoverageSuite["unsampled"];
 }
 
 const WORKSPACE = "client-a";
@@ -123,7 +131,12 @@ export const fixtureHandler =
   (suites: readonly AdapterSuite[], unrouted: string[] = []): Handler =>
   (recorded) => {
     const url = new URL(recorded.url);
-    const suite = suites.find((candidate) => candidate.origin === url.origin);
+
+    const suite = suites.find(
+      (candidate) =>
+        candidate.origin === url.origin ||
+        (candidate.sisterOrigins ?? []).includes(url.origin)
+    );
 
     const file =
       suite === undefined
@@ -191,8 +204,13 @@ const SINCE = "2020-01-01T00:00:00Z";
 // must throw Unsupported before any request leaves.
 const PROBES: Partial<Record<CapabilityKey, Probe>> = {
   blocklist: (outbound) => outbound.blocklist.list(),
+  "campaigns.bySender": (outbound, ids) =>
+    outbound.sender(ids.sender ?? "missing").campaigns.list(),
+  "campaigns.progress": (outbound, ids) =>
+    outbound.campaign(ids.campaign).progress(),
   "campaigns.settings": (outbound, ids) =>
     outbound.campaign(ids.campaign).settings(),
+  "lists.get": (outbound, ids) => outbound.lists.get(ids.list ?? "missing"),
   "lists.leads": (outbound, ids) =>
     outbound.list(ids.list ?? "missing").leads.list(),
   "lists.list": (outbound) => outbound.lists.list(),
@@ -203,6 +221,8 @@ const PROBES: Partial<Record<CapabilityKey, Probe>> = {
   "sequence.subsequences": (outbound, ids) =>
     outbound.campaign(ids.campaign).subsequences.list(),
   tags: (outbound) => outbound.tags.list(),
+  "webhooks.get": (outbound, ids) =>
+    outbound.webhooks.get(ids.webhook ?? "missing"),
   "webhooks.list": (outbound) => outbound.webhooks.list(),
   "campaigns.status": (outbound) =>
     outbound.campaigns.list({ status: "active" }),
@@ -217,10 +237,12 @@ const PROBES: Partial<Record<CapabilityKey, Probe>> = {
   "messages.body": (outbound) => outbound.messages.list({ include: ["body"] }),
   "messages.list": (outbound) => outbound.messages.list(),
   "messages.since": (outbound) => outbound.messages.list({ since: SINCE }),
+  "placementTests.list": (outbound) => outbound.placementTests.list(),
   "replies.category": (outbound) =>
     outbound.replies.list({ category: "positive" }),
   "replies.list": (outbound) => outbound.replies.list(),
   "replies.since": (outbound) => outbound.replies.list({ since: SINCE }),
+  "replies.unread": (outbound) => outbound.replies.list({ unread: true }),
   "senders.byCampaign": (outbound, ids) =>
     outbound.campaign(ids.campaign).senders.list(),
   "senders.get": (outbound, ids) =>
@@ -234,6 +256,7 @@ const PROBES: Partial<Record<CapabilityKey, Probe>> = {
     outbound.sender(ids.sender ?? "missing").stats(),
   "stats.byStep": (outbound, ids) =>
     outbound.campaign(ids.campaign).stats({ scope: "step" }),
+  "stats.allCampaigns": (outbound) => outbound.stats({ scope: "campaign" }),
   "stats.campaign": (outbound, ids) => outbound.campaign(ids.campaign).stats(),
   "stats.workspace": (outbound) => outbound.stats(),
   workspaces: (outbound) => outbound.workspaces.list(),
@@ -382,7 +405,10 @@ const requestTests = (suite: AdapterSuite): void => {
 
     for (const request of requests) {
       const url = new URL(request.url);
-      assert.equal(url.origin, suite.origin);
+      assert.ok(
+        [suite.origin, ...(suite.sisterOrigins ?? [])].includes(url.origin),
+        `${url.origin} is not the vendor's`
+      );
       assert.ok(
         suite.isAuthorized(request),
         `unauthorized request: ${request.method} ${url.pathname}`
@@ -499,6 +525,7 @@ const webhookTests = (suite: AdapterSuite): void => {
 /** Registers the shared tests for one adapter. */
 export const runAdapterSuite = (suite: AdapterSuite): void => {
   listingTests(suite);
+  fieldCoverageTests(suite, () => harness(suite));
   capabilityTests(suite);
   requestTests(suite);
   webhookTests(suite);

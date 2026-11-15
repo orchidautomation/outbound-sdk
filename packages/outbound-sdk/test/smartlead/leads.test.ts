@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { harness } from "../helpers/adapter-suite.ts";
+import { fixture } from "../helpers/fixtures.ts";
 import type { RecordedRequest } from "../helpers/http.ts";
 import { API, CAMPAIGN, LEAD, suite, urlOf } from "./suite.ts";
 
@@ -194,16 +195,47 @@ test("smartlead: one lead is read by id, and an empty answer is not found", asyn
   assert.equal(lead.sourceId, "789");
   assert.equal(lead.email, "person1@example.com");
   assert.equal(lead.company, "Example Co");
-  assert.equal(lead.status, "active", "INPROGRESS");
+  assert.equal(lead.progress, "active", "INPROGRESS");
+  assert.equal(lead.replied, true, "email_stats.is_replied");
+  assert.equal(lead.status, "replied", "a reply is the headline");
   assert.equal(lead.campaignRef, null);
   assert.deepEqual(lead.custom, { job_title: "CEO" });
   assert.equal(lead.interest, "Interested", "category_name");
+  assert.equal(
+    lead.interestCategory,
+    "positive",
+    "category 1 has a positive sentiment in the category list"
+  );
   assert.deepEqual(lead.tags, ["VIP", "Enterprise"]);
   assert.equal(lead.engagement, null);
   const tags = urlOf(requests[1]);
   assert.equal(tags.pathname, `${API}/crm/leads/tags`);
   assert.equal(tags.searchParams.get("leadId"), "789");
-  assert.equal(requests.length, 2);
+  assert.equal(
+    urlOf(requests[2]).pathname,
+    `${API}/leads/fetch-categories`,
+    "read because the lead has a category"
+  );
+  assert.equal(requests.length, 3);
+
+  const { category_id: _category, ...uncategorized } = fixture(
+    "smartlead",
+    "getLeadById.json"
+  ) as Record<string, unknown>;
+
+  const plain = harness(suite, (request) =>
+    pathOf(request) === `${API}/leads/789`
+      ? Response.json(uncategorized)
+      : undefined
+  );
+
+  const without = await plain.settle(plain.outbound.leads.get(LEAD));
+  assert.equal(without.interestCategory, null);
+  assert.equal(
+    plain.requests.length,
+    2,
+    "a lead with no category does not cost the category list"
+  );
 
   const missing = harness(suite, () => Response.json({}));
   assert.equal(

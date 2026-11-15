@@ -114,7 +114,7 @@ The same five calls on the in-memory adapter limited to what each vendor's adapt
   ../../_examples/agent-tools/vendors.out.txt
 </include>
 
-HeyReach reports no per-step stats and no readable campaign settings, so `winning_steps`, `campaign_setup` and four insights are not offered there. It reports no reply categories either: `reply_samples` is offered, because it works without the filter, and the call that asks for a category comes back `Unsupported`. Its real adapter also offers `vendor_read`, as do the other two; the in-memory stand-in has no vendor reads, so the counts above are one short of a real instance.
+HeyReach reports no per-step stats and no readable campaign settings, so `winning_steps`, `campaign_setup` and four insights are not offered there. A reply's category there is its lead's label, so `reply_samples` with a category works and each reply carries `categorySource: "lead"`. Its real adapter also offers `vendor_read`, as do the other two; the in-memory stand-in has no vendor reads, so the counts above are one short of a real instance.
 
 ## What it costs in vendor requests
 
@@ -124,7 +124,7 @@ A tool spends vendor requests only when called. The descriptions tell the model 
 - `deliverability_check`: one or more requests per sender, up to `limit` (default 10, at most 25).
 - `compare_clients`: one request per campaign.
 - `vendor_read`: one request per call, none to list the reads on offer.
-- An insight tool reports its own cost in its description, for example `campaign_ranking` reads one stats request per campaign up to `max_campaigns`.
+- An insight tool reports its own cost in its description, for example `campaign_ranking` reads one stats request per campaign up to `max_campaigns`, or one for all of them on a vendor that reports every campaign in one call with every count.
 
 ## When it cannot answer
 
@@ -149,7 +149,7 @@ A tool spends vendor requests only when called. The descriptions tell the model 
 ## Limits
 
 - One live run with one model is shown. Whether another model picks the right tool is not tested by this repository. The OpenAI and Claude Agent SDK wiring was never run against a model.
-- Built-in tools and insight tools are both filtered by what the adapter declares. A tool that is offered can still be refused for a read only its input asks for, such as a reply category on HeyReach.
+- Built-in tools and insight tools are both filtered by what the adapter declares. A tool that is offered can still be refused for a read only its input asks for, such as a reply category on an adapter that does not declare `replies.category`.
 - `cross_channel_lead` returns message text only with `include_bodies: true`, wrapped and cut like reply text. Its timeline also holds your own outgoing messages.
 - Reply text is left out unless asked for, cut to 500 characters, and marked untrusted. That marking is a convention a model can ignore. See [hand reply text to a model](/docs/guides/reply-text-for-llm).
 - Tool definitions are sent with `strict: false` in the OpenAI shape.

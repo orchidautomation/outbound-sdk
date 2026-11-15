@@ -11,12 +11,15 @@ import type {
 import type { WebhookSubscription } from "../internal/entities-account.ts";
 import type { Sequence } from "../internal/entities.ts";
 import { count, field, isJsonObject, objects, text } from "../internal/json.ts";
+import { flatMapPage, mapPage } from "../internal/page.ts";
 import { BLOCKLIST_PAGE_SIZE } from "./capabilities.ts";
 import type { SmartleadClient } from "./client.ts";
 import {
   toBlockEntry,
+  toCampaignProgress,
   toHealth,
   toList,
+  toPlacementTest,
   toSettings,
   toTag,
   toWebhook,
@@ -34,10 +37,14 @@ import {
 
 type AccountReaders = Pick<
   Adapter,
+  | "getCampaignProgress"
   | "getCampaignSettings"
+  | "getList"
   | "getSenderHealth"
+  | "getWebhook"
   | "listBlocklist"
   | "listLists"
+  | "listPlacementTests"
   | "listSubsequences"
   | "listTags"
   | "listWebhooks"
@@ -127,6 +134,16 @@ export const accountReaders = (client: SmartleadClient): AccountReaders => {
   const { identity } = client;
 
   return {
+    getCampaignProgress: async (id, ctx) =>
+      toCampaignProgress(
+        identity,
+        id,
+        objectOf(
+          client,
+          await client.get(ctx, `/campaigns/${segment(id)}/analytics`),
+          "campaign analytics"
+        )
+      ),
     getCampaignSettings: async (id, ctx) =>
       toSettings(
         identity,
@@ -151,6 +168,25 @@ export const accountReaders = (client: SmartleadClient): AccountReaders => {
 
       return toHealth(identity, account, unwrap(stats));
     },
+    getList: async (id, ctx) =>
+      toList(
+        identity,
+        objectOf(
+          client,
+          await client.get(ctx, `/lead-list/${segment(id)}`),
+          "the lead list"
+        )
+      ),
+    getWebhook: async (id, ctx) =>
+      toWebhook(
+        identity,
+        null,
+        objectOf(
+          client,
+          await client.get(ctx, `/webhook/${segment(id)}`),
+          "the webhook"
+        )
+      ),
     listBlocklist: async (query, ctx) => {
       const page = await offsetPage(
         client,
@@ -162,10 +198,7 @@ export const accountReaders = (client: SmartleadClient): AccountReaders => {
         }
       );
 
-      return {
-        items: page.rows.map((entry) => toBlockEntry(identity, entry)),
-        next: page.next,
-      };
+      return flatMapPage(page, (entry) => toBlockEntry(identity, entry));
     },
     listLists: async (query, ctx) => {
       const page = await offsetPage(client, ctx, "/lead-list/", {
@@ -173,11 +206,14 @@ export const accountReaders = (client: SmartleadClient): AccountReaders => {
         offset: count(query.next) ?? 0,
       });
 
-      return {
-        items: page.rows.map((row) => toList(identity, row)),
-        next: page.next,
-      };
+      return mapPage(page, (row) => toList(identity, row));
     },
+    // SmartDelivery answers with every test at once: no pages are documented.
+    listPlacementTests: async (_query, ctx) => ({
+      items: objects(
+        unwrap(await client.delivery.post(ctx, "/spam-test/report", {}))
+      ).map((test) => toPlacementTest(identity, test)),
+    }),
     listSubsequences: (query, ctx) => listSubsequences(client, ctx, query),
     // One response holds every tag of the account; there are no pages.
     listTags: async (_query, ctx) => ({

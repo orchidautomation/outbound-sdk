@@ -35,7 +35,7 @@ The same function on seeded data, limited in turn to what each vendor's adapter 
 The numbers are the seed's, so they match across vendors. What differs is what each vendor's adapter can serve and how:
 
 - **Smartlead** lists the same one active campaign, but with `evidence derived`: its API has no status filter, so the SDK read every campaign and filtered after.
-- **HeyReach** has no per-step stats, no campaign settings and no reply categories. The function says so in three lines and still returns the rest.
+- **HeyReach** has no per-step stats and no campaign settings. The function says so in two lines and still returns the rest.
 - **`opened` is "not reported"** on all three. The seed has no open count, so the count is `null`. The function prints that, not 0.
 
 This run shows which calls a vendor's adapter would refuse. It does not show what that vendor's API returns.
@@ -106,7 +106,7 @@ A `client` filter costs the whole listing, because the vendor is asked for every
 - Listing 1,000 campaigns on Instantly is 30 requests, not 10: each page also reads tag assignments and tag names.
 - Replies on Smartlead come 20 to a page, so 1,000 replies are 50 requests.
 - `requests` is `null` when the cost cannot be known up front: Smartlead returns every campaign in one response with no page size, and the in-memory adapter declares no costs.
-- `estimate` does not read `capabilities`. HeyReach gets a number for `leads.list` although it refuses a listing of every lead; the cost there is for one campaign's leads. Check the capability first.
+- `estimate` does not read `capabilities`. It gives a number for a read the adapter would refuse, such as `tags.list` on HeyReach. Check the capability first.
 
 ## When it cannot answer
 
@@ -125,6 +125,7 @@ A call the instance does not declare is refused before any request. The sample p
 | A read the vendor does not have | `Unsupported`, naming the capability key, before any request | Branch on that key. `permanent` is `true`: retrying does not help. |
 | A stat scope the vendor does not report | `Unsupported`, naming the key | Skip that part and say so. |
 | A filter the vendor cannot apply | `Unsupported`. The filter is never dropped silently. | Read without the filter, or filter in your own code and say the result is yours. |
+| A field the vendor has nothing to fill, such as a LinkedIn seat's warmup | `Unsupported`, naming the key | Skip it. `outbound.fields` says which fields an adapter never fills. |
 | A capability turned off by an option or a plugin | `Unsupported`, naming the adapter or the plugin that turned it off | Expected. Use it to test your fallback. |
 | A count the vendor does not report | `null` in the row | Print "not reported". Do not add it up as 0. |
 

@@ -111,6 +111,8 @@ A mailbox or a LinkedIn seat.
 | `name` | `string` or `null` |  |
 | `status` | `"active"`, `"paused"`, `"disconnected"`, `"error"`, `"unknown"` |  |
 | `dailyLimit` | count or `null` |  |
+| `mailProvider` | `"google"`, `"microsoft"`, `"smtp"`, `"other"` or `null` | Who hosts the mailbox. `null` for a LinkedIn seat and when the vendor does not say. |
+| `tags` | `string[]` | The names of the tags on the sender. |
 | `warmup` | `{ enabled, score }` or `null` | `enabled` is a boolean or `null`, `score` a number or `null`. |
 
 ## SenderHealth
@@ -135,11 +137,17 @@ What the vendor knows about a sender's deliverability. Its `sourceId` is the sen
 | `email` | `string` or `null` | Lowercased and trimmed. |
 | `linkedinUrl` | `string` or `null` |  |
 | `firstName`, `lastName`, `company`, `title` | `string` or `null` |  |
-| `status` | `"active"`, `"paused"`, `"completed"`, `"replied"`, `"bounced"`, `"unsubscribed"`, `"unknown"` |  |
+| `progress` | `"active"`, `"paused"`, `"completed"`, `"unknown"` | Where the lead is in its sequence, whatever came back from it. |
+| `replied`, `bounced`, `unsubscribed` | boolean or `null` | What came back. `null` when the vendor does not say. |
+| `status` | `"active"`, `"paused"`, `"completed"`, `"replied"`, `"bounced"`, `"unsubscribed"`, `"unknown"` | The headline: `unsubscribed`, `bounced` or `replied` when one of them is known to be true, in that order, and `progress` otherwise. |
+| `phone`, `location` | `string` or `null` | As the vendor stores them. |
+| `website` | `string` or `null` | The company's website or domain, as the vendor stores it. |
+| `companyLinkedinUrl` | `string` or `null` | The company's LinkedIn page. |
 | `interest` | `string` or `null` | The vendor's own label for how interested the lead is, for example `Meeting Booked`. |
+| `interestCategory` | a reply category or `null` | What `interest` means, in the categories a reply uses. `null` when the lead has no label or the vendor does not say what the label means. |
 | `campaignRef` | `string` or `null` |  |
 | `createdAt` | ISO timestamp or `null` |  |
-| `custom` | `Record<string, string>` | The lead's custom fields as the vendor stores them. |
+| `custom` | `Record<string, string>` | The lead's custom fields as the vendor stores them. An adapter's `leadFields` option can name the one that holds a title, phone or profile. |
 | `tags` | `string[]` |  |
 | `engagement` | `LeadEngagement` or `null` | `null` when the vendor reports no per-lead counts on this read. |
 
@@ -178,12 +186,30 @@ A received message with a category. It has every `Message` field, `direction` is
 | Field | Type | Holds |
 | --- | --- | --- |
 | `category` | `"positive"`, `"negative"`, `"neutral"`, `"ooo"`, `"bounce"`, `"unsubscribe"`, `"unknown"` |  |
-| `categorySource` | `"vendor"`, `"rule"` or `null` | Who decided the category. `null` when it is `unknown`. Never a model. |
+| `categorySource` | `"vendor"`, `"lead"`, `"rule"` or `null` | Who decided the category: `vendor` when the vendor labelled this reply, `lead` when it is the vendor's label for the lead who sent it, `rule` for a fixed rule. `null` when it is `unknown`. Never a model. |
 | `isAuto` | boolean or `null` | `true` for an auto-reply, `null` when the vendor does not say. |
+| `unread` | boolean or `null` | `true` while the reply, or the thread it is in, is unread in the vendor's inbox. |
 
 ## MetricRow
 
 One row of counts. Every count is a number or `null`. Its fields are listed on the [stats](/docs/api/stats#the-counts) page.
+
+## CampaignProgress
+
+How far a campaign's leads have got, as counts of leads. Stats count messages and replies; this counts people. Its `sourceId` is the campaign's id.
+
+| Field | Type | Holds |
+| --- | --- | --- |
+| `campaignRef` | `string` |  |
+| `leads` | count or `null` | Every lead in the campaign. |
+| `notStarted` | count or `null` | Leads still waiting for their first step. |
+| `inProgress` | count or `null` | Leads who have had a step and have more to come. |
+| `completed` | count or `null` | Leads who reached the end of the sequence. |
+| `stopped` | count or `null` | Leads taken out of the sequence before its end. |
+| `failed` | count or `null` | Leads the campaign could not run for. |
+| `blocked` | count or `null` | Leads the vendor stopped for a bounce or a block list. |
+
+Instantly reports `leads` and `completed` only. HeyReach has no `blocked` count and Smartlead no `failed` count. [`outbound.fields`](/docs/capabilities#field-grades) says so per adapter.
 
 ## CampaignSettings
 
@@ -222,6 +248,22 @@ A saved list that campaigns draw from.
 | `size`      | count or `null`            | How many records the list holds. |
 | `createdAt` | ISO timestamp or `null`    |                                  |
 
+## PlacementTest
+
+An inbox placement test: the vendor sends a campaign's email to seed mailboxes and reports where it landed. This is the test itself. Its results stay [native reads](/docs/native), because Instantly reports them as a row per email and Smartlead as rates, and the SDK reads counts, never rates.
+
+| Field | Type | Holds |
+| --- | --- | --- |
+| `name` | `string` |  |
+| `status` | `"active"`, `"paused"`, `"completed"`, `"unknown"` |  |
+| `kind` | `"one_time"`, `"automated"` or `null` | A test run once, or one on a schedule. |
+| `campaignRef` | `string` or `null` | The campaign whose email the test sends. |
+| `createdAt` | ISO timestamp or `null` |  |
+| `nextRunAt` | ISO timestamp or `null` | When an automated test runs next. |
+| `startsAt`, `endsAt` | ISO timestamp or `null` | When a scheduled test starts and stops running. |
+
+Instantly gives a test a creation time, a next run and a campaign. Smartlead's list gives its start and end and none of those.
+
 ## Tag
 
 | Field         | Type               | Holds |
@@ -248,6 +290,7 @@ A webhook registered with the vendor. The SDK lists them. It does not create or 
 | `url` | `string` | Where the vendor posts. It can hold a secret in its path or query. |
 | `name` | `string` or `null` |  |
 | `events` | `string[]` | Event names in the vendor's own words. |
+| `eventTypes` | event type[] | What those events become when they arrive: the SDK's own [event types](/docs/webhooks), without repeats. Empty when no event name is one the adapter knows. |
 | `active` | boolean or `null` |  |
 | `campaignRefs` | `string[]` | The campaigns the webhook is limited to. Empty for every campaign. |
 | `createdAt` | ISO timestamp or `null` |  |

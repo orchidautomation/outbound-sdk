@@ -23,7 +23,7 @@ related:
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `fields` | `RedactField[]` | all seven | What to mask: `"email"`, `"name"`, `"company"`, `"linkedin"`, `"custom"`, `"subject"`, `"body"`. |
+| `fields` | `RedactField[]` | all eight | What to mask: `"email"`, `"name"`, `"phone"`, `"company"`, `"linkedin"`, `"custom"`, `"subject"`, `"body"`. |
 | `strategy` | `"mask" \| "hash"` | `"mask"` | `mask` replaces a value with `[redacted]`. `hash` replaces it with `redacted:` and 16 hex characters derived from the value, so the same value always gives the same token and people can still be counted and joined. |
 
 A `null` value stays `null` under both strategies. The subpath also exports `ALL_FIELDS` and `MASK` (the string `[redacted]`).
@@ -40,9 +40,9 @@ The token is a hash of the value with no secret mixed in. Anyone who can guess a
 
 | Record | Masked, by field | Left as it is |
 | --- | --- | --- |
-| Lead | `email` (`email`), `firstName` and `lastName` (`name`), `company` (`company`), `linkedinUrl` (`linkedin`), every value in `custom` (`custom`). Custom field names are kept. | `title`, `status`, `tags`, `interest`, `engagement`, dates |
+| Lead | `email` (`email`), `firstName` and `lastName` (`name`), `phone` (`phone`), `company`, `website` and `companyLinkedinUrl` (`company`), `linkedinUrl` (`linkedin`), every value in `custom` (`custom`). Custom field names are kept. | `title`, `location`, `status`, `progress`, `replied`, `bounced`, `unsubscribed`, `tags`, `interest`, `interestCategory`, `engagement`, dates |
 | Message, reply | `subject` (`subject`), `bodyText` and `bodyHtml` (`body`) | Dates, direction, category |
-| Sender | `address` (`email`), `linkedinUrl` (`linkedin`), `name` (`name`) | Status, limits, warmup |
+| Sender | `address` (`email`), `linkedinUrl` (`linkedin`), `name` (`name`) | Status, limits, warmup, `mailProvider`, `tags` |
 | Block list entry | `value`, when the entry is an email address or a LinkedIn profile | A blocked domain, and any other kind |
 | Stats row | Nothing but its `scopeRef` (see below). It holds counts only. | Everything else |
 | Campaign, workspace, sequence, settings, sender health, list, tag, webhook | Nothing but ids and refs (see below) | Everything except `raw` |

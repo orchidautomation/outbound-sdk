@@ -33,12 +33,23 @@ export const suite: AdapterSuite = {
     list: LIST,
     sender: SENDER,
     thread: THREAD,
+    webhook: "123",
   },
   isAuthorized: (request) => request.headers["x-api-key"] === KEY,
   make: () => heyreach({ apiKey: KEY, workspaceId: "client-a" }),
   origin: "https://api.heyreach.io",
   provider: "heyreach",
   routes: [
+    {
+      fixture: "getListById.json",
+      method: "GET",
+      path: "/api/public/list/GetById",
+    },
+    {
+      fixture: "getWebhookById.json",
+      method: "GET",
+      path: "/api/public/webhooks/GetWebhookById",
+    },
     {
       fixture: "getBlacklistCompanies.json",
       method: "POST",
@@ -134,8 +145,28 @@ export const suite: AdapterSuite = {
       method: "POST",
       path: "/api/public/stats/GetOverallStats",
     },
+    {
+      fixture: "getOverallStatsByCampaign.json",
+      method: "POST",
+      path: "/api/public/stats/GetOverallStatsByCampaign",
+    },
   ],
   secret: KEY,
+  unsampled: {
+    metricRow: {
+      contacted:
+        "uniqueLeadsContacted was seen live and is not in the API reference, so the documented example has none",
+      positive:
+        "autoTaggedInterested was seen live and is not in the API reference, so the documented example has none",
+    },
+    reply: {
+      category:
+        "no documented conversation carries an auto-tag; fields.test.ts builds them",
+      categorySource:
+        "no documented conversation carries an auto-tag; fields.test.ts builds them",
+      subject: "only an InMail has a subject, and no documented reply is one",
+    },
+  },
   totals: {
     blocklist: 5,
     campaigns: 3,

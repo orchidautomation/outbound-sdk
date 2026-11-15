@@ -5,19 +5,21 @@
 // also returns are never read; only counts are. HeyReach reports no opens,
 // bounces, deliveries or unsubscribes, so those stay null.
 
-import { SCHEMA_VERSION } from "../internal/entities.ts";
-import type { MetricRow, MetricScope } from "../internal/entities.ts";
-import { count, field, isJsonObject, timestamp } from "../internal/json.ts";
-import type { Json } from "../internal/json.ts";
-import { emptyCounts } from "../internal/metrics.ts";
-import type { MetricCounts } from "../internal/metrics.ts";
+import type { MetricRow } from "../internal/entities.ts";
+import {
+  count,
+  field,
+  isJsonObject,
+  objects,
+  text,
+  timestamp,
+} from "../internal/json.ts";
+import type { Json, JsonObject } from "../internal/json.ts";
+import { emptyCounts, metricRow } from "../internal/metrics.ts";
+import type { MetricCounts, RowScope } from "../internal/metrics.ts";
 import type { Identity } from "../internal/record.ts";
-import { makeRef } from "../internal/ref.ts";
 
-export interface RowScope extends Identity {
-  readonly scope: MetricScope;
-  readonly scopeId: string;
-}
+export type { RowScope } from "../internal/metrics.ts";
 
 // Replies to messages and replies to InMails are both replies from people.
 const replies = (stats: Json | undefined): number | null => {
@@ -48,21 +50,12 @@ const row = (
   scope: RowScope,
   stats: Json | undefined,
   date: string | null
-): MetricRow => ({
-  ...counts(stats),
-  contentHash: null,
-  date,
-  evidence: "exact",
-  provider: scope.provider,
-  schemaVersion: SCHEMA_VERSION,
-  scope: scope.scope,
-  scopeRef: makeRef(scope.provider, scope.workspaceId, scope.scopeId),
-  stepIndex: null,
+): MetricRow =>
   // Days are keyed by UTC midnight.
-  timezone: date === null ? null : "UTC",
-  variantKey: null,
-  workspaceId: scope.workspaceId,
-});
+  metricRow(scope, counts(stats), {
+    date,
+    timezone: date === null ? null : "UTC",
+  });
 
 export const totalRow = (scope: RowScope, body: Json): MetricRow =>
   row(scope, field(body, "overallStats"), null);
@@ -77,5 +70,49 @@ export const dailyRows = (scope: RowScope, body: Json): MetricRow[] => {
       const date = timestamp(day)?.slice(0, 10);
 
       return date === undefined ? [] : [row(scope, stats, date)];
+    });
+};
+
+// One row of GetOverallStatsByCampaign: the same counts with the campaign
+// they belong to. A deleted campaign's row is kept; it still names its id.
+const campaignRow = (
+  identity: Identity,
+  stats: JsonObject,
+  date: string | null
+): MetricRow[] => {
+  const scopeId = text(stats.campaignId);
+
+  return scopeId === null
+    ? []
+    : [row({ ...identity, scope: "campaign", scopeId }, stats, date)];
+};
+
+/**
+ * `POST /stats/GetOverallStatsByCampaign`: `overallStats` is an array with a
+ * row per campaign, and each day of `byDayStats` is such an array.
+ */
+export const campaignRows = (
+  identity: Identity,
+  body: Json,
+  by: "day" | "total"
+): MetricRow[] => {
+  if (by === "total") {
+    return objects(field(body, "overallStats")).flatMap((stats) =>
+      campaignRow(identity, stats, null)
+    );
+  }
+
+  const days = field(body, "byDayStats");
+
+  return Object.entries(isJsonObject(days) ? days : {})
+    .toSorted(([left], [right]) => left.localeCompare(right))
+    .flatMap(([day, perCampaign]) => {
+      const date = timestamp(day)?.slice(0, 10);
+
+      return date === undefined
+        ? []
+        : objects(perCampaign).flatMap((stats) =>
+            campaignRow(identity, stats, date)
+          );
     });
 };

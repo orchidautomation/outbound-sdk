@@ -1,0 +1,15 @@
+{
+  "ok": true,
+  "data": {
+    "day_wise_stats": [
+      {
+        "date": "2024-01-15",
+        "positive_replied": 5
+      },
+      {
+        "date": "2024-01-16",
+        "positive_replied": 7
+      }
+    ]
+  }
+}

@@ -4,6 +4,7 @@
 import type {
   Campaign,
   CampaignStatus,
+  MailProvider,
   Sender,
   SenderStatus,
   Sequence,
@@ -14,6 +15,7 @@ import {
   count,
   emailAddress,
   field,
+  fullName,
   isJsonObject,
   objects,
   text,
@@ -22,7 +24,7 @@ import {
 import type { Json, JsonObject } from "../internal/json.ts";
 import { recordBase, refTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
-import { stableId } from "../internal/sha256.ts";
+import { toVariant, variantKey } from "../internal/sequence.ts";
 
 // 4 is "Running Subsequences": the campaign is still sending. The negative
 // values are Instantly pausing the campaign itself (account suspended,
@@ -58,7 +60,7 @@ export const toCampaign = (
   ...recordBase(identity, text(raw.id) ?? "", raw),
   channel: "email",
   createdAt: timestamp(raw.timestamp_created),
-  name: text(raw.name) ?? "",
+  name: text(raw.name) ?? text(raw.id) ?? "",
   status: CAMPAIGN_STATUS.get(count(raw.status) ?? Number.NaN) ?? "unknown",
   tags: [...tags],
 });
@@ -78,10 +80,6 @@ const days = (
 
   return delay === null || perUnit === undefined ? null : delay * perUnit;
 };
-
-/** Variants are positional: Instantly gives them no ids. 0 is "A". */
-export const variantKey = (index: number): string =>
-  String.fromCodePoint(65 + index);
 
 // `delay` is the wait before the NEXT email, so a step waits for the delay
 // of the step before it. Only a subsequence's first step has a wait of its
@@ -111,17 +109,14 @@ const toSteps = (
     delayDays: waitBefore(step, steps[index - 1], subsequence),
     index,
     parentIndex: index === 0 ? null : index - 1,
-    variants: objects(step.variants).map((variant, variantIndex) => {
-      const subject = text(variant.subject);
-      const body = text(variant.body);
-
-      return {
-        body,
-        contentHash: stableId(subject, body),
-        subject,
-        variantKey: variantKey(variantIndex),
-      };
-    }),
+    // Variants are positional: Instantly gives them no ids.
+    variants: objects(step.variants).map((variant, variantIndex) =>
+      toVariant(
+        text(variant.subject),
+        text(variant.body),
+        variantKey(variantIndex)
+      )
+    ),
   }));
 };
 
@@ -160,13 +155,15 @@ const SENDER_STATUS = new Map<number, SenderStatus>([
   [3, "paused"],
 ]);
 
-const fullName = (raw: JsonObject): string | null => {
-  const name = [text(raw.first_name), text(raw.last_name)]
-    .filter((part) => part !== null)
-    .join(" ");
-
-  return name === "" ? null : name;
-};
+// 4 is AWS and 8 and 11 are Instantly's own AirMail mailboxes.
+const MAIL_PROVIDER = new Map<number, MailProvider>([
+  [1, "smtp"],
+  [2, "google"],
+  [3, "microsoft"],
+  [4, "other"],
+  [8, "other"],
+  [11, "other"],
+]);
 
 /** A mailbox. Instantly keys accounts by email address, not by an id. */
 export const toSender = (identity: Identity, raw: JsonObject): Sender => {
@@ -179,8 +176,12 @@ export const toSender = (identity: Identity, raw: JsonObject): Sender => {
     dailyLimit: count(raw.daily_limit),
     kind: "mailbox",
     linkedinUrl: null,
-    name: fullName(raw),
+    mailProvider:
+      MAIL_PROVIDER.get(count(raw.provider_code) ?? Number.NaN) ?? null,
+    name: fullName(raw.first_name, raw.last_name),
     status: SENDER_STATUS.get(count(raw.status) ?? Number.NaN) ?? "unknown",
+    // Present only when the request asked for `include_tags`.
+    tags: objects(raw.tags).flatMap((tag) => text(tag.label) ?? []),
     warmup:
       warmupStatus === null && count(raw.stat_warmup_score) === null
         ? null

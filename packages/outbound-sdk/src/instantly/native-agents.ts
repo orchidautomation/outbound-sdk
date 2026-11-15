@@ -1,8 +1,8 @@
 // The AI Deliverability Agent and the AI Inbox Managers.
 // Each entry is one read Instantly documents; site/content/docs/coverage/instantly.mdx lists them all.
 
-import { defineNative } from "../internal/native.ts";
-import { docs, inPath, inQuery, PAGE } from "./native-params.ts";
+import { defineNative, inPath, inQuery } from "../internal/native.ts";
+import { docs, PAGE } from "./native-params.ts";
 
 export const AGENT_READS = defineNative({
   deliverabilityAgent: {
