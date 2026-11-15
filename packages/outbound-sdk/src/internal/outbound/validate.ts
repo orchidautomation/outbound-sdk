@@ -8,16 +8,24 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/u;
 const invalid = (message: string): OutboundError =>
   new OutboundError("Invalid", message);
 
-/** An inclusive ISO 8601 UTC timestamp, or `undefined`. */
+const DAY_MS = 86_400_000;
+
+/**
+ * An inclusive ISO 8601 UTC timestamp, or `undefined`. A date-only `until`
+ * is the last millisecond of that UTC day, so the whole day is included.
+ */
 const normalizeInstant = (
   value: string | undefined,
-  name: string
+  name: "since" | "until"
 ): string | undefined => {
   if (value === undefined) {
     return undefined;
   }
 
-  const time = Date.parse(value);
+  const parsed = Date.parse(value);
+
+  const time =
+    name === "until" && DATE.test(value) ? parsed + DAY_MS - 1 : parsed;
 
   if (Number.isNaN(time)) {
     throw invalid(

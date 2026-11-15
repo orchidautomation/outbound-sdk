@@ -107,7 +107,7 @@ The date filters compare `sentAt`.
 
 ### Dates
 
-`since` and `until` take anything `Date.parse` reads, such as `2026-10-03` or `2026-10-03T08:00:00Z`. Both ends are inclusive, and the SDK turns each into a UTC timestamp before the adapter sees it. A value it cannot read, or a `since` after `until`, is `Invalid`.
+`since` and `until` take anything `Date.parse` reads, such as `2026-10-03` or `2026-10-03T08:00:00Z`. Both ends are inclusive, and the SDK turns each into a UTC timestamp before the adapter sees it. A date-only `until` such as `2026-10-03` is the end of that UTC day, `2026-10-03T23:59:59.999Z`, so `since` and `until` on the same date cover the whole day; an `until` with a time is kept as given. A value it cannot read, or a `since` after `until`, is `Invalid`.
 
 Where a vendor cannot filter by date, the adapter declares the filter as `client`. The SDK then filters each page after fetching it and marks the result `derived`. A page of such a listing can hold fewer records than you asked for, or none, while more pages remain. See [filter grades](/docs/capabilities#filter-grades).
 

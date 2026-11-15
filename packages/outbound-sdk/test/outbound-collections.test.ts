@@ -228,6 +228,34 @@ test("getMany returns partial failure as data, in request order", async () => {
   );
 });
 
+test("a date-only until covers that whole UTC day; one with a time is kept", async () => {
+  const outbound = client(demoData({ now: "2026-11-14T12:00:00Z" }));
+
+  const sameDay = await outbound.replies
+    .listAll({ since: "2026-11-12", until: "2026-11-12" })
+    .toArray();
+
+  assert.deepEqual(
+    sameDay.map((reply) => reply.sentAt),
+    ["2026-11-12T09:30:00.000Z"]
+  );
+
+  const beforeIt = await outbound.replies
+    .listAll({ since: "2026-11-12", until: "2026-11-12T09:00:00Z" })
+    .toArray();
+
+  assert.deepEqual(beforeIt, []);
+
+  const messages = await outbound.messages
+    .listAll({ since: "2026-11-11", until: "2026-11-11" })
+    .toArray();
+
+  assert.ok(messages.length > 0, "messages take the same rule");
+  assert.ok(
+    messages.every((message) => message.sentAt?.startsWith("2026-11-11"))
+  );
+});
+
 test("filters campaigns by status", async () => {
   const outbound = client(campaigns(6));
   const { items, meta } = await outbound.campaigns.list({ status: "paused" });

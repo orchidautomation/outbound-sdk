@@ -155,7 +155,7 @@ test("heyreach: a date range on a list's leads filters by when the lead was adde
         offset: 0,
       },
       {
-        createdTo: "2026-03-01T00:00:00.000Z",
+        createdTo: "2026-03-01T23:59:59.999Z",
         limit: 1000,
         listId: 3457,
         offset: 0,
