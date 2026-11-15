@@ -39,6 +39,14 @@ export default defineConfig({
       },
     },
     {
+      // eve names a tool after its file, and tool names are snake_case, such
+      // as eve's own `no_reply`.
+      files: ["examples/*/agent/tools/**"],
+      rules: {
+        "unicorn/filename-case": "off",
+      },
+    },
+    {
       // Test doubles are casts by nature, so the type-evidence rules are
       // relaxed for tests only. The behavioural rules stay on.
       files: [
