@@ -67,7 +67,7 @@ Swap the adapter. Nothing else changes.
   ../../_examples/weekly-client-report/production.ts
 </include>
 
-`maxRequests` caps what one call may spend. On a real vendor the report costs two stats requests per campaign, and for each active campaign three more plus a read of its leads (up to `max_leads_per_campaign`, default 500). The default `max_campaigns` is 25. If the cap is reached the call fails with `RateLimited` instead of spending your vendor quota; raise `maxRequests` or lower `max_campaigns`.
+`maxRequestsPerCall` caps what one call may spend. On a real vendor the report costs two stats requests per campaign, and for each active campaign three more plus a read of its leads (up to `max_leads_per_campaign`, default 500). The default `max_campaigns` is 25. If the cap is reached the call fails with `RateLimited` instead of spending your vendor quota; raise `maxRequestsPerCall` or lower `max_campaigns`.
 
 ## One report per client
 

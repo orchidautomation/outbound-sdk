@@ -105,7 +105,7 @@ All three declare what the function needs. What each vendor reports inside a hea
 - `domainHealth`: one listing of senders, then one health read per sender, up to `max_senders` (default 50). A health read is three vendor requests on Instantly, two on Smartlead and one on HeyReach.
 - `bounceWatch`: one listing of campaigns, then one stats read per campaign, up to `max_campaigns` (default 50). For each campaign over the threshold: one listing of its senders and one stats read per sender, up to `max_senders_per_campaign` (default 10). A sender shared by several campaigns is read once. Pass `include_senders: false` to skip that part.
 
-`maxRequests` on the instance caps what one run may spend. Past it a call fails with `RateLimited` instead of spending your vendor quota.
+`maxRequestsPerCall` on the instance caps what each call may spend. It is not a total for the run: for that, add [budget](/docs/plugins/budget). Past it a call fails with `RateLimited` instead of spending your vendor quota.
 
 ## When it cannot answer
 

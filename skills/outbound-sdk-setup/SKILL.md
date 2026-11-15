@@ -109,7 +109,7 @@ For an agent you build yourself, hand it the tools directly. Each wrapper takes 
 - [AI SDK](https://outbound-sdk.dev/docs/tools/ai-sdk): `aiSdkTools` from `outbound-sdk/tools/ai-sdk`, which needs `ai` 6 or 7
 - [Claude Agent SDK](https://outbound-sdk.dev/docs/tools/claude-agent): `claudeAgentTools` from `outbound-sdk/tools/claude-agent`, which needs `@anthropic-ai/claude-agent-sdk`
 
-Add the insights with `extra: insightTools(outbound)` from `outbound-sdk/insights`. Pass `maxRequests` to `createOutbound` to cap what one call may spend against the vendor's rate limit; `outbound mcp` sets a cap only with `--max-requests`.
+Add the insights with `extra: insightTools(outbound)` from `outbound-sdk/insights`. Pass `maxRequestsPerCall` to `createOutbound` to cap what one call may spend against the vendor's rate limit; `outbound mcp` sets a cap only with `--max-requests`.
 
 ## When it does not start
 

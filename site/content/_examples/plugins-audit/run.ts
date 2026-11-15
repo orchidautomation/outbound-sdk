@@ -23,7 +23,7 @@ const outbound = createOutbound({
       },
     }),
     // Inside the audit layer, so the call it stops is recorded as a failure.
-    budget({ maxRequests: 1 }),
+    budget({ maxRequests: 1, per: "call" }),
   ],
 });
 

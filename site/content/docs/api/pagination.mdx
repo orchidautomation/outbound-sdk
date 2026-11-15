@@ -84,6 +84,26 @@ A page can also be shorter than `limit` with more pages to come. That happens wh
 
 `toArray()` holds every record in memory at once. On a listing that can be large, iterate, or set `max` and check `truncated`.
 
+### When a walk stops part way
+
+A cap (`maxRequests`, the [budget](/docs/plugins/budget) plugin, a `deadline`) or a vendor failure can stop a walk between two pages. `toArray()` still rejects, so a partial answer never looks complete. The error carries what was fetched in `error.partial`:
+
+| Field | Holds |
+| --- | --- |
+| `items` | The records fetched before the stop, in order. |
+| `cursor` | Where to resume with `listAll({ cursor })`. It is past every record in `items`, so nothing is skipped or repeated. `undefined` when no page was finished. |
+| `requests` | The vendor requests the walk made, including the one that failed. |
+
+<include meta='title="partial.ts"'>
+  ../../_examples/api-pagination/partial.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/api-pagination/partial.out.txt
+</include>
+
+With `for await`, the records already handed to your loop stay with you, `walk.cursor` is the resume point, and the error has no `partial`.
+
 ### Records that move between pages
 
 A listing can shift while you walk it: a record is added, and one you already saw slides onto the next page. `listAll` drops a record it has already handed out in the same walk, by its `ref`. It cannot show you a record that slid backwards past the page you are on. A walk is a read of a moving list, not a snapshot.

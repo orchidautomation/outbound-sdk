@@ -16,7 +16,7 @@ const notify = (fired: readonly Alert[]): void => {
 export const outbound = createOutbound({
   adapter: instantly({ workspaceId: "acme" }),
   // One check may spend at most 300 vendor requests.
-  maxRequests: 300,
+  maxRequestsPerCall: 300,
   plugins: [
     insights(),
     alerts({

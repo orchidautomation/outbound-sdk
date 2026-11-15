@@ -144,7 +144,7 @@ A tool spends vendor requests only when called. The descriptions tell the model 
 | An argument the tool does not take | `ok: false`, `Invalid`, listing the inputs | Send it back. It is never dropped silently. |
 | A record that does not exist | `ok: false`, `NotFound` | Send it back. |
 | The adapter cannot serve the read | `ok: false`, `Unsupported` | Send it back. `next` tells the model to try another tool. |
-| The vendor rejects the key, or rate limits past your budget | `ok: false` with `Unauthorized` or `RateLimited` | Fix the key, or raise `maxRequests` or `deadline`. |
+| The vendor rejects the key, or rate limits past your budget | `ok: false` with `Unauthorized` or `RateLimited` | Fix the key, or raise `maxRequestsPerCall` or `deadline`. |
 
 ## Limits
 

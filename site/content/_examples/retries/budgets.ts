@@ -40,7 +40,7 @@ await attempt("timeout", "hang", { retries: 1, timeout: 5000 });
 await attempt("deadline", 503, { deadline: 1200 });
 
 // The third request is never sent.
-await attempt("maxRequests", 503, { maxRequests: 2 });
+await attempt("maxRequestsPerCall", 503, { maxRequestsPerCall: 2 });
 
 // No retries at all.
 await attempt("retries: 0", 503, { retries: 0 });

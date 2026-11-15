@@ -25,6 +25,19 @@ export type OutboundErrorCode =
  */
 export type RequestLimit = "call" | "deadline" | "run" | "vendor";
 
+/**
+ * What a `listAll().toArray()` walk had fetched when it stopped. Resume with
+ * `listAll({ cursor })`: no record is skipped or repeated.
+ */
+export interface PartialWalk {
+  /** The records fetched before the stop, in order. */
+  readonly items: readonly unknown[];
+  /** Where to resume. `undefined` when no page was finished: start over. */
+  readonly cursor: string | undefined;
+  /** Vendor requests the walk made, including the one that failed. */
+  readonly requests: number;
+}
+
 export interface OutboundErrorOptions {
   /**
    * The original error or vendor response, for debugging. It is kept as a
@@ -44,6 +57,8 @@ export interface OutboundErrorOptions {
    * HTTP status. A `call` or `run` cap makes the error permanent.
    */
   readonly limit?: RequestLimit | undefined;
+  /** What a `toArray()` walk had fetched when it stopped. */
+  readonly partial?: PartialWalk | undefined;
   /** Secrets to strip from the message. */
   readonly secrets?: readonly string[] | undefined;
 }
@@ -73,6 +88,12 @@ export class OutboundError extends Error {
    * cap of your own. `undefined` on every other code.
    */
   readonly limit: RequestLimit | undefined;
+  /**
+   * Set when `listAll().toArray()` stopped part way: the records it had
+   * fetched and the cursor to resume from. A partial answer is never returned
+   * as if it were complete.
+   */
+  readonly partial: PartialWalk | undefined;
   /** `true` when retrying the same call cannot succeed. */
   readonly permanent: boolean;
   readonly [BRAND] = true;
@@ -96,6 +117,7 @@ export class OutboundError extends Error {
         ? (options.limit ??
           (options.status === undefined ? undefined : "vendor"))
         : undefined;
+    this.partial = options.partial;
     // A cap the caller set stops the same call at the same place again.
     this.permanent =
       this.aborted ||
