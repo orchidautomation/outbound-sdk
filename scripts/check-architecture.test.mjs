@@ -117,6 +117,24 @@ test("rejects Node built-ins outside the folders that may use them", async () =>
   });
 
   assert.ok(names.includes("web-standards-only"), names.join(","));
+
+  // Without the prefix, and loaded lazily, a built-in is still caught, in a
+  // folder no list names: every folder outside nodeFolders is covered.
+  for (const [file, contents] of [
+    [
+      "src/instantly/bare.ts",
+      'import { readFileSync } from "fs";\nexport const disk = readFileSync;\n',
+    ],
+    ["src/internal/lazy.ts", 'export const disk = () => import("node:fs");\n'],
+    ["src/newvendor/index.ts", 'import "node:fs";\nexport const vendor = 1;\n'],
+  ]) {
+    const caught = await violationsFor({ [file]: contents });
+    assert.ok(
+      caught.includes("web-standards-only"),
+      `${file}: ${caught.join(",")}`
+    );
+  }
+
   assert.deepEqual(
     await violationsFor({
       "src/cli/index.ts":

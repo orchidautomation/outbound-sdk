@@ -35,10 +35,14 @@ The shape check rejects tracked `.env` files, operating-system metadata and loca
 - An adapter may import `internal/` and nothing else, never another adapter.
 - Every folder under `src/` is declared with the folders it may import. An undeclared folder fails.
 - No import cycles and no unresolved imports.
-- Only `cli/`, `exporter/` and `fixtures/` may use Node built-ins. The rest uses web standards.
+- Only `cli/`, `exporter/` and `fixtures/` may use Node built-ins. The rest uses web standards. The rule covers `node:` and bare specifiers, static and dynamic imports, and any folder not listed as a Node folder, so a new adapter is covered without being named.
 - `zod` is the only runtime dependency. A folder that needs another package declares it.
 - Production code never imports a test. Tests import a folder's `index.ts` only.
 - Only `internal/` may call `fetch`. The linter bans the global everywhere else in `src/`.
+
+## Workers runtime
+
+`scripts/workers-tests.mjs` (`npm run test:workers`, its own CI job) runs the package's tests inside Cloudflare's Workers runtime through Miniflare. Nothing lists which tests run: esbuild bundles every test file, and a file is left out only when what it imports reaches a Node built-in or a Node folder. The run prints each file it leaves out and why. The fixtures helper is swapped for the same fixtures embedded in the bundle, `node:test` for a small stand-in, and `node:assert` is the runtime's own from `nodejs_compat`. Before any SDK code loads, the Worker removes the globals `nodejs_compat` adds (`Buffer`, `global`, and `process` apart from an empty `env`), because a Worker without that flag has none of them. Every public subpath outside the Node folders must load, and every Workers-safe folder must be reached by something that runs, so a new adapter is checked as soon as it is declared. `miniflare` is a dev dependency only, pinned exactly; it is the runtime `@cloudflare/vitest-pool-workers` uses, without moving the tests to Vitest.
 
 ## Lint and format
 
