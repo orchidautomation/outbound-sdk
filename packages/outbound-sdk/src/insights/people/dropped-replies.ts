@@ -9,7 +9,7 @@ import type {
   Message,
   Reply,
 } from "../../internal/entities.ts";
-import { plural } from "../../internal/plural.ts";
+import { plural } from "../../internal/numbers.ts";
 import { replyCategorySchema } from "../../internal/vocabulary.ts";
 import type { Capped } from "../capped.ts";
 import { defineInsight } from "../define.ts";

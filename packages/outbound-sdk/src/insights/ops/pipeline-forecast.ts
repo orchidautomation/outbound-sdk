@@ -4,7 +4,8 @@
 import { z } from "zod";
 
 import type { Campaign, Lead, LeadStatus } from "../../internal/entities.ts";
-import { noun, plural } from "../../internal/plural.ts";
+import { plural } from "../../internal/numbers.ts";
+import { noun } from "../../internal/plural.ts";
 import { readCapped } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";

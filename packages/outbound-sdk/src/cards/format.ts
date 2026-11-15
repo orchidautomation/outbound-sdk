@@ -12,7 +12,8 @@ import {
   text,
 } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
-import { noun, percentOf, points, shownKey } from "../internal/plural.ts";
+import { percentOf, points } from "../internal/numbers.ts";
+import { noun, shownKey } from "../internal/plural.ts";
 
 export { noun } from "../internal/plural.ts";
 

@@ -1,7 +1,7 @@
 // Plain arithmetic the insights share. No model, no fitting: counts, rates
 // and two textbook tests, so every number can be checked by hand.
 
-import { count, percentOf } from "../internal/plural.ts";
+import { count, percentOf } from "../internal/numbers.ts";
 
 const PLACES = 10_000;
 

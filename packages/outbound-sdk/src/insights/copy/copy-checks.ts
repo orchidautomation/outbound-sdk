@@ -1,7 +1,8 @@
 // The text checks behind copy_audit. Each takes template text and returns
 // what it found, or nothing. Fixed rules only: no model reads the copy.
 
-import { noun, plural } from "../../internal/plural.ts";
+import { plural } from "../../internal/numbers.ts";
+import { noun } from "../../internal/plural.ts";
 
 export type Severity = "high" | "low" | "medium";
 

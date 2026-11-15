@@ -8,8 +8,8 @@ import {
 import { OutboundError } from "../internal/errors.ts";
 import { isJsonObject, parseJson, toJson } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
+import { plural } from "../internal/numbers.ts";
 import type { ListAll, OutboundApi } from "../internal/outbound/api.ts";
-import { plural } from "../internal/plural.ts";
 import { providers } from "../providers/index.ts";
 import { createTools } from "../tools/index.ts";
 import type { OutboundTool, ToolResult } from "../tools/index.ts";

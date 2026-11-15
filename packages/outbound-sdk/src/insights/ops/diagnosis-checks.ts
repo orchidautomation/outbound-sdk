@@ -3,7 +3,8 @@
 
 import type { CampaignSettings } from "../../internal/entities-account.ts";
 import type { Campaign, Sender } from "../../internal/entities.ts";
-import { noun, plural } from "../../internal/plural.ts";
+import { plural } from "../../internal/numbers.ts";
+import { noun } from "../../internal/plural.ts";
 import { percent, round, spoken } from "../stats.ts";
 import { measure, volumeOf } from "./shared.ts";
 import type { Rates, Totals } from "./shared.ts";

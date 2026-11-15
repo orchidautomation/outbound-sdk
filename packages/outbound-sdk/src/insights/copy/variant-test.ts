@@ -4,7 +4,8 @@ import { z } from "zod";
 
 import type { MetricRow } from "../../internal/entities.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
-import { noun, plural } from "../../internal/plural.ts";
+import { plural } from "../../internal/numbers.ts";
+import { noun } from "../../internal/plural.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { rangeFields } from "../fields.ts";

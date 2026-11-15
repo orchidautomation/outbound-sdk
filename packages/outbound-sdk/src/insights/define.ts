@@ -10,6 +10,7 @@ import type { Evidence, MetricRow } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
 import { toJson, unknownKey } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
+import { plural } from "../internal/numbers.ts";
 import type {
   ListAll,
   OutboundApi,
@@ -18,7 +19,6 @@ import type {
   StatsResult,
   WithMeta,
 } from "../internal/outbound/api.ts";
-import { plural } from "../internal/plural.ts";
 import { applyRenames, liveKeys } from "../internal/renamed.ts";
 import { inputProblem } from "../tools/input-problem.ts";
 

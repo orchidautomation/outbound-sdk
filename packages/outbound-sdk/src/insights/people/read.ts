@@ -9,8 +9,9 @@ import type {
   Lead,
   ReplyCategory,
 } from "../../internal/entities.ts";
+import { plural } from "../../internal/numbers.ts";
 import type { BulkResult, ListAll } from "../../internal/outbound/api.ts";
-import { noun, plural } from "../../internal/plural.ts";
+import { noun } from "../../internal/plural.ts";
 import { readCampaignsIn, readCapped } from "../capped.ts";
 import type { Capped } from "../capped.ts";
 import type { InsightContext } from "../define.ts";

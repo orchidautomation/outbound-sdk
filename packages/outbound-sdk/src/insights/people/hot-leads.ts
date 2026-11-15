@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import type { Lead, ReplyCategory } from "../../internal/entities.ts";
 import { OutboundError } from "../../internal/errors.ts";
-import { plural } from "../../internal/plural.ts";
+import { plural } from "../../internal/numbers.ts";
 import { confirmCampaign } from "../campaign.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";

@@ -5,9 +5,9 @@
 
 import type { Campaign, MetricRow, Sender } from "../internal/entities.ts";
 import { computeRates } from "../internal/metrics.ts";
+import { percentOf } from "../internal/numbers.ts";
 import type { OutboundRecord } from "../internal/outbound/operations.ts";
 import type { OutboundPlugin } from "../internal/outbound/plugins.ts";
-import { percentOf } from "../internal/plural.ts";
 
 export interface Alert {
   /** The rule's name. */
