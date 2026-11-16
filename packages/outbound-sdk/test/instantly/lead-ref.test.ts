@@ -235,13 +235,18 @@ test("instantly under redact: the address is masked, and one person still has on
   assert.equal(first?.leadRef, `instantly:client-a:${lead?.email ?? ""}`);
 });
 
-test("instantly under redact with mask: the address never shows in a leadRef", async () => {
+test("instantly under redact with mask: the address never shows in a leadRef, and the lead still joins", async () => {
   const { outbound, settle } = redacted("mask");
   const replies = (await settle(outbound.replies.list())).items;
+  const [lead] = (await settle(outbound.leads.list({ email: PERSON }))).items;
 
-  assert.doesNotMatch(JSON.stringify(replies), /@/u);
-  assert.deepEqual(
-    replies.map((reply) => reply.leadRef),
-    ["instantly:client-a:[redacted]", "instantly:client-a:[redacted]"]
+  assert.doesNotMatch(JSON.stringify([replies, lead]), /@/u);
+  const [first, second] = replies;
+  assert.match(
+    first?.leadRef ?? "",
+    /^instantly:client-a:redacted:[0-9a-f]{16}$/u,
+    "a keyed token, never one [redacted] for everyone (OUT-122)"
   );
+  assert.equal(first?.leadRef, second?.leadRef, "still one person");
+  assert.equal(first?.leadRef, `instantly:client-a:${lead?.email ?? ""}`);
 });

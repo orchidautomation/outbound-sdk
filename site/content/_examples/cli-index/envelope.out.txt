@@ -25,13 +25,14 @@ Stopped at 1 campaign; more exist. Pass --limit to read more.
       "Stopped at 1 campaign; more exist. Pass --limit to read more."
     ],
     "provider": "memory",
-    "requests": 0
+    "requests": 0,
+    "throttledMs": 0
   },
   "ok": true
 }
 
 $ outbound thread no-such-thread --compact
-{"data":null,"error":{"code":"NotFound","message":"No thread no-such-thread, or it has no messages"},"meta":{"complete":false,"notes":[],"provider":"memory","requests":0},"ok":false}
+{"data":null,"error":{"code":"NotFound","message":"No thread no-such-thread, or it has no messages"},"meta":{"complete":false,"notes":[],"provider":"memory","requests":0,"throttledMs":0},"ok":false}
 NotFound: No thread no-such-thread, or it has no messages
 (exit code 1)
 

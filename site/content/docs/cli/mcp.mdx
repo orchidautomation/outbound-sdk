@@ -89,7 +89,12 @@ For any other plugin, or for a plugin's options, pass `--config` with the path t
 - The path is resolved from the folder the client starts the command in. Use an absolute path.
 - The plugins are placed in this order, outermost first: `redact()`, the file's plugins, `cache()` from `--cache`, `budget()` from `--max-requests`, then `identity()`, which the CLI always adds unless the file lists it. To place a cache or a budget elsewhere, list it in the file instead of using its flag.
 - A `redact()` in the file replaces the default one, with the options you gave it. Setting `--no-redact` as well is refused.
-- A file that cannot be loaded, has no default export, or exports something other than a list of plugins stops the command with exit code 1 before the server answers anything.
+- The file may also export `rateLimitStore`, the store `createOutbound` takes. A vendor's limit covers the whole workspace, so two terminals, or the CLI and an MCP server, on one key slow each other down; with one shared store, such as [`redisRateLimitStore()`](/docs/guides/shared-rate-budget), they spend one budget instead of drawing 429s from each other.
+- A file that cannot be loaded, has no default export, or exports something other than a list of plugins and a rate limit store stops the command with exit code 1 before the server answers anything.
+
+### Waits on rate limits
+
+A tool call that waits more than 5 seconds on rate limits gets `meta.throttledMs` and a note in `meta.notes` that names the last wait, so a model can tell a slow vendor limit, such as Instantly's 20 list-email requests a minute, from a hang. A failed call gets `meta.throttledMs` alone. A wait longer than 2 seconds also prints one line on standard error, which the protocol leaves free.
 
 The flags and `--config` work on the other commands too. Only `outbound mcp` turns `redact()` on by default; elsewhere, add `--redact`.
 

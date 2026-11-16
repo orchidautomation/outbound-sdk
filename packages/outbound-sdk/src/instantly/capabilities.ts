@@ -12,7 +12,14 @@ export const BASE_URL = "https://api.instantly.ai/api/v2";
 export const API_KEY_ENV = "INSTANTLY_API_KEY";
 export const WORKSPACE_ENV = "INSTANTLY_WORKSPACE_ID";
 
-/** `GET /emails` has its own limit, far below the workspace limit. */
+/**
+ * `GET /emails` has its own limit of 20 a minute, far below the workspace
+ * limit. Every process on the workspace draws on it: the general limit is
+ * documented as workspace-wide, and on 2026-11-16 a second process reading
+ * emails slowed the first from 0.76 s to 121 s. The SDK counts per process
+ * unless a shared `rateLimitStore` is given, so two processes on one key
+ * meet at Instantly's 429. See docs/research/instantly.md.
+ */
 export const EMAILS_LANE = "emails";
 export const PAGE_SIZE = 100;
 
