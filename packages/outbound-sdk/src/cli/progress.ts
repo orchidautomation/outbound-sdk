@@ -11,7 +11,11 @@ export const SAY_AFTER_MS = 2000;
 
 /** How long a run has waited on rate limits so far, and why it last did. */
 export interface ThrottleTotal {
-  /** Wall-clock milliseconds; waits that overlap are counted once. */
+  /**
+   * Wall-clock milliseconds spent with a wait under way, up to now: a wait
+   * counts as it elapses, not when it is booked, and waits that overlap are
+   * counted once.
+   */
   readonly ms: number;
   /** The last wait, in words, or `undefined` before any wait. */
   readonly reason: string | undefined;
@@ -67,8 +71,11 @@ export const throttleMonitor = (
   now: () => number,
   say: (text: string) => void
 ): ThrottleMonitor => {
-  let ms = 0;
-  let coveredUntil = Number.NEGATIVE_INFINITY;
+  // Waits start in time order, so the time covered is the spans already
+  // closed plus the part of the current span that has passed.
+  let closedMs = 0;
+  let spanStart = 0;
+  let spanEnd = 0;
   let reason: string | undefined;
   const quietUntil = new Map<string, number>();
 
@@ -78,9 +85,12 @@ export const throttleMonitor = (
         const start = now();
         const end = start + event.waitMs;
 
-        if (end > coveredUntil) {
-          ms += end - Math.max(start, coveredUntil);
-          coveredUntil = end;
+        if (start > spanEnd) {
+          closedMs += spanEnd - spanStart;
+          spanStart = start;
+          spanEnd = end;
+        } else {
+          spanEnd = Math.max(spanEnd, end);
         }
 
         reason = describeWait(event);
@@ -95,6 +105,9 @@ export const throttleMonitor = (
         }
       },
     },
-    total: () => ({ ms, reason }),
+    total: () => ({
+      ms: closedMs + Math.max(0, Math.min(now(), spanEnd) - spanStart),
+      reason,
+    }),
   };
 };

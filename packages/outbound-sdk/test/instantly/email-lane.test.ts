@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 
-import { run } from "../../src/cli/index.ts";
+import { run, throttleMonitor } from "../../src/cli/index.ts";
 import { instantly } from "../../src/instantly/index.ts";
 import { createClock } from "../helpers/clock.ts";
 import { fixture } from "../helpers/fixtures.ts";
@@ -291,5 +291,53 @@ test("a --config file whose rateLimitStore is not a store is refused", async () 
   assert.match(
     ran.err.join("\n"),
     /must export rateLimitStore as a rate limit store/u
+  );
+});
+
+test("a wait counts as it elapses, so the tool call that sits through it is the one charged", () => {
+  let now = 0;
+  const said: string[] = [];
+
+  const monitor = throttleMonitor(
+    () => now,
+    (text) => {
+      said.push(text);
+    }
+  );
+
+  const wait = (waitMs: number) => {
+    monitor.hooks.onThrottle?.({
+      cause: "budget",
+      lane: "emails",
+      provider: "instantly",
+      waitMs,
+      windows: [{ perMs: 60_000, requests: 10 }],
+    });
+  };
+
+  // A tool call books a minute's wait and fails a second later, as
+  // person_summary does when its campaign lookup fails beside a timeline read.
+  wait(60_000);
+  assert.equal(monitor.total().ms, 0, "nothing has elapsed yet");
+  now = 1000;
+  const first = monitor.total().ms;
+  assert.equal(first, 1000);
+
+  // The next call waits out the rest of that minute itself.
+  wait(59_000);
+  now = 60_000;
+  assert.equal(monitor.total().ms - first, 59_000);
+
+  // A later, separate wait adds its own time once it has passed.
+  now = 70_000;
+  wait(5000);
+  now = 72_000;
+  assert.equal(monitor.total().ms, 62_000);
+  now = 80_000;
+  assert.equal(monitor.total().ms, 65_000);
+  assert.equal(
+    said.length,
+    2,
+    "the second wait fell inside the first one's line"
   );
 });

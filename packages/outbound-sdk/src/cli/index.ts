@@ -26,6 +26,10 @@ export type { McpServer, McpServerOptions } from "./mcp.ts";
 
 export { serveStdio } from "./stdio.ts";
 
+export { describeWait, throttleMonitor } from "./progress.ts";
+
+export type { ThrottleMonitor, ThrottleTotal } from "./progress.ts";
+
 export type { NpmRunner } from "./update.ts";
 
 export type { StdioOptions } from "./stdio.ts";
