@@ -98,6 +98,8 @@ sequences[0].steps[] = { type: "email", delay: number, delay_unit: "minutes"|"ho
 - Steps and variants have no ids in this schema. Analytics refer to them by position: step `"1"`.., variant `"0"`.. (0 = A). Webhooks say variant starts at 1. See "Unverified".
 - `type` is always `"email"`.
 
+Sender variables (fetched 2026-11-16 from https://help.instantly.ai/en/articles/9178224-how-to-add-a-signature and https://help.instantly.ai/en/articles/7902437-ways-to-add-a-signature): Instantly fills `{{accountSignature}}` (the sending account's signature), `{{sendingAccountName}}` (its sender name), `{{sendingAccountFirstName}}` and `{{sendingAccountEmail}}` from the sending account at send time. They are not lead fields, so `personalization_gaps` lists them with source `sender` (`src/insights/variables.ts`).
+
 Subsequences (follow-up sequences triggered by a label, activity or reply text) are a separate resource: `GET /api/v2/subsequences?parent_campaign=<campaign id>` and `GET /api/v2/subsequences/{id}`. They carry their own `sequences[].steps[].variants[]`, `status` (same numbers as campaigns), `conditions` (`crm_status[]`, `lead_activity[]`, `reply_contains`) and `subsequence_schedule`.
 
 ## 3. Senders (email accounts)

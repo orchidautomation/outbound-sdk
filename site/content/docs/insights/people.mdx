@@ -306,15 +306,15 @@ Leads in one campaign who will get broken copy because a merge variable has no v
 `data` (`PersonalizationGaps`):
 
 - `campaign`: the ref that was checked, even when the input was its bare vendor id.
-- `variables`: one entry per variable in the copy, with `name`, `source` (`builtin`, `custom` or `unknown`), `gap`, `steps`, `uses` (step, variant, field, and whether that use has a fallback), `leadsWithoutValue` and `leadsAffected`. Most leads affected first.
+- `variables`: one entry per variable in the copy, with `name`, `source` (`builtin`, `custom` or `unknown`), `sender` (`true` for a variable the tool fills from the sending account; its `source` is `unknown`), `gap` (`true` when at least one lead read gets broken copy from it), `steps`, `uses` (step, variant, field, and whether that use has a fallback), `leadsWithoutValue` and `leadsAffected`. Most leads affected first.
 - `leads`: the leads missing at least one variable, with `lead`, `email`, `linkedinUrl`, `status` and `missing`. Most missing first, up to `limit`.
-- `unknownVariables`: variables no lead has a value for and that are not built in.
+- `unknownVariables`: variables no lead has a value for and that are neither built in nor filled from the sender.
 - `totals`: `steps`, `variables`, `leadsRead`, `leadsAffected` and `affectedRate`.
 
 - **Needs:** `sequence`, `leads.byCampaign`.
 - **Costs:** one request for the sequence, plus one per page of leads.
 - **Notes it can add:** the sequence uses no variables, so no lead was read; a cap was reached.
-- **Does not:** render the copy. It finds `{{variable}}`, `{variable}` and `%variable%` in subjects and bodies, and checks each lead for a value: first name, last name, company, title, email, or a custom field of the same name without regard to case, spaces, underscores or hyphens. A variable with a fallback in every use, such as `{{firstName|there}}`, is not a gap. A variable no lead has, such as a sender signature the tool fills in, is listed as `unknown` and not counted against leads: check those by hand.
+- **Does not:** render the copy. It finds `{{variable}}`, `{variable}` and `%variable%` in subjects and bodies, and checks each lead for a value: first name, last name, company, title, email, or a custom field of the same name without regard to case, spaces, underscores or hyphens. A variable with a fallback in every use, such as `{{firstName|there}}`, is not a gap. A variable the tool fills from the sending account, such as Instantly's `{{accountSignature}}`, `{{sendingAccountName}}`, `{{sendingAccountFirstName}}` and `{{sendingAccountEmail}}`, has `sender: true` and is left out of `unknownVariables`. Any other variable no lead has is listed in `unknownVariables`: check those by hand. Neither is counted against leads.
 
 <include meta='title="personalization-gaps.ts"'>
   ../../_examples/insights-people/personalization-gaps.ts

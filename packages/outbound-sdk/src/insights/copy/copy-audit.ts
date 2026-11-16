@@ -2,25 +2,24 @@
 
 import { z } from "zod";
 
-import type { SequenceStep, SequenceVariant } from "../../internal/entities.ts";
+import type { Lead, Sequence } from "../../internal/entities.ts";
+import { plural } from "../../internal/numbers.ts";
 import { defineInsight } from "../define.ts";
-import { stepAt } from "../step.ts";
-import type { StepPosition } from "../step.ts";
+import type { InsightContext } from "../define.ts";
+import { leadsOf } from "../people/read.ts";
 import {
-  allCaps,
-  bodyTooLong,
-  CHECKS,
-  connectionTooLong,
-  DEFAULT_SPAM_WORDS,
-  exclamationMarks,
-  image,
-  malformedVariable,
-  spamWords,
-  subjectTooLong,
-  threadKey,
-  tooManyLinks,
-} from "./copy-checks.ts";
-import type { CheckName, Limits, Problem, Severity } from "./copy-checks.ts";
+  auditSamples,
+  perLeadKeys,
+  pickSamples,
+  writtenPerLead,
+} from "./audit-samples.ts";
+import type { SampleAudit } from "./audit-samples.ts";
+import { auditVariant, threadOf } from "./audit-variant.ts";
+import type { CopyFinding } from "./audit-variant.ts";
+import { CHECKS, DEFAULT_SPAM_WORDS } from "./copy-checks.ts";
+import type { CheckName, Limits, Severity } from "./copy-checks.ts";
+
+export type { CopyFinding } from "./audit-variant.ts";
 
 const limit = (fallback: number, description: string) =>
   z.number().int().min(0).default(fallback).describe(description);
@@ -41,7 +40,25 @@ const input = z.object({
   ),
   max_exclamations: limit(1, "How many exclamation marks a message may have."),
   max_links: limit(1, "The most links an email body may have."),
+  max_leads: z
+    .number()
+    .int()
+    .min(1)
+    .max(1000)
+    .default(100)
+    .describe(
+      "The most leads to read when picking the samples. Read only when copy is written per lead."
+    ),
   max_subject_chars: limit(60, "The most characters a subject may have."),
+  samples: z
+    .number()
+    .int()
+    .min(0)
+    .max(20)
+    .default(3)
+    .describe(
+      "How many leads' rendered copy to audit when a subject or body is mostly variables, such as {{body_1}} filled from a custom field. The leads that fill the most of those variables are used. 0 audits the copy as stored only."
+    ),
   spam_words: z
     .array(z.string().min(1))
     .default([...DEFAULT_SPAM_WORDS])
@@ -49,16 +66,6 @@ const input = z.object({
       "Words and phrases to flag in email copy, matched whole and without case. Replaces the default list."
     ),
 });
-
-export interface CopyFinding extends StepPosition {
-  readonly variantKey: string;
-  readonly action: string;
-  readonly check: CheckName;
-  readonly severity: Severity;
-  readonly finding: string;
-  /** The text that triggered the check. */
-  readonly text: string;
-}
 
 export interface CheckCount {
   readonly check: CheckName;
@@ -71,7 +78,12 @@ export interface CopyAudit {
   /** The campaign's name, from the campaign record the audit reads. */
   readonly campaignName: string;
   readonly channel: "email" | "linkedin";
-  /** `true` when no check found anything in the copy that could be read. */
+  /**
+   * `true` when no check found anything and every variant was audited.
+   * `false` on any finding, and also when copy written per lead could not be
+   * audited for every variant: then `variantsNotAudited` is above 0 and a
+   * note says why, and no finding does not mean a problem was found.
+   */
   readonly clean: boolean;
   /** High severity first, then by step and variant. */
   readonly findings: readonly CopyFinding[];
@@ -86,6 +98,20 @@ export interface CopyAudit {
   readonly variantsChecked: number;
   /** Variants whose body the vendor did not return; their body checks were skipped. */
   readonly variantsWithoutBody: number;
+  /**
+   * Variants whose subject or body is mostly variables, such as `{{body_1}}`.
+   * They are audited as sample leads receive them, not as stored. This and
+   * `leadsAudited` are always set; optional in the type so an audit built by
+   * hand still fits.
+   */
+  readonly variantsWrittenPerLead?: number;
+  /** The leads whose rendered copy was audited. Empty when no copy is written per lead. */
+  readonly leadsAudited?: readonly string[];
+  /**
+   * Variants written per lead that no sample lead's copy could be rendered
+   * for, so they were not audited at all. Above 0 makes `clean` `false`.
+   */
+  readonly variantsNotAudited?: number;
 }
 
 const RANK: Readonly<Record<Severity, number>> = { high: 0, low: 2, medium: 1 };
@@ -101,107 +127,9 @@ const EMAIL_ONLY: readonly CheckName[] = [
 
 const LINKEDIN_ONLY: readonly CheckName[] = ["connection_request_too_long"];
 
-interface Thread {
-  /** The first email step. `null` when the sequence has none. */
-  readonly first: number | null;
-  /** The subjects the first email step sends under. */
-  readonly subjects: ReadonlySet<string>;
-}
-
-const emailChecks = (
-  step: SequenceStep,
-  variant: SequenceVariant,
-  limits: Limits,
-  thread: Thread
-): (Problem | null)[] => {
-  const subject = variant.subject?.trim() ?? "";
-  const body = variant.body ?? "";
-  const key = threadKey(subject);
-
-  const problems: (Problem | null)[] = [
-    subject === "" ? null : subjectTooLong(subject, limits),
-    spamWords(`${subject}\n${body}`, limits),
-    tooManyLinks(body, limits),
-    image(body),
-  ];
-
-  if (step.index === thread.first && subject === "") {
-    problems.push({
-      check: "missing_subject",
-      finding: "The first email has no subject.",
-      text: "",
-    });
-  }
-
-  if (step.index !== thread.first && key !== "" && !thread.subjects.has(key)) {
-    problems.push({
-      check: "subject_breaks_thread",
-      finding:
-        "This follow-up has a subject that differs from the first email's, so it starts a new thread instead of continuing the first.",
-      text: subject,
-    });
-  }
-
-  return problems;
-};
-
-const linkedinChecks = (
-  step: SequenceStep,
-  variant: SequenceVariant,
-  limits: Limits
-): (Problem | null)[] =>
-  step.action.toLowerCase().includes("connect") && variant.body !== null
-    ? [connectionTooLong(variant.body, limits)]
-    : [];
-
-const auditVariant = (
-  step: SequenceStep,
-  variant: SequenceVariant,
-  limits: Limits,
-  thread: Thread | null
-): CopyFinding[] => {
-  const body = variant.body ?? "";
-  const whole = `${variant.subject ?? ""}\n${body}`;
-
-  const problems = [
-    malformedVariable(whole),
-    bodyTooLong(body, limits),
-    allCaps(whole, limits),
-    exclamationMarks(whole, limits),
-    ...(thread === null
-      ? linkedinChecks(step, variant, limits)
-      : emailChecks(step, variant, limits, thread)),
-  ];
-
-  return problems.flatMap((problem) =>
-    problem === null
-      ? []
-      : [
-          {
-            ...problem,
-            action: step.action,
-            severity: CHECKS[problem.check],
-            ...stepAt(step.index),
-            variantKey: variant.variantKey,
-          },
-        ]
-  );
-};
-
-const threadOf = (steps: readonly SequenceStep[]): Thread => {
-  const [first] = steps.toSorted((left, right) => left.index - right.index);
-
-  return {
-    first: first?.index ?? null,
-    subjects: new Set(
-      (first?.variants ?? []).flatMap((variant) => {
-        const key = threadKey(variant.subject);
-
-        return key === "" ? [] : [key];
-      })
-    ),
-  };
-};
+/** Clean only with no finding and nothing left unaudited: copy not read is never called clean. */
+const cleanOf = (findings: number, unaudited: number): boolean =>
+  findings === 0 && unaudited === 0;
 
 // SAFETY: CHECKS is a fixed object, so its keys are exactly CheckName.
 const CHECK_NAMES = Object.keys(CHECKS) as CheckName[];
@@ -225,13 +153,91 @@ const countsOf = (
         left.check.localeCompare(right.check)
     );
 
+interface Samples {
+  readonly leads: readonly Lead[];
+  /** Why no lead was sampled. `null` when some were, or none were needed. */
+  readonly reason: string | null;
+}
+
+/** The sample leads for copy written per lead, or why there are none. */
+const readSamples = async (
+  context: InsightContext,
+  args: z.infer<typeof input>,
+  sequence: Sequence
+): Promise<Samples> => {
+  if (!sequence.steps.some((step) => step.variants.some(writtenPerLead))) {
+    return { leads: [], reason: null };
+  }
+
+  if (args.samples === 0) {
+    return { leads: [], reason: "samples is 0" };
+  }
+
+  if (context.outbound.capabilities["leads.byCampaign"] === false) {
+    return { leads: [], reason: "this tool does not list a campaign's leads" };
+  }
+
+  const leads = await leadsOf(
+    context,
+    args.campaign,
+    args.max_leads,
+    "max_leads"
+  );
+
+  return leads.length === 0
+    ? { leads: [], reason: "the campaign has no leads" }
+    : {
+        leads: pickSamples(leads, perLeadKeys(sequence.steps), args.samples),
+        reason: null,
+      };
+};
+
+const noteSamples = (
+  context: InsightContext,
+  perLead: number,
+  samples: Samples,
+  audit: SampleAudit
+): void => {
+  if (perLead === 0) {
+    return;
+  }
+
+  const variants = plural(perLead, "variant");
+
+  const reason =
+    samples.reason ?? "no lead read has values for their variables";
+
+  if (audit.leads.length === 0) {
+    context.note(
+      `${variants} ${perLead === 1 ? "is" : "are"} written per lead in variables, and the copy could not be audited as any lead receives it: ${reason}.`
+    );
+
+    return;
+  }
+
+  context.note(
+    `${variants} ${perLead === 1 ? "is" : "are"} written per lead in variables, so the rendered copy of ${plural(audit.leads.length, "sample lead")} was audited; each finding names its lead.`
+  );
+
+  if (audit.unaudited > 0) {
+    context.note(
+      `${plural(audit.unaudited, "variant")} written per lead could not be audited: no sample lead has values for ${audit.unaudited === 1 ? "its" : "their"} variables.`
+    );
+  }
+};
+
 export const copyAudit = defineInsight({
   description:
-    "Problems in a campaign's copy before it sends. Checks every step and variant for a long subject, a long body, too many links, spam words, unbalanced or empty {{ }} variables, words in capitals, repeated exclamation marks, an image or tracking pixel, a missing subject on the first email, and a follow-up whose subject breaks the thread; a LinkedIn campaign skips the email-only checks and flags a connection request over the character limit. Returns each finding with a severity and the text that triggered it, and a count per check. Costs 2 requests. Fixed rules only, no model. A variant whose body the vendor does not return is counted, not judged.",
+    "Problems in a campaign's copy before it sends. Checks every step and variant for a long subject, a long body, too many links, spam words, unbalanced or empty {{ }} variables, words in capitals, repeated exclamation marks, an image or tracking pixel, a missing subject on the first email, and a follow-up whose subject breaks the thread; a LinkedIn campaign skips the email-only checks and flags a connection request over the character limit. Returns each finding with a severity and the text that triggered it, and a count per check. When a subject or body is mostly variables, such as {{body_1}} filled from a custom field, that variant is audited as sample leads receive it, rendered as copy_preview renders it, and each such finding names its lead; when a variant cannot be rendered for any sample lead, clean is false and variantsNotAudited counts it, never a bare clean true. Costs 2 requests, plus one per page of leads read when copy is written per lead. Fixed rules only, no model. A variant whose body the vendor does not return is counted, not judged.",
   inputSchema: input,
   key: "copyAudit",
-  cost: (_input, price) =>
-    price.one("campaigns.get") + price.one("sequence.get"),
+  cost: (values, price) =>
+    price.one("campaigns.get") +
+    price.one("sequence.get") +
+    (values.samples === 0
+      ? 0
+      : price.upTo(1) * price.list("leads.list", values.max_leads)),
+  scales: "max_leads",
   name: "copy_audit",
   needs: ["sequence"],
   next: "Use step_funnel to see whether the steps with findings are also the ones with few replies.",
@@ -251,23 +257,40 @@ export const copyAudit = defineInsight({
       spamWords: args.spam_words,
     };
 
-    const thread = isEmail ? threadOf(sequence.steps) : null;
+    const thread = isEmail ? threadOf(sequence.steps, writtenPerLead) : null;
 
     const variants = sequence.steps.flatMap((step) =>
       step.variants.map((variant) => ({ step, variant }))
     );
 
-    const findings = variants
-      .flatMap(({ step, variant }) =>
-        auditVariant(step, variant, limits, thread)
-      )
-      .toSorted(
-        (left, right) =>
-          RANK[left.severity] - RANK[right.severity] ||
-          left.step - right.step ||
-          left.variantKey.localeCompare(right.variantKey) ||
-          left.check.localeCompare(right.check)
-      );
+    const perLead = variants.filter(({ variant }) =>
+      writtenPerLead(variant)
+    ).length;
+
+    const samples = await readSamples(context, args, sequence);
+
+    const sampled = auditSamples(
+      sequence.steps,
+      samples.leads,
+      limits,
+      isEmail
+    );
+
+    const findings = [
+      ...variants.flatMap(({ step, variant }) =>
+        writtenPerLead(variant)
+          ? []
+          : auditVariant(step, variant, limits, thread, null)
+      ),
+      ...sampled.findings,
+    ].toSorted(
+      (left, right) =>
+        RANK[left.severity] - RANK[right.severity] ||
+        left.stepIndex - right.stepIndex ||
+        left.variantKey.localeCompare(right.variantKey) ||
+        left.check.localeCompare(right.check) ||
+        (left.lead ?? "").localeCompare(right.lead ?? "")
+    );
 
     const withoutBody = variants.filter(
       ({ variant }) => variant.body === null
@@ -280,6 +303,8 @@ export const copyAudit = defineInsight({
           : `${withoutBody} variants have no body in the vendor's answer, so their body checks were skipped.`
       );
     }
+
+    noteSamples(context, perLead, samples, sampled);
 
     const severity = (level: Severity): number =>
       findings.filter((finding) => finding.severity === level).length;
@@ -294,11 +319,14 @@ export const copyAudit = defineInsight({
       campaign: campaign.ref,
       campaignName: campaign.name,
       channel: campaign.channel,
-      clean: findings.length === 0,
+      clean: cleanOf(findings.length, sampled.unaudited),
       findings,
       stepsChecked: sequence.steps.length,
       variantsChecked: variants.length,
+      leadsAudited: sampled.leads,
       variantsWithoutBody: withoutBody,
+      variantsNotAudited: sampled.unaudited,
+      variantsWrittenPerLead: perLead,
     };
 
     return audit;

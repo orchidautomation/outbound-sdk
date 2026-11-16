@@ -134,6 +134,28 @@ const variantTest: CardBuilder = (data) => {
   };
 };
 
+/**
+ * `null` when clean. Copy written per lead that could not be audited is
+ * `clean: false` with no finding: it says "not audited", not "problems".
+ */
+const auditVerdict = (data: Json): string | null => {
+  if (bool(data, "clean") === true) {
+    return null;
+  }
+
+  const found = rows(data, "findings").length;
+  const unaudited = num(data, "variantsNotAudited") ?? 0;
+  const notAudited = `${plural(unaudited, "variant")} written per lead could not be audited as any lead receives ${unaudited === 1 ? "it" : "them"}.`;
+
+  if (found === 0) {
+    return unaudited > 0 ? `⚪ Not audited: ${notAudited}` : null;
+  }
+
+  const problems = `${plural(found, "problem")} found in the copy.`;
+
+  return unaudited > 0 ? `${problems} ${notAudited}` : problems;
+};
+
 const copyAudit: CardBuilder = (data) => {
   const severity = child(data, "bySeverity");
 
@@ -146,9 +168,7 @@ const copyAudit: CardBuilder = (data) => {
     ),
     finding: verdict(
       num(data, "variantsChecked"),
-      bool(data, "clean") === true
-        ? null
-        : `${plural(rows(data, "findings").length, "problem")} found in the copy.`,
+      auditVerdict(data),
       "No problem found in the copy."
     ),
     stats: [

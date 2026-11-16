@@ -128,17 +128,22 @@ Problems in a campaign's copy, found from fixed rules before it sends.
 | `max_exclamations` | 1 | 0 or more, whole | How many exclamation marks a message may have. |
 | `max_connection_chars` | 300 | 0 or more, whole | The most characters a LinkedIn connection request may have. |
 | `spam_words` | 14 phrases | at least 1 character each | Words and phrases to flag in email copy, matched whole and without case. Replaces the default list. |
+| `samples` | 3 | 0 to 20, whole | How many leads' rendered copy to audit when a subject or body is mostly variables. 0 audits the copy as stored only. |
+| `max_leads` | 100 | 1 to 1,000 | The most leads to read when picking the samples. Read only when copy is written per lead. |
 
 The default `spam_words` are: 100% free, act now, buy now, cash bonus, click here, double your, earn money, free trial, guarantee, limited time, no obligation, risk-free, urgent, winner.
 
 `data` (`CopyAudit`):
 
 - `campaign`, `campaignName` (from the campaign record it reads), `channel`.
-- `clean`: `true` when no check found anything in the copy that could be read.
-- `findings`: one entry per problem, with `stepIndex`, `stepNumber`, `variantKey`, `action`, `check`, `severity`, a `finding` sentence and the `text` that triggered it. High severity first.
+- `clean`: `true` when no check found anything and every variant was audited. `false` on any finding, and also when a variant written per lead could not be rendered for any sample lead: then `variantsNotAudited` is above 0 and a note says why, and finding nothing does not mean a problem was found.
+- `findings`: one entry per problem, with `stepIndex`, `stepNumber`, `variantKey`, `action`, `check`, `severity`, a `finding` sentence, the `text` that triggered it, and the `lead` whose rendered copy it is in (`null` for copy as stored). High severity first.
 - `byCheck`: every check that was run, with how often it fired.
 - `bySeverity`: `high`, `medium`, `low`.
 - `stepsChecked`, `variantsChecked`, `variantsWithoutBody`.
+- `variantsWrittenPerLead`: variants whose subject or body is more than 80% variables, such as `{{body_1}}` filled from a custom field. They are audited as sample leads receive them, rendered the way `copyPreview` renders them, not as stored.
+- `leadsAudited`: the sample leads whose rendered copy was audited. The leads that fill the most of those variables are picked.
+- `variantsNotAudited`: variants written per lead that no sample lead's copy could be rendered for, so they were not audited.
 
 The checks:
 
@@ -156,8 +161,8 @@ The checks:
 | `all_caps` | low |  |
 | `exclamation_marks` | low |  |
 
-- **Needs:** `sequence`.
-- **Costs:** 2 requests.
+- **Needs:** `sequence`. Copy written per lead is audited only where the tool lists a campaign's leads (`leads.byCampaign`); otherwise those variants are not audited, `clean` is `false` and a note says why.
+- **Costs:** 2 requests, plus one per page of leads when copy is written per lead.
 - **Notes it can add:** some variants have no body in the vendor's answer, so their body checks were skipped.
 - **Does not:** read the copy with a model, judge tone or check facts. It reads template text, never a rendered message. A variant whose body the vendor does not return is counted in `variantsWithoutBody`, not judged.
 

@@ -408,11 +408,25 @@ export interface InsightInputs {
     readonly max_links?: number | undefined;
 
     /**
+     * The most leads to read when picking the samples. Read only when copy is written per lead.
+     *
+     * A whole number from 1 to 1000. Defaults to `100`.
+     */
+    readonly max_leads?: number | undefined;
+
+    /**
      * The most characters a subject may have.
      *
      * A whole number from 0 to 9,007,199,254,740,991. Defaults to `60`.
      */
     readonly max_subject_chars?: number | undefined;
+
+    /**
+     * How many leads' rendered copy to audit when a subject or body is mostly variables, such as {{body_1}} filled from a custom field. The leads that fill the most of those variables are used. 0 audits the copy as stored only.
+     *
+     * A whole number from 0 to 20. Defaults to `3`.
+     */
+    readonly samples?: number | undefined;
 
     /**
      * Words and phrases to flag in email copy, matched whole and without case. Replaces the default list.
