@@ -6,6 +6,7 @@ import type { Lead, Sequence } from "../../internal/entities.ts";
 import { defineInsight } from "../define.ts";
 import { refOf } from "../ref.ts";
 import { rate } from "../stats.ts";
+import { isBuiltin, keyOf, keysWithValue, variablesIn } from "../variables.ts";
 import { leadsOf } from "./read.ts";
 
 const input = z.object({
@@ -86,47 +87,12 @@ export interface PersonalizationGaps {
   };
 }
 
-// `{{name}}` and `{{name|fallback}}`, `{name}`, and `%name%`. A single brace
-// holding a `|` is spintax, not a variable, so it never matches.
-const PATTERNS = [
-  /\{\{\s*(?<name>[^{}|]+?)\s*(?<fallback>\|[^{}]*)?\}\}/gu,
-  /(?<!\{)\{(?<name>[A-Za-z_][\w .-]*)\}(?!\})/gu,
-  /%(?<name>[A-Za-z_][\w-]*)%/gu,
-];
-
-/** Lowercased, without spaces, underscores and hyphens. */
-const keyOf = (name: string): string =>
-  name.toLowerCase().replaceAll(/[\s_-]/gu, "");
-
-type Builtin = (lead: Lead) => string | null;
-
-const BUILTINS = new Map<string, Builtin>([
-  ["company", (lead) => lead.company],
-  ["companyname", (lead) => lead.company],
-  ["email", (lead) => lead.email],
-  ["firstname", (lead) => lead.firstName],
-  ["jobtitle", (lead) => lead.title],
-  ["lastname", (lead) => lead.lastName],
-  ["title", (lead) => lead.title],
-]);
-
 interface Found {
   readonly name: string;
   readonly uses: VariableUse[];
 }
 
 const FIELDS: readonly ("body" | "subject")[] = ["subject", "body"];
-
-/** Every variable in one text, in the order the patterns find them. */
-const variablesIn = (
-  text: string
-): { readonly name: string; readonly fallback: boolean }[] =>
-  PATTERNS.flatMap((pattern) =>
-    [...text.matchAll(pattern)].map((match) => ({
-      fallback: match.groups?.fallback !== undefined,
-      name: match.groups?.name ?? "",
-    }))
-  );
 
 const findVariables = (sequence: Sequence): Map<string, Found> => {
   const found = new Map<string, Found>();
@@ -145,7 +111,7 @@ const findVariables = (sequence: Sequence): Map<string, Found> => {
   for (const { field, step, text, variant } of texts) {
     for (const { fallback, name } of variablesIn(text)) {
       const entry = found.get(keyOf(name)) ?? { name, uses: [] };
-      entry.uses.push({ fallback, field, step, variant });
+      entry.uses.push({ fallback: fallback !== null, field, step, variant });
       found.set(keyOf(name), entry);
     }
   }
@@ -153,25 +119,11 @@ const findVariables = (sequence: Sequence): Map<string, Found> => {
   return found;
 };
 
-const filled = (value: string | null): boolean =>
-  value !== null && value.trim() !== "";
-
-/** Every non-empty value a lead has, by normalized variable name. */
-const valuesOf = (lead: Lead): Set<string> =>
-  new Set([
-    ...[...BUILTINS].flatMap(([key, read]) =>
-      filled(read(lead)) ? [key] : []
-    ),
-    ...Object.entries(lead.custom).flatMap(([key, value]) =>
-      filled(value) ? [keyOf(key)] : []
-    ),
-  ]);
-
 const sourceOf = (
   key: string,
   customKeys: ReadonlySet<string>
 ): CopyVariable["source"] => {
-  if (BUILTINS.has(key)) {
+  if (isBuiltin(key)) {
     return "builtin";
   }
 
@@ -270,7 +222,7 @@ export const personalizationGaps = defineInsight({
     );
 
     const keyed = [...found].map(([key, entry]) =>
-      toVariable(key, entry, leads.map(valuesOf), customKeys)
+      toVariable(key, entry, leads.map(keysWithValue), customKeys)
     );
 
     const variables = keyed
@@ -284,7 +236,7 @@ export const personalizationGaps = defineInsight({
     const gaps = keyed.filter((each) => each.variable.gap);
 
     const affected = leads
-      .flatMap((lead) => missingOf(lead, valuesOf(lead), gaps))
+      .flatMap((lead) => missingOf(lead, keysWithValue(lead), gaps))
       .toSorted(
         (left, right) =>
           right.missing.length - left.missing.length ||

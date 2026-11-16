@@ -19,7 +19,7 @@ initialize
   }
 }
 
-tools/list: 31 tools
+tools/list: 32 tools
 campaign_overview
 campaign_trend
 winning_steps
@@ -35,6 +35,7 @@ personalization_gaps
 step_funnel
 variant_test
 copy_audit
+copy_preview
 copy_reuse
 reply_timing
 domain_health

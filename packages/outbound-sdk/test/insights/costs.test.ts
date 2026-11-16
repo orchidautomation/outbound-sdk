@@ -25,6 +25,7 @@ const INPUTS: Readonly<Record<string, Record<string, Json>>> = {
   account_summary: { domain: "acme.example" },
   campaign_diagnosis: { campaign: CAMPAIGN },
   copy_audit: { campaign: CAMPAIGN },
+  copy_preview: { campaign: CAMPAIGN },
   person_summary: { person: "person1@acme.example" },
   personalization_gaps: { campaign: CAMPAIGN },
   pipeline_forecast: { campaign: CAMPAIGN },

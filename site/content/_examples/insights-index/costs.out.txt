@@ -9,6 +9,7 @@ personalization_gaps: 13, 19, 14
 step_funnel: -, 7, 7
 variant_test: -, 6, 6
 copy_audit: 7, 9, 7
+copy_preview: 8, 9, 9
 copy_reuse: -, 69, 58
 reply_timing: 29, 31, 29
 domain_health: 69, 194, 131

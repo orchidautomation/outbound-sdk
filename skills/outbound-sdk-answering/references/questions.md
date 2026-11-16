@@ -59,6 +59,7 @@ The test suite checks this page against the SDK. Every tool and insight appears 
 | Question | Tool |
 | --- | --- |
 | What is wrong with this copy: length, links, spam words, variables? | `copy_audit` |
+| What does this templated copy look like for a real lead? | `copy_preview` |
 | How does the same copy do in different campaigns? | `copy_reuse` |
 
 ## Anything else

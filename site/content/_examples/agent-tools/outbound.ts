@@ -12,7 +12,7 @@ export const outbound = createOutbound({
   plugins: [identity()],
 });
 
-// Three of the 26 insights, offered as tools beside the built-in ones.
+// Three of the 27 insights, offered as tools beside the built-in ones.
 export const extra = insightTools(outbound, {
   only: ["campaign_ranking", "hot_leads", "client_report"],
 });

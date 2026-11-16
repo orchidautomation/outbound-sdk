@@ -85,6 +85,7 @@ const REQUIRED: Readonly<Record<string, Record<string, string>>> = {
   account_summary: { domain: "acme.example" },
   campaign_diagnosis: { campaign: "memory:agency:c1" },
   copy_audit: { campaign: "memory:agency:c1" },
+  copy_preview: { campaign: "memory:agency:c1" },
   person_summary: { person: "person1@acme.example" },
   personalization_gaps: { campaign: "memory:agency:c1" },
   pipeline_forecast: { campaign: "memory:agency:c1" },

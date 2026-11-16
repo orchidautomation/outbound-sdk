@@ -81,6 +81,10 @@ $ outbound tools
     "name": "copy_audit"
   },
   {
+    "description": "A campaign's copy as written and as one real lead receives it. Returns every step and variant with its subject and body exactly as stored, the same copy with the lead's values put into each {{variable}}, {variable} and %variable%, and the rendered body as plain text. Use it to read copy that is all or partly templated, such as {{subject1}} and {{content1}} filled from custom fields. Values come from first name, last name, company, title, email, or a custom field of the same name without regard to case, spaces, underscores or hyphens; a missing value falls back to the copy's own fallback, such as {{firstName|there}}, and otherwise the variable is left as written and listed as unfilled. Pass a lead's ref to choose the lead, or leave it out to use the lead read with the most variables filled. A sender signature or other variable the tool fills itself at send time stays as written. Spintax is not resolved. Costs one request for the sequence plus one for a given lead, or one per page of leads read.",
+    "name": "copy_preview"
+  },
+  {
     "description": "How the same piece of copy performs in different campaigns. Reads each campaign's sequence and step stats, matches variants by the hash of their subject and body, and returns every piece of copy used in two or more campaigns with its totals, its reply rate per campaign and the spread between its best and worst campaign, plus the copy with the highest pooled reply rate. Use it to tell a copy problem from an audience problem. Every rate is divided by the same base, leads contacted when every campaign counts them and messages sent otherwise; campaigns with no base in common are listed but not compared. Costs 2 requests per campaign plus the campaign listing. A null count means the vendor does not report it for that variant; it is never 0.",
     "name": "copy_reuse"
   },
@@ -188,7 +192,7 @@ $ outbound tool campaign_trend --input '{"campaign":"cmp_founders"}'
 (exit code 1)
 
 $ outbound insight
-[a JSON array of 26 insights, each with name, key, description, needs and parameters: person_summary, account_summary, lead_collisions, suppression_check, dropped_replies, hot_leads, personalization_gaps, step_funnel, variant_test, copy_audit, copy_reuse, reply_timing, domain_health, sender_capacity, bounce_watch, warmup_readiness, sender_load, settings_audit, campaign_diagnosis, pipeline_forecast, anomalies, period_comparison, campaign_ranking, channel_mix, tag_rollup, client_report]
+[a JSON array of 27 insights, each with name, key, description, needs and parameters: person_summary, account_summary, lead_collisions, suppression_check, dropped_replies, hot_leads, personalization_gaps, step_funnel, variant_test, copy_audit, copy_preview, copy_reuse, reply_timing, domain_health, sender_capacity, bounce_watch, warmup_readiness, sender_load, settings_audit, campaign_diagnosis, pipeline_forecast, anomalies, period_comparison, campaign_ranking, channel_mix, tag_rollup, client_report]
 
 $ outbound insight channel_mix --input '{"max_campaigns":5}'
 {

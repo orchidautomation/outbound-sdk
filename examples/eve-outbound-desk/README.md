@@ -119,7 +119,7 @@ return Object.fromEntries(
 );
 ```
 
-- **`createTools`** gives up to 12 question-shaped tools (`campaign_overview`, `sender_health`, `deliverability_check`, `reply_samples`…), and **`insightTools`** adds up to 26 insights (`client_report`, `bounce_watch`, `dropped_replies`, `variant_test`…). A tool the adapter cannot serve is left out, so the model is never offered one that cannot work.
+- **`createTools`** gives up to 12 question-shaped tools (`campaign_overview`, `sender_health`, `deliverability_check`, `reply_samples`…), and **`insightTools`** adds up to 27 insights (`client_report`, `bounce_watch`, `dropped_replies`, `variant_test`…). A tool the adapter cannot serve is left out, so the model is never offered one that cannot work.
 - **`tool.call` never throws.** A failure comes back as `{ ok: false, error, next }` for the model to read and fix, and a key the tool does not take is refused with the list of keys it does take, never silently dropped. That is why the schema is loose: the SDK, not Zod, turns the stray key away, with the better message.
 - **The file is a `defineDynamic`,** because the tool set depends on the conversation's channel. It builds no network request, so it is cheap to run before every model call.
 

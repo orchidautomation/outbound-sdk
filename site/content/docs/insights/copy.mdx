@@ -1,6 +1,6 @@
 ---
 title: Copy and sequence insights
-description: Reference for the five insights about copy (stepFunnel, variantTest, copyAudit, copyReuse, replyTiming), with every input, what the answer holds and a sample that runs.
+description: Reference for the six insights about copy (stepFunnel, variantTest, copyAudit, copyPreview, copyReuse, replyTiming), with every input, what the answer holds and a sample that runs.
 sidebar:
   label: Copy and sequence
 related:
@@ -9,7 +9,7 @@ related:
   - /docs/guides/pre-launch-audit
 ---
 
-Five insights about what a campaign says and when. Each is a method on `outbound.insights` once the [insights plugin](/docs/insights) is added. What every answer carries and how inputs are checked is on the [overview](/docs/insights).
+Six insights about what a campaign says and when. Each is a method on `outbound.insights` once the [insights plugin](/docs/insights) is added. What every answer carries and how inputs are checked is on the [overview](/docs/insights).
 
 Three of them need per-step stats (`stats.byStep`). An adapter that does not declare it refuses them as `Unsupported`: see [which adapter serves which](/docs/insights#which-adapter-serves-which).
 
@@ -176,6 +176,38 @@ The checks:
     ../../_examples/insights-copy/copy-audit-response.ts
   </include>
 </CodeGroup>
+
+## `copyPreview`
+
+A campaign's copy as written and as one real lead receives it. Use it to read copy that is all or partly templated, such as an Instantly campaign whose subject is `{{subject1}}` and whose body is `{{content1}}`, filled from each lead's custom fields.
+
+| Input | Default | Range | What it is |
+| --- | --- | --- | --- |
+| `campaign` | required | a campaign ref | The campaign to preview. |
+| `lead` | `null` | a lead ref | The lead to render the copy for. `null` picks the lead read with the most of the copy's variables filled. |
+| `max_leads` | 100 | 1 to 1,000 | The most leads to read when picking one. Ignored when `lead` is given. |
+
+Variables are found and filled the way [`personalizationGaps`](/docs/insights/people) reads them: `{{name}}`, `{{name|fallback}}`, `{name}` and `%name%`, matched to first name, last name, company, title, email, or a custom field of the same name without regard to case, spaces, underscores or hyphens. A lead with no value gets the copy's fallback; with no fallback the variable is left as written.
+
+`data` (`CopyPreview`):
+
+- `campaign`.
+- `lead`: the lead's `lead` ref, `email`, `linkedinUrl` and `variablesFilled`, or `null` when no lead was read.
+- `steps`: each step's `step`, `action`, `delayDays` and `variants`. A variant holds `variantKey`, `template` (`subject` and `body` exactly as stored), `rendered` (`subject`, `body` and `bodyText`, the rendered body as plain text) and `unfilled`, the variables left as written.
+- `totals`: `steps`, `variants`, `variables` and `unfilled`.
+
+- **Needs:** `sequence`, `leads.byCampaign`.
+- **Costs:** 1 request for the sequence, plus 1 for a given lead or one per page of leads read. No lead is read when the copy has no variables.
+- **Notes it can add:** the copy uses no variables, so no lead was read; the campaign has no leads, so the copy is shown as written; the redact plugin masks the lead's fields, so the rendered copy shows them masked (`outbound mcp` redacts by default; start it with `--no-redact` to see the values).
+- **Does not:** fill a sender signature or another variable the sending tool fills itself at send time, resolve spintax such as `{Hi|Hello}`, or show what was actually sent. It renders the stored template; a vendor may format the sent message differently.
+
+<include meta='title="copy-preview.ts"'>
+  ../../_examples/insights-copy/copy-preview.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/insights-copy/copy-preview.out.txt
+</include>
 
 ## `copyReuse`
 

@@ -1,5 +1,5 @@
-instantly: 36 tools
-smartlead: 36 tools
-heyreach: 30 tools
+instantly: 37 tools
+smartlead: 37 tools
+heyreach: 31 tools
   winning_steps: not offered
   campaign_setup: not offered

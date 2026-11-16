@@ -2,6 +2,7 @@
 // the registry reads.
 
 import { copyAudit } from "./copy-audit.ts";
+import { copyPreview } from "./copy-preview.ts";
 import { copyReuse } from "./copy-reuse.ts";
 import { replyTiming } from "./reply-timing.ts";
 import { stepFunnel } from "./step-funnel.ts";
@@ -11,6 +12,7 @@ export const COPY_INSIGHTS = [
   stepFunnel,
   variantTest,
   copyAudit,
+  copyPreview,
   copyReuse,
   replyTiming,
 ] as const;
@@ -18,6 +20,15 @@ export const COPY_INSIGHTS = [
 export type { CheckName, Severity } from "./copy-checks.ts";
 
 export type { CheckCount, CopyAudit, CopyFinding } from "./copy-audit.ts";
+
+export type {
+  CopyPreview,
+  CopyText,
+  PreviewLead,
+  PreviewStep,
+  PreviewVariant,
+  RenderedCopy,
+} from "./copy-preview.ts";
 
 export type {
   CopyPiece,

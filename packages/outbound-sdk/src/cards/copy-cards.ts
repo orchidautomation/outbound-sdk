@@ -16,6 +16,7 @@ import {
   show,
   stepOf,
   str,
+  strings,
   waiting,
   words,
   yesNo,
@@ -162,6 +163,54 @@ const copyAudit: CardBuilder = (data) => {
   };
 };
 
+const copyPreview: CardBuilder = (data) => {
+  const lead = child(data, "lead");
+  const totals = child(data, "totals");
+  const unfilled = num(totals, "unfilled") ?? 0;
+
+  const variants = rows(data, "steps").flatMap((step) =>
+    rows(step, "variants").map((variant) => ({ step, variant }))
+  );
+
+  return {
+    bullets: [
+      ...new Set(
+        variants.flatMap(({ variant }) => strings(variant, "unfilled"))
+      ),
+    ].map((name) => `🟡 \`${name}\` is left as written.`),
+    finding:
+      str(lead, "lead") === null
+        ? "No lead was read, so the copy is shown as written."
+        : `Rendered for ${
+            str(lead, "email") ?? str(lead, "linkedinUrl") ?? "one lead"
+          }, who has ${int(
+            num(lead, "variablesFilled")
+          )} of ${plural(num(totals, "variables") ?? 0, "variable")} filled.`,
+    stats: [
+      ["Steps", int(num(totals, "steps"))],
+      ["Variants", int(num(totals, "variants"))],
+      ["Variables", int(num(totals, "variables"))],
+      ["Left as written", int(unfilled)],
+    ],
+    subtitle: show(data, "campaign"),
+    table: {
+      align: [RIGHT, LEFT, LEFT, LEFT],
+      headers: ["Step", "Variant", "Subject", "Body"],
+      rows: variants.map(({ step, variant }) => {
+        const rendered = child(variant, "rendered");
+
+        return [
+          stepOf(step, "step"),
+          show(variant, "variantKey"),
+          clip(str(rendered, "subject") ?? DASH, 60),
+          clip(str(rendered, "bodyText") ?? DASH, 120),
+        ];
+      }),
+    },
+    title: "Copy preview",
+  };
+};
+
 const copyLabel = (piece: JsonObject): string =>
   clip(str(piece, "subject") ?? str(piece, "bodyPreview") ?? DASH, 60);
 
@@ -234,6 +283,7 @@ const replyTiming: CardBuilder = (data) => {
 
 export const COPY_CARDS: ReadonlyMap<string, CardBuilder> = new Map([
   ["copy_audit", copyAudit],
+  ["copy_preview", copyPreview],
   ["copy_reuse", copyReuse],
   ["reply_timing", replyTiming],
   ["step_funnel", stepFunnel],
