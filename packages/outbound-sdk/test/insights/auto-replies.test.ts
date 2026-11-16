@@ -6,8 +6,10 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { createOutbound, MemoryRateLimitStore } from "../../src/index.ts";
+import type { OutboundPlugin } from "../../src/index.ts";
 import { insights } from "../../src/insights/index.ts";
 import type { MemoryData } from "../../src/memory/index.ts";
+import { redact } from "../../src/redact/index.ts";
 import { fixtureHandler } from "../helpers/adapter-suite.ts";
 import { createClock } from "../helpers/clock.ts";
 import { createFetch } from "../helpers/http.ts";
@@ -24,7 +26,7 @@ const NOW = Date.parse("2026-11-08T12:00:00.000Z");
 const SINCE = "2026-10-29T00:00:00.000Z";
 const CAMPAIGN = "instantly:client-a:01a1d77f-5158-772f-ad63-67da136d2a92";
 
-const instantly = () => {
+const instantly = (plugins: readonly OutboundPlugin[] = []) => {
   const clock = createClock();
   const unrouted: string[] = [];
   const fixtures = fixtureHandler([suite], unrouted);
@@ -38,7 +40,7 @@ const instantly = () => {
     outbound: createOutbound({
       adapter: suite.make(),
       fetch: http.fetch,
-      plugins: [insights()],
+      plugins: [...plugins, insights()],
       rateLimitStore: new MemoryRateLimitStore(),
       runtime: clock.runtime,
       share: 1,
@@ -63,6 +65,20 @@ test("hot_leads ranks only the person who replied; the two autoresponders count 
   assert.equal(result.data.totals.hot, 1);
   assert.equal(result.data.totals.autoReplied, 2);
 });
+
+for (const strategy of ["mask", "hash"] as const) {
+  test(`hot_leads under a ${strategy} redact still counts the two autoresponders as autoReplied`, async () => {
+    const { outbound, settle } = instantly([redact({ strategy })]);
+
+    const result = await settle(
+      outbound.insights.hotLeads({ campaign: CAMPAIGN }, { now: NOW })
+    );
+
+    assert.equal(result.data.leads.length, 1);
+    assert.equal(result.data.totals.hot, 1);
+    assert.equal(result.data.totals.autoReplied, 2);
+  });
+}
 
 test("person_summary counts no replies from a mailbox whose every reply was automatic", async () => {
   const { outbound, settle } = instantly();

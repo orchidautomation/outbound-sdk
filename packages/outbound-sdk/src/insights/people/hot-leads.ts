@@ -10,7 +10,13 @@ import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { round, total } from "../stats.ts";
 import { wasCutShort } from "../tracked-reads.ts";
-import { AUTO_CHECK_REPLIES, autoOnlyRefs, refsOf } from "./auto-replies.ts";
+import {
+  ADDRESSES_MASKED,
+  AUTO_CHECK_REPLIES,
+  addressesMasked,
+  autoOnlyRefs,
+  refsOf,
+} from "./auto-replies.ts";
 import {
   isAutoReplied,
   isNegative,
@@ -348,6 +354,8 @@ const listLeads = async (
  * The leads past the cap that replied within `recency_days`, newest replies
  * first, at most `limit` of them. A lead listing comes in the vendor's order,
  * not by engagement, so a cap can cut off exactly the leads worth calling.
+ * Under a redact that masks addresses a reply's lead cannot be read back, so
+ * none are looked for and the answer is marked partial.
  */
 const repliedPastCap = async (
   context: InsightContext,
@@ -364,6 +372,14 @@ const repliedPastCap = async (
   ) {
     context.note(
       "This tool cannot list replies or read one lead, so leads past max_leads that replied were not looked for."
+    );
+
+    return [];
+  }
+
+  if (addressesMasked(context)) {
+    context.partial(
+      `${ADDRESSES_MASKED} leads past max_leads that replied were not looked for.`
     );
 
     return [];
@@ -424,7 +440,7 @@ const hottestFirst = (left: HotLead, right: HotLead): number =>
 export const hotLeads = defineInsight({
   partialOnCap: true,
   description:
-    "Who to call first: leads ranked by a score built from what the vendor reports, namely a positive interest label, replies, clicks, opens and how recent the last reply is. Every score comes with its parts, and the weights are inputs. A lead with no label and no engagement data is left out and counted in totals.withoutData, never scored 0; unsubscribed and bounced leads are left out too. Give a campaign ref to rank one campaign (an unknown one is refused with NotFound), or none to rank every lead the tool lists. A lead the vendor labels out-of-office or bounced (its interest category, or a label reading out of office) earns no reply or recency points, since a vendor's reply count may include automatic replies, and so does a lead whose every reply read is flagged automatic (isAuto, from the vendor or a fixed rule), for which it reads up to 200 of the newest replies, the campaign's when one is given, once a lead has replies; both are counted in totals.autoReplied; a lead it labels negative (the negative or unsubscribe category, or a label reading not interested, wrong person, unsubscribed or do not contact) earns no points at all, from clicks and opens either, and is listed after every lead with a score above 0 while limit leaves room; its reason names the label. Costs one request per page of leads read (max_leads sets the ceiling). When max_leads stops the listing with more leads left, totals.moreLeadsExist is true and it also reads up to 100 replies from the last recency_days days and one request per replied lead the listing missed, at most limit of them, so engaged leads past the cap are still ranked. A part that is null means the vendor does not report that signal.",
+    "Who to call first: leads ranked by a score built from what the vendor reports, namely a positive interest label, replies, clicks, opens and how recent the last reply is. Every score comes with its parts, and the weights are inputs. A lead with no label and no engagement data is left out and counted in totals.withoutData, never scored 0; unsubscribed and bounced leads are left out too. Give a campaign ref to rank one campaign (an unknown one is refused with NotFound), or none to rank every lead the tool lists. A lead the vendor labels out-of-office or bounced (its interest category, or a label reading out of office) earns no reply or recency points, since a vendor's reply count may include automatic replies, and so does a lead whose every reply read is flagged automatic (isAuto, from the vendor or a fixed rule), for which it reads up to 200 of the newest replies, the campaign's when one is given, once a lead has replies; both are counted in totals.autoReplied; a lead it labels negative (the negative or unsubscribe category, or a label reading not interested, wrong person, unsubscribed or do not contact) earns no points at all, from clicks and opens either, and is listed after every lead with a score above 0 while limit leaves room; its reason names the label. Costs one request per page of leads read (max_leads sets the ceiling). When max_leads stops the listing with more leads left, totals.moreLeadsExist is true and it also reads up to 100 replies from the last recency_days days and one request per replied lead the listing missed, at most limit of them, so engaged leads past the cap are still ranked. While the redact plugin masks email addresses, which a reply can name its lead by, it does not look past the cap, and says so in a note and marks the answer incomplete. A part that is null means the vendor does not report that signal.",
   inputSchema: input,
   key: "hotLeads",
   cost: (values, price) =>
