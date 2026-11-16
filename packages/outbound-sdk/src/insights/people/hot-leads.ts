@@ -5,11 +5,11 @@ import { z } from "zod";
 import type { Lead, ReplyCategory } from "../../internal/entities.ts";
 import { OutboundError } from "../../internal/errors.ts";
 import { plural } from "../../internal/numbers.ts";
-import { makeRef } from "../../internal/ref.ts";
 import { confirmCampaign } from "../campaign.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { round, total } from "../stats.ts";
+import { AUTO_CHECK_REPLIES, autoOnlyRefs, refsOf } from "./auto-replies.ts";
 import {
   isAutoReplied,
   isNegative,
@@ -85,6 +85,12 @@ const input = z.object({
 
 type Input = z.infer<typeof input>;
 
+/** The input, plus whether a lead's replies were automatic. */
+interface Scoring extends Input {
+  /** The vendor labels the lead out-of-office or bounced, or every reply read was automatic. */
+  readonly automatic: (lead: Lead) => boolean;
+}
+
 /** Points per signal. `null` when the vendor reports nothing for that signal. */
 export interface HotLeadParts {
   readonly interest: number | null;
@@ -138,7 +144,11 @@ export interface HotLeads {
     readonly moreLeadsExist: boolean;
     /** Leads past the cap, read because they replied within `recency_days`. Counted in `leadsRead`. */
     readonly fromReplies: number;
-    /** Leads the vendor labels out-of-office or bounced, whose replies earned no points. */
+    /**
+     * Leads with replies that earned no points because they were automatic:
+     * the vendor labels the lead out-of-office or bounced, or every reply of
+     * the lead read was flagged automatic.
+     */
     readonly autoReplied: number;
     /** Leads the vendor labels negative, such as not interested or wrong person, which earn no points at all and are listed after every lead with a score above 0. A label in `positive_labels` is not counted here. */
     readonly negative: number;
@@ -155,24 +165,24 @@ const capped = (
  * A person the vendor labels negative, who asked not to hear more: nothing
  * they did earns points. A label the caller lists as positive is not.
  */
-const saidNo = (lead: Lead, labels: readonly string[]): boolean =>
-  !isAutoReplied(lead) &&
+const saidNo = (lead: Lead, values: Scoring): boolean =>
+  !values.automatic(lead) &&
   isNegative(lead) &&
-  isPositive(lead.interest, labels) !== true;
+  isPositive(lead.interest, values.positive_labels) !== true;
 
 /**
  * Replies that earn nothing: an automatic one (out-of-office, bounce), the
  * way dropped_replies leaves those out, or one from a person who said no.
  */
-const repliesDiscounted = (lead: Lead, labels: readonly string[]): boolean =>
-  isAutoReplied(lead) || saidNo(lead, labels);
+const repliesDiscounted = (lead: Lead, values: Scoring): boolean =>
+  values.automatic(lead) || saidNo(lead, values);
 
 /** Points for clicks and opens. A person who said no earns none from either. */
 const engagementParts = (
   lead: Lead,
-  values: Input
+  values: Scoring
 ): Pick<HotLeadParts, "clicks" | "opens"> => {
-  const unwanted = saidNo(lead, values.positive_labels);
+  const unwanted = saidNo(lead, values);
 
   return {
     clicks: capped(
@@ -188,10 +198,10 @@ const engagementParts = (
   };
 };
 
-const partsOf = (lead: Lead, values: Input, now: number): HotLeadParts => {
+const partsOf = (lead: Lead, values: Scoring, now: number): HotLeadParts => {
   const engagement = lead.engagement ?? null;
   const positive = isPositive(lead.interest, values.positive_labels);
-  const automatic = repliesDiscounted(lead, values.positive_labels);
+  const automatic = repliesDiscounted(lead, values);
 
   // A vendor that only sets the status still says the lead replied once.
   const counted = engagement?.replies ?? (lead.replied === true ? 1 : null);
@@ -223,10 +233,15 @@ const partsOf = (lead: Lead, values: Input, now: number): HotLeadParts => {
 };
 
 /** Names the label that made the lead's replies, or everything it did, earn nothing. */
-const discountedReason = (lead: Lead): string =>
-  isAutoReplied(lead)
-    ? `marked ${lead.interest ?? "out of office"}, so replies earn nothing`
+const discountedReason = (lead: Lead, values: Scoring): string => {
+  if (isAutoReplied(lead)) {
+    return `marked ${lead.interest ?? "out of office"}, so replies earn nothing`;
+  }
+
+  return values.automatic(lead)
+    ? "every reply read was automatic, so replies earn nothing"
     : `marked ${lead.interest ?? "not interested"}, so it earns no points`;
+};
 
 /** `2 clicks` when the count earned points, otherwise nothing. */
 const counted = (
@@ -239,15 +254,15 @@ const reasonOf = (
   lead: Lead,
   parts: HotLeadParts,
   now: number,
-  labels: readonly string[]
+  values: Scoring
 ): string => {
   const engagement = lead.engagement ?? null;
-  const automatic = repliesDiscounted(lead, labels);
+  const automatic = repliesDiscounted(lead, values);
   const repliedAt = automatic ? null : (engagement?.lastRepliedAt ?? null);
 
   const facts = [
     (parts.interest ?? 0) > 0 ? `marked ${lead.interest}` : null,
-    automatic ? discountedReason(lead) : null,
+    automatic ? discountedReason(lead, values) : null,
     (parts.replies ?? 0) > 0
       ? `replied ${plural(engagement?.replies ?? 1, "time")}`
       : null,
@@ -261,7 +276,7 @@ const reasonOf = (
   return `${facts.join(", ")}.`;
 };
 
-const toHotLead = (lead: Lead, values: Input, now: number): HotLead[] => {
+const toHotLead = (lead: Lead, values: Scoring, now: number): HotLead[] => {
   const parts = partsOf(lead, values, now);
   const score = total(Object.values(parts));
 
@@ -280,7 +295,7 @@ const toHotLead = (lead: Lead, values: Input, now: number): HotLead[] => {
           name: nameOf(lead),
           opens: lead.engagement?.opens ?? null,
           parts,
-          reason: reasonOf(lead, parts, now, values.positive_labels),
+          reason: reasonOf(lead, parts, now, values),
           replies: lead.engagement?.replies ?? null,
           score: round(score) ?? 0,
           status: lead.status,
@@ -368,13 +383,7 @@ const repliedPastCap = async (
 
   // A reply can name its lead by address (Instantly does), so a listed lead
   // counts as listed under either ref.
-  const listed = new Set(
-    read.flatMap((lead) =>
-      lead.email === null
-        ? [lead.ref]
-        : [lead.ref, makeRef(lead.provider, lead.workspaceId, lead.email)]
-    )
-  );
+  const listed = new Set(read.flatMap((lead) => refsOf(lead)));
 
   const refs = replies
     .filter(
@@ -413,7 +422,7 @@ const hottestFirst = (left: HotLead, right: HotLead): number =>
 
 export const hotLeads = defineInsight({
   description:
-    "Who to call first: leads ranked by a score built from what the vendor reports, namely a positive interest label, replies, clicks, opens and how recent the last reply is. Every score comes with its parts, and the weights are inputs. A lead with no label and no engagement data is left out and counted in totals.withoutData, never scored 0; unsubscribed and bounced leads are left out too. Give a campaign ref to rank one campaign (an unknown one is refused with NotFound), or none to rank every lead the tool lists. A lead the vendor labels out-of-office or bounced (its interest category, or a label reading out of office) earns no reply or recency points, since a vendor's reply count may include automatic replies; a lead it labels negative (the negative or unsubscribe category, or a label reading not interested, wrong person, unsubscribed or do not contact) earns no points at all, from clicks and opens either, and is listed after every lead with a score above 0 while limit leaves room; its reason names the label. Costs one request per page of leads read (max_leads sets the ceiling). When max_leads stops the listing with more leads left, totals.moreLeadsExist is true and it also reads up to 100 replies from the last recency_days days and one request per replied lead the listing missed, at most limit of them, so engaged leads past the cap are still ranked. A part that is null means the vendor does not report that signal.",
+    "Who to call first: leads ranked by a score built from what the vendor reports, namely a positive interest label, replies, clicks, opens and how recent the last reply is. Every score comes with its parts, and the weights are inputs. A lead with no label and no engagement data is left out and counted in totals.withoutData, never scored 0; unsubscribed and bounced leads are left out too. Give a campaign ref to rank one campaign (an unknown one is refused with NotFound), or none to rank every lead the tool lists. A lead the vendor labels out-of-office or bounced (its interest category, or a label reading out of office) earns no reply or recency points, since a vendor's reply count may include automatic replies, and so does a lead whose every reply read is flagged automatic (isAuto, from the vendor or a fixed rule), for which it reads up to 200 of the newest replies, the campaign's when one is given, once a lead has replies; both are counted in totals.autoReplied; a lead it labels negative (the negative or unsubscribe category, or a label reading not interested, wrong person, unsubscribed or do not contact) earns no points at all, from clicks and opens either, and is listed after every lead with a score above 0 while limit leaves room; its reason names the label. Costs one request per page of leads read (max_leads sets the ceiling). When max_leads stops the listing with more leads left, totals.moreLeadsExist is true and it also reads up to 100 replies from the last recency_days days and one request per replied lead the listing missed, at most limit of them, so engaged leads past the cap are still ranked. A part that is null means the vendor does not report that signal.",
   inputSchema: input,
   key: "hotLeads",
   cost: (values, price) =>
@@ -421,6 +430,9 @@ export const hotLeads = defineInsight({
     (values.campaign === null
       ? 0
       : price.upTo(1) * price.one("campaigns.get")) +
+    (price.capabilities["replies.list"] === false
+      ? 0
+      : price.upTo(1) * price.list("replies.list", AUTO_CHECK_REPLIES)) +
     (price.capabilities["replies.list"] === false ||
     price.capabilities["leads.get"] === false
       ? 0
@@ -450,13 +462,24 @@ export const hotLeads = defineInsight({
       (lead) => lead.unsubscribed !== true && lead.bounced !== true
     );
 
-    const scored = open.flatMap((lead) => toHotLead(lead, values, context.now));
+    const autoOnly = await autoOnlyRefs(
+      context,
+      values.campaign,
+      open.filter((lead) => !isAutoReplied(lead))
+    );
+
+    const scoring: Scoring = {
+      ...values,
+      automatic: (lead) => isAutoReplied(lead) || autoOnly.has(lead.ref),
+    };
+
+    const scored = open.flatMap((lead) =>
+      toHotLead(lead, scoring, context.now)
+    );
 
     const hot = scored.filter((lead) => lead.score > 0).toSorted(hottestFirst);
 
-    const negative = open.filter((lead) =>
-      saidNo(lead, values.positive_labels)
-    );
+    const negative = open.filter((lead) => saidNo(lead, scoring));
 
     // Leads who said no score 0 and fill what room `limit` leaves.
     const refused = new Set(negative.map((lead) => lead.ref));
@@ -469,7 +492,7 @@ export const hotLeads = defineInsight({
       leads: [...hot, ...after].slice(0, values.limit),
       totals: {
         autoReplied: open.filter(
-          (lead) => isAutoReplied(lead) && repliesOf(lead) > 0
+          (lead) => scoring.automatic(lead) && repliesOf(lead) > 0
         ).length,
         excluded: leads.length - open.length,
         fromReplies: extra.length,

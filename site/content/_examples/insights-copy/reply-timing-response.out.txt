@@ -2,6 +2,7 @@
   "data": {
     "campaign": null,
     "counts": {
+      "autoReplies": 0,
       "followOnReplies": 1,
       "messagesRead": 12,
       "paired": 5,
@@ -353,7 +354,7 @@
     "complete": true,
     "evidence": "exact",
     "notes": [
-      "Automatic replies such as out-of-office messages are counted as replies: messages carry no auto flag, so they cannot be told apart. A fast median can be auto-replies."
+      "7 of 7 replies carry no auto flag, so an automatic one among them is counted as a reply. A fast median can be auto-replies."
     ],
     "requests": 0,
     "computedAt": "2026-11-14T12:00:00.000Z",

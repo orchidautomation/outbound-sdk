@@ -109,7 +109,13 @@ export const fields: FieldDeclaration = {
     website: false,
   },
   // A sent email names its step by id, not by place.
-  message: { stepIndex: false, variantKey: false },
+  // A message is not marked automatic; a reply is.
+  message: {
+    isAuto: false,
+    isAutoSource: false,
+    stepIndex: false,
+    variantKey: false,
+  },
   metricRow: {
     clicked: false,
     clickedTotal: false,
@@ -123,7 +129,12 @@ export const fields: FieldDeclaration = {
     timezone: false,
   },
   placementTest: false,
-  reply: { stepIndex: false, variantKey: false },
+  reply: {
+    // A fixed rule reads the sender, subject and body when automated_reply is missing.
+    leftCompany: "derived",
+    stepIndex: false,
+    variantKey: false,
+  },
   sender: { linkedinUrl: false },
   // Only the main sequence is read, and it has no name.
   sequence: { name: false },

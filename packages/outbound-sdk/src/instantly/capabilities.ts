@@ -108,6 +108,9 @@ export const fields: FieldDeclaration = {
     location: false,
     tags: false,
   },
+  // No email carried is_auto_reply live: a fixed rule decides, and in a
+  // timeline the step comes from the send a reply answers.
+  message: { isAuto: "derived", isAutoSource: "derived" },
   metricRow: {
     connectionsAccepted: false,
     connectionsSent: false,
@@ -118,6 +121,7 @@ export const fields: FieldDeclaration = {
   },
   // A test has a creation time and a next run, and no start or end date.
   placementTest: { endsAt: false, startsAt: false },
+  reply: { isAuto: "derived", isAutoSource: "derived", leftCompany: "derived" },
   sender: { linkedinUrl: false },
   senderHealth: { blacklisted: false, checkedAt: false },
 };
@@ -184,7 +188,7 @@ export const caveats: readonly string[] = [
   "A lead's progress is its status when that is 1 (active), 2 (paused) or 3 (completed). Status -1 is bounced and -2 unsubscribed: they say what came back, so progress is then unknown. replied is email_reply_count above 0, and a lead that replied has the status replied whatever its progress.",
   "A placement test's kind reads type 1 as a one-time test and 2 as an automated one: the reference names the two kinds in that order and gives the numbers no names. A test's results stay native, because Instantly reports them as one row per test email.",
   "Instantly sends next_starting_after on a last page too (seen live), and the page after it is empty. A listing therefore ends one request late; the small lookups for tags and labels stop at the first page that is not full.",
-  "A reply's category is read from the email's i_status using the lead interest status values (seen live: 0, 1, -1 and -2). An email names its lead by address (lead_id was absent live), so a message's or reply's leadRef holds the lead's lowercased address, from lead or, on a received email, from_address_email. leads.get and leads.timeline take that ref; leads.get then returns the first record with the address, one of several when the person is in several campaigns. Instantly does not mark an email as automatic, so isAuto is null.",
+  "A reply's category is read from the email's i_status using the lead interest status values (seen live: 0, 1, -1 and -2). An email names its lead by address (lead_id was absent live), so a message's or reply's leadRef holds the lead's lowercased address, from lead or, on a received email, from_address_email. leads.get and leads.timeline take that ref; leads.get then returns the first record with the address, one of several when the person is in several campaigns. No live email carried the documented is_auto_reply and the email list cannot filter by it, so when it is missing isAuto is decided by a fixed rule (isAutoSource rule): a machine sender address (noreply, auto-responder, mailer-daemon), an automatic subject (OOO, Out of Office, Automatic reply, \"is no longer at\"), a canned autoresponder phrase in the body, or, in a timeline or thread, a reply within a minute of the send it answers. An Out of Office i_status counts as the vendor saying so. leftCompany is true when the reply says the person left or the contact changed. In a timeline or thread a received email takes its stepIndex from the send it answers, since its own step lags on the last step.",
   "An email's step and a lead's last step are ids of the form sequence_step_variant, each counted from 0 (seen live, not documented); any other form gives a null step. Step analytics count steps from 0 too, and can hold a row with no step for counts Instantly could not tie to one.",
   "Whether reply_count includes automatic replies is not documented; replied uses the unique reply count and repliedAuto the unique automatic count.",
   "Open counts are returned even when a campaign has open tracking turned off, because the analytics response does not say whether tracking was on.",

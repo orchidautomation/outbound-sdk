@@ -10,6 +10,7 @@ time to reply: {
 replies arrive most on Monday and at hour 9
 sends that drew a reply went out most on Monday at hour 9
 counts: {
+  autoReplies: 0,
   followOnReplies: 1,
   messagesRead: 12,
   paired: 5,

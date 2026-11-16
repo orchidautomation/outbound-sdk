@@ -30,6 +30,12 @@ const input = z.object({
     .describe(
       "A campaign's ref to look at one campaign; an unknown one is refused with NotFound. null looks at every campaign."
     ),
+  include_auto: z
+    .boolean()
+    .default(false)
+    .describe(
+      "Count replies flagged automatic (isAuto true), such as out-of-office messages and autoresponders. false leaves them out of every figure and counts them in counts.autoReplies."
+    ),
   max_messages: z
     .number()
     .int()
@@ -120,6 +126,8 @@ export interface ReplyTiming {
     readonly unpaired: number;
     /** `unpaired` over `received`. Over 0.25 the answer is marked partial. `null` with no reply. */
     readonly unpairedShare: number | null;
+    /** Received messages flagged automatic and left out of every figure; 0 with `include_auto`. Always set by reply_timing; optional so a value built by hand stays valid. */
+    readonly autoReplies?: number;
   };
 }
 
@@ -284,30 +292,39 @@ const readMessages = async (
   );
 };
 
-/** Says when unpaired replies may skew the answer, and that auto-replies count. */
+/** Says when unpaired replies may skew the answer, and when auto-replies may be in it. */
 const noteGaps = (
   context: InsightContext,
   unpaired: number,
-  received: number
+  received: readonly Message[],
+  includeAuto: boolean
 ): void => {
-  const share = rate(unpaired, received);
+  const share = rate(unpaired, received.length);
 
   if (share !== null && share > MAX_UNPAIRED_SHARE) {
     context.partial(
-      `${unpaired} of ${received} replies (${percent(share)}) were not paired with a send, often because the send went out before since. Time to reply leaves them out, so it may look faster than it is; set since earlier to pair more.`
+      `${unpaired} of ${received.length} replies (${percent(share)}) were not paired with a send, often because the send went out before since. Time to reply leaves them out, so it may look faster than it is; set since earlier to pair more.`
     );
   }
 
-  if (received > 0) {
+  const unflagged = received.filter(
+    (message) => message.isAuto === null || message.isAuto === undefined
+  ).length;
+
+  if (includeAuto && received.length > 0) {
     context.note(
-      "Automatic replies such as out-of-office messages are counted as replies: messages carry no auto flag, so they cannot be told apart. A fast median can be auto-replies."
+      "Automatic replies such as out-of-office messages are counted as replies (include_auto). A fast median can be auto-replies."
+    );
+  } else if (unflagged > 0) {
+    context.note(
+      `${unflagged} of ${received.length} replies carry no auto flag, so an automatic one among them is counted as a reply. A fast median can be auto-replies.`
     );
   }
 };
 
 export const replyTiming = defineInsight({
   description:
-    "How fast people reply and when. Pairs each received message with the last message sent before it in the same thread (or to the same lead) and returns the median, 75th and 90th percentile of hours to reply, the share of replies within 1, 24 and 72 hours, replies by weekday and by hour of day, the weekday and hour of the sends that drew replies, and how many replies could not be paired; over a quarter unpaired, the answer is marked partial, since a reply to a send from before `since` cannot pair and those are the slow ones. Use it to choose follow-up delays and sending hours. Costs 1 request per page of messages, up to max_messages. A null figure means no reply could be paired; auto-replies are not separated, because messages carry no auto flag.",
+    "How fast people reply and when. Pairs each received message with the last message sent before it in the same thread (or to the same lead) and returns the median, 75th and 90th percentile of hours to reply, the share of replies within 1, 24 and 72 hours, replies by weekday and by hour of day, the weekday and hour of the sends that drew replies, and how many replies could not be paired; over a quarter unpaired, the answer is marked partial, since a reply to a send from before `since` cannot pair and those are the slow ones. Use it to choose follow-up delays and sending hours. Costs 1 request per page of messages, up to max_messages. A null figure means no reply could be paired. A received message flagged automatic (isAuto true: the vendor's flag, or a fixed rule on the sender, subject, canned phrases or a reply within a minute of the send) is left out and counted in counts.autoReplies unless include_auto is true; a message with no flag is counted as a reply.",
   inputSchema: input,
   key: "replyTiming",
   cost: (values, price) =>
@@ -323,12 +340,20 @@ export const replyTiming = defineInsight({
         ? new Date(context.now - 30 * DAY_MS).toISOString()
         : new Date(args.since).toISOString();
 
-    const messages = await readMessages(
+    const read = await readMessages(
       context,
       args.campaign,
       since,
       args.max_messages
     );
+
+    // An auto-reply is left out before pairing, so the person's own reply
+    // after it pairs with the send instead of counting as a follow-on.
+    const messages = args.include_auto
+      ? read
+      : read.filter(
+          (message) => message.direction === "out" || message.isAuto !== true
+        );
 
     const paired = pair(messages);
     const hours = paired.pairs.map((each) => (each.at - each.sentAt) / HOUR_MS);
@@ -341,14 +366,15 @@ export const replyTiming = defineInsight({
     const untimed = received.length - paired.replyTimes.length;
     const unpaired = paired.unpaired + untimed;
 
-    noteGaps(context, unpaired, received.length);
+    noteGaps(context, unpaired, received, args.include_auto);
 
     const timing: ReplyTiming = {
       campaign:
         args.campaign === null ? null : refOf(context.outbound, args.campaign),
       counts: {
+        autoReplies: read.length - messages.length,
         followOnReplies: paired.followOn,
-        messagesRead: messages.length,
+        messagesRead: read.length,
         paired: paired.pairs.length,
         received: received.length,
         sent: messages.length - received.length,

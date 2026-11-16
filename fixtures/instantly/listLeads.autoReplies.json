@@ -1,0 +1,53 @@
+{
+  "items": [
+    {
+      "campaign": "01a1d77f-5158-772f-ad63-67da136d2a92",
+      "company_name": "Example Geo Co",
+      "email": "person51@example.com",
+      "email_click_count": 0,
+      "email_open_count": 0,
+      "email_reply_count": 4,
+      "first_name": "Riley",
+      "id": "01a1d77f-5156-7723-b616-dca4fb991551",
+      "last_name": "Example",
+      "organization": "01a1d77f-5158-772f-ad63-67d98f6cd2f4",
+      "status": 1,
+      "timestamp_created": "2026-10-29T12:00:00.000Z",
+      "timestamp_last_contact": "2026-11-06T15:37:31.000Z",
+      "timestamp_last_reply": "2026-11-06T15:37:35.000Z"
+    },
+    {
+      "campaign": "01a1d77f-5158-772f-ad63-67da136d2a92",
+      "company_name": "Example Signal Co",
+      "email": "person52@example.net",
+      "email_click_count": 0,
+      "email_open_count": 0,
+      "email_reply_count": 2,
+      "first_name": "Morgan",
+      "id": "01a1d77f-5156-7723-b616-dca4fb991552",
+      "last_name": "Example",
+      "organization": "01a1d77f-5158-772f-ad63-67d98f6cd2f4",
+      "status": 1,
+      "timestamp_created": "2026-10-29T12:00:00.000Z",
+      "timestamp_last_contact": "2026-11-06T15:37:31.000Z",
+      "timestamp_last_reply": "2026-11-02T15:19:40.000Z"
+    },
+    {
+      "campaign": "01a1d77f-5158-772f-ad63-67da136d2a92",
+      "company_name": "Example Learning Co",
+      "email": "person53@example.org",
+      "email_click_count": 0,
+      "email_open_count": 0,
+      "email_reply_count": 2,
+      "first_name": "Casey",
+      "id": "01a1d77f-5156-7723-b616-dca4fb991553",
+      "last_name": "Example",
+      "organization": "01a1d77f-5158-772f-ad63-67d98f6cd2f4",
+      "status": 1,
+      "timestamp_created": "2026-10-29T12:00:00.000Z",
+      "timestamp_last_contact": "2026-11-06T15:37:31.000Z",
+      "timestamp_last_reply": "2026-11-03T10:00:00.000Z",
+      "lt_interest_status": 2
+    }
+  ]
+}

@@ -87,8 +87,12 @@ const DATA: MemoryData = {
   messages: MESSAGES,
 };
 
-const AUTO_NOTE =
-  "Automatic replies such as out-of-office messages are counted as replies: messages carry no auto flag, so they cannot be told apart. A fast median can be auto-replies.";
+/** The note for replies that carry no auto flag, which are counted as replies. */
+const unflagged = (count: number, of: number): string =>
+  `${count} of ${of} replies carry no auto flag, so an automatic one among them is counted as a reply. A fast median can be auto-replies.`;
+
+const INCLUDE_AUTO_NOTE =
+  "Automatic replies such as out-of-office messages are counted as replies (include_auto). A fast median can be auto-replies.";
 
 const counted = <Entry extends { readonly count: number }>(
   entries: readonly Entry[]
@@ -119,6 +123,7 @@ test("reply_timing times each reply from the send it answers and says when repli
     within72Hours: 0.8333,
   });
   assert.deepEqual(result.data.counts, {
+    autoReplies: 0,
     followOnReplies: 1,
     messagesRead: 16,
     paired: 6,
@@ -301,6 +306,7 @@ test("reply_timing with no messages returns unknowns, not zeros", async () => {
   );
   assert.ok(result.data.replies.byWeekday.every((day) => day.share === null));
   assert.deepEqual(result.data.counts, {
+    autoReplies: 0,
     followOnReplies: 0,
     messagesRead: 0,
     paired: 0,
@@ -363,7 +369,7 @@ test("reply_timing stops at max_messages and says the answer is partial", async 
   assert.equal(result.meta.complete, false);
   assert.deepEqual(result.meta.notes, [
     "Stopped at 5 messages (max_messages); more exist.",
-    AUTO_NOTE,
+    unflagged(3, 3),
   ]);
 });
 
@@ -399,7 +405,7 @@ test("reply_timing is refused without messages, and filters by date itself when 
   );
   assert.deepEqual(unfiltered.meta.notes, [
     "This tool cannot filter messages by date, so the cap applies to all messages and older ones were dropped after reading.",
-    AUTO_NOTE,
+    unflagged(9, 9),
   ]);
 });
 
@@ -457,7 +463,7 @@ test("reply_timing reads email and LinkedIn together on a combined instance", as
   );
 });
 
-test("reply_timing says automatic replies are not told apart (OUT-75)", async () => {
+test("reply_timing leaves replies flagged automatic out, and counts them with include_auto (OUT-75, OUT-92)", async () => {
   // 8 out-of-office replies two minutes after the send, 2 people two days later.
   const messages: MemoryMessage[] = Array.from({ length: 10 }, (_, index) => {
     const day = String(2 + index).padStart(2, "0");
@@ -478,14 +484,28 @@ test("reply_timing says automatic replies are not told apart (OUT-75)", async ()
     ] as const;
   }).flat();
 
-  const result = await single({
+  const outbound = single({
     campaigns: [{ id: "c1" }],
     messages: messages.map((each) => ({ ...each, campaignId: "c1" })),
-  }).insights.replyTiming({}, { now: NOW });
+  });
 
-  assert.equal(result.data.timeToReply.within1Hour, 0.8);
-  assert.deepEqual(result.meta.notes, [AUTO_NOTE]);
+  const result = await outbound.insights.replyTiming({}, { now: NOW });
+
+  // Flagged automatic, the 8 are left out: only the 2 people are timed.
+  assert.equal(result.data.timeToReply.sample, 2);
+  assert.equal(result.data.timeToReply.within1Hour, 0);
+  assert.equal(result.data.counts.autoReplies, 8);
+  assert.deepEqual(result.meta.notes, []);
   assert.equal(result.meta.complete, true);
+
+  const all = await outbound.insights.replyTiming(
+    { include_auto: true },
+    { now: NOW }
+  );
+
+  assert.equal(all.data.timeToReply.within1Hour, 0.8);
+  assert.equal(all.data.counts.autoReplies, 0);
+  assert.deepEqual(all.meta.notes, [INCLUDE_AUTO_NOTE]);
 });
 
 test("reply_timing marks the answer partial when many replies answer a send from before since (OUT-75)", async () => {
@@ -531,7 +551,7 @@ test("reply_timing marks the answer partial when many replies answer a send from
   assert.equal(result.meta.complete, false);
   assert.deepEqual(result.meta.notes, [
     "4 of 5 replies (80%) were not paired with a send, often because the send went out before since. Time to reply leaves them out, so it may look faster than it is; set since earlier to pair more.",
-    AUTO_NOTE,
+    unflagged(5, 5),
   ]);
 
   // From 10-01 every reply pairs, and the slow ones count.

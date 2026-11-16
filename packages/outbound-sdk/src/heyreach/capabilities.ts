@@ -118,7 +118,13 @@ export const fields: FieldDeclaration = {
     unsubscribed: false,
     website: false,
   },
-  message: { bodyHtml: false, stepIndex: false, variantKey: false },
+  message: {
+    bodyHtml: false,
+    isAuto: false,
+    isAutoSource: false,
+    stepIndex: false,
+    variantKey: false,
+  },
   metricRow: {
     bounced: false,
     clicked: false,
@@ -140,6 +146,8 @@ export const fields: FieldDeclaration = {
     category: "derived",
     categorySource: "derived",
     isAuto: false,
+    isAutoSource: false,
+    leftCompany: false,
     stepIndex: false,
     variantKey: false,
   },
