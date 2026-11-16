@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { run } from "../../src/cli/index.ts";
+import { combine } from "../../src/combine/index.ts";
 import { createOutbound, MemoryRateLimitStore } from "../../src/index.ts";
 import { insights } from "../../src/insights/index.ts";
+import { memory } from "../../src/memory/index.ts";
 import { fixtureHandler } from "../helpers/adapter-suite.ts";
 import { createClock } from "../helpers/clock.ts";
 import { fixture } from "../helpers/fixtures.ts";
@@ -167,6 +169,38 @@ test("heyreach: reply_timing leaves the inbox's own conversations out of every f
     2,
     "a message that answers no send is the inbox, not a slow reply"
   );
+});
+
+test("reply_timing on a combined instance leaves out the inbox of the tool that has one", async () => {
+  const clock = createClock();
+  const { http } = inboxFetch();
+
+  // A tool without an inbox of its own turns replies.inbox off for the pair.
+  const outbound = createOutbound({
+    adapter: combine([
+      suite.make(),
+      memory({ data: {}, name: "mailtool", workspaceId: "agency" }),
+    ]),
+    fetch: http.fetch,
+    plugins: [insights()],
+    rateLimitStore: new MemoryRateLimitStore(),
+    runtime: clock.runtime,
+    share: 1,
+  });
+
+  assert.equal(outbound.capabilities["replies.inbox"], false);
+
+  const result = await clock.settle(
+    outbound.insights.replyTiming(
+      { since: "2026-10-01T00:00:00Z" },
+      { now: NOW }
+    )
+  );
+
+  assert.equal(result.data.counts.messagesRead, 4);
+  assert.equal(result.data.counts.notInCampaign, 2);
+  assert.equal(result.data.counts.received, 1);
+  assert.equal(result.data.counts.unpaired, 0);
 });
 
 /** The replies `outbound` prints for `argv`, over the inbox fixture. */

@@ -3,6 +3,7 @@
 import { z } from "zod";
 
 import type { Message } from "../../internal/entities.ts";
+import type { OutboundApi } from "../../internal/outbound/api.ts";
 import { confirmCampaign } from "../campaign.ts";
 import { readCapped } from "../capped.ts";
 import { defineInsight } from "../define.ts";
@@ -151,6 +152,37 @@ interface Pairing {
   readonly followOn: number;
   readonly unpaired: number;
 }
+
+/**
+ * Whether the tool a message came from has conversations in no campaign
+ * (`replies.inbox`). A combined instance holds each key only when every
+ * tool does, so each tool answers for its own messages.
+ */
+const inboxOf = (outbound: OutboundApi): ((message: Message) => boolean) => {
+  const known = new Map<string, boolean>();
+
+  return (message) => {
+    if (outbound.capabilities["replies.inbox"]) {
+      return true;
+    }
+
+    const key = `${message.provider}:${message.workspaceId}`;
+    let separates = known.get(key);
+
+    if (separates === undefined) {
+      try {
+        separates = outbound.workspace(key).capabilities["replies.inbox"];
+      } catch {
+        // Not a member of a combined instance: its tool is this one.
+        separates = false;
+      }
+
+      known.set(key, separates);
+    }
+
+    return separates;
+  };
+};
 
 const timeOf = (message: Message): number | null =>
   message.sentAt === null ? null : Date.parse(message.sentAt);
@@ -355,13 +387,17 @@ export const replyTiming = defineInsight({
       args.max_messages
     );
 
-    const separates = context.outbound.capabilities["replies.inbox"];
+    const fromInbox = inboxOf(context.outbound);
+
+    const separates =
+      context.outbound.capabilities["replies.inbox"] || read.some(fromInbox);
 
     // A conversation outside every campaign answers no send of ours.
-    const inCampaigns =
-      separates && !args.include_inbox
-        ? read.filter((message) => message.campaignRef !== null)
-        : read;
+    const inCampaigns = args.include_inbox
+      ? read
+      : read.filter(
+          (message) => message.campaignRef !== null || !fromInbox(message)
+        );
 
     // An auto-reply is left out before pairing, so the person's own reply
     // after it pairs with the send instead of counting as a follow-on.
