@@ -53,7 +53,7 @@ const MAIL: MemoryData = {
   ],
 };
 
-test("suppression_check reports each lead on the block list with the entry and how it matched", async () => {
+test("suppression_check reports each lead still being sent to on the block list, with the entry and how it matched", async () => {
   const result = await single(MAIL).insights.suppressionCheck({}, { now: NOW });
   const { data } = result;
 
@@ -98,15 +98,6 @@ test("suppression_check reports each lead on the block list with the entry and h
         "example-person-4",
         true,
       ],
-      [
-        "memory:agency:l1",
-        "completed",
-        "memory:agency:c1",
-        "email",
-        "memory:agency:b1",
-        "person1@example.com",
-        true,
-      ],
     ]
   );
 
@@ -123,7 +114,8 @@ test("suppression_check reports each lead on the block list with the entry and h
       campaign: "memory:agency:c1",
       campaignName: "Founders",
       leadsRead: 4,
-      violations: 3,
+      // l1 is on the list too, but its sequence is completed.
+      violations: 2,
     },
     {
       campaign: "memory:agency:c2",
@@ -139,15 +131,17 @@ test("suppression_check reports each lead on the block list with the entry and h
     },
   ]);
   assert.deepEqual(data.totals, {
+    // l1 completed its sequence: on the list, but no longer sent to.
+    alreadyStopped: 1,
     // The company entry and the "other" entry match no lead field.
     blockEntriesNotChecked: 2,
     blockEntriesRead: 7,
-    byMatch: { domain: 1, email: 1, linkedin: 2 },
+    byMatch: { domain: 1, email: 0, linkedin: 2 },
     campaignsRead: 3,
     leadsRead: 8,
     moreBlockEntriesExist: false,
     moreLeadsExist: false,
-    violations: 4,
+    violations: 3,
   });
   assert.equal(result.meta.complete, true);
 });
@@ -163,6 +157,118 @@ test("suppression_check reads the campaigns in the statuses asked for", async ()
   );
   assert.equal(result.data.totals.campaignsRead, 1);
   assert.equal(result.data.totals.leadsRead, 1);
+});
+
+const STOPPED: MemoryData = {
+  blocklist: [{ id: "b1", value: "blocked.example" }],
+  campaigns: [{ id: "c1", name: "Founders" }],
+  leads: [
+    { campaignId: "c1", email: "person1@blocked.example", id: "l1" },
+    {
+      campaignId: "c1",
+      email: "person2@blocked.example",
+      id: "l2",
+      status: "paused",
+    },
+    {
+      campaignId: "c1",
+      email: "person3@blocked.example",
+      id: "l3",
+      status: "unknown",
+    },
+    // On the list because they unsubscribed: the tool adds them itself.
+    {
+      campaignId: "c1",
+      email: "person4@blocked.example",
+      id: "l4",
+      status: "unsubscribed",
+    },
+    {
+      campaignId: "c1",
+      email: "person5@blocked.example",
+      id: "l5",
+      status: "completed",
+    },
+    {
+      campaignId: "c1",
+      email: "person6@blocked.example",
+      id: "l6",
+      status: "bounced",
+    },
+    {
+      campaignId: "c1",
+      email: "person7@blocked.example",
+      id: "l7",
+      status: "replied",
+    },
+    { campaignId: "c1", email: "person8@example.com", id: "l8" },
+  ],
+};
+
+test("suppression_check counts unsubscribed, completed, bounced and replied leads on the list as already stopped", async () => {
+  const result = await single(STOPPED).insights.suppressionCheck({});
+  const { data } = result;
+
+  assert.deepEqual(
+    data.violations.map((each) => [each.lead, each.leadStatus]),
+    [
+      ["memory:agency:l1", "active"],
+      ["memory:agency:l2", "paused"],
+      ["memory:agency:l3", "unknown"],
+    ]
+  );
+  assert.equal(data.totals.violations, 3);
+  assert.equal(data.totals.alreadyStopped, 4);
+  assert.deepEqual(data.totals.byMatch, { domain: 3, email: 0, linkedin: 0 });
+  assert.equal(data.byCampaign[0]?.violations, 3);
+  assert.equal(data.totals.leadsRead, 8);
+  assert.equal(result.meta.complete, true);
+});
+
+test("suppression_check counts the lead statuses asked for as violations", async () => {
+  const unsubscribed = await single(STOPPED).insights.suppressionCheck({
+    lead_statuses: ["unsubscribed"],
+  });
+
+  assert.deepEqual(
+    unsubscribed.data.violations.map((each) => each.lead),
+    ["memory:agency:l4"]
+  );
+  assert.equal(unsubscribed.data.totals.alreadyStopped, 6);
+
+  const every = await single(STOPPED).insights.suppressionCheck({
+    lead_statuses: [
+      "active",
+      "paused",
+      "unknown",
+      "unsubscribed",
+      "completed",
+      "bounced",
+      "replied",
+    ],
+  });
+
+  assert.equal(every.data.totals.violations, 7);
+  assert.equal(every.data.totals.alreadyStopped, 0);
+  // Still active first.
+  assert.equal(every.data.violations[0]?.lead, "memory:agency:l1");
+});
+
+test("suppression_check refuses an empty or unknown lead status", async () => {
+  for (const lead_statuses of [[], ["stopped"]]) {
+    // oxlint-disable-next-line no-await-in-loop -- one input at a time.
+    await assert.rejects(
+      async () =>
+        await single(STOPPED).insights.suppressionCheck({
+          // @ts-expect-error -- an input the schema rejects.
+          lead_statuses,
+        }),
+      (error) =>
+        OutboundError.is(error) &&
+        error.code === "Invalid" &&
+        error.message.includes("lead_statuses")
+    );
+  }
 });
 
 test("suppression_check finds nothing with an empty block list, no campaigns or no data", async () => {
@@ -181,6 +287,7 @@ test("suppression_check finds nothing with an empty block list, no campaigns or 
   assert.deepEqual(empty.data, {
     byCampaign: [],
     totals: {
+      alreadyStopped: 0,
       blockEntriesNotChecked: 0,
       blockEntriesRead: 0,
       byMatch: { domain: 0, email: 0, linkedin: 0 },
@@ -200,11 +307,9 @@ test("suppression_check says the answer is partial when a cap stops a read", asy
     max_block_entries: 1,
   });
 
-  // Only the address entry was read.
-  assert.deepEqual(
-    fewEntries.data.violations.map((each) => each.lead),
-    ["memory:agency:l1"]
-  );
+  // Only the address entry was read, and the lead it matches completed.
+  assert.deepEqual(fewEntries.data.violations, []);
+  assert.equal(fewEntries.data.totals.alreadyStopped, 1);
   assert.equal(fewEntries.data.totals.blockEntriesRead, 1);
   // The entries left unread were not checked, and how many there are is unknown.
   assert.equal(fewEntries.data.totals.moreBlockEntriesExist, true);
@@ -218,15 +323,16 @@ test("suppression_check says the answer is partial when a cap stops a read", asy
     max_campaigns: 1,
   });
 
-  assert.equal(fewCampaigns.data.totals.violations, 3);
+  assert.equal(fewCampaigns.data.totals.violations, 2);
   assert.equal(fewCampaigns.meta.complete, false);
 
   const fewLeads = await single(MAIL).insights.suppressionCheck({
     max_leads_per_campaign: 2,
   });
 
-  // l1 and l2 in c1, l5 in c2.
-  assert.equal(fewLeads.data.totals.violations, 3);
+  // l2 in c1 and l5 in c2; l1 completed.
+  assert.equal(fewLeads.data.totals.violations, 2);
+  assert.equal(fewLeads.data.totals.alreadyStopped, 1);
   assert.equal(fewLeads.data.totals.leadsRead, 6);
   assert.equal(fewLeads.data.totals.moreLeadsExist, true);
   assert.equal(fewLeads.data.totals.moreBlockEntriesExist, false);

@@ -21,6 +21,7 @@
       }
     ],
     "totals": {
+      "alreadyStopped": 0,
       "blockEntriesNotChecked": 1,
       "blockEntriesRead": 4,
       "byMatch": {
