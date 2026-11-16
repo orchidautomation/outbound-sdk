@@ -53,6 +53,8 @@ export interface ResultMeta {
   readonly workspaceId: string;
   /** `true` when an older answer was served because the vendor was down. */
   readonly stale: boolean;
+  /** What the adapter left out, and why: a vendor value it could not use, mapped to `null`. */
+  readonly notes: readonly string[];
 }
 
 export type WithMeta<Item> = Item & { readonly meta: ResultMeta };

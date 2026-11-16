@@ -42,6 +42,8 @@ export interface CallState {
    * the one already set.
    */
   beforeRequest: (() => void) | undefined;
+  /** What the adapter left out of the answer, and why. Each note once. */
+  readonly notes: string[];
 }
 
 export interface RequestEnvironment {
@@ -275,6 +277,7 @@ const exhausted = (error: OutboundError, timedOut: boolean): OutboundError =>
     ? new OutboundError(error.code, error.message, {
         cause: error.cause,
         limit: error.limit,
+        permanent: error.permanent,
         provider: error.provider,
         retryAfterMs: error.retryAfterMs,
         status: error.status,

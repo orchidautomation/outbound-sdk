@@ -65,6 +65,7 @@ A key in a client's configuration file is stored in plain text on your disk by t
 | `--cache <seconds>` | Adds [`cache()`](/docs/plugins/cache): a repeat read within that time makes no vendor request. The cache is in memory and lives as long as the server. |
 | `--max-requests <n>` | Adds [`budget()`](/docs/plugins/budget): the most vendor requests one tool call may make. |
 | `--config <file>` | Loads plugins from a file. See below. |
+| `--tools <names>` | Offers only the tools named, separated by commas, such as `--tools campaign_overview,bounce_watch`. Every tool's description and inputs cost the client's context before any call, about 60 KB for all of them on a real adapter. A name the server cannot offer is refused before it starts. |
 
 The sample runs the real `outbound mcp` three times on the demo data: as it starts by default, with `--no-redact`, and with a config file and both flags. Each time it sends `initialize`, `tools/list` and a call that asks for reply text.
 

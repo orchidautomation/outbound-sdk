@@ -19,7 +19,7 @@ const PACKAGE = "outbound-sdk";
 
 // Commands that need no adapter and no key, with the flags each takes.
 export const STANDALONE: ReadonlyMap<string, readonly string[]> = new Map([
-  ["mcp", []],
+  ["mcp", ["tools"]],
   ["providers", []],
   ["update", []],
   ["version", ["version"]],

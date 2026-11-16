@@ -1,32 +1,19 @@
 // outbound-sdk/cli: the `outbound` command and the local MCP server.
 
-import { parseArgs } from "node:util";
-
 import type { Adapter } from "../internal/adapter.ts";
 import { OutboundError } from "../internal/errors.ts";
 import { field } from "../internal/json.ts";
-import type { OutboundApi } from "../internal/outbound/api.ts";
 import { createOutbound } from "../internal/outbound/create.ts";
 import type { OutboundOptions } from "../internal/outbound/outbound.ts";
 import { fromEnv } from "../loader/index.ts";
-import { createTools } from "../tools/index.ts";
-import {
-  checkFlags,
-  commandHelp,
-  COMMANDS,
-  helpText,
-  listProviders,
-} from "./commands.ts";
+import { parse } from "./args.ts";
+import { COMMANDS, listProviders } from "./commands.ts";
 import { pluginsFor } from "./config.ts";
 import { requestCounter, valueOf } from "./envelope.ts";
 import type { RunFacts } from "./envelope.ts";
-import { createMcpServer } from "./mcp.ts";
-import { OPTIONS } from "./options.ts";
 import { printAnswer, printFailure } from "./output.ts";
-import { serveStdio } from "./stdio.ts";
-import { didYouMean } from "./suggest.ts";
-import { runNpm, runSelf, STANDALONE } from "./update.ts";
-import { packageVersion } from "./version.ts";
+import { namedTools, serve } from "./serve.ts";
+import { runNpm, runSelf } from "./update.ts";
 
 export { defineConfig } from "./config.ts";
 
@@ -56,105 +43,6 @@ export interface CliIo {
   /** Waits between `outbound update` install retries. Meant for tests. */
   readonly sleep?: ((ms: number) => Promise<void>) | undefined;
 }
-
-const serve = async (
-  outbound: OutboundApi,
-  io: CliIo,
-  unmasked: OutboundApi | undefined
-): Promise<void> => {
-  // Loaded on demand, so the other commands do not pay for the insights.
-  const { insightTools } = await import("../insights/index.ts");
-
-  const offered = (instance: OutboundApi) =>
-    createTools(instance, { extra: insightTools(instance) }).map(
-      (tool) => tool.name
-    );
-
-  // A tool offered without redact but not with it was left out by redact.
-  const here = new Set(offered(outbound));
-
-  const leftOut = Object.fromEntries(
-    (unmasked === undefined ? [] : offered(unmasked))
-      .filter((name) => !here.has(name))
-      .map((name) => [
-        name,
-        `${name} is left out while the redact plugin is on: it needs what redact masks. Start the server with --no-redact to offer it; personal fields are then not masked.`,
-      ])
-  );
-
-  const server = createMcpServer(outbound, {
-    extra: insightTools(outbound),
-    leftOut,
-    version: packageVersion(),
-  });
-
-  await serveStdio(server, { input: io.stdin?.() ?? [], write: io.stdout });
-};
-
-const parseStrict = (argv: readonly string[]) =>
-  parseArgs({ allowPositionals: true, args: [...argv], options: OPTIONS });
-
-interface Parsed {
-  readonly name: string | undefined;
-  readonly rest: readonly string[];
-  readonly values: ReturnType<typeof parseStrict>["values"];
-  /** The help to print instead of running anything. */
-  readonly help: string | undefined;
-}
-
-const helpFor = (name: string | undefined, asked: boolean) => {
-  const command = name === undefined ? undefined : COMMANDS.get(name);
-
-  if (name === undefined || name === "help" || (asked && !command)) {
-    return helpText();
-  }
-
-  return asked && command ? commandHelp(command) : undefined;
-};
-
-/**
- * The arguments, checked against the command they name: a flag it does not
- * take is refused with the command's name, never ignored.
- */
-const parse = (argv: readonly string[]): Parsed => {
-  const loose = parseArgs({
-    allowPositionals: true,
-    args: [...argv],
-    options: OPTIONS,
-    strict: false,
-    tokens: true,
-  });
-
-  const [name] = loose.positionals;
-  const command = name === undefined ? undefined : COMMANDS.get(name);
-  const named = name !== undefined && name !== "help";
-
-  if (named && !command && !STANDALONE.has(name)) {
-    throw new OutboundError(
-      "Invalid",
-      `Unknown command "${name}".${didYouMean(name, [...COMMANDS.keys(), ...STANDALONE.keys(), "help", "providers"])} Run "outbound help"`
-    );
-  }
-
-  if (named) {
-    checkFlags(
-      name,
-      command?.flags ?? STANDALONE.get(name) ?? [],
-      loose.tokens.flatMap((token) =>
-        token.kind === "option" ? [token.name] : []
-      )
-    );
-  }
-
-  const { positionals, values } = parseStrict(argv);
-
-  return {
-    help: helpFor(name, values.help === true),
-    name,
-    rest: positionals.slice(1),
-    values,
-  };
-};
 
 /** Runs the CLI. Returns the process exit code. */
 export const run = async (
@@ -211,7 +99,7 @@ export const run = async (
           })
         : undefined;
 
-      await serve(outbound, io, unmasked);
+      await serve(outbound, io, unmasked, namedTools(values.tools));
 
       return 0;
     }
@@ -225,8 +113,15 @@ export const run = async (
     printAnswer(io.stdout, answer, values, facts());
 
     // A tool never throws: its failure is a result, printed like any other.
-    // The exit code still says the command did not get an answer.
-    return name === "tool" && field(valueOf(answer), "ok") === false ? 1 : 0;
+    // The exit code still says the command did not get an answer: 2 when it
+    // was given no input to run on, 1 when it ran and failed.
+    const printed = valueOf(answer);
+
+    if (name !== "tool" || field(printed, "ok") !== false) {
+      return 0;
+    }
+
+    return field(field(printed, "error"), "code") === "InputRequired" ? 2 : 1;
   } catch (error) {
     const code = OutboundError.is(error) ? error.code : "Error";
     const message = error instanceof Error ? error.message : String(error);

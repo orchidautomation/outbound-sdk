@@ -78,7 +78,15 @@ const listSubsequences = async (
   const steps = await client.get(ctx, `/campaigns/${segment(id)}/sequences`);
 
   return {
-    items: [toSubsequence(client.identity, query.campaignId, current, steps)],
+    items: [
+      toSubsequence(
+        client.identity,
+        query.campaignId,
+        current,
+        steps,
+        ctx.note
+      ),
+    ],
     next: rest.length > 0 ? { subsequences: rest } : undefined,
   };
 };

@@ -391,7 +391,7 @@ test("bounce_watch says so when a cap stops the campaigns or a campaign's sender
   assert.equal(fewSenders.meta.complete, false);
   assert.ok(
     fewSenders.meta.notes.includes(
-      "Stopped at 1 sender of campaign Hot (max_senders_per_campaign); more exist."
+      "Stopped at 1 sender in 2 campaigns (max_senders_per_campaign); more exist."
     )
   );
 });

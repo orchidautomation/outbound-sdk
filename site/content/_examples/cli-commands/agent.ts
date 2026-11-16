@@ -16,7 +16,7 @@ await outboundSummary(
     `data.items: ${names(text).length} tools, each with name, description and parameters (its inputs as JSON Schema): ${names(text).join(", ")}`
 );
 
-// A tool that needs input, given none, prints what it takes.
+// A tool that needs input, given none, fails with what it takes and exits 2.
 await outbound("tool", "winning_steps");
 
 await outbound("tool", "sender_health", "--input", '{"limit":1}');

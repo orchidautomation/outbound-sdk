@@ -55,6 +55,12 @@ export interface AdapterContext {
   readonly request: (spec: RequestSpec) => Promise<VendorResponse>;
   /** The context for another adapter, with that adapter's own rate budget. */
   readonly forAdapter: (adapter: Adapter) => AdapterContext;
+  /**
+   * Says what the adapter left out of a record and why, for example a value
+   * the vendor sent that cannot be right. It reaches the caller in
+   * `meta.notes`.
+   */
+  readonly note: (text: string) => void;
 }
 
 /** One page from the vendor. `next` is whatever the adapter needs to continue. */

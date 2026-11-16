@@ -3,6 +3,7 @@
     "complete": true,
     "evidence": "exact",
     "fetchedAt": "2026-11-14T12:00:00.000Z",
+    "notes": [],
     "provider": "memory",
     "requests": 0,
     "stale": false,

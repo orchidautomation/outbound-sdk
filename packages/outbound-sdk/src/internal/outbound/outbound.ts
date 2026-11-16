@@ -206,15 +206,24 @@ export class Outbound<
     const declared = resolveCapabilities(adapter.capabilities);
     const narrowed = narrowCapabilities(declared, plugins);
 
-    const run = composeOperations([...plugins, ...layers], (operation, info) =>
-      dispatch(
-        {
-          adapter,
-          capabilities: declared,
-          ctx: engine.contextFor(adapter, info.state),
-        },
-        operation
-      )
+    // The notes travel on the output, so a plugin that stores the output,
+    // such as cache or failover, replays them with it.
+    const run = composeOperations(
+      [...plugins, ...layers],
+      async (operation, info) => {
+        const notes: string[] = [];
+
+        const output = await dispatch(
+          {
+            adapter,
+            capabilities: declared,
+            ctx: engine.contextFor(adapter, info.state, notes),
+          },
+          operation
+        );
+
+        return notes.length === 0 ? output : { ...output, notes };
+      }
     );
 
     this.#options = options;
