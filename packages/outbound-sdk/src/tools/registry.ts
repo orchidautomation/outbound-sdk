@@ -13,6 +13,7 @@ import {
   deliverabilityCheck,
   vendorRead,
 } from "./account-tools.ts";
+import { withCampaign } from "./by-name.ts";
 import {
   campaignOverview,
   campaignTrend,
@@ -140,16 +141,20 @@ const bind = <Input>(
     );
 
     try {
-      const result = await definition.run(
-        withGuard(outbound, counter),
-        parsed.data
-      );
+      const guarded = withGuard(outbound, counter);
+
+      // A campaign given by name is looked up within this call's allowance,
+      // and its requests are counted with the tool's own.
+      const resolved = await withCampaign(guarded, parsed.data);
+      const lookup = counter.used();
+      const result = await definition.run(guarded, resolved);
 
       return result.ok
         ? {
             ...result,
             meta: {
               ...result.meta,
+              requests: result.meta.requests + lookup,
               today: new Date().toISOString().slice(0, 10),
             },
           }

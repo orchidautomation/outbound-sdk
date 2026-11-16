@@ -5,24 +5,24 @@ Usage: outbound <command> [options]
 
   providers
   blocklist [--limit N]
-  campaign <id> [--stats] [--sequence] [--subsequences] [--settings] [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--by day|total]
-  campaigns [--status active|paused|draft|completed|archived] [--limit N]
+  campaign <id or name> [--stats] [--sequence] [--subsequences] [--settings] [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--by day|total]
+  campaigns [--status active|paused|draft|completed|archived] [--search TEXT] [--limit N]
   capabilities
   health <sender id>
   insight [name] [--input JSON] [--card | --slack]  computed answers; no name lists them
-  leads [--campaign ID | --list ID] [--limit N]
+  leads [--campaign ID|NAME | --list ID|NAME] [--limit N]
   lists [--limit N]
   limits
   native [name] [--input JSON]   the vendor's own reads; no name lists them
   person <email or LinkedIn URL> [--limit N] [--card | --slack]  one person's campaigns across every tool
-  replies [--campaign ID] [--category positive|negative|neutral|ooo|...] [--since ISO] [--limit N] [--bodies] [--by person]  one record per message; --by person gives one row per person
+  replies [--campaign ID|NAME] [--category positive|negative|neutral|ooo|...] [--since ISO] [--limit N] [--bodies] [--by person]  one record per message; --by person gives one row per person
   senders [--limit N]
   stats [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--by day|total]
   tags [--limit N]
   thread <id> [--bodies]
   tool <name> [--input JSON] [--card | --slack]  without --input, a tool that needs input prints what it takes
   tools
-  webhooks [--campaign ID] [--limit N]
+  webhooks [--campaign ID|NAME] [--limit N]
   mcp                      start a local MCP server on stdio (redact is on)
   version                  print the installed version (also --version, -v)
   update                   check npm for a newer version and say how to get it

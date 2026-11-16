@@ -43,7 +43,7 @@ const share = (fallback: number, text: string) =>
 
 const input = z.object({
   ...rangeFields,
-  campaign: z.string().min(3).describe("The campaign's ref"),
+  campaign: z.string().min(3).describe("The campaign's ref or name"),
   days: z
     .number()
     .int()

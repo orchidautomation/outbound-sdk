@@ -89,7 +89,7 @@ const METRICS = [
 ] as const;
 
 const trendInput = z.object({
-  campaign: z.string().min(1).describe("The campaign ref or id"),
+  campaign: z.string().min(1).describe("The campaign's ref, id or name"),
   from: day
     .optional()
     .describe(
@@ -154,7 +154,7 @@ export const campaignTrend: ToolDefinition<z.infer<typeof trendInput>> = {
 };
 
 const stepsInput = z.object({
-  campaign: z.string().min(1).describe("The campaign ref or id"),
+  campaign: z.string().min(1).describe("The campaign's ref, id or name"),
   from: day.optional(),
   to: day.optional(),
 });

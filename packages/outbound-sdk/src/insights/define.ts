@@ -19,6 +19,7 @@ import type {
   StatsResult,
   WithMeta,
 } from "../internal/outbound/api.ts";
+import { namesCampaign, withCampaign } from "../tools/by-name.ts";
 import { inputProblem } from "../tools/input-problem.ts";
 import type { InsightCost } from "./cost.ts";
 import { runCap } from "./run-cap.ts";
@@ -403,6 +404,26 @@ const prepare = <Key extends string, Input, Data, Given>(
   return parsed.data;
 };
 
+/** The most campaigns a name is looked up among, for the cost of the lookup. */
+const NAMED_AMONG = 1000;
+
+/** The spec, its cost raised by the campaign listing a campaign given by name needs. */
+const priced = <Key extends string, Input, Data, Given>(
+  outbound: OutboundApi,
+  spec: InsightSpec<Key, Input, Data, Given>,
+  input: Input
+): InsightSpec<Key, Input, Data, Given> => {
+  const { cost } = spec;
+
+  return cost === undefined || !namesCampaign(outbound, input)
+    ? spec
+    : {
+        ...spec,
+        cost: (values, price) =>
+          cost(values, price) + price.list("campaigns.list", NAMED_AMONG),
+      };
+};
+
 const execute = async <Key extends string, Input, Data, Given>(
   outbound: OutboundApi,
   spec: InsightSpec<Key, Input, Data, Given>,
@@ -410,11 +431,23 @@ const execute = async <Key extends string, Input, Data, Given>(
   options: RunOptions = {}
 ): Promise<InsightResult<Data>> => {
   const checked = prepare(outbound, spec, input);
-  const cap = runCap(outbound, spec, checked, options);
+
+  const cap = runCap(
+    outbound,
+    priced(outbound, spec, checked),
+    checked,
+    options
+  );
+
   const now = options.now ?? Date.now();
   const tracker = track(cap.outbound, now, cap.campaignsFound);
 
-  const data = await spec.run(tracker.context, checked).catch(cap.failed);
+  // A campaign given by name is looked up first, counted like any other read.
+  const data = await withCampaign(tracker.context.outbound, checked, (walk) =>
+    tracker.context.all(walk)
+  )
+    .then((resolved) => spec.run(tracker.context, resolved))
+    .catch(cap.failed);
 
   const short = cap.shortNote();
 

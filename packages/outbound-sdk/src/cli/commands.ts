@@ -16,8 +16,12 @@ import {
   repliesByPerson,
 } from "../internal/reply-people.ts";
 import { providers } from "../providers/index.ts";
+import { resolveCampaign } from "../tools/by-name.ts";
 import { createTools } from "../tools/index.ts";
 import type { OutboundTool, ToolResult } from "../tools/index.ts";
+import { campaignOption, listOption, searchCampaigns } from "./by-name.ts";
+import { readNative } from "./native.ts";
+import { didYouMean } from "./suggest.ts";
 
 export interface CommandInput {
   readonly positionals: readonly string[];
@@ -241,9 +245,11 @@ export const checkFlags = (
   );
 
   if (stray !== undefined) {
+    const hint = didYouMean(stray, [...flags, ...GLOBAL_FLAGS], "--");
+
     throw new OutboundError(
       "Invalid",
-      `--${stray} is not an option of ${name}`
+      `--${stray} is not an option of ${name}${hint === "" ? "" : `.${hint}`}`
     );
   }
 };
@@ -274,9 +280,15 @@ const COMMAND_TABLE = {
       "subsequences",
       "to",
     ],
-    help: "campaign <id> [--stats] [--sequence] [--subsequences] [--settings] [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--by day|total]",
+    help: "campaign <id or name> [--stats] [--sequence] [--subsequences] [--settings] [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--by day|total]",
     run: async (outbound, input) => {
-      const campaign = outbound.campaign(required(input, 0, "a campaign id"));
+      const campaign = outbound.campaign(
+        await resolveCampaign(
+          outbound,
+          required(input, 0, "a campaign id or name")
+        )
+      );
+
       const by = choice(input, "by", BY);
 
       const read = {
@@ -312,17 +324,27 @@ const COMMAND_TABLE = {
     },
   },
   campaigns: {
-    flags: ["limit", "status"],
-    help: "campaigns [--status active|paused|draft|completed|archived] [--limit N]",
-    run: (outbound, input) =>
-      listing(
-        outbound.campaigns.listAll({
-          max: count(input, "limit", 50),
-          status: choice(input, "status", campaignStatusSchema.options),
-        }),
-        input,
-        "campaign"
-      ),
+    flags: ["limit", "search", "status"],
+    help: "campaigns [--status active|paused|draft|completed|archived] [--search TEXT] [--limit N]",
+    run: (outbound, input) => {
+      const search = text(input, "search");
+
+      return search === undefined
+        ? listing(
+            outbound.campaigns.listAll({
+              max: count(input, "limit", 50),
+              status: choice(input, "status", campaignStatusSchema.options),
+            }),
+            input,
+            "campaign"
+          )
+        : searchCampaigns(outbound, {
+            max: count(input, "limit", 50),
+            note: input.note,
+            search,
+            status: choice(input, "status", campaignStatusSchema.options),
+          }).then(asJson);
+    },
   },
   capabilities: {
     flags: [],
@@ -350,12 +372,12 @@ const COMMAND_TABLE = {
   },
   leads: {
     flags: ["campaign", "limit", "list"],
-    help: "leads [--campaign ID | --list ID] [--limit N]",
-    run: (outbound, input) =>
+    help: "leads [--campaign ID|NAME | --list ID|NAME] [--limit N]",
+    run: async (outbound, input) =>
       listing(
         outbound.leads.listAll({
-          campaignId: text(input, "campaign"),
-          listId: text(input, "list"),
+          campaignId: await campaignOption(outbound, text(input, "campaign")),
+          listId: await listOption(outbound, text(input, "list")),
           max: count(input, "limit", 50),
         }),
         input,
@@ -380,20 +402,12 @@ const COMMAND_TABLE = {
   native: {
     flags: ["input"],
     help: "native [name] [--input JSON]   the vendor's own reads; no name lists them",
-    run: async (outbound, input) => {
+    run: (outbound, input) => {
       const [name] = input.positionals;
 
-      if (name === undefined) {
-        return asJson(outbound.native.catalog);
-      }
-
-      const params = parseInput(text(input, "input"));
-
-      if (!isJsonObject(params)) {
-        throw new OutboundError("Invalid", "--input must be a JSON object");
-      }
-
-      return asJson(await outbound.native.read(name, params));
+      return name === undefined
+        ? Promise.resolve(asJson(outbound.native.catalog))
+        : readNative(outbound, name, () => parseInput(text(input, "input")));
     },
   },
   person: {
@@ -415,12 +429,12 @@ const COMMAND_TABLE = {
   },
   replies: {
     flags: ["bodies", "by", "campaign", "category", "limit", "since"],
-    help: "replies [--campaign ID] [--category positive|negative|neutral|ooo|...] [--since ISO] [--limit N] [--bodies] [--by person]  one record per message; --by person gives one row per person",
+    help: "replies [--campaign ID|NAME] [--category positive|negative|neutral|ooo|...] [--since ISO] [--limit N] [--bodies] [--by person]  one record per message; --by person gives one row per person",
     run: async (outbound, input) => {
       const by = choice(input, "by", REPLIES_BY);
 
       const walk = outbound.replies.listAll({
-        campaignId: text(input, "campaign"),
+        campaignId: await campaignOption(outbound, text(input, "campaign")),
         category: choice(input, "category", replyCategorySchema.options),
         include: input.flags.bodies === true ? ["body"] : undefined,
         max: count(input, "limit", 50),
@@ -489,7 +503,10 @@ const COMMAND_TABLE = {
       if (tool === undefined) {
         throw new OutboundError(
           "Invalid",
-          `Unknown tool "${name}". Run "outbound tools" to list them`
+          `Unknown tool "${name}".${didYouMean(
+            name,
+            offered.map((each) => each.name)
+          )} Run "outbound tools" to list them`
         );
       }
 
@@ -514,11 +531,11 @@ const COMMAND_TABLE = {
   },
   webhooks: {
     flags: ["campaign", "limit"],
-    help: "webhooks [--campaign ID] [--limit N]",
-    run: (outbound, input) =>
+    help: "webhooks [--campaign ID|NAME] [--limit N]",
+    run: async (outbound, input) =>
       listing(
         outbound.webhooks.listAll({
-          campaignId: text(input, "campaign"),
+          campaignId: await campaignOption(outbound, text(input, "campaign")),
           max: count(input, "limit", 50),
         }),
         input,

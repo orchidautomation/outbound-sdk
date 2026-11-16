@@ -1,0 +1,307 @@
+// A campaign given by name, in a tool, an insight or the CLI, and inputs
+// refused here instead of by the vendor: a person that is not an email
+// address, and a LinkedIn lookup an adapter cannot make (OUT-101).
+
+import assert from "node:assert/strict";
+import { test } from "node:test";
+
+import { run } from "../src/cli/index.ts";
+import { createOutbound, MemoryRateLimitStore } from "../src/index.ts";
+import type { Adapter, Json } from "../src/index.ts";
+import { insights, insightTools } from "../src/insights/index.ts";
+import { memory } from "../src/memory/index.ts";
+import { createTools } from "../src/tools/index.ts";
+import type { ToolResult } from "../src/tools/index.ts";
+import { fixtureHandler } from "./helpers/adapter-suite.ts";
+import { createClock } from "./helpers/clock.ts";
+import { createFetch } from "./helpers/http.ts";
+import { agency, EMAIL_TOOL, PROFILE } from "./insights/helpers.ts";
+import { suite } from "./instantly/suite.ts";
+
+// The Instantly fixtures list three campaigns over two pages.
+const FIRST = "01a1d77f-5e23-7a9a-9112-a6f7089f329f";
+const THIRD = "01a1d77f-5e23-7a9a-9112-a6f7089f3291";
+
+const overInstantly = () => {
+  const clock = createClock();
+  const unrouted: string[] = [];
+  const http = createFetch(fixtureHandler([suite], unrouted));
+
+  const outbound = createOutbound({
+    adapter: suite.make(),
+    fetch: http.fetch,
+    plugins: [insights()],
+    rateLimitStore: new MemoryRateLimitStore(),
+    runtime: clock.runtime,
+    share: 1,
+  });
+
+  const call = (name: string, input: Json): Promise<ToolResult> => {
+    const tool = [...createTools(outbound), ...insightTools(outbound)].find(
+      (each) => each.name === name
+    );
+
+    assert.ok(tool, `${name} is offered`);
+
+    return clock.settle(tool.call(input));
+  };
+
+  const paths = () =>
+    http.requests.map(
+      (request) => `${request.method} ${new URL(request.url).pathname}`
+    );
+
+  return { call, paths, unrouted };
+};
+
+const LIST_CAMPAIGNS = "GET /api/v2/campaigns";
+
+test("instantly: a tool's campaign may be its name, matched whole and ignoring case", async () => {
+  const { call, paths, unrouted } = overInstantly();
+
+  const result = await call("campaign_setup", {
+    campaign: " my first campaign ",
+  });
+
+  assert.ok(result.ok, JSON.stringify(result));
+  assert.equal(
+    paths().filter((path) => path === LIST_CAMPAIGNS).length,
+    2,
+    "both pages of campaigns are read to find the name"
+  );
+  assert.ok(
+    paths().includes(`${LIST_CAMPAIGNS}/${FIRST}`),
+    "then the one named is read"
+  );
+  assert.equal(result.meta.requests, paths().length, "the lookup is counted");
+  assert.deepEqual(unrouted, []);
+});
+
+test("instantly: a campaign id or ref is used as given, with no lookup", async () => {
+  for (const campaign of [FIRST, `instantly:client-a:${FIRST}`]) {
+    const { call, paths } = overInstantly();
+
+    // oxlint-disable-next-line no-await-in-loop -- one instance per input, so each request list is its own.
+    const result = await call("campaign_setup", { campaign });
+
+    assert.ok(result.ok, JSON.stringify(result));
+    assert.ok(
+      !paths().includes(LIST_CAMPAIGNS),
+      `${campaign} needs no campaign listing`
+    );
+  }
+});
+
+test("instantly: a part of one name finds it; a part of several lists them", async () => {
+  const { call, paths } = overInstantly();
+
+  const third = await call("campaign_setup", { campaign: "third" });
+
+  assert.ok(third.ok, JSON.stringify(third));
+  assert.ok(paths().includes(`${LIST_CAMPAIGNS}/${THIRD}`), paths().join(", "));
+
+  const several = await call("campaign_setup", { campaign: "Campaign" });
+
+  assert.equal(several.ok, false);
+  assert.equal(several.ok ? null : several.error.code, "Invalid");
+  assert.match(
+    several.ok ? "" : several.error.message,
+    /^3 campaigns match "Campaign": "My First Campaign" \(instantly:client-a:[^)]+\), "Second Campaign" .*"Third Campaign" .*Give the full name or the ref$/u
+  );
+
+  const none = await call("campaign_setup", { campaign: "Databricks" });
+
+  assert.equal(none.ok ? null : none.error.code, "NotFound");
+  assert.match(
+    none.ok ? "" : none.error.message,
+    /No campaign is named "Databricks"/u
+  );
+});
+
+test("instantly: an insight's campaign may be its name", async () => {
+  const { call, paths } = overInstantly();
+
+  const result = await call("step_funnel", { campaign: "Third Campaign" });
+
+  assert.ok(result.ok, JSON.stringify(result));
+  assert.equal(
+    (result.data as { result: { campaign: string } }).result.campaign,
+    `instantly:client-a:${THIRD}`
+  );
+  assert.equal(result.meta.requests, paths().length, "the lookup is counted");
+});
+
+test("person_summary takes a mailto: link as the address in it", async () => {
+  const result = await agency().insights.personSummary({
+    person: "mailto:Person1@Example.com",
+  });
+
+  assert.equal(result.data.found, true);
+  assert.ok(result.data.identifiers.includes("email:person1@example.com"));
+});
+
+test("instantly: person_summary refuses a domain or a broken address before any request", async () => {
+  const cases = [
+    [
+      "@example.com",
+      /"@example\.com" is a company domain, not a person\. Use account_summary/u,
+    ],
+    [
+      "example.com",
+      /"example\.com" is a company domain, not a person\. Use account_summary/u,
+    ],
+    ["mailto:@example.com", /is a company domain/u],
+    ["person@example", /"person@example" is not a valid email address/u],
+    ["person@@example.com", /is not a valid email address/u],
+  ] as const;
+
+  for (const [person, message] of cases) {
+    const { call, paths } = overInstantly();
+
+    // oxlint-disable-next-line no-await-in-loop -- one instance per input, so each request list is its own.
+    const result = await call("person_summary", { person });
+
+    assert.equal(result.ok ? null : result.error.code, "Invalid", person);
+    assert.match(result.ok ? "" : result.error.message, message);
+    assert.deepEqual(paths(), [], `${person} reaches no vendor`);
+  }
+});
+
+test("instantly: a LinkedIn lookup says Instantly leads have no LinkedIn field", async () => {
+  const { call, paths } = overInstantly();
+
+  const result = await call("person_summary", { person: PROFILE });
+
+  assert.ok(result.ok, JSON.stringify(result));
+  assert.equal(
+    (result.data as { result: { found: boolean } }).result.found,
+    false
+  );
+  assert.deepEqual(paths(), []);
+  assert.match(
+    JSON.stringify(result),
+    /instantly leads have no LinkedIn field, so a LinkedIn profile finds no one there; search by email instead/u
+  );
+});
+
+test("a LinkedIn lookup where leads can hold a profile adds no such note", async () => {
+  const result = await agency().insights.personSummary({ person: PROFILE });
+
+  assert.equal(result.data.found, true);
+  assert.ok(
+    !result.meta.notes.some((note) => note.includes("no LinkedIn field"))
+  );
+});
+
+const cli = async (adapter: Adapter, ...argv: string[]) => {
+  const out: string[] = [];
+  const err: string[] = [];
+
+  const code = await run([...argv, "--compact"], {
+    adapter,
+    stderr: (text) => {
+      err.push(text);
+    },
+    stdout: (text) => {
+      out.push(text);
+    },
+  });
+
+  return {
+    code,
+    json: () => JSON.parse(out.join("")) as never,
+    stderr: err.join("\n"),
+  };
+};
+
+const mailtool = () =>
+  memory({ data: EMAIL_TOOL, name: "mailtool", workspaceId: "agency" });
+
+test("cli: campaign takes a name, and campaigns --search finds names", async () => {
+  const one = await cli(mailtool(), "campaign", "Founders Q4");
+
+  assert.equal(one.code, 0, one.stderr);
+  assert.equal((one.json() as { ref: string }).ref, "mailtool:agency:c1");
+
+  // A bare id still works as before.
+  const byId = await cli(mailtool(), "campaign", "c2");
+
+  assert.equal((byId.json() as { name: string }).name, "Agencies Q3");
+
+  const found = await cli(mailtool(), "campaigns", "--search", "Q");
+
+  assert.deepEqual(
+    (found.json() as { name: string }[]).map((campaign) => campaign.name),
+    ["Founders Q4", "Agencies Q3"]
+  );
+
+  const capped = await cli(
+    mailtool(),
+    "campaigns",
+    "--search",
+    "q",
+    "--limit",
+    "1"
+  );
+
+  assert.equal((capped.json() as unknown[]).length, 1);
+  assert.match(capped.stderr, /Stopped at 1 campaign of 2 that match/u);
+
+  const ambiguous = await cli(mailtool(), "campaign", "s Q");
+
+  assert.equal(ambiguous.code, 1);
+  assert.match(
+    ambiguous.stderr,
+    /^Invalid: 2 campaigns match "s Q": "Founders Q4" \(mailtool:agency:c1\), "Agencies Q3" \(mailtool:agency:c2\)/u
+  );
+});
+
+test("cli: an unknown command, option, tool or native read suggests the closest", async () => {
+  const command = await cli(mailtool(), "campaing");
+
+  assert.equal(command.code, 1);
+  assert.equal(
+    command.stderr,
+    'Invalid: Unknown command "campaing". Did you mean "campaign" or "campaigns"? Run "outbound help"'
+  );
+
+  const option = await cli(mailtool(), "campaigns", "--serch", "x");
+
+  assert.equal(
+    option.stderr,
+    'Invalid: --serch is not an option of campaigns. Did you mean "--search"?'
+  );
+
+  const far = await cli(mailtool(), "zzzzzzzz");
+
+  assert.equal(
+    far.stderr,
+    'Invalid: Unknown command "zzzzzzzz". Run "outbound help"',
+    "nothing close, so no suggestion"
+  );
+
+  const tool = await cli(mailtool(), "tool", "winning_step");
+
+  assert.match(
+    tool.stderr,
+    /Unknown tool "winning_step"\. Did you mean "winning_steps"\?/u
+  );
+
+  // The name is checked before any request, so a real adapter needs no network here.
+  const native = await cli(suite.make(), "native", "nonsense");
+
+  assert.equal(native.code, 1);
+  assert.equal(
+    native.stderr,
+    'Invalid: instantly has no native read "nonsense". Run "outbound native" to list them'
+  );
+
+  const nearly = await cli(suite.make(), "native", "campaignExprt");
+
+  assert.match(nearly.stderr, /Did you mean "campaignExport"/u);
+
+  // Without native reads the SDK still refuses it as Unsupported.
+  const none = await cli(mailtool(), "native", "nonsense");
+
+  assert.match(none.stderr, /^Unsupported: /u);
+});

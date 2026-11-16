@@ -20,7 +20,7 @@ The output shows what the CLI does with the demo data. It does not show what a v
 | `providers` | The adapters the CLI can load. Needs no adapter. | the provider catalog |
 | `capabilities` | What the chosen adapter can do, its maturity and caveats | `outbound.capabilities`, `maturity`, `caveats` |
 | `campaigns` | Campaigns | `outbound.campaigns.listAll` |
-| `campaign <id>` | One campaign, or with a flag its stats, sequence, subsequences or settings | `outbound.campaign(id)` |
+| `campaign <id or name>` | One campaign, or with a flag its stats, sequence, subsequences or settings | `outbound.campaign(id)` |
 | `senders` | Mailboxes and LinkedIn seats | `outbound.senders.listAll` |
 | `health <sender id>` | One sender's DNS, sign-in and warmup state | `outbound.sender(id).health` |
 | `leads` | Leads, across the account or in one campaign or list | `outbound.leads.listAll` |
@@ -52,14 +52,15 @@ The output shows what the CLI does with the demo data. It does not show what a v
 | `--help`, `-h` | all | Print the usage text and exit 0. After a command, `outbound leads --help`, print that command's options and the ones every command takes. |
 | `--limit <n>` | `campaigns`, `senders`, `leads`, `lists`, `replies`, `tags`, `blocklist`, `webhooks`, `person` | Stop after this many records. A positive whole number. Defaults to 50. When a listing stops there and more records exist, standard error says so, for example "Stopped at 50 leads; more exist. Pass --limit to read more." Standard output is the same JSON either way. |
 | `--status <status>` | `campaigns` | Only campaigns with this status: `active`, `paused`, `draft`, `completed`, `archived` or `unknown`. |
+| `--search <text>` | `campaigns` | Only campaigns whose name contains this text, ignoring case. Every campaign is read to find them. |
 | `--stats` | `campaign` | The campaign's counts. |
 | `--sequence` | `campaign` | The campaign's steps and variants. |
 | `--subsequences` | `campaign` | The campaign's subsequences. |
 | `--settings` | `campaign` | How the campaign is set up to send. |
 | `--from <day>`, `--to <day>` | `campaign --stats`, `stats` | First and last day, `YYYY-MM-DD`. |
 | `--by <grouping>` | `campaign --stats`, `stats`, `replies` | For stats, `day` gives one row per day and `total`, the default, one total row. For `replies`, `person` gives one row per person instead of one per message. Any other value is refused as `Invalid`. |
-| `--campaign <id>` | `leads`, `replies`, `webhooks` | Only records for this campaign. |
-| `--list <id>` | `leads` | Only leads in this saved list. |
+| `--campaign <id or name>` | `leads`, `replies`, `webhooks` | Only records for this campaign. |
+| `--list <id or name>` | `leads` | Only leads in this saved list. |
 | `--category <category>` | `replies` | Only replies in this category: `positive`, `negative`, `neutral`, `ooo`, `bounce`, `unsubscribe` or `unknown`. |
 | `--since <ISO date>` | `replies` | Only replies on or after this time. |
 | `--bodies` | `replies`, `thread` | Include message text. Left out by default. |
@@ -98,7 +99,7 @@ When `campaign` gets one of `--stats`, `--sequence`, `--subsequences` and `--set
   ../../_examples/cli-commands/campaigns.out.txt
 </include>
 
-A campaign id can be the vendor's id or a `ref` from any record. A count the vendor does not report prints as `null`. The demo campaign has no subsequences, so that command prints an empty array.
+A campaign id can be the vendor's id or a `ref` from any record. Text that cannot be an id of that vendor, such as `"Founders Q4"`, is taken as the campaign's name: the campaigns are read, and the one whose name matches it whole, ignoring case, or else the only one whose name contains it, is used. When several match, the command refuses with `Invalid` and lists them. The same holds for `--campaign`, for `leads --list`, and for the `campaign` input of every tool and insight. A count the vendor does not report prints as `null`. The demo campaign has no subsequences, so that command prints an empty array.
 
 ## senders, health, leads and lists
 
@@ -162,7 +163,7 @@ Both commands exit 1 on failure, and say why in different places. A tool never t
   ../../_examples/cli-commands/person.out.txt
 </include>
 
-A person who is in no campaign is an answer, `found: false`, with exit code 0. With `--redact` the emails and profiles it would match are masked, so the command refuses with `Unsupported` rather than report a known person as not found.
+A `mailto:` link is read as the address in it. A company domain such as `acme.com` or `@acme.com` is refused with `Invalid` and a pointer to `account_summary`, and text with an `@` that is not an email address is refused too, both before any request. A person who is in no campaign is an answer, `found: false`, with exit code 0. With `--redact` the emails and profiles it would match are masked, so the command refuses with `Unsupported` rather than report a known person as not found.
 
 ## native
 

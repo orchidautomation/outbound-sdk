@@ -269,7 +269,7 @@ export interface InsightInputs {
   /** The input of `personalizationGaps` (the `personalization_gaps` tool). */
   readonly personalizationGaps: {
     /**
-     * The campaign's ref (provider:workspace:id)
+     * The campaign's ref (provider:workspace:id) or name
      *
      * Not empty. Required.
      */
@@ -292,7 +292,7 @@ export interface InsightInputs {
   /** The input of `stepFunnel` (the `step_funnel` tool). */
   readonly stepFunnel: {
     /**
-     * The campaign's ref, for example `instantly:acme:abc123`
+     * The campaign's ref, for example `instantly:acme:abc123`, or its name
      *
      * Not empty. Required.
      */
@@ -329,7 +329,7 @@ export interface InsightInputs {
     readonly alpha?: number | undefined;
 
     /**
-     * The campaign's ref, for example `instantly:acme:abc123`
+     * The campaign's ref, for example `instantly:acme:abc123`, or its name
      *
      * Not empty. Required.
      */
@@ -366,7 +366,7 @@ export interface InsightInputs {
   /** The input of `copyAudit` (the `copy_audit` tool). */
   readonly copyAudit: {
     /**
-     * The campaign's ref, for example `instantly:acme:abc123`
+     * The campaign's ref, for example `instantly:acme:abc123`, or its name
      *
      * Not empty. Required.
      */
@@ -438,7 +438,7 @@ export interface InsightInputs {
   /** The input of `copyPreview` (the `copy_preview` tool). */
   readonly copyPreview: {
     /**
-     * The campaign's ref, for example `instantly:acme:abc123`
+     * The campaign's ref, for example `instantly:acme:abc123`, or its name
      *
      * Not empty. Required.
      */
@@ -758,7 +758,7 @@ export interface InsightInputs {
     readonly to?: string | null | undefined;
 
     /**
-     * The campaign's ref
+     * The campaign's ref or name
      *
      * At least 3 characters. Required.
      */
@@ -837,7 +837,7 @@ export interface InsightInputs {
   /** The input of `pipelineForecast` (the `pipeline_forecast` tool). */
   readonly pipelineForecast: {
     /**
-     * The campaign's ref
+     * The campaign's ref or name
      *
      * At least 3 characters. Required.
      */
