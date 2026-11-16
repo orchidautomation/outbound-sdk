@@ -33,7 +33,7 @@
           "email",
           "linkedin"
         ],
-        "finding": "ana@northwind.example.com is in 3 campaigns across mailtool and linkedintool (email and linkedin).",
+        "finding": "ana@northwind.example.com is in 2 campaigns across mailtool and linkedintool (email and linkedin) at once, and was in \"SaaS founders\" (replied).",
         "identifiers": [
           "email:ana@northwind.example.com",
           "linkedin:ana-ruiz-example"
@@ -83,8 +83,10 @@
       "acrossTools": 1,
       "campaignsRead": 3,
       "collisions": 2,
+      "concurrent": 2,
       "leadsRead": 11,
       "leadsWithoutIdentifier": 0,
+      "pastOverlaps": 0,
       "withinTool": 1
     }
   },

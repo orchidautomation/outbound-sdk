@@ -116,14 +116,19 @@ const findings = (items: readonly JsonObject[], dot: string): string[] =>
 const leadCollisions: CardBuilder = (data) => {
   const totals = child(data, "totals");
   const found = num(totals, "collisions") ?? 0;
+  // Older answers have no `concurrent`: every collision was then reported as concurrent.
+  const concurrent = num(totals, "concurrent") ?? found;
+
+  const problem =
+    concurrent > 0
+      ? `🟡 ${plural(concurrent, "person", "people")} in two or more campaigns at once.`
+      : `🟡 ${plural(found, "person", "people")} in two or more campaigns, none active in two now.`;
 
   return {
     bullets: findings(rows(data, "collisions"), "🟡"),
     finding: verdict(
       num(totals, "leadsRead"),
-      found === 0
-        ? null
-        : `🟡 ${plural(found, "person", "people")} in two or more campaigns at once.`,
+      found === 0 ? null : problem,
       "Nobody is in two campaigns at once."
     ),
     stats: [
@@ -170,6 +175,7 @@ const suppressionCheck: CardBuilder = (data) => {
     ),
     stats: [
       ["Violations", int(found)],
+      ["Already stopped, not counted", int(num(totals, "alreadyStopped"))],
       ["By email", int(num(byMatch, "email"))],
       ["By domain", int(num(byMatch, "domain"))],
       ["By LinkedIn", int(num(byMatch, "linkedin"))],

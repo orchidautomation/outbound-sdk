@@ -144,8 +144,10 @@ const collisions = (found: number, leadsRead: number): LeadCollisions => ({
     acrossTools: 0,
     campaignsRead: 3,
     collisions: found,
+    concurrent: found,
     leadsRead,
     leadsWithoutIdentifier: 0,
+    pastOverlaps: 0,
     withinTool: found,
   },
 });
@@ -167,9 +169,46 @@ test("lead_collisions counts people in two campaigns at once", () => {
   );
 });
 
+test("lead_collisions does not say at once when only past overlaps were asked for", () => {
+  const past: LeadCollisions = {
+    collisions: [
+      {
+        campaignCount: 2,
+        campaigns: [],
+        channels: ["email"],
+        finding:
+          'person1@example.com was in "Founders" (completed) and is now active in "Agencies".',
+        identifiers: ["email:person1@example.com"],
+        providers: ["instantly"],
+        scope: "within_tool",
+        stillActive: 1,
+      },
+    ],
+    totals: {
+      acrossTools: 0,
+      campaignsRead: 3,
+      collisions: 1,
+      concurrent: 0,
+      leadsRead: 80,
+      leadsWithoutIdentifier: 0,
+      pastOverlaps: 1,
+      withinTool: 1,
+    },
+  };
+
+  const card = read(cardFor("lead_collisions", insight(past)));
+
+  includes(
+    card,
+    "🟡 1 person in two or more campaigns, none active in two now."
+  );
+  excludes(card, "at once");
+});
+
 const check = (found: number): SuppressionCheck => ({
   byCampaign: [],
   totals: {
+    alreadyStopped: 3,
     blockEntriesNotChecked: 0,
     blockEntriesRead: 12,
     byMatch: { domain: found, email: 0, linkedin: 0 },
@@ -199,6 +238,7 @@ test("suppression_check lists blocked leads still in a campaign", () => {
     read(cardFor("suppression_check", insight(check(2)))),
     "🔴 2 blocked leads still in a campaign.",
     "By domain: 2",
+    "Already stopped, not counted: 3",
     "• 🔴 lead1@competitor.example is blocked by domain but is in Founders Q4."
   );
   includes(

@@ -88,11 +88,16 @@ test("without redact the email-matching insights find the people and the violati
   });
 
   const suppression = await outbound.insights.suppressionCheck({});
-  const collisions = await outbound.insights.leadCollisions({});
+
+  // person1 replied in the demo campaign, so the pair is a past overlap.
+  const collisions = await outbound.insights.leadCollisions({
+    include_past: true,
+  });
 
   assert.equal(account.data.totals.people, 3);
   assert.equal(suppression.data.totals.violations, 1);
   assert.equal(collisions.data.totals.collisions, 1);
+  assert.equal(collisions.data.totals.pastOverlaps, 1);
 });
 
 test("with redact masking emails they refuse before any read, naming the redact plugin", async () => {
@@ -180,9 +185,12 @@ test("a hashing redact keeps exact matching working, and says what it cannot mat
   );
 
   // The same person under one address in two campaigns is still found.
-  const collisions = await outbound.insights.leadCollisions({});
+  const collisions = await outbound.insights.leadCollisions({
+    include_past: true,
+  });
 
   assert.equal(collisions.data.totals.collisions, 1);
+  assert.equal(collisions.data.totals.pastOverlaps, 1);
   assert.match(
     collisions.meta.notes.join(" "),
     /matched by email address only/u
