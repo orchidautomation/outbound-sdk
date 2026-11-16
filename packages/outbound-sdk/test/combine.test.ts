@@ -106,16 +106,17 @@ const failure = async (action: () => unknown): Promise<OutboundError> => {
 
 test("lists every member's records in one stream, each tagged with its own provider and workspace", async () => {
   const campaigns = await client().campaigns.listAll().toArray();
+  // One from each member in turn, so a cap on the walk shares its room.
   assert.deepEqual(
     campaigns.map((campaign) => campaign.ref),
     [
       "mailtool:client-a:c1",
-      "mailtool:client-a:c2",
-      "mailtool:client-a:c3",
       "mailtool:client-b:c1",
-      "mailtool:client-b:c2",
-      "mailtool:client-b:c3",
       "lntool:client-a:c1",
+      "mailtool:client-a:c2",
+      "mailtool:client-b:c2",
+      "mailtool:client-a:c3",
+      "mailtool:client-b:c3",
     ]
   );
   assert.deepEqual(
@@ -124,20 +125,25 @@ test("lists every member's records in one stream, each tagged with its own provi
   );
 });
 
-test("a cursor resumes inside the right member", async () => {
+test("a cursor resumes every member that has more, and only those", async () => {
   const outbound = client();
   const first = await outbound.campaigns.list();
   const second = await outbound.campaigns.list({ cursor: first.cursor });
-  const third = await outbound.campaigns.list({ cursor: second.cursor });
   assert.deepEqual(
-    [first, second, third].map((page) => page.items.map((item) => item.ref)),
+    [first, second].map((page) => page.items.map((item) => item.ref)),
     [
-      ["mailtool:client-a:c1", "mailtool:client-a:c2"],
-      ["mailtool:client-a:c3"],
-      ["mailtool:client-b:c1", "mailtool:client-b:c2"],
+      [
+        "mailtool:client-a:c1",
+        "mailtool:client-b:c1",
+        "lntool:client-a:c1",
+        "mailtool:client-a:c2",
+        "mailtool:client-b:c2",
+      ],
+      ["mailtool:client-a:c3", "mailtool:client-b:c3"],
     ]
   );
   assert.equal(first.complete, false);
+  assert.equal(second.complete, true);
 });
 
 test("a lookup is routed by ref, and a bare id is refused", async () => {

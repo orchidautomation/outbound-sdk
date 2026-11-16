@@ -1,8 +1,8 @@
 Every campaign:
   emailtool:acme:cmp_1  Acme founders
-  emailtool:acme:cmp_2  Acme agencies
   linkedintool:acme:cmp_1  Acme on LinkedIn
   emailtool:globex:cmp_1  Globex outreach
+  emailtool:acme:cmp_2  Acme agencies
 
 acme (combined): 3 campaigns
 globex (emailtool): cmp_1 is "Globex outreach"

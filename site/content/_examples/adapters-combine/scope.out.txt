@@ -4,7 +4,7 @@
   'instantly:globex:globex'
 ]
 instantly globex - Globex CFOs
-combined - instantly:acme:cmp_1, instantly:acme:cmp_2, heyreach:acme:cmp_1
+combined - instantly:acme:cmp_1, heyreach:acme:cmp_1, instantly:acme:cmp_2
 insight ran on: instantly
 combined native - Unsupported - native is not available on a combined instance: it belongs to one vendor. Use outbound.workspace("provider:workspace").native, for example "instantly:acme" or "heyreach:acme" or "instantly:globex"
 combined raw - Unsupported - raw is not available on a combined instance: it belongs to one vendor. Use outbound.workspace("provider:workspace").raw, for example "instantly:acme" or "heyreach:acme" or "instantly:globex"

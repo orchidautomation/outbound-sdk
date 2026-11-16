@@ -19,7 +19,11 @@ import type {
   StatsResult,
   WithMeta,
 } from "../internal/outbound/api.ts";
-import { namesCampaign, withCampaign } from "../tools/by-name.ts";
+import {
+  namesCampaign,
+  routedByCampaign,
+  withCampaign,
+} from "../tools/by-name.ts";
 import { inputProblem } from "../tools/input-problem.ts";
 import type { InsightCost } from "./cost.ts";
 import { runCap } from "./run-cap.ts";
@@ -414,6 +418,15 @@ const prepare = <Key extends string, Input, Data, Given>(
     );
   }
 
+  return parsed.data;
+};
+
+/** Refuses the run when the adapter lacks what the insight or this input needs. */
+const refuseUnsupported = <Key extends string, Input, Data, Given>(
+  outbound: OutboundApi,
+  spec: InsightSpec<Key, Input, Data, Given>,
+  input: Input
+): void => {
   const lacked = spec.lacks?.(outbound) ?? null;
 
   if (lacked !== null) {
@@ -426,7 +439,7 @@ const prepare = <Key extends string, Input, Data, Given>(
 
   const absent = missing(outbound, spec.needs);
   // What only this input needs is named apart, so the caller knows another input may work.
-  const forInput = missing(outbound, spec.needsFor?.(parsed.data) ?? []);
+  const forInput = missing(outbound, spec.needsFor?.(input) ?? []);
 
   if (absent.length > 0 || forInput.length > 0) {
     throw new OutboundError(
@@ -435,9 +448,9 @@ const prepare = <Key extends string, Input, Data, Given>(
       { provider: outbound.provider }
     );
   }
-
-  return parsed.data;
 };
+
+const COMBINED = "combined";
 
 /** The most campaigns a name is looked up among, for the cost of the lookup. */
 const NAMED_AMONG = 1000;
@@ -465,15 +478,18 @@ const execute = async <Key extends string, Input, Data, Given>(
   input: Json | undefined,
   options: RunOptions = {}
 ): Promise<InsightResult<Data>> => {
-  const checked = prepare(outbound, spec, input);
+  // A campaign ref on a combined instance runs the insight on the member it
+  // names, so that member's capabilities apply, not what every member shares.
+  const target = routedByCampaign(outbound, input);
+  const checked = prepare(target, spec, input);
+  // A name says which member it is only once it is looked up.
+  const later = namesCampaign(target, checked) && target.provider === COMBINED;
 
-  const cap = runCap(
-    outbound,
-    priced(outbound, spec, checked),
-    checked,
-    options
-  );
+  if (!later) {
+    refuseUnsupported(target, spec, checked);
+  }
 
+  const cap = runCap(target, priced(target, spec, checked), checked, options);
   const now = options.now ?? Date.now();
   const tracker = track(cap.outbound, now, cap.campaignsFound);
 
@@ -481,7 +497,15 @@ const execute = async <Key extends string, Input, Data, Given>(
   const data = await withCampaign(tracker.context.outbound, checked, (walk) =>
     tracker.context.all(walk)
   )
-    .then((resolved) => spec.run(tracker.context, resolved))
+    .then((resolved) => {
+      const member = routedByCampaign(tracker.context.outbound, resolved);
+
+      if (later) {
+        refuseUnsupported(member, spec, resolved);
+      }
+
+      return spec.run({ ...tracker.context, outbound: member }, resolved);
+    })
     .catch(cap.failed);
 
   const short = cap.shortNote();

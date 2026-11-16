@@ -1,5 +1,10 @@
 Invalid - Campaign "cmp_founders" must be a ref (provider:workspace:id) of an adapter on this combined instance
-[ 'memory:acme:cmp_founders', 'memory:acme:cmp_agencies' ]
+[
+  'memory:acme:cmp_founders',
+  'memory:globex:cmp_founders',
+  'memory:acme:cmp_agencies',
+  'memory:globex:cmp_agencies'
+]
 Q4 SaaS founders from acme
 memory:globex:cmp_founders
 NotFound - Workspace initech is not on this instance
