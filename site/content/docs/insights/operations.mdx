@@ -64,7 +64,8 @@ Why one campaign is underperforming: a list of findings, most serious first.
 | `max_send_drop` | 0.3 | 0 to 1 | A fall in sends, recent days against the days before, over this share is a finding. |
 | `min_weekly_hours` | 20 | 0 to 168 | Sending windows open fewer hours a week than this limit volume. |
 | `daily_limit_share` | 0.9 | 0 to 1 | Average daily sends at or over this share of the daily limit mean the limit holds volume back. |
-| `max_senders` | 50 | 1 to 500 | The most senders of the campaign to read. |
+| `max_senders` | 500 | 1 to 500 | The most of the campaign's own senders to read and screen. |
+| `max_leads` | 2,000 | 1 to 50,000 | The most leads to read when sends fell or stopped, to tell lead runout from a fault. |
 
 `data` (`CampaignDiagnosis`):
 
@@ -81,18 +82,19 @@ The findings:
 | Code | Severity | Fires when |
 | --- | --- | --- |
 | `high_bounce_rate` | high | The bounce rate is over `max_bounce_rate`. |
+| `out_of_leads` | high | Sends fell or stopped and under a day of leads is left to start at the recent pace of new leads started, the pace `lead_runway` uses. It replaces `falling_sends` or `no_recent_sends`: the cause is lead runout, not a fault. |
 | `no_recent_sends` | high | The campaign is active but nothing was sent in the last `days`. |
-| `inactive_sender` | high | A sender of the campaign is not active. |
+| `inactive_sender` | high | A sender of the campaign is not active or has a warmup score of 0. Every sender of the campaign is screened, up to `max_senders`. |
 | `low_reply_rate` | high or medium | The reply rate is under `min_reply_rate`. High when the whole interval is under it. |
 | `too_little_volume` | medium | Fewer sends than `min_sent`. Reply and bounce rates are then not judged. |
 | `few_positive_replies` | medium | The positive share of replies is under `min_positive_share`. |
 | `falling_sends` | medium | Sends fell by more than `max_send_drop`. |
 | `short_sequence` | medium | The sequence has one or two steps. |
 | `schedule_limits_volume` | low | The windows are open too few hours a week, or recent days run at the daily limit. |
-| `tracking_off` | low | Open tracking is off, so a missing open count is expected. |
+| `tracking_off` | low | Open or click tracking is off, so a missing open or click count is expected. |
 
 - **Needs:** `stats.campaign`. It checks more when the adapter has `campaigns.settings`, `sequence`, `senders.byCampaign` and `stats.byDay`.
-- **Costs:** up to 7 requests.
+- **Costs:** up to 6 requests, plus one per page of the campaign's senders and, only when sends fell or stopped, one per page of its leads (up to `max_leads`).
 - **Notes it can add:** one per part it could not check, the same sentences as `notChecked`: schedule and tracking, sequence length, sender status, recent sending trend.
 - **Does not:** say all is well. An empty list means nothing was found in what could be checked. Read `notChecked` beside it. It does not read the copy: use `copyAudit` and `stepFunnel` for that.
 

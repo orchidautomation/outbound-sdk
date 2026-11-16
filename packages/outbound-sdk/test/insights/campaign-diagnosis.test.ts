@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import type { MemoryData } from "../../src/memory/index.ts";
+import type {
+  MemoryData,
+  MemoryLead,
+  MemorySender,
+} from "../../src/memory/index.ts";
 import { NOW, single } from "./helpers.ts";
 import { pair, row, unsupported } from "./ops-helpers.ts";
 
@@ -134,7 +138,7 @@ test("campaign_diagnosis lists what is wrong with a campaign, most serious first
       code: "inactive_sender",
       finding: "1 of 2 senders is not active: two@send.example (disconnected).",
       next: "Reconnect or replace them; warmup_readiness shows which mailboxes are fit to send.",
-      numbers: { inactive: 1, senders: 2 },
+      numbers: { inactive: 1, senders: 2, warmupZero: 0 },
       severity: "high",
     },
     {
@@ -506,4 +510,215 @@ test("campaign_diagnosis judges a campaign with 60 sends, as the other ops insig
 
   assert.ok(!found.includes("too_little_volume"), found.join(", "));
   assert.ok(found.includes("low_reply_rate"), found.join(", "));
+});
+
+const lead = (
+  id: string,
+  campaignId: string,
+  status: NonNullable<MemoryLead["status"]>,
+  started: boolean
+): MemoryLead => {
+  const seeded: MemoryLead = {
+    campaignId,
+    email: `${id}@example.com`,
+    id,
+    status,
+  };
+
+  // A lead whose first step went out; the others have not started.
+  return started ? { ...seeded, engagement: { stepIndex: 0 } } : seeded;
+};
+
+const leads = (
+  campaignId: string,
+  count: number,
+  status: NonNullable<MemoryLead["status"]>,
+  started: boolean
+): MemoryLead[] =>
+  Array.from({ length: count }, (_, index) =>
+    lead(
+      `${campaignId}-${status}-${started}-${index}`,
+      campaignId,
+      status,
+      started
+    )
+  );
+
+// Live case (OUT-97): sends fell from 873 to 306 while only 28 leads were
+// left to start, 0.64 days at the recent pace. Here the 7 days before sent
+// 900 and the last 7 sent 280, starting 280 new leads: 40 a day.
+const runout = (toStart: number): MemoryData => ({
+  campaigns: [{ id: "drain", name: "Draining" }],
+  leads: [
+    ...leads("drain", 30, "completed", true),
+    ...leads("drain", 12, "active", true),
+    ...leads("drain", toStart, "active", false),
+  ],
+  stats: [
+    row("drain", "2026-11-02", { contacted: 900, sent: 900 }),
+    row("drain", "2026-11-09", { contacted: 140, sent: 140 }),
+    row("drain", "2026-11-12", { contacted: 140, sent: 140 }),
+  ],
+});
+
+const DRAIN = { campaign: "memory:agency:drain" };
+
+test("campaign_diagnosis explains falling sends as lead runout when under a day of leads is left to start", async () => {
+  const result = await single(runout(28)).insights.campaignDiagnosis(DRAIN, {
+    now: NOW,
+  });
+
+  // 28 leads to start at 280 / 7 = 40 a day: 0.7 days.
+  assert.deepEqual(result.data.findings, [
+    {
+      code: "out_of_leads",
+      finding:
+        "Sends fell from 900 to 280 over the last 7 days against the 7 before because the campaign is running out of leads: only 28 leads are left to start, under a day at the recent pace of 40 new leads a day. 12 leads are still finishing the sequence. This is lead runout, not a sending fault.",
+      next: "Add leads to keep the campaign sending; pipeline_forecast shows what the leads left should produce.",
+      numbers: {
+        activeLeads: 40,
+        before: 900,
+        daysLeft: 0.7,
+        drop: 0.6889,
+        inSequence: 12,
+        leadsToStart: 28,
+        newLeadsPerDay: 40,
+        sent: 280,
+      },
+      severity: "high",
+    },
+  ]);
+  assert.equal(result.meta.complete, true);
+
+  // pipeline_forecast gives the same days left for the same campaign and window.
+  const forecast = await single(runout(28)).insights.pipelineForecast(DRAIN, {
+    now: NOW,
+  });
+
+  assert.equal(forecast.data.daysLeft, 0.7);
+});
+
+test("campaign_diagnosis keeps falling_sends when leads are left, or when it cannot tell", async () => {
+  // 80 leads to start at 40 a day: 2 days left, so the fall is not runout.
+  const plenty = await single(runout(80)).insights.campaignDiagnosis(DRAIN, {
+    now: NOW,
+  });
+
+  assert.deepEqual(codes(plenty), ["falling_sends"]);
+
+  // The cap stopped the lead read, so the count left is a minimum and runout is not claimed.
+  const capped = await single(runout(28)).insights.campaignDiagnosis(
+    { ...DRAIN, max_leads: 10 },
+    { now: NOW }
+  );
+
+  assert.deepEqual(codes(capped), ["falling_sends"]);
+  assert.equal(capped.meta.complete, false);
+
+  // The adapter cannot list a campaign's leads: falling_sends, and a note saying why.
+  const blind = await single(runout(28), {
+    "leads.byCampaign": false,
+  }).insights.campaignDiagnosis(DRAIN, { now: NOW });
+
+  assert.deepEqual(codes(blind), ["falling_sends"]);
+  assert.ok(
+    blind.meta.notes.some((note) => note.startsWith("Lead runout:")),
+    blind.meta.notes.join(" | ")
+  );
+
+  // Sends did not fall, so no lead is read: a cap of 1 lead would otherwise stop the read.
+  const steady = await single({
+    ...runout(1),
+    stats: [
+      row("drain", "2026-11-02", { contacted: 300, sent: 300 }),
+      row("drain", "2026-11-09", { contacted: 300, sent: 300 }),
+    ],
+  }).insights.campaignDiagnosis({ ...DRAIN, max_leads: 1 }, { now: NOW });
+
+  assert.deepEqual(codes(steady), []);
+  assert.equal(steady.meta.complete, true);
+});
+
+const trackingFinding = async (settings: {
+  trackClicks?: boolean;
+  trackOpens?: boolean;
+}) =>
+  (
+    await single({
+      campaigns: [{ id: "tracking", name: "Tracking", settings }],
+    }).insights.campaignDiagnosis({ campaign: "tracking" }, { now: NOW })
+  ).data.findings.find((each) => each.code === "tracking_off")?.finding;
+
+test("campaign_diagnosis says click tracking is off as well as open tracking", async () => {
+  const run = trackingFinding;
+
+  assert.equal(
+    await run({ trackClicks: false, trackOpens: false }),
+    "Open and click tracking are off, so missing open and click counts are expected and not a fault."
+  );
+  assert.equal(
+    await run({ trackClicks: false, trackOpens: true }),
+    "Click tracking is off, so no link click is counted; that is expected and not a fault."
+  );
+  assert.equal(
+    await run({ trackClicks: true, trackOpens: false }),
+    "Open tracking is off, so the missing open count is expected and not a fault."
+  );
+  assert.equal(await run({ trackClicks: true, trackOpens: true }), undefined);
+});
+
+// What is wrong with the sender at this position of the 143: #128 is
+// disconnected and #140 has a warmup score of 0.
+const fault = (position: number): Partial<MemorySender> => {
+  if (position === 128) {
+    return { status: "disconnected" };
+  }
+
+  return position === 140 ? { warmup: { enabled: true, score: 0 } } : {};
+};
+
+test("campaign_diagnosis screens every sender of the campaign, not the first 50, and flags a warmup score of 0", async () => {
+  // 143 senders on the campaign, as in the live case; #128 is disconnected
+  // and #140 has a warmup score of 0. 40 more senders belong to another campaign.
+  const senders: MemorySender[] = Array.from({ length: 143 }, (_, index) => ({
+    address: `s${index + 1}@send.example`,
+    campaignIds: ["bigpool"],
+    id: `s${index + 1}`,
+    ...fault(index + 1),
+  }));
+
+  const other = Array.from({ length: 40 }, (_, index) => ({
+    address: `o${index + 1}@send.example`,
+    campaignIds: ["elsewhere"],
+    id: `o${index + 1}`,
+    status: "disconnected" as const,
+  }));
+
+  const data: MemoryData = {
+    campaigns: [{ id: "bigpool", name: "Big pool" }],
+    senders: [...other, ...senders],
+  };
+
+  const result = await single(data).insights.campaignDiagnosis(
+    { campaign: "bigpool" },
+    { now: NOW }
+  );
+
+  assert.deepEqual(
+    result.data.findings.find((each) => each.code === "inactive_sender"),
+    {
+      code: "inactive_sender",
+      finding:
+        "2 of 143 senders are not fit to send: s128@send.example (disconnected), s140@send.example (warmup score 0).",
+      next: "Reconnect or replace them; warmup_readiness shows which mailboxes are fit to send.",
+      numbers: { inactive: 1, senders: 143, warmupZero: 1 },
+      severity: "high",
+    }
+  );
+  // Workspace size alone does not make the answer partial.
+  assert.equal(result.meta.complete, true);
+  assert.ok(
+    !result.meta.notes.some((note) => note.includes("max_senders")),
+    result.meta.notes.join(" | ")
+  );
 });

@@ -48,7 +48,7 @@ Rates are computed from the counts beside them. A count the vendor does not repo
 | Tool | Answers | Needs |
 | --- | --- | --- |
 | `campaign_overview` | How every campaign with a given status is doing | `campaigns.status`, `stats.campaign` |
-| `campaign_trend` | How one count moved day by day for a campaign | `stats.campaign`, `stats.byDay` |
+| `campaign_trend` | How one count moved day by day for a campaign, over the last 30 days unless `from` or `to` is given | `stats.campaign`, `stats.byDay` |
 | `winning_steps` | Which step or variant drives replies | `stats.byStep` |
 | `sender_health` | Status, daily limit and warmup per sender, unhealthy first | `senders.list` |
 | `reply_samples` | Recent replies, optionally by category | `replies.list` |

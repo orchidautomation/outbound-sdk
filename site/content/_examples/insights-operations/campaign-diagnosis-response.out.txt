@@ -26,7 +26,8 @@
         "next": "Reconnect or replace them; warmup_readiness shows which mailboxes are fit to send.",
         "numbers": {
           "inactive": 1,
-          "senders": 2
+          "senders": 2,
+          "warmupZero": 0
         },
         "severity": "high"
       },

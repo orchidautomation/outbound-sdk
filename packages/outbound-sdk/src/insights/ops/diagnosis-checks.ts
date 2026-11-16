@@ -5,6 +5,7 @@ import type { CampaignSettings } from "../../internal/entities-account.ts";
 import type { Campaign, Sender } from "../../internal/entities.ts";
 import { plural } from "../../internal/numbers.ts";
 import { noun } from "../../internal/plural.ts";
+import { warmupAtZero } from "../../internal/sender-screen.ts";
 import { percent, round, spoken } from "../stats.ts";
 import { measure, volumeOf } from "./shared.ts";
 import type { Rates, Totals } from "./shared.ts";
@@ -16,6 +17,7 @@ export type DiagnosisCode =
   | "inactive_sender"
   | "low_reply_rate"
   | "no_recent_sends"
+  | "out_of_leads"
   | "schedule_limits_volume"
   | "short_sequence"
   | "too_little_volume"
@@ -40,6 +42,20 @@ export interface RecentSends {
   readonly before: number | null;
   /** Days in the recent window the vendor reports a send count for. */
   readonly daysWithData: number;
+  /** New leads started per day in the last `days`. `null` when the vendor reports no daily contacted count. */
+  readonly startedPerDay: number | null;
+}
+
+/** The campaign's leads, read only when its sends fell or stopped. */
+export interface LeadsLeft {
+  /** Active leads: not replied, bounced, unsubscribed, paused or finished. */
+  readonly active: number;
+  /** Active leads whose sequence has not started, or every active lead when the vendor does not say. */
+  readonly toStart: number;
+  /** Active leads partway through the sequence. `null` when the vendor does not say. */
+  readonly inSequence: number | null;
+  /** Days until no lead is left to start, at `startedPerDay`. `null` when it cannot be known. */
+  readonly daysLeft: number | null;
 }
 
 /** What was read about the campaign. A part that could not be read is `null`. */
@@ -53,6 +69,8 @@ export interface Facts {
   readonly steps: number | null;
   readonly senders: readonly Sender[] | null;
   readonly recent: RecentSends | null;
+  /** Read only when sends fell or stopped, every lead was read and the vendor listed some. */
+  readonly leads: LeadsLeft | null;
 }
 
 export interface Limits {
@@ -168,11 +186,85 @@ const positives: Check = (facts, limits) => {
       ];
 };
 
-const recentSends: Check = (facts, limits) => {
-  const { recent } = facts;
+/** Under a day of leads left to start: the cause of a fall in sends, not a fault. */
+const RUNNING_OUT_DAYS = 1;
 
+/** The share sends fell by, recent days against the days before. `null` when it cannot be worked out. */
+const dropOf = (recent: RecentSends): number | null =>
+  recent.sent === null || recent.before === null || recent.before <= 0
+    ? null
+    : round(1 - recent.sent / recent.before);
+
+/** Whether the recent sends fell or stopped enough to be a finding, so the leads left are worth reading. */
+export const sendsFellOrStopped = (
+  campaign: Campaign,
+  recent: RecentSends | null,
+  limits: Pick<Limits, "maxSendDrop">
+): boolean => {
   if (recent === null) {
+    return false;
+  }
+
+  if (recent.sent === null || recent.sent === 0) {
+    return campaign.status === "active";
+  }
+
+  const drop = dropOf(recent);
+
+  return drop !== null && drop > limits.maxSendDrop;
+};
+
+const runningOut = (leads: LeadsLeft | null): leads is LeadsLeft =>
+  leads !== null &&
+  leads.daysLeft !== null &&
+  leads.daysLeft < RUNNING_OUT_DAYS;
+
+const outOfLeads = (
+  recent: RecentSends,
+  leads: LeadsLeft
+): DiagnosisFinding => {
+  const left =
+    leads.toStart === 0
+      ? "no lead is left to start"
+      : `only ${plural(leads.toStart, "lead")} ${noun(leads.toStart, "is", "are")} left to start, under a day at the recent pace of ${spoken(recent.startedPerDay)} new ${noun(recent.startedPerDay ?? 0, "lead", "leads")} a day`;
+
+  const fell =
+    recent.sent === null || recent.sent === 0
+      ? `The vendor reports no sends in the last ${recent.days} days`
+      : `Sends fell from ${recent.before} to ${recent.sent} over the last ${recent.days} days against the ${recent.days} before`;
+
+  const finishing =
+    leads.inSequence === null || leads.inSequence === 0
+      ? ""
+      : ` ${plural(leads.inSequence, "lead")} ${noun(leads.inSequence, "is", "are")} still finishing the sequence.`;
+
+  return {
+    code: "out_of_leads",
+    finding: `${fell} because the campaign is running out of leads: ${left}.${finishing} This is lead runout, not a sending fault.`,
+    next: "Add leads to keep the campaign sending; pipeline_forecast shows what the leads left should produce.",
+    numbers: {
+      activeLeads: leads.active,
+      before: recent.before,
+      daysLeft: leads.daysLeft,
+      drop: dropOf(recent),
+      inSequence: leads.inSequence,
+      leadsToStart: leads.toStart,
+      newLeadsPerDay: recent.startedPerDay,
+      sent: recent.sent,
+    },
+    severity: "high",
+  };
+};
+
+const recentSends: Check = (facts, limits) => {
+  const { leads, recent } = facts;
+
+  if (recent === null || !sendsFellOrStopped(facts.campaign, recent, limits)) {
     return [];
+  }
+
+  if (runningOut(leads)) {
+    return [outOfLeads(recent, leads)];
   }
 
   if (recent.sent === null || recent.sent === 0) {
@@ -189,22 +281,17 @@ const recentSends: Check = (facts, limits) => {
       : [];
   }
 
-  const drop =
-    recent.before === null || recent.before <= 0
-      ? null
-      : round(1 - recent.sent / recent.before);
+  const drop = dropOf(recent);
 
-  return drop === null || drop <= limits.maxSendDrop
-    ? []
-    : [
-        {
-          code: "falling_sends",
-          finding: `Sends fell from ${recent.before} to ${recent.sent} over the last ${recent.days} days against the ${recent.days} before, a drop of ${percent(drop)}.`,
-          next: "Use pipeline_forecast to check the leads left, and sender_capacity for the mailboxes.",
-          numbers: { before: recent.before, drop, sent: recent.sent },
-          severity: "medium",
-        },
-      ];
+  return [
+    {
+      code: "falling_sends",
+      finding: `Sends fell from ${recent.before} to ${recent.sent} over the last ${recent.days} days against the ${recent.days} before, a drop of ${percent(drop)}.`,
+      next: "Use pipeline_forecast to check the leads left, and sender_capacity for the mailboxes.",
+      numbers: { before: recent.before, drop, sent: recent.sent },
+      severity: "medium",
+    },
+  ];
 };
 
 const sequence: Check = ({ steps }) =>
@@ -220,41 +307,94 @@ const sequence: Check = ({ steps }) =>
         },
       ];
 
+/** Why a sender is flagged: its status when not active, and a warmup score of 0. */
+const senderProblems = (sender: Sender): string[] => [
+  ...(sender.status === "active" ? [] : [sender.status]),
+  ...(warmupAtZero(sender) ? ["warmup score 0"] : []),
+];
+
 const senders: Check = (facts) => {
   const all = facts.senders ?? [];
-  const inactive = all.filter((sender) => sender.status !== "active");
 
-  return inactive.length === 0
+  const flagged = all.flatMap((sender) => {
+    const problems = senderProblems(sender);
+
+    return problems.length === 0 ? [] : [{ problems, sender }];
+  });
+
+  const inactive = flagged.filter(({ sender }) => sender.status !== "active");
+  const warmupZero = all.filter(warmupAtZero).length;
+  const what = warmupZero === 0 ? "not active" : "not fit to send";
+
+  return flagged.length === 0
     ? []
     : [
         {
           code: "inactive_sender",
-          finding: `${inactive.length} of ${plural(all.length, "sender")} ${noun(inactive.length, "is", "are")} not active: ${inactive
+          finding: `${flagged.length} of ${plural(all.length, "sender")} ${noun(flagged.length, "is", "are")} ${what}: ${flagged
             .map(
-              (sender) =>
-                `${sender.address ?? sender.name ?? sender.ref} (${sender.status})`
+              ({ problems, sender }) =>
+                `${sender.address ?? sender.name ?? sender.ref} (${problems.join(", ")})`
             )
             .join(", ")}.`,
           next: "Reconnect or replace them; warmup_readiness shows which mailboxes are fit to send.",
-          numbers: { inactive: inactive.length, senders: all.length },
+          numbers: {
+            inactive: inactive.length,
+            senders: all.length,
+            warmupZero,
+          },
           severity: "high",
         },
       ];
 };
 
-const tracking: Check = ({ opened, settings }) =>
-  settings?.tracking.opens === false && (opened ?? 0) === 0
-    ? [
-        {
-          code: "tracking_off",
-          finding:
-            "Open tracking is off, so the missing open count is expected and not a fault.",
-          next: "Judge this campaign on replies, not opens.",
-          numbers: { opened },
-          severity: "low",
-        },
-      ]
-    : [];
+/** What `tracking_off` says, by which tracking is off: the finding, then what to do next. */
+const TRACKING_OFF = {
+  both: [
+    "Open and click tracking are off, so missing open and click counts are expected and not a fault.",
+    "Judge this campaign on replies, not opens or clicks.",
+  ],
+  clicks: [
+    "Click tracking is off, so no link click is counted; that is expected and not a fault.",
+    "Judge this campaign on replies, not clicks.",
+  ],
+  opens: [
+    "Open tracking is off, so the missing open count is expected and not a fault.",
+    "Judge this campaign on replies, not opens.",
+  ],
+} as const;
+
+const offWhich = (
+  opens: boolean,
+  clicks: boolean
+): keyof typeof TRACKING_OFF => {
+  if (opens && clicks) {
+    return "both";
+  }
+
+  return opens ? "opens" : "clicks";
+};
+
+const tracking: Check = ({ opened, settings }) => {
+  const opens = settings?.tracking.opens === false && (opened ?? 0) === 0;
+  const clicks = settings?.tracking.clicks === false;
+
+  if (!opens && !clicks) {
+    return [];
+  }
+
+  const [finding, next] = TRACKING_OFF[offWhich(opens, clicks)];
+
+  return [
+    {
+      code: "tracking_off",
+      finding,
+      next,
+      numbers: { opened },
+      severity: "low",
+    },
+  ];
+};
 
 const minutesOf = (clock: string | null): number | null => {
   const [hours, minutes] = (clock ?? "").split(":").map(Number);

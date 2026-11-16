@@ -5,10 +5,10 @@ import { z } from "zod";
 
 import { mapConcurrent } from "../internal/concurrency.ts";
 import type { SenderHealth } from "../internal/entities-account.ts";
-import type { Sender } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
 import { toJson } from "../internal/json.ts";
 import type { NativeRead } from "../internal/native.ts";
+import { listProblemsOf, SCREENED_AT_MOST } from "../internal/sender-screen.ts";
 import { UNTRUSTED_NOTE } from "./shared.ts";
 import type { ToolDefinition } from "./shared.ts";
 
@@ -68,23 +68,7 @@ const deliverabilityInput = z.object({
     ),
 });
 
-// Every sender up to this many is screened from the sender list, so a broken
-// sender past `limit` is still found and counted. Past it, `all_checked` is
-// false and `total` is null.
-const SCREENED_AT_MOST = 500;
-
 const DNS_RECORDS = ["spf", "dkim", "dmarc", "mx"] as const;
-
-const BROKEN_STATUSES = new Set<Sender["status"]>(["disconnected", "error"]);
-
-/**
- * What the sender list alone shows is wrong with a sender. It costs no request
- * beyond the list, so it runs on every sender before any is checked in full.
- */
-const listProblemsOf = (sender: Sender): string[] => [
-  ...(BROKEN_STATUSES.has(sender.status) ? [`status is ${sender.status}`] : []),
-  ...(sender.warmup?.score === 0 ? ["warmup score is 0"] : []),
-];
 
 /** What is wrong with a sender, in plain words. Empty when nothing is. */
 const problemsOf = (health: SenderHealth): string[] => {

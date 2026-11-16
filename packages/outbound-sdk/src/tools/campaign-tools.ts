@@ -6,6 +6,7 @@ import {
   replyCategorySchema,
 } from "../internal/entities.ts";
 import type { Evidence } from "../internal/entities.ts";
+import { OutboundError } from "../internal/errors.ts";
 import type { Json } from "../internal/json.ts";
 import { day, optionalRange, summarize, untrusted, weakest } from "./shared.ts";
 import type { ToolDefinition } from "./shared.ts";
@@ -88,33 +89,57 @@ const METRICS = [
 
 const trendInput = z.object({
   campaign: z.string().min(1).describe("The campaign ref or id"),
-  from: day.describe(
-    "First day, YYYY-MM-DD. Every result of another tool gives today as meta.today; call campaign_overview first if you do not know the date"
-  ),
+  from: day
+    .optional()
+    .describe(
+      "First day, YYYY-MM-DD. Leave out for 30 days before `to`. Do not guess the date: every result gives today as meta.today"
+    ),
   metric: z.enum(METRICS).default("replied").describe("The count to follow"),
-  to: day.describe("Last day, YYYY-MM-DD"),
+  to: day.optional().describe("Last day, YYYY-MM-DD. Leave out for today"),
 });
+
+const DAY_MS = 86_400_000;
+
+/** How far back `from` reaches when left out, as the other campaign tools' recent window. */
+const TREND_DAYS = 30;
+
+const dayOf = (time: number): string =>
+  new Date(time).toISOString().slice(0, 10);
 
 export const campaignTrend: ToolDefinition<z.infer<typeof trendInput>> = {
   description:
-    "How one count moved day by day for a campaign over a date range. Returns one point per day the vendor reports. A day's timezone is the vendor's, not always UTC.",
+    "How one count moved day by day for a campaign over a date range, the last 30 days up to today (UTC) unless from or to is given. Returns the range it read and one point per day the vendor reports. A day's timezone is the vendor's, not always UTC.",
   inputSchema: trendInput,
   name: "campaign_trend",
   needs: ["stats.campaign", "stats.byDay"],
   run: async (outbound, input) => {
+    const to = input.to ?? dayOf(Date.now());
+    const end = Date.parse(`${to}T00:00:00.000Z`);
+
+    if (input.from === undefined && Number.isNaN(end)) {
+      throw new OutboundError(
+        "Invalid",
+        `campaign_trend: \`to\` is not a real day: ${to}`
+      );
+    }
+
+    const from = input.from ?? dayOf(end - TREND_DAYS * DAY_MS);
+
     const stats = await outbound
       .campaign(input.campaign)
-      .stats({ by: "day", from: input.from, to: input.to });
+      .stats({ by: "day", from, to });
 
     return {
       data: {
         campaign: input.campaign,
+        from,
         metric: input.metric,
         points: stats.rows.map((row) => ({
           date: row.date,
           timezone: row.timezone,
           value: row[input.metric],
         })),
+        to,
       },
       meta: {
         evidence: stats.meta.evidence,
