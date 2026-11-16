@@ -2,6 +2,25 @@
 
 One small, typed, read-only TypeScript API over outbound sending tools. MIT, open source.
 
+## Orchid skills
+
+Always load the matching Orchid Relay skill before you start. They set how work is done here, and this file adds the repository's own rules on top.
+
+| Task | Skill |
+| --- | --- |
+| Any code change: a fix, feature, refactor, debugging or an implementation plan | `orchid-work` |
+| Reviewing a branch, diff or pull request | `orchid-review` |
+| Pushing, opening or updating a pull request, or getting its CI green | `orchid-pr` |
+| Reading or writing Linear issues, comments or status | `orchid-linear` |
+| Catching up on prior work, pausing, handing off or resuming | `orchid-history` |
+| Changing this file, agent setup or the Orchid plugin itself | `orchid-setup` |
+
+If a skill is missing from the session, say so and load `orchid-setup` to fix it. Do not carry on without it.
+
+## Finished work goes up as a pull request
+
+When a change is done and its checks pass, commit it, push the branch and open a pull request with `orchid-pr`, in the same turn. Do not stop at "the change is ready" or ask whether to open one. Work is not finished until its pull request exists and its link is in your reply. Opening a pull request is not merging it: Brandon still merges.
+
 ## Product boundary
 
 - Read-only. No method sends, pauses, edits or deletes anything in a vendor tool.
