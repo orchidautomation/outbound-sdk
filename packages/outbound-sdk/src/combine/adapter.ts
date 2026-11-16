@@ -16,7 +16,9 @@ import { mergeFields, resolveFields } from "../internal/fields.ts";
 import type { Json } from "../internal/json.ts";
 import { recordBase } from "../internal/record.ts";
 import { accountReads } from "./account.ts";
-import { COMBINED, pageAcross, pageTogether, routeRef } from "./route.ts";
+import { pageNewestFirst } from "./newest.ts";
+import { COMBINED, pageTogether, routeRef, takeInTurn } from "./route.ts";
+import type { Across } from "./route.ts";
 
 const MATURITY_ORDER = ["unverified", "beta", "stable"] as const;
 
@@ -68,14 +70,11 @@ const missing = (member: Adapter, method: string): OutboundError =>
     }
   );
 
-type Lists = Pick<
+type Lists = Pick<Adapter, "listCampaigns" | "listLeads" | "listWorkspaces">;
+
+type MessageLists = Pick<
   Adapter,
-  | "listCampaigns"
-  | "listLeads"
-  | "listMessages"
-  | "listReplies"
-  | "listSenders"
-  | "listWorkspaces"
+  "listMessages" | "listReplies" | "listSenders"
 >;
 
 const scopedOrAcross = <
@@ -92,10 +91,13 @@ const scopedOrAcross = <
     member: Adapter,
     memberCtx: AdapterContext,
     query: Query
-  ) => Promise<Page<Item>>
+  ) => Promise<Page<Item>>,
+  across: Across<Item>
 ): Promise<Page<Item>> => {
   if (query.campaignId === undefined) {
-    return pageAcross(members, ctx, query, (member, memberCtx, next) =>
+    // Every member is read side by side and merged, so a cap on the walk
+    // shares its room among them instead of the first member taking it all.
+    return across(members, ctx, query, (member, memberCtx, next) =>
       read(member, memberCtx, { ...query, next })
     );
   }
@@ -118,7 +120,7 @@ const lists = (members: readonly Adapter[]): Lists => ({
       );
     }
 
-    return pageAcross(members, ctx, query, (member, memberCtx, next) =>
+    return takeInTurn(members, ctx, query, (member, memberCtx, next) =>
       member.listCampaigns({ ...query, next }, memberCtx)
     );
   },
@@ -166,8 +168,23 @@ const lists = (members: readonly Adapter[]): Lists => ({
       );
     }
 
-    return scopedOrAcross(members, ctx, query, readLeads);
+    return scopedOrAcross(members, ctx, query, readLeads, takeInTurn);
   },
+  // One workspace per member, named by its label. No request is made.
+  listWorkspaces: () =>
+    Promise.resolve({
+      items: members.map((member) => ({
+        ...recordBase(
+          { provider: member.name, workspaceId: member.workspaceId },
+          member.workspaceId,
+          null
+        ),
+        name: member.workspaceId,
+      })),
+    }),
+});
+
+const messageLists = (members: readonly Adapter[]): MessageLists => ({
   listMessages: (query, ctx) => {
     const lead =
       query.leadId === undefined
@@ -184,37 +201,38 @@ const lists = (members: readonly Adapter[]): Lists => ({
         }
 
         return member.listMessages({ ...scoped, leadId: lead?.id }, memberCtx);
-      }
+      },
+      pageNewestFirst
     );
   },
   listReplies: (query, ctx) =>
-    scopedOrAcross(members, ctx, query, (member, memberCtx, scoped) => {
-      if (member.listReplies === undefined) {
-        throw missing(member, "listReplies");
-      }
+    scopedOrAcross(
+      members,
+      ctx,
+      query,
+      (member, memberCtx, scoped) => {
+        if (member.listReplies === undefined) {
+          throw missing(member, "listReplies");
+        }
 
-      return member.listReplies(scoped, memberCtx);
-    }),
+        return member.listReplies(scoped, memberCtx);
+      },
+      pageNewestFirst
+    ),
   listSenders: (query, ctx) =>
-    scopedOrAcross(members, ctx, query, (member, memberCtx, scoped) => {
-      if (member.listSenders === undefined) {
-        throw missing(member, "listSenders");
-      }
+    scopedOrAcross(
+      members,
+      ctx,
+      query,
+      (member, memberCtx, scoped) => {
+        if (member.listSenders === undefined) {
+          throw missing(member, "listSenders");
+        }
 
-      return member.listSenders(scoped, memberCtx);
-    }),
-  // One workspace per member, named by its label. No request is made.
-  listWorkspaces: () =>
-    Promise.resolve({
-      items: members.map((member) => ({
-        ...recordBase(
-          { provider: member.name, workspaceId: member.workspaceId },
-          member.workspaceId,
-          null
-        ),
-        name: member.workspaceId,
-      })),
-    }),
+        return member.listSenders(scoped, memberCtx);
+      },
+      takeInTurn
+    ),
 });
 
 type Lookups = Pick<
@@ -301,6 +319,7 @@ export const combine = (members: readonly Adapter[]): Adapter => {
 
   return {
     ...lists(members),
+    ...messageLists(members),
     ...lookups(members),
     ...accountReads(members),
     capabilities: {

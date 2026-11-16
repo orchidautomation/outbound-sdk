@@ -4,7 +4,6 @@
 
 import { z } from "zod";
 
-import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Campaign, CampaignStatus } from "../../internal/entities.ts";
 import { sumMeasured } from "../../internal/metrics.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
@@ -378,14 +377,15 @@ export const readCampaignTotals = async (
   const reported =
     campaigns.length > 1 ? await readAllTotals(context, input) : undefined;
 
-  const entries = await mapConcurrent(
+  const entries = await context.each(
     campaigns,
     async (campaign): Promise<CampaignTotals> => ({
       campaign,
       counts:
         reported?.get(campaign.ref) ??
         (await readTotals(context, campaign.ref, input)),
-    })
+    }),
+    "campaigns"
   );
 
   return { entries, read: campaignsReadOf(listed) };

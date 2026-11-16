@@ -74,7 +74,8 @@ $ outbound tags
     "complete": true,
     "notes": [],
     "provider": "memory",
-    "requests": 0
+    "requests": 0,
+    "throttledMs": 0
   },
   "ok": true
 }
@@ -99,7 +100,8 @@ $ outbound blocklist
     "complete": true,
     "notes": [],
     "provider": "memory",
-    "requests": 0
+    "requests": 0,
+    "throttledMs": 0
   },
   "ok": true
 }
@@ -130,7 +132,8 @@ $ outbound webhooks
     "complete": true,
     "notes": [],
     "provider": "memory",
-    "requests": 0
+    "requests": 0,
+    "throttledMs": 0
   },
   "ok": true
 }
@@ -159,7 +162,8 @@ $ outbound limits
     "complete": true,
     "notes": [],
     "provider": "memory",
-    "requests": 0
+    "requests": 0,
+    "throttledMs": 0
   },
   "ok": true
 }

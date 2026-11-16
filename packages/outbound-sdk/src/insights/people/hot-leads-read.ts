@@ -10,10 +10,12 @@ import type {
 } from "../../internal/entities.ts";
 import { OutboundError } from "../../internal/errors.ts";
 import { emailAddress } from "../../internal/json.ts";
+import type { ListAll } from "../../internal/outbound/api.ts";
 import { parseRef } from "../../internal/ref.ts";
 import { confirmCampaign } from "../campaign.ts";
 import { maskingOf } from "../define.ts";
 import type { InsightContext } from "../define.ts";
+import { wasCutShort } from "../tracked-reads.ts";
 import { ADDRESSES_MASKED, addressesMasked, refsOf } from "./auto-replies.ts";
 
 const DAY = 86_400_000;
@@ -87,15 +89,6 @@ const windowReplies = async (
     return null;
   }
 
-  // Under `mask` every address in a ref reads the same, so a reply names no one.
-  if (addressesMasked(context) && maskingOf(outbound)?.strategy === "mask") {
-    context.partial(
-      `${ADDRESSES_MASKED} replies were not matched to leads: the leads that replied within recency_days were not looked for, and automatic replies were not told from people.`
-    );
-
-    return null;
-  }
-
   const since = context.now - values.recency_days * DAY;
 
   const range =
@@ -145,7 +138,7 @@ const positiveLeads = async (
     what: "leads labelled positive",
   });
 
-  return { capped: walk.truncated, leads };
+  return { capped: walk.truncated || wasCutShort(leads), leads };
 };
 
 /** The lead list in the vendor's order, up to `max_leads`. */
@@ -166,7 +159,7 @@ const listedLeads = async (
     what: campaign === null ? "leads" : "leads of a campaign",
   });
 
-  return { capped: walk.truncated, leads };
+  return { capped: walk.truncated || wasCutShort(leads), leads };
 };
 
 /** The ref each engaged reply names, newest first, with the campaign of its newest reply. */
@@ -224,9 +217,20 @@ const byAddress = (
   return [...chosen.values()];
 };
 
-/** The address a ref names its lead by, or `null` for any other id. */
-const address = (ref: string): string | null =>
-  emailAddress(parseRef(ref)?.sourceId);
+type Resolves = (token: string) => "email" | "linkedin" | null;
+
+/**
+ * The address a ref names its lead by, or the redact plugin's token for one,
+ * which the plugin puts back on the call to the vendor; `null` for any other id.
+ */
+const address = (ref: string, resolves: Resolves): string | null => {
+  const id = parseRef(ref)?.sourceId;
+
+  return (
+    emailAddress(id) ??
+    (id !== undefined && resolves(id) === "email" ? id : null)
+  );
+};
 
 /** Reads the leads named by address in batches. */
 const lookUp = async (
@@ -236,14 +240,25 @@ const lookUp = async (
 ): Promise<Lead[]> => {
   const found: Lead[] = [];
 
-  for (let at = 0; at < addresses.length; at += LOOKUP_BATCH) {
-    const emails = addresses.slice(at, at + LOOKUP_BATCH);
+  const byToken = addressesMasked(context)
+    ? maskingOf(context.outbound)?.leadsByToken
+    : undefined;
 
+  // A masked address is read through redact, which holds its value.
+  const list = (emails: readonly string[]): ListAll<Lead> => {
+    if (byToken !== undefined) {
+      return byToken(emails, campaign);
+    }
+
+    return campaign === null
+      ? context.outbound.leads.listAll({ emails })
+      : context.outbound.campaign(campaign).leads.listAll({ emails });
+  };
+
+  for (let at = 0; at < addresses.length; at += LOOKUP_BATCH) {
     // oxlint-disable-next-line no-await-in-loop -- one batch at a time keeps the rate budget even.
     const page = await context.all(
-      campaign === null
-        ? context.outbound.leads.listAll({ emails })
-        : context.outbound.campaign(campaign).leads.listAll({ emails })
+      list(addresses.slice(at, at + LOOKUP_BATCH))
     );
 
     found.push(...page);
@@ -265,32 +280,41 @@ const repliedLeads = async (
   listed: readonly Lead[]
 ): Promise<{ leads: Lead[]; unreadable: number }> => {
   const { outbound } = context;
-  const wanted = repliedRefs(replies, values.campaign, listed);
+  const masking = maskingOf(outbound);
+  const resolves: Resolves = masking?.resolves ?? (() => null);
+  const replied = repliedRefs(replies, values.campaign, listed);
 
-  if (wanted.size === 0) {
-    return { leads: [], unreadable: 0 };
-  }
+  // A masked address redact cannot put back would reach the vendor as a token.
+  const wanted = addressesMasked(context)
+    ? new Map(
+        [...replied].filter(
+          ([ref]) => resolves(parseRef(ref)?.sourceId ?? ref) !== null
+        )
+      )
+    : replied;
 
-  if (addressesMasked(context)) {
+  if (wanted.size < replied.size) {
     context.partial(
       `${ADDRESSES_MASKED} leads that replied within recency_days and were not otherwise listed were not looked for.`
     );
+  }
 
+  if (wanted.size === 0) {
     return { leads: [], unreadable: 0 };
   }
 
   const many = outbound.capabilities["leads.lookupMany"] === true;
 
   const byAddressRefs = many
-    ? [...wanted.keys()].filter((ref) => address(ref) !== null)
+    ? [...wanted.keys()].filter((ref) => address(ref, resolves) !== null)
     : [];
 
   const addresses = [
-    ...new Set(byAddressRefs.flatMap((ref) => address(ref) ?? [])),
+    ...new Set(byAddressRefs.flatMap((ref) => address(ref, resolves) ?? [])),
   ];
 
   const byRef = [...wanted.keys()].filter(
-    (ref) => !many || address(ref) === null
+    (ref) => !many || address(ref, resolves) === null
   );
 
   if (!outbound.capabilities["leads.get"] && byRef.length > 0) {

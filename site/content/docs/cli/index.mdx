@@ -27,7 +27,7 @@ Every command shown in this section went through `run`, the function the `outbou
 
 <include meta='title="cli.ts"'>../../_examples/cli-commands/cli.ts</include>
 
-`run(argv, io)` takes the arguments after `outbound` and an object with `stdout` and `stderr` functions, and resolves to the exit code. You can call it the same way to embed the CLI in a script. `io.stdin` supplies lines for `outbound mcp`, and `io.adapter` replaces the adapter the environment would choose, which is meant for tests.
+`run(argv, io)` takes the arguments after `outbound` and an object with `stdout` and `stderr` functions, and resolves to the exit code. You can call it the same way to embed the CLI in a script. `io.stdin` supplies lines for `outbound mcp`, and `io.adapter` replaces the adapter the environment would choose, which is meant for tests, as are `io.fetch` and `io.runtime`.
 
 ## Choosing the provider
 
@@ -65,7 +65,7 @@ A command runs with one [plugin](/docs/plugins) by default, [identity](/docs/plu
 | `--redact` | `redact()`: masks personal fields. On by default for `outbound mcp` only. |
 | `--no-redact` | Turns the default `redact()` off for `outbound mcp`. |
 | `--cache <seconds>` | `cache()` with that time to live. The cache is in memory and lasts one process, so it helps `outbound mcp`; a one-shot command says so on stderr. To keep answers across runs, list `cache({ ttl, store })` with your own store in a config file. |
-| `--max-requests <n>` | `budget({ maxRequests: n, per: "run" })`. A command is one run; on the MCP server each tool call is one. |
+| `--max-requests <n>` | `budget({ maxRequests: n, per: "run" })`. A command is one run; on the MCP server each tool call is one. It also replaces an insight's default cap, and cap messages name the flag. |
 | `--config <file>` | The plugins a file lists as `export default defineConfig({ plugins: [...] })`. |
 
 [The MCP server page](/docs/cli/mcp#plugins) has a run of each, the order the plugins are placed in, and what a config file may hold. How far each real adapter has been checked is on [what is verified](/docs/status).
@@ -74,7 +74,7 @@ A command runs with one [plugin](/docs/plugins) by default, [identity](/docs/plu
 
 ## Output
 
-A command prints one JSON value on standard output, always in the same shape, the envelope: indented by default, on one line with `--compact`. Records in it are the SDK's [records](/docs/api/records), less `raw`, the vendor's own payload; `--raw` keeps it. List commands stop at `--limit`, which defaults to 50.
+A command prints one JSON value on standard output, always in the same shape, the envelope: indented by default, on one line with `--compact`. Records in it are the SDK's [records](/docs/api/records), less `raw`, the vendor's own payload; `--raw` keeps it. List commands stop at `--limit`, which defaults to 50; `replies --since` reads the whole window instead, up to 2,000 records.
 
 <include meta='title="output.ts"'>../../_examples/cli-index/output.ts</include>
 
@@ -84,7 +84,7 @@ A command prints one JSON value on standard output, always in the same shape, th
 
 ## The envelope
 
-Every command prints the same top-level keys, so a script or an agent parses one shape and learns from standard output whether the answer is whole: `{ ok, data, meta: { complete, notes, provider, requests }, next }`.
+Every command prints the same top-level keys, so a script or an agent parses one shape and learns from standard output whether the answer is whole: `{ ok, data, meta: { complete, notes, provider, requests, throttledMs }, next }`.
 
 | Key | Holds |
 | --- | --- |
@@ -95,6 +95,7 @@ Every command prints the same top-level keys, so a script or an agent parses one
 | `meta.notes` | Why `complete` is `false`, and what else to know, for example "Stopped at 50 leads; more exist. Pass --limit to read more." Standard error gets the same notes. |
 | `meta.provider` | The adapter's id, or `null` for `providers`, which needs none. |
 | `meta.requests` | The vendor requests the command sent. A cache hit sends none. |
+| `meta.throttledMs` | Milliseconds the command spent waiting on rate limits, its own budget and any 429 together; waits that overlap count once. A wait longer than 2 seconds also prints one line on standard error, such as `Waiting 60s for Instantly's emails rate limit (10 a minute)…`, and a 429 prints `Throttled by Instantly: it answered 429…`, so a slow read never looks hung. Standard output is unchanged, `--compact` included. |
 | `next` | What to ask next, from a tool. Left out by other commands. |
 
 The rest of a record's, a tool's or an insight's `meta`, such as `evidence` and `fetchedAt`, stays in `meta` beside these; an insight's name is `meta.insight`. `--card` and `--slack` put the card or the Slack message in `data`. The MCP server, `version` and `update` do not print JSON, so they print no envelope.

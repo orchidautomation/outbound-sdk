@@ -2,7 +2,6 @@
 
 import { z } from "zod";
 
-import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Campaign, Sender } from "../../internal/entities.ts";
 import { defineInsight } from "../define.ts";
 import { statusesInput } from "../fields.ts";
@@ -135,6 +134,7 @@ export const senderLoad = defineInsight({
   scales: "max_campaigns",
   name: "sender_load",
   needs: ["senders.list", "senders.byCampaign"],
+  partialOnCap: true,
   next: "Use sender_capacity to see whether the senders can cover the campaigns' daily limits, or warmup_readiness for the senders that are not active.",
   run: async (context, options) => {
     const allowed = options.max_campaigns_per_sender;
@@ -151,15 +151,19 @@ export const senderLoad = defineInsight({
     const attached = new Map<string, string[]>();
     const risks: CampaignSenderRisk[] = [];
 
-    const read = await mapConcurrent(campaigns, async (campaign) => ({
-      campaign,
-      own: await readCampaignSenders(
-        context,
+    const read = await context.each(
+      campaigns,
+      async (campaign) => ({
         campaign,
-        options.max_senders,
-        "max_senders"
-      ),
-    }));
+        own: await readCampaignSenders(
+          context,
+          campaign,
+          options.max_senders,
+          "max_senders"
+        ),
+      }),
+      "campaigns"
+    );
 
     for (const { campaign, own } of read) {
       const risk = riskOf(campaign, own);
@@ -206,7 +210,7 @@ export const senderLoad = defineInsight({
       overused,
       totals: {
         activeSenders: active.length,
-        campaigns: campaigns.length,
+        campaigns: read.length,
         campaignsAtRisk: risks.length,
         overused: overused.length,
         senders: senders.length,

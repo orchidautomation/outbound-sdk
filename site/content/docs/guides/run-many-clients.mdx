@@ -53,7 +53,7 @@ The samples name the in-memory adapters `emailtool` and `linkedintool` so the re
 
 That is the script that printed the output above. Taking it in order:
 
-**One listing covers every member.** The first member is read to its end, then the second, and so on. A cursor records which member the walk is in, so it resumes in the right one.
+**One listing covers every member.** Every member is read at the same time and their campaigns are taken one from each in turn, so a cap leaves each member its share. A cursor records where each member stopped, so it resumes every one in the right place. See [listings](/docs/adapters/combine#listings-read-every-member-at-once).
 
 **`outbound.workspace(id)` is one client.** It is the same instance scoped to the adapters that carry that label. For `acme` that is two adapters, so the scope is itself a combined instance and covers both tools. For `globex` it is one adapter, the scope is that adapter, and a bare id works again.
 

@@ -33,6 +33,8 @@ export interface ToolSuccess {
     readonly complete: boolean;
     /** What to know before trusting the answer, for example what was left out. */
     readonly notes: readonly string[];
+    /** Set by `outbound mcp` when the call waited long on rate limits: the milliseconds it waited. */
+    readonly throttledMs?: number | undefined;
   };
   /** What to ask next. */
   readonly next: string;
@@ -51,7 +53,13 @@ export interface ToolFailure {
     readonly retryable?: boolean | undefined;
   };
   /** Set when the tool sent vendor requests before it failed. */
-  readonly meta?: { readonly requests: number } | undefined;
+  readonly meta?:
+    | {
+        readonly requests: number;
+        /** Set by `outbound mcp` when the call waited long on rate limits. */
+        readonly throttledMs?: number | undefined;
+      }
+    | undefined;
   readonly next: string;
 }
 
@@ -169,9 +177,10 @@ export const capNext = (
     readonly input: string;
     readonly to: number;
     readonly sure: boolean;
-  }
+  },
+  setting = "maxRequestsPerToolCall"
 ): string => {
-  const ask = `the user to raise maxRequestsPerToolCall (${isDefault ? "default" : "set to"} ${cap} here)`;
+  const ask = `the user to raise ${setting} (${isDefault ? "default" : "set to"} ${cap} here)`;
 
   return `Do not call again with the same input. ${lower === undefined ? `Ask ${ask}` : `Lower ${lower.input} to ${lower.to}${lower.sure ? "" : " or less"}, or ask ${ask}`}.`;
 };

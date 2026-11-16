@@ -8,10 +8,11 @@ import type { OutboundOptions } from "../internal/outbound/outbound.ts";
 import { fromEnv } from "../loader/index.ts";
 import { parse } from "./args.ts";
 import { COMMANDS, listProviders } from "./commands.ts";
-import { pluginsFor } from "./config.ts";
+import { insightToolCaps, setupFor } from "./config.ts";
 import { requestCounter, valueOf } from "./envelope.ts";
 import type { RunFacts } from "./envelope.ts";
 import { printAnswer, printFailure } from "./output.ts";
+import { throttleMonitor } from "./progress.ts";
 import { namedTools, serve } from "./serve.ts";
 import { runNpm, runSelf } from "./update.ts";
 
@@ -24,6 +25,10 @@ export { createMcpServer, PROTOCOL_VERSIONS } from "./mcp.ts";
 export type { McpServer, McpServerOptions } from "./mcp.ts";
 
 export { serveStdio } from "./stdio.ts";
+
+export { describeWait, throttleMonitor } from "./progress.ts";
+
+export type { ThrottleMonitor, ThrottleTotal } from "./progress.ts";
 
 export type { NpmRunner } from "./update.ts";
 
@@ -38,6 +43,8 @@ export interface CliIo {
   readonly adapter?: Adapter | undefined;
   /** Replaces the `fetch` vendor requests are sent with. Meant for tests. */
   readonly fetch?: OutboundOptions["fetch"];
+  /** Replaces the clock and timers rate limit waits use. Meant for tests. */
+  readonly runtime?: OutboundOptions["runtime"];
   /** Runs npm for `outbound update` and resolves to its output. Meant for tests. */
   readonly npm?: ((args: readonly string[]) => Promise<string>) | undefined;
   /** Waits between `outbound update` install retries. Meant for tests. */
@@ -50,8 +57,16 @@ export const run = async (
   io: CliIo
 ): Promise<number> => {
   const counter = requestCounter();
+  // A wait on a rate limit goes to stderr, so a slow read never looks hung.
+  const monitor = throttleMonitor(io.runtime?.now ?? Date.now, io.stderr);
   let provider: string | null = null;
-  const facts = (): RunFacts => ({ provider, requests: counter.sent() });
+
+  const facts = (): RunFacts => ({
+    provider,
+    requests: counter.sent(),
+    throttledMs: monitor.total().ms,
+  });
+
   let named: string | undefined;
 
   try {
@@ -80,14 +95,26 @@ export const run = async (
     const adapter =
       io.adapter ?? (await fromEnv({ provider: values.provider }));
 
-    const plugins = await pluginsFor(values, command === undefined, io.stderr);
+    const { plugins, rateLimitStore } = await setupFor(
+      values,
+      command === undefined,
+      io.stderr
+    );
 
     // Innermost, so it counts each request the engine sends, cache hits not.
     if (command !== undefined) {
       plugins.push(counter);
     }
 
-    const outbound = createOutbound({ adapter, fetch: io.fetch, plugins });
+    const outbound = createOutbound({
+      adapter,
+      fetch: io.fetch,
+      hooks: monitor.hooks,
+      plugins,
+      rateLimitStore,
+      runtime: io.runtime,
+    });
+
     ({ provider } = outbound);
 
     if (command === undefined) {
@@ -99,7 +126,14 @@ export const run = async (
           })
         : undefined;
 
-      await serve(outbound, io, unmasked, namedTools(values.tools));
+      await serve(
+        outbound,
+        { ...io, throttled: monitor.total },
+        unmasked,
+        namedTools(values.tools),
+        // A tool call may spend what --max-requests allows, which replaces an insight's default cap.
+        insightToolCaps(values, true)
+      );
 
       return 0;
     }

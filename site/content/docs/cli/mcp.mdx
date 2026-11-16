@@ -89,7 +89,12 @@ For any other plugin, or for a plugin's options, pass `--config` with the path t
 - The path is resolved from the folder the client starts the command in. Use an absolute path.
 - The plugins are placed in this order, outermost first: `redact()`, the file's plugins, `cache()` from `--cache`, `budget()` from `--max-requests`, then `identity()`, which the CLI always adds unless the file lists it. To place a cache or a budget elsewhere, list it in the file instead of using its flag.
 - A `redact()` in the file replaces the default one, with the options you gave it. Setting `--no-redact` as well is refused.
-- A file that cannot be loaded, has no default export, or exports something other than a list of plugins stops the command with exit code 1 before the server answers anything.
+- The file may also export `rateLimitStore`, the store `createOutbound` takes. A vendor's limit covers the whole workspace, so two terminals, or the CLI and an MCP server, on one key slow each other down; with one shared store, such as [`redisRateLimitStore()`](/docs/guides/shared-rate-budget), they spend one budget instead of drawing 429s from each other.
+- A file that cannot be loaded, has no default export, or exports something other than a list of plugins and a rate limit store stops the command with exit code 1 before the server answers anything.
+
+### Waits on rate limits
+
+A tool call that waits more than 5 seconds on rate limits gets `meta.throttledMs` and a note in `meta.notes` that names the last wait, so a model can tell a slow vendor limit, such as Instantly's 20 list-email requests a minute, from a hang. A failed call gets `meta.throttledMs` alone. A wait longer than 2 seconds also prints one line on standard error, which the protocol leaves free.
 
 The flags and `--config` work on the other commands too. Only `outbound mcp` turns `redact()` on by default; elsewhere, add `--redact`.
 
@@ -97,7 +102,7 @@ The flags and `--config` work on the other commands too. Only `outbound mcp` tur
 
 `--max-requests` adds `budget({ maxRequests, per: "run" })`. The server resets that budget before each tool call, so the cap is what a single tool call may spend, however many reads the tool makes. A tool that reaches it returns `isError: true` with `RateLimited`. The same holds for a server you build yourself: a `budget({ per: "run" })` on the instance is reset before each tool call.
 
-Without `--max-requests` a tool call still has a cap: the [default of each tool call](/docs/tools#request-caps), 100 requests for a built-in tool and what the input can cost, at most 500, for an insight. `--max-requests` sits beside it, and the lower one stops the call. A stopped call has `retryable: false` and a `next` that tells the model not to call again with the same input. To change the default on a server you build yourself, pass `maxRequestsPerToolCall` to `createMcpServer` and to `insightTools`.
+Without `--max-requests` a tool call still has a cap: the [default of each tool call](/docs/tools#request-caps), 100 requests for a built-in tool and what the input can cost, at most 500, for an insight. `--max-requests` sits beside the built-in tools' default, and the lower one stops the call; for an insight it replaces the default. Cap messages name `--max-requests on outbound mcp`. A stopped call has `retryable: false` and a `next` that tells the model not to call again with the same input. To change the default on a server you build yourself, pass `maxRequestsPerToolCall` to `createMcpServer` and to `insightTools`.
 
 ## What the server implements
 

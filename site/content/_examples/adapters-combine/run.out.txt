@@ -1,9 +1,9 @@
 combined combined
-given up: campaigns.settings, leads.byDomain, leads.byInterest, leads.engagement, leads.lookupMany, messages.byThread, native, placementTests.list, senders.warmup, sequence.subsequences, stats.byStep, tags
+given up: campaigns.settings, leads.byDomain, leads.byInterest, leads.engagement, leads.lookupMany, messages.byHand, messages.byThread, native, placementTests.list, senders.warmup, sequence.subsequences, stats.byStep, tags
 instantly:acme:cmp_1 - Acme founders
-instantly:acme:cmp_2 - Acme agencies
 heyreach:acme:cmp_1 - Acme LinkedIn
 instantly:globex:cmp_1 - Globex CFOs
+instantly:acme:cmp_2 - Acme agencies
 by ref: Acme LinkedIn
 bare id: Invalid - Campaign "cmp_1" must be a ref (provider:workspace:id) of an adapter on this combined instance
 instantly:acme:acme sent 200 connections null

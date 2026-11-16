@@ -38,9 +38,9 @@ The full response of `droppedReplies` is in the **Response** tab on [`droppedRep
 
 How a reply ends up on the list:
 
-1. Replies received since `since` are read, up to `max_replies` (default 50). Without `since`, that is 14 days before now.
+1. Every reply received since `since` is read, up to 2,000, or up to `max_replies` when you set it. Without `since`, that is 14 days before now.
 2. Replies in a category that needs no answer are left out. By default `positive`, `neutral` and `unknown` are kept; out-of-office, bounce, unsubscribe and negative replies are not. Replies the vendor marks as automatic are left out too, unless `include_auto` is `true`.
-3. The rest are grouped by conversation. A conversation is read by its thread when the reply has a thread id and the adapter can read one, otherwise by the lead's timeline.
+3. The rest are grouped by conversation. Where the adapter lists the messages sent by hand (`messages.byHand`, Instantly today), one listing of those in the window settles each conversation answered by hand, and each one whose open reply is still too recent to count. Every other conversation is read in full: by its thread when the reply has a thread id and the adapter can read one, otherwise by the lead's timeline.
 4. A conversation is dropped when it has replies after the last message sent. The oldest of those is reported, with how many there are in `unansweredReplies`.
 5. It is listed only once it has waited `older_than_hours` (default 24). Younger ones are counted in `totals.tooRecent`.
 
@@ -48,7 +48,7 @@ Three things in the answer are worth copying:
 
 - **`totals.unchecked` is not zero by accident.** A reply with no thread and no lead to read, or no time on it, cannot be checked. It is counted there and never reported as dropped. Print the count, so a short list is not read as a clean one.
 - **Each listed reply names the person and the campaign.** `name`, `email`, `linkedinUrl` and `campaignName` come from one read of each listed lead and campaign, made inside the insight. Any it could not read is `null`, so the function falls back to the next field.
-- **`meta.complete` is `false` when `max_replies` stopped the read.** The list then covers the replies that were read, and a note says so.
+- **`meta.complete` is `false` when the read stopped with replies left.** The list then covers the replies that were read, and a note says so.
 
 The categories come from the vendor or from fixed rules. The SDK calls no AI model, so a reply the vendor filed as `neutral` is treated as one, whatever it says.
 
@@ -94,7 +94,7 @@ With several tools behind [`combine`](/docs/adapters/combine), a thread id canno
 
 ## What it costs
 
-One request per page of replies, one per conversation checked, and one read of each listed lead and campaign to name them: about `max_replies` requests plus two per listed reply, so about 50 by default when few are waiting. A lead read is two requests on Smartlead and HeyReach. `meta.requests` counts them all. `maxRequests` on the instance caps the whole run; past it the call fails with `RateLimited` instead of spending your vendor quota.
+One request per page of replies, one per page of messages sent by hand where the adapter lists them, one per conversation read in full, and one read of each listed lead and campaign to name them. On Instantly a window of 180 replies is two pages of replies (plus a label read for a page with a custom interest label), one page of messages sent by hand while there are fewer than 100, and one read per conversation that may be dropped. Elsewhere each conversation left after the category filter is one read. A lead read is two requests on Smartlead and HeyReach. `meta.requests` counts them all. `maxRequests` on the instance caps the whole run; past it the call fails with `RateLimited` instead of spending your vendor quota.
 
 ## When it cannot answer
 
@@ -108,9 +108,9 @@ One request per page of replies, one per conversation checked, and one read of e
 
 | What happened | What you get | What to do |
 | --- | --- | --- |
-| More replies than `max_replies` | `meta.complete` is `false` and a note says where it stopped | Raise `max_replies`, or move `since` later. |
+| More replies than `max_replies`, or than the 2,000 one window reads | `meta.complete` is `false` and a note says where it stopped | Raise `max_replies`, or move `since` later. |
 | The adapter can read neither a thread nor a lead's timeline | Nothing is listed, every reply is in `totals.unchecked`, and a note says so | Do not read the empty list as "all answered". Use an adapter that declares `leads.timeline` or `messages.byThread`. |
-| The adapter cannot filter replies by date | The newest replies are read and filtered in the SDK, with a note | Nothing. Expect the read to reach `max_replies` sooner. |
+| The adapter cannot filter replies by date | The newest replies are read and filtered in the SDK, with a note | Nothing. Expect the read to stop sooner. |
 | `since` is not an ISO 8601 date or time | `Invalid`, before any request | Pass `2026-11-01` or a full timestamp with an offset. |
 | The adapter cannot list replies | `Unsupported`, before any request | Use an adapter that declares `replies.list`. |
 | A rejected key | `Unauthorized`. It is not retried. | Check the key and its scope. |

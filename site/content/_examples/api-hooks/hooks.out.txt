@@ -17,7 +17,13 @@ onAction {
   throttledMs: 0
 }
 -- a call that is throttled, fails once and is retried
-onThrottle { lane: 'default', provider: 'instantly', waitMs: 1000 }
+onThrottle {
+  cause: 'budget',
+  lane: 'default',
+  provider: 'instantly',
+  waitMs: 1000,
+  windows: [ { perMs: 1000, requests: 1 }, { perMs: 60000, requests: 60 } ]
+}
 onRequest {
   attempt: 1,
   durationMs: 0,
@@ -34,7 +40,13 @@ onRetry {
   reason: 'instantly responded 503',
   url: 'https://api.instantly.ai/api/v2/campaigns'
 }
-onThrottle { lane: 'default', provider: 'instantly', waitMs: 500 }
+onThrottle {
+  cause: 'budget',
+  lane: 'default',
+  provider: 'instantly',
+  waitMs: 500,
+  windows: [ { perMs: 1000, requests: 1 }, { perMs: 60000, requests: 60 } ]
+}
 onRequest {
   attempt: 2,
   durationMs: 0,
@@ -53,7 +65,13 @@ onAction {
   throttledMs: 1500
 }
 -- a call that fails
-onThrottle { lane: 'default', provider: 'instantly', waitMs: 1000 }
+onThrottle {
+  cause: 'budget',
+  lane: 'default',
+  provider: 'instantly',
+  waitMs: 1000,
+  windows: [ { perMs: 1000, requests: 1 }, { perMs: 60000, requests: 60 } ]
+}
 onRequest {
   attempt: 1,
   durationMs: 0,

@@ -4,10 +4,19 @@
 // its campaign listing says how many campaigns there are.
 
 import { OutboundError } from "../internal/errors.ts";
+import { plural } from "../internal/numbers.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
 import { requestCounter, withGuard } from "../internal/request-cap.ts";
 import type { RequestCounter } from "../internal/request-cap.ts";
-import { boundsOf, defaultCap, fitting, refusal, stopped } from "./cost.ts";
+import {
+  advice,
+  boundsOf,
+  capWords,
+  defaultCap,
+  fitting,
+  refusal,
+  stopped,
+} from "./cost.ts";
 import type { CapInEffect, CapStop, InsightCost } from "./cost.ts";
 
 export interface CapOptions {
@@ -43,7 +52,21 @@ export interface RunCap {
   readonly failed: (cause: unknown) => never;
   /** The note for a run that finished without reads the cap stopped. */
   readonly shortNote: () => string | undefined;
+  /**
+   * What stopped a read, in words with what to raise, when a request cap
+   * did: this run's own, a `budget()` or a cap per call. `undefined` for
+   * any other failure.
+   */
+  readonly capReached: (cause: unknown) => string | undefined;
+  /** Requests counted so far, every read of the run. */
+  readonly used: () => number;
 }
+
+// A cap the caller set, not the vendor: retrying stops at the same place.
+const isCapStop = (cause: unknown): cause is OutboundError =>
+  OutboundError.is(cause) &&
+  cause.code === "RateLimited" &&
+  (cause.limit === "call" || cause.limit === "run");
 
 /** The cap this run is under: the one set, or the default for this input. */
 const capFor = (
@@ -140,6 +163,18 @@ export const runCap = <Input>(
 
   return {
     campaignsFound: check,
+    capReached: (cause) => {
+      if (isStopped()) {
+        // What fits is worked out from the estimate the run just outgrew, so only raising the cap is advised.
+        const at = { ...effect, lower: undefined, requests: counter.used() };
+
+        return `Stopped after ${plural(at.requests, "request")}, at ${capWords(at)}. ${advice(at)}`;
+      }
+
+      return isCapStop(cause)
+        ? `A request cap stopped the run: ${cause.message}`
+        : undefined;
+    },
     failed: (cause) => {
       // A read stopped at the cap may surface re-wrapped, or as another
       // read's failure: the counter, not the error, says the cap was reached.
@@ -152,5 +187,6 @@ export const runCap = <Input>(
       isStopped()
         ? `Reads past ${counter.used()} requests were stopped at ${effect.isDefault ? "the default cap for this input" : `the cap (${effect.setting})`}; the answer leaves them out.`
         : undefined,
+    used: () => counter.used(),
   };
 };

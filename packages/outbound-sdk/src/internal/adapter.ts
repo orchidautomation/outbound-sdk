@@ -117,6 +117,8 @@ export interface MessageQuery extends PageQuery, TimeRange {
   readonly leadId?: string | undefined;
   /** A `threadId` from an earlier message. */
   readonly threadId?: string | undefined;
+  /** `true` for the messages a person sent by hand only. */
+  readonly byHand?: true | undefined;
   /** Bodies are expensive on some vendors, so they are fetched only on request. */
   readonly includeBody: boolean;
 }

@@ -61,6 +61,8 @@ export interface Capabilities {
   "messages.since": FilterGrade;
   /** Every message of one conversation, by its thread id. */
   "messages.byThread": boolean;
+  /** Only the messages a person sent by hand, not the ones a campaign sent. */
+  "messages.byHand": boolean;
   "replies.list": boolean;
   /** Reply categories come from the vendor, or are not available. */
   "replies.category": "vendor" | false;
@@ -127,6 +129,7 @@ export const NO_CAPABILITIES: Capabilities = {
   "lists.leads": false,
   "lists.list": false,
   "messages.body": false,
+  "messages.byHand": false,
   "messages.byThread": false,
   "messages.list": false,
   "messages.since": false,
