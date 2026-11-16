@@ -11,6 +11,9 @@ const lintable = /\.(?:[cm]?[jt]s|json|jsonc|md|ya?ml)$/u;
 const code = /\.(?:[cm]?[jt]s)$/u;
 const documentation = /^(?:docs\/|README\.md$|LICENSE$|\.changeset\/)/u;
 
+// Pages and skills the tests hold to the code: a change to one runs the tests.
+const checkedProse = /^(?:site\/content\/|skills\/)/u;
+
 const git = (root, args) =>
   execFileSync("git", args, { cwd: root, encoding: "utf-8" })
     .split("\n")
@@ -40,13 +43,14 @@ export const planFor = (changed, exists = () => true) => {
   );
 
   const touchesFixtures = changed.some((file) => file.startsWith("fixtures/"));
+  const touchesProse = changed.some((file) => checkedProse.test(file));
   const docsOnly = changed.every((file) => documentation.test(file));
 
   return {
     architecture: touchesCode,
     lint,
     limits: changed.length > 0,
-    tests: !docsOnly && (touchesCode || touchesFixtures),
+    tests: !docsOnly && (touchesCode || touchesFixtures || touchesProse),
     typecheck: touchesCode,
   };
 };
