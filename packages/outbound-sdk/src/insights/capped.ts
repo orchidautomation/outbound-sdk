@@ -65,7 +65,11 @@ const settledPage = async <Item>(
   try {
     return await read;
   } catch (error) {
-    if (OutboundError.is(error) && error.code === "RateLimited") {
+    if (
+      OutboundError.is(error) &&
+      error.code === "RateLimited" &&
+      (error.limit === "call" || error.limit === "run")
+    ) {
       return null;
     }
 

@@ -15,7 +15,13 @@ import type { Json, JsonObject } from "../internal/json.ts";
 import { mapPage } from "../internal/page.ts";
 import { EMAILS_LANE } from "./capabilities.ts";
 import type { InstantlyClient } from "./client.ts";
-import { isScheduled, isTruncated, toMessage, toReply } from "./map-lead.ts";
+import {
+  isScheduled,
+  isSentByHand,
+  isTruncated,
+  toMessage,
+  toReply,
+} from "./map-lead.ts";
 import { listEnvelope } from "./map.ts";
 import { pageSize, readLabels } from "./pages.ts";
 import { withAnsweredSteps } from "./thread.ts";
@@ -95,6 +101,8 @@ const listEmails = async (
   const cursor = emailCursor(query.next);
   const leadId = "leadId" in query ? query.leadId : undefined;
   const threadId = "threadId" in query ? query.threadId : undefined;
+  const byHand = "byHand" in query && query.byHand === true;
+  const sentByHand = byHand ? "manual" : undefined;
   const lead = await leadAddress(client, ctx, leadId, cursor);
 
   const envelope = listEnvelope(
@@ -102,7 +110,7 @@ const listEmails = async (
       lane: EMAILS_LANE,
       query: {
         campaign_id: query.campaignId,
-        email_type: received ? "received" : undefined,
+        email_type: received ? "received" : sentByHand,
         is_unread: "unread" in query ? query.unread : undefined,
         lead,
         limit: pageSize(query.limit),
@@ -116,7 +124,11 @@ const listEmails = async (
     "/emails"
   );
 
-  const sent = envelope.items.filter((item) => !isScheduled(item));
+  // `manual` is not described beyond its name, so a hand-sent email is also
+  // checked by its own `ue_type`.
+  const sent = envelope.items.filter((item) =>
+    byHand ? isSentByHand(item) : !isScheduled(item)
+  );
 
   return {
     items: query.includeBody

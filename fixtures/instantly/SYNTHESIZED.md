@@ -91,3 +91,7 @@ Added on 2026-11-16 for OUT-92, by hand: `listEmails.autoReplies.json`, one camp
 - `getLeadList.json` (`GET /lead-lists/{id}`) and `getWebhook.json` (`GET /webhooks/{id}`): the first item of `listLeadLists.json` and of `listWebhooks.json`.
 - `getLeadListVerificationStats.json` (`GET /lead-lists/{id}/verification-stats`): built from the response schema, each count with its own value.
 - `listInboxPlacementTests.json`, `listInboxPlacementTests.page2.json` (`GET /inbox-placement-tests`): built from the response schema, which has no example.
+
+## Added 2026-11-16 for OUT-110
+
+- `getCampaign.negativeDelay.json` (`GET /campaigns/{id}`): written by hand. Its four steps carry the delays a live active campaign returned on 2026-11-16 (2, 2, -11 and 1 days); the reference documents `delay` as a number from 0 to 527040, so -11 is outside what it allows. The campaign keeps the id of `getCampaign.json`, and its name, dates and copy are made up. Only the keys the sequence read uses are kept.

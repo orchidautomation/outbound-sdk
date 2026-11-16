@@ -186,7 +186,7 @@ export const boundsOf = <Input>(
 
 /**
  * The cap an insight runs under when none is set: the most it can cost, a
- * quarter more for retries (each retry is a request too) and 4 on top.
+ * quarter more for retries (each retry is a request too) and 20 on top.
  */
 export const defaultCap = (bounds: Bounds | null): number =>
   bounds === null ? Infinity : Math.ceil(bounds.max * 1.25) + 20;

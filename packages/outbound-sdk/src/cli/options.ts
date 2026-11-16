@@ -29,5 +29,6 @@ export const OPTIONS = {
   status: { type: "string" },
   subsequences: { type: "boolean" },
   to: { type: "string" },
+  tools: { type: "string" },
   version: { short: "v", type: "boolean" },
 } as const;

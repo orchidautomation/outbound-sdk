@@ -17,11 +17,12 @@ $ outbound tags
     "complete": true,
     "notes": [],
     "provider": "memory",
-    "requests": 0
+    "requests": 0,
+    "throttledMs": 0
   },
   "ok": true
 }
 
 $ outbound tags --compact
-{"data":{"items":[{"provider":"memory","ref":"memory:default:tag_a","schemaVersion":1,"sourceId":"tag_a","workspaceId":"default","description":"Work for client A","name":"client-a"}]},"meta":{"complete":true,"notes":[],"provider":"memory","requests":0},"ok":true}
+{"data":{"items":[{"provider":"memory","ref":"memory:default:tag_a","schemaVersion":1,"sourceId":"tag_a","workspaceId":"default","description":"Work for client A","name":"client-a"}]},"meta":{"complete":true,"notes":[],"provider":"memory","requests":0,"throttledMs":0},"ok":true}
 

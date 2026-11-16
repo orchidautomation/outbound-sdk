@@ -16,7 +16,8 @@ import {
 import type { Json, JsonObject } from "../internal/json.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
 import { createTools } from "../tools/index.ts";
-import type { ToolsOptions } from "../tools/index.ts";
+import type { ToolResult, ToolsOptions } from "../tools/index.ts";
+import type { ThrottleTotal } from "./progress.ts";
 
 export const PROTOCOL_VERSIONS = [
   "2025-06-18",
@@ -36,6 +37,12 @@ export interface McpServerOptions extends ToolsOptions {
    * is answered with the reason instead of `Unknown tool`.
    */
   readonly leftOut?: Readonly<Record<string, string>> | undefined;
+  /**
+   * How long the server has waited on rate limits so far, and why it last
+   * did. A tool call that waits more than 5 s says so in `meta.notes`, so a
+   * model can tell a slow vendor limit from a hang.
+   */
+  readonly throttled?: (() => ThrottleTotal) | undefined;
 }
 
 export interface McpServer {
@@ -109,6 +116,37 @@ const budgetOf = (
 ): WithRequestBudget["requestBudget"] | undefined =>
   hasRequestBudget(outbound) ? outbound.requestBudget : undefined;
 
+/** A tool call that waited longer than this on rate limits says so. */
+export const NOTE_THROTTLE_AFTER_MS = 5000;
+
+// A result that waited long on a rate limit, with `meta.throttledMs` and a
+// note saying why. A failure keeps its own error and gains the wait in meta.
+const withWait = (
+  outcome: ToolResult,
+  waitedMs: number,
+  reason: string | undefined
+): ToolResult => {
+  if (waitedMs <= NOTE_THROTTLE_AFTER_MS) {
+    return outcome;
+  }
+
+  const note = `This call waited ${Math.round(waitedMs / 1000)}s on rate limits, so it was slow, not stuck. Last wait: ${reason ?? "unknown"}`;
+
+  return outcome.ok
+    ? {
+        ...outcome,
+        meta: {
+          ...outcome.meta,
+          notes: [...outcome.meta.notes, note],
+          throttledMs: waitedMs,
+        },
+      }
+    : {
+        ...outcome,
+        meta: { requests: outcome.meta?.requests ?? 0, throttledMs: waitedMs },
+      };
+};
+
 type RequestId = number | string;
 
 const result = (id: RequestId, value: JsonObject): JsonObject => ({
@@ -175,7 +213,10 @@ export const createMcpServer = (
     }
 
     budget?.reset();
-    const outcome = await tool.call(field(params, "arguments") ?? {});
+    const before = options.throttled?.().ms ?? 0;
+    const called = await tool.call(field(params, "arguments") ?? {});
+    const after = options.throttled?.();
+    const outcome = withWait(called, (after?.ms ?? 0) - before, after?.reason);
     const structured = toJson(outcome);
 
     return result(id, {

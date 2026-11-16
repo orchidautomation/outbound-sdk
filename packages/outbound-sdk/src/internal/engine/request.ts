@@ -42,6 +42,8 @@ export interface CallState {
    * the one already set.
    */
   beforeRequest: (() => void) | undefined;
+  /** What the adapter left out of the answer, and why. Each note once. */
+  readonly notes: string[];
 }
 
 export interface RequestEnvironment {
@@ -58,6 +60,8 @@ type Attempt =
       readonly kind: "retry";
       readonly error: OutboundError;
       readonly retryAfterMs?: number;
+      /** Set on a 429: how long the vendor's limit asks the lane to wait. */
+      readonly vendorWaitMs?: number;
     };
 
 const TIMED_OUT = Symbol("timed-out");
@@ -156,11 +160,11 @@ const failureFor = async (
   const error = adapter.mapError(failure);
 
   if (response.status === 429) {
-    await budget.rateLimited(
-      spec.lane ?? DEFAULT_LANE,
-      retryAfterMs ?? 1000,
-      now
-    );
+    const lane = spec.lane ?? DEFAULT_LANE;
+    const vendorWaitMs = retryAfterMs ?? budget.vendorPauseMs(lane);
+    await budget.rateLimited(lane, vendorWaitMs, now);
+
+    return { error, kind: "retry", vendorWaitMs };
   }
 
   if (!isRetryableStatus(response.status)) {
@@ -275,6 +279,7 @@ const exhausted = (error: OutboundError, timedOut: boolean): OutboundError =>
     ? new OutboundError(error.code, error.message, {
         cause: error.cause,
         limit: error.limit,
+        permanent: error.permanent,
         provider: error.provider,
         retryAfterMs: error.retryAfterMs,
         status: error.status,
@@ -303,7 +308,11 @@ export const execute = async (
     }
 
     const backoff = state.retry.backoff(attemptNumber, runtime.random());
-    const delayMs = Math.max(result.retryAfterMs ?? 0, backoff);
+
+    const delayMs = Math.max(
+      result.vendorWaitMs ?? result.retryAfterMs ?? 0,
+      backoff
+    );
 
     if (
       state.deadlineAt !== undefined &&
@@ -319,6 +328,20 @@ export const execute = async (
       reason: result.error.message,
       url: redactUrl(spec.url, adapter.secrets),
     });
+
+    // A 429 wait is a wait for the vendor's limit, so it is throttle time.
+    if (result.vendorWaitMs !== undefined) {
+      const lane = spec.lane ?? DEFAULT_LANE;
+      state.throttledMs += delayMs;
+      fire(hooks.onThrottle, {
+        cause: "vendor",
+        lane,
+        provider: adapter.name,
+        waitMs: delayMs,
+        windows: environment.budget.windows(lane),
+      });
+    }
+
     // oxlint-disable-next-line no-await-in-loop -- the delay separates attempts.
     await sleep(runtime, delayMs, adapter.name, state.signal);
   }

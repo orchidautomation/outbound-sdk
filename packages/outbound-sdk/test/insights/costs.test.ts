@@ -121,6 +121,8 @@ const OVER_CEILING: Readonly<Record<string, string>> = {
     "50 campaigns, each over the bounce rate with 10 senders to read, is 600 requests at most",
   client_report:
     "on Instantly each stats read also reads the campaign's tracking settings (OUT-89), so the default campaigns, each read four times and the active ones with their leads, can pass 500",
+  dropped_replies:
+    "the whole window is read, up to 2,000 replies (OUT-115), and each could be its own conversation read in full and named; a window answered by hand on Instantly is a few requests",
   sender_capacity:
     "the default reads up to 50 active campaigns, and on Instantly each campaign's senders page through every mailbox of the workspace at 2 requests a page (OUT-112)",
   sender_load:

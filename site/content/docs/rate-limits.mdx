@@ -37,7 +37,7 @@ Set `share` on the constructor to use more or less: `1` is the whole published l
 
 1. **It waits for a slot.** At most 8 requests are in flight per credential unless the adapter declares another number.
 2. **It waits for room in every window** of its lane and of the default lane. The wait is reported in `meta.throttledMs` and to the [`onThrottle` hook](/docs/api/hooks).
-3. **On a 429** the lane pauses for the vendor's `Retry-After`, the rate halves, and the request is [retried](/docs/retries). Each later success raises the rate by 5% of the declared number until it is back.
+3. **On a 429** the lane pauses for the vendor's `Retry-After`, the rate halves, and the request is [retried](/docs/retries). A 429 with no `Retry-After` pauses the lane until one more request fits its published limit, at least a second: 3 seconds on a limit of 20 a minute. The wait counts in `meta.throttledMs` and reaches `onThrottle` with `cause: "vendor"`. Each later success raises the rate by 5% of the declared number until it is back.
 4. **When the vendor sends rate-limit headers** saying the window is spent, the credential pauses until the reset. Instantly, Smartlead and HeyReach do not document such headers, so no adapter declares any today.
 
 One budget is kept per credential, not per instance: ten instances on one key in one process draw from one budget, and two keys never share one.

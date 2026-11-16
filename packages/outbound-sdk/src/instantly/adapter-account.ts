@@ -57,7 +57,8 @@ export const accountReaders = (client: InstantlyClient): AccountReaders => {
     getCampaignSettings: async (id, ctx) =>
       toCampaignSettings(
         identity,
-        await client.getObject(ctx, `/campaigns/${encodeURIComponent(id)}`)
+        await client.getObject(ctx, `/campaigns/${encodeURIComponent(id)}`),
+        ctx.note
       ),
     getSenderHealth: async (id, ctx) => {
       const account = await client.getObject(
@@ -113,7 +114,7 @@ export const accountReaders = (client: InstantlyClient): AccountReaders => {
       });
 
       return mapPage(page, (item) =>
-        toSubsequence(identity, item, query.campaignId)
+        toSubsequence(identity, item, query.campaignId, ctx.note)
       );
     },
     listTags: async (query, ctx) => {

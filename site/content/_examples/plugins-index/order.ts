@@ -35,9 +35,12 @@ const outbound = createOutbound({
 const first = await outbound.lead("lead_jane").get();
 const second = await outbound.lead("lead_jane").get();
 
+// The address is a token keyed for this run; the same lead gets the same one.
+console.log("same token:", first.email === second.email);
+
 for (const lead of [first, second]) {
   console.log(
-    `email ${lead.email}, client ${"client" in lead ? lead.client : "?"}`
+    `email ${lead.email?.slice(0, 9)}…, client ${"client" in lead ? lead.client : "?"}`
   );
 }
 

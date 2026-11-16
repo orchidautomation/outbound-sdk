@@ -163,3 +163,7 @@ Custom variables, custom tracking domains, ignore phrases, reply templates, sche
 ## Tracking settings behind open counts (2026-11-16, for OUT-89)
 
 Fetched 2026-11-16: `https://dedi.emailbison.com/api/reference.openapi`. `GET /api/campaigns` and `GET /api/campaigns/{id}` return `open_tracking` (boolean) on each campaign, beside lifetime counts. No click-tracking setting exists on a campaign, so clicks are not judged. The listing's counts are lifetime only, and the dated per-campaign read (`POST /api/campaigns/{id}/stats`) is one request per campaign, so workspace and sender rows are not judged for tracking.
+
+## A step wait below zero (2026-11-16, for OUT-110)
+
+Fetched 2026-11-16: `https://dedi.emailbison.com/api/reference.openapi`. On the sequence-step write body `wait_in_days` is an `integer`, "The days to wait.", with no minimum; the read's examples give it as a string (`"1"`). A negative value has not been seen from EmailBison; Instantly sent one on a live campaign (OUT-110). The normalized `delayDays` must be 0 or more, so the adapter maps a negative wait to `null` with a note in `meta.notes`, for example "Step 1's wait is negative in EmailBison (-2 days); left out.", instead of failing the whole sequence read.

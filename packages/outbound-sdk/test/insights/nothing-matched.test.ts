@@ -88,3 +88,22 @@ test("a request cap that cuts the campaign listing short never turns a kept answ
     assert.equal(outcome.meta.complete, false);
   }
 });
+
+test("a request cap that stops the count of the other campaigns still says nothing was checked", async () => {
+  // One request lists the active campaigns, so the count has none left.
+  const { outbound } = over(NOTHING_ACTIVE, {
+    plugins: [budget({ maxRequests: 1, per: "run" })],
+  });
+
+  const result = await runInsightByName(
+    outbound,
+    "lead_collisions",
+    {},
+    { now: NOW }
+  );
+
+  assert.equal(result.meta.complete, false);
+  assert.deepEqual(result.meta.notes, [
+    "No campaign is active, so nothing was checked; a request cap stopped the count of the others.",
+  ]);
+});

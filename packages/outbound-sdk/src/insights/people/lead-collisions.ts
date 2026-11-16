@@ -216,8 +216,9 @@ export const leadCollisions = defineInsight({
     "People who are in two or more campaigns at once, so they get overlapping outreach. Reads the campaigns in the given statuses (active by default) and their leads, matches people by exact email address or LinkedIn profile, and returns each person with their campaigns, channel and tool, most active campaigns first. By default a person counts only when their own status is active in two or more of the campaigns; include_past also reports people who finished, replied to or left one campaign and are in another, counted in totals.pastOverlaps either way. A collision across tools (for example email in one and LinkedIn in another) is marked across_tools; one inside a tool is within_tool. Costs one request per page of campaigns plus one per page of each campaign's leads; the caps make the answer incomplete rather than slow.",
   inputSchema: input,
   key: "leadCollisions",
-  // A masked address is the same text for every lead, so every lead would
-  // collide with every other. A hashed one still tells people apart.
+  // Under mask an address is a token keyed for the plugin. Whether people
+  // tools match by it is OUT-107's decision, so it stays refused until then.
+  // A hashed one tells people apart.
   maskedOut: ({ fields, strategy }) =>
     fields.includes("email") && strategy === "mask"
       ? "email addresses, which it matches people by"

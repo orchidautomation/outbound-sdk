@@ -1,54 +1,54 @@
 $ outbound campaign no-such-campaign --compact
-{"data":null,"error":{"code":"NotFound","message":"Campaign no-such-campaign was not found"},"meta":{"complete":false,"notes":[],"provider":"memory","requests":0},"ok":false}
+{"data":null,"error":{"code":"NotFound","message":"Campaign no-such-campaign was not found"},"meta":{"complete":false,"notes":[],"provider":"memory","requests":0,"throttledMs":0},"ok":false}
 NotFound: Campaign no-such-campaign was not found
 (exit code 1)
 
 $ outbound campaign --compact
-{"data":null,"error":{"code":"Invalid","message":"Missing a campaign id or name"},"meta":{"complete":false,"notes":[],"provider":"memory","requests":0},"ok":false}
+{"data":null,"error":{"code":"Invalid","message":"Missing a campaign id or name"},"meta":{"complete":false,"notes":[],"provider":"memory","requests":0,"throttledMs":0},"ok":false}
 Invalid: Missing a campaign id or name
 (exit code 1)
 
 $ outbound campaigns --limit 0 --compact
-{"data":null,"error":{"code":"Invalid","message":"--limit must be a positive whole number"},"meta":{"complete":false,"notes":[],"provider":"memory","requests":0},"ok":false}
+{"data":null,"error":{"code":"Invalid","message":"--limit must be a positive whole number"},"meta":{"complete":false,"notes":[],"provider":"memory","requests":0,"throttledMs":0},"ok":false}
 Invalid: --limit must be a positive whole number
 (exit code 1)
 
 $ outbound campaigns --status live --compact
-{"data":null,"error":{"code":"Invalid","message":"--status must be one of: active, archived, completed, draft, paused, unknown"},"meta":{"complete":false,"notes":[],"provider":"memory","requests":0},"ok":false}
+{"data":null,"error":{"code":"Invalid","message":"--status must be one of: active, archived, completed, draft, paused, unknown"},"meta":{"complete":false,"notes":[],"provider":"memory","requests":0,"throttledMs":0},"ok":false}
 Invalid: --status must be one of: active, archived, completed, draft, paused, unknown
 (exit code 1)
 
 $ outbound stats --by week --compact
-{"data":null,"error":{"code":"Invalid","message":"--by must be one of: day, total"},"meta":{"complete":false,"notes":[],"provider":"memory","requests":0},"ok":false}
+{"data":null,"error":{"code":"Invalid","message":"--by must be one of: day, total"},"meta":{"complete":false,"notes":[],"provider":"memory","requests":0,"throttledMs":0},"ok":false}
 Invalid: --by must be one of: day, total
 (exit code 1)
 
 $ outbound tool sender_health --input '{oops' --compact
-{"data":null,"error":{"code":"Invalid","message":"--input must be valid JSON"},"meta":{"complete":false,"notes":[],"provider":"memory","requests":0},"ok":false}
+{"data":null,"error":{"code":"Invalid","message":"--input must be valid JSON"},"meta":{"complete":false,"notes":[],"provider":"memory","requests":0,"throttledMs":0},"ok":false}
 Invalid: --input must be valid JSON
 (exit code 1)
 
 $ outbound native inboxUnreadCount --compact
-{"data":null,"error":{"code":"Unsupported","message":"Reading the vendor's own data is not available: the memory adapter does not support it (native)"},"meta":{"complete":false,"notes":[],"provider":"memory","requests":0},"ok":false}
+{"data":null,"error":{"code":"Unsupported","message":"Reading the vendor's own data is not available: the memory adapter does not support it (native)"},"meta":{"complete":false,"notes":[],"provider":"memory","requests":0,"throttledMs":0},"ok":false}
 Unsupported: Reading the vendor's own data is not available: the memory adapter does not support it (native)
 (exit code 1)
 
 $ outbound send --compact
-{"data":null,"error":{"code":"Invalid","message":"Unknown command \"send\". Run \"outbound help\""},"meta":{"complete":false,"notes":[],"provider":null,"requests":0},"ok":false}
+{"data":null,"error":{"code":"Invalid","message":"Unknown command \"send\". Run \"outbound help\""},"meta":{"complete":false,"notes":[],"provider":null,"requests":0,"throttledMs":0},"ok":false}
 Invalid: Unknown command "send". Run "outbound help"
 (exit code 1)
 
 $ outbound campaigns --provider mailchimp --compact
-{"data":null,"error":{"code":"Invalid","message":"Unknown provider \"mailchimp\". Known providers: emailbison, heyreach, instantly, memory, smartlead, or all"},"meta":{"complete":false,"notes":[],"provider":null,"requests":0},"ok":false}
+{"data":null,"error":{"code":"Invalid","message":"Unknown provider \"mailchimp\". Known providers: emailbison, heyreach, instantly, memory, smartlead, or all"},"meta":{"complete":false,"notes":[],"provider":null,"requests":0,"throttledMs":0},"ok":false}
 Invalid: Unknown provider "mailchimp". Known providers: emailbison, heyreach, instantly, memory, smartlead, or all
 (exit code 1)
 
 $ unset OUTBOUND_SDK_PROVIDER INSTANTLY_API_KEY SMARTLEAD_API_KEY HEYREACH_API_KEY
 $ outbound campaigns --compact
-{"data":null,"error":{"code":"Invalid","message":"No provider key is set. Set at least one of: INSTANTLY_API_KEY, SMARTLEAD_API_KEY, HEYREACH_API_KEY, EMAILBISON_API_KEY, or set OUTBOUND_SDK_PROVIDER to one of: instantly, smartlead, heyreach, emailbison, memory"},"meta":{"complete":false,"notes":[],"provider":null,"requests":0},"ok":false}
+{"data":null,"error":{"code":"Invalid","message":"No provider key is set. Set at least one of: INSTANTLY_API_KEY, SMARTLEAD_API_KEY, HEYREACH_API_KEY, EMAILBISON_API_KEY, or set OUTBOUND_SDK_PROVIDER to one of: instantly, smartlead, heyreach, emailbison, memory"},"meta":{"complete":false,"notes":[],"provider":null,"requests":0,"throttledMs":0},"ok":false}
 Invalid: No provider key is set. Set at least one of: INSTANTLY_API_KEY, SMARTLEAD_API_KEY, HEYREACH_API_KEY, EMAILBISON_API_KEY, or set OUTBOUND_SDK_PROVIDER to one of: instantly, smartlead, heyreach, emailbison, memory
 (exit code 1)
 
 $ outbound providers --compact
-{"data":{"items":[{"channels":["email"],"envVars":[{"name":"INSTANTLY_API_KEY","required":true},{"name":"INSTANTLY_WORKSPACE_ID","required":false}],"id":"instantly","maturity":"beta","name":"Instantly","note":"Its reads were run, read-only, against one live workspace. Fixtures are built from the documentation."},{"channels":["email"],"envVars":[{"name":"SMARTLEAD_API_KEY","required":true},{"name":"SMARTLEAD_WORKSPACE_ID","required":false}],"id":"smartlead","maturity":"unverified","name":"Smartlead","note":"Never run against a live account. Written from the public documentation and tested offline only."},{"channels":["linkedin"],"envVars":[{"name":"HEYREACH_API_KEY","required":true},{"name":"HEYREACH_WORKSPACE_ID","required":false}],"id":"heyreach","maturity":"beta","name":"HeyReach","note":"Its reads were run, read-only, against one live workspace. Fixtures are built from the documentation."},{"channels":["email"],"envVars":[{"name":"EMAILBISON_API_KEY","required":true},{"name":"EMAILBISON_BASE_URL","required":false},{"name":"EMAILBISON_WORKSPACE_ID","required":false}],"id":"emailbison","maturity":"unverified","name":"EmailBison","note":"Never run against a live account. Written from the public documentation and tested offline only."},{"channels":["email","linkedin"],"envVars":[],"id":"memory","maturity":"stable","name":"In-memory (tests and demos)","note":"Holds data in memory. For tests and demos; there is no vendor behind it."}]},"meta":{"complete":true,"notes":[],"provider":null,"requests":0},"ok":true}
+{"data":{"items":[{"channels":["email"],"envVars":[{"name":"INSTANTLY_API_KEY","required":true},{"name":"INSTANTLY_WORKSPACE_ID","required":false}],"id":"instantly","maturity":"beta","name":"Instantly","note":"Its reads were run, read-only, against one live workspace. Fixtures are built from the documentation."},{"channels":["email"],"envVars":[{"name":"SMARTLEAD_API_KEY","required":true},{"name":"SMARTLEAD_WORKSPACE_ID","required":false}],"id":"smartlead","maturity":"unverified","name":"Smartlead","note":"Never run against a live account. Written from the public documentation and tested offline only."},{"channels":["linkedin"],"envVars":[{"name":"HEYREACH_API_KEY","required":true},{"name":"HEYREACH_WORKSPACE_ID","required":false}],"id":"heyreach","maturity":"beta","name":"HeyReach","note":"Its reads were run, read-only, against one live workspace. Fixtures are built from the documentation."},{"channels":["email"],"envVars":[{"name":"EMAILBISON_API_KEY","required":true},{"name":"EMAILBISON_BASE_URL","required":false},{"name":"EMAILBISON_WORKSPACE_ID","required":false}],"id":"emailbison","maturity":"unverified","name":"EmailBison","note":"Never run against a live account. Written from the public documentation and tested offline only."},{"channels":["email","linkedin"],"envVars":[],"id":"memory","maturity":"stable","name":"In-memory (tests and demos)","note":"Holds data in memory. For tests and demos; there is no vendor behind it."}]},"meta":{"complete":true,"notes":[],"provider":null,"requests":0,"throttledMs":0},"ok":true}
 

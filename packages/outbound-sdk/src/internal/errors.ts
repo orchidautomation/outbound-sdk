@@ -59,6 +59,11 @@ export interface OutboundErrorOptions {
   readonly limit?: RequestLimit | undefined;
   /** What a `toArray()` walk had fetched when it stopped. */
   readonly partial?: PartialWalk | undefined;
+  /**
+   * `true` when the same call fails the same way again, whatever the code:
+   * for example a `Provider` error for a vendor record the SDK cannot read.
+   */
+  readonly permanent?: boolean | undefined;
   /** Secrets to strip from the message. */
   readonly secrets?: readonly string[] | undefined;
 }
@@ -120,6 +125,7 @@ export class OutboundError extends Error {
     this.partial = options.partial;
     // A cap the caller set stops the same call at the same place again.
     this.permanent =
+      options.permanent === true ||
       this.aborted ||
       !RETRYABLE.has(code) ||
       this.limit === "call" ||

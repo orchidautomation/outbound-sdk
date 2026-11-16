@@ -608,3 +608,7 @@ Why the split is not provable:
 A possible later route, which needs a live key: list a campaign's leads with `emailStatus=is_bounced` and treat a BLOCKED lead missing from that list as block-listed only. The filter's behaviour on BLOCKED leads is not documented.
 
 `CampaignProgress.skipped` is `null` on Smartlead (declared unfilled). `campaign_lead_stats.blocked` counts block-listed and bounced leads together.
+
+## A step delay below zero (2026-11-16, for OUT-110)
+
+Fetched 2026-11-16: https://api.smartlead.ai/api-reference/campaigns/get-sequences.md. `seq_delay_details.delayInDays` is a `number`, "Number of days to wait before sending this sequence", with no stated minimum. A negative value has not been seen from Smartlead; Instantly sent one on a live campaign (OUT-110). The normalized `delayDays` must be 0 or more, so the adapter maps a negative delay to `null` with a note in `meta.notes`, for example "Step 2's delay is negative in Smartlead (-3 days); left out.", instead of failing the whole sequence read.
