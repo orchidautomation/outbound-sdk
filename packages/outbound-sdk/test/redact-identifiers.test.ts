@@ -9,7 +9,7 @@ import { identity } from "../src/identity/index.ts";
 import { createOutbound, OutboundError } from "../src/index.ts";
 import type { Adapter, OutboundEvent, OutboundPlugin } from "../src/index.ts";
 import { memory } from "../src/memory/index.ts";
-import { MASK, redact } from "../src/redact/index.ts";
+import { KNOWN_TOKENS, MASK, redact } from "../src/redact/index.ts";
 import { createFetch, json, testAdapter } from "./helpers/http.ts";
 
 const PROFILE = "https://www.linkedin.com/in/Example-Person-1/";
@@ -122,9 +122,11 @@ test("person() refuses under a redact that masks identifiers, and works when it 
 
   assert.equal(person.found, true);
   assert.equal(person.records.length, 2, "the profile linked a second record");
-  const { hash, ...redacted } = names.redacted;
+  const { hash, leadsByToken, resolves, ...redacted } = names.redacted;
 
   assert.deepEqual(redacted, { fields: ["name"], strategy: "mask" });
+  assert.equal(typeof leadsByToken, "function");
+  assert.equal(typeof resolves, "function");
   assert.equal(hash("Alex"), "[redacted]");
 });
 
@@ -322,4 +324,91 @@ test("raw is refused once a plugin has turned native off, and names the plugin",
   });
 
   assert.deepEqual(await other.raw.get("/campaigns"), { items: [] });
+});
+
+// A reply names its lead by a token, and an insight has to read that lead.
+// Redact keeps the value behind each token it wrote, in memory for its own
+// lifetime, puts it back on the call to the vendor and masks the answer.
+test("a call that names a token reaches the vendor with the value, and comes back masked", async () => {
+  const plugin = redact();
+  const outbound = createOutbound({ adapter: tool(), plugins: [plugin] });
+  const [, profiled] = (await outbound.leads.list()).items;
+  assert.ok(profiled);
+  assert.match(profiled.ref, /^mailtool:agency:redacted:[0-9a-f]{16}$/u);
+
+  const read = await outbound.leads.get(profiled.ref);
+  assert.equal(read.ref, profiled.ref, "the same token comes back");
+  assert.doesNotMatch(JSON.stringify(read), /example-person|linkedin\.com/iu);
+
+  const token = profiled.ref.slice("mailtool:agency:".length);
+  assert.equal(outbound.redacted.resolves(token), "linkedin");
+  assert.equal(outbound.redacted.resolves("redacted:0123456789abcdef"), null);
+  assert.ok(
+    !JSON.stringify(outbound.redacted).includes("example-person"),
+    "the instance carries no value"
+  );
+});
+
+test("a vendor error about a call redact unmasked names the token, not the value", async () => {
+  const plugin = redact();
+  const outbound = createOutbound({ adapter: tool(), plugins: [plugin] });
+  const ghost = "https://www.linkedin.com/in/example-ghost";
+
+  const masked = plugin.event?.({
+    campaignRef: null,
+    data: {},
+    id: "e1",
+    leadRef: `mailtool:agency:${ghost}`,
+    messageRef: null,
+    occurredAt: null,
+    provider: "mailtool",
+    raw: null,
+    schemaVersion: 1,
+    senderRef: null,
+    type: "reply.received",
+    workspaceId: "agency",
+  });
+
+  const ref = masked?.leadRef ?? "";
+
+  await assert.rejects(
+    async () => await outbound.leads.get(ref),
+    (error) =>
+      OutboundError.is(error) &&
+      error.code === "NotFound" &&
+      error.message.includes(ref.slice("mailtool:agency:".length)) &&
+      !error.message.includes("example-ghost") &&
+      error.cause === undefined
+  );
+});
+
+test("redact remembers at most KNOWN_TOKENS values, and forgets the oldest first", () => {
+  const plugin = redact();
+  const outbound = createOutbound({ adapter: tool(), plugins: [plugin] });
+
+  const tokenOf = (index: number): string =>
+    plugin.event?.({
+      campaignRef: null,
+      data: {},
+      id: `e${index}`,
+      leadRef: null,
+      messageRef: null,
+      occurredAt: null,
+      provider: "mailtool",
+      raw: null,
+      schemaVersion: 1,
+      senderRef: `person${index}@example.com`,
+      type: "reply.received",
+      workspaceId: "agency",
+    })?.senderRef ?? "";
+
+  const first = tokenOf(0);
+  assert.equal(outbound.redacted.resolves(first), "email");
+
+  for (let index = 1; index <= KNOWN_TOKENS; index += 1) {
+    tokenOf(index);
+  }
+
+  assert.equal(outbound.redacted.resolves(first), null, "the oldest is gone");
+  assert.equal(outbound.redacted.resolves(tokenOf(KNOWN_TOKENS)), "email");
 });

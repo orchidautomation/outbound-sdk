@@ -134,12 +134,61 @@ export const senderGet = (core: Core): GetSpec<Sender> => ({
   what: "Sender",
 });
 
+/** The `emails` filter, lowercased and checked. Needs `leads.lookupMany`. */
+const manyAddresses = (
+  core: Core,
+  given: readonly string[] | undefined
+): string[] | undefined => {
+  if (given === undefined) {
+    return undefined;
+  }
+
+  requireCapability(
+    core.gate,
+    "leads.lookupMany",
+    "Finding the leads of many email addresses at once"
+  );
+
+  const emails = given.map((each) => each.trim().toLowerCase());
+
+  if (emails.length === 0 || emails.some((each) => !each.includes("@"))) {
+    throw new OutboundError(
+      "Invalid",
+      "emails must list at least one email address, and only addresses"
+    );
+  }
+
+  return emails;
+};
+
+/** The `interest` filter, which takes `positive` only. Needs `leads.byInterest`. */
+const checkInterest = (core: Core, interest: string | undefined): void => {
+  if (interest === undefined) {
+    return;
+  }
+
+  requireCapability(
+    core.gate,
+    "leads.byInterest",
+    "Listing only the leads labelled positive"
+  );
+
+  if (interest !== "positive") {
+    throw new OutboundError(
+      "Invalid",
+      `interest takes "positive", not "${interest}"`
+    );
+  }
+};
+
 export const leadList = (core: Core): ListSpec<Lead, LeadFilters> => ({
   action: "leads.list",
   takes: {
     campaignId: true,
     domain: true,
     email: true,
+    emails: true,
+    interest: true,
     linkedinUrl: true,
     listId: true,
     since: true,
@@ -150,6 +199,7 @@ export const leadList = (core: Core): ListSpec<Lead, LeadFilters> => ({
   // so the campaign is part of what tells them apart.
   keyOf: (lead, filters) =>
     filters.email === undefined &&
+    filters.emails === undefined &&
     filters.linkedinUrl === undefined &&
     filters.domain === undefined
       ? lead.ref
@@ -172,6 +222,10 @@ export const leadList = (core: Core): ListSpec<Lead, LeadFilters> => ({
         "Finding a lead by email or LinkedIn profile"
       );
     }
+
+    const emails = manyAddresses(core, filters.emails);
+
+    checkInterest(core, filters.interest);
 
     const domain = filters.domain?.trim().toLowerCase();
 
@@ -199,7 +253,7 @@ export const leadList = (core: Core): ListSpec<Lead, LeadFilters> => ({
         "leads.byCampaign",
         "Listing a campaign's leads"
       );
-    } else if (!lookup && domain === undefined) {
+    } else if (!lookup && domain === undefined && emails === undefined) {
       // A lookup by identifier or domain does not need the list of every lead.
       requireCapability(core.gate, "leads.list", "Listing leads");
     }
@@ -212,6 +266,8 @@ export const leadList = (core: Core): ListSpec<Lead, LeadFilters> => ({
       campaignId: filters.campaignId,
       domain,
       email: filters.email?.trim().toLowerCase(),
+      emails: emails === undefined ? undefined : [...new Set(emails)],
+      interest: filters.interest,
       linkedinUrl: filters.linkedinUrl?.trim(),
       listId: filters.listId,
       ...normalizeRange(filters),

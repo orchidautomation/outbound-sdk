@@ -159,8 +159,11 @@ test("hot_leads ranks leads by a score whose parts are returned, and leaves out 
     moreLeadsExist: false,
     // h4, marked Not Interested, which earned nothing.
     negative: 1,
+    repliesRead: 0,
     // The four above, h4 and h10, whose counts are all a known 0.
     scored: 6,
+    stale: 0,
+    unreadable: 0,
     // h6 and h7.
     withoutData: 2,
   });
@@ -195,12 +198,27 @@ test("hot_leads moves with every weight, the count cap, the recency window and t
     ["h2", 85],
     ["h1", 78],
   ]);
+  // h4 replied 44 days ago: past the 14-day window its label fades over the
+  // 76 days to max_age_days, keeping 50 x (1 - 30/76), so the two leads who
+  // replied this fortnight still outrank it once the label is not enough.
   assert.deepEqual(
     (await run({ positive_labels: ["Not Interested"] })).slice(0, 3),
     [
-      ["h4", 60],
+      ["h4", 40.2632],
       ["h1", 38],
       ["h2", 35],
+    ]
+  );
+  // Past max_age_days the label earns nothing and the lead ranks after
+  // every fresher one.
+  assert.deepEqual(
+    (
+      await run({ max_age_days: 30, positive_labels: ["Not Interested"] })
+    ).slice(0, 3),
+    [
+      ["h1", 38],
+      ["h2", 35],
+      ["h3", 17],
     ]
   );
   // h2: 50 + 10 + 5 opens x 10 + 20. h1: 50 + 20 + 5 + 3 opens x 10 + 10.
@@ -251,7 +269,10 @@ test("hot_leads returns nobody when there are no leads", async () => {
       leadsRead: 0,
       moreLeadsExist: false,
       negative: 0,
+      repliesRead: 0,
       scored: 0,
+      stale: 0,
+      unreadable: 0,
       withoutData: 0,
     },
   });
@@ -330,28 +351,38 @@ test("hot_leads notes when the tool reports no engagement counts", async () => {
   assert.equal(result.data.leads[0]?.reason, "marked Interested.");
   assert.equal(result.data.totals.withoutData, 1);
   assert.deepEqual(result.meta.notes, [
-    "This tool reports no per-lead open, click or reply counts, so scores rest on the interest label and the lead's status.",
+    "This tool reports no per-lead open, click or reply counts, so clicks and opens are unknown, and reply counts and recency come from the replies read within recency_days.",
   ]);
 });
 
 test("hot_leads ranks leads from two tools together", async () => {
   const result = await agency().insights.hotLeads({}, { now: NOW });
 
-  // Only the first email record carries a label and a reply count: 50 + 10.
+  // The first email record carries a label and a reply count, and its reply
+  // of Nov 5, 10:00 in the window adds recency: 50 + 10 + 20 x (1 - 9.083/14).
+  // The LinkedIn lead's record has no counts; its two replies in the window
+  // give it a count and recency from Nov 3, 09:05: 2 x 10 + 20 x (1 - 11.122/14).
   assert.deepEqual(
     result.data.leads.map((each) => [each.lead, each.score]),
-    [["mailtool:agency:l1", 60]]
+    [
+      ["mailtool:agency:l1", 67.0238],
+      ["lntool:agency:p1", 24.1121],
+    ]
   );
   assert.deepEqual(result.data.totals, {
     autoReplied: 0,
     excluded: 0,
     fromReplies: 0,
-    hot: 1,
+    hot: 2,
     leadsRead: 5,
     moreLeadsExist: false,
     negative: 0,
-    scored: 1,
-    withoutData: 4,
+    // m3 on the email tool, d2 and d3 on the LinkedIn tool.
+    repliesRead: 3,
+    scored: 2,
+    stale: 0,
+    unreadable: 0,
+    withoutData: 3,
   });
   assert.equal(result.meta.provider, "combined");
   assert.deepEqual(result.meta.notes, []);
@@ -383,6 +414,6 @@ test("hot_leads on two tools names only the tool whose leads lack the counts", a
   // The email tool's lead keeps its counts in the score.
   assert.deepEqual([top?.replies, top?.clicks, top?.opens], [2, 1, 3]);
   assert.deepEqual(result.meta.notes, [
-    "lntool reports no per-lead open, click or reply counts, so scores rest on the interest label and the lead's status for its records. Records from the other tools carry what their vendor reports.",
+    "lntool reports no per-lead open, click or reply counts, so clicks and opens are unknown, and reply counts and recency come from the replies read within recency_days for its records. Records from the other tools carry what their vendor reports.",
   ]);
 });

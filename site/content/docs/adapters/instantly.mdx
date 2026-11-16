@@ -51,6 +51,8 @@ Instantly declares every capability in the [table](/docs/adapters#what-each-adap
 
 `leads.lookup` works by email only. A lead in Instantly has no LinkedIn profile, so a lookup by profile returns nothing and sends no request.
 
+`leads.lookupMany` sends every address in the same `contacts` field of `POST /leads/list`. `leads.byInterest` uses its `filter` field, one positive interest status after another: `FILTER_LEAD_INTERESTED`, `FILTER_LEAD_MEETING_BOOKED`, `FILTER_LEAD_MEETING_COMPLETED`, `FILTER_LEAD_CLOSED` (read as Won) and `FILTER_LEAD_CUSTOM_LABEL_POSITIVE`, so it costs at least five requests. Both follow Instantly's documentation and have not been run against a live workspace yet.
+
 `leads.byDomain` uses the `search` field of `POST /leads/list` and keeps only the addresses at exactly that domain. It follows Instantly's documentation and has not been run against a live workspace yet.
 
 ## Rate limits

@@ -212,11 +212,32 @@ export interface InsightInputs {
     readonly limit?: number | undefined;
 
     /**
-     * The most leads to read and score. A vendor request returns about 50 to 100 leads. When more exist, the leads behind recent replies are read as well, so engaged leads past the cap are still ranked.
+     * The most leads a lead listing reads: the leads labelled positive where the tool filters by interest, and the lead list itself where it cannot or include_engagement_only is true. A vendor request returns about 50 to 100 leads. The leads behind replies within recency_days are read on top.
      *
      * A whole number from 1 to 20,000. Defaults to `500`.
      */
     readonly max_leads?: number | undefined;
+
+    /**
+     * The most replies within recency_days to read: a safety ceiling, not a sample. A vendor request returns about 100 replies.
+     *
+     * A whole number from 1 to 20,000. Defaults to `1000`.
+     */
+    readonly max_replies?: number | undefined;
+
+    /**
+     * A positive interest label earns its full points while the last reply is within recency_days, fading evenly to none at this many days, and a lead whose last reply is older ranks after every lead with a fresher one. A label with no reply time keeps its points.
+     *
+     * A number, 1 or more. Defaults to `90`.
+     */
+    readonly max_age_days?: number | undefined;
+
+    /**
+     * Also walk the lead list up to max_leads, to rank leads whose only signal is opens or clicks. Where the tool cannot filter leads by interest the list is walked anyway.
+     *
+     * Defaults to `false`.
+     */
+    readonly include_engagement_only?: boolean | undefined;
 
     /**
      * Vendor interest labels that count as interested, matched without regard to case

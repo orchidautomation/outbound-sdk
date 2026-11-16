@@ -50,40 +50,43 @@
         "title": null
       },
       {
-        "campaign": "mailtool:acme:founders",
-        "clicks": 0,
-        "company": "Northwind",
-        "email": "ben@northwind.example.com",
+        "campaign": "mailtool:acme:agencies",
+        "clicks": null,
+        "company": null,
+        "email": "gus@example.com",
         "interest": null,
-        "lastRepliedAt": null,
-        "lead": "mailtool:acme:ben_founders",
+        "lastRepliedAt": "2026-11-13T20:00:00.000Z",
+        "lead": "mailtool:acme:gus_agencies",
         "linkedinUrl": null,
-        "name": "Ben Okafor",
-        "opens": 3,
+        "name": null,
+        "opens": null,
         "parts": {
-          "clicks": 0,
+          "clicks": null,
           "interest": null,
-          "opens": 3,
-          "recency": null,
-          "replies": 0
+          "opens": null,
+          "recency": 19.0476,
+          "replies": 10
         },
-        "reason": "3 opens.",
-        "replies": 0,
-        "score": 3,
+        "reason": "replied 1 time, last reply 0 days ago.",
+        "replies": 1,
+        "score": 29.0476,
         "status": "active",
-        "title": "Head of Sales"
+        "title": null
       }
     ],
     "totals": {
       "autoReplied": 0,
       "excluded": 1,
       "fromReplies": 0,
-      "hot": 4,
+      "hot": 7,
+      "leadsRead": 12,
       "moreLeadsExist": false,
       "negative": 1,
-      "leadsRead": 12,
-      "scored": 5,
-      "withoutData": 6
+      "repliesRead": 8,
+      "scored": 8,
+      "stale": 0,
+      "unreadable": 0,
+      "withoutData": 3
     }
   },
   "insight": "hot_leads",
