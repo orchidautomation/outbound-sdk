@@ -393,3 +393,66 @@ test("a campaign name is not looked up when no tool can serve the insight", asyn
       /stats\.byStep/u.test(error.message)
   );
 });
+
+test("a reply that arrives between two pages neither repeats nor drops one", async () => {
+  // The email tool lists 100 recent replies with more to come; the LinkedIn
+  // tool's ten straddle them, so its older ones wait for the next page.
+  const email: MemoryMessage[] = Array.from({ length: 150 }, (_, index) => ({
+    campaignId: uuid(1),
+    direction: "in",
+    id: `e${index + 1}`,
+    sentAt: new Date(Date.UTC(2026, 10, 16, 12) - index * 60_000).toISOString(),
+  }));
+
+  const linkedin: MemoryMessage[] = Array.from({ length: 10 }, (_, index) => ({
+    campaignId: "300010",
+    direction: "in",
+    id: `k${index + 1}`,
+    sentAt: new Date(
+      Date.UTC(2026, 10, 16, 12) - index * 1_200_000 - 30_000
+    ).toISOString(),
+  }));
+
+  const messages = [...linkedin];
+
+  const outbound = createOutbound({
+    adapter: combine([
+      memory({
+        data: { campaigns: EMAIL_CAMPAIGNS, messages: email },
+        name: "instantly",
+        pageSize: 100,
+        workspaceId: "default",
+      }),
+      memory({
+        data: { campaigns: LINKEDIN_CAMPAIGNS, messages },
+        name: "heyreach",
+        pageSize: 100,
+        workspaceId: "default",
+      }),
+    ]),
+  });
+
+  const first = await outbound.replies.list();
+  assert.ok(first.cursor !== undefined);
+
+  // A new LinkedIn reply lands at the top before the next page is read.
+  messages.unshift({
+    campaignId: "300010",
+    direction: "in",
+    id: "k0",
+    sentAt: "2026-11-16T12:30:00.000Z",
+  });
+
+  const refs: string[] = first.items.map((reply) => reply.ref);
+  let cursor: string | undefined = first.cursor;
+
+  while (cursor !== undefined) {
+    // oxlint-disable-next-line no-await-in-loop -- each page needs the previous page's cursor.
+    const page = await outbound.replies.list({ cursor });
+    refs.push(...page.items.map((reply) => reply.ref));
+    ({ cursor } = page);
+  }
+
+  assert.equal(new Set(refs).size, refs.length, "no reply repeats");
+  assert.equal(refs.length, 160, "every reply listed at the start comes once");
+});
