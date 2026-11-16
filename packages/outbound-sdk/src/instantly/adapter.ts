@@ -242,6 +242,13 @@ const leadListBody = (query: LeadQuery): JsonObject => {
     body.contacts = [query.email];
   }
 
+  // `search` matches whole words of the lead's email and profile fields, so
+  // `acme.com` also finds names and companies that mention it. The adapter
+  // keeps only the addresses at exactly that domain.
+  if (query.domain !== undefined) {
+    body.search = query.domain;
+  }
+
   if (isString(query.next)) {
     body.starting_after = query.next;
   }
@@ -277,11 +284,14 @@ const listLeads = async (
 
   return {
     // `contacts` is documented as the emails a lead needs to have, but not
-    // how it compares them, so the match is made exact here.
-    items:
-      query.email === undefined
-        ? leads
-        : leads.filter((lead) => lead.email === query.email),
+    // how it compares them, and `search` matches more than the address, so
+    // both matches are made exact here.
+    items: leads.filter(
+      (lead) =>
+        (query.email === undefined || lead.email === query.email) &&
+        (query.domain === undefined ||
+          lead.email?.split("@").at(-1) === query.domain)
+    ),
     next: envelope.next,
   };
 };

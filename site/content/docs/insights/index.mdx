@@ -197,7 +197,7 @@ The tool and CLI name of each is the same words in snake case: `personSummary` i
 | Method | Answers | Needs |
 | --- | --- | --- |
 | `personSummary` | One person across campaigns and channels: messages sent, replies, steps replied to, interest | `leads.lookup`, `leads.timeline` |
-| `accountSummary` | Everyone at one company domain, across campaigns and tools | `leads.list`, or `leads.byCampaign` when the adapter cannot list every lead |
+| `accountSummary` | Everyone at one company domain, across campaigns and tools | `leads.byDomain`, else `leads.list`, else `leads.byCampaign` |
 | `leadCollisions` | People in two or more campaigns at once, inside a tool or across tools | `leads.byCampaign` |
 | `suppressionCheck` | Leads in campaigns although they are on the block list | `blocklist`, `leads.byCampaign` |
 | `droppedReplies` | Replies nobody answered, longest waiting first | `replies.list` |

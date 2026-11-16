@@ -37,7 +37,7 @@ The full response of `accountSummary` is in the **Response** tab on [`accountSum
 
 What the insight does:
 
-1. It reads leads: from the tool's list of every lead when the adapter has one, otherwise campaign by campaign, up to `max_campaigns` campaigns. Either way it stops at `max_leads` (default 1,000).
+1. It reads leads. When the adapter can search leads by domain (`leads.byDomain`), it asks the tool for the domain's leads only, wherever they are in the workspace. Otherwise it reads the tool's list of every lead in order, or campaign by campaign up to `max_campaigns` campaigns. Either way it stops at `max_leads` (default 1,000). `foundBy` says which it did.
 2. It keeps the leads whose address is at the domain, and groups them by address. One person in three campaigns is one entry with three `records`.
 3. For each person it adds up the counts over their records, and takes the first known name, title and company.
 4. It sorts people by most recent reply, then people who replied at an unknown time, then the rest by address.
@@ -86,7 +86,7 @@ No adapter refuses the call: it needs leads by list or by campaign, and each has
 
 ## What it costs
 
-One request per page of leads read. `max_leads` (default 1,000, at most 20,000) sets the ceiling, and a vendor request returns about 50 to 100 leads, so a full read at the default is roughly 10 to 20 requests. It reads every lead to find the few at the domain: there is no lookup by domain. When leads are read campaign by campaign, add one request per page of campaigns; `max_campaigns` defaults to 20. `maxRequests` on the instance caps the whole call; past it the call fails with `RateLimited` instead of spending your vendor quota.
+One request per page of leads read. `max_leads` (default 1,000, at most 20,000) sets the ceiling, and a vendor request returns about 50 to 100 leads, so a full read at the default is roughly 10 to 20 requests. With `leads.byDomain` only the domain's leads are read, usually one or two requests. Without it, it reads every lead to find the few at the domain. When leads are read campaign by campaign, add one request per page of campaigns; `max_campaigns` defaults to 20. `maxRequests` on the instance caps the whole call; past it the call fails with `RateLimited` instead of spending your vendor quota.
 
 ## When it cannot answer
 
@@ -102,15 +102,15 @@ One request per page of leads read. `max_leads` (default 1,000, at most 20,000) 
 | --- | --- | --- |
 | The domain is an email provider such as `gmail.com` | `Invalid`: it is not one company | Pass the company's own domain, or `allow_free_domains: true` if you mean it. |
 | Text that is not a domain or an address, such as a company name | `Invalid`, before any request | Pass `acme.com`, an address at it, or its URL. |
-| Nobody at the domain | `people` is empty and `totals.leadsRead` says how many leads were looked at | Check the spelling, and check `meta.complete`. |
+| Nobody at the domain | `people` is empty and `totals.leadsRead` says how many leads were looked at. After a scan that stopped with leads unread, `finding` says that nobody matching does not mean nobody at the company is there. | Check the spelling, and check `meta.complete`. |
 | More leads than `max_leads`, or more campaigns than `max_campaigns` | `meta.complete` is `false` and a note says where it stopped. People past the cap are missing. | Raise the cap. |
-| The adapter can list leads neither way | `Unsupported`, before any request | Use an adapter that declares `leads.list` or `leads.byCampaign`. |
+| The adapter can neither search nor list leads | `Unsupported`, before any request | Use an adapter that declares `leads.byDomain`, `leads.list` or `leads.byCampaign`. |
 | A rejected key | `Unauthorized`. It is not retried. | Check the key and its scope. |
 
 ## Limits
 
 - Exact domain only. `acme.com` does not find people at `eu.acme.com` or `acme.co.uk`, and a person who signed up with a personal address is not at the company as far as this goes.
-- LinkedIn-only leads are never found. `totals.leadsWithoutEmail` counts every lead without an address that was read, at any company.
+- LinkedIn-only leads are never found. `totals.leadsWithoutEmail` counts every lead without an address that was read, at any company; a search by domain reads none of them, so it is then 0.
 - When leads are read campaign by campaign, every campaign is read whatever its status, in the order the vendor lists them, until a cap is reached.
 - `lastReply` is the most recent reply with a known time. A person the vendor marks as replied with no time is counted in `totals.replied` and cannot be `lastReply`.
 - On an `unverified` adapter, check a brief against the vendor's own lead view before a call.

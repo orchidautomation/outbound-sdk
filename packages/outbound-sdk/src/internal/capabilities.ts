@@ -39,6 +39,8 @@ export interface Capabilities {
   "leads.since": FilterGrade;
   /** Find a lead by its exact email address or LinkedIn profile, without walking every lead. */
   "leads.lookup": boolean;
+  /** Find the leads whose email address is at one domain, without walking every lead. */
+  "leads.byDomain": boolean;
   /** Leads carry open, click and reply counts. */
   "leads.engagement": boolean;
   /** List the saved lead lists. */
@@ -108,6 +110,7 @@ export const NO_CAPABILITIES: Capabilities = {
   "events.parse": false,
   "events.verify": false,
   "leads.byCampaign": false,
+  "leads.byDomain": false,
   "leads.engagement": false,
   "leads.get": false,
   "leads.list": false,

@@ -95,6 +95,11 @@ export interface LeadQuery extends PageQuery, TimeRange {
   readonly email?: string | undefined;
   /** Only the lead records with exactly this LinkedIn profile URL. */
   readonly linkedinUrl?: string | undefined;
+  /**
+   * Only the lead records whose address is at exactly this domain, lowercased.
+   * A subdomain is another domain.
+   */
+  readonly domain?: string | undefined;
 }
 
 export interface MessageQuery extends PageQuery, TimeRange {

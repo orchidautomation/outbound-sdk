@@ -151,6 +151,8 @@ export interface LeadFilters extends TimeRange {
   readonly email?: string | undefined;
   /** Only the records of the person with exactly this LinkedIn profile. */
   readonly linkedinUrl?: string | undefined;
+  /** Only the records whose email address is at exactly this domain, such as `acme.com`. Needs `leads.byDomain`. */
+  readonly domain?: string | undefined;
 }
 
 export interface WebhookFilters {

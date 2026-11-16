@@ -1,6 +1,6 @@
 // Cards for the people and account insights.
 
-import type { JsonObject } from "../internal/json.ts";
+import type { Json, JsonObject } from "../internal/json.ts";
 import type { Stat } from "./content.ts";
 import {
   bool,
@@ -71,9 +71,26 @@ const personSummary: CardBuilder = (data) => {
   };
 };
 
+/**
+ * With nobody found, the answer's own sentence says whether that means nobody
+ * is there or only that the leads read held nobody.
+ */
+const accountFinding = (data: Json): string => {
+  const last = child(data, "lastReply");
+
+  if (num(child(data, "totals"), "people") === 0) {
+    return str(data, "finding") ?? "Nobody at this company was found.";
+  }
+
+  return str(last, "at") === null
+    ? "Nobody at this company has replied."
+    : `Last reply: ${str(last, "name") ?? show(last, "email")} on ${day(
+        str(last, "at")
+      )}.`;
+};
+
 const accountSummary: CardBuilder = (data) => {
   const totals = child(data, "totals");
-  const last = child(data, "lastReply");
 
   return {
     bullets:
@@ -82,12 +99,7 @@ const accountSummary: CardBuilder = (data) => {
             `🟡 Stopped at ${plural(num(totals, "leadsRead") ?? 0, "lead")} read; more exist, so people at this company may be missing.`,
           ]
         : [],
-    finding:
-      str(last, "at") === null
-        ? "Nobody at this company has replied."
-        : `Last reply: ${str(last, "name") ?? show(last, "email")} on ${day(
-            str(last, "at")
-          )}.`,
+    finding: accountFinding(data),
     stats: [
       ["People", int(num(totals, "people"))],
       ["Replied", int(num(totals, "replied"))],

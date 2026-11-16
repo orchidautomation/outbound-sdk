@@ -10,7 +10,14 @@ import { DOMAIN, emailTool, linkedinTool } from "./seed.ts";
 const outbound = createOutbound({
   adapter: combine([
     memory({ data: emailTool, name: "mailtool", workspaceId: "agency" }),
-    memory({ data: linkedinTool, name: "lntool", workspaceId: "agency" }),
+    // A LinkedIn tool cannot search leads by email domain, as HeyReach cannot,
+    // so the combined instance reads every lead and matches them itself.
+    memory({
+      capabilities: { "leads.byDomain": false },
+      data: linkedinTool,
+      name: "lntool",
+      workspaceId: "agency",
+    }),
   ]),
   plugins: [insights()],
 });

@@ -40,7 +40,7 @@ A value is `false` or something truthy, so `if (outbound.capabilities["leads.lis
 
 ## Every key
 
-`CAPABILITY_KEYS` is the list of all 45. `Capabilities` is the type of the map, and `CapabilityKey` the type of a key.
+`CAPABILITY_KEYS` is the list of all 46. `Capabilities` is the type of the map, and `CapabilityKey` the type of a key.
 
 ### Campaigns and sequences
 
@@ -73,6 +73,7 @@ Listing campaigns and reading one need no key. Every adapter can.
 | `leads.byCampaign` | boolean | `leads.list({ campaignId })` and `campaign(id).leads`. Does not need `leads.list`. |
 | `leads.get` | boolean | `leads.get` and `lead(id).get()` |
 | `leads.lookup` | boolean | The `email` and `linkedinUrl` filters: finding a lead without walking every lead |
+| `leads.byDomain` | boolean | The `domain` filter: the leads whose email address is at exactly one domain, without walking every lead |
 | `leads.since` | `server`, `client`, `false` | The `since` and `until` filters on leads |
 | `leads.timeline` | boolean | `lead(id).timeline()` |
 | `leads.engagement` | boolean | No read on the instance. It says whether leads carry `engagement`: open, click and reply counts. Some [insights](/docs/insights) check it. |

@@ -370,6 +370,17 @@ Read on 2026-11-14 from `https://developer.instantly.ai/api-reference/lead/list-
 - The lead object has no LinkedIn profile field, so a lookup by profile returns an empty page without a request.
 - Unconfirmed: that `contacts` compares whole addresses and not a part of one; whether it ignores case, and whether Instantly stores an address in the case it was uploaded in; whether `contacts` has a maximum length; and how `contacts` behaves with `distinct_contacts`, which the adapter never sends. `GET /api/v2/campaigns/search-by-contact?search=<email>` also finds a person's campaigns, but returns campaigns, not lead records, and documents no cursor, so it is not used here.
 
+### Leads at one domain (`leads.byDomain`, OUT-98)
+
+Fetched 2026-11-16 from `https://api.instantly.ai/openapi/api_v2.json` (`info.version` 2.0.0; schema of `POST /api/v2/leads/list`) and `https://developer.instantly.ai/api-reference/lead/list-leads.md`, which embeds the same schema. **Docs-verified, not live-verified**: no API key was available, so nothing here was run against a workspace.
+
+- `search` (string): "Search term matched against the lead's email and profile fields (first and last name, company, job title, and similar). Matches whole words, and the beginning of a field's value — "smith" finds "John Smith", "mith" does not. Provide `campaign` or `list_id` to also match inside values. Newly created or updated leads can take a few seconds to become searchable."
+- No other field filters by domain: `contacts` takes whole addresses ("Array of emails the leads needs to have"), and `filter` and `queries[]` filter on status and activity only.
+- The adapter sends the bare lowercased domain, `{ "search": "acme.com", "limit": 100 }`, alone or with `campaign` / `list_id`, and pages with `starting_after` as every lead listing does.
+- Because `search` also matches names, companies and titles, and a look-alike or subdomain address can share a word, the adapter keeps only records whose lowercased address ends in `@` plus exactly that domain. A page can hold fewer records than Instantly returned; the cursor is still Instantly's.
+- Unconfirmed until a live run: that the domain part of an address (`stukent.com` in `jane@stukent.com`) counts as a whole word for `search` when no campaign is given. The OUT-98 acceptance check (a known company's leads come back in one or two requests) needs a live key. If it fails, set `leads.byDomain` to `false` and `accountSummary` falls back to its scan, which states in `finding` when the scan did not cover the workspace.
+- `GET /api/v2/campaigns/search-by-contact` takes one address and returns campaigns, so it cannot find the people at a domain.
+
 ### Not available from the API
 
 - `leads.since` stays `client`: `POST /api/v2/leads/list` has no creation-date filter. Its `queries[]` filter only on how many days ago an activity happened.

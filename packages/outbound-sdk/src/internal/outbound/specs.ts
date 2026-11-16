@@ -33,6 +33,9 @@ import type { GetSpec, ListSpec } from "./collections.ts";
 import type { Core } from "./core.ts";
 import { normalizeRange } from "./validate.ts";
 
+/** A bare domain such as `acme.com`: no scheme, address, path or port. */
+const DOMAIN = /^[a-z0-9-]+(?:\.[a-z0-9-]+)+$/u;
+
 const wantsBody = (include: readonly Include[] | undefined): boolean =>
   include?.includes("body") ?? false;
 
@@ -135,6 +138,7 @@ export const leadList = (core: Core): ListSpec<Lead, LeadFilters> => ({
   action: "leads.list",
   takes: {
     campaignId: true,
+    domain: true,
     email: true,
     linkedinUrl: true,
     listId: true,
@@ -145,7 +149,9 @@ export const leadList = (core: Core): ListSpec<Lead, LeadFilters> => ({
   // whose lead id is the same in every campaign those records share a ref,
   // so the campaign is part of what tells them apart.
   keyOf: (lead, filters) =>
-    filters.email === undefined && filters.linkedinUrl === undefined
+    filters.email === undefined &&
+    filters.linkedinUrl === undefined &&
+    filters.domain === undefined
       ? lead.ref
       : `${lead.ref} ${lead.campaignRef ?? ""}`,
   prepare: (filters) => {
@@ -167,6 +173,23 @@ export const leadList = (core: Core): ListSpec<Lead, LeadFilters> => ({
       );
     }
 
+    const domain = filters.domain?.trim().toLowerCase();
+
+    if (domain !== undefined) {
+      requireCapability(
+        core.gate,
+        "leads.byDomain",
+        "Finding the leads at one email domain"
+      );
+
+      if (!DOMAIN.test(domain)) {
+        throw new OutboundError(
+          "Invalid",
+          `"${filters.domain}" is not a domain such as acme.com`
+        );
+      }
+    }
+
     // Some vendors have no global lead list: leads exist only per campaign.
     if (filters.listId !== undefined) {
       requireCapability(core.gate, "lists.leads", "Listing a list's leads");
@@ -176,8 +199,8 @@ export const leadList = (core: Core): ListSpec<Lead, LeadFilters> => ({
         "leads.byCampaign",
         "Listing a campaign's leads"
       );
-    } else if (!lookup) {
-      // A lookup by identifier does not need the list of every lead.
+    } else if (!lookup && domain === undefined) {
+      // A lookup by identifier or domain does not need the list of every lead.
       requireCapability(core.gate, "leads.list", "Listing leads");
     }
 
@@ -187,6 +210,7 @@ export const leadList = (core: Core): ListSpec<Lead, LeadFilters> => ({
 
     return {
       campaignId: filters.campaignId,
+      domain,
       email: filters.email?.trim().toLowerCase(),
       linkedinUrl: filters.linkedinUrl?.trim(),
       listId: filters.listId,
