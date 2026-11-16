@@ -50,12 +50,17 @@ export const capabilities: CapabilityDeclaration = {
   // The `search` field of POST /leads/list, which matches whole words of the
   // lead's email; the adapter keeps only addresses at exactly that domain.
   "leads.byDomain": true,
+  // The `filter` field of POST /leads/list, one positive interest status
+  // (FILTER_LEAD_INTERESTED and the rest) after another.
+  "leads.byInterest": true,
   "leads.engagement": true,
   "leads.get": true,
   "leads.list": true,
   // By email only, with the `contacts` filter of POST /leads/list. A lead has
   // no LinkedIn profile, so a lookup by profile finds nothing.
   "leads.lookup": true,
+  // The same `contacts` filter, given many addresses at once.
+  "leads.lookupMany": true,
   // POST /leads/list has no date filter, so the wrapper filters after fetching.
   "leads.since": "client",
   "leads.timeline": true,

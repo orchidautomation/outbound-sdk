@@ -5,10 +5,13 @@ no data: 0 {
   excluded: 0,
   fromReplies: 0,
   hot: 0,
+  leadsRead: 1,
   moreLeadsExist: false,
   negative: 0,
-  leadsRead: 1,
+  repliesRead: 0,
   scored: 0,
+  stale: 0,
+  unreadable: 0,
   withoutData: 1
 }
 bad weight: Invalid

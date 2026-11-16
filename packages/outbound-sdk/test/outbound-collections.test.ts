@@ -342,7 +342,7 @@ test("a list option the collection does not take is refused before any request",
   assert.equal(status.code, "Invalid");
   assert.equal(
     status.message,
-    'leads.list: "status" is not an option. It takes: campaignId, cursor, deadline, domain, email, limit, linkedinUrl, listId, maxRequests, retries, signal, since, timeout, until'
+    'leads.list: "status" is not an option. It takes: campaignId, cursor, deadline, domain, email, emails, interest, limit, linkedinUrl, listId, maxRequests, retries, signal, since, timeout, until'
   );
 
   for (const action of [

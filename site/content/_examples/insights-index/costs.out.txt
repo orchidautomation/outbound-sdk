@@ -4,7 +4,7 @@ account_summary: 34, 47, 35
 lead_collisions: 173, 305, 198
 suppression_check: 198, 332, 200
 dropped_replies: 10045, 17598, 12647
-hot_leads: 82, 94, 125
+hot_leads: 90, 148, 168
 personalization_gaps: 29, 35, 30
 step_funnel: -, 24, 24
 variant_test: -, 23, 23

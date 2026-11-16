@@ -53,6 +53,8 @@ const instantly = (plugins: readonly OutboundPlugin[] = []) => {
 test("hot_leads ranks only the person who replied; the two autoresponders count as autoReplied", async () => {
   const { outbound, settle, unrouted } = instantly();
 
+  // By default candidates come from replies, and an automatic reply makes no
+  // one a candidate, so the two autoresponders are not even read.
   const result = await settle(
     outbound.insights.hotLeads({ campaign: CAMPAIGN }, { now: NOW })
   );
@@ -63,7 +65,21 @@ test("hot_leads ranks only the person who replied; the two autoresponders count 
     [PERSON]
   );
   assert.equal(result.data.totals.hot, 1);
-  assert.equal(result.data.totals.autoReplied, 2);
+  assert.equal(result.data.totals.autoReplied, 0);
+
+  // Walking the lead list reads them, and their replies earn nothing.
+  const walked = await settle(
+    outbound.insights.hotLeads(
+      { campaign: CAMPAIGN, include_engagement_only: true },
+      { now: NOW }
+    )
+  );
+
+  assert.deepEqual(
+    walked.data.leads.map((each) => each.email),
+    [PERSON]
+  );
+  assert.equal(walked.data.totals.autoReplied, 2);
 });
 
 for (const strategy of ["mask", "hash"] as const) {
@@ -71,7 +87,10 @@ for (const strategy of ["mask", "hash"] as const) {
     const { outbound, settle } = instantly([redact({ strategy })]);
 
     const result = await settle(
-      outbound.insights.hotLeads({ campaign: CAMPAIGN }, { now: NOW })
+      outbound.insights.hotLeads(
+        { campaign: CAMPAIGN, include_engagement_only: true },
+        { now: NOW }
+      )
     );
 
     assert.equal(result.data.leads.length, 1);

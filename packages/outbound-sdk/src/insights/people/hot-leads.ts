@@ -2,21 +2,12 @@
 
 import { z } from "zod";
 
-import type { Lead, ReplyCategory } from "../../internal/entities.ts";
-import { OutboundError } from "../../internal/errors.ts";
+import type { Lead } from "../../internal/entities.ts";
 import { plural } from "../../internal/numbers.ts";
-import { confirmCampaign } from "../campaign.ts";
 import { defineInsight } from "../define.ts";
-import type { InsightContext } from "../define.ts";
 import { round, total } from "../stats.ts";
-import { wasCutShort } from "../tracked-reads.ts";
-import {
-  ADDRESSES_MASKED,
-  AUTO_CHECK_REPLIES,
-  addressesMasked,
-  autoOnlyRefs,
-  refsOf,
-} from "./auto-replies.ts";
+import { autoOnlyRefs } from "./auto-replies.ts";
+import { readCandidates } from "./hot-leads-read.ts";
 import {
   isAutoReplied,
   isNegative,
@@ -24,20 +15,9 @@ import {
   nameOf,
   noteEngagement,
   positiveLabelsField,
-  readByRef,
 } from "./read.ts";
 
 const DAY = 86_400_000;
-
-/** The most recent replies read to find replied leads the lead listing missed. */
-const RECENT_REPLIES = 100;
-
-/** Reply categories that do not make a lead worth calling. */
-const NOT_ENGAGED: ReadonlySet<ReplyCategory> = new Set<ReplyCategory>([
-  "bounce",
-  "ooo",
-  "unsubscribe",
-]);
 
 const weight = (value: number, what: string) =>
   z.number().min(0).default(value).describe(what);
@@ -73,7 +53,29 @@ const input = z.object({
     .max(20_000)
     .default(500)
     .describe(
-      "The most leads to read and score. A vendor request returns about 50 to 100 leads. When more exist, the leads behind recent replies are read as well, so engaged leads past the cap are still ranked."
+      "The most leads a lead listing reads: the leads labelled positive where the tool filters by interest, and the lead list itself where it cannot or include_engagement_only is true. A vendor request returns about 50 to 100 leads. The leads behind replies within recency_days are read on top."
+    ),
+  max_replies: z
+    .number()
+    .int()
+    .min(1)
+    .max(20_000)
+    .default(1000)
+    .describe(
+      "The most replies within recency_days to read: a safety ceiling, not a sample. A vendor request returns about 100 replies."
+    ),
+  max_age_days: z
+    .number()
+    .min(1)
+    .default(90)
+    .describe(
+      "A positive interest label earns its full points while the last reply is within recency_days, fading evenly to none at this many days, and a lead whose last reply is older ranks after every lead with a fresher one. A label with no reply time keeps its points."
+    ),
+  include_engagement_only: z
+    .boolean()
+    .default(false)
+    .describe(
+      "Also walk the lead list up to max_leads, to rank leads whose only signal is opens or clicks. Where the tool cannot filter leads by interest the list is walked anyway."
     ),
   positive_labels: positiveLabelsField,
   recency_days: z
@@ -145,12 +147,18 @@ export interface HotLeads {
     /** Unsubscribed or bounced leads, left out. */
     readonly excluded: number;
     /**
-     * `true` when `max_leads` stopped the lead listing with more leads left:
-     * those were not scored, except the ones found through recent replies.
+     * `true` when `max_leads` stopped a lead listing with more leads left:
+     * those were not scored, except the ones found through their replies.
      */
     readonly moreLeadsExist: boolean;
-    /** Leads past the cap, read because they replied within `recency_days`. Counted in `leadsRead`. */
+    /** Replies within `recency_days` read. */
+    readonly repliesRead: number;
+    /** Leads no listing read, read because they replied within `recency_days`. Counted in `leadsRead`. */
     readonly fromReplies: number;
+    /** Leads that replied within `recency_days` and could not be read, probably deleted. Not scored. */
+    readonly unreadable: number;
+    /** Leads with a score above 0 whose last reply is older than `max_age_days`, listed after every fresher one. */
+    readonly stale: number;
     /**
      * Leads with replies that earned no points because they were automatic:
      * the vendor labels the lead out-of-office or bounced, or every reply of
@@ -205,6 +213,30 @@ const engagementParts = (
   };
 };
 
+/** Days since the lead's last reply, automatic or not. `null` without a time. */
+const ageOf = (lead: Lead, now: number): number | null => {
+  const at = lead.engagement?.lastRepliedAt ?? null;
+
+  return at === null ? null : Math.max(0, now - Date.parse(at)) / DAY;
+};
+
+/**
+ * What share of its points an interest label keeps: all while the last reply
+ * is within `recency_days`, fading evenly to none at `max_age_days`.
+ */
+const fade = (lead: Lead, values: Scoring, now: number): number => {
+  const age = ageOf(lead, now);
+  const span = values.max_age_days - values.recency_days;
+
+  if (age === null || age <= values.recency_days) {
+    return 1;
+  }
+
+  return span <= 0
+    ? Number(age <= values.max_age_days)
+    : Math.max(0, 1 - (age - values.recency_days) / span);
+};
+
 const partsOf = (lead: Lead, values: Scoring, now: number): HotLeadParts => {
   const engagement = lead.engagement ?? null;
   const positive = isPositive(lead.interest, values.positive_labels);
@@ -225,11 +257,14 @@ const partsOf = (lead: Lead, values: Scoring, now: number): HotLeadParts => {
   const fresh = age === null ? null : Math.max(0, 1 - age);
 
   const { clicks, opens } = engagementParts(lead, values);
+  const faded = fade(lead, values, now);
 
   return {
     clicks,
     interest:
-      positive === null ? null : Number(positive) * values.weight_interest,
+      positive === null
+        ? null
+        : round(Number(positive) * values.weight_interest * faded),
     opens,
     recency:
       automatic && counted !== null
@@ -311,124 +346,6 @@ const toHotLead = (lead: Lead, values: Scoring, now: number): HotLead[] => {
       ];
 };
 
-interface LeadsRead {
-  readonly leads: readonly Lead[];
-  /** `true` when `max_leads` stopped the listing with more leads left. */
-  readonly capped: boolean;
-}
-
-const listLeads = async (
-  context: InsightContext,
-  { campaign, max_leads: maxLeads }: Input
-): Promise<LeadsRead> => {
-  const { outbound } = context;
-
-  if (campaign === null && !outbound.capabilities["leads.list"]) {
-    throw new OutboundError(
-      "Unsupported",
-      `hot_leads needs a campaign here: the ${outbound.provider} adapter cannot list every lead (leads.list)`,
-      { provider: outbound.provider }
-    );
-  }
-
-  const walk =
-    campaign === null
-      ? outbound.leads.listAll({ max: maxLeads })
-      : outbound.campaign(campaign).leads.listAll({ max: maxLeads });
-
-  const leads = await context.all(walk, {
-    input: "max_leads",
-    max: maxLeads,
-    what: campaign === null ? "leads" : "leads of a campaign",
-  });
-
-  // An unknown campaign lists no leads, which would read as nobody engaged.
-  if (campaign !== null && leads.length === 0) {
-    await confirmCampaign(context, campaign);
-  }
-
-  return { capped: walk.truncated || wasCutShort(leads), leads };
-};
-
-/**
- * The leads past the cap that replied within `recency_days`, newest replies
- * first, at most `limit` of them. A lead listing comes in the vendor's order,
- * not by engagement, so a cap can cut off exactly the leads worth calling.
- * Under a redact that masks addresses a reply's lead cannot be read back, so
- * none are looked for and the answer is marked partial.
- */
-const repliedPastCap = async (
-  context: InsightContext,
-  values: Input,
-  read: readonly Lead[]
-): Promise<Lead[]> => {
-  const { outbound } = context;
-
-  if (
-    !(
-      outbound.capabilities["replies.list"] &&
-      outbound.capabilities["leads.get"]
-    )
-  ) {
-    context.note(
-      "This tool cannot list replies or read one lead, so leads past max_leads that replied were not looked for."
-    );
-
-    return [];
-  }
-
-  if (addressesMasked(context)) {
-    context.partial(
-      `${ADDRESSES_MASKED} leads past max_leads that replied were not looked for.`
-    );
-
-    return [];
-  }
-
-  const since = context.now - values.recency_days * DAY;
-  const filtered = outbound.capabilities["replies.since"] !== false;
-  const range = filtered ? { since: new Date(since).toISOString() } : {};
-
-  const replies = await context.all(
-    outbound.replies.listAll({ max: RECENT_REPLIES, ...range }),
-    {
-      input: null,
-      max: RECENT_REPLIES,
-      what: "recent replies looked through for leads past max_leads",
-    }
-  );
-
-  // A reply can name its lead by address (Instantly does), so a listed lead
-  // counts as listed under either ref.
-  const listed = new Set(read.flatMap((lead) => refsOf(lead)));
-
-  const refs = replies
-    .filter(
-      (reply) =>
-        reply.isAuto !== true &&
-        !NOT_ENGAGED.has(reply.category) &&
-        reply.sentAt !== null &&
-        Date.parse(reply.sentAt) >= since &&
-        (values.campaign === null || reply.campaignRef === values.campaign)
-    )
-    .toSorted((left, right) =>
-      (right.sentAt ?? "").localeCompare(left.sentAt ?? "")
-    )
-    .flatMap((reply) =>
-      reply.leadRef === null || listed.has(reply.leadRef) ? [] : [reply.leadRef]
-    );
-
-  const found = await readByRef(
-    context,
-    [...new Set(refs)].slice(0, values.limit),
-    (ids) => outbound.leads.getMany(ids),
-    ["lead that replied", "leads that replied"],
-    "scores are missing"
-  );
-
-  return [...found.values()];
-};
-
 const repliesOf = (lead: Lead): number =>
   lead.engagement?.replies ?? (lead.replied === true ? 1 : 0);
 
@@ -437,52 +354,72 @@ const hottestFirst = (left: HotLead, right: HotLead): number =>
   (right.lastRepliedAt ?? "").localeCompare(left.lastRepliedAt ?? "") ||
   left.lead.localeCompare(right.lead);
 
+/** Leads whose last reply is older than `max_age_days`, listed after every fresher lead. */
+const staleOf = (
+  leads: readonly Lead[],
+  values: Scoring,
+  now: number
+): ReadonlySet<string> =>
+  new Set(
+    leads.flatMap((lead) => {
+      const age = ageOf(lead, now);
+
+      return age !== null && age > values.max_age_days ? [lead.ref] : [];
+    })
+  );
+
 export const hotLeads = defineInsight({
   partialOnCap: true,
   description:
-    "Who to call first: leads ranked by a score built from what the vendor reports, namely a positive interest label, replies, clicks, opens and how recent the last reply is. Every score comes with its parts, and the weights are inputs. A lead with no label and no engagement data is left out and counted in totals.withoutData, never scored 0; unsubscribed and bounced leads are left out too. Give a campaign ref to rank one campaign (an unknown one is refused with NotFound), or none to rank every lead the tool lists. A lead the vendor labels out-of-office or bounced (its interest category, or a label reading out of office) earns no reply or recency points, since a vendor's reply count may include automatic replies, and so does a lead whose every reply read is flagged automatic (isAuto, from the vendor or a fixed rule), for which it reads up to 200 of the newest replies, the campaign's when one is given, once a lead has replies; both are counted in totals.autoReplied; a lead it labels negative (the negative or unsubscribe category, or a label reading not interested, wrong person, unsubscribed or do not contact) earns no points at all, from clicks and opens either, and is listed after every lead with a score above 0 while limit leaves room; its reason names the label. Costs one request per page of leads read (max_leads sets the ceiling). When max_leads stops the listing with more leads left, totals.moreLeadsExist is true and it also reads up to 100 replies from the last recency_days days and one request per replied lead the listing missed, at most limit of them, so engaged leads past the cap are still ranked. While the redact plugin masks email addresses, which a reply can name its lead by, it does not look past the cap, and says so in a note and marks the answer incomplete. A part that is null means the vendor does not report that signal.",
+    "Who to call first: leads ranked by a score built from a positive interest label, replies, clicks, opens and how recent the last reply is. Every score comes with its parts, and the weights are inputs. Candidates come from the signal: every reply within recency_days (up to max_replies, a safety ceiling, so complete means complete for the window) and, where the tool filters leads by interest (leads.byInterest), the leads it labels positive, up to max_leads. Leads behind those replies that no listing read are then looked up, many addresses in one request where the tool can (leads.lookupMany), otherwise one request each for the newest limit of them; one that cannot be read is counted in totals.unreadable. Where the tool cannot filter by interest, positive_labels names a label beyond Interested, Meeting Booked, Meeting Completed and Won, or include_engagement_only is true, the lead list is walked too, up to max_leads, for leads whose only signal is opens or clicks; totals.moreLeadsExist says that cap left leads unread. A reply read in the window fills a lead's reply count and last reply time when its record reports less. A positive label keeps its points while the last reply is within recency_days and fades to nothing at max_age_days, and a lead whose last reply is older than that is listed after every fresher one (totals.stale). A lead with no label and no engagement data is left out and counted in totals.withoutData, never scored 0; unsubscribed and bounced leads are left out too. Give a campaign ref to rank one campaign (an unknown one is refused with NotFound), or none to rank every lead. A lead the vendor labels out-of-office or bounced earns no reply or recency points, and so does a lead whose every reply in the window is flagged automatic (isAuto, from the vendor or a fixed rule); both are counted in totals.autoReplied. A lead labelled negative (not interested, wrong person, unsubscribed, do not contact) earns no points at all and is listed after every lead with a score above 0 while limit leaves room; its reason names the label. While the redact plugin masks email addresses, which a reply can name its lead by, the lead behind a reply is read through the plugin, which puts the address back on the call and masks the answer; a token it no longer remembers is not looked up, which a note says, and the answer is marked incomplete. A part that is null means the vendor does not report that signal.",
   inputSchema: input,
   key: "hotLeads",
-  cost: (values, price) =>
-    price.list("leads.list", values.max_leads) +
-    (values.campaign === null
-      ? 0
-      : price.upTo(1) * price.one("campaigns.get")) +
-    (price.capabilities["replies.list"] === false
-      ? 0
-      : price.upTo(1) * price.list("replies.list", AUTO_CHECK_REPLIES)) +
-    (price.capabilities["replies.list"] === false ||
-    price.capabilities["leads.get"] === false
-      ? 0
-      : price.upTo(1) *
-        (price.list("replies.list", 100) +
-          price.upTo(values.limit) * price.one("leads.get"))),
-  scales: "max_leads",
+  cost: (values, price) => {
+    const { capabilities } = price;
+    const filtered = capabilities["leads.byInterest"] === true;
+    const replies = capabilities["replies.list"] !== false;
+
+    return (
+      (filtered ? price.list("leads.list", values.max_leads) : 0) +
+      (!filtered || values.include_engagement_only
+        ? price.list("leads.list", values.max_leads)
+        : 0) +
+      (values.campaign === null
+        ? 0
+        : price.upTo(1) * price.one("campaigns.get")) +
+      (replies ? price.list("replies.list", values.max_replies) : 0) +
+      (replies && capabilities["leads.lookupMany"] === true
+        ? price.upTo(Math.ceil(values.max_replies / 100)) *
+          price.list("leads.list", 100)
+        : 0) +
+      (replies && capabilities["leads.get"] !== false
+        ? price.upTo(values.limit) * price.one("leads.get")
+        : 0)
+    );
+  },
+  scales: "max_replies",
   name: "hot_leads",
   needs: [],
+  needsFor: ({ campaign }) => (campaign === null ? [] : ["leads.byCampaign"]),
   next: "Use person_summary with a lead's ref, email address or LinkedIn profile to read the conversation before calling.",
   run: async (context, values) => {
-    const listed = await listLeads(context, values);
-
-    const extra = listed.capped
-      ? await repliedPastCap(context, values, listed.leads)
-      : [];
-
-    const leads = [...listed.leads, ...extra];
+    const read = await readCandidates(context, values);
+    const { leads } = read;
 
     noteEngagement(
       context,
       leads,
-      "scores rest on the interest label and the lead's status"
+      read.replies === null
+        ? "scores rest on the interest label and the lead's status"
+        : "clicks and opens are unknown, and reply counts and recency come from the replies read within recency_days"
     );
 
     const open = leads.filter(
       (lead) => lead.unsubscribed !== true && lead.bounced !== true
     );
 
-    const autoOnly = await autoOnlyRefs(
-      context,
-      values.campaign,
+    const autoOnly = autoOnlyRefs(
+      read.replies ?? [],
       open.filter((lead) => !isAutoReplied(lead))
     );
 
@@ -495,7 +432,15 @@ export const hotLeads = defineInsight({
       toHotLead(lead, scoring, context.now)
     );
 
-    const hot = scored.filter((lead) => lead.score > 0).toSorted(hottestFirst);
+    const stale = staleOf(open, scoring, context.now);
+    const positive = scored.filter((lead) => lead.score > 0);
+
+    const hot = [
+      ...positive
+        .filter((lead) => !stale.has(lead.lead))
+        .toSorted(hottestFirst),
+      ...positive.filter((lead) => stale.has(lead.lead)).toSorted(hottestFirst),
+    ];
 
     const negative = open.filter((lead) => saidNo(lead, scoring));
 
@@ -513,12 +458,15 @@ export const hotLeads = defineInsight({
           (lead) => scoring.automatic(lead) && repliesOf(lead) > 0
         ).length,
         excluded: leads.length - open.length,
-        fromReplies: extra.length,
+        fromReplies: read.fromReplies,
         hot: hot.length,
-        moreLeadsExist: listed.capped,
-        negative: negative.length,
         leadsRead: leads.length,
+        moreLeadsExist: read.moreLeadsExist,
+        negative: negative.length,
+        repliesRead: read.replies?.length ?? 0,
         scored: scored.length,
+        stale: positive.filter((lead) => stale.has(lead.lead)).length,
+        unreadable: read.unreadable,
         withoutData: open.length - scored.length,
       },
     };

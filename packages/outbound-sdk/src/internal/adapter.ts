@@ -106,6 +106,10 @@ export interface LeadQuery extends PageQuery, TimeRange {
    * A subdomain is another domain.
    */
   readonly domain?: string | undefined;
+  /** Only the lead records with one of these addresses, each lowercased. One per campaign each person is in. */
+  readonly emails?: readonly string[] | undefined;
+  /** `positive`: only the leads the vendor labels positive, whose `interestCategory` is `positive`. */
+  readonly interest?: "positive" | undefined;
 }
 
 export interface MessageQuery extends PageQuery, TimeRange {

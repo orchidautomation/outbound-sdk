@@ -14,18 +14,20 @@ import { OutboundError } from "../internal/errors.ts";
 import {
   emailAddress,
   isJsonObject,
+  isNumber,
   isString,
   list,
   objects,
   text,
 } from "../internal/json.ts";
-import type { JsonObject } from "../internal/json.ts";
+import type { Json, JsonObject } from "../internal/json.ts";
 import { mapPage } from "../internal/page.ts";
 import { accountReaders } from "./adapter-account.ts";
 import { mailReaders } from "./adapter-mail.ts";
 import { TAG_PAGES } from "./capabilities.ts";
 import type { InstantlyClient } from "./client.ts";
 import { toLead } from "./map-lead.ts";
+import type { ListEnvelope } from "./map.ts";
 import {
   campaignStatusCode,
   listEnvelope,
@@ -226,6 +228,28 @@ const campaignSenders = async (
   };
 };
 
+/**
+ * The lead list filters that name a positive interest status: Interested,
+ * Meeting Booked, Meeting Completed, Won (`FILTER_LEAD_CLOSED`, the closed
+ * status) and every custom label marked positive. `filter` takes one value,
+ * so a listing by interest walks them one after another.
+ */
+const POSITIVE_FILTERS = [
+  "FILTER_LEAD_INTERESTED",
+  "FILTER_LEAD_MEETING_BOOKED",
+  "FILTER_LEAD_MEETING_COMPLETED",
+  "FILTER_LEAD_CLOSED",
+  "FILTER_LEAD_CUSTOM_LABEL_POSITIVE",
+];
+
+/** Where a listing by interest is: which filter, and the cursor within it. */
+const interestAt = (
+  next: Json | undefined
+): { at: number; after: string | null } =>
+  isJsonObject(next) && isNumber(next.at)
+    ? { after: isString(next.after) ? next.after : null, at: next.at }
+    : { after: null, at: 0 };
+
 /** The body of `POST /leads/list`: every filter and the cursor go in it. */
 const leadListBody = (query: LeadQuery): JsonObject => {
   const body: JsonObject = { limit: pageSize(query.limit) };
@@ -242,6 +266,10 @@ const leadListBody = (query: LeadQuery): JsonObject => {
     body.contacts = [query.email];
   }
 
+  if (query.emails !== undefined) {
+    body.contacts = [...query.emails];
+  }
+
   // `search` matches whole words of the lead's email and profile fields, so
   // `acme.com` also finds names and companies that mention it. The adapter
   // keeps only the addresses at exactly that domain.
@@ -249,7 +277,15 @@ const leadListBody = (query: LeadQuery): JsonObject => {
     body.search = query.domain;
   }
 
-  if (isString(query.next)) {
+  if (query.interest === "positive") {
+    const { after, at } = interestAt(query.next);
+
+    body.filter = POSITIVE_FILTERS[at] ?? null;
+
+    if (after !== null) {
+      body.starting_after = after;
+    }
+  } else if (isString(query.next)) {
     body.starting_after = query.next;
   }
 
@@ -283,17 +319,57 @@ const listLeads = async (
   );
 
   return {
-    // `contacts` is documented as the emails a lead needs to have, but not
-    // how it compares them, and `search` matches more than the address, so
-    // both matches are made exact here.
-    items: leads.filter(
-      (lead) =>
-        (query.email === undefined || lead.email === query.email) &&
-        (query.domain === undefined ||
-          lead.email?.split("@").at(-1) === query.domain)
-    ),
-    next: envelope.next,
+    items: chosen(query, leads),
+    next:
+      query.interest === "positive" || query.emails !== undefined
+        ? nextOf(query, envelope)
+        : envelope.next,
   };
+};
+
+/**
+ * The leads that meet every filter given. `contacts` is documented as the
+ * emails a lead needs to have, but not how it compares them, `search`
+ * matches more than the address, and `filter` is one status at a time, so
+ * every match is made exact here.
+ */
+const chosen = (query: LeadQuery, leads: readonly Lead[]): Lead[] => {
+  const wanted = new Set(query.emails);
+
+  return leads.filter(
+    (lead) =>
+      (query.email === undefined || lead.email === query.email) &&
+      (query.emails === undefined ||
+        (lead.email !== null && wanted.has(lead.email))) &&
+      (query.domain === undefined ||
+        lead.email?.split("@").at(-1) === query.domain) &&
+      (query.interest === undefined || lead.interestCategory === "positive")
+  );
+};
+
+/**
+ * The next page of a listing by interest or by many addresses. Instantly
+ * sends a cursor on a last page too, so a page that is not full ends the
+ * walk, or under interest moves on to the next filter.
+ */
+const nextOf = (
+  query: LeadQuery,
+  envelope: ListEnvelope
+): JsonObject | string | undefined => {
+  const next =
+    envelope.items.length >= pageSize(query.limit) ? envelope.next : undefined;
+
+  if (query.interest !== "positive") {
+    return next;
+  }
+
+  const { at } = interestAt(query.next);
+
+  if (next !== undefined) {
+    return { after: next, at };
+  }
+
+  return at + 1 < POSITIVE_FILTERS.length ? { at: at + 1 } : undefined;
 };
 
 const leadReaders = (

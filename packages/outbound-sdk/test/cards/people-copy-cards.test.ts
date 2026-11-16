@@ -387,7 +387,10 @@ test("hot_leads ranks who to call, and falls back from name to email", () => {
       leadsRead: 50,
       moreLeadsExist: false,
       negative: 0,
+      repliesRead: 0,
       scored: 12,
+      stale: 0,
+      unreadable: 0,
       withoutData: 0,
     },
   };
