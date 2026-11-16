@@ -56,10 +56,15 @@ test("metric glossary: a complete, truthful table is accepted", () => {
   assert.deepEqual(
     checkGlossary(
       TABLE(
-        "| `sent` | `sent_count` | Sent | messages |\n| `bounced` | not reported | not captured | — |"
+        "| `sent` | `sent_count` | Sent | messages |\n| `bounced` | not reported | not captured | — |\n| `opportunityValue` | `deal_value` | Value | money |"
       ),
-      ["bounced", "sent"],
-      ACME
+      ["bounced", "opportunityValue", "sent"],
+      [
+        {
+          heading: "Acme",
+          source: "count(raw.sent_count) count(raw.deal_value)",
+        },
+      ]
     ),
     []
   );

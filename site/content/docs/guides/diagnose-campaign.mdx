@@ -41,6 +41,7 @@ The checks, with their defaults. Each bar is an input.
 | Code | Severity | Fires when |
 | --- | --- | --- |
 | `high_bounce_rate` | high | Bounced divided by sent is over `max_bounce_rate` (0.03) |
+| `contacted_exceeds_leads` | high | Leads contacted are more than twice the leads in the campaign (from `campaigns.progress`), which means the contacted count is wrong. Leads removed after their sequence started keep `contacted` a little over the leads on correct data. |
 | `out_of_leads` | high | Sends fell or stopped and under a day of leads is left to start at the recent pace of new leads started per day. It replaces `falling_sends` or `no_recent_sends`, since the cause is lead runout, not a fault |
 | `no_recent_sends` | high | The campaign is active and nothing was sent in the last `days` (7) |
 | `inactive_sender` | high | A sender of the campaign has a status other than `active` or a warmup score of 0. Every sender of the campaign is screened, up to `max_senders` (500) |
@@ -104,7 +105,7 @@ The same function, run on the in-memory adapter limited to what each vendor's ad
 
 ## What it costs in vendor requests
 
-- `campaignDiagnosis`: the campaign, its totals, its settings, its sequence, a listing of its senders (up to `max_senders`, default 500) and its daily stats. Only when sends fell or stopped, a listing of its leads (up to `max_leads`, default 2,000), to tell lead runout from a fault.
+- `campaignDiagnosis`: the campaign, its totals, its settings, its sequence, its progress, a listing of its senders (up to `max_senders`, default 500) and its daily stats. Only when sends fell or stopped, a listing of its leads (up to `max_leads`, default 2,000), to tell lead runout from a fault.
 - `anomalies`: one stats read.
 - `benchmarks.campaign`: two stats reads, the campaign and the workspace. Its result carries the count in `requests`.
 

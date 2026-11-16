@@ -3,6 +3,10 @@
 
 import type { CampaignSettings } from "../../internal/entities-account.ts";
 import type { Campaign, Sender } from "../../internal/entities.ts";
+import {
+  CONTACTED_LEADS_LIMIT,
+  contactedBeyondLeads,
+} from "../../internal/metrics.ts";
 import { plural } from "../../internal/numbers.ts";
 import { noun } from "../../internal/plural.ts";
 import { warmupAtZero } from "../../internal/sender-screen.ts";
@@ -11,6 +15,7 @@ import { measure, volumeOf } from "./shared.ts";
 import type { Rates, Totals } from "./shared.ts";
 
 export type DiagnosisCode =
+  | "contacted_exceeds_leads"
   | "falling_sends"
   | "few_positive_replies"
   | "high_bounce_rate"
@@ -71,6 +76,8 @@ export interface Facts {
   readonly recent: RecentSends | null;
   /** Read only when sends fell or stopped, every lead was read and the vendor listed some. */
   readonly leads: LeadsLeft | null;
+  /** Every lead in the campaign, from its progress. `null` when not read. */
+  readonly campaignLeads: number | null;
 }
 
 export interface Limits {
@@ -466,7 +473,27 @@ const schedule: Check = ({ recent, settings }, limits) => {
       ];
 };
 
+// A count of leads contacted far over the campaign's leads cannot be unique
+// leads, so the adapter is reading the wrong count and every per-lead rate
+// is off. See CONTACTED_LEADS_LIMIT for why a little over is not a fault.
+const contactedLeads: Check = ({
+  campaignLeads: leads,
+  totals: { contacted },
+}) =>
+  contacted !== null && leads !== null && contactedBeyondLeads(contacted, leads)
+    ? [
+        {
+          code: "contacted_exceeds_leads",
+          finding: `The vendor reports ${contacted} leads contacted against ${plural(leads, "lead")} in the campaign, more than ${CONTACTED_LEADS_LIMIT} times as many. Leads contacted cannot be that far over the leads, so that count is not unique leads and the per-lead rates are not to be trusted.`,
+          next: "Report it as an adapter fault, and judge the campaign on sends until it is fixed.",
+          numbers: { contacted, leads, limit: CONTACTED_LEADS_LIMIT },
+          severity: "high",
+        },
+      ]
+    : [];
+
 const CHECKS: readonly Check[] = [
+  contactedLeads,
   bounces,
   recentSends,
   senders,

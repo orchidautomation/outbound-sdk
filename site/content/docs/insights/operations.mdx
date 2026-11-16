@@ -82,6 +82,7 @@ The findings:
 | Code | Severity | Fires when |
 | --- | --- | --- |
 | `high_bounce_rate` | high | The bounce rate is over `max_bounce_rate`. |
+| `contacted_exceeds_leads` | high | Leads contacted are more than twice the campaign's leads, so the contacted count is not unique leads and the per-lead rates are off. Needs `campaigns.progress`. A little over is normal: leads removed after starting stay counted. |
 | `out_of_leads` | high | Sends fell or stopped and under a day of leads is left to start at the recent pace of new leads started, the pace `lead_runway` uses. It replaces `falling_sends` or `no_recent_sends`: the cause is lead runout, not a fault. |
 | `no_recent_sends` | high | The campaign is active but nothing was sent in the last `days`. |
 | `inactive_sender` | high | A sender of the campaign is not active or has a warmup score of 0. Every sender of the campaign is screened, up to `max_senders`. |
@@ -93,8 +94,8 @@ The findings:
 | `schedule_limits_volume` | low | The windows are open too few hours a week, or recent days run at the daily limit. |
 | `tracking_off` | low | Open or click tracking is off, so a missing open or click count is expected. |
 
-- **Needs:** `stats.campaign`. It checks more when the adapter has `campaigns.settings`, `sequence`, `senders.byCampaign` and `stats.byDay`.
-- **Costs:** up to 6 requests, plus one per page of the campaign's senders and, only when sends fell or stopped, one per page of its leads (up to `max_leads`).
+- **Needs:** `stats.campaign`. It checks more when the adapter has `campaigns.progress`, `campaigns.settings`, `sequence`, `senders.byCampaign` and `stats.byDay`.
+- **Costs:** up to 7 requests, plus one per page of the campaign's senders and, only when sends fell or stopped, one per page of its leads (up to `max_leads`).
 - **Notes it can add:** one per part it could not check, the same sentences as `notChecked`: schedule and tracking, sequence length, sender status, recent sending trend.
 - **Does not:** say all is well. An empty list means nothing was found in what could be checked. Read `notChecked` beside it. It does not read the copy: use `copyAudit` and `stepFunnel` for that.
 
