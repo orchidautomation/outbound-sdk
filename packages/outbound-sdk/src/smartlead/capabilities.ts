@@ -116,7 +116,8 @@ export const fields: FieldDeclaration = {
   campaignProgress: { failed: false },
   campaignSettings: { endDate: false },
   lead: { companyLinkedinUrl: false, engagement: false, title: false },
-  message: { variantKey: false },
+  // A message is not marked automatic; a reply is.
+  message: { isAuto: false, isAutoSource: false, variantKey: false },
   metricRow: {
     connectionsAccepted: false,
     connectionsSent: false,
@@ -132,8 +133,10 @@ export const fields: FieldDeclaration = {
     // The lead's category, not a label on the message.
     category: "derived",
     categorySource: "derived",
-    // Only an Out Of Office category says a reply was automatic.
+    // An Out Of Office category, or a fixed rule on the subject and body.
     isAuto: "derived",
+    isAutoSource: "derived",
+    leftCompany: "derived",
     // The master inbox does not say which step a reply answers.
     stepIndex: false,
     variantKey: false,

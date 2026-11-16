@@ -186,6 +186,7 @@ One message sent or received.
 | `threadId` | `string` or `null` | Pass it to `outbound.thread(id)`. |
 | `stepIndex` | integer or `null` | The sequence step that sent it. |
 | `variantKey` | `string` or `null` | The variant that sent it. |
+| `isAuto`, `isAutoSource` | as on a `Reply`, or absent | On a received message, where the adapter can tell: Instantly and the memory adapter. |
 
 ## Reply
 
@@ -195,7 +196,9 @@ A received message with a category. It has every `Message` field, `direction` is
 | --- | --- | --- |
 | `category` | `"positive"`, `"negative"`, `"neutral"`, `"ooo"`, `"bounce"`, `"unsubscribe"`, `"unknown"` |  |
 | `categorySource` | `"vendor"`, `"lead"`, `"rule"` or `null` | Who decided the category: `vendor` when the vendor labelled this reply, `lead` when it is the vendor's label for the lead who sent it, `rule` for a fixed rule. `null` when it is `unknown`. Never a model. |
-| `isAuto` | boolean or `null` | `true` for an auto-reply, `null` when the vendor does not say. |
+| `isAuto` | boolean or `null` | `true` for an auto-reply, `null` when neither the vendor nor a fixed rule says. |
+| `isAutoSource` | `"vendor"`, `"rule"`, `null`, or absent | Who decided `isAuto`: `vendor` for the vendor's own flag, `rule` for a fixed rule on the sender's address, the subject, a canned phrase, or a reply within a minute of the send it answers. Never a model. |
+| `leftCompany` | boolean, `null`, or absent | `true` when the reply says the person left the company or the contact changed, for example "your contact with Acme has changed". |
 | `unread` | boolean or `null` | `true` while the reply, or the thread it is in, is unread in the vendor's inbox. |
 
 ## MetricRow

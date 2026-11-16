@@ -240,9 +240,28 @@ const messageFields = {
   variantKey: z.string().nullable(),
 };
 
+/** Who decided `isAuto`: the vendor's own flag, or a fixed rule. */
+export const autoSourceSchema = z.enum(["rule", "vendor"]);
+
+export type AutoSource = z.infer<typeof autoSourceSchema>;
+
+/**
+ * Who decided `isAuto`: `vendor` when the vendor flagged it, `rule` when a
+ * fixed rule did (the sender's address, the subject, a canned phrase, or a
+ * reply within a minute of the message it answers). Never a model. Absent or
+ * `null` when nothing decided it.
+ */
+const isAutoSource = autoSourceSchema.nullable().optional();
+
 export const messageSchema = z.object({
   ...messageFields,
   direction: z.enum(["in", "out"]),
+  /**
+   * On a received message, `true` for an auto-reply and `false` when it is
+   * known not to be one. Absent or `null` when nothing says.
+   */
+  isAuto: z.boolean().nullable().optional(),
+  isAutoSource,
 });
 
 export type Message = z.infer<typeof messageSchema>;
@@ -257,8 +276,15 @@ export const replySchema = z.object({
    */
   categorySource: z.enum(["lead", "rule", "vendor"]).nullable(),
   direction: z.literal("in"),
-  /** `true` for an auto-reply, `null` when the vendor does not say. */
+  /** `true` for an auto-reply, `null` when neither the vendor nor a fixed rule says. */
   isAuto: z.boolean().nullable(),
+  isAutoSource,
+  /**
+   * `true` when the reply says the person left the company or that the
+   * contact changed ("is no longer with", "your contact with Acme has
+   * changed"). Absent or `null` when nothing says.
+   */
+  leftCompany: z.boolean().nullable().optional(),
   /** `true` while the reply, or the thread it is in, is unread in the vendor's inbox. */
   unread: z.boolean().nullable(),
 });

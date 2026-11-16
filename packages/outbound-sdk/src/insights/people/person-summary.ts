@@ -37,12 +37,13 @@ export interface PersonCampaign {
   /** The vendor's own label, for example `Interested`. */
   readonly interest: string | null;
   readonly messagesSent: number;
-  /** Replies from the person. 0 when the vendor labels the lead out-of-office or bounced. */
+  /** Replies from the person, not counting replies flagged automatic. 0 when `autoReplied`. */
   readonly replies: number;
   readonly replied: boolean;
   /**
-   * `true` when the vendor labels the lead out-of-office or bounced: its
-   * replies were automatic, so they are not counted as the person replying.
+   * `true` when the vendor labels the lead out-of-office or bounced, or when
+   * every reply in the thread is flagged automatic (by the vendor or a fixed
+   * rule): its replies are not counted as the person replying.
    */
   readonly autoReplied: boolean;
   /** Steps the person replied to, counted from 0. Empty when the vendor does not tie a reply to a step. */
@@ -82,6 +83,10 @@ const times = (messages: readonly Message[], direction: "in" | "out") =>
       : []
   );
 
+/** A received message flagged automatic, by the vendor or by a fixed rule. */
+const isAutoMessage = (message: Message): boolean =>
+  message.direction === "in" && message.isAuto === true;
+
 /**
  * The step each reply answers: the reply's own step when the vendor gives it
  * one, otherwise the last step sent before it; plus the step the vendor names
@@ -111,7 +116,13 @@ const repliedSteps = (lead: Lead, messages: readonly Message[]): number[] => {
 /** Counts and times from the thread, falling back to what the vendor counts on the lead. */
 const activityOf = (lead: Lead, messages: readonly Message[]) => {
   const sent = times(messages, "out");
-  const received = times(messages, "in");
+
+  const received = times(
+    messages.filter((message) => !isAutoMessage(message)),
+    "in"
+  );
+
+  const automatic = messages.filter(isAutoMessage).length;
   const counted = lead.engagement;
 
   return {
@@ -127,10 +138,32 @@ const activityOf = (lead: Lead, messages: readonly Message[]) => {
     // A vendor's thread can hold fewer messages than were sent; the last
     // step sent (counted from 0) is then the better count.
     messagesSent: Math.max(sent.length, (counted?.stepIndex ?? -1) + 1),
-    // A vendor that keeps no thread still counts replies on the lead.
-    replies: Math.max(received.length, counted?.replies ?? 0),
+    automatic,
+    // A vendor that keeps no thread still counts replies on the lead, and
+    // that count can include the automatic replies the thread holds.
+    replies: Math.max(received.length, (counted?.replies ?? 0) - automatic),
     threadIsShort: sent.length < (counted?.stepIndex ?? -1) + 1,
   };
+};
+
+/** Says which automatic replies were not counted. */
+const noteAutomatic = (
+  context: InsightContext,
+  lead: Lead,
+  replies: number,
+  flagged: number
+): void => {
+  if (isAutoReplied(lead)) {
+    if (replies > 0) {
+      context.note(
+        "A record the vendor labels out-of-office or bounced had replies; they were automatic, so they are not counted as replies."
+      );
+    }
+  } else if (flagged > 0) {
+    context.note(
+      "A record's thread held replies flagged automatic, by the vendor or by a fixed rule; they are not counted as replies."
+    );
+  }
 };
 
 /** Each lead's whole timeline, read once even when it is in several campaigns. */
@@ -180,20 +213,18 @@ const summarize = async (
       : outbound.campaigns.get(lead.campaignRef).then(context.one),
   ]);
 
-  const { threadIsShort, ...counted } = activityOf(lead, messages);
+  const { automatic, threadIsShort, ...counted } = activityOf(lead, messages);
 
-  // The same rule hot_leads uses: an automatic reply is not the person replying.
-  const autoReplied = isAutoReplied(lead);
+  // The same rule hot_leads uses: an automatic reply is not the person
+  // replying, whether the vendor labels the lead or flags the replies.
+  const autoReplied =
+    isAutoReplied(lead) || (automatic > 0 && counted.replies === 0);
 
   const activity = autoReplied
     ? { ...counted, lastRepliedAt: null, replies: 0 }
     : counted;
 
-  if (autoReplied && counted.replies > 0) {
-    context.note(
-      "A record the vendor labels out-of-office or bounced had replies; they were automatic, so they are not counted as replies."
-    );
-  }
+  noteAutomatic(context, lead, counted.replies + automatic, automatic);
 
   if (threadIsShort) {
     context.note(
@@ -213,7 +244,12 @@ const summarize = async (
     provider: lead.provider,
     autoReplied,
     replied: !autoReplied && (activity.replies > 0 || lead.replied === true),
-    repliedSteps: autoReplied ? [] : repliedSteps(lead, messages),
+    repliedSteps: autoReplied
+      ? []
+      : repliedSteps(
+          lead,
+          messages.filter((message) => !isAutoMessage(message))
+        ),
   };
 };
 
@@ -238,7 +274,7 @@ const byChannel = (campaigns: readonly PersonCampaign[]) => {
 
 export const personSummary = defineInsight({
   description:
-    "Everything about one person across campaigns and channels, from their email address, LinkedIn profile or a lead ref: each campaign they are in, how many messages they were sent, whether and how often they replied, which steps they replied to, their interest label, and totals by channel. Records are linked by exact identifier only, so an email finds a LinkedIn record only when a tool holds both for that person. A record the vendor labels out-of-office or bounced counts no replies, since they were automatic. Costs one lookup per identifier, one request to read a lead ref, then up to 2 requests per campaign.",
+    "Everything about one person across campaigns and channels, from their email address, LinkedIn profile or a lead ref: each campaign they are in, how many messages they were sent, whether and how often they replied, which steps they replied to, their interest label, and totals by channel. Records are linked by exact identifier only, so an email finds a LinkedIn record only when a tool holds both for that person. A record the vendor labels out-of-office or bounced counts no replies, since they were automatic, and a reply in the thread flagged automatic (isAuto, from the vendor or a fixed rule) is not counted either. Costs one lookup per identifier, one request to read a lead ref, then up to 2 requests per campaign.",
   inputSchema: input,
   key: "personSummary",
   cost: (values, price) =>

@@ -40,7 +40,7 @@ const input = z.object({
     .boolean()
     .default(false)
     .describe(
-      "Set to true to also check replies the vendor marks as automatic"
+      "Set to true to also check replies flagged automatic, by the vendor or by a fixed rule"
     ),
   max_replies: z
     .number()
@@ -98,7 +98,7 @@ export interface DroppedReplies {
     readonly repliesRead: number;
     /** Left out for a category that needs no answer. */
     readonly skippedByCategory: number;
-    /** Left out because the vendor marks them as automatic. */
+    /** Left out because they are flagged automatic, by the vendor or by a fixed rule. */
     readonly skippedAuto: number;
     /** Conversations the remaining replies belong to. */
     readonly conversations: number;
