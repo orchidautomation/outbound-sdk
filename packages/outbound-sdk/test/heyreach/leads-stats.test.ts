@@ -288,7 +288,9 @@ test("heyreach: every documented lead status maps to a status", async () => {
     ["Finished", "None", "completed"],
     ["Paused", "None", "paused"],
     ["Failed", "None", "unknown"],
-    ["Excluded", "None", "unknown"],
+    ["Excluded", "None", "skipped"],
+    ["PendingOrExcludedToBeCalculated", "None", "unknown"],
+    ["NotADocumentedStatus", "None", "unknown"],
     ["Finished", "MessageReply", "replied"],
     ["InSequence", "MessageReply", "replied"],
   ] as const;

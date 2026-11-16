@@ -113,7 +113,7 @@ export const capabilities: CapabilityDeclaration = {
 
 // What a Smartlead record never carries, and what the adapter works out.
 export const fields: FieldDeclaration = {
-  campaignProgress: { failed: false },
+  campaignProgress: { failed: false, skipped: false },
   campaignSettings: { endDate: false },
   lead: {
     companyLinkedinUrl: false,
@@ -220,7 +220,7 @@ export const caveats: readonly string[] = [
   "leads.list({ email }) reads GET /leads/?email=: one record per campaign, all with the lead's id (listAll keeps one), status unknown unless unsubscribed, createdAt the lead's own. Address matching is undocumented; other addresses are dropped.",
   "No endpoint finds a lead by LinkedIn profile: leads.list({ linkedinUrl }) returns nothing and sends no request.",
   "A lead's status, campaign and creation time are per campaign; leads.get returns no campaign and its example looks illustrative.",
-  "STOPPED maps to paused. A lead's status BLOCKED, which Smartlead describes as bounced or on the block list, sets bounced and leaves progress unknown. unsubscribed is is_unsubscribed. replied is email_stats.is_replied, which only leads.get carries, so a listed lead's replied is null.",
+  "STOPPED maps to paused. A lead's status BLOCKED, which Smartlead describes as bounced or on the block list, sets bounced and leaves progress unknown. A block-listed lead that was never sent to is therefore counted as bounced too: no documented lead field tells the two apart (email_stats.is_bounced and last_sent_time appear only on a reference page whose shape conflicts with the others), and the block list itself takes entries from bounces. Read from the documentation on 2026-11-16 only. unsubscribed is is_unsubscribed. replied is email_stats.is_replied, which only leads.get carries, so a listed lead's replied is null.",
   "Messages come from GET /campaigns/all-leads-activities (10 requests per 60 s, no campaign filter, pages of leads): campaign(id).messages reads the whole feed, and thread_replies is not read.",
   "senderRef is null on feed and history messages (mailbox named by address). leadRef on replies and thread messages needs lead.id or lead_id on the thread; documented examples show an address only.",
   "threadId is the lead-in-campaign mapping id; history messages have none. GET /master-inbox/{id} is documented without message ids or bodies; older history items are accepted too.",

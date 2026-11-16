@@ -25,8 +25,8 @@ import { EVENT_TYPES } from "./webhooks.ts";
 
 /**
  * `GET /campaign/GetById`: `progressStats` counts the campaign's leads by how
- * far they got. `totalUsersExcluded` (leads kept out by an exclusion rule) has
- * no equivalent and stays in raw.
+ * far they got. `totalUsersExcluded` counts the leads an exclusion filter or
+ * exclusion list kept out, which are skipped.
  */
 export const toCampaignProgress = (
   identity: Identity,
@@ -45,6 +45,7 @@ export const toCampaignProgress = (
     inProgress: count(field(stats, "totalUsersInProgress")),
     leads: count(field(stats, "totalUsers")),
     notStarted: count(field(stats, "totalUsersPending")),
+    skipped: count(field(stats, "totalUsersExcluded")),
     stopped: count(field(stats, "totalUsersManuallyStopped")),
   };
 };

@@ -546,3 +546,21 @@ Ambiguous or not documented:
 - `POST /campaign/GetAll` documents a 404 `{ errorMessage }` without saying when. It is already an error, not an empty list.
 - No page says what an empty list looks like; `{ totalCount: 0, items: [] }` is assumed.
 - `fixtures/heyreach/` matches the table: every list fixture is `{ totalCount, items }`, `getConversations*.json` adds `hasNextPage` and `nextCursor`, and `getLeadTags.json` is `{ tags: [...] }`.
+
+## Excluded leads are skipped (2026-11-16, for OUT-106)
+
+Sources, fetched 2026-11-16:
+
+- https://docs.heyreach.io/openapi.json (SHA-256 `eb6be21b…25f8`). `campaigns_GetCampaignsForLead` still lists `leadStatus` as `Pending`, `InSequence`, `Finished`, `Paused`, `Failed`, `Excluded`, `PendingOrExcludedToBeCalculated`. `GetByIdCampaignsResponseProgressStats` lists `totalUsersExcluded` (integer, required) beside the six other counts.
+- https://docs.heyreach.io/llms.txt
+- https://help.heyreach.io/llms.txt
+- https://help.heyreach.io/en/articles/9935919-why-are-my-leads-in-progress-not-enrolled-yet-finished-paused-pending-failed-excluded.md. "Excluded leads: Shows the number of leads that have been excluded due to the exclusion filters or exclusion list." Failed leads are ones that "have failed in the campaign due to various reasons, such as a disconnected LinkedIn account".
+
+What the adapter does with it:
+
+- `Excluded` maps to the progress (and status) `skipped`. An exclusion filter or exclusion list keeps the lead out, so HeyReach decided never to send to it.
+- `PendingOrExcludedToBeCalculated` stays `unknown`. HeyReach has not decided yet whether the lead is pending or excluded.
+- `Failed` stays `unknown`. The lead was tried and failed, which is not a skip.
+- `progressStats.totalUsersExcluded` is `CampaignProgress.skipped`, a new optional field. A missing count is `null`.
+
+Not confirmed: the live run on 2026-11-14 saw only `Finished` from `GetCampaignsForLead` and a `totalUsersExcluded` of 0, so no live excluded lead has been read. `GetLeadsFromCampaign.leadCampaignStatus` is not documented to include `Excluded`; if it ever does, it maps to `skipped` too, because both fields share one mapping.

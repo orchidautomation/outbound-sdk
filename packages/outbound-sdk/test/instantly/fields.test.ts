@@ -461,8 +461,9 @@ test("instantly: a campaign's progress is its lead count and its finished leads,
       progress.stopped,
       progress.failed,
       progress.blocked,
+      progress.skipped,
     ],
-    [null, null, null, null, null],
+    [null, null, null, null, null, null],
     "the report does not split the rest"
   );
 

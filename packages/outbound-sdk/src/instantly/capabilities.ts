@@ -103,6 +103,7 @@ export const fields: FieldDeclaration = {
     failed: false,
     inProgress: false,
     notStarted: false,
+    skipped: false,
     stopped: false,
   },
   lead: {

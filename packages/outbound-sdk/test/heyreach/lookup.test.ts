@@ -97,9 +97,9 @@ test("heyreach: a lookup walks the campaign pages, reading the profile once a pa
     [
       ["heyreach:client-a:274079", "completed"],
       ["heyreach:client-a:274080", "active"],
-      ["heyreach:client-a:274081", "unknown"],
+      ["heyreach:client-a:274081", "skipped"],
     ],
-    "Excluded has no equivalent"
+    "Excluded is a lead an exclusion rule kept out: skipped"
   );
   assert.equal(
     new Set(all.map((lead) => lead.ref)).size,

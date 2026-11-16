@@ -467,6 +467,7 @@ test("smartlead: a campaign's progress is the lead counts of its analytics", asy
       inProgress: progress.inProgress,
       leads: progress.leads,
       notStarted: progress.notStarted,
+      skipped: progress.skipped,
       stopped: progress.stopped,
     },
     {
@@ -476,6 +477,7 @@ test("smartlead: a campaign's progress is the lead counts of its analytics", asy
       inProgress: 3,
       leads: 15,
       notStarted: 4,
+      skipped: null,
       stopped: 5,
     },
     "each count from its own field"

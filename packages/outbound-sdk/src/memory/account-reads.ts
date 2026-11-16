@@ -63,6 +63,7 @@ export const accountReads = (store: Store): AccountReads => {
         inProgress: counted("active"),
         leads: mine.length,
         notStarted: null,
+        skipped: counted("skipped"),
         stopped: counted("paused"),
       });
     },

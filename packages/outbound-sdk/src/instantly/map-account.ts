@@ -100,6 +100,7 @@ export const toCampaignProgress = (
   inProgress: null,
   leads: count(raw.leads_count),
   notStarted: null,
+  skipped: null,
   stopped: null,
 });
 

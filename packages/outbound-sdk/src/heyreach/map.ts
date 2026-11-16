@@ -88,15 +88,18 @@ export const toSender = (identity: Identity, raw: JsonObject): Sender => ({
   warmup: null,
 });
 
+// Excluded, which only GetCampaignsForLead reports, is a lead an exclusion
+// filter or exclusion list kept out: skipped, never sent to.
+// PendingOrExcludedToBeCalculated is not decided yet and Failed was tried and
+// failed, so both stay unknown.
 const LEAD_PROGRESS = new Map<string, LeadProgress>([
+  ["Excluded", "skipped"],
   ["Finished", "completed"],
   ["InSequence", "active"],
   ["Paused", "paused"],
   ["Pending", "active"],
 ]);
 
-// Excluded and PendingOrExcludedToBeCalculated, which only
-// GetCampaignsForLead reports, have no equivalent and stay unknown.
 const campaignProgress = (value: Json | undefined): LeadProgress =>
   LEAD_PROGRESS.get(text(value) ?? "") ?? "unknown";
 
