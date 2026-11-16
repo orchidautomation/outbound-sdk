@@ -209,7 +209,7 @@ export const run = async (
     const adapter =
       io.adapter ?? (await fromEnv({ provider: values.provider }));
 
-    const plugins = await pluginsFor(values, command === undefined);
+    const plugins = await pluginsFor(values, command === undefined, io.stderr);
     const outbound = createOutbound({ adapter, plugins });
 
     if (command === undefined) {

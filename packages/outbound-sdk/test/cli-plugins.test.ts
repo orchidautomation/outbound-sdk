@@ -205,6 +205,95 @@ test("outbound mcp answers a call to a tool redact left out by naming redact and
   );
 });
 
+test("outbound mcp names the tools redact left out in its instructions, and --no-redact names none", async () => {
+  const masked = instructionsOf(await outbound(["mcp"], [initialize]));
+
+  assert.match(
+    masked,
+    / Left out while redact is on: (?<names>[a-z_, ]+)\. They match people by email or LinkedIn profile, which redact masks\. Start the server with --no-redact to offer them; personal fields are then not masked\.$/u
+  );
+
+  for (const name of [
+    "person_summary",
+    "account_summary",
+    "cross_channel_lead",
+    "lead_collisions",
+    "suppression_check",
+  ]) {
+    assert.ok(masked.includes(name), name);
+  }
+
+  // The memory adapter has no native reads, so vendor_read is not named.
+  assert.ok(!masked.includes("vendor_read"), masked);
+
+  const open = instructionsOf(
+    await outbound(["mcp", "--no-redact"], [initialize])
+  );
+
+  assert.doesNotMatch(open, /Left out/u);
+});
+
+// The instructions a server built in code gives on initialize.
+const serverInstructions = async (
+  plugins: Parameters<typeof createOutbound>[0]["plugins"],
+  leftOut?: Record<string, string>
+): Promise<string> => {
+  const server = createMcpServer(
+    createOutbound({
+      adapter: memory({ data: demoData(), workspaceId: "acme" }),
+      plugins,
+    }),
+    { leftOut }
+  );
+
+  const response = (await server.handle(initialize)) as {
+    result: { instructions: string };
+  };
+
+  return response.result.instructions;
+};
+
+test("createMcpServer describes leftOut in initialize only when it names a tool", async () => {
+  const why = { vendor_read: "needs native reads" };
+
+  assert.match(
+    await serverInstructions([redact()], why),
+    /Left out while redact is on: vendor_read\. .*which redact masks \(vendor_read returns unmasked vendor payloads\)\. Start the server with --no-redact/u
+  );
+
+  // Without redact the reason is not redact's.
+  const plain = await serverInstructions([], why);
+  assert.match(
+    plain,
+    / Left out of this server: vendor_read\. A call to one returns the reason\.$/u
+  );
+  assert.doesNotMatch(plain, /--no-redact/u);
+
+  for (const leftOut of [undefined, {}]) {
+    assert.doesNotMatch(
+      await serverInstructions([redact()], leftOut),
+      /Left out/u,
+      JSON.stringify(leftOut)
+    );
+  }
+});
+
+test("--cache on a one-shot command says on stderr that it lasts one process", async () => {
+  const cached = await outbound(["senders", "--compact", "--cache", "5"]);
+
+  assert.equal(cached.code, 0);
+  assert.equal(
+    cached.err,
+    "--cache lasts one process, so the next run reads from the vendor again. It helps outbound mcp; to persist, list cache({ ttl, store }) in a --config file."
+  );
+  // The answer still goes to stdout.
+  assert.ok(Array.isArray(JSON.parse(cached.out.join(""))));
+
+  assert.equal((await outbound(["senders", "--compact"])).err, "");
+  // mcp is one long process, so the cache is reused there and nothing is said.
+  assert.equal((await outbound(["mcp", "--cache", "5"], [initialize])).err, "");
+});
+
 test("outbound mcp reports the package's version as serverInfo.version", async () => {
   const manifest = JSON.parse(
     await readFile(

@@ -121,11 +121,13 @@ const wantsRedact = (
  * The plugins for one command, outermost first: redact, then the config
  * file's plugins, then cache, then budget, then identity, next to the
  * request engine.
- * `mcp` turns redact on unless `--no-redact` is set.
+ * `mcp` turns redact on unless `--no-redact` is set. `note` gets a line for
+ * stderr when a flag will not do what its name suggests.
  */
 export const pluginsFor = async (
   flags: PluginFlags,
-  mcp: boolean
+  mcp: boolean,
+  note: (text: string) => void
 ): Promise<OutboundPlugin[]> => {
   const configured =
     flags.config === undefined ? [] : await loadConfig(flags.config);
@@ -145,6 +147,13 @@ export const pluginsFor = async (
     const ttl = positiveInteger("cache", flags.cache);
     const { cache } = await import("../cache/index.ts");
     plugins.push(cache({ ttl }));
+
+    if (!mcp) {
+      // The cache lives in memory, and a one-shot command ends after one answer.
+      note(
+        "--cache lasts one process, so the next run reads from the vendor again. It helps outbound mcp; to persist, list cache({ ttl, store }) in a --config file."
+      );
+    }
   }
 
   if (flags["max-requests"] !== undefined) {
