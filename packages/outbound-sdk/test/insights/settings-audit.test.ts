@@ -368,6 +368,31 @@ test("settings_audit has nothing to report with no campaigns, and says so when a
   assert.equal(fewSenders.meta.complete, false);
 });
 
+test("settings_audit puts out one note for a sender cap that stops in many campaigns", async () => {
+  // The stress test's shape: 22 active campaigns, each with more senders than the cap.
+  const ids = Array.from({ length: 22 }, (_, index) => `m${index + 1}`);
+
+  const many: MemoryData = {
+    campaigns: ids.map((id) => ({ id, name: `Campaign ${id}` })),
+    senders: ["a", "b", "c"].map((id) => ({
+      address: `${id}@example.com`,
+      campaignIds: ids,
+      id,
+    })),
+  };
+
+  const result = await single(many).insights.settingsAudit(
+    { max_campaigns: 50, max_senders_per_campaign: 2 },
+    { now: NOW }
+  );
+
+  assert.equal(result.data.totals.campaigns, 22);
+  assert.equal(result.meta.complete, false);
+  assert.deepEqual(result.meta.notes, [
+    "Stopped at 2 senders in 22 campaigns (max_senders_per_campaign); more exist.",
+  ]);
+});
+
 test("settings_audit is refused when the adapter cannot read campaign settings", async () => {
   await refused(
     () =>

@@ -116,7 +116,8 @@ const matches = <Item>(
 
 /**
  * Checks what came back against the schema. An adapter or plugin that
- * returns a malformed record fails here, loudly, and not in the caller.
+ * returns a malformed record fails here, loudly, and not in the caller. The
+ * error is permanent: the vendor returns the same record on every retry.
  */
 export const checked = <Item>(
   core: Core,
@@ -138,7 +139,7 @@ export const checked = <Item>(
       throw new OutboundError(
         "Provider",
         `The ${core.adapter.name} adapter returned an invalid record for ${action}${where}`,
-        { provider: core.adapter.name }
+        { permanent: true, provider: core.adapter.name }
       );
     }
 

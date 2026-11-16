@@ -103,6 +103,13 @@ export interface Cap {
   readonly what: string;
   /** The input that raises the cap, or `null` for a cap no input sets. */
   readonly input: string | null;
+  /**
+   * What the cap applies to each of, in the plural, for a cap read once per
+   * record such as `max_senders_per_campaign`: `campaigns`. Every stop at
+   * it shares one note that counts them: "Stopped at 100 senders in 22
+   * campaigns (max_senders_per_campaign); more exist."
+   */
+  readonly per?: string | undefined;
 }
 
 // A custom insight written before `Cap` existed names its cap as free text,
@@ -128,9 +135,18 @@ const oneOf = (what: string): string =>
     (_match, stem: string, end: string) => (end === "ies" ? `${stem}y` : stem)
   );
 
-/** The note for a listing that a cap stopped with more records left. */
-export const capNote = (cap: Cap): string =>
-  `Stopped at ${plural(cap.max, oneOf(cap.what), cap.what)} (${cap.input ?? "a fixed cap"}); more exist.`;
+/**
+ * The note for a listing that a cap stopped with more records left. `times`
+ * is how many records of `cap.per` it stopped in.
+ */
+export const capNote = (cap: Cap, times = 1): string => {
+  const within =
+    cap.per === undefined
+      ? ""
+      : ` in ${plural(times, oneOf(cap.per), cap.per)}`;
+
+  return `Stopped at ${plural(cap.max, oneOf(cap.what), cap.what)}${within} (${cap.input ?? "a fixed cap"}); more exist.`;
+};
 
 /** What an insight reads through. Every helper records the read's cost and evidence. */
 export interface InsightContext {
@@ -295,6 +311,25 @@ const track = (
     note(reason);
   };
 
+  // Where each per-record cap's one note sits in `notes`, and how many stops it counts.
+  const perStops = new Map<string, { readonly at: number; times: number }>();
+
+  const stopped = (cap: Cap | string | undefined): void => {
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- `cap` is a public argument that is either the old free-text form or a `Cap`
+    if (typeof cap !== "object" || cap.per === undefined) {
+      partial(stopNote(cap));
+
+      return;
+    }
+
+    complete = false;
+    const key = JSON.stringify([cap.max, cap.what, cap.input, cap.per]);
+    const stop = perStops.get(key) ?? { at: notes.push("") - 1, times: 0 };
+    stop.times += 1;
+    perStops.set(key, stop);
+    notes[stop.at] = capNote(cap, stop.times);
+  };
+
   return {
     context: {
       all: async (walk, cap) => {
@@ -302,7 +337,7 @@ const track = (
         seen(walk.meta);
 
         if (walk.truncated) {
-          partial(stopNote(cap));
+          stopped(cap);
         }
 
         return items;

@@ -6,7 +6,7 @@ only: campaign_overview, reply_samples
 
 every insight as a tool: 27
 
-campaign_overview: How every campaign is doing right now: sends, replies, positive replies, bounces and reply rate for each campaign with the given status. One vendor request per campaign. Rates are computed from counts; a null means the vendor does not report that count. meta.complete: false means limit cut the list, and meta.notes says so.
+campaign_overview: How every campaign is doing right now: sends, replies, positive replies, bounces and reply rate for each campaign with the given status, or for the one campaign given. One vendor request per campaign. Rates are computed from counts; a null means the vendor does not report that count. meta.complete: false means limit cut the list, and meta.notes says so.
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
@@ -20,6 +20,11 @@ campaign_overview: How every campaign is doing right now: sends, replies, positi
       "description": "Last day, YYYY-MM-DD. Leave out for up to today",
       "type": "string",
       "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "campaign": {
+      "description": "One campaign's ref, id or name, to read only it; status and limit are then not used. Leave out for every campaign with the status",
+      "type": "string",
+      "minLength": 1
     },
     "limit": {
       "default": 10,

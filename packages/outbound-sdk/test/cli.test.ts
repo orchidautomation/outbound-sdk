@@ -142,7 +142,7 @@ test("reports capabilities and caveats, and runs a tool", async () => {
   assert.equal(result.data.campaigns[0]?.name, "Agency owners");
 });
 
-test("tools lists each tool's inputs, and a tool that needs input prints them when given none", async () => {
+test("tools lists each tool's inputs, and a tool that needs input fails with them when given none", async () => {
   const tools = (await cli("tools")).items() as {
     name: string;
     description: string;
@@ -170,10 +170,21 @@ test("tools lists each tool's inputs, and a tool that needs input prints them wh
     ["campaign", "limit"]
   );
 
-  // lead_runway requires `campaign`: with no --input it says what it takes and exits 0.
+  // lead_runway requires `campaign`: with no --input it fails with what it
+  // takes, and exits 2 so a script cannot read it as an answer.
   const schema = await cli("tool", "lead_runway");
 
-  assert.equal(schema.code, 0);
+  const refused = schema.json() as {
+    ok: boolean;
+    error: { code: string; retryable: boolean };
+    next: string;
+  };
+
+  assert.equal(schema.code, 2);
+  assert.equal(refused.ok, false);
+  assert.equal(refused.error.code, "InputRequired");
+  assert.equal(refused.error.retryable, false);
+  assert.match(refused.next, /outbound tool lead_runway --input/u);
   assert.deepEqual(
     schema.data(),
     tools.find((tool) => tool.name === "lead_runway")
