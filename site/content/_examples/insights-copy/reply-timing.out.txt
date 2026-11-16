@@ -13,6 +13,7 @@ counts: {
   autoReplies: 0,
   followOnReplies: 1,
   messagesRead: 12,
+  notInCampaign: null,
   paired: 5,
   received: 7,
   sent: 5,

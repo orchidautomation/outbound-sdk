@@ -44,10 +44,16 @@ const FROM_LEAD = "CORRESPONDENT";
 
 interface Scope {
   readonly identity: Identity;
-  /** Known only when the listing was filtered to one campaign. */
+  /** The campaign the listing was filtered to, if any. */
   readonly campaignId: string | undefined;
   readonly includeBody: boolean;
 }
+
+// GetConversationsV3 names a conversation's campaign in `campaignId` and
+// leaves the key out when the conversation belongs to no campaign: the
+// account's own LinkedIn messages. A chatroom read carries no campaign.
+const campaignOf = (conversation: JsonObject): string | null =>
+  text(conversation.campaignId);
 
 const messageFields = (
   scope: Scope,
@@ -64,7 +70,10 @@ const messageFields = (
   return {
     ...recordBase(scope.identity, id, raw),
     ...normalizeBody(text(raw.body), scope.includeBody),
-    campaignRef: refTo(scope.identity, scope.campaignId),
+    campaignRef: refTo(
+      scope.identity,
+      campaignOf(conversation) ?? scope.campaignId
+    ),
     channel: "linkedin" as const,
     // A lead's id is its LinkedIn profile URL, as in leads.get.
     leadRef: refTo(
@@ -270,8 +279,18 @@ export const inboxReaders = (client: HeyReachClient): InboxReaders => ({
       includeBody: query.includeBody,
     };
 
+    // A campaign filter is applied by HeyReach. Without one the inbox comes
+    // whole, and a conversation that belongs to no campaign is not a reply to
+    // outreach unless the caller asks for the inbox.
+    const wanted =
+      query.includeInbox === true || query.campaignId !== undefined
+        ? page.conversations
+        : page.conversations.filter(
+            (conversation) => campaignOf(conversation) !== null
+          );
+
     return {
-      items: page.conversations
+      items: wanted
         .flatMap((conversation) =>
           objects(conversation.messages).flatMap((raw) =>
             isFromLead(raw) ? [toReply(scope, conversation, raw)] : []

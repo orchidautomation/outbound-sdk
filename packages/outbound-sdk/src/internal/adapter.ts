@@ -128,6 +128,11 @@ export interface ReplyQuery extends PageQuery, TimeRange {
   readonly category?: ReplyCategory | undefined;
   /** `true` for unread replies only, `false` for read ones only. */
   readonly unread?: boolean | undefined;
+  /**
+   * Also return replies from conversations that belong to no campaign. Only
+   * an adapter whose `replies.inbox` capability is true has any.
+   */
+  readonly includeInbox?: boolean | undefined;
   readonly includeBody: boolean;
 }
 

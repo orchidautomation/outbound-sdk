@@ -174,6 +174,7 @@ Days that broke from trend, for one campaign or the whole workspace.
 | `metrics` | `["sent", "replied", "bounced"]` | at least one of `sent`, `contacted`, `replied`, `positive`, `bounced`, `opened`, `clicked`, `unsubscribed` | The daily counts to check. |
 | `threshold` | 2.5 | above 0 | How many standard deviations from the baseline mean is unusual. |
 | `min_baseline_points` | 5 | 2 or more, whole | The fewest baseline days with data a day needs to be tested. |
+| `min_count` | 3 | 0 or more, whole | A day is judged only when its count or its baseline mean reaches this, so one reply on a quiet day is not flagged. 0 judges every day. |
 
 `data` (`Anomalies`):
 

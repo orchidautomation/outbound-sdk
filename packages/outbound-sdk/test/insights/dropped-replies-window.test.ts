@@ -230,6 +230,7 @@ test("dropped_replies reads the whole window by default and finds the 51st reply
     conversations: 31,
     dropped: 1,
     moreRepliesExist: false,
+    notInCampaign: null,
     repliesRead: 179,
     skippedAuto: 0,
     skippedByCategory: 148,

@@ -129,6 +129,36 @@ const toTool = (
 });
 
 /**
+ * Why `insightTools` leaves an insight out on this instance, in the words of
+ * an `Unsupported` error. `undefined` for a name that is no insight, or one
+ * the instance offers.
+ */
+export const insightLeftOutReason = (
+  outbound: OutboundApi,
+  name: string
+): string | undefined => {
+  const definition = ENTRIES.find((entry) => entry.name === name);
+
+  if (definition === undefined) {
+    return undefined;
+  }
+
+  const lacked = definition.lacks?.(outbound) ?? null;
+
+  const absent = definition.needs.filter(
+    (key) => outbound.capabilities[key] === false
+  );
+
+  if (lacked !== null) {
+    return `${name} is not available: the ${outbound.provider} adapter does not report ${lacked}`;
+  }
+
+  return absent.length > 0
+    ? `${name} is not available: the ${outbound.provider} adapter does not support ${absent.join(", ")}`
+    : (maskedOutBy(outbound, definition) ?? undefined);
+};
+
+/**
  * The insights this instance can serve, as tools. An insight whose adapter
  * lacks a capability or a field it needs, or that cannot match records while the redact
  * plugin masks what it matches on, is left out, so a model is never offered a

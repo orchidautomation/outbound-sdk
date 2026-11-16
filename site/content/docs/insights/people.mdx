@@ -205,12 +205,13 @@ Replies from prospects that nobody answered, longest waiting first.
 | `older_than_hours` | 24 | 0 or more | A reply counts as dropped only after waiting this long without an answer. |
 | `categories` | `["positive", "neutral", "unknown"]` | at least one reply category | Reply categories that need an answer. |
 | `include_auto` | `false` | boolean | Also check replies the vendor marks as automatic. |
-| `max_replies` | `null` | 1 to 2,000, or `null` | The most replies to read. `null` reads every reply since `since`, up to 2,000. |
+| `include_inbox` | `false` | boolean | Also check replies in conversations that belong to no campaign, such as a LinkedIn account's own messages on HeyReach. |
+| `max_replies` | `null` | 1 to 2,000, or `null` | The most replies to read. `null` reads every reply since `since`, up to 2,000. On HeyReach it counts the inbox's own replies too, set aside or not. |
 
 `data` (`DroppedReplies`):
 
 - `dropped`: one entry per conversation, with `reply` (the oldest unanswered reply), `lead` and the person's `name`, `email` and `linkedinUrl`, `campaign` and its `campaignName`, `channel`, `provider`, `category`, `subject`, `receivedAt`, `hoursWaiting`, `unansweredReplies`, `checkedBy` (`thread` or `timeline`) and a `finding` sentence.
-- `totals`: `repliesRead`, `skippedByCategory`, `skippedAuto`, `conversations`, `answered`, `dropped`, `tooRecent`, `unchecked` and `moreRepliesExist` (`true` when `max_replies`, or the 2,000 one window reads, left replies unread, so dropped ones may be missing).
+- `totals`: `repliesRead`, `skippedByCategory`, `skippedAuto`, `notInCampaign` (replies set aside because their conversation belongs to no campaign; `0` with `include_inbox`, `null` on a vendor whose replies are all campaign replies), `conversations`, `answered`, `dropped`, `tooRecent`, `unchecked` and `moreRepliesExist` (`true` when `max_replies`, or the 2,000 one window reads, left replies unread, so dropped ones may be missing).
 - `since` and `olderThanHours`: what was used.
 
 - **Needs:** `replies.list`. To check a conversation it also needs `messages.list` with `messages.byThread` or `leads.timeline`. With `messages.byHand` and `messages.since` on the server (Instantly), one listing of the messages sent by hand in the window settles every conversation answered by hand, and only the others are read in full.

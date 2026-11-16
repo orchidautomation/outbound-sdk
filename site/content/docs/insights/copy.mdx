@@ -264,6 +264,7 @@ How fast people reply, and on which days and hours.
 | `since` | `null` | ISO 8601 date and time with offset | Only messages from this time on. `null` means 30 days before now. |
 | `max_messages` | 2,000 | 1 to 50,000 | The most messages to read, sent and received together. |
 | `timezone_offset_minutes` | 0 | -720 to 840, whole | Minutes to add to UTC for the weekday and hour tables, for example -300 for New York in winter. |
+| `include_inbox` | `false` | boolean | Also time conversations that belong to no campaign, such as a LinkedIn account's own messages on HeyReach. |
 
 `data` (`ReplyTiming`):
 
@@ -271,7 +272,7 @@ How fast people reply, and on which days and hours.
 - `timeToReply`: `sample` (replies paired with the message they answer), `medianHours`, `p75Hours`, `p90Hours`, and the share `within1Hour`, `within24Hours` and `within72Hours`.
 - `replies`: when replies arrive, as `byWeekday` (Monday first), `byHour` (0 to 23), `topWeekday` and `topHour`.
 - `sendsThatDrewReplies`: the same tables for the sends that drew a reply.
-- `counts`: `messagesRead`, `sent`, `received`, `paired`, `followOnReplies`, `unpaired`, `unpairedShare` (`unpaired` over `received`, `null` with no reply) and `autoReplies` (received messages flagged automatic and left out).
+- `counts`: `messagesRead`, `sent`, `received`, `paired`, `followOnReplies`, `unpaired`, `unpairedShare` (`unpaired` over `received`, `null` with no reply), `autoReplies` (received messages flagged automatic and left out) and `notInCampaign` (messages in conversations that belong to no campaign, left out; `0` with `include_inbox`, `null` on a vendor whose conversations are all campaign ones).
 
 Sends are read from the same `since` as replies. A reply to a send from before `since` cannot pair, and those are the slow replies, so time to reply leaves them out and can look faster than it is. When `unpairedShare` is over 0.25, `meta.complete` is `false` and a note gives the count. Set `since` earlier to pair more.
 

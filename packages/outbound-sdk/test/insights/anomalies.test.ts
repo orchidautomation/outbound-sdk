@@ -376,3 +376,43 @@ test("anomalies adds the tools of a combined instance together day by day", asyn
     ["2026-11-10"]
   );
 });
+
+test("anomalies does not judge a day whose count and baseline are both under min_count", async () => {
+  // One LinkedIn reply on 11-10 against one in the 14 days before it: the
+  // 0.1-a-day baseline the stress test (OUT-128) saw flagged at z = 3.5.
+  const quiet: MemoryData = {
+    campaigns: [{ id: "c1" }],
+    stats: Array.from({ length: 24 }, (_, index) => {
+      const date = new Date(Date.UTC(2026, 9, 21 + index))
+        .toISOString()
+        .slice(0, 10);
+
+      return row("c1", date, {
+        replied: date === "2026-11-01" || date === "2026-11-10" ? 1 : 0,
+      });
+    }),
+  };
+
+  const input = {
+    baseline_days: 14,
+    campaign: "memory:agency:c1",
+    days: 5,
+    metrics: ["replied" as const],
+  };
+
+  const result = await single(quiet).insights.anomalies(input, { now: NOW });
+
+  assert.deepEqual(result.data.anomalies, []);
+  assert.equal(result.data.metrics[0]?.daysTested, 5, "tested, not flagged");
+
+  const strict = await single(quiet).insights.anomalies(
+    { ...input, min_count: 0 },
+    { now: NOW }
+  );
+
+  assert.deepEqual(
+    strict.data.anomalies.map((each) => [each.date, each.value, each.judgedBy]),
+    [["2026-11-10", 1, "z_score"]],
+    "min_count 0 judges every day, as before"
+  );
+});

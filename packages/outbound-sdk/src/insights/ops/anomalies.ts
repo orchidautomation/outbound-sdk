@@ -21,6 +21,12 @@ const metricSchema = z.enum([
 
 export type AnomalyMetric = z.infer<typeof metricSchema>;
 
+/**
+ * A day and its baseline both under this count are not judged: one LinkedIn
+ * reply against an average of 0.1 a day is a z-score of 3.5 and no news.
+ */
+export const MIN_COUNT = 3;
+
 const input = z.object({
   baseline_days: z
     .number()
@@ -47,6 +53,14 @@ const input = z.object({
     .min(1)
     .default(["sent", "replied", "bounced"])
     .describe("The daily counts to check"),
+  min_count: z
+    .number()
+    .int()
+    .min(0)
+    .default(MIN_COUNT)
+    .describe(
+      "A day is judged only when its count or its baseline mean reaches this many, so one reply on a quiet day is not flagged. 0 judges every day."
+    ),
   min_baseline_points: z
     .number()
     .int()
@@ -96,6 +110,8 @@ export interface AnomalyOptions {
   readonly threshold: number;
   readonly baselineDays: number;
   readonly minBaselinePoints: number;
+  /** A day whose count and baseline mean are both under this is not judged. Defaults to `MIN_COUNT`. */
+  readonly minCount?: number | undefined;
   /** The first day that is tested. Earlier days only feed baselines. */
   readonly firstDay: string;
 }
@@ -194,9 +210,17 @@ const scanMetric = (
       other.date >= start && other.date < point.date ? [other.value] : []
     );
 
+    const minCount = options.minCount ?? MIN_COUNT;
+
+    // Too few to tell a break from noise: tested, never flagged.
+    const tooSmall = point.value < minCount && (mean(baseline) ?? 0) < minCount;
+
     if (baseline.length >= options.minBaselinePoints) {
       tested += 1;
-      const anomaly = judge(metric, point, baseline, options.threshold);
+
+      const anomaly = tooSmall
+        ? null
+        : judge(metric, point, baseline, options.threshold);
 
       if (anomaly !== null) {
         anomalies.push(anomaly);
@@ -243,7 +267,7 @@ export const findAnomalies = (
 
 export const anomalies = defineInsight({
   description:
-    "Days that broke from trend, for one campaign or the whole workspace: each of the last `days` complete days is held to the `baseline_days` before it, and a daily count `threshold` standard deviations or more from that baseline's mean is returned, newest first, with the metric, the value, the baseline mean, the z-score, the direction and how it was judged. When every baseline day has the same count there is no standard deviation: a day with another count is returned with a null z-score and judgedBy flat_baseline. Use it to spot a sending outage, a bounce spike or a reply surge. Days the vendor has no count for are skipped, never read as zero. With no campaign it reads workspace stats, so it then also needs stats.workspace. Costs one stats request.",
+    "Days that broke from trend, for one campaign or the whole workspace: each of the last `days` complete days is held to the `baseline_days` before it, and a daily count `threshold` standard deviations or more from that baseline's mean is returned, newest first, with the metric, the value, the baseline mean, the z-score, the direction and how it was judged. When every baseline day has the same count there is no standard deviation: a day with another count is returned with a null z-score and judgedBy flat_baseline. Use it to spot a sending outage, a bounce spike or a reply surge. A day is judged only when its count or its baseline mean reaches min_count (3 by default), so a single reply on a quiet day is not flagged. Days the vendor has no count for are skipped, never read as zero. With no campaign it reads workspace stats, so it then also needs stats.workspace. Costs one stats request.",
   inputSchema: input,
   key: "anomalies",
   cost: (_input, price) => price.one("stats"),
@@ -267,6 +291,7 @@ export const anomalies = defineInsight({
         firstDay: period.from,
         metrics: options.metrics,
         minBaselinePoints: options.min_baseline_points,
+        minCount: options.min_count,
         threshold: options.threshold,
       }),
       period,

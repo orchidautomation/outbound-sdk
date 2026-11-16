@@ -40,7 +40,11 @@ type Readers = Pick<
   | "stats"
 >;
 
-const statsBody = (client: HeyReachClient, query: StatsQuery): JsonObject => {
+const statsBody = (
+  client: HeyReachClient,
+  ctx: AdapterContext,
+  query: StatsQuery
+): JsonObject => {
   const { provider } = client.identity;
 
   if (query.scope === "step") {
@@ -49,10 +53,10 @@ const statsBody = (client: HeyReachClient, query: StatsQuery): JsonObject => {
     });
   }
 
-  if ((query.from === undefined) !== (query.to === undefined)) {
+  if (query.from === undefined && query.to !== undefined) {
     throw new OutboundError(
       "Invalid",
-      "HeyReach stats need both from and to, or neither",
+      "HeyReach stats need a from date with to; give from alone to read up to today",
       { provider }
     );
   }
@@ -69,10 +73,20 @@ const statsBody = (client: HeyReachClient, query: StatsQuery): JsonObject => {
         : [],
   };
 
-  if (query.from !== undefined && query.to !== undefined) {
+  if (query.from !== undefined) {
+    // HeyReach takes a range with both ends or none, so from alone runs to
+    // the end of today, as it does on the vendors that take one end.
+    const to = query.to ?? new Date().toISOString().slice(0, 10);
+
+    if (query.to === undefined) {
+      ctx.note(
+        `HeyReach stats take a whole range, so from ${query.from} was read up to today, ${to} (UTC).`
+      );
+    }
+
     // The documented example bounds a range with these two times of day.
     body.startDate = `${query.from}T00:00:00.000Z`;
-    body.endDate = `${query.to}T23:59:59.999Z`;
+    body.endDate = `${to}T23:59:59.999Z`;
   }
 
   return body;
@@ -90,7 +104,7 @@ const readStats = async (
       await client.post(
         ctx,
         "/stats/GetOverallStatsByCampaign",
-        statsBody(client, query)
+        statsBody(client, ctx, query)
       ),
       query.by
     );
@@ -99,7 +113,7 @@ const readStats = async (
   const body = await client.post(
     ctx,
     "/stats/GetOverallStats",
-    statsBody(client, query)
+    statsBody(client, ctx, query)
   );
 
   const scope = {

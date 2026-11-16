@@ -14,6 +14,7 @@ import { replyCategorySchema } from "../../internal/vocabulary.ts";
 import type { Capped } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
+import { inboxOf } from "../inbox.ts";
 import { round } from "../stats.ts";
 import { nameOf, readByRef, readCappedFlag } from "./read.ts";
 
@@ -44,6 +45,12 @@ const input = z.object({
     .default(false)
     .describe(
       "Set to true to also check replies flagged automatic, by the vendor or by a fixed rule"
+    ),
+  include_inbox: z
+    .boolean()
+    .default(false)
+    .describe(
+      "Set to true to also check replies in conversations that belong to no campaign, such as a LinkedIn account's own messages on HeyReach. false sets them aside and counts them in totals.notInCampaign."
     ),
   max_replies: z
     .number()
@@ -104,6 +111,13 @@ export interface DroppedReplies {
     readonly skippedByCategory: number;
     /** Left out because they are flagged automatic, by the vendor or by a fixed rule. */
     readonly skippedAuto: number;
+    /**
+     * Set aside because their conversation belongs to no campaign, such as a
+     * LinkedIn account's own messages; 0 with `include_inbox`. `null` when the
+     * vendor's replies are all campaign replies (no `replies.inbox`). Always
+     * set by dropped_replies; optional so a value built by hand stays valid.
+     */
+    readonly notInCampaign?: number | null;
     /** Conversations the remaining replies belong to. */
     readonly conversations: number;
     readonly answered: number;
@@ -303,10 +317,17 @@ const readReplies = (
     );
   }
 
+  // Replies outside every campaign are read too, so they can be counted
+  // when they are set aside. A tool with no such inbox reads the same either
+  // way, and on a combined instance each tool that has one includes it.
   return readCappedFlag(
     context,
     (cap) =>
-      outbound.replies.listAll(filtered ? { max: cap, since } : { max: cap }),
+      outbound.replies.listAll(
+        filtered
+          ? { includeInbox: true, max: cap, since }
+          : { includeInbox: true, max: cap }
+      ),
     given ?? WINDOW_REPLIES,
     "replies",
     given === null
@@ -450,7 +471,7 @@ const check = async (
 
 export const droppedReplies = defineInsight({
   description:
-    "Replies from prospects that nobody answered. Reads every reply since a date (14 days before now by default, up to 2,000 or max_replies), keeps the categories that need an answer, and reports a conversation as dropped when nothing was sent after the reply and it has waited longer than older_than_hours. Where the tool lists the messages sent by hand (messages.byHand), one listing of those in the window settles every answered conversation; a conversation is read in full, by its thread or the lead's timeline, only when it may be dropped, or when that listing stopped at its max and did not answer it. Returns the dropped replies longest waiting first with hours waiting, category, the campaign and its name, and the lead with their name, email and LinkedIn profile. A reply that could not be checked is counted in totals.unchecked, never reported as dropped. Costs one request per page of replies and of messages sent by hand, one per conversation read in full, and one per lead and per campaign among the dropped replies to name them. totals.moreRepliesExist is true when the read stopped with replies left unread.",
+    "Replies from prospects that nobody answered. Reads every reply since a date (14 days before now by default, up to 2,000 or max_replies), keeps the categories that need an answer, and reports a conversation as dropped when nothing was sent after the reply and it has waited longer than older_than_hours. Where the tool lists the messages sent by hand (messages.byHand), one listing of those in the window settles every answered conversation; a conversation is read in full, by its thread or the lead's timeline, only when it may be dropped, or when that listing stopped at its max and did not answer it. Replies in conversations that belong to no campaign, such as a LinkedIn account's own messages on HeyReach, are set aside and counted in totals.notInCampaign unless include_inbox is true. Returns the dropped replies longest waiting first with hours waiting, category, the campaign and its name, and the lead with their name, email and LinkedIn profile. A reply that could not be checked is counted in totals.unchecked, never reported as dropped. Costs one request per page of replies and of messages sent by hand, one per conversation read in full, and one per lead and per campaign among the dropped replies to name them. totals.moreRepliesExist is true when the read stopped with replies left unread.",
   inputSchema: input,
   key: "droppedReplies",
   cost: (values, price) => {
@@ -489,13 +510,26 @@ export const droppedReplies = defineInsight({
     }
 
     const listed = await readReplies(context, since, values.max_replies);
+
     const read = listed.items;
 
     // A reply with no time is kept: it is counted as unchecked below.
-    const replies = read.filter(
+    const inWindow = read.filter(
       (reply) =>
         reply.sentAt === null || Date.parse(reply.sentAt) >= Date.parse(since)
     );
+
+    const fromInbox = inboxOf(context.outbound);
+
+    const separates =
+      context.outbound.capabilities["replies.inbox"] ||
+      inWindow.some(fromInbox);
+
+    const replies = values.include_inbox
+      ? inWindow
+      : inWindow.filter(
+          (reply) => reply.campaignRef !== null || !fromInbox(reply)
+        );
 
     const wanted = replies.filter((reply) =>
       values.categories.includes(reply.category)
@@ -548,6 +582,7 @@ export const droppedReplies = defineInsight({
         conversations: conversations.length,
         dropped: dropped.length,
         moreRepliesExist: listed.capped,
+        notInCampaign: separates ? inWindow.length - replies.length : null,
         repliesRead: read.length,
         skippedAuto: wanted.length - kept.length,
         skippedByCategory: replies.length - wanted.length,

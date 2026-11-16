@@ -12,6 +12,7 @@ export const OPTIONS = {
   config: { type: "string" },
   from: { type: "string" },
   help: { short: "h", type: "boolean" },
+  "include-inbox": { type: "boolean" },
   input: { type: "string" },
   limit: { type: "string" },
   list: { type: "string" },

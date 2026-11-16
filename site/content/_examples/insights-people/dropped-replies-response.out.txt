@@ -45,6 +45,7 @@
       "conversations": 5,
       "dropped": 2,
       "moreRepliesExist": false,
+      "notInCampaign": null,
       "repliesRead": 8,
       "skippedAuto": 1,
       "skippedByCategory": 1,

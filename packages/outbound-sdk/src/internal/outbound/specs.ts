@@ -364,6 +364,7 @@ export const replyList = (core: Core): ListSpec<Reply, ReplyFilters> => ({
     campaignId: true,
     category: true,
     include: true,
+    includeInbox: true,
     since: true,
     unread: true,
     until: true,
@@ -404,6 +405,7 @@ export const replyList = (core: Core): ListSpec<Reply, ReplyFilters> => ({
       campaignId: filters.campaignId,
       category: filters.category,
       include: filters.include,
+      includeInbox: filters.includeInbox,
       unread: filters.unread,
       ...normalizeRange(filters),
     };
@@ -415,6 +417,7 @@ export const replyList = (core: Core): ListSpec<Reply, ReplyFilters> => ({
       campaignId: filters.campaignId,
       category: filters.category,
       includeBody: wantsBody(filters.include),
+      includeInbox: filters.includeInbox,
       since: filters.since,
       unread: filters.unread,
       until: filters.until,

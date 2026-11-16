@@ -21,7 +21,6 @@ Unusual days in the last 14:
   - bounced was 14 on 2026-11-10, against an average of 3 over the 14 days with data before it (z = 12.5).
   - sent was 44 on 2026-11-08, against an average of 86.7 over the 14 days with data before it (z = -3.6).
   - sent was 46 on 2026-11-07, against an average of 90 over the 14 days with data before it (z = -21.2).
-  - replied was 1 on 2026-11-02, against an average of 0.1 over the 14 days with data before it (z = 3.5).
 
 Against the whole workspace:
   reply rate 0.2% against 6.3% (0.03 times the workspace)

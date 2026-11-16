@@ -139,6 +139,7 @@ $ outbound capabilities
       "placementTests.list": true,
       "replies.category": "vendor",
       "replies.list": true,
+      "replies.inbox": false,
       "replies.since": "server",
       "replies.unread": "server",
       "senders.byCampaign": true,

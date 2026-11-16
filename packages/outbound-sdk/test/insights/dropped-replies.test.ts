@@ -203,6 +203,7 @@ test("dropped_replies reports unanswered replies longest waiting first, and coun
     conversations: 5,
     dropped: 2,
     moreRepliesExist: false,
+    notInCampaign: null,
     // The ten inbound messages but the one from October.
     repliesRead: 9,
     skippedAuto: 1,
@@ -398,6 +399,7 @@ test("dropped_replies finds nothing when there are no replies", async () => {
     conversations: 0,
     dropped: 0,
     moreRepliesExist: false,
+    notInCampaign: null,
     repliesRead: 0,
     skippedAuto: 0,
     skippedByCategory: 0,

@@ -52,8 +52,8 @@ test("heyreach: messages are read from conversations, with direction from the se
   assert.equal(first?.senderRef, "heyreach:client-a:4101");
   assert.equal(
     first?.campaignRef,
-    null,
-    "an unfiltered listing does not know the campaign"
+    `heyreach:client-a:${CAMPAIGN}`,
+    "an unfiltered listing names each conversation's campaign"
   );
   assert.equal(first?.subject, null);
   assert.equal(

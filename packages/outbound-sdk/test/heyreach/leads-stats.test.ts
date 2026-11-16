@@ -523,14 +523,14 @@ test("heyreach: campaign and sender stats filter the same endpoint by one id", a
   assert.equal(sender.meta.evidence, "exact");
 });
 
-test("heyreach: stats refuse half a date range, a non-numeric id and the step scope", async () => {
+test("heyreach: stats refuse to without from, a non-numeric id and the step scope", async () => {
   const { outbound, requests, settle } = harness(suite);
 
   await assert.rejects(
-    async () => await settle(outbound.stats({ from: "2024-12-17" })),
+    async () => await settle(outbound.stats({ to: "2024-12-17" })),
     (error) =>
       isCode("Invalid")(error) &&
-      /both from and to, or neither/u.test((error as Error).message)
+      /need a from date with to/u.test((error as Error).message)
   );
   await assert.rejects(
     async () => await settle(outbound.sender("alex").stats()),

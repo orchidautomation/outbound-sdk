@@ -12,6 +12,7 @@ import type { OutboundApi } from "../internal/outbound/api.ts";
 import { providers } from "../providers/index.ts";
 import { resolveCampaign } from "../tools/by-name.ts";
 import type { ToolResult } from "../tools/index.ts";
+import { leftOutReason } from "../tools/registry.ts";
 import {
   campaignOption,
   confirmScope,
@@ -396,8 +397,16 @@ const COMMAND_TABLE = {
       }),
   },
   replies: {
-    flags: ["bodies", "by", "campaign", "category", "limit", "since"],
-    help: "replies [--campaign ID|NAME] [--category positive|negative|neutral|ooo|...] [--since ISO] [--limit N] [--bodies] [--by person]  one record per message; --by person gives one row per person. --limit defaults to 50, or with --since to the whole window up to 2000",
+    flags: [
+      "bodies",
+      "by",
+      "campaign",
+      "category",
+      "include-inbox",
+      "limit",
+      "since",
+    ],
+    help: "replies [--campaign ID|NAME] [--category positive|negative|neutral|ooo|...] [--since ISO] [--limit N] [--bodies] [--by person] [--include-inbox]  one record per message; --by person gives one row per person. --limit defaults to 50, or with --since to the whole window up to 2000. --include-inbox adds conversations outside every campaign (HeyReach)",
     run: async (outbound, input) => {
       const by = choice(input, "by", REPLIES_BY);
       const since = text(input, "since");
@@ -410,6 +419,7 @@ const COMMAND_TABLE = {
         campaignId: await campaignOption(outbound, text(input, "campaign")),
         category: choice(input, "category", replyCategorySchema.options),
         include: input.flags.bodies === true ? ["body"] : undefined,
+        includeInbox: input.flags["include-inbox"] === true || undefined,
         max: count(input, "limit", windowed ? WINDOW_LIMIT : 50),
         since,
       });
@@ -487,6 +497,19 @@ const COMMAND_TABLE = {
       const tool = offered.find((candidate) => candidate.name === name);
 
       if (tool === undefined) {
+        const { insightLeftOutReason } = await import("../insights/tools.ts");
+
+        // A tool this instance cannot serve is refused with the reason, as
+        // running the insight would be, not called unknown.
+        const why =
+          leftOutReason(outbound, name) ?? insightLeftOutReason(outbound, name);
+
+        if (why !== undefined) {
+          throw new OutboundError("Unsupported", why, {
+            provider: outbound.provider,
+          });
+        }
+
         throw new OutboundError(
           "Invalid",
           `Unknown tool "${name}".${didYouMean(

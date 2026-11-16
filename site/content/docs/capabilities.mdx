@@ -40,7 +40,7 @@ A value is `false` or something truthy, so `if (outbound.capabilities["leads.lis
 
 ## Every key
 
-`CAPABILITY_KEYS` is the list of all 49. `Capabilities` is the type of the map, and `CapabilityKey` the type of a key.
+`CAPABILITY_KEYS` is the list of all 50. `Capabilities` is the type of the map, and `CapabilityKey` the type of a key.
 
 ### Campaigns and sequences
 
@@ -96,6 +96,7 @@ Listing campaigns and reading one need no key. Every adapter can.
 | `replies.category` | `vendor`, `false` | The `category` filter on replies |
 | `replies.since` | `server`, `client`, `false` | The `since` and `until` filters on replies |
 | `replies.unread` | `server`, `client`, `false` | The `unread` filter on replies |
+| `replies.inbox` | boolean | Nothing is refused. `true` when the vendor's inbox also holds conversations in no campaign: their replies are left out of `replies.list` unless you pass `includeInbox: true`, and their messages carry a `null` `campaignRef` |
 
 `messages.body` is `full` when the vendor returns every body and `sampled` when it returns some. `replies.category` is `vendor` when the categories come from the vendor. The SDK never asks a model to classify a reply.
 

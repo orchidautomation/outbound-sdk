@@ -58,7 +58,7 @@
 
 - Stats: replied is totalMessageReplies plus totalInmailReplies. contacted is uniqueLeadsContacted and positive is autoTaggedInterested; the live API returns both but the API reference lists neither, so they are null when absent. totalMessageStarted and totalInmailStarted are not defined in the docs and are not read.
 
-- Daily stats are keyed by UTC midnight; the docs do not say which timezone buckets a day or whether endDate is inclusive. Stats need both from and to, or neither.
+- Daily stats are keyed by UTC midnight; the docs do not say which timezone buckets a day or whether endDate is inclusive. A day's contacted is null: HeyReach reports uniqueLeadsContacted as 0 on every day and counts it only over the whole range (the 2026-11-16 stress test saw 0 on each of three days and 35 for the three together), so read the range's total instead of adding days. Stats take from and to, from alone (read up to the end of today, UTC, with a note) or neither; to alone is refused.
 
 - Messages and replies are read from conversations. Checked against one live workspace on 2026-11-14: sender is ME or CORRESPONDENT, and each of 257 conversations carried its whole thread (longest read: 40 messages). Whether a longer thread is cut short is not known.
 
@@ -68,7 +68,7 @@
 
 - A message's threadId is the LinkedIn account id and the conversation id joined by a colon, because one conversation can only be read back with both. A thread read returns the whole conversation in one page and does not know its campaign, so campaignRef is null.
 
-- A message's campaign is known only when the listing is filtered to one campaign; otherwise campaignRef is null. A page is a page of conversations, so it can hold more messages than the limit asked for.
+- GetConversationsV3 lists the sender's whole LinkedIn inbox: personal messages, recruiters and inbound pitches as well as campaign conversations. A message's campaignRef is the conversation's campaignId, which HeyReach leaves out when the conversation belongs to no campaign, so such messages have a null campaignRef. replies.list returns only replies in campaign conversations unless asked for includeInbox (--include-inbox); messages.list returns every conversation. A page is a page of conversations, so it can hold more messages than the limit asked for, and fewer replies once the inbox's own conversations are left out.
 
 - A reply's category is its lead's: HeyReach's auto-tag is made from a lead's first campaign reply and stored on the lead, with no link to a message, so every reply of a conversation takes the lead's newest one (categorySource: lead). Interested is positive, Not Interested negative and Generic neutral, matched without case; any other name is unknown. Filtering replies by category is done after fetching, so a page can come back short. unread is the conversation's read flag, the same on each of its replies.
 
