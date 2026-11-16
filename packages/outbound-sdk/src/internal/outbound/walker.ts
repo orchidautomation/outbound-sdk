@@ -111,6 +111,7 @@ export class PageWalker<Item> implements ListAll<Item> {
         aborted: error.aborted,
         cause: error,
         limit: error.limit,
+        permanent: error.permanent,
         partial: {
           cursor: this.#cursor,
           items,

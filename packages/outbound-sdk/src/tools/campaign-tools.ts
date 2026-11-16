@@ -9,12 +9,20 @@ import type { Evidence } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
 import type { Json } from "../internal/json.ts";
 import { plural } from "../internal/numbers.ts";
+import type { OutboundApi } from "../internal/outbound/api.ts";
 import { countReplies, repliesByPerson } from "../internal/reply-people.ts";
 import { day, optionalRange, summarize, untrusted, weakest } from "./shared.ts";
 import type { MetricSummary, ToolDefinition } from "./shared.ts";
 
 const overviewInput = z.object({
   ...optionalRange,
+  campaign: z
+    .string()
+    .min(1)
+    .optional()
+    .describe(
+      "One campaign's ref, id or name, to read only it; status and limit are then not used. Leave out for every campaign with the status"
+    ),
   limit: z
     .number()
     .int()
@@ -27,22 +35,50 @@ const overviewInput = z.object({
     .describe("Which campaigns to include"),
 });
 
-export const campaignOverview: ToolDefinition<z.infer<typeof overviewInput>> = {
+type OverviewInput = z.infer<typeof overviewInput>;
+
+/** The one campaign asked for, or the campaigns with the status up to `limit`. */
+const readOverview = async (outbound: OutboundApi, input: OverviewInput) => {
+  if (input.campaign !== undefined) {
+    const campaign = await outbound.campaign(input.campaign).get();
+
+    return {
+      campaigns: [campaign],
+      requests: campaign.meta.requests,
+      truncated: false,
+    };
+  }
+
+  const walk = outbound.campaigns.listAll({
+    max: input.limit,
+    status: input.status,
+  });
+
+  const campaigns = await walk.toArray();
+
+  return {
+    campaigns,
+    requests: walk.meta?.requests ?? 0,
+    truncated: walk.truncated,
+  };
+};
+
+export const campaignOverview: ToolDefinition<OverviewInput> = {
   description:
-    "How every campaign is doing right now: sends, replies, positive replies, bounces and reply rate for each campaign with the given status. One vendor request per campaign. Rates are computed from counts; a null means the vendor does not report that count. meta.complete: false means limit cut the list, and meta.notes says so.",
+    "How every campaign is doing right now: sends, replies, positive replies, bounces and reply rate for each campaign with the given status, or for the one campaign given. One vendor request per campaign. Rates are computed from counts; a null means the vendor does not report that count. meta.complete: false means limit cut the list, and meta.notes says so.",
   inputSchema: overviewInput,
   name: "campaign_overview",
   needs: ["campaigns.status", "stats.campaign"],
   run: async (outbound, input) => {
-    const walk = outbound.campaigns.listAll({
-      max: input.limit,
-      status: input.status,
-    });
+    const {
+      campaigns,
+      requests: listed,
+      truncated,
+    } = await readOverview(outbound, input);
 
-    const campaigns = await walk.toArray();
     const rows: Json[] = [];
     const evidence: Evidence[] = [];
-    let requests = walk.meta?.requests ?? 0;
+    let requests = listed;
 
     const read = await mapConcurrent(campaigns, async (campaign) => ({
       campaign,
@@ -68,9 +104,9 @@ export const campaignOverview: ToolDefinition<z.infer<typeof overviewInput>> = {
     return {
       data: { campaigns: rows },
       meta: {
-        complete: !walk.truncated,
+        complete: !truncated,
         evidence: weakest(evidence),
-        notes: walk.truncated
+        notes: truncated
           ? [
               `Stopped at ${plural(rows.length, "campaign")} (limit); more ${input.status} campaigns exist.`,
             ]

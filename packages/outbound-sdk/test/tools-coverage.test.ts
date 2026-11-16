@@ -100,6 +100,25 @@ test("campaign_overview reports a cut list in meta.complete and meta.notes", asy
   assert.deepEqual(whole.meta.notes, []);
 });
 
+const campaignNames = (result: ToolSuccess) =>
+  (result.data as { campaigns: { name: string }[] }).campaigns.map(
+    (campaign) => campaign.name
+  );
+
+test("campaign_overview takes one campaign, by id or by name, as every sibling tool does", async () => {
+  const byId = await call("campaign_overview", { campaign: "cmp_extra_1" });
+  assert.deepEqual(campaignNames(byId), ["Extra one"]);
+  assert.equal(byId.meta.complete, true);
+
+  const byName = await call("campaign_overview", {
+    campaign: "extra two",
+    limit: 1,
+  });
+
+  assert.deepEqual(campaignNames(byName), ["Extra two"]);
+  assert.equal(byName.meta.complete, true);
+});
+
 test("sender_health says when limit cut the list though every sender was checked", async () => {
   const cut = await call("sender_health", { limit: 1 });
 

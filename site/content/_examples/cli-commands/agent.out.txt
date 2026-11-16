@@ -30,13 +30,20 @@ $ outbound tool winning_steps
     }
   },
   "meta": {
-    "complete": true,
+    "complete": false,
     "notes": [],
     "provider": "memory",
     "requests": 0
   },
-  "ok": true
+  "next": "Run outbound tool winning_steps --input '<JSON>' with the inputs data.parameters lists.",
+  "ok": false,
+  "error": {
+    "code": "InputRequired",
+    "message": "winning_steps needs --input. data.parameters lists what it takes",
+    "retryable": false
+  }
 }
+(exit code 2)
 
 $ outbound tool sender_health --input '{"limit":1}'
 {
