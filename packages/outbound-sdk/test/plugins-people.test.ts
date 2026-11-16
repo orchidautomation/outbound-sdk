@@ -408,9 +408,9 @@ test("without rules, one workspace is one client", async () => {
     campaigns.map((campaign) => [campaign.ref, campaign.client]),
     [
       ["mailtool:agency:c1", "agency"],
+      ["lntool:acme-linkedin:k1", "acme-linkedin"],
       ["mailtool:agency:c2", "agency"],
       ["mailtool:agency:c3", "agency"],
-      ["lntool:acme-linkedin:k1", "acme-linkedin"],
     ]
   );
   assert.deepEqual(outbound.clients.names(), []);
@@ -439,9 +439,9 @@ test("rules map tags, names and whole workspaces to clients; the rest is unassig
     campaigns.map((campaign) => [campaign.ref, campaign.client]),
     [
       ["mailtool:agency:c1", "Acme"],
+      ["lntool:acme-linkedin:k1", "Acme"],
       ["mailtool:agency:c2", "Globex"],
       ["mailtool:agency:c3", UNASSIGNED],
-      ["lntool:acme-linkedin:k1", "Acme"],
     ]
   );
   assert.deepEqual(outbound.clients.names(), ["Acme", "Globex"]);

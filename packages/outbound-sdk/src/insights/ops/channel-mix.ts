@@ -137,7 +137,8 @@ const NAMES = { email: "email", linkedin: "LinkedIn" } as const;
 
 const compare = (
   groups: readonly ChannelGroup[],
-  alpha: number
+  alpha: number,
+  read: CampaignsRead
 ): Pick<ChannelMix, "comparison" | "finding"> => {
   const [first, second] = groups;
 
@@ -149,9 +150,12 @@ const compare = (
   }
 
   if (second === undefined) {
+    // Campaigns left unread may be on the other channel, so none is claimed absent.
     return {
       comparison: null,
-      finding: `Only ${NAMES[first.channel]} campaigns were found, so there is nothing to compare.`,
+      finding: read.moreCampaignsExist
+        ? `Only ${NAMES[first.channel]} campaigns were read before max_campaigns stopped the read; campaigns left unread may be on the other channel, so raise max_campaigns to compare.`
+        : `Only ${NAMES[first.channel]} campaigns were found, so there is nothing to compare.`,
     };
   }
 
@@ -219,7 +223,8 @@ export const channelMix = defineInsight({
       ...read,
       ...compare(
         channels.map((each) => each.group),
-        options.alpha
+        options.alpha,
+        read
       ),
       byProvider: providers.map((each) => each.group),
       channels: channels.map((each) => each.group),

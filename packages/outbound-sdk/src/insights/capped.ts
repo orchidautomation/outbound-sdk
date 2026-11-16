@@ -116,21 +116,81 @@ const noneMatched = (
 };
 
 /**
- * The campaigns in the given states, up to `max` in all. Asks the vendor per
- * state when it can filter, and filters after reading when it cannot, so
- * there the cap counts every campaign read. A state read after the cap is
- * reached still asks for its first page, so campaigns left out are reported
- * instead of silently dropped.
+ * Campaigns in the states asked for, and every campaign when the read had
+ * to list them all to filter by state.
  */
-export const readCampaignsIn = async (
+interface CampaignsIn extends Capped<Campaign> {
+  readonly every?: readonly Campaign[];
+}
+
+/**
+ * When the read found no campaign in the states asked for and nothing was
+ * left unread, counts the others: from the campaigns already listed when
+ * there are any, otherwise from one page of the listing.
+ */
+const countOthers = async (
   context: InsightContext,
-  statuses: readonly CampaignStatus[],
-  max: number,
-  input = "max_campaigns"
-): Promise<Capped<Campaign>> => {
+  wanted: readonly CampaignStatus[],
+  every: readonly Campaign[] | undefined
+): Promise<void> => {
+  if (every !== undefined) {
+    noneMatched(context, wanted, every, false);
+
+    return;
+  }
+
+  const page = await settledPage(context.outbound.campaigns.list());
+
+  if (page === null) {
+    context.partial(
+      `No campaign is ${either(wanted)}, so nothing was checked; a request cap stopped the count of the others.`
+    );
+
+    return;
+  }
+
+  noneMatched(context, wanted, context.page(page), page.cursor !== undefined);
+};
+
+/**
+ * How `max` is shared among tools that have `counts` campaigns each: the
+ * tools with fewer than an even share keep all theirs, and the rest split
+ * what they leave evenly.
+ */
+const fairShares = (counts: readonly number[], max: number): number[] => {
+  const shares = counts.map(() => 0);
+  let left = max;
+
+  const order = counts
+    .map((_, index) => index)
+    .toSorted((a, b) => (counts[a] ?? 0) - (counts[b] ?? 0));
+
+  for (const [at, index] of order.entries()) {
+    const share = Math.min(
+      counts[index] ?? 0,
+      Math.floor(left / (order.length - at))
+    );
+
+    shares[index] = share;
+    left -= share;
+  }
+
+  return shares;
+};
+
+/**
+ * The campaigns in the given states of one tool, up to `cap.max`. Asks the
+ * vendor per state when it can filter, and filters after reading when it
+ * cannot, so there the cap counts every campaign read. A state read after
+ * the cap is reached still asks for its first page, so campaigns left out
+ * are reported instead of silently dropped.
+ */
+const readOne = async (
+  context: InsightContext,
+  wanted: readonly CampaignStatus[],
+  cap: Cap
+): Promise<CampaignsIn> => {
   const { campaigns } = context.outbound;
-  const wanted = [...new Set(statuses)];
-  const cap: Cap = { input, max, what: "campaigns" };
 
   if (context.outbound.capabilities["campaigns.status"] === false) {
     const every = await readCapped(
@@ -143,13 +203,7 @@ export const readCampaignsIn = async (
       wanted.includes(campaign.status)
     );
 
-    context.campaignsFound(items.length);
-
-    if (items.length === 0 && !every.capped) {
-      noneMatched(context, wanted, every.items, false);
-    }
-
-    return { capped: every.capped, items };
+    return { capped: every.capped, every: every.items, items };
   }
 
   const found: Campaign[] = [];
@@ -161,31 +215,93 @@ export const readCampaignsIn = async (
       context,
       (room) => campaigns.listAll({ max: room, status }),
       cap,
-      max - found.length
+      cap.max - found.length
     );
 
     found.push(...listed.items);
     capped ||= listed.capped;
   }
 
-  context.campaignsFound(found.length);
+  return { capped, items: found };
+};
 
-  if (found.length === 0 && !capped) {
-    const page = await settledPage(campaigns.list());
+/**
+ * On a combined instance, each tool is read on its own, up to `cap.max`,
+ * and the cap is then shared among them, so a tool with many campaigns
+ * cannot take every place before another tool is read.
+ */
+const readShared = async (
+  context: InsightContext,
+  wanted: readonly CampaignStatus[],
+  cap: Cap
+): Promise<CampaignsIn> => {
+  const { outbound } = context;
+  const tools = await context.all(outbound.workspaces.listAll());
 
-    if (page === null) {
-      context.partial(
-        `No campaign is ${either(wanted)}, so nothing was checked; a request cap stopped the count of the others.`
-      );
-    } else {
-      noneMatched(
-        context,
-        wanted,
-        context.page(page),
-        page.cursor !== undefined
-      );
-    }
+  const read = await Promise.all(
+    tools.map(async (tool) => {
+      const label = `${tool.provider}:${tool.workspaceId}`;
+
+      return {
+        label,
+        read: await readOne(
+          { ...context, outbound: outbound.workspace(label) },
+          wanted,
+          cap
+        ),
+      };
+    })
+  );
+
+  const shares = fairShares(
+    read.map((each) => each.read.items.length),
+    cap.max
+  );
+
+  const items = read.flatMap((each, index) =>
+    each.read.items.slice(0, shares[index])
+  );
+
+  const dropped = read.some(
+    (each, index) => each.read.items.length > (shares[index] ?? 0)
+  );
+
+  if (dropped) {
+    context.partial(capNote(cap));
+    context.note(
+      `${cap.input ?? "The cap"} is shared among the tools: ${read.map((each, index) => `${each.label} ${shares[index] ?? 0}`).join(", ")}.`
+    );
   }
 
-  return { capped, items: found };
+  return {
+    capped: dropped || read.some((each) => each.read.capped),
+    items,
+  };
+};
+
+/**
+ * The campaigns in the given states, up to `max` in all. On a combined
+ * instance `max` is shared among its tools, so each gets its share.
+ */
+export const readCampaignsIn = async (
+  context: InsightContext,
+  statuses: readonly CampaignStatus[],
+  max: number,
+  input = "max_campaigns"
+): Promise<Capped<Campaign>> => {
+  const wanted = [...new Set(statuses)];
+  const cap: Cap = { input, max, what: "campaigns" };
+
+  const read =
+    context.outbound.provider === "combined"
+      ? await readShared(context, wanted, cap)
+      : await readOne(context, wanted, cap);
+
+  context.campaignsFound(read.items.length);
+
+  if (read.items.length === 0 && !read.capped) {
+    await countOthers(context, wanted, read.every);
+  }
+
+  return { capped: read.capped, items: read.items };
 };
