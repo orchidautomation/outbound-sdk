@@ -6,6 +6,7 @@
 import { execFile } from "node:child_process";
 import path from "node:path";
 import process from "node:process";
+import { setTimeout as setTimeoutPromise } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
@@ -26,6 +27,68 @@ export const STANDALONE: ReadonlyMap<string, readonly string[]> = new Map([
 
 const execFileAsync = promisify(execFile);
 
+/** npm failed. `code` is npm's error code, such as `E404`, when it printed one. */
+export class NpmFailedError extends Error {
+  readonly code: string | undefined;
+
+  constructor(message: string, code: string | undefined, cause: unknown) {
+    super(message, { cause });
+    this.name = "NpmFailedError";
+    this.code = code;
+  }
+}
+
+/** What npm said when it failed. */
+interface NpmReason {
+  /** npm's error code, such as `E404`. */
+  readonly code: string | undefined;
+  /** The first line that says what went wrong. */
+  readonly said: string;
+}
+
+const NPM_LINE = /^npm (?:error|ERR!) ?(?<said>.*)$/u;
+const NPM_CODE = /^code (?<code>E[A-Z0-9]+)$/u;
+
+// Lines npm prints about the failed call before saying what went wrong.
+const NPM_DETAIL = /^(?:code|syscall|path|errno|signal|cmd|cwd|command) /u;
+
+/**
+ * npm's code and the first line that says what went wrong. npm ends every
+ * failure with "A complete log of this run can be found in: ...", so the last
+ * line says nothing. npm starts its explanation lines with a tag, such as
+ * `404`, `notarget` or the code in lower case, which is dropped.
+ */
+export const npmReason = (stderr: string): NpmReason => {
+  const lines = stderr
+    .split("\n")
+    .map((line) => NPM_LINE.exec(line.trim())?.groups?.said?.trim() ?? "")
+    .filter((line) => line !== "" && !line.startsWith("A complete log"));
+
+  const code = lines
+    .map((line) => NPM_CODE.exec(line)?.groups?.code)
+    .find((found) => found !== undefined);
+
+  const tags = new Set(["notarget", code?.toLowerCase()]);
+
+  const untag = (line: string) => {
+    const [first = "", ...rest] = line.split(" ");
+
+    return /^\d{3}$/u.test(first) || tags.has(first)
+      ? rest.join(" ").trim()
+      : line;
+  };
+
+  const said =
+    lines
+      .filter((line) => !NPM_DETAIL.test(line))
+      .map(untag)
+      .find((line) => line !== "") ??
+    stderr.trim().split("\n").at(-1) ??
+    "";
+
+  return { code, said };
+};
+
 export const runNpm: NpmRunner = async (args) => {
   try {
     // npm is npm.cmd on Windows, which only a shell can start.
@@ -39,12 +102,67 @@ export const runNpm: NpmRunner = async (args) => {
     const stderr =
       error instanceof Error && "stderr" in error ? String(error.stderr) : "";
 
-    const said = stderr.trim().split("\n").at(-1) ?? "";
+    const { code, said } = npmReason(stderr);
+    const label = code === undefined ? "" : ` (${code})`;
 
-    throw new Error(
-      `npm ${args.join(" ")} failed${said === "" ? "" : `: ${said}`}`,
-      { cause: error }
+    throw new NpmFailedError(
+      `npm ${args.join(" ")} failed${label}${said === "" ? "" : `: ${said}`}`,
+      code,
+      error
     );
+  }
+};
+
+/** Waits this many milliseconds. */
+export type Sleep = (ms: number) => Promise<void>;
+
+export const sleep: Sleep = async (ms) => {
+  await setTimeoutPromise(ms);
+};
+
+// npm lists a new version minutes before its tarball can be downloaded: 0.7.0
+// was listed at once and served 9 minutes later. Until then an install fails
+// with E404 (tarball) or ETARGET (version not yet in the metadata npm read).
+const NOT_YET_SERVED = new Set(["E404", "ETARGET"]);
+const RETRY_EVERY_MS = 30_000;
+const RETRY_FOR_MS = 15 * 60_000;
+
+const installGlobal = async (
+  npm: NpmRunner,
+  say: (text: string) => void,
+  wait: Sleep,
+  version: string
+): Promise<void> => {
+  const target = `${PACKAGE}@${version}`;
+  const tries = RETRY_FOR_MS / RETRY_EVERY_MS;
+
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      // After a miss, ask the registry again instead of npm's cached metadata.
+      // oxlint-disable-next-line no-await-in-loop -- each try waits for the one before
+      await npm(
+        attempt === 1
+          ? ["install", "--global", target]
+          : ["install", "--global", "--prefer-online", target]
+      );
+
+      return;
+    } catch (error) {
+      const code = error instanceof NpmFailedError ? error.code : undefined;
+
+      if (code === undefined || !NOT_YET_SERVED.has(code) || attempt > tries) {
+        throw error;
+      }
+
+      if (attempt === 1) {
+        say(
+          `npm lists ${version} but is not serving it yet, which happens for a few minutes after a release. Trying again every ${RETRY_EVERY_MS / 1000} seconds for up to ${RETRY_FOR_MS / 60_000} minutes; Ctrl-C stops.`
+        );
+      }
+
+      // oxlint-disable-next-line no-await-in-loop -- the wait between tries is the point
+      await wait(RETRY_EVERY_MS);
+    }
   }
 };
 
@@ -92,7 +210,8 @@ const installKind = async (npm: NpmRunner, dir: string): Promise<Install> => {
 /** Checks npm for a newer version and updates a global install. */
 export const update = async (
   npm: NpmRunner,
-  say: (text: string) => void
+  say: (text: string) => void,
+  wait: Sleep = sleep
 ): Promise<void> => {
   const installed = packageVersion();
   const viewed = await npm(["view", PACKAGE, "version"]);
@@ -120,8 +239,8 @@ export const update = async (
     return;
   }
 
-  say(`Running "npm install --global ${PACKAGE}@latest"...`);
-  await npm(["install", "--global", `${PACKAGE}@latest`]);
+  say(`Running "npm install --global ${PACKAGE}@${latest}"...`);
+  await installGlobal(npm, say, wait, latest);
   say(`Updated ${PACKAGE} to ${latest}.`);
 };
 
@@ -134,7 +253,8 @@ export const runSelf = async (
   name: string | undefined,
   flags: { readonly help?: boolean; readonly version?: boolean },
   npm: NpmRunner,
-  say: (text: string) => void
+  say: (text: string) => void,
+  wait: Sleep = sleep
 ): Promise<boolean> => {
   if (name === "version" || (name === undefined && flags.version === true)) {
     say(packageVersion());
@@ -143,7 +263,7 @@ export const runSelf = async (
   }
 
   if (name === "update" && flags.help !== true) {
-    await update(npm, say);
+    await update(npm, say, wait);
 
     return true;
   }
