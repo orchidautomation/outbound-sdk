@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 
-import { sumCounts } from "../../internal/metrics.ts";
+import { sumMeasured } from "../../internal/metrics.ts";
 import type { CampaignsRead } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import { rangeFields } from "../fields.ts";
@@ -64,7 +64,7 @@ const groupOf = (
 
   return {
     group: {
-      ...totalsOf(sumCounts(counts)),
+      ...totalsOf(sumMeasured(counts)),
       ...rates,
       campaigns: entries.length,
       tag,

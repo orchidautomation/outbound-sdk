@@ -142,6 +142,8 @@ export const fields: FieldDeclaration = {
     repliedTotal: false,
     repliedAuto: false,
     stepIndex: false,
+    // LinkedIn has no open or click tracking.
+    tracking: false,
     unsubscribed: false,
     variantKey: false,
   },

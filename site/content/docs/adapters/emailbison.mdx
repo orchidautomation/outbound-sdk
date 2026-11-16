@@ -75,12 +75,14 @@ Every list answers 15 records per page, and no page size can be asked for. Lists
 | Find a person by email | 1 |
 | Sender health | 2: the sender, then its warmup over the last 7 days |
 | A lead's timeline | 1 for its sent emails, then 1 per 15 inbox messages |
-| A campaign's step rows | 2: the campaign's stats, then its steps |
+| A campaign's totals or days | 2: the stats, then the campaign for its open tracking |
+| A campaign's step rows | 3: the campaign's stats, its steps, then the campaign for its open tracking |
 | A sender's dated totals | 1: its daily events, added up |
 | Any other listing | 1 per page of 15 |
 
 ## Vendor behavior that affects your code
 
+- **Opens are `null` on a campaign that did not track them.** With `open_tracking` off and no opens in the range, a campaign's and its steps' `opened` and `openedTotal` are `null` ([why](/docs/api/stats#opens-and-clicks-that-were-not-measured)). Clicks are not a campaign setting, so they are left as read and `tracking.clicks` is `null`. Workspace and sender rows are not judged: no read gives every campaign's counts for a range without a request per campaign, so they keep EmailBison's numbers and carry no `tracking`.
 - **Point it at your instance.** Without `baseUrl` or `EMAILBISON_BASE_URL`, requests go to `https://dedi.emailbison.com`, the reference's server.
 - **A lead's status is its email verification.** `bounced` and `unsubscribed` come from it; `replied` is a reply count above 0. `progress` is known only for a campaign's leads.
 - **Engagement is across every campaign**: `overall_stats` has total opens and replies, and no clicks or dates.

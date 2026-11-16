@@ -1,0 +1,7 @@
+---
+"outbound-sdk": minor
+---
+
+Report opens and clicks a campaign did not measure as `null`, not 0 (OUT-89). A correctness fix: with open tracking off and no opens in the range, `opened` and `openedTotal` were `0`, which reads as "nobody opened"; they are now `null`, as the docs already promised, and so is the open rate. Clicks follow the same rule with `clicked` and `clickedTotal`. A campaign whose tracking is off now but that recorded opens in the range keeps its numbers. A workspace, mailbox or other total over campaigns with mixed tracking reports `null` instead of a sum of the tracked campaigns only. Read `stats({ scope: "campaign" })` for a row per campaign, each judged on its own.
+
+`MetricRow` gains an optional `tracking: { opens, clicks }` field, each `"on"`, `"off"`, `"mixed"` or `null`, saying why a count is `null`. `schemaVersion` stays 1. Instantly and Smartlead fill it on every stats read; EmailBison on a campaign's and its steps' rows, for opens only. Reading the settings costs extra requests, listed on each adapter page: one for a campaign, and the per-campaign report plus the campaign listing for a workspace or mailbox. When a settings read fails, the counts are as before. Insights that add campaigns up (`tag_rollup`, `channel_mix`, `period_comparison`, `client_report`, `variant_test` and the others built on them) treat an unmeasured open or click count as not measured instead of adding up the rest; the public `sumCounts` is unchanged.

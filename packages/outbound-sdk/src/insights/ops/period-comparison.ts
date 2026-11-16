@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Campaign, CampaignStatus } from "../../internal/entities.ts";
-import { sumCounts } from "../../internal/metrics.ts";
+import { sumMeasured } from "../../internal/metrics.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
 import { campaignsReadOf, readCampaignsIn } from "../capped.ts";
 import type { CampaignsRead } from "../capped.ts";
@@ -214,7 +214,7 @@ export const compareAcross = (
   previous: readonly MetricCounts[],
   alpha: number
 ): ComparedAcross => {
-  const counts = [sumCounts(current), sumCounts(previous)] as const;
+  const counts = [sumMeasured(current), sumMeasured(previous)] as const;
   const basis = periodBasis(...counts);
   const now = ratesAcross(current, baseIn(basis));
   const before = ratesAcross(previous, baseIn(basis));

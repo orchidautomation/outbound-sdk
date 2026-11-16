@@ -3,7 +3,7 @@
 import { z } from "zod";
 
 import type { Channel } from "../../internal/entities.ts";
-import { sumCounts } from "../../internal/metrics.ts";
+import { sumMeasured } from "../../internal/metrics.ts";
 import type { CampaignsRead } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import { rangeFields } from "../fields.ts";
@@ -88,7 +88,7 @@ const groupOf = (
 
   return {
     group: {
-      ...totalsOf(sumCounts(counts)),
+      ...totalsOf(sumMeasured(counts)),
       acceptance: channel === "linkedin" ? acceptance.measured : null,
       campaigns: entries.length,
       channel,

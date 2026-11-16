@@ -119,6 +119,8 @@ for (const [label, data] of [
 const OVER_CEILING: Readonly<Record<string, string>> = {
   bounce_watch:
     "50 campaigns, each over the bounce rate with 10 senders to read, is 600 requests at most",
+  client_report:
+    "on Instantly each stats read also reads the campaign's tracking settings (OUT-89), so the default campaigns, each read four times and the active ones with their leads, can pass 500",
 };
 
 test("every insight's default cap at its default inputs fits under the insight tools' ceiling, but the ones named", () => {

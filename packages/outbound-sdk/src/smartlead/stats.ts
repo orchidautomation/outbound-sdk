@@ -14,6 +14,7 @@ import {
   objects,
   text,
 } from "../internal/json.ts";
+import { applyTracking, ownTracking } from "../internal/tracking.ts";
 import type { SmartleadClient } from "./client.ts";
 import {
   dayRow,
@@ -27,6 +28,12 @@ import {
 import type { RowScope } from "./map-stats.ts";
 import { unwrap } from "./map.ts";
 import { objectOf } from "./shared.ts";
+import {
+  campaignFlags,
+  everyCampaignFlags,
+  reportTracking,
+  workspaceTracking,
+} from "./stats-tracking.ts";
 
 const DAY_MS = 86_400_000;
 
@@ -184,17 +191,27 @@ const everyCampaign = async (
     "campaign_wise_performance"
   );
 
+  // Each campaign is judged on its own settings, from the campaign list.
+  const flags = await everyCampaignFlags(client, ctx);
+
   return objects(campaigns).flatMap((campaign) => {
     const scopeId = text(campaign.id);
 
-    return scopeId === null
-      ? []
-      : [
-          overallRow(
-            { ...client.identity, scope: "campaign", scopeId },
-            campaign
-          ),
-        ];
+    if (scopeId === null) {
+      return [];
+    }
+
+    const row = overallRow(
+      { ...client.identity, scope: "campaign", scopeId },
+      campaign
+    );
+
+    return applyTracking(
+      [row],
+      flags === null
+        ? null
+        : [{ ...reportTracking(campaign, flags.get(scopeId)), sent: null }]
+    );
   });
 };
 
@@ -263,8 +280,8 @@ const senderTotal = async (
   ];
 };
 
-/** Reads the analytics endpoint that matches the scope and grouping. */
-export const readStats = async (
+/** Reads the counts, before tracking is judged. */
+const readCounts = async (
   client: SmartleadClient,
   ctx: AdapterContext,
   query: StatsQuery
@@ -307,3 +324,39 @@ export const readStats = async (
     ? await campaignTotal(client, ctx, scope, query)
     : await workspaceTotal(client, ctx, scope, query);
 };
+
+/**
+ * Rows for a campaign or its steps are judged on that campaign's settings;
+ * workspace and mailbox rows on every campaign that sent in the range.
+ */
+const judged = async (
+  client: SmartleadClient,
+  ctx: AdapterContext,
+  query: StatsQuery,
+  rows: MetricRow[]
+): Promise<MetricRow[]> => {
+  if (query.scope === "campaign" || query.scope === "step") {
+    if (query.scopeId === undefined) {
+      return rows;
+    }
+
+    const flags = await campaignFlags(client, ctx, query.scopeId);
+
+    return applyTracking(
+      rows,
+      flags === null ? null : [ownTracking(flags, rows)]
+    );
+  }
+
+  const range = resolveRange(query, query.by === "day");
+
+  return applyTracking(rows, await workspaceTracking(client, ctx, range));
+};
+
+/** Reads the analytics endpoint that matches the scope and grouping. */
+export const readStats = async (
+  client: SmartleadClient,
+  ctx: AdapterContext,
+  query: StatsQuery
+): Promise<MetricRow[]> =>
+  await judged(client, ctx, query, await readCounts(client, ctx, query));

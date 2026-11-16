@@ -91,7 +91,7 @@ Each insight states what it costs as arithmetic over the reads it makes and the 
   ../../_examples/insights-index/costs.out.txt
 </include>
 
-A `-` is an insight that adapter cannot serve. `bounceWatch` is the one whose default inputs can cost more than an [insight tool call](/docs/tools#request-caps) may spend, 500 requests: 50 campaigns, each over the bounce rate with 10 senders to read, is about 600. Such a tool call stops at 500, and its result names the `max_campaigns` to ask for.
+A `-` is an insight that adapter cannot serve. `bounceWatch` and `clientReport` are the ones whose default inputs can cost more than an [insight tool call](/docs/tools#request-caps) may spend, 500 requests: for `bounceWatch`, 50 campaigns, each over the bounce rate with 10 senders to read, is about 600; for `clientReport` on Instantly, each stats read also reads the campaign's [tracking settings](/docs/api/stats#opens-and-clicks-that-were-not-measured). Such a tool call stops at 500, and its result names the `max_campaigns` to ask for.
 
 ### Refused before the first request
 

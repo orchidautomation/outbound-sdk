@@ -185,6 +185,35 @@ export const sumCounts = (rows: readonly MetricCounts[]): MetricCounts => {
   return total;
 };
 
+const TRACKED_KEYS = [
+  "clicked",
+  "clickedTotal",
+  "opened",
+  "openedTotal",
+] as const satisfies readonly (keyof MetricCounts)[];
+
+/**
+ * `sumCounts` for a rollup that is read as one total. An open or click count
+ * is `null` when any row that sent mail has it `null`: that row did not
+ * measure it, so adding up the others would understate the rate without
+ * saying so. Internal: the public `sumCounts` keeps every count it can.
+ */
+export const sumMeasured = (rows: readonly MetricCounts[]): MetricCounts => {
+  const total = sumCounts(rows);
+  const sending = rows.filter((row) => (row.sent ?? 0) > 0);
+
+  for (const key of TRACKED_KEYS) {
+    if (
+      total[key] !== null &&
+      sending.some((row) => row[key] === null || row[key] === undefined)
+    ) {
+      total[key] = null;
+    }
+  }
+
+  return total;
+};
+
 /** What a row of counts is for: a workspace, a campaign, a step or a sender. */
 export interface RowScope extends Identity {
   readonly scope: MetricScope;

@@ -123,7 +123,11 @@ test("smartlead: every campaign's totals come from the campaign performance repo
   );
 
   const url = new URL(requests[0]?.url ?? "");
-  assert.equal(requests.length, 1);
+  assert.deepEqual(
+    requests.map((request) => new URL(request.url).pathname),
+    ["/api/v1/analytics/campaign/overall-stats", "/api/v1/campaigns/"],
+    "then the campaign list, once, for every campaign's tracking"
+  );
   assert.equal(url.pathname, "/api/v1/analytics/campaign/overall-stats");
   assert.equal(url.searchParams.get("start_date"), "2024-01-01");
   assert.equal(url.searchParams.get("end_date"), "2024-01-31");

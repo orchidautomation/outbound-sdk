@@ -9,7 +9,7 @@
 import { mapConcurrent } from "../internal/concurrency.ts";
 import type { OperationOptions } from "../internal/engine/engine.ts";
 import type { Campaign } from "../internal/entities.ts";
-import { emptyCounts, sumCounts } from "../internal/metrics.ts";
+import { emptyCounts, sumMeasured } from "../internal/metrics.ts";
 import type { MetricCounts } from "../internal/metrics.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
 import type { OutboundRecord } from "../internal/outbound/operations.ts";
@@ -234,7 +234,7 @@ const clientStats = async (
     .map(([client, rows]) => ({
       campaigns: rows.length,
       client,
-      counts: rows.length === 0 ? emptyCounts() : sumCounts(rows),
+      counts: rows.length === 0 ? emptyCounts() : sumMeasured(rows),
     }))
     .toSorted((left, right) => left.client.localeCompare(right.client));
 

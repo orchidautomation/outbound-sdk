@@ -6,12 +6,24 @@
 // - campaign: POST /api/campaigns/{id}/stats, by day GET .../line-area-chart-stats
 // - sender: its record (lifetime), or GET /api/campaign-events/stats by day
 // - step: sequence_step_stats of the campaign's stats, placed by its steps
+//
+// A campaign's rows and its steps' are judged on the campaign's open tracking
+// (`open_tracking` on GET /api/campaigns/{id}, one more request). Clicks are
+// not a campaign setting, so they are left as read. Workspace and sender rows
+// are not judged: no read gives every campaign's counts for a range without a
+// request per campaign.
 
 import type { AdapterContext, StatsQuery } from "../internal/adapter.ts";
 import type { MetricRow } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
+import { flag } from "../internal/json.ts";
 import { metricRow } from "../internal/metrics.ts";
 import type { RowScope } from "../internal/metrics.ts";
+import {
+  applyTracking,
+  ownTracking,
+  unlessFailed,
+} from "../internal/tracking.ts";
 import type { EmailBisonClient } from "./client.ts";
 import { stepPlaces } from "./map-sequence.ts";
 import {
@@ -129,6 +141,26 @@ const readSteps = async (
   return stepRows(scope, summary, stepPlaces(steps));
 };
 
+/** A campaign's rows, judged on its open tracking. */
+const judged = async (
+  client: EmailBisonClient,
+  ctx: AdapterContext,
+  scope: RowScope,
+  rows: MetricRow[]
+): Promise<MetricRow[]> => {
+  const path = `/api/campaigns/${id(scope)}`;
+
+  const flags = await unlessFailed(async () => ({
+    clicks: null,
+    opens: flag(client.one(await client.get(ctx, path), path).open_tracking),
+  }));
+
+  return applyTracking(
+    rows,
+    flags === null ? null : [ownTracking(flags, rows)]
+  );
+};
+
 export const readStats = async (
   client: EmailBisonClient,
   ctx: AdapterContext,
@@ -160,7 +192,11 @@ export const readStats = async (
       );
     }
 
-    return await readDaily(client, ctx, scope, rangeOf(query, true, now));
+    const days = await readDaily(client, ctx, scope, rangeOf(query, true, now));
+
+    return query.scope === "campaign"
+      ? await judged(client, ctx, scope, days)
+      : days;
   }
 
   const range = rangeOf(query, false, now);
@@ -170,16 +206,21 @@ export const readStats = async (
   }
 
   if (query.scope === "step") {
-    return await readSteps(client, ctx, scope, range);
+    return await judged(
+      client,
+      ctx,
+      scope,
+      await readSteps(client, ctx, scope, range)
+    );
   }
 
   if (query.scope === "campaign") {
-    return [
+    return await judged(client, ctx, scope, [
       metricRow(
         scope,
         summaryCounts(await campaignSummary(client, ctx, scope, range))
       ),
-    ];
+    ]);
   }
 
   const path = "/api/workspaces/v1.1/stats";

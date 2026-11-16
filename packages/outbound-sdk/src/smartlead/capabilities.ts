@@ -200,7 +200,9 @@ export const costs = {
   "sequence.subsequences": { pageSize: 1, perPage: 1, perWalk: 1 },
   // A mailbox's totals cost two: the mailbox for its address, then the list.
   // Daily rows cost two: the day-wise counts, then the positive replies.
-  stats: { perPage: 1 },
+  // The counts (1 or 2 requests), then the tracking settings: the campaign,
+  // or for a workspace or mailbox the per-campaign report and the campaign list.
+  stats: { perPage: 2, perPageAtMost: 4 },
   "tags.list": { perPage: 1 },
   // One campaign per page; without a campaign, the first page also reads the
   // campaign list.

@@ -216,7 +216,12 @@ test("emailbison: step rows place each step id by the sequence, one row per vari
   );
   assert.deepEqual(
     requests.map((request) => urlOf(request).pathname),
-    ["/api/campaigns/1/stats", "/api/campaigns/v1.1/1/sequence-steps"]
+    [
+      "/api/campaigns/1/stats",
+      "/api/campaigns/v1.1/1/sequence-steps",
+      "/api/campaigns/1",
+    ],
+    "the campaign is read last, for its open tracking"
   );
 });
 

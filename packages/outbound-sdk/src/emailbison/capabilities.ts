@@ -183,7 +183,8 @@ export const costs = {
   "senders.list": { pageSize: PAGE_SIZE, perPage: 1 },
   "sequence.get": { perPage: 1 },
   // Step rows cost two: the campaign's stats, then its steps.
-  stats: { perPage: 1 },
+  // A campaign or its steps add the campaign, for its open tracking.
+  stats: { perPage: 1, perPageAtMost: 3 },
   "tags.list": { perPage: 1 },
   "webhooks.list": { pageSize: PAGE_SIZE, perPage: 1 },
   "workspaces.list": { perPage: 1 },
