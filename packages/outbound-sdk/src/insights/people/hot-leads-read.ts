@@ -12,7 +12,6 @@ import { OutboundError } from "../../internal/errors.ts";
 import { emailAddress } from "../../internal/json.ts";
 import { parseRef } from "../../internal/ref.ts";
 import { confirmCampaign } from "../campaign.ts";
-import { maskingOf } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { ADDRESSES_MASKED, addressesMasked, refsOf } from "./auto-replies.ts";
 
@@ -82,15 +81,6 @@ const windowReplies = async (
   if (!outbound.capabilities["replies.list"]) {
     context.note(
       "This tool cannot list replies, so leads were ranked from the lead records alone."
-    );
-
-    return null;
-  }
-
-  // Under `mask` every address in a ref reads the same, so a reply names no one.
-  if (addressesMasked(context) && maskingOf(outbound)?.strategy === "mask") {
-    context.partial(
-      `${ADDRESSES_MASKED} replies were not matched to leads: the leads that replied within recency_days were not looked for, and automatic replies were not told from people.`
     );
 
     return null;

@@ -1,9 +1,9 @@
 // hot_leads under the redact plugin, the MCP default (OUT-111, OUT-113).
 // Instantly names a reply's lead by address, and redact masks addresses, so
-// under the default `mask` every reply names the same masked ref and nothing
-// links a reply to its lead, and under `hash` a reply's lead cannot be read
-// back. Those reads say so and mark the answer partial; the leads Instantly
-// labels positive are still found by its own filter.
+// a reply's lead cannot be looked up at the vendor. That read says so and
+// marks the answer partial. Each person keeps one masked token (OUT-122), so
+// replies still match the leads that were read, and the leads Instantly labels
+// positive are still found by its own filter.
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -22,9 +22,6 @@ const NOW = Date.parse("2026-11-16T12:00:00.000Z");
 
 const NOT_LOOKED_UP =
   "The redact plugin masks email addresses, which a reply can name its lead by, so leads that replied within recency_days and were not otherwise listed were not looked for.";
-
-const NOT_MATCHED =
-  "The redact plugin masks email addresses, which a reply can name its lead by, so replies were not matched to leads: the leads that replied within recency_days were not looked for, and automatic replies were not told from people.";
 
 const repliers = (
   fixture("instantly", "listLeadsByEmail.repliers.json") as {
@@ -108,42 +105,30 @@ test("hot_leads without redact finds the lead that replied and the lead labelled
   assert.equal(result.meta.complete, true, result.meta.notes.join(" "));
 });
 
-test("hot_leads under a masking redact says it read no replies, and still ranks the lead labelled positive", async () => {
-  const { lookups, run, unrouted } = build([redact()]);
-  const result = await run();
+for (const [strategy, options] of [
+  ["mask", {}],
+  ["hash", { strategy: "hash" }],
+] as const) {
+  test(`hot_leads under a ${strategy} redact says it did not look up the lead that replied, and still matches replies`, async () => {
+    const { lookups, run, unrouted } = build([redact(options)]);
+    const result = await run();
 
-  assert.deepEqual(unrouted, []);
-  assert.deepEqual(lookups(), [], "no lead is looked up by a masked address");
-  assert.equal(result.data.totals.repliesRead, 0);
-  assert.equal(result.data.totals.fromReplies, 0);
-  assert.equal(result.meta.complete, false);
-  assert.ok(
-    result.meta.notes.includes(NOT_MATCHED),
-    result.meta.notes.join(" ")
-  );
-  assert.deepEqual(
-    result.data.leads.map((lead) => [lead.email, lead.interest]),
-    [["[redacted]", "Interested"]]
-  );
-});
-
-test("hot_leads under a hashing redact says it did not look up the lead that replied, and still matches replies", async () => {
-  const { lookups, run, unrouted } = build([redact({ strategy: "hash" })]);
-  const result = await run();
-
-  assert.deepEqual(unrouted, []);
-  assert.deepEqual(lookups(), [], "no lead is looked up by a hashed address");
-  assert.equal(result.data.totals.repliesRead, 1);
-  assert.equal(result.data.totals.fromReplies, 0);
-  assert.equal(result.meta.complete, false);
-  assert.ok(
-    result.meta.notes.includes(NOT_LOOKED_UP),
-    result.meta.notes.join(" ")
-  );
-  assert.ok(!result.meta.notes.includes(NOT_MATCHED));
-  assert.equal(result.data.leads.length, 1);
-  assert.ok(
-    result.data.leads.every((lead) => lead.email !== "person31@example.com"),
-    "the address stays masked"
-  );
-});
+    assert.deepEqual(unrouted, []);
+    assert.deepEqual(lookups(), [], "no lead is looked up by a masked address");
+    assert.equal(result.data.totals.repliesRead, 1);
+    assert.equal(result.data.totals.fromReplies, 0);
+    assert.equal(result.meta.complete, false);
+    assert.ok(
+      result.meta.notes.includes(NOT_LOOKED_UP),
+      result.meta.notes.join(" ")
+    );
+    assert.deepEqual(
+      result.data.leads.map((lead) => lead.interest),
+      ["Interested"]
+    );
+    assert.ok(
+      result.data.leads.every((lead) => lead.email !== "person31@example.com"),
+      "the address stays masked"
+    );
+  });
+}
