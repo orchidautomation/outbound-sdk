@@ -237,6 +237,7 @@ export const leadGet = (core: Core): GetSpec<Lead> => ({
 export const messageList = (core: Core): ListSpec<Message, MessageFilters> => ({
   action: "messages.list",
   takes: {
+    byHand: true,
     campaignId: true,
     include: true,
     leadId: true,
@@ -247,6 +248,14 @@ export const messageList = (core: Core): ListSpec<Message, MessageFilters> => ({
   keyOf: refOf,
   prepare: (filters) => {
     requireCapability(core.gate, "messages.list", "Listing messages");
+
+    if (filters.byHand !== undefined) {
+      requireCapability(
+        core.gate,
+        "messages.byHand",
+        "Listing only the messages sent by hand"
+      );
+    }
 
     if (filters.threadId !== undefined) {
       requireCapability(
@@ -269,6 +278,7 @@ export const messageList = (core: Core): ListSpec<Message, MessageFilters> => ({
     }
 
     return {
+      byHand: filters.byHand,
       campaignId: filters.campaignId,
       include: filters.include,
       leadId: filters.leadId,
@@ -280,6 +290,7 @@ export const messageList = (core: Core): ListSpec<Message, MessageFilters> => ({
   toOperation: (filters, page) => ({
     kind: "messages.list",
     query: {
+      byHand: filters.byHand,
       campaignId: filters.campaignId,
       includeBody: wantsBody(filters.include),
       leadId: filters.leadId,

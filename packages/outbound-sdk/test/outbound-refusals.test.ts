@@ -68,6 +68,7 @@ test("a capability refusal rejects the promise on every handle method, lookup an
     ["leads.get", () => lead.get()],
     ["leads.timeline", () => lead.timeline()],
     ["messages.byThread", () => outbound.thread("thr_1").messages()],
+    ["messages.byHand", () => outbound.messages.list({ byHand: true })],
     ["senders.get", () => outbound.senders.get("mbx_1")],
     ["senders.get", () => outbound.senders.exists("mbx_1")],
     ["leads.get", () => outbound.leads.getMany(["lead_1"])],
