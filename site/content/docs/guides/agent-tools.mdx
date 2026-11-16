@@ -121,7 +121,7 @@ HeyReach reports no per-step stats and no readable campaign settings, so `winnin
 A tool spends vendor requests only when called. The descriptions tell the model what a call costs, and `meta.requests` reports what it spent.
 
 - `campaign_overview`: the campaign list, then one stats read per campaign, up to `limit` (default 10, at most 50).
-- `deliverability_check`: one or more requests per sender, up to `limit` (default 10, at most 25).
+- `deliverability_check`: the sender list, read to at most 500 senders so a broken sender past `limit` is still counted, then one or more requests per sender checked in full, up to `limit` (default 10, at most 25).
 - `compare_clients`: the campaign list, then one request per campaign.
 - `sender_health`: the sender list, read to at least 100 senders so a problem past `limit` is still counted. That is one page on every vendor, so it costs what reading `limit` senders would.
 - `vendor_read`: one request per call, none to list the reads on offer.
