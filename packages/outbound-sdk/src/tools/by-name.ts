@@ -27,10 +27,10 @@ const ID_FORMS: ReadonlyMap<string, RegExp> = new Map([
 ]);
 
 /**
- * Whether `value` names a record by ref or id rather than by name. On an
- * instance whose id form is not known (a test adapter, your own adapter) any
- * text without a space is taken as an id, as before names were accepted. A
- * combined instance takes only refs, so anything else there is a name.
+ * Whether `value` is surely a ref or an id, so it is used with no lookup: a
+ * ref, an id in the vendor's documented form, or, on an instance whose id
+ * form is not known (a test adapter, your own adapter), any text without a
+ * space, as before names were accepted.
  */
 export const isIdentifier = (outbound: OutboundApi, value: string): boolean => {
   if (parseRef(value) !== null) {
@@ -39,16 +39,13 @@ export const isIdentifier = (outbound: OutboundApi, value: string): boolean => {
 
   const form = ID_FORMS.get(outbound.provider);
 
-  if (form !== undefined) {
-    return form.test(value);
-  }
-
-  return outbound.provider !== "combined" && !/\s/u.test(value);
+  return form === undefined ? !/\s/u.test(value) : form.test(value);
 };
 
 interface Named {
   readonly name: string | null;
   readonly ref: string;
+  readonly sourceId: string;
 }
 
 /** How many candidates an ambiguous name lists. */
@@ -66,16 +63,21 @@ const listed = (matches: readonly Named[]): string => {
 };
 
 /**
- * The ref of the one record named `name`: an exact name match, ignoring case
- * and outer spaces, or else the only name that contains it. Two or more
- * matches are refused with the candidates, never guessed.
+ * What `value` names among `records`: a record whose id it is, used as given;
+ * else the record whose name it is, ignoring case and outer spaces, or the
+ * only one whose name contains it; else `undefined`. Two or more names that
+ * match are refused with the candidates, never guessed.
  */
 const pick = (
   records: readonly Named[],
-  name: string,
+  value: string,
   what: string
-): string => {
-  const wanted = name.trim().toLowerCase();
+): string | undefined => {
+  if (records.some((record) => record.sourceId === value)) {
+    return value;
+  }
+
+  const wanted = value.trim().toLowerCase();
   const nameOf = (record: Named) => (record.name ?? "").trim().toLowerCase();
   const exact = records.filter((record) => nameOf(record) === wanted);
 
@@ -84,23 +86,14 @@ const pick = (
       ? exact
       : records.filter((record) => nameOf(record).includes(wanted));
 
-  const [only] = matches;
-
-  if (only === undefined) {
-    throw new OutboundError(
-      "NotFound",
-      `No ${what} is named "${name}". Give its ref or id, or list the ${what}s to find it`
-    );
-  }
-
   if (matches.length > 1) {
     throw new OutboundError(
       "Invalid",
-      `${matches.length} ${what}s match "${name}": ${listed(matches)}. Give the full name or the ref`
+      `${matches.length} ${what}s match "${value}": ${listed(matches)}. Give the full name or the ref`
     );
   }
 
-  return only.ref;
+  return matches[0]?.ref;
 };
 
 /** Reads a whole listing. An insight passes its own, which counts the requests. */
@@ -108,13 +101,37 @@ export type ReadAll = <Item>(walk: ListAll<Item>) => Promise<Item[]>;
 
 const toArray: ReadAll = (walk) => walk.toArray();
 
+/**
+ * `value` as given when it is surely an id; else what the listing says it
+ * names. Nothing found is refused here only where the vendor would refuse it
+ * too, text that cannot be its id; elsewhere it is passed on as an id, as
+ * before names were accepted.
+ */
 const resolve = async (
   outbound: OutboundApi,
   value: string,
   what: string,
   records: () => Promise<Named[]>
-): Promise<string> =>
-  isIdentifier(outbound, value) ? value : pick(await records(), value, what);
+): Promise<string> => {
+  if (isIdentifier(outbound, value)) {
+    return value;
+  }
+
+  const found = pick(await records(), value, what);
+
+  if (found !== undefined) {
+    return found;
+  }
+
+  if (ID_FORMS.has(outbound.provider) || outbound.provider === "combined") {
+    throw new OutboundError(
+      "NotFound",
+      `No ${what} has the id or name "${value}". Give its ref or id, or list the ${what}s to find it`
+    );
+  }
+
+  return value;
+};
 
 /** A campaign's ref or id as given, or the ref of the campaign it names. */
 export const resolveCampaign = (

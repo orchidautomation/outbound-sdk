@@ -17,18 +17,19 @@ import { createClock } from "./helpers/clock.ts";
 import { createFetch } from "./helpers/http.ts";
 import { agency, EMAIL_TOOL, PROFILE } from "./insights/helpers.ts";
 import { suite } from "./instantly/suite.ts";
+import { suite as smartleadSuite } from "./smartlead/suite.ts";
 
 // The Instantly fixtures list three campaigns over two pages.
 const FIRST = "01a1d77f-5e23-7a9a-9112-a6f7089f329f";
 const THIRD = "01a1d77f-5e23-7a9a-9112-a6f7089f3291";
 
-const overInstantly = () => {
+const overVendor = (vendor = suite) => {
   const clock = createClock();
   const unrouted: string[] = [];
-  const http = createFetch(fixtureHandler([suite], unrouted));
+  const http = createFetch(fixtureHandler([vendor], unrouted));
 
   const outbound = createOutbound({
-    adapter: suite.make(),
+    adapter: vendor.make(),
     fetch: http.fetch,
     plugins: [insights()],
     rateLimitStore: new MemoryRateLimitStore(),
@@ -53,6 +54,8 @@ const overInstantly = () => {
 
   return { call, paths, unrouted };
 };
+
+const overInstantly = () => overVendor(suite);
 
 const LIST_CAMPAIGNS = "GET /api/v2/campaigns";
 
@@ -114,7 +117,7 @@ test("instantly: a part of one name finds it; a part of several lists them", asy
   assert.equal(none.ok ? null : none.error.code, "NotFound");
   assert.match(
     none.ok ? "" : none.error.message,
-    /No campaign is named "Databricks"/u
+    /No campaign has the id or name "Databricks"/u
   );
 });
 
@@ -304,4 +307,67 @@ test("cli: an unknown command, option, tool or native read suggests the closest"
   const none = await cli(mailtool(), "native", "nonsense");
 
   assert.match(none.stderr, /^Unsupported: /u);
+});
+
+test("smartlead: a numeric id is used with no lookup, and a name is looked up", async () => {
+  const byId = overVendor(smartleadSuite);
+  const direct = await byId.call("campaign_setup", { campaign: "2710262" });
+
+  assert.ok(direct.ok, JSON.stringify(direct));
+  assert.ok(
+    !byId.paths().some((path) => path.endsWith("/campaigns")),
+    byId.paths().join(", ")
+  );
+
+  const byName = overVendor(smartleadSuite);
+
+  const named = await byName.call("campaign_setup", {
+    campaign: "example co follow-up",
+  });
+
+  assert.ok(named.ok, JSON.stringify(named));
+  assert.ok(
+    byName.paths().some((path) => path.includes("/campaigns/2710100")),
+    byName.paths().join(", ")
+  );
+  assert.deepEqual(byName.unrouted, []);
+});
+
+// A stand-in named after a vendor, holding ids of its own form, as the site's examples use.
+const standIn = () =>
+  memory({
+    data: {
+      campaigns: [
+        { id: "cmp_founders", name: "Founders", status: "active" },
+        { id: "cmp-two", name: "Second wave", status: "paused" },
+      ],
+    },
+    name: "instantly",
+    workspaceId: "acme",
+  });
+
+test("an id of another form still works where the adapter has it, as before names", async () => {
+  for (const [given, ref] of [
+    ["cmp_founders", "instantly:acme:cmp_founders"],
+    ["cmp-two", "instantly:acme:cmp-two"],
+    ["Second wave", "instantly:acme:cmp-two"],
+  ] as const) {
+    // oxlint-disable-next-line no-await-in-loop -- one input at a time keeps a failure easy to read.
+    const result = await cli(standIn(), "campaign", given);
+
+    assert.equal(result.code, 0, `${given}: ${result.stderr}`);
+    assert.equal((result.json() as { ref: string }).ref, ref);
+  }
+
+  const none = await cli(standIn(), "campaign", "cmp_missing");
+
+  assert.match(
+    none.stderr,
+    /^NotFound: No campaign has the id or name "cmp_missing"/u
+  );
+
+  // On an adapter whose id form is not known, text with no space is an id, as before.
+  const plain = await cli(mailtool(), "campaign", "c1");
+
+  assert.equal((plain.json() as { name: string }).name, "Founders Q4");
 });

@@ -13,17 +13,15 @@ import { seed } from "./seed.ts";
 // The real adapters, built to read what they declare. Nothing is requested.
 const REAL: Record<Vendor, () => Adapter> = { heyreach, instantly, smartlead };
 
-// A campaign by its ref, which any adapter takes; a vendor's own id has that vendor's form.
-const inputFor = (vendor: Vendor) => {
-  const campaign = `${vendor}:acme:cmp_founders`;
-
-  return new Map<string, JsonObject>([
-    ["campaign_setup", { campaign }],
-    ["campaign_trend", { campaign, from: "2026-11-07", to: "2026-11-13" }],
-    ["lead_runway", { campaign }],
-    ["winning_steps", { campaign }],
-  ]);
-};
+const INPUT = new Map<string, JsonObject>([
+  ["campaign_setup", { campaign: "cmp_founders" }],
+  [
+    "campaign_trend",
+    { campaign: "cmp_founders", from: "2026-11-07", to: "2026-11-13" },
+  ],
+  ["lead_runway", { campaign: "cmp_founders" }],
+  ["winning_steps", { campaign: "cmp_founders" }],
+]);
 
 for (const vendor of VENDORS) {
   // The server offers createTools(outbound), then insightTools(outbound).
@@ -47,7 +45,7 @@ for (const vendor of VENDORS) {
 
   for (const tool of createTools(limited)) {
     // oxlint-disable-next-line no-await-in-loop -- one call at a time keeps the output in order.
-    const result = await tool.call(inputFor(vendor).get(tool.name) ?? {});
+    const result = await tool.call(INPUT.get(tool.name) ?? {});
 
     if (!result.ok) {
       console.log(

@@ -99,7 +99,7 @@ When `campaign` gets one of `--stats`, `--sequence`, `--subsequences` and `--set
   ../../_examples/cli-commands/campaigns.out.txt
 </include>
 
-A campaign id can be the vendor's id or a `ref` from any record. Text that cannot be an id of that vendor, such as `"Founders Q4"`, is taken as the campaign's name: the campaigns are read, and the one whose name matches it whole, ignoring case, or else the only one whose name contains it, is used. When several match, the command refuses with `Invalid` and lists them. The same holds for `--campaign`, for `leads --list`, and for the `campaign` input of every tool and insight. A count the vendor does not report prints as `null`. The demo campaign has no subsequences, so that command prints an empty array.
+A campaign id can be the vendor's id or a `ref` from any record. Other text, such as `"Founders Q4"`, is looked up: the campaigns are read, and a campaign with that id is used as given; failing that, the one whose name matches it whole, ignoring case, or else the only one whose name contains it. When several names match, the command refuses with `Invalid` and lists them. When nothing matches, text that cannot be that vendor's id, such as a name on Instantly, whose ids are UUIDs, is refused with `NotFound` before the vendor is asked. The same holds for `--campaign`, for `leads --list`, and for the `campaign` input of every tool and insight. A count the vendor does not report prints as `null`. The demo campaign has no subsequences, so that command prints an empty array.
 
 ## senders, health, leads and lists
 

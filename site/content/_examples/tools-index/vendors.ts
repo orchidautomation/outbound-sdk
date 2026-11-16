@@ -27,19 +27,16 @@ for (const vendor of VENDORS) {
 
 // Valid input for every tool, to see what each vendor's adapter is offered
 // and whether a call with plain input is answered.
-// A campaign is given by its ref, which any adapter takes; a vendor's own id
-// has that vendor's form.
-const inputFor = (vendor: string) => {
-  const campaign = `${vendor}:default:cmp_founders`;
-
-  return new Map<string, Json>([
-    ["campaign_setup", { campaign }],
-    ["campaign_trend", { campaign, from: "2026-11-01", to: "2026-11-30" }],
-    ["cross_channel_lead", { person: "person1@example.com" }],
-    ["lead_runway", { campaign }],
-    ["winning_steps", { campaign }],
-  ]);
-};
+const INPUT = new Map<string, Json>([
+  ["campaign_setup", { campaign: "cmp_founders" }],
+  [
+    "campaign_trend",
+    { campaign: "cmp_founders", from: "2026-11-01", to: "2026-11-30" },
+  ],
+  ["cross_channel_lead", { person: "person1@example.com" }],
+  ["lead_runway", { campaign: "cmp_founders" }],
+  ["winning_steps", { campaign: "cmp_founders" }],
+]);
 
 const line = (name: string, cells: readonly string[]) =>
   [name.padEnd(21), ...cells.map((cell) => cell.padEnd(12))]
@@ -61,11 +58,10 @@ const sets = VENDORS.map((vendor) =>
 for (const name of TOOL_NAMES.filter((tool) => tool !== "vendor_read")) {
   const cells: string[] = [];
 
-  for (const [index, tools] of sets.entries()) {
+  for (const tools of sets) {
     const tool = tools.find((candidate) => candidate.name === name);
-    const input = inputFor(VENDORS[index] ?? "").get(name) ?? {};
     // oxlint-disable-next-line no-await-in-loop -- one tool at a time keeps the output in order.
-    const result = await tool?.call(input);
+    const result = await tool?.call(INPUT.get(name) ?? {});
 
     if (result === undefined) {
       cells.push("not offered");
