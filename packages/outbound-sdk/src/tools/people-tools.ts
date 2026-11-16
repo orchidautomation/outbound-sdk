@@ -5,10 +5,14 @@ import { OutboundError } from "../internal/errors.ts";
 import type { Json } from "../internal/json.ts";
 import type { MetricCounts } from "../internal/metrics.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
+import {
+  newLeadsPerDay,
+  paceWindow,
+  runwayDays,
+  splitActive,
+} from "../internal/runway.ts";
 import { optionalRange, untrusted } from "./shared.ts";
 import type { ToolDefinition } from "./shared.ts";
-
-const DAY_MS = 86_400_000;
 
 const runwayInput = z.object({
   campaign: z.string().min(1).describe("The campaign ref or id"),
@@ -28,50 +32,44 @@ const runwayInput = z.object({
     .describe("Stop counting leads here"),
 });
 
-const isoDay = (time: number): string =>
-  new Date(time).toISOString().slice(0, 10);
-
 export const leadRunway: ToolDefinition<z.infer<typeof runwayInput>> = {
   description:
-    "How many days until a campaign runs out of leads to contact. It counts the campaign's leads that are still active, and divides by the number of new people contacted per day over the lookback window. It is an estimate: it counts leads by listing them (up to max_leads), and a lead already in sequence still counts as active.",
+    "How many days until a campaign has no new leads left to start. It counts the campaign's active leads, splits them into those not yet started and those partway through the sequence, and divides the ones not yet started by the new leads started per day over the lookback window (complete days ending yesterday). The pace is leads started, never emails sent: follow-ups to leads already in sequence do not count. pipeline_forecast gives the same figure as daysLeft. It is an estimate: it counts leads by listing them (up to max_leads), and when the vendor reports no lead's step or last contact, every active lead counts as not started.",
   inputSchema: runwayInput,
   name: "lead_runway",
   needs: ["leads.byCampaign", "stats.campaign", "stats.byDay"],
   run: async (outbound, input) => {
     const campaign = outbound.campaign(input.campaign);
-    const now = Date.now();
     const walk = campaign.leads.listAll({ max: input.max_leads });
     const leads = await walk.toArray();
-    const active = leads.filter((lead) => lead.status === "active").length;
+    const split = splitActive(leads);
+    const unknown = leads.filter((lead) => lead.status === "unknown").length;
+    const complete = !walk.truncated;
 
     const stats = await campaign.stats({
       by: "day",
-      from: isoDay(now - input.lookback_days * DAY_MS),
-      to: isoDay(now),
+      ...paceWindow(Date.now(), input.lookback_days),
     });
 
-    const contacted = stats.rows.reduce(
-      (sum, row) => sum + (row.contacted ?? row.sent ?? 0),
-      0
-    );
-
-    const perDay = contacted / input.lookback_days;
+    const pace = newLeadsPerDay(stats.rows, input.lookback_days);
 
     return {
       data: {
-        active_leads: active,
+        active_leads: split.active,
         campaign: input.campaign,
-        contacted_per_day: Math.round(perDay * 100) / 100,
+        contacted_per_day: pace,
         counted_leads: leads.length,
-        counting_stopped_at_max: leads.length >= input.max_leads,
-        runway_days: perDay > 0 ? Math.floor(active / perDay) : null,
+        counting_stopped_at_max: !complete,
+        in_sequence: split.inSequence,
+        not_started: split.notStarted,
+        runway_days: runwayDays(split, { unknown }, complete, pace),
       },
       meta: {
         evidence: "derived",
         provider: outbound.provider,
         requests: (walk.meta?.requests ?? 0) + stats.meta.requests,
       },
-      next: "A null runway means nobody was contacted in the lookback window, so no pace can be measured.",
+      next: "contacted_per_day is new leads started per day. A runway of 0 means no lead is left to start. A null runway means the vendor reports no daily count of leads started, or none was started in the window, so no pace can be measured. A null not_started means the vendor does not say which leads have started, so every active lead was counted.",
       ok: true,
     };
   },

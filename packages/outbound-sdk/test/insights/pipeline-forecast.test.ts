@@ -85,9 +85,11 @@ test("pipeline_forecast counts the leads left and projects replies from the repl
     expectedReplies: { expected: 4, high: 5.976, low: 2.628 },
     finding:
       "40 leads remain; expect about 4 replies (between 2.6 and 6). This is an estimate.",
+    inSequence: null,
     leadsComplete: true,
     leadsRead: 46,
     campaignName: "Pipeline",
+    notStarted: null,
     positiveRate: { count: 5, high: 0.0572, low: 0.0107, of: 200, rate: 0.025 },
     provider: "memory",
     remaining: 40,

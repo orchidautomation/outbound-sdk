@@ -21,7 +21,7 @@ $ outbound tools
     "name": "reply_samples"
   },
   {
-    "description": "How many days until a campaign runs out of leads to contact. It counts the campaign's leads that are still active, and divides by the number of new people contacted per day over the lookback window. It is an estimate: it counts leads by listing them (up to max_leads), and a lead already in sequence still counts as active.",
+    "description": "How many days until a campaign has no new leads left to start. It counts the campaign's active leads, splits them into those not yet started and those partway through the sequence, and divides the ones not yet started by the new leads started per day over the lookback window (complete days ending yesterday). The pace is leads started, never emails sent: follow-ups to leads already in sequence do not count. pipeline_forecast gives the same figure as daysLeft. It is an estimate: it counts leads by listing them (up to max_leads), and when the vendor reports no lead's step or last contact, every active lead counts as not started.",
     "name": "lead_runway"
   },
   {
@@ -121,7 +121,7 @@ $ outbound tools
     "name": "campaign_diagnosis"
   },
   {
-    "description": "The leads one campaign has left and what they should produce: leads counted by status, the leads still active, the days of sending left at the recent daily contact rate, and the replies and positive replies to expect from the remaining leads at the campaign's reply rate so far, each with a low and a high figure from the 95% interval. Use it to decide when to load more leads. It is an estimate and lists what it assumes; a null means the vendor does not report the count behind it. Costs one request per page of leads, plus two stats requests.",
+    "description": "The leads one campaign has left and what they should produce: leads counted by status, the leads still active, split into those not yet started and those partway through the sequence, the days until no lead is left to start at the recent pace of new leads started per day (the same figure lead_runway gives), and the replies and positive replies to expect from the remaining leads at the campaign's reply rate so far, each with a low and a high figure from the 95% interval. Use it to decide when to load more leads. It is an estimate and lists what it assumes; a null means the vendor does not report the count behind it. Costs one request per page of leads, plus two stats requests.",
     "name": "pipeline_forecast"
   },
   {

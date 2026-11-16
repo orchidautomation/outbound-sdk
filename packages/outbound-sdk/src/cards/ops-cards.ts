@@ -272,8 +272,9 @@ const pipelineForecast: CardBuilder = (data) => {
     notes: ["An estimate, not a count.", ...strings(data, "assumptions")],
     stats: [
       ["Leads left to contact", int(num(data, "remaining"))],
+      ["Not started", int(num(data, "notStarted"))],
       ["Days of leads left", days === null ? DASH : plural(days, "day")],
-      ["Contacted per day", int(num(data, "dailyContactRate"))],
+      ["New leads per day", int(num(data, "dailyContactRate"))],
       ["Expected replies", estimate(child(data, "expectedReplies"))],
       ["Expected positive", estimate(child(data, "expectedPositive"))],
       ["Reply rate so far", measured(child(data, "replyRate"))],
