@@ -653,6 +653,8 @@ What the adapter does: a negative `delay` or `pre_delay`, or a unit outside the 
 
 Same fetch. `components.schemas.Account.daily_limit`: `type: [null, number]`, "Daily email sending limit", no minimum. `Campaign.daily_limit` (`[null, number]`, "The daily limit for sending emails") and `Campaign.email_gap` (`[null, number]`, "The gap between emails in minutes") have no minimum either; `Campaign.daily_max_leads` (`[null, integer]`) has `minimum: 0`. None was seen negative live. The normalized `dailyLimit`, `dailyNewLeads` and `gapMinutes` must be 0 or more, so a negative value would have failed the whole mailbox or settings read the way the delay did. The adapter now maps a negative one to `null` with a note in `meta.notes`, for example "The daily limit of person1@example.com is negative in Instantly (-5); left out."
 
+## The list-email lane and other processes (2026-11-16, for OUT-114)
+
 Fetched fresh on 2026-11-16:
 
 - https://developer.instantly.ai/getting-started/rate-limit.md: unchanged. "The rate limit is shared between API v2 and API v1, and it applies to the entire Workspace, even if it's using multiple API keys." 100 requests a second and 6,000 a minute; over either, "the API requests will fail with the `429` status code". No headers and no `Retry-After` are named.
