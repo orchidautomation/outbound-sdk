@@ -456,6 +456,33 @@ const refuseUnsupported = <Key extends string, Input, Data, Given>(
 
 const COMBINED = "combined";
 
+/** Whether any tool of a combined instance can serve the insight. Its workspaces are its tools, listed with no request. */
+const someMemberServes = async <Key extends string, Input, Data, Given>(
+  outbound: OutboundApi,
+  spec: InsightSpec<Key, Input, Data, Given>,
+  input: Input
+): Promise<boolean> => {
+  const { items } = await outbound.workspaces.list();
+
+  return items.some((tool) => {
+    try {
+      refuseUnsupported(
+        outbound.workspace(`${tool.provider}:${tool.workspaceId}`),
+        spec,
+        input
+      );
+
+      return true;
+    } catch (error) {
+      if (OutboundError.is(error) && error.code === "Unsupported") {
+        return false;
+      }
+
+      throw error;
+    }
+  });
+};
+
 /** The most campaigns a name is looked up among, for the cost of the lookup. */
 const NAMED_AMONG = 1000;
 
@@ -489,7 +516,9 @@ const execute = async <Key extends string, Input, Data, Given>(
   // A name says which member it is only once it is looked up.
   const later = namesCampaign(target, checked) && target.provider === COMBINED;
 
-  if (!later) {
+  // A name is looked up only when at least one tool can serve the insight,
+  // which takes no request to know.
+  if (!later || !(await someMemberServes(target, spec, checked))) {
     refuseUnsupported(target, spec, checked);
   }
 

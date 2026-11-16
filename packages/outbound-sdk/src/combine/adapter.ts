@@ -16,14 +16,9 @@ import { mergeFields, resolveFields } from "../internal/fields.ts";
 import type { Json } from "../internal/json.ts";
 import { recordBase } from "../internal/record.ts";
 import { accountReads } from "./account.ts";
-import {
-  COMBINED,
-  inTurn,
-  newestFirst,
-  pageTogether,
-  routeRef,
-} from "./route.ts";
-import type { Merge } from "./route.ts";
+import { pageNewestFirst } from "./newest.ts";
+import { COMBINED, pageTogether, routeRef, takeInTurn } from "./route.ts";
+import type { Across } from "./route.ts";
 
 const MATURITY_ORDER = ["unverified", "beta", "stable"] as const;
 
@@ -97,17 +92,13 @@ const scopedOrAcross = <
     memberCtx: AdapterContext,
     query: Query
   ) => Promise<Page<Item>>,
-  merge: Merge<Item>
+  across: Across<Item>
 ): Promise<Page<Item>> => {
   if (query.campaignId === undefined) {
     // Every member is read side by side and merged, so a cap on the walk
     // shares its room among them instead of the first member taking it all.
-    return pageTogether(
-      members,
-      ctx,
-      query,
-      (member, memberCtx, next) => read(member, memberCtx, { ...query, next }),
-      merge
+    return across(members, ctx, query, (member, memberCtx, next) =>
+      read(member, memberCtx, { ...query, next })
     );
   }
 
@@ -129,13 +120,8 @@ const lists = (members: readonly Adapter[]): Lists => ({
       );
     }
 
-    return pageTogether(
-      members,
-      ctx,
-      query,
-      (member, memberCtx, next) =>
-        member.listCampaigns({ ...query, next }, memberCtx),
-      inTurn
+    return takeInTurn(members, ctx, query, (member, memberCtx, next) =>
+      member.listCampaigns({ ...query, next }, memberCtx)
     );
   },
   listLeads: (query, ctx) => {
@@ -182,7 +168,7 @@ const lists = (members: readonly Adapter[]): Lists => ({
       );
     }
 
-    return scopedOrAcross(members, ctx, query, readLeads, inTurn);
+    return scopedOrAcross(members, ctx, query, readLeads, takeInTurn);
   },
   // One workspace per member, named by its label. No request is made.
   listWorkspaces: () =>
@@ -216,7 +202,7 @@ const messageLists = (members: readonly Adapter[]): MessageLists => ({
 
         return member.listMessages({ ...scoped, leadId: lead?.id }, memberCtx);
       },
-      newestFirst
+      pageNewestFirst
     );
   },
   listReplies: (query, ctx) =>
@@ -231,7 +217,7 @@ const messageLists = (members: readonly Adapter[]): MessageLists => ({
 
         return member.listReplies(scoped, memberCtx);
       },
-      newestFirst
+      pageNewestFirst
     ),
   listSenders: (query, ctx) =>
     scopedOrAcross(
@@ -245,7 +231,7 @@ const messageLists = (members: readonly Adapter[]): MessageLists => ({
 
         return member.listSenders(scoped, memberCtx);
       },
-      inTurn
+      takeInTurn
     ),
 });
 

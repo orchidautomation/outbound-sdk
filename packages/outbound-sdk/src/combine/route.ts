@@ -131,19 +131,20 @@ export const inTurn = <Item>(pages: readonly (readonly Item[])[]): Item[] => {
   ).flat();
 };
 
-const timeOf = (sentAt: string | null): number =>
-  sentAt === null ? 0 : Date.parse(sentAt);
+/** Reads one member's page from `next`, its own cursor. */
+export type ReadPage<Item> = (
+  member: Adapter,
+  memberCtx: AdapterContext,
+  next: Json | undefined
+) => Promise<Page<Item>>;
 
-/**
- * The members' items newest first by `sentAt`, so a cap on the walk keeps
- * the newest across every member; an item with no time goes last. Each
- * member lists newest first, so a cap no bigger than a member's page keeps
- * exactly the newest of all.
- */
-export const newestFirst = <Item extends { readonly sentAt: string | null }>(
-  pages: readonly (readonly Item[])[]
-): Item[] =>
-  pages.flat().toSorted((a, b) => timeOf(b.sentAt) - timeOf(a.sentAt));
+/** How a listing that spans every member reads them and makes one page. */
+export type Across<Item> = (
+  members: readonly Adapter[],
+  ctx: AdapterContext,
+  query: PageQuery,
+  read: ReadPage<Item>
+) => Promise<Page<Item>>;
 
 /**
  * One page of a listing read from every member at the same time. `merge`
@@ -187,3 +188,11 @@ export const pageTogether = async <Item>(
     ? { items }
     : { items, next: { together: unfinished } };
 };
+
+/** Every member read at once, their records taken one from each in turn. */
+export const takeInTurn = <Item>(
+  members: readonly Adapter[],
+  ctx: AdapterContext,
+  query: PageQuery,
+  read: ReadPage<Item>
+): Promise<Page<Item>> => pageTogether(members, ctx, query, read, inTurn);

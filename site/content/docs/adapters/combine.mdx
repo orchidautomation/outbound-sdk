@@ -67,7 +67,7 @@ Three keys do not follow the weakest member:
 A listing of campaigns, leads, senders, messages or replies asks every member for a page at the same time and merges the pages, so a `max` or `--limit` leaves every member its share instead of filling up on the first one:
 
 - **Campaigns, leads and senders** take one record from each member in turn, in the order you passed the members.
-- **Messages and replies** come newest first across members. Each member lists newest first, so a `--limit` no bigger than a member's page keeps exactly the newest of all.
+- **Messages and replies** come newest first across members. A record is given out only once no member with more pages can still hold a newer one, so a `--limit` keeps exactly the newest of all; a member whose records wait has its page read again on the next page.
 
 The cursor holds each member with more to give, so a saved cursor resumes every member where it stopped. Each request still counts against its own vendor's rate budget. Other listings, such as tags, lists and the blocklist, still read the first member to its end, then the second.
 

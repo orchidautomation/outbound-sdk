@@ -325,3 +325,71 @@ test("step_funnel takes a campaign name on the combined instance and checks the 
     /heyreach adapter does not support stats\.byStep/u
   );
 });
+
+test("a capped reply listing keeps exactly the newest, even past one tool's first page", async () => {
+  // 110 recent email replies in pages of 100; the LinkedIn tool's two are older.
+  const recent: MemoryMessage[] = Array.from({ length: 110 }, (_, index) => ({
+    campaignId: uuid(1),
+    direction: "in",
+    id: `n${index + 1}`,
+    sentAt: new Date(Date.UTC(2026, 10, 16, 12) - index * 60_000).toISOString(),
+  }));
+
+  const outbound = createOutbound({
+    adapter: combine([
+      memory({
+        data: { campaigns: EMAIL_CAMPAIGNS, messages: recent },
+        name: "instantly",
+        pageSize: 100,
+        workspaceId: "default",
+      }),
+      heyreachLike(),
+    ]),
+  });
+
+  const capped = await outbound.replies.listAll({ max: 101 }).toArray();
+
+  assert.deepEqual(
+    capped.map((reply) => reply.ref),
+    recent.slice(0, 101).map((reply) => `instantly:default:${reply.id}`)
+  );
+
+  // Page by page, time never jumps forward, and every reply comes once.
+  const seen: string[] = [];
+  let cursor: string | undefined;
+
+  do {
+    // oxlint-disable-next-line no-await-in-loop -- each page needs the previous page's cursor.
+    const page = await outbound.replies.list({ cursor });
+    seen.push(...page.items.map((reply) => reply.sentAt ?? ""));
+    ({ cursor } = page);
+  } while (cursor !== undefined);
+
+  assert.equal(seen.length, 112);
+  assert.deepEqual(seen, seen.toSorted().toReversed());
+});
+
+test("a campaign name is not looked up when no tool can serve the insight", async () => {
+  // Neither tool reports by step. The name matches nothing, so a lookup would
+  // end in NotFound; the refusal comes first.
+  const outbound = createOutbound({
+    adapter: combine([
+      heyreachLike(),
+      memory({
+        capabilities: { "stats.byStep": false },
+        data: { campaigns: LINKEDIN_CAMPAIGNS },
+        name: "lntool",
+        workspaceId: "other",
+      }),
+    ]),
+    plugins: [insights()],
+  });
+
+  await assert.rejects(
+    () => outbound.insights.stepFunnel({ campaign: "No such campaign" }),
+    (error: unknown) =>
+      OutboundError.is(error) &&
+      error.code === "Unsupported" &&
+      /stats\.byStep/u.test(error.message)
+  );
+});
