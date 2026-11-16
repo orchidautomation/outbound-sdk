@@ -4,6 +4,8 @@ import { z } from "zod";
 
 import type { SequenceStep, SequenceVariant } from "../../internal/entities.ts";
 import { defineInsight } from "../define.ts";
+import { stepAt } from "../step.ts";
+import type { StepPosition } from "../step.ts";
 import {
   allCaps,
   bodyTooLong,
@@ -48,9 +50,7 @@ const input = z.object({
     ),
 });
 
-export interface CopyFinding {
-  /** Counted from 0. */
-  readonly step: number;
+export interface CopyFinding extends StepPosition {
   readonly variantKey: string;
   readonly action: string;
   readonly check: CheckName;
@@ -181,7 +181,7 @@ const auditVariant = (
             ...problem,
             action: step.action,
             severity: CHECKS[problem.check],
-            step: step.index,
+            ...stepAt(step.index),
             variantKey: variant.variantKey,
           },
         ]

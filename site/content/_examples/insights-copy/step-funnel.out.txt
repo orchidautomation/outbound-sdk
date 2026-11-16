@@ -1,4 +1,4 @@
-Step 1 brings the most replies: 60 of 77. Step 2 is the last whose reply rate is reliably above the bar; the 1 later step sent 600 messages for 1 replies.
+Step 1 (of 3) brings the most replies: 60 of 77. Step 2 (of 3) is the last whose reply rate is reliably above the bar; the 1 later step sent 600 messages for 1 replies.
 step 0: sent 1000, replies 60, rate 0.06 (0.0469 to 0.0765), share 0.7792, drop null, earns place true
 step 1: sent 800, replies 16, rate 0.02 (0.0123 to 0.0322), share 0.2078, drop 0.2, earns place true
 step 2: sent 600, replies 1, rate 0.0017 (0.0003 to 0.0094), share 0.013, drop 0.25, earns place false

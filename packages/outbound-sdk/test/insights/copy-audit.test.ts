@@ -89,6 +89,13 @@ test("copy_audit finds each problem, with its severity and the text behind it, w
   assert.equal(result.data.campaignName, "Founders Q4");
   assert.equal(result.data.channel, "email");
   assert.equal(result.data.clean, false);
+  assert.ok(
+    result.data.findings.every(
+      (finding) =>
+        finding.stepNumber === finding.stepIndex + 1 &&
+        finding.step === finding.stepIndex
+    )
+  );
   assert.deepEqual(
     result.data.findings.map((finding) => [
       finding.severity,

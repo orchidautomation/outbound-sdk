@@ -1,8 +1,10 @@
 {
   "data": {
     "campaign": "memory:acme:founders",
-    "finding": "Step 1 brings the most replies: 60 of 77. Step 2 is the last whose reply rate is reliably above the bar; the 1 later step sent 600 messages for 1 replies.",
+    "finding": "Step 1 (of 3) brings the most replies: 60 of 77. Step 2 (of 3) is the last whose reply rate is reliably above the bar; the 1 later step sent 600 messages for 1 replies.",
     "lastStepEarningPlace": 1,
+    "lastStepEarningPlaceIndex": 1,
+    "lastStepEarningPlaceNumber": 2,
     "steps": [
       {
         "action": "email",
@@ -22,6 +24,8 @@
         "replies": 60,
         "sent": 1000,
         "step": 0,
+        "stepIndex": 0,
+        "stepNumber": 1,
         "variants": [
           {
             "contentHash": "731acea1c4f447bf4082393883bf01b1",
@@ -78,6 +82,8 @@
         "replies": 16,
         "sent": 800,
         "step": 1,
+        "stepIndex": 1,
+        "stepNumber": 2,
         "variants": [
           {
             "contentHash": "c06dbc8ddc1b8e6751f540a41c95f51c",
@@ -134,6 +140,8 @@
         "replies": 1,
         "sent": 600,
         "step": 2,
+        "stepIndex": 2,
+        "stepNumber": 3,
         "variants": [],
         "sentDrop": 200,
         "sentDropRate": 0.25,
@@ -141,6 +149,8 @@
       }
     ],
     "topStep": 0,
+    "topStepIndex": 0,
+    "topStepNumber": 1,
     "totals": {
       "replies": 77,
       "sent": 2400

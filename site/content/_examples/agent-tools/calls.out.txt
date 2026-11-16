@@ -22,7 +22,11 @@ winning_steps {"campaign":"cmp_founders"}
           "reply_rate_basis": "sent",
           "sent": 210
         },
+        "rank": 1,
         "step": 1,
+        "step_index": 1,
+        "step_number": 2,
+        "unattributed": false,
         "variant": null
       },
       {
@@ -40,7 +44,11 @@ winning_steps {"campaign":"cmp_founders"}
           "reply_rate_basis": "sent",
           "sent": 140
         },
+        "rank": 2,
         "step": 0,
+        "step_index": 0,
+        "step_number": 1,
+        "unattributed": false,
         "variant": null
       }
     ]

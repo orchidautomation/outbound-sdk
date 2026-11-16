@@ -8,6 +8,8 @@ import { defineInsight } from "../define.ts";
 import { rangeFields } from "../fields.ts";
 import { refOf } from "../ref.ts";
 import { rate, total } from "../stats.ts";
+import { stepAt, stepLabel } from "../step.ts";
+import type { StepPosition } from "../step.ts";
 import {
   measure,
   perLead,
@@ -17,6 +19,9 @@ import {
   sumRows,
 } from "./shared.ts";
 import type { BasedRate, StepStats } from "./shared.ts";
+
+/** Below this many replies a step's rate is too uncertain to call it reliably above the bar. */
+export const MIN_REPLIES = 5;
 
 const input = z.object({
   campaign: z
@@ -30,7 +35,7 @@ const input = z.object({
     .max(1)
     .default(0)
     .describe(
-      "A step earns its place when the low end of its reply rate interval is above this. 0 asks only that the rate is reliably above zero."
+      `A step earns its place when the low end of its reply rate interval is above this and it has at least ${MIN_REPLIES} replies. 0 asks only that the rate is reliably above zero.`
     ),
 });
 
@@ -43,9 +48,7 @@ export interface FunnelVariant {
   readonly rates: { readonly replyRate: BasedRate };
 }
 
-export interface FunnelStep {
-  /** Counted from 0. */
-  readonly step: number;
+export interface FunnelStep extends StepPosition {
   /** `null` when the stats name a step the sequence no longer has. */
   readonly action: string | null;
   readonly delayDays: number | null;
@@ -60,7 +63,12 @@ export interface FunnelStep {
   readonly sentDrop: number | null;
   /** `sentDrop` divided by the sends of the step before. */
   readonly sentDropRate: number | null;
-  /** `true` when the low end of the reply rate interval is above `min_reply_rate`. `null` when the rate is unknown. */
+  /**
+   * `true` when the low end of the reply rate interval is above
+   * `min_reply_rate` and the step has at least `MIN_REPLIES` (5) replies;
+   * `false` when the low end is at or under it. `null` when the rate is
+   * unknown, or it is above the bar on too few replies to tell.
+   */
   readonly earnsPlace: boolean | null;
   /** Empty when the vendor does not split step stats by variant. */
   readonly variants: readonly FunnelVariant[];
@@ -70,9 +78,17 @@ export interface StepFunnel {
   readonly campaign: string;
   /** What the numbers say, in one or two sentences. */
   readonly finding: string;
-  /** The step with the most replies. `null` when no step has a reply. */
+  /** The step with the most replies, counted from 0. `null` when no step has a reply. */
+  readonly topStepIndex: number | null;
+  /** `topStepIndex` counted from 1, as a person counts. */
+  readonly topStepNumber: number | null;
+  /** @deprecated Use `topStepIndex` (the same value, counted from 0) or `topStepNumber`. Removed in 0.8.0. */
   readonly topStep: number | null;
-  /** The last step whose reply rate is reliably above `min_reply_rate`. `null` when none is. */
+  /** The last step that earns its place (see `earnsPlace`), counted from 0. `null` when none does. */
+  readonly lastStepEarningPlaceIndex: number | null;
+  /** `lastStepEarningPlaceIndex` counted from 1, as a person counts. */
+  readonly lastStepEarningPlaceNumber: number | null;
+  /** @deprecated Use `lastStepEarningPlaceIndex` (the same value, counted from 0) or `lastStepEarningPlaceNumber`. Removed in 0.8.0. */
   readonly lastStepEarningPlace: number | null;
   readonly steps: readonly FunnelStep[];
   readonly totals: {
@@ -110,6 +126,23 @@ const variantsOf = (
     };
   });
 
+/** Above the bar only on enough replies; at or under it is a `false` at any count. */
+const earnsPlaceOf = (
+  low: number | null,
+  counts: MetricCounts | null,
+  minReplyRate: number
+): boolean | null => {
+  if (low === null) {
+    return null;
+  }
+
+  if (low <= minReplyRate) {
+    return false;
+  }
+
+  return (counts?.replied ?? 0) >= MIN_REPLIES ? true : null;
+};
+
 const draftOf = (
   index: number,
   step: Sequence["steps"][number] | undefined,
@@ -124,16 +157,13 @@ const draftOf = (
   return {
     action: step?.action ?? null,
     delayDays: step?.delayDays ?? null,
-    earnsPlace:
-      measured === null || measured.low === null
-        ? null
-        : measured.low > minReplyRate,
+    earnsPlace: earnsPlaceOf(measured?.low ?? null, counts, minReplyRate),
     inSequence: step !== undefined,
     parent: step === undefined ? null : step.parentIndex,
     rates: { replyRate: replyRateOf(measured) },
     replies: counts?.replied ?? null,
     sent: counts?.sent ?? null,
-    step: index,
+    ...stepAt(index),
     variants: variantsOf(stats, step),
   };
 };
@@ -145,7 +175,7 @@ const finish = (
   drafts.map(({ parent, ...draft }, position) => {
     // A step in the sequence follows its parent; one known only from stats follows the row above.
     const before = draft.inSequence
-      ? drafts.find((other) => other.step === parent)
+      ? drafts.find((other) => other.stepIndex === parent)
       : drafts[position - 1];
 
     const drop =
@@ -173,6 +203,9 @@ const topOf = (steps: readonly FunnelStep[]): FunnelStep | null => {
   return top;
 };
 
+const sentence = (text: string): string =>
+  `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
+
 const describe = (
   steps: readonly FunnelStep[],
   top: FunnelStep | null,
@@ -187,20 +220,26 @@ const describe = (
     return "No step has a reply in this range.";
   }
 
-  // A person counts steps from 1; `step` in the answer counts from 0.
-  const lead = `Step ${top.step + 1} brings the most replies: ${top.replies} of ${allReplies}.`;
+  const length = steps.filter((step) => step.inSequence).length || null;
+  const lead = `${sentence(stepLabel(top.stepIndex, length))} brings the most replies: ${top.replies} of ${allReplies}.`;
 
   if (last === null) {
-    return `${lead} No step's reply rate is reliably above the bar yet.`;
+    const tooFew = steps.some(
+      (step) => step.earnsPlace === null && step.rates.replyRate.low !== null
+    );
+
+    return tooFew
+      ? `${lead} Too few replies to tell whether any step's reply rate is reliably above the bar: a step needs at least ${MIN_REPLIES}.`
+      : `${lead} No step's reply rate is reliably above the bar yet.`;
   }
 
   const later = steps.filter(
-    (step) => step.step > last.step && step.sent !== null
+    (step) => step.stepIndex > last.stepIndex && step.sent !== null
   );
 
   return later.length === 0
-    ? `${lead} Every step up to step ${last.step + 1} still earns its place.`
-    : `${lead} Step ${last.step + 1} is the last whose reply rate is reliably above the bar; the ${later.length === 1 ? "1 later step" : `${later.length} later steps`} sent ${total(later.map((step) => step.sent))} messages for ${total(later.map((step) => step.replies)) ?? "an unknown number of"} replies.`;
+    ? `${lead} Every step up to ${stepLabel(last.stepIndex, length)} still earns its place.`
+    : `${lead} ${sentence(stepLabel(last.stepIndex, length))} is the last whose reply rate is reliably above the bar; the ${later.length === 1 ? "1 later step" : `${later.length} later steps`} sent ${total(later.map((step) => step.sent))} messages for ${total(later.map((step) => step.replies)) ?? "an unknown number of"} replies.`;
 };
 
 const unattributedOf = (rows: readonly MetricRow[]) => {
@@ -211,7 +250,7 @@ const unattributedOf = (rows: readonly MetricRow[]) => {
 
 export const stepFunnel = defineInsight({
   description:
-    "Where a campaign's replies come from: one row per sequence step with its action, delay, sends, replies, reply rate with a 95% interval, its share of all replies and how far sends fell from the step before, plus rows per variant when the vendor splits them. Names the step with the most replies and the last step that still earns its place. Use it to decide whether to cut or rewrite follow-ups. Costs 2 requests. A null count means the vendor does not report it; it is never 0.",
+    "Where a campaign's replies come from: one row per sequence step with its action, delay, sends, replies, reply rate with a 95% interval, its share of all replies and how far sends fell from the step before, plus rows per variant when the vendor splits them. Each step has stepIndex (counted from 0) and stepNumber (counted from 1, as a person counts); step is a deprecated copy of stepIndex. Names the step with the most replies and the last step that still earns its place; a step needs at least 5 replies to earn it. Use it to decide whether to cut or rewrite follow-ups. Costs 2 requests. A null count means the vendor does not report it; it is never 0.",
   inputSchema: input,
   key: "stepFunnel",
   cost: (_input, price) => price.one("sequence.get") + price.one("stats"),
@@ -264,9 +303,13 @@ export const stepFunnel = defineInsight({
     const funnel: StepFunnel = {
       campaign: refOf(context.outbound, campaign),
       finding: describe(steps, top, last, allReplies),
-      lastStepEarningPlace: last?.step ?? null,
+      lastStepEarningPlace: last?.stepIndex ?? null,
+      lastStepEarningPlaceIndex: last?.stepIndex ?? null,
+      lastStepEarningPlaceNumber: last?.stepNumber ?? null,
       steps,
-      topStep: top?.step ?? null,
+      topStep: top?.stepIndex ?? null,
+      topStepIndex: top?.stepIndex ?? null,
+      topStepNumber: top?.stepNumber ?? null,
       totals: {
         replies: allReplies,
         sent: total([...drafts.map((draft) => draft.sent), unattributed.sent]),

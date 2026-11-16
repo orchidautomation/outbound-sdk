@@ -110,16 +110,58 @@ test("personalization_gaps lists the variables, where they are used and the lead
 
   const firstName = data.variables.find((each) => each.name === "firstName");
   assert.deepEqual(firstName?.uses, [
-    { fallback: false, field: "subject", step: 0, variant: "A" },
-    { fallback: false, field: "body", step: 0, variant: "A" },
-    { fallback: true, field: "body", step: 0, variant: "B" },
-    { fallback: true, field: "body", step: 1, variant: "A" },
+    {
+      fallback: false,
+      field: "subject",
+      step: 0,
+      stepIndex: 0,
+      stepNumber: 1,
+      variant: "A",
+    },
+    {
+      fallback: false,
+      field: "body",
+      step: 0,
+      stepIndex: 0,
+      stepNumber: 1,
+      variant: "A",
+    },
+    {
+      fallback: true,
+      field: "body",
+      step: 0,
+      stepIndex: 0,
+      stepNumber: 1,
+      variant: "B",
+    },
+    {
+      fallback: true,
+      field: "body",
+      step: 1,
+      stepIndex: 1,
+      stepNumber: 2,
+      variant: "A",
+    },
   ]);
   assert.deepEqual(
     data.variables.find((each) => each.name === "Company-Name")?.uses,
     [
-      { fallback: false, field: "subject", step: 0, variant: "A" },
-      { fallback: false, field: "body", step: 0, variant: "A" },
+      {
+        fallback: false,
+        field: "subject",
+        step: 0,
+        stepIndex: 0,
+        stepNumber: 1,
+        variant: "A",
+      },
+      {
+        fallback: false,
+        field: "body",
+        step: 0,
+        stepIndex: 0,
+        stepNumber: 1,
+        variant: "A",
+      },
     ]
   );
   // Most missing first, then by lead.

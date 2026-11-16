@@ -47,8 +47,16 @@ export interface PersonCampaign {
    */
   readonly autoReplied: boolean;
   /** Steps the person replied to, counted from 0. Empty when the vendor does not tie a reply to a step. */
+  readonly repliedStepIndexes: readonly number[];
+  /** `repliedStepIndexes` counted from 1, as a person counts: `[2]` is the second email. */
+  readonly repliedStepNumbers: readonly number[];
+  /** @deprecated Use `repliedStepIndexes` (the same values, counted from 0) or `repliedStepNumbers`. Removed in 0.8.0. */
   readonly repliedSteps: readonly number[];
   /** The last step sent, counted from 0. */
+  readonly lastStepIndex: number | null;
+  /** `lastStepIndex` counted from 1, as a person counts. */
+  readonly lastStepNumber: number | null;
+  /** @deprecated Use `lastStepIndex` (the same value, counted from 0) or `lastStepNumber`. Removed in 0.8.0. */
   readonly lastStep: number | null;
   readonly firstContactedAt: string | null;
   readonly lastContactedAt: string | null;
@@ -232,6 +240,13 @@ const summarize = async (
     );
   }
 
+  const steps = autoReplied
+    ? []
+    : repliedSteps(
+        lead,
+        messages.filter((message) => !isAutoMessage(message))
+      );
+
   return {
     ...activity,
     campaign: lead.campaignRef,
@@ -244,12 +259,11 @@ const summarize = async (
     provider: lead.provider,
     autoReplied,
     replied: !autoReplied && (activity.replies > 0 || lead.replied === true),
-    repliedSteps: autoReplied
-      ? []
-      : repliedSteps(
-          lead,
-          messages.filter((message) => !isAutoMessage(message))
-        ),
+    lastStepIndex: activity.lastStep,
+    lastStepNumber: activity.lastStep === null ? null : activity.lastStep + 1,
+    repliedStepIndexes: steps,
+    repliedStepNumbers: steps.map((index) => index + 1),
+    repliedSteps: steps,
   };
 };
 

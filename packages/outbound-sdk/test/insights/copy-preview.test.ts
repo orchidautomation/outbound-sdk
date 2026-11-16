@@ -88,6 +88,14 @@ test("copy_preview shows each variant as written and as the lead with the most v
   });
 
   const [first, second] = data.steps;
+  // Each step both ways; the deprecated `step` is the index, counted from 0.
+  assert.deepEqual(
+    data.steps.map((step) => [step.stepIndex, step.stepNumber, step.step]),
+    [
+      [0, 1, 0],
+      [1, 2, 1],
+    ]
+  );
   assert.deepEqual(first?.variants[0], {
     rendered: {
       body: '<div>Saw Acme & co. is hiring <b>SDRs</b>. </div><div><br /></div><div>{{accountSignature}} </div><div><a href="https://unsubscribe.example">Unsubscribe</a></div>',

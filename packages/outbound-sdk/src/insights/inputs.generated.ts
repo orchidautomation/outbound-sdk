@@ -313,7 +313,7 @@ export interface InsightInputs {
     readonly to?: string | null | undefined;
 
     /**
-     * A step earns its place when the low end of its reply rate interval is above this. 0 asks only that the rate is reliably above zero.
+     * A step earns its place when the low end of its reply rate interval is above this and it has at least 5 replies. 0 asks only that the rate is reliably above zero.
      *
      * A number from 0 to 1. Defaults to `0`.
      */

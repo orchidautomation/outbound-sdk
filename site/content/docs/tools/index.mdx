@@ -49,7 +49,7 @@ Rates are computed from the counts beside them. A count the vendor does not repo
 | --- | --- | --- |
 | `campaign_overview` | How every campaign with a given status is doing | `campaigns.status`, `stats.campaign` |
 | `campaign_trend` | How one count moved day by day for a campaign, over the last 30 days unless `from` or `to` is given | `stats.campaign`, `stats.byDay` |
-| `winning_steps` | Which step or variant drives replies | `stats.byStep` |
+| `winning_steps` | Which step or variant drives replies, ranked by reply rate (`rank`), each with `step_index` (from 0) and `step_number` (from 1); counts tied to no step come last as `unattributed`. `step` is a deprecated copy of `step_index`, removed in 0.8.0 | `stats.byStep` |
 | `sender_health` | Status, daily limit and warmup per sender, unhealthy first | `senders.list` |
 | `reply_samples` | Recent replies, optionally by category | `replies.list` |
 | `lead_runway` | Days until a campaign has no new leads left to start, at the pace of new leads started. An estimate. | `leads.byCampaign`, `stats.campaign`, `stats.byDay` |

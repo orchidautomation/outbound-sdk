@@ -18,6 +18,14 @@
         "provider": "mailtool",
         "autoReplied": false,
         "replied": true,
+        "lastStepIndex": 1,
+        "lastStepNumber": 2,
+        "repliedStepIndexes": [
+          1
+        ],
+        "repliedStepNumbers": [
+          2
+        ],
         "repliedSteps": [
           1
         ]
@@ -39,6 +47,10 @@
         "provider": "mailtool",
         "autoReplied": false,
         "replied": false,
+        "lastStepIndex": 0,
+        "lastStepNumber": 1,
+        "repliedStepIndexes": [],
+        "repliedStepNumbers": [],
         "repliedSteps": []
       },
       {
@@ -58,6 +70,10 @@
         "provider": "linkedintool",
         "autoReplied": false,
         "replied": true,
+        "lastStepIndex": null,
+        "lastStepNumber": null,
+        "repliedStepIndexes": [],
+        "repliedStepNumbers": [],
         "repliedSteps": []
       }
     ],
