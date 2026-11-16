@@ -108,6 +108,14 @@ const DATA_FOR: Readonly<Record<string, MemoryData>> = {
       })),
     ],
   },
+  // copy_audit reads leads only when copy is written per lead in variables.
+  "copy_audit max_leads": {
+    ...DATA,
+    campaigns: (DATA.campaigns ?? []).map((campaign) => ({
+      ...campaign,
+      steps: [{ variants: [{ body: "{{body_1}}", subject: "{{subject_1}}" }] }],
+    })),
+  },
 };
 
 // A cap that applies only where the tool lacks a read: account_summary reads

@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { cardFor } from "../../src/cards/index.ts";
@@ -607,6 +608,17 @@ test("copy_audit marks each finding by severity", () => {
     "🟢 No problem found in the copy."
   );
   includes(read(cardFor("copy_audit", insight(audit(true, 0)))), NOTHING);
+
+  // Copy written per lead that no lead's values could render is not called clean.
+  const unaudited = read(
+    cardFor("copy_audit", insight({ ...audit(true, 2), clean: null }))
+  );
+
+  includes(
+    unaudited,
+    "⚪ The copy is written per lead and could not be audited as any lead receives it."
+  );
+  assert.ok(!unaudited.includes("No problem found"));
 });
 
 test("copy_reuse names the best copy and each reused piece", () => {

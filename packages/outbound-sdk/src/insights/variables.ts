@@ -29,6 +29,25 @@ const BUILTINS = new Map<string, Builtin>([
 
 export const isBuiltin = (key: string): boolean => BUILTINS.has(key);
 
+// Variables a tool fills from the sending account at send time, by provider,
+// as `keyOf` writes them. Instantly's are listed in its help center:
+// https://help.instantly.ai/en/articles/9178224-how-to-add-a-signature
+const SENDER = new Map<string, ReadonlySet<string>>([
+  [
+    "instantly",
+    new Set([
+      "accountsignature",
+      "sendingaccountemail",
+      "sendingaccountfirstname",
+      "sendingaccountname",
+    ]),
+  ],
+]);
+
+/** Whether the provider fills this variable from the sending account, not the lead. */
+export const isSender = (provider: string, key: string): boolean =>
+  SENDER.get(provider)?.has(key) ?? false;
+
 export interface VariableMatch {
   /** The name as the copy writes it. */
   readonly name: string;

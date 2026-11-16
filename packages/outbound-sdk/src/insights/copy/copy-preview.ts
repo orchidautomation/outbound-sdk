@@ -2,7 +2,11 @@
 
 import { z } from "zod";
 
-import type { Lead, Sequence } from "../../internal/entities.ts";
+import type {
+  Lead,
+  Sequence,
+  SequenceVariant,
+} from "../../internal/entities.ts";
 import { htmlToText, looksLikeHtml } from "../../internal/text.ts";
 import { defineInsight, maskingOf } from "../define.ts";
 import { leadsOf } from "../people/read.ts";
@@ -97,7 +101,7 @@ export interface CopyPreview {
 const LEAD_FIELDS = new Set(["company", "custom", "email", "name"]);
 
 /** Distinct variable keys across every subject and body. */
-const keysIn = (sequence: Sequence): Set<string> =>
+export const keysIn = (sequence: Sequence): Set<string> =>
   new Set(
     sequence.steps.flatMap((step) =>
       step.variants.flatMap((variant) =>
@@ -108,24 +112,19 @@ const keysIn = (sequence: Sequence): Set<string> =>
     )
   );
 
-/** The lead with the most of `keys` filled; the first read wins a tie. */
-const bestLead = (
+/** Leads by how many of `keys` they fill, most first; the first read wins a tie. */
+export const rankLeads = (
   leads: readonly Lead[],
   keys: ReadonlySet<string>
-): Lead | undefined => {
-  let best: { lead: Lead; score: number } | undefined;
+): Lead[] =>
+  leads
+    .map((lead) => {
+      const has = keysWithValue(lead);
 
-  for (const lead of leads) {
-    const has = keysWithValue(lead);
-    const score = [...keys].filter((key) => has.has(key)).length;
-
-    if (best === undefined || score > best.score) {
-      best = { lead, score };
-    }
-  }
-
-  return best?.lead;
-};
+      return { lead, score: [...keys].filter((key) => has.has(key)).length };
+    })
+    .toSorted((left, right) => right.score - left.score)
+    .map(({ lead }) => lead);
 
 const render = (
   text: string | null,
@@ -163,6 +162,26 @@ const plain = (body: string | null): string | null => {
   return looksLikeHtml(body) ? htmlToText(body) : body.trim();
 };
 
+export interface RenderedVariant extends CopyText {
+  /** Variables left as written, as the copy writes them. */
+  readonly unfilled: readonly string[];
+}
+
+/**
+ * One variant's subject and body as `lead` receives them. With no lead, the
+ * copy comes back as written and every variable without a fallback is unfilled.
+ */
+export const renderVariant = (
+  variant: Pick<SequenceVariant, "body" | "subject">,
+  lead: Lead | undefined
+): RenderedVariant => {
+  const unfilled = new Set<string>();
+  const subject = render(variant.subject, lead, unfilled);
+  const body = render(variant.body, lead, unfilled);
+
+  return { body, subject, unfilled: [...unfilled] };
+};
+
 const previewStep = (
   step: Sequence["steps"][number],
   lead: Lead | undefined
@@ -171,14 +190,12 @@ const previewStep = (
   delayDays: step.delayDays,
   ...stepAt(step.index),
   variants: step.variants.map((variant) => {
-    const unfilled = new Set<string>();
-    const subject = render(variant.subject, lead, unfilled);
-    const body = render(variant.body, lead, unfilled);
+    const { body, subject, unfilled } = renderVariant(variant, lead);
 
     return {
       rendered: { body, bodyText: plain(body), subject },
       template: { body: variant.body, subject: variant.subject },
-      unfilled: [...unfilled],
+      unfilled,
       variantKey: variant.variantKey,
     };
   }),
@@ -211,7 +228,7 @@ export const copyPreview = defineInsight({
     } else if (keys.size === 0) {
       context.note("The copy uses no variables, so no lead was read.");
     } else {
-      lead = bestLead(
+      [lead] = rankLeads(
         await leadsOf(context, values.campaign, values.max_leads, "max_leads"),
         keys
       );

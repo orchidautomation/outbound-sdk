@@ -134,6 +134,19 @@ const variantTest: CardBuilder = (data) => {
   };
 };
 
+/** `null` when clean. `clean: null` means copy written per lead was not audited. */
+const auditVerdict = (data: Json): string | null => {
+  const clean = bool(data, "clean");
+
+  if (clean === true) {
+    return null;
+  }
+
+  return clean === false
+    ? `${plural(rows(data, "findings").length, "problem")} found in the copy.`
+    : "⚪ The copy is written per lead and could not be audited as any lead receives it.";
+};
+
 const copyAudit: CardBuilder = (data) => {
   const severity = child(data, "bySeverity");
 
@@ -146,9 +159,7 @@ const copyAudit: CardBuilder = (data) => {
     ),
     finding: verdict(
       num(data, "variantsChecked"),
-      bool(data, "clean") === true
-        ? null
-        : `${plural(rows(data, "findings").length, "problem")} found in the copy.`,
+      auditVerdict(data),
       "No problem found in the copy."
     ),
     stats: [
