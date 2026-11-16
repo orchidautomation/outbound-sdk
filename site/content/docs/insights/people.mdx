@@ -42,11 +42,11 @@ Everything about one person across campaigns and channels: each campaign they ar
 - `campaigns`: one entry per campaign, with `campaignName`, `campaignStatus`, `channel`, `provider`, `lead`, `leadStatus`, `interest` (the vendor's own label), `messagesSent`, `replies`, `replied`, `autoReplied`, `repliedSteps` (counted from 0), `lastStep`, `firstContactedAt`, `lastContactedAt` and `lastRepliedAt`.
 - `totals`: `campaigns`, `campaignsReplied`, `campaignReplyRate` (campaigns they replied in, divided by campaigns that sent them at least one message), `messagesSent`, `replies` and `byChannel`.
 
-A record the vendor labels out-of-office or bounced (the same rule as [`hotLeads`](#hotleads)) is `autoReplied: true`: its replies were automatic, so it counts 0 `replies`, is not `replied` and adds nothing to `campaignsReplied`.
+A record the vendor labels out-of-office or bounced (the same rule as [`hotLeads`](#hotleads)) is `autoReplied: true`: its replies were automatic, so it counts 0 `replies`, is not `replied` and adds nothing to `campaignsReplied`. A reply in the thread flagged automatic (`isAuto: true`, by the vendor or a fixed rule) is not counted either, and a record whose every reply is flagged automatic is `autoReplied: true` too.
 
 - **Needs:** `leads.lookup`, `leads.timeline`, and `leads.get` for a lead ref.
 - **Costs:** one lookup per identifier, one read of the lead for a lead ref, then up to 2 requests per campaign (the lead's timeline and the campaign).
-- **Notes it can add:** a thread held fewer sent messages than the lead's last step, so messages sent is counted from the last step; a record labelled out-of-office or bounced had replies that are not counted; redact masks one kind of identifier, so records found only under it were not linked.
+- **Notes it can add:** a thread held fewer sent messages than the lead's last step, so messages sent is counted from the last step; a record labelled out-of-office or bounced had replies that are not counted; a thread held replies flagged automatic that are not counted; redact masks one kind of identifier, so records found only under it were not linked.
 - **Does not:** match by name, or find a LinkedIn record from an email address unless some tool holds both for that person. `repliedSteps` is empty when the vendor ties a reply to no step.
 - **Refuses:** with `Unsupported`, before any read, while the [`redact` plugin](/docs/plugins/redact) masks the kind of identifier asked for, or masks any identifier when given a lead ref. Masked records could not be matched, so it does not report a known person as not found. While redact masks both `email` and `linkedin`, as `outbound mcp` does by default, it is not offered as a tool.
 
@@ -88,7 +88,7 @@ Everyone at one company, across campaigns and tools, by exact email domain.
 - `lastReply`: the most recent reply with a known time, or `null`.
 
 - **Needs:** `leads.list`. Without it, `leads.byCampaign`, and the insight reads campaign by campaign. With neither it is `Unsupported`.
-- **Costs:** one request per page of leads read. `max_leads` sets the ceiling.
+- **Costs:** one request per page of leads read. `max_leads` sets the ceiling. Once a lead has replies, one or two more for up to 200 of the newest replies, the campaign's when `campaign` is given, to find leads whose every reply was automatic.
 - **Notes it can add:** the tool reports no per-lead open, click or reply counts, so those are `null`; a cap was reached. On a combined instance the note names only the tools whose records carry no counts, and is left out when every tool's records carry them: records from a tool that reports counts keep them.
 - **Does not:** find a lead that has only a LinkedIn profile (they are counted in `leadsWithoutEmail`), or treat a subdomain as the same company. It reads leads and filters them here, so it costs the same whether the company has one lead or fifty.
 - **Refuses:** with `Unsupported`, before any read, while the [`redact` plugin](/docs/plugins/redact) masks `email`, which leaves no domain to match. It is then not offered as a tool.
@@ -255,7 +255,7 @@ Who to call first: leads ranked by a score built from what the vendor reports.
 `data` (`HotLeads`):
 
 - `leads`: highest score first: the leads that scored above 0, then, while `limit` leaves room, the leads labelled negative, which score 0. Each has `lead`, `email`, `linkedinUrl`, `name`, `title`, `company`, `campaign`, `status`, `interest`, `score`, `parts` (the points per signal: `interest`, `replies`, `clicks`, `opens`, `recency`), the raw `replies`, `clicks` and `opens`, `lastRepliedAt` and a `reason` sentence.
-- `totals`: `leadsRead`, `scored`, `hot`, `withoutData`, `excluded`, `moreLeadsExist` (`true` when `max_leads` stopped the listing with leads left unscored), `fromReplies` (leads past the cap read because they replied), `autoReplied` (leads labelled out-of-office or bounced, whose replies earned nothing) and `negative` (leads labelled negative, which earned no points at all).
+- `totals`: `leadsRead`, `scored`, `hot`, `withoutData`, `excluded`, `moreLeadsExist` (`true` when `max_leads` stopped the listing with leads left unscored), `fromReplies` (leads past the cap read because they replied), `autoReplied` (leads labelled out-of-office or bounced, or whose every reply read was flagged automatic, whose replies earned nothing) and `negative` (leads labelled negative, which earned no points at all).
 
 A lead listing comes in the vendor's order, usually the order leads were added, not by engagement. So when `max_leads` stops it with more leads left, `hotLeads` also reads up to 100 replies from the last `recency_days` days and reads the lead behind each one the listing missed, at most `limit` of them. Engaged leads past the cap are still ranked; the cold ones past it are not, and `moreLeadsExist` says so in the answer itself.
 
@@ -266,10 +266,10 @@ Some labels discount a lead. An automatic one discounts its replies: it earns no
 | Automatic | `ooo`, `bounce` | "out of office" |
 | Negative | `negative`, `unsubscribe` | "not interested", "wrong person", "unsubscribe(d)" or "do not contact" |
 
-An automatic reply is discounted because a vendor's per-lead reply count may include it; [Coverage](/docs/coverage) says, per vendor, what is known about that count. A negative one is discounted because the person asked not to hear more. A label listed in `positive_labels` is never discounted as negative. [`personSummary`](#personsummary) and [`accountSummary`](#accountsummary) use the same automatic rule to decide whether a person replied.
+A lead is also discounted as automatic when every one of its replies read is flagged automatic (`isAuto: true`, by the vendor or a fixed rule); its `reason` reads "every reply read was automatic, so replies earn nothing", and `totals.autoReplied` counts both kinds. An automatic reply is discounted because a vendor's per-lead reply count may include it; [Coverage](/docs/coverage) says, per vendor, what is known about that count. A negative one is discounted because the person asked not to hear more. A label listed in `positive_labels` is never discounted as negative. [`personSummary`](#personsummary) and [`accountSummary`](#accountsummary) use the same automatic rule to decide whether a person replied.
 
 - **Needs:** `leads.list`, or `leads.byCampaign` when `campaign` is given. Without `campaign` on an adapter that cannot list every lead it is `Unsupported`. Looking past the cap also needs `replies.list` and `leads.get`; without them the answer says `moreLeadsExist` and a note says the replied leads were not looked for.
-- **Costs:** one request per page of leads read. `max_leads` sets the ceiling. Past the cap, one or two more for the replies and one per replied lead the listing missed, at most `limit`: about 27 requests for a default call on Instantly with more than 500 leads.
+- **Costs:** one request per page of leads read. `max_leads` sets the ceiling. Past the cap, one or two more for the replies and one per replied lead the listing missed, at most `limit`: about 29 requests for a default call on Instantly with more than 500 leads.
 - **Notes it can add:** the tool reports no per-lead open, click or reply counts, so scores rest on the interest label and the lead's status; a cap was reached. On a combined instance the note names only the tools whose leads carry no counts.
 - **Does not:** predict anything. The score is a sum you can recompute from `parts`. A part that is `null` means the vendor does not report that signal. A lead with no label and no engagement data is left out and counted in `withoutData`, never scored 0. Unsubscribed and bounced leads are left out and counted in `excluded`.
 

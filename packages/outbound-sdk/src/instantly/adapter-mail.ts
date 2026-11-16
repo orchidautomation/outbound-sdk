@@ -18,6 +18,7 @@ import type { InstantlyClient } from "./client.ts";
 import { isScheduled, isTruncated, toMessage, toReply } from "./map-lead.ts";
 import { listEnvelope } from "./map.ts";
 import { pageSize, readLabels } from "./pages.ts";
+import { withAnsweredSteps } from "./thread.ts";
 
 interface EmailCursor {
   readonly after: string | undefined;
@@ -136,9 +137,11 @@ export const mailReaders = (
   listMessages: async (query, ctx): Promise<Page<Message>> => {
     const page = await listEmails(client, ctx, query, false);
 
-    return mapPage(page, (item) =>
+    const mapped = mapPage(page, (item) =>
       toMessage(client.identity, item, query.includeBody)
     );
+
+    return { ...mapped, items: withAnsweredSteps(mapped.items) };
   },
   listReplies: async (query, ctx): Promise<Page<Reply>> => {
     const page = await listEmails(client, ctx, query, true);

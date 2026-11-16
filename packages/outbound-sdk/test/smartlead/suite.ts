@@ -230,7 +230,6 @@ export const suite: AdapterSuite = {
     },
     reply: {
       bodyHtml: "the documented replies are plain text",
-      isAuto: "no documented thread is in the Out Of Office category",
       leadRef:
         "the documented threads name the lead by address; listInboxReplies.history.json adds an id",
     },

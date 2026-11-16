@@ -316,10 +316,20 @@ export const toMessage = (
   seed: MemoryMessage,
   channel: Channel,
   includeBody: boolean
-): Message => ({
-  ...messageFields(identity, seed, channel, includeBody),
-  direction: seed.direction,
-});
+): Message => {
+  const message: Message = {
+    ...messageFields(identity, seed, channel, includeBody),
+    direction: seed.direction,
+  };
+
+  // A seeded flag on a received message is the vendor's word.
+  if (seed.direction === "in" && seed.isAuto !== undefined) {
+    message.isAuto = seed.isAuto;
+    message.isAutoSource = "vendor";
+  }
+
+  return message;
+};
 
 export const toReply = (
   identity: Identity,

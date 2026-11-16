@@ -266,14 +266,15 @@ How fast people reply, and on which days and hours.
 - `timeToReply`: `sample` (replies paired with the message they answer), `medianHours`, `p75Hours`, `p90Hours`, and the share `within1Hour`, `within24Hours` and `within72Hours`.
 - `replies`: when replies arrive, as `byWeekday` (Monday first), `byHour` (0 to 23), `topWeekday` and `topHour`.
 - `sendsThatDrewReplies`: the same tables for the sends that drew a reply.
-- `counts`: `messagesRead`, `sent`, `received`, `paired`, `followOnReplies`, `unpaired` and `unpairedShare` (`unpaired` over `received`, `null` with no reply).
+- `counts`: `messagesRead`, `sent`, `received`, `paired`, `followOnReplies`, `unpaired`, `unpairedShare` (`unpaired` over `received`, `null` with no reply) and `autoReplies` (received messages flagged automatic and left out).
 
 Sends are read from the same `since` as replies. A reply to a send from before `since` cannot pair, and those are the slow replies, so time to reply leaves them out and can look faster than it is. When `unpairedShare` is over 0.25, `meta.complete` is `false` and a note gives the count. Set `since` earlier to pair more.
 
 - **Needs:** `messages.list`.
 - **Costs:** 1 request per page of messages, up to `max_messages`.
-- **Notes it can add:** over a quarter of the replies were not paired with a send, with the count; automatic replies such as out-of-office messages are counted as replies, since messages carry no auto flag (on every answer with a reply); the adapter cannot filter messages by date, so the cap applies to all messages and older ones were dropped after reading; a cap was reached.
-- **Does not:** separate automatic replies, because messages carry no automatic flag. A reply is paired with the last message sent before it in the same thread, or to the same lead. A further message from someone who already replied is counted in `followOnReplies` and not timed. A reply with no earlier send in what was read is `unpaired`. The offset is fixed, so it does not follow daylight saving.
+- **Notes it can add:** over a quarter of the replies were not paired with a send, with the count; how many replies carry no auto flag, so an automatic one among them is counted as a reply, or, with `include_auto`, that automatic replies are counted; the adapter cannot filter messages by date, so the cap applies to all messages and older ones were dropped after reading; a cap was reached.
+- **Automatic replies:** a received message flagged automatic (`isAuto: true`, from the vendor or a fixed rule) is left out before pairing, so a person's reply after an out-of-office still pairs with the send. Set `include_auto: true` to count them. A message with no flag is counted as a reply.
+- **Does not:** tell apart an automatic reply the vendor and the rules leave unflagged. A reply is paired with the last message sent before it in the same thread, or to the same lead. A further message from someone who already replied is counted in `followOnReplies` and not timed. A reply with no earlier send in what was read is `unpaired`. The offset is fixed, so it does not follow daylight saving.
 
 <include meta='title="reply-timing.ts"'>
   ../../_examples/insights-copy/reply-timing.ts

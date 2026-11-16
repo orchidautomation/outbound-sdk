@@ -160,7 +160,7 @@ export interface InsightInputs {
       | undefined;
 
     /**
-     * Set to true to also check replies the vendor marks as automatic
+     * Set to true to also check replies flagged automatic, by the vendor or by a fixed rule
      *
      * Defaults to `false`.
      */
@@ -477,6 +477,13 @@ export interface InsightInputs {
      * Not empty. Defaults to `null`.
      */
     readonly campaign?: string | null | undefined;
+
+    /**
+     * Count replies flagged automatic (isAuto true), such as out-of-office messages and autoresponders. false leaves them out of every figure and counts them in counts.autoReplies.
+     *
+     * Defaults to `false`.
+     */
+    readonly include_auto?: boolean | undefined;
 
     /**
      * The most messages to read, sent and received together. A page of messages costs 1 request.

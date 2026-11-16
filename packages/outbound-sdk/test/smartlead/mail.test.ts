@@ -277,7 +277,9 @@ test("smartlead: replies come from the master inbox with a fetched category", as
     "the category is the lead's, not one message's"
   );
   assert.equal(reply?.unread, true, "is_read is false on the thread");
-  assert.equal(reply?.isAuto, null);
+  // Not Out Of Office, and no fixed rule matches a person asking for pricing.
+  assert.equal(reply?.isAuto, false);
+  assert.equal(reply?.isAutoSource, "rule");
   assert.equal(reply?.bodyText, null);
 });
 
@@ -372,15 +374,17 @@ test("smartlead: a category follows sentiment_type, and Out Of Office by name", 
       reply.category,
       reply.categorySource,
       reply.isAuto,
+      reply.isAutoSource,
     ]),
     [
-      ["positive", "lead", null],
-      ["negative", "lead", null],
-      ["neutral", "lead", null],
-      ["ooo", "lead", true],
-      ["unknown", null, null],
-      ["unknown", null, null],
-      ["unknown", null, null],
+      // Not Out Of Office: a fixed rule reads the reply and finds a person.
+      ["positive", "lead", false, "rule"],
+      ["negative", "lead", false, "rule"],
+      ["neutral", "lead", false, "rule"],
+      ["ooo", "lead", true, "vendor"],
+      ["unknown", null, false, "rule"],
+      ["unknown", null, false, "rule"],
+      ["unknown", null, false, "rule"],
     ]
   );
   assert.equal(page.items[0]?.sourceId, "thread_0", "no last_message id");

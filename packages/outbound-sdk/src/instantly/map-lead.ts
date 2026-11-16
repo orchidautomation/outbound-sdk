@@ -1,6 +1,7 @@
 // Instantly leads, messages and replies -> normalized entities. Pure
 // functions, no I/O. Field names follow the API V2 reference.
 
+import { detectAutoReply } from "../internal/auto-reply.ts";
 import type {
   Lead,
   LeadEngagement,
@@ -238,18 +239,59 @@ export const isScheduled = (raw: JsonObject): boolean =>
 export const isTruncated = (raw: JsonObject): boolean =>
   text(raw.body_fallback_reason) !== null;
 
+// `is_auto_reply` and `is_unread` are documented as 0 or 1.
+const oneOrZero = (value: Json | undefined): boolean | null =>
+  flag(value) ?? (count(value) === null ? null : count(value) === 1);
+
+/** The body to read for canned phrases, whether or not the caller asked for bodies. */
+const rawBody = (raw: JsonObject): string | null =>
+  text(field(raw.body, "text")) ??
+  text(field(raw.body, "html")) ??
+  text(raw.content_preview);
+
+/**
+ * `is_auto_reply` is documented but no live email carried it (2026-11-15), and
+ * the email list has no filter for it, so a fixed rule decides when it is
+ * missing. An Out of Office `i_status` is the vendor saying so.
+ */
+const autoOf = (raw: JsonObject, mapped: ReplyCategory | undefined) => {
+  const verdict = detectAutoReply({
+    body: rawBody(raw),
+    from: text(raw.from_address_email),
+    subject: text(raw.subject),
+  });
+
+  const vendor =
+    oneOrZero(raw.is_auto_reply) ?? (mapped === "ooo" ? true : null);
+
+  return {
+    isAuto: vendor ?? verdict.isAuto,
+    isAutoSource: vendor === null ? ("rule" as const) : ("vendor" as const),
+    leftCompany: verdict.leftCompany,
+  };
+};
+
 export const toMessage = (
   identity: Identity,
   raw: JsonObject,
   includeBody: boolean
-): Message => ({
-  ...messageFields(identity, raw, includeBody),
-  direction: count(raw.ue_type) === RECEIVED ? "in" : "out",
-});
+): Message => {
+  if (count(raw.ue_type) !== RECEIVED) {
+    return { ...messageFields(identity, raw, includeBody), direction: "out" };
+  }
 
-// `is_auto_reply` and `is_unread` are documented as 0 or 1.
-const oneOrZero = (value: Json | undefined): boolean | null =>
-  flag(value) ?? (count(value) === null ? null : count(value) === 1);
+  const { isAuto, isAutoSource } = autoOf(
+    raw,
+    category(raw.i_status, NO_LABELS)
+  );
+
+  return {
+    ...messageFields(identity, raw, includeBody),
+    direction: "in",
+    isAuto,
+    isAutoSource,
+  };
+};
 
 export const toReply = (
   identity: Identity,
@@ -264,7 +306,7 @@ export const toReply = (
     category: mapped ?? "unknown",
     categorySource: mapped === undefined ? null : "vendor",
     direction: "in",
-    isAuto: oneOrZero(raw.is_auto_reply),
+    ...autoOf(raw, mapped),
     unread: oneOrZero(raw.is_unread),
   };
 };

@@ -25,6 +25,8 @@ Added on 2026-11-14 for the lookup by email: `listLeadsByEmail*.json`, the respo
 
 Edited on 2026-11-16 for OUT-87: `lead_id` was removed from `getEmail.json`, `listEmails*.json` and `listReplies*.json`, because a live `GET /emails` reply (2026-11-15) carried `lead` and `from_address_email` but no `lead_id`; the reference marks `lead_id` "(if any)". Added the same day, by hand: `listReplies.sameLead.json`, two received emails in one thread from one lead, with only the keys seen on that live reply; and `listLeadsByEmail.repliers.json`, the lookup by email for the leads the email fixtures name, trimmed to the fields under test.
 
+Added on 2026-11-16 for OUT-92, by hand: `listEmails.autoReplies.json`, one campaign's `GET /emails` in both directions, with only the keys seen on the live reply of 2026-11-15, and `listLeads.autoReplies.json`, its three leads trimmed to the fields under test. They follow a live campaign's shape and timing (a machine mailbox answering each step within seconds, a helpdesk autoresponder, a person answering the next day) with every address, name, company and body replaced.
+
 - getAccount.json
 - getAccountDailyAnalytics.json
 - getAccountWarmupAnalytics.json
@@ -47,11 +49,13 @@ Edited on 2026-11-16 for OUT-87: `lead_id` was removed from `getEmail.json`, `li
 - listCustomTags.page2.json
 - listEmails.json
 - listEmails.page2.json
+- listEmails.autoReplies.json
 - listLeadLabels.json
 - listLeadLists.json
 - listLeadLists.page2.json
 - listLeads.json
 - listLeads.page2.json
+- listLeads.autoReplies.json
 - listLeadsByEmail.json
 - listLeadsByEmail.page2.json
 - listLeadsByEmail.repliers.json

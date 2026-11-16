@@ -68,7 +68,9 @@ $ outbound thread thr_1 --bodies
       "subject": "Re: Quick question",
       "threadId": "thr_1",
       "variantKey": null,
-      "direction": "in"
+      "direction": "in",
+      "isAuto": false,
+      "isAutoSource": "vendor"
     }
   ],
   "meta": {

@@ -1,6 +1,7 @@
 // Smartlead activity, message-history and master-inbox payloads -> messages
 // and replies. Pure functions, no I/O.
 
+import { detectAutoReply } from "../internal/auto-reply.ts";
 import type { Message, Reply, ReplyCategory } from "../internal/entities.ts";
 import { replyCategorySchema } from "../internal/entities.ts";
 import {
@@ -309,15 +310,28 @@ export const toInboxReplies = (
 
   const read = flag(item.is_read);
 
-  return parts.map((part) => ({
-    ...messageFields(identity, place, part, includeBody),
-    category: category ?? "unknown",
-    // The category is the lead's, not one message's.
-    categorySource: category === undefined ? null : "lead",
-    direction: "in",
-    // Smartlead's only automatic-reply signal is the Out Of Office category.
-    isAuto: category === "ooo" ? true : null,
-    // `is_read` is the thread's.
-    unread: read === null ? null : !read,
-  }));
+  return parts.map((part) => {
+    // Smartlead's only automatic-reply signal is the Out Of Office category;
+    // otherwise a fixed rule reads the subject and body.
+    const verdict = detectAutoReply({
+      body: part.body,
+      from: null,
+      subject: part.subject,
+    });
+
+    const vendor = category === "ooo";
+
+    return {
+      ...messageFields(identity, place, part, includeBody),
+      category: category ?? "unknown",
+      // The category is the lead's, not one message's.
+      categorySource: category === undefined ? null : "lead",
+      direction: "in",
+      isAuto: vendor || verdict.isAuto,
+      isAutoSource: vendor ? "vendor" : "rule",
+      leftCompany: verdict.leftCompany,
+      // `is_read` is the thread's.
+      unread: read === null ? null : !read,
+    };
+  });
 };
