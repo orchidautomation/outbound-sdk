@@ -143,15 +143,11 @@ test("a run budget that stops hot_leads part way keeps the leads it listed", asy
     plugins: [budget({ maxRequests: 5, per: "run" })],
   });
 
-  const result = await runInsightByName(
-    outbound,
-    "hot_leads",
-    {},
-    { now: NOW }
-  );
+  const result = await outbound.insights.hotLeads({}, { now: NOW });
 
   assert.equal(http.requests.length, 5);
   assert.equal(result.meta.complete, false);
+  assert.equal(result.data.totals.moreLeadsExist, true);
   assert.ok(
     result.meta.notes.some((note) =>
       note.startsWith(

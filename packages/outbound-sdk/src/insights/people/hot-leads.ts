@@ -9,6 +9,7 @@ import { confirmCampaign } from "../campaign.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { round, total } from "../stats.ts";
+import { wasCutShort } from "../tracked-reads.ts";
 import { AUTO_CHECK_REPLIES, autoOnlyRefs, refsOf } from "./auto-replies.ts";
 import {
   isAutoReplied,
@@ -340,7 +341,7 @@ const listLeads = async (
     await confirmCampaign(context, campaign);
   }
 
-  return { capped: walk.truncated, leads };
+  return { capped: walk.truncated || wasCutShort(leads), leads };
 };
 
 /**
