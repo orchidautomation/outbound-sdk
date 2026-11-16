@@ -5,11 +5,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import { budget } from "../../src/budget/index.ts";
 import { cardFor } from "../../src/cards/index.ts";
 import { runInsightByName } from "../../src/insights/index.ts";
 import type { MemoryData } from "../../src/memory/index.ts";
 import { read } from "../cards/helpers.ts";
 import { NOW, single } from "./helpers.ts";
+import { over, settled, world } from "./metered.ts";
 
 const NOTHING_ACTIVE: MemoryData = {
   blocklist: [{ id: "b1", kind: "email", value: "blocked@example.com" }],
@@ -68,4 +70,21 @@ test("a workspace with no campaigns at all is a clean, empty answer", async () =
 
   assert.equal(result.meta.complete, true);
   assert.deepEqual(result.meta.notes, []);
+});
+
+test("a request cap that cuts the campaign listing short never turns a kept answer into a failure", async () => {
+  // Under 2 the run is refused before its first request; from 4 it finishes.
+  for (const cap of [2, 3]) {
+    const { outbound } = over(world(3, 3), {
+      plugins: [budget({ maxRequests: cap, per: "run" })],
+    });
+
+    // oxlint-disable-next-line no-await-in-loop -- each cap is its own run, one after another.
+    const outcome = await settled(
+      runInsightByName(outbound, "sender_load", {}, { now: NOW })
+    );
+
+    assert.ok(!("rejected" in outcome), `a budget of ${cap} failed the run`);
+    assert.equal(outcome.meta.complete, false);
+  }
 });

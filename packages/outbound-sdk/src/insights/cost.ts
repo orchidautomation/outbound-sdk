@@ -189,7 +189,7 @@ export const boundsOf = <Input>(
  * quarter more for retries (each retry is a request too) and 4 on top.
  */
 export const defaultCap = (bounds: Bounds | null): number =>
-  bounds === null ? Infinity : Math.ceil(bounds.max * 1.25) + 4;
+  bounds === null ? Infinity : Math.ceil(bounds.max * 1.25) + 20;
 
 /** The cap a run is under, and where it came from, for the message when it stops. */
 export interface CapInEffect {

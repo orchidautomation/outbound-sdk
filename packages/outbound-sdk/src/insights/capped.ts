@@ -3,7 +3,8 @@
 // states up to one cap across all of them.
 
 import type { Campaign, CampaignStatus } from "../internal/entities.ts";
-import type { ListAll } from "../internal/outbound/api.ts";
+import { OutboundError } from "../internal/errors.ts";
+import type { ListAll, PageResult } from "../internal/outbound/api.ts";
 import type { InsightContext } from "./define.ts";
 import { capNote, wasCutShort } from "./tracked-reads.ts";
 import type { Cap } from "./tracked-reads.ts";
@@ -56,6 +57,21 @@ export const campaignsReadOf = (read: Capped<Campaign>): CampaignsRead => ({
   campaignsRead: read.items.length,
   moreCampaignsExist: read.capped,
 });
+
+/** The page, or `null` when a request cap stopped it. */
+const settledPage = async <Item>(
+  read: Promise<PageResult<Item>>
+): Promise<PageResult<Item> | null> => {
+  try {
+    return await read;
+  } catch (error) {
+    if (OutboundError.is(error) && error.code === "RateLimited") {
+      return null;
+    }
+
+    throw error;
+  }
+};
 
 const either = (words: readonly string[]): string =>
   words.length < 2
@@ -125,8 +141,8 @@ export const readCampaignsIn = async (
 
     context.campaignsFound(items.length);
 
-    if (items.length === 0) {
-      noneMatched(context, wanted, every.items, every.capped);
+    if (items.length === 0 && !every.capped) {
+      noneMatched(context, wanted, every.items, false);
     }
 
     return { capped: every.capped, items };
@@ -150,10 +166,21 @@ export const readCampaignsIn = async (
 
   context.campaignsFound(found.length);
 
-  if (found.length === 0) {
-    const page = await campaigns.list();
+  if (found.length === 0 && !capped) {
+    const page = await settledPage(campaigns.list());
 
-    noneMatched(context, wanted, context.page(page), page.cursor !== undefined);
+    if (page === null) {
+      context.partial(
+        `No campaign is ${either(wanted)}, so nothing was checked; a request cap stopped the count of the others.`
+      );
+    } else {
+      noneMatched(
+        context,
+        wanted,
+        context.page(page),
+        page.cursor !== undefined
+      );
+    }
   }
 
   return { capped, items: found };
