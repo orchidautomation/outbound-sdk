@@ -14,6 +14,7 @@ import { replyCategorySchema } from "../../internal/vocabulary.ts";
 import type { Capped } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
+import { inboxOf } from "../inbox.ts";
 import { round } from "../stats.ts";
 import { nameOf, readByRef, readCappedFlag } from "./read.ts";
 
@@ -305,8 +306,7 @@ const named = async (
 const readReplies = (
   context: InsightContext,
   since: string,
-  given: number | null,
-  inbox: boolean
+  given: number | null
 ): Promise<Capped<Reply>> => {
   const { outbound } = context;
   const filtered = outbound.capabilities["replies.since"] !== false;
@@ -317,18 +317,16 @@ const readReplies = (
     );
   }
 
-  // Replies outside every campaign are read too when the vendor marks them,
-  // so they can be counted when they are set aside.
-  const includeInbox =
-    inbox || outbound.capabilities["replies.inbox"] || undefined;
-
+  // Replies outside every campaign are read too, so they can be counted
+  // when they are set aside. A tool with no such inbox reads the same either
+  // way, and on a combined instance each tool that has one includes it.
   return readCappedFlag(
     context,
     (cap) =>
       outbound.replies.listAll(
         filtered
-          ? { includeInbox, max: cap, since }
-          : { includeInbox, max: cap }
+          ? { includeInbox: true, max: cap, since }
+          : { includeInbox: true, max: cap }
       ),
     given ?? WINDOW_REPLIES,
     "replies",
@@ -511,12 +509,7 @@ export const droppedReplies = defineInsight({
       );
     }
 
-    const listed = await readReplies(
-      context,
-      since,
-      values.max_replies,
-      values.include_inbox
-    );
+    const listed = await readReplies(context, since, values.max_replies);
 
     const read = listed.items;
 
@@ -526,12 +519,17 @@ export const droppedReplies = defineInsight({
         reply.sentAt === null || Date.parse(reply.sentAt) >= Date.parse(since)
     );
 
-    const separates = context.outbound.capabilities["replies.inbox"];
+    const fromInbox = inboxOf(context.outbound);
 
-    const replies =
-      separates && !values.include_inbox
-        ? inWindow.filter((reply) => reply.campaignRef !== null)
-        : inWindow;
+    const separates =
+      context.outbound.capabilities["replies.inbox"] ||
+      inWindow.some(fromInbox);
+
+    const replies = values.include_inbox
+      ? inWindow
+      : inWindow.filter(
+          (reply) => reply.campaignRef !== null || !fromInbox(reply)
+        );
 
     const wanted = replies.filter((reply) =>
       values.categories.includes(reply.category)

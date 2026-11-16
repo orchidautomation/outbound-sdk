@@ -3,11 +3,11 @@
 import { z } from "zod";
 
 import type { Message } from "../../internal/entities.ts";
-import type { OutboundApi } from "../../internal/outbound/api.ts";
 import { confirmCampaign } from "../campaign.ts";
 import { readCapped } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
+import { inboxOf } from "../inbox.ts";
 import { refOf } from "../ref.ts";
 import { median, percent, percentile, rate, round } from "../stats.ts";
 
@@ -152,37 +152,6 @@ interface Pairing {
   readonly followOn: number;
   readonly unpaired: number;
 }
-
-/**
- * Whether the tool a message came from has conversations in no campaign
- * (`replies.inbox`). A combined instance holds each key only when every
- * tool does, so each tool answers for its own messages.
- */
-const inboxOf = (outbound: OutboundApi): ((message: Message) => boolean) => {
-  const known = new Map<string, boolean>();
-
-  return (message) => {
-    if (outbound.capabilities["replies.inbox"]) {
-      return true;
-    }
-
-    const key = `${message.provider}:${message.workspaceId}`;
-    let separates = known.get(key);
-
-    if (separates === undefined) {
-      try {
-        separates = outbound.workspace(key).capabilities["replies.inbox"];
-      } catch {
-        // Not a member of a combined instance: its tool is this one.
-        separates = false;
-      }
-
-      known.set(key, separates);
-    }
-
-    return separates;
-  };
-};
 
 const timeOf = (message: Message): number | null =>
   message.sentAt === null ? null : Date.parse(message.sentAt);

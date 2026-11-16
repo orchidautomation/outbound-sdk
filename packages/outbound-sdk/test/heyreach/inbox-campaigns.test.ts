@@ -171,13 +171,16 @@ test("heyreach: reply_timing leaves the inbox's own conversations out of every f
   );
 });
 
-test("reply_timing on a combined instance leaves out the inbox of the tool that has one", async () => {
+/**
+ * HeyReach beside an email tool with no inbox of its own, which turns
+ * replies.inbox off for the pair. The email tool's one conversation names no
+ * campaign, yet it is outreach and must be kept: only HeyReach's
+ * campaign-less conversations are its inbox.
+ */
+const combinedInstance = () => {
   const clock = createClock();
   const { http } = inboxFetch();
 
-  // An email tool with no inbox of its own turns replies.inbox off for the
-  // pair. Its one conversation names no campaign, yet it is outreach and
-  // must be kept: only HeyReach's campaign-less conversations are its inbox.
   const mail = memory({
     data: {
       leads: [{ email: "person1@example.com", id: "l1" }],
@@ -213,6 +216,12 @@ test("reply_timing on a combined instance leaves out the inbox of the tool that 
 
   assert.equal(outbound.capabilities["replies.inbox"], false);
 
+  return { clock, outbound };
+};
+
+test("reply_timing on a combined instance leaves out the inbox of the tool that has one", async () => {
+  const { clock, outbound } = combinedInstance();
+
   const result = await clock.settle(
     outbound.insights.replyTiming(
       { since: "2026-10-01T00:00:00Z" },
@@ -232,6 +241,39 @@ test("reply_timing on a combined instance leaves out the inbox of the tool that 
   assert.equal(counts.paired, 2);
   assert.equal(counts.unpaired, 0);
   assert.equal(timeToReply.sample, 2);
+});
+
+test("dropped_replies on a combined instance sets aside the inbox of the tool that has one", async () => {
+  const { clock, outbound } = combinedInstance();
+
+  const result = await clock.settle(
+    outbound.insights.droppedReplies({ since: "2026-10-01" }, { now: NOW })
+  );
+
+  const { dropped, totals } = result.data;
+
+  assert.equal(totals.repliesRead, 4, "both tools' replies, inbox included");
+  assert.equal(totals.notInCampaign, 2, "HeyReach's two DMs, and nothing else");
+  assert.deepEqual(
+    dropped.map((each) => each.lead).toSorted(),
+    [
+      "heyreach:client-a:https://www.linkedin.com/in/example-person-1",
+      "mailtool:agency:l1",
+    ],
+    "HeyReach's campaign reply and the email reply, which names no campaign"
+  );
+
+  const all = combinedInstance();
+
+  const inbox = await all.clock.settle(
+    all.outbound.insights.droppedReplies(
+      { include_inbox: true, since: "2026-10-01" },
+      { now: NOW }
+    )
+  );
+
+  assert.equal(inbox.data.totals.notInCampaign, 0);
+  assert.equal(inbox.data.totals.dropped, 4);
 });
 
 /** The replies `outbound` prints for `argv`, over the inbox fixture. */
