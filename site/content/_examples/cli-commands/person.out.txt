@@ -1,8 +1,8 @@
 $ outbound person 'person1@example.com' --compact
-{"data":{"campaigns":[{"firstContactedAt":"2026-11-11T14:00:00.000Z","lastContactedAt":"2026-11-11T14:00:00.000Z","lastRepliedAt":"2026-11-12T09:30:00.000Z","lastStep":0,"messagesSent":1,"replies":1,"campaign":"memory:default:cmp_founders","campaignName":"Q4 SaaS founders","campaignStatus":"active","channel":"email","interest":"Interested","lead":"memory:default:lead_1","leadStatus":"replied","provider":"memory","autoReplied":false,"replied":true,"lastStepIndex":0,"lastStepNumber":1,"repliedStepIndexes":[0],"repliedStepNumbers":[1],"repliedSteps":[0],"vendorLeadStatus":"replied"}],"found":true,"identifiers":["email:person1@example.com"],"totals":{"byChannel":{"email":{"messagesSent":1,"replies":1}},"campaignReplyRate":1,"campaigns":1,"campaignsReplied":1,"messagesSent":1,"replies":1}},"meta":{"complete":true,"evidence":"exact","notes":[],"requests":0,"computedAt":"2026-11-14T12:00:00.000Z","provider":"memory","insight":"person_summary"},"ok":true}
+{"data":{"campaigns":[{"firstContactedAt":"2026-11-11T14:00:00.000Z","lastContactedAt":"2026-11-11T14:00:00.000Z","lastRepliedAt":"2026-11-12T09:30:00.000Z","lastStep":0,"messagesSent":1,"replies":1,"campaign":"memory:default:cmp_founders","campaignName":"Q4 SaaS founders","campaignStatus":"active","channel":"email","interest":"Interested","lead":"memory:default:lead_1","leadStatus":"replied","provider":"memory","autoReplied":false,"replied":true,"lastStepIndex":0,"lastStepNumber":1,"repliedStepIndexes":[0],"repliedStepNumbers":[1],"repliedSteps":[0],"vendorLeadStatus":"replied"}],"found":true,"identifiers":["email:person1@example.com"],"totals":{"byChannel":{"email":{"messagesSent":1,"replies":1}},"campaignReplyRate":1,"campaigns":1,"campaignsReplied":1,"messagesSent":1,"replies":1}},"meta":{"complete":true,"evidence":"exact","notes":[],"requests":0,"computedAt":"2026-11-14T12:00:00.000Z","provider":"memory","throttledMs":0,"insight":"person_summary"},"ok":true}
 
 $ outbound person 'nobody@example.com' --compact
-{"data":{"campaigns":[],"found":false,"identifiers":["email:nobody@example.com"],"totals":{"byChannel":{},"campaignReplyRate":null,"campaigns":0,"campaignsReplied":0,"messagesSent":0,"replies":0}},"meta":{"complete":true,"evidence":"exact","notes":[],"requests":0,"computedAt":"2026-11-14T12:00:00.000Z","provider":"memory","insight":"person_summary"},"ok":true}
+{"data":{"campaigns":[],"found":false,"identifiers":["email:nobody@example.com"],"totals":{"byChannel":{},"campaignReplyRate":null,"campaigns":0,"campaignsReplied":0,"messagesSent":0,"replies":0}},"meta":{"complete":true,"evidence":"exact","notes":[],"requests":0,"computedAt":"2026-11-14T12:00:00.000Z","provider":"memory","throttledMs":0,"insight":"person_summary"},"ok":true}
 
 $ outbound person 'person1@example.com' --redact
 {
@@ -15,7 +15,8 @@ $ outbound person 'person1@example.com' --redact
     "complete": false,
     "notes": [],
     "provider": "memory",
-    "requests": 0
+    "requests": 0,
+    "throttledMs": 0
   },
   "ok": false
 }
@@ -33,7 +34,8 @@ $ outbound person
     "complete": false,
     "notes": [],
     "provider": "memory",
-    "requests": 0
+    "requests": 0,
+    "throttledMs": 0
   },
   "ok": false
 }

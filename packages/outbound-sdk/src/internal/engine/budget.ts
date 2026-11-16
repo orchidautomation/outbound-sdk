@@ -15,6 +15,7 @@ export const DEFAULT_LANE = "default";
 
 const MIN_FACTOR = 0.1;
 const RECOVERY_STEP = 0.05;
+const MIN_VENDOR_PAUSE_MS = 1000;
 
 export interface AcquireOptions {
   readonly lane: string;
@@ -44,6 +45,8 @@ export interface BudgetOptions {
 export class Budget {
   readonly #options: BudgetOptions;
   readonly #waiting: (() => void)[] = [];
+  /** Per lane, until when the vendor's last 429 asked it to wait. */
+  readonly #vendorPausedUntil = new Map<string, number>();
   #inFlight = 0;
   /** Drops to slow down after a 429, then recovers toward 1. */
   #factor = 1;
@@ -52,7 +55,8 @@ export class Budget {
     this.#options = options;
   }
 
-  #windows(lane: string): readonly RateWindow[] {
+  /** The windows a request on `lane` must fit, after `share` and any slowdown. */
+  windows(lane: string): readonly RateWindow[] {
     const { limits, share } = this.#options;
 
     const declared =
@@ -73,7 +77,7 @@ export class Budget {
     if (lane !== DEFAULT_LANE) {
       const laneWait = await store.reserve(
         this.#storeKey(lane),
-        this.#windows(lane),
+        this.windows(lane),
         now
       );
 
@@ -84,7 +88,7 @@ export class Budget {
 
     return await store.reserve(
       this.#options.key,
-      this.#windows(DEFAULT_LANE),
+      this.windows(DEFAULT_LANE),
       now
     );
   }
@@ -158,7 +162,16 @@ export class Budget {
           );
         }
 
-        fire(hooks.onThrottle, { lane, provider, waitMs });
+        fire(hooks.onThrottle, {
+          cause:
+            now < (this.#vendorPausedUntil.get(lane) ?? 0)
+              ? "vendor"
+              : "budget",
+          lane,
+          provider,
+          waitMs,
+          windows: this.windows(lane),
+        });
         // oxlint-disable-next-line no-await-in-loop -- waiting is the point.
         await sleep(runtime, waitMs, provider, signal);
         waited += waitMs;
@@ -179,6 +192,23 @@ export class Budget {
     }
   }
 
+  /**
+   * How long to pause a lane after a 429 that names no wait: the spacing of
+   * its tightest published window, at least a second. For a limit of 20 a
+   * minute that is 3 s, the time one more request takes to fit.
+   */
+  vendorPauseMs(lane: string): number {
+    const { limits } = this.#options;
+
+    const declared =
+      lane === DEFAULT_LANE ? limits.windows : (limits.lanes?.[lane] ?? []);
+
+    return Math.max(
+      MIN_VENDOR_PAUSE_MS,
+      ...declared.map((window) => Math.ceil(window.perMs / window.requests))
+    );
+  }
+
   /** Called on a 429: pause the lane and halve the rate. */
   async rateLimited(
     lane: string,
@@ -186,6 +216,7 @@ export class Budget {
     now: number
   ): Promise<void> {
     this.#factor = Math.max(MIN_FACTOR, this.#factor / 2);
+    this.#vendorPausedUntil.set(lane, now + retryAfterMs);
     await this.#options.store.pause(this.#storeKey(lane), now + retryAfterMs);
   }
 
@@ -207,7 +238,7 @@ export class Budget {
 
     const perLane = await Promise.all(
       lanes.map(async (lane) => {
-        const windows = this.#windows(lane);
+        const windows = this.windows(lane);
 
         const used = await this.#options.store.usage(
           this.#storeKey(lane),

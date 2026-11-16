@@ -1,7 +1,7 @@
 // Every command's answer in one shape, so a script or an agent parses one
 // thing and reads from stdout whether the answer is complete:
 //
-//   { ok, data, meta: { complete, notes, provider, requests, ... }, next? }
+//   { ok, data, meta: { complete, notes, provider, requests, throttledMs, ... }, next? }
 
 import {
   field,
@@ -102,6 +102,8 @@ export interface RunFacts {
   readonly provider: string | null;
   /** Vendor requests the command sent. */
   readonly requests: number;
+  /** Milliseconds the command spent waiting on rate limits, overlaps counted once. */
+  readonly throttledMs: number;
 }
 
 /** Counts every vendor request the command sends, for `meta.requests`. */
@@ -167,6 +169,7 @@ export const envelope = (printed: Printed, facts: RunFacts): JsonObject => {
     notes: [...notes],
     provider: facts.provider ?? field(own, "provider") ?? null,
     requests: facts.requests,
+    throttledMs: facts.throttledMs,
   };
 
   if (isString(insight)) {
@@ -211,6 +214,7 @@ export const failedEnvelope = (
     notes: [],
     provider: facts.provider,
     requests: facts.requests,
+    throttledMs: facts.throttledMs,
   },
   ok: false,
 });
