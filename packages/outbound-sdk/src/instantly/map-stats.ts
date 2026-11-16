@@ -10,6 +10,10 @@
 // (1,404 against 430 on a four-step campaign), though the reference describes
 // it as leads started. By day it is `new_leads_contacted`: `contacted` there is
 // everyone emailed that day, so it repeats a lead on each step it reaches.
+//
+// Leads, completed leads and opportunities are on the totals only. The
+// overview has no `leads_count`, so `leads` is read from the per-campaign
+// report alone.
 
 import type { MetricRow } from "../internal/entities.ts";
 import { count, text } from "../internal/json.ts";
@@ -27,9 +31,12 @@ export const overviewRow = (scope: RowScope, raw: JsonObject): MetricRow =>
     bounced: count(raw.bounced_count),
     clicked: count(raw.link_click_count_unique),
     clickedTotal: count(raw.link_click_count),
+    completed: count(raw.completed_count),
     contacted: count(raw.new_leads_contacted_count),
     opened: count(raw.open_count_unique),
     openedTotal: count(raw.open_count),
+    opportunities: count(raw.total_opportunities),
+    opportunityValue: count(raw.total_opportunity_value),
     positive: count(raw.total_interested),
     replied: count(raw.reply_count_unique),
     repliedAuto: count(raw.reply_count_automatic_unique),
@@ -48,8 +55,12 @@ export const campaignRow = (scope: RowScope, raw: JsonObject): MetricRow =>
     bounced: count(raw.bounced_count),
     clicked: count(raw.link_click_count_unique),
     clickedTotal: count(raw.link_click_count),
+    completed: count(raw.completed_count),
     contacted: count(raw.new_leads_contacted_count),
+    leads: count(raw.leads_count),
     opened: count(raw.open_count_unique),
+    opportunities: count(raw.total_opportunities),
+    opportunityValue: count(raw.total_opportunity_value),
     replied: count(raw.reply_count_unique),
     repliedAuto: count(raw.reply_count_automatic_unique),
     sent: count(raw.emails_sent_count),

@@ -119,11 +119,15 @@ export const fields: FieldDeclaration = {
   metricRow: {
     clicked: false,
     clickedTotal: false,
+    completed: false,
     connectionsAccepted: false,
     connectionsSent: false,
     contentHash: false,
     delivered: false,
     inmailsSent: false,
+    leads: false,
+    opportunities: false,
+    opportunityValue: false,
     repliedAuto: false,
     // No read says which timezone its days are in.
     timezone: false,

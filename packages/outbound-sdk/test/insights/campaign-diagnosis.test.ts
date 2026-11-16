@@ -546,11 +546,12 @@ const leads = (
 
 // Live case (OUT-97): sends fell from 873 to 306 while only 28 leads were
 // left to start, 0.64 days at the recent pace. Here the 7 days before sent
-// 900 and the last 7 sent 280, starting 280 new leads: 40 a day.
+// 900 and the last 7 sent 280, starting 280 new leads: 40 a day. The 1,168
+// finished leads and the 12 in sequence are the 1,180 started.
 const runout = (toStart: number): MemoryData => ({
   campaigns: [{ id: "drain", name: "Draining" }],
   leads: [
-    ...leads("drain", 30, "completed", true),
+    ...leads("drain", 1168, "completed", true),
     ...leads("drain", 12, "active", true),
     ...leads("drain", toStart, "active", false),
   ],

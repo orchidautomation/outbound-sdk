@@ -129,10 +129,14 @@ export const fields: FieldDeclaration = {
     bounced: false,
     clicked: false,
     clickedTotal: false,
+    completed: false,
     contentHash: false,
     delivered: false,
+    leads: false,
     opened: false,
     openedTotal: false,
+    opportunities: false,
+    opportunityValue: false,
     repliedAuto: false,
     stepIndex: false,
     unsubscribed: false,
@@ -190,6 +194,8 @@ export const costs = {
   "blocklist.list": { pageSize: PAGE_SIZE, perPage: 1 },
   "campaigns.get": { perPage: 1 },
   "campaigns.list": { pageSize: PAGE_SIZE, perPage: 1 },
+  // The campaign object, which carries its lead counts.
+  "campaigns.progress": { perPage: 1 },
   // The profile and its tags are two requests.
   "leads.get": { perPage: 2 },
   // A campaign's leads. A saved list's leads come up to 1000 a page. Without

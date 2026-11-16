@@ -106,6 +106,7 @@ const samplers = (ids: Ids): Record<RecordName, Sampler[]> => {
     metricRow: [
       (outbound) => rows(outbound.stats()),
       (outbound) => rows(outbound.stats({ by: "day" })),
+      (outbound) => rows(outbound.stats({ scope: "campaign" })),
       (outbound) => rows(outbound.campaign(campaign).stats()),
       (outbound) => rows(outbound.campaign(campaign).stats(WINDOW)),
       (outbound) => rows(outbound.campaign(campaign).stats({ scope: "step" })),

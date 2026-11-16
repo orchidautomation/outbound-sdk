@@ -119,11 +119,15 @@ export const fields: FieldDeclaration = {
   // A message is not marked automatic; a reply is.
   message: { isAuto: false, isAutoSource: false, variantKey: false },
   metricRow: {
+    completed: false,
     connectionsAccepted: false,
     connectionsSent: false,
     contentHash: false,
     delivered: false,
     inmailsSent: false,
+    leads: false,
+    opportunities: false,
+    opportunityValue: false,
     // total_reply_count less non_ooo_reply_count.
     repliedAuto: "derived",
   },
@@ -164,6 +168,8 @@ export const costs = {
   "campaigns.get": { perPage: 1 },
   // One request returns every campaign; there are no pages.
   "campaigns.list": { perPage: 1 },
+  // The campaign's top-level analytics.
+  "campaigns.progress": { perPage: 1 },
   "campaigns.settings": { perPage: 1 },
   // The lead, then its tags, then the category list when the lead has a
   // category.

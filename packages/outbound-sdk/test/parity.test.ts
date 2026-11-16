@@ -41,10 +41,10 @@ const NO_TOTAL_REPLIES =
 const INSTANTLY: ProviderParity = {
   mapping: {
     clickRate: (row) => disabledWhenNull(row.clicked),
-    leadsTotal: { unmapped: "A stats row has no lead total" },
+    leadsTotal: (row) => row.leads ?? null,
     openRate: (row) => disabledWhenNull(row.opened),
-    opportunities: { unmapped: "The SDK has no opportunity count" },
-    opportunityValue: { unmapped: "The SDK has no opportunity value" },
+    opportunities: (row) => row.opportunities ?? null,
+    opportunityValue: (row) => row.opportunityValue ?? null,
     replies: { unmapped: NO_TOTAL_REPLIES },
     sequenceStarted: (row) => row.contacted,
     totalSent: (row) => row.sent,

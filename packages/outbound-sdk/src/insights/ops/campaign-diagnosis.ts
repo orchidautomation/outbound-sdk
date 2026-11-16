@@ -115,6 +115,7 @@ interface Extras {
   readonly steps: number | null;
   readonly senders: readonly Sender[] | null;
   readonly recent: RecentSends | null;
+  readonly campaignLeads: number | null;
   readonly notChecked: string[];
 }
 
@@ -241,6 +242,13 @@ const readExtras = async (
       })
     : null;
 
+  const campaignLeads = unless(
+    !capabilities["campaigns.progress"],
+    "Leads contacted against the campaign's leads: the adapter does not serve campaign progress."
+  )
+    ? context.one(await handle.progress()).leads
+    : null;
+
   const recent = unless(
     capabilities["stats.byDay"] === false,
     "Recent sending trend: the adapter has no stats by day."
@@ -249,6 +257,7 @@ const readExtras = async (
     : null;
 
   return {
+    campaignLeads,
     notChecked,
     recent,
     senders: senders?.items ?? null,
@@ -278,7 +287,7 @@ const summarize = (findings: readonly DiagnosisFinding[]): string => {
 
 export const campaignDiagnosis = defineInsight({
   description:
-    "Why one campaign is underperforming: a list of findings, most serious first, each with a code, a plain-language finding, the numbers behind it and what to look at next. It checks for too little volume to judge, a low reply rate (with its 95% interval), a high bounce rate, few positive replies among replies, sends falling or stopped over the last days, told apart from the campaign running out of leads (under a day of new leads left to start at the recent pace, the pace lead_runway uses), a one or two step sequence, any of the campaign's own senders (up to 500) that is not active or has a warmup score of 0, open or click tracking being off, and a schedule or daily limit that holds volume back. Also returns what could not be checked; an empty list means nothing was found, not that all is well. Costs up to 6 requests, plus one per page of the campaign's senders and, only when sends fell or stopped, one per page of its leads.",
+    "Why one campaign is underperforming: a list of findings, most serious first, each with a code, a plain-language finding, the numbers behind it and what to look at next. It checks for too little volume to judge, a low reply rate (with its 95% interval), a high bounce rate, few positive replies among replies, sends falling or stopped over the last days, told apart from the campaign running out of leads (under a day of new leads left to start at the recent pace, the pace lead_runway uses), a one or two step sequence, any of the campaign's own senders (up to 500) that is not active or has a warmup score of 0, open or click tracking being off, a schedule or daily limit that holds volume back, and a count of leads contacted more than twice the campaign's leads, which means the count is wrong. Also returns what could not be checked; an empty list means nothing was found, not that all is well. Costs up to 7 requests, plus one per page of the campaign's senders and, only when sends fell or stopped, one per page of its leads.",
   inputSchema: input,
   key: "campaignDiagnosis",
   cost: (values, price) => {
@@ -290,6 +299,9 @@ export const campaignDiagnosis = defineInsight({
       (capabilities["campaigns.settings"] === false
         ? 0
         : price.one("campaigns.settings")) +
+      (capabilities["campaigns.progress"] === false
+        ? 0
+        : price.one("campaigns.progress")) +
       (capabilities.sequence === false ? 0 : price.one("sequence.get")) +
       (capabilities["senders.byCampaign"] === false
         ? 0

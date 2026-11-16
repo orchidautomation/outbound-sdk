@@ -154,6 +154,8 @@ export const costs = {
   "campaigns.get": { perPage: 3 },
   // The campaigns, their tag assignments, then the tags' names.
   "campaigns.list": { pageSize: PAGE_SIZE, perPage: 3, perWalk: 1 },
+  // The per-campaign report, asked for one campaign.
+  "campaigns.progress": { perPage: 1 },
   "campaigns.settings": { perPage: 1 },
   // A custom interest label costs one more read of the label list, made only
   // when the lead or a page of leads holds one.
