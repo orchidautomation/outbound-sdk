@@ -47,6 +47,7 @@
         "leadsAffected": 2,
         "leadsWithoutValue": 2,
         "name": "icebreaker",
+        "sender": false,
         "source": "custom",
         "steps": [
           0
@@ -67,6 +68,7 @@
         "leadsAffected": 1,
         "leadsWithoutValue": 1,
         "name": "company",
+        "sender": false,
         "source": "builtin",
         "steps": [
           0
@@ -87,6 +89,7 @@
         "leadsAffected": 1,
         "leadsWithoutValue": 1,
         "name": "firstName",
+        "sender": false,
         "source": "builtin",
         "steps": [
           0,
@@ -124,6 +127,7 @@
         "leadsAffected": null,
         "leadsWithoutValue": null,
         "name": "senderSignature",
+        "sender": false,
         "source": "unknown",
         "steps": [
           0

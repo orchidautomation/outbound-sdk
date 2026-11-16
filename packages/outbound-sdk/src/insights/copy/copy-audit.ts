@@ -79,11 +79,12 @@ export interface CopyAudit {
   readonly campaignName: string;
   readonly channel: "email" | "linkedin";
   /**
-   * `true` when no check found anything in the copy that could be read.
-   * `null` when copy written per lead could not be audited for any lead, so
-   * no finding does not mean the copy is clean.
+   * `true` when no check found anything and every variant was audited.
+   * `false` on any finding, and also when copy written per lead could not be
+   * audited for every variant: then `variantsNotAudited` is above 0 and a
+   * note says why, and no finding does not mean a problem was found.
    */
-  readonly clean: boolean | null;
+  readonly clean: boolean;
   /** High severity first, then by step and variant. */
   readonly findings: readonly CopyFinding[];
   /** Every check that was run, with how often it fired. */
@@ -106,6 +107,11 @@ export interface CopyAudit {
   readonly variantsWrittenPerLead?: number;
   /** The leads whose rendered copy was audited. Empty when no copy is written per lead. */
   readonly leadsAudited?: readonly string[];
+  /**
+   * Variants written per lead that no sample lead's copy could be rendered
+   * for, so they were not audited at all. Above 0 makes `clean` `false`.
+   */
+  readonly variantsNotAudited?: number;
 }
 
 const RANK: Readonly<Record<Severity, number>> = { high: 0, low: 2, medium: 1 };
@@ -121,17 +127,9 @@ const EMAIL_ONLY: readonly CheckName[] = [
 
 const LINKEDIN_ONLY: readonly CheckName[] = ["connection_request_too_long"];
 
-/**
- * `false` on any finding. `null` when copy written per lead was left
- * unaudited, since no finding there does not make it clean.
- */
-const cleanOf = (findings: number, unaudited: number): boolean | null => {
-  if (findings > 0) {
-    return false;
-  }
-
-  return unaudited > 0 ? null : true;
-};
+/** Clean only with no finding and nothing left unaudited: copy not read is never called clean. */
+const cleanOf = (findings: number, unaudited: number): boolean =>
+  findings === 0 && unaudited === 0;
 
 // SAFETY: CHECKS is a fixed object, so its keys are exactly CheckName.
 const CHECK_NAMES = Object.keys(CHECKS) as CheckName[];
@@ -230,7 +228,7 @@ const noteSamples = (
 
 export const copyAudit = defineInsight({
   description:
-    "Problems in a campaign's copy before it sends. Checks every step and variant for a long subject, a long body, too many links, spam words, unbalanced or empty {{ }} variables, words in capitals, repeated exclamation marks, an image or tracking pixel, a missing subject on the first email, and a follow-up whose subject breaks the thread; a LinkedIn campaign skips the email-only checks and flags a connection request over the character limit. Returns each finding with a severity and the text that triggered it, and a count per check. When a subject or body is mostly variables, such as {{body_1}} filled from a custom field, that variant is audited as sample leads receive it, rendered as copy_preview renders it, and each such finding names its lead; when no lead's copy can be rendered, clean is null rather than true. Costs 2 requests, plus one per page of leads read when copy is written per lead. Fixed rules only, no model. A variant whose body the vendor does not return is counted, not judged.",
+    "Problems in a campaign's copy before it sends. Checks every step and variant for a long subject, a long body, too many links, spam words, unbalanced or empty {{ }} variables, words in capitals, repeated exclamation marks, an image or tracking pixel, a missing subject on the first email, and a follow-up whose subject breaks the thread; a LinkedIn campaign skips the email-only checks and flags a connection request over the character limit. Returns each finding with a severity and the text that triggered it, and a count per check. When a subject or body is mostly variables, such as {{body_1}} filled from a custom field, that variant is audited as sample leads receive it, rendered as copy_preview renders it, and each such finding names its lead; when a variant cannot be rendered for any sample lead, clean is false and variantsNotAudited counts it, never a bare clean true. Costs 2 requests, plus one per page of leads read when copy is written per lead. Fixed rules only, no model. A variant whose body the vendor does not return is counted, not judged.",
   inputSchema: input,
   key: "copyAudit",
   cost: (values, price) =>
@@ -327,6 +325,7 @@ export const copyAudit = defineInsight({
       variantsChecked: variants.length,
       leadsAudited: sampled.leads,
       variantsWithoutBody: withoutBody,
+      variantsNotAudited: sampled.unaudited,
       variantsWrittenPerLead: perLead,
     };
 

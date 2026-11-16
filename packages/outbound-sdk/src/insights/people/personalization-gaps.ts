@@ -51,12 +51,18 @@ export interface CopyVariable {
   readonly name: string;
   /**
    * `builtin` for first name, last name, company, title and email; `custom`
-   * when a lead read has a custom field of that name; `sender` for a
-   * variable the tool fills from the sending account, such as Instantly's
-   * `{{accountSignature}}`; `unknown` when no lead read has it, which is a
-   * system variable the tool fills itself, or a field nobody has.
+   * when a lead read has a custom field of that name; `unknown` when no
+   * lead read has it, which is a sender or system variable the tool fills
+   * itself, or a field nobody has. A sender variable also has `sender: true`.
    */
-  readonly source: "builtin" | "custom" | "sender" | "unknown";
+  readonly source: "builtin" | "custom" | "unknown";
+  /**
+   * `true` when the tool fills it from the sending account at send time,
+   * such as Instantly's `{{accountSignature}}`: not a lead field, and not
+   * listed in `unknownVariables`. Its `source` is `unknown`. Always set;
+   * optional in the type so a variable built by hand still fits.
+   */
+  readonly sender?: boolean;
   /** `true` when at least one lead read gets broken copy from it, so `leadsAffected` is above 0. */
   readonly gap: boolean;
   readonly steps: readonly number[];
@@ -82,7 +88,7 @@ export interface PersonalizationGaps {
   readonly variables: readonly CopyVariable[];
   /** Leads missing at least one variable, most missing first, up to `limit`. */
   readonly leads: readonly GapLead[];
-  /** Variables no lead read has a value for and that are not built in. Check them by hand. */
+  /** Variables no lead read has a value for and that are neither built in nor filled from the sender. Check them by hand. */
   readonly unknownVariables: readonly string[];
   readonly totals: {
     readonly steps: number;
@@ -132,16 +138,11 @@ const findVariables = (sequence: Sequence): Map<string, Found> => {
 };
 
 const sourceOf = (
-  provider: string,
   key: string,
   customKeys: ReadonlySet<string>
 ): CopyVariable["source"] => {
   if (isBuiltin(key)) {
     return "builtin";
-  }
-
-  if (isSender(provider, key)) {
-    return "sender";
   }
 
   return customKeys.has(key) ? "custom" : "unknown";
@@ -159,8 +160,9 @@ const toVariable = (
   leads: readonly Set<string>[],
   customKeys: ReadonlySet<string>
 ): Keyed => {
-  const source = sourceOf(provider, key, customKeys);
-  const known = source === "builtin" || source === "custom";
+  const sender = isSender(provider, key);
+  const source = sender ? "unknown" : sourceOf(key, customKeys);
+  const known = source !== "unknown";
   const needed = uses.some((use) => !use.fallback);
   const without = leads.filter((values) => !values.has(key)).length;
   const affected = known ? Number(needed) * without : null;
@@ -172,6 +174,7 @@ const toVariable = (
       leadsAffected: affected,
       leadsWithoutValue: known ? without : null,
       name,
+      sender,
       source,
       steps: [...new Set(uses.map((use) => use.stepIndex))].toSorted(
         (left, right) => left - right
@@ -205,7 +208,7 @@ const missingOf = (
 
 export const personalizationGaps = defineInsight({
   description:
-    "Leads in one campaign who will get broken copy because a merge variable has no value for them. Reads the campaign's sequence, finds every {{variable}}, {variable} and %variable% in subjects and bodies, and checks each lead for a value: first name, last name, company, title, email, or a custom field of the same name without regard to case, spaces, underscores or hyphens. Returns the variables with the steps that use them, how many leads each one affects, and the leads missing at least one. A variable with a fallback such as {{firstName|there}} is not a gap. A variable the tool fills from the sending account, such as Instantly's {{accountSignature}}, is listed with source sender, and one no lead has is listed as unknown; neither is counted against leads. Costs one request for the sequence plus one per page of leads.",
+    "Leads in one campaign who will get broken copy because a merge variable has no value for them. Reads the campaign's sequence, finds every {{variable}}, {variable} and %variable% in subjects and bodies, and checks each lead for a value: first name, last name, company, title, email, or a custom field of the same name without regard to case, spaces, underscores or hyphens. Returns the variables with the steps that use them, how many leads each one affects, and the leads missing at least one. A variable with a fallback such as {{firstName|there}} is not a gap. A variable the tool fills from the sending account, such as Instantly's {{accountSignature}}, is marked sender: true and left out of unknownVariables; any other variable no lead has is listed as unknown. Neither is counted against leads. Costs one request for the sequence plus one per page of leads.",
   inputSchema: input,
   key: "personalizationGaps",
   cost: (values, price) =>
@@ -279,7 +282,7 @@ export const personalizationGaps = defineInsight({
         variables: variables.length,
       },
       unknownVariables: variables.flatMap((each) =>
-        each.source === "unknown" ? [each.name] : []
+        each.source === "unknown" && each.sender !== true ? [each.name] : []
       ),
       variables,
     };

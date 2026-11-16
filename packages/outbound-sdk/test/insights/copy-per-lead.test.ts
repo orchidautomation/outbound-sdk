@@ -97,18 +97,19 @@ test("personalization_gaps flags the lead missing body_2 and never shows a gap n
     data.variables.map((each) => [
       each.name,
       each.source,
+      each.sender,
       each.gap,
       each.leadsWithoutValue,
       each.leadsAffected,
     ]),
     [
-      ["body_2", "custom", true, 1, 1],
-      ["body_1", "custom", false, 0, 0],
-      ["body_3", "custom", false, 0, 0],
-      ["body_4", "custom", false, 0, 0],
-      ["subject_1", "custom", false, 0, 0],
+      ["body_2", "custom", false, true, 1, 1],
+      ["body_1", "custom", false, false, 0, 0],
+      ["body_3", "custom", false, false, 0, 0],
+      ["body_4", "custom", false, false, 0, 0],
+      ["subject_1", "custom", false, false, 0, 0],
       // Instantly fills it from the sending account: not a lead field.
-      ["accountSignature", "sender", false, null, null],
+      ["accountSignature", "unknown", true, false, null, null],
     ]
   );
   assert.ok(
@@ -146,13 +147,13 @@ test("personalization_gaps treats each Instantly sender variable as the sender's
   });
 
   assert.deepEqual(
-    instantly.data.variables.map((each) => [each.name, each.source]),
+    instantly.data.variables.map((each) => [each.name, each.sender]),
     [
-      ["accountSignature", "sender"],
-      ["ICEBREAKER", "unknown"],
-      ["sendingAccountEmail", "sender"],
-      ["sendingAccountFirstName", "sender"],
-      ["sendingAccountName", "sender"],
+      ["accountSignature", true],
+      ["ICEBREAKER", false],
+      ["sendingAccountEmail", true],
+      ["sendingAccountFirstName", true],
+      ["sendingAccountName", true],
     ]
   );
   assert.deepEqual(instantly.data.unknownVariables, ["ICEBREAKER"]);
@@ -162,7 +163,12 @@ test("personalization_gaps treats each Instantly sender variable as the sender's
     campaign: "memory:agency:c1",
   });
 
-  assert.ok(other.data.variables.every((each) => each.source === "unknown"));
+  assert.ok(
+    other.data.variables.every(
+      (each) => each.source === "unknown" && each.sender === false
+    )
+  );
+  assert.equal(other.data.unknownVariables.length, 5);
 });
 
 test("copy_audit audits copy written per lead as each sample lead receives it", async () => {
@@ -208,23 +214,29 @@ test("copy_audit says clean only when every variant written per lead was rendere
   }).insights.copyAudit({ campaign: CAMPAIGN }, { now: NOW });
 
   assert.equal(fine.data.clean, true);
+  assert.equal(fine.data.variantsNotAudited, 0);
   assert.deepEqual(fine.data.leadsAudited, ["instantly:agency:l1"]);
 
-  // l3 has no body_2, so step 2 is never rendered: not clean, not dirty.
+  // l3 has no body_2, so step 2 is never rendered: not clean, with no finding.
   const partial = await instance({
     ...DATA,
     leads: (DATA.leads ?? []).filter((lead) => lead.id === "l3"),
   }).insights.copyAudit({ campaign: CAMPAIGN }, { now: NOW });
 
-  assert.equal(partial.data.clean, null);
+  assert.equal(partial.data.clean, false);
+  assert.deepEqual(partial.data.findings, []);
+  assert.equal(partial.data.variantsNotAudited, 1);
   assert.deepEqual(partial.meta.notes, [
     "4 variants are written per lead in variables, so the rendered copy of 1 sample lead was audited; each finding names its lead.",
     "1 variant written per lead could not be audited: no sample lead has values for its variables.",
   ]);
 });
 
-test("copy_audit returns clean null, never a bare true, when no lead's copy can be rendered", async () => {
-  const reasons: [string, Promise<{ data: { clean: boolean | null } }>][] = [
+test("copy_audit never returns clean true when no lead's copy can be rendered, and counts what it left unaudited", async () => {
+  const reasons: [
+    string,
+    Promise<{ data: { clean: boolean; variantsNotAudited?: number } }>,
+  ][] = [
     [
       "the campaign has no leads",
       instance(DATA).insights.copyAudit({ campaign: "instantly:agency:empty" }),
@@ -245,7 +257,8 @@ test("copy_audit returns clean null, never a bare true, when no lead's copy can 
     // oxlint-disable-next-line no-await-in-loop -- one reason at a time.
     const result = await pending;
 
-    assert.equal(result.data.clean, null, reason);
+    assert.equal(result.data.clean, false, reason);
+    assert.ok((result.data.variantsNotAudited ?? 0) > 0, reason);
     assert.match(
       (result as unknown as { meta: { notes: string[] } }).meta.notes.join(" "),
       new RegExp(
@@ -284,7 +297,8 @@ test("copy_audit audits copy that is only partly variables as stored, and reads 
   // Only the first variant is written per lead; the second is audited as stored.
   assert.equal(result.data.variantsWrittenPerLead, 1);
   assert.deepEqual(result.data.findings, []);
-  assert.equal(result.data.clean, null);
+  assert.equal(result.data.clean, false);
+  assert.equal(result.data.variantsNotAudited, 1);
 
   const plain = await instance(
     {

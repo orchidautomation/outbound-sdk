@@ -134,17 +134,26 @@ const variantTest: CardBuilder = (data) => {
   };
 };
 
-/** `null` when clean. `clean: null` means copy written per lead was not audited. */
+/**
+ * `null` when clean. Copy written per lead that could not be audited is
+ * `clean: false` with no finding: it says "not audited", not "problems".
+ */
 const auditVerdict = (data: Json): string | null => {
-  const clean = bool(data, "clean");
-
-  if (clean === true) {
+  if (bool(data, "clean") === true) {
     return null;
   }
 
-  return clean === false
-    ? `${plural(rows(data, "findings").length, "problem")} found in the copy.`
-    : "⚪ The copy is written per lead and could not be audited as any lead receives it.";
+  const found = rows(data, "findings").length;
+  const unaudited = num(data, "variantsNotAudited") ?? 0;
+  const notAudited = `${plural(unaudited, "variant")} written per lead could not be audited as any lead receives ${unaudited === 1 ? "it" : "them"}.`;
+
+  if (found === 0) {
+    return unaudited > 0 ? `⚪ Not audited: ${notAudited}` : null;
+  }
+
+  const problems = `${plural(found, "problem")} found in the copy.`;
+
+  return unaudited > 0 ? `${problems} ${notAudited}` : problems;
 };
 
 const copyAudit: CardBuilder = (data) => {
