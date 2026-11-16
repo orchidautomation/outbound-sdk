@@ -1,7 +1,7 @@
 no limits: null - No active sender reports a daily limit, so capacity is unknown.
 no settings: null [
-  'The daily ask and the campaigns short of senders were left out: the adapter cannot read campaign settings.',
-  'Capacity in use left out: 1 inactive or unlimited sender may have sent some of these messages. Pass split_uncounted: true to read their sends (1 request each).'
+  'Capacity in use left out: 1 inactive or unlimited sender may have sent some of these messages. Pass split_uncounted: true to read their sends (1 request each).',
+  'The daily ask and the campaigns short of senders were left out: the adapter cannot read campaign settings.'
 ]
 capped: false 40 [
   'Stopped at 1 campaign (max_campaigns); more exist.',

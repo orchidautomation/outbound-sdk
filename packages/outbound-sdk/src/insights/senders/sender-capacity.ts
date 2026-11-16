@@ -2,7 +2,6 @@
 
 import { z } from "zod";
 
-import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Campaign, Sender } from "../../internal/entities.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
@@ -263,6 +262,7 @@ export const senderCapacity = defineInsight({
   scales: "max_campaigns",
   name: "sender_capacity",
   needs: ["senders.list"],
+  partialOnCap: true,
   next: "Use sender_load to see which senders are shared by too many campaigns, or warmup_readiness before raising a sender's limit.",
   run: async (
     context,
@@ -281,8 +281,13 @@ export const senderCapacity = defineInsight({
 
     const campaigns = await readCampaigns(context, ["active"], maxCampaigns);
 
-    const reads: CampaignRead[] = await mapConcurrent(campaigns, (campaign) =>
-      readOne(context, campaign, maxSenders)
+    // Read before the campaigns, so a request cap that stops them part way leaves the sends in the answer.
+    const sends = await readSends(context, campaigns, days, listed, split);
+
+    const reads: CampaignRead[] = await context.each(
+      campaigns,
+      (campaign) => readOne(context, campaign, maxSenders),
+      "active campaigns"
     );
 
     const hasSettings = capabilities["campaigns.settings"];
@@ -300,7 +305,6 @@ export const senderCapacity = defineInsight({
 
     const capacity = capacityOf(senders);
     const ask = hasSettings ? askOf(reads) : null;
-    const sends = await readSends(context, campaigns, days, listed, split);
     const shortfalls = reads.map(shortfallOf);
 
     const answer: SenderCapacity = {

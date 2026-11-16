@@ -103,7 +103,13 @@ Where the adapter declares no costs, as a [combined](/docs/adapters/combine) ins
 
 ### Stopped part way
 
-A run that reaches its cap part way stops before the next request. The answer cannot be finished from what was read, so it fails with `RateLimited`, `limit: "call"`, the requests it sent and the input to lower. An insight that counts a failed read as unchecked, such as `droppedReplies`, finishes instead, with `meta.complete: false` and a note naming the cap.
+A run that reaches a request cap part way stops before the next request. The cap can be the insight's own, a `budget()` or `maxRequestsPerCall` on the instance.
+
+An insight whose answer still means something over part of the data returns what it read: `senderCapacity`, `senderLoad`, `periodComparison`, `campaignRanking`, `clientReport` and `hotLeads`. The answer comes back with `meta.complete: false`, `meta.requests` at the cap, and a note that names the cap, what raises it and how much was read, such as `Stopped after 141 requests, at its default cap of 141 requests for this input. Pass maxRequests to raise it (Infinity removes the default). Read 18 of 24 active campaigns; the answer covers those.` A campaign whose own reads the cap cut off is left out, never counted with part of its data. A listing the cap cut short counts as capped, so `hotLeads` still looks for the leads behind recent replies. A `campaign` given by name is the exception: the lookup must see every campaign, because a name found on part of them could belong to another, so a cap that stops it fails the run with `RateLimited`. The reads that cover the whole workspace, such as its totals or its unusual days, are made before the per-campaign reads, so they stay in the answer.
+
+Any other insight fails with `RateLimited`, `limit: "call"`, the requests it sent and the input to lower. An insight that counts a failed read as unchecked, such as `droppedReplies`, finishes instead, with `meta.complete: false` and a note naming the cap.
+
+The messages name the setting of the surface you use: `maxRequests` in the SDK, `maxRequestsPerToolCall` for an insight tool, and `--max-requests` in the CLI and on `outbound mcp`. In the CLI, `--max-requests` replaces an insight's default cap as well as capping the command.
 
 Costs are read from the adapter's declared costs, which state the usual case. A read that costs more than declared (a custom lead label on Instantly, for example) is in the margin; a thread or timeline is priced as one page.
 
@@ -307,7 +313,7 @@ outbound insight client_report --input '{}'
 
 `run` receives a context. Read through its helpers so the cost and the evidence of every read reach `meta`.
 
-Give the definition a `cost` to have a default cap and the check before the first request: `cost: (input, price) => price.one("stats") + price.list("leads.list", input.max_leads)`. `price` has `one(action)`, `list(action, max)`, `walk(action)`, `lookup(max)`, `campaignsIn(statuses, max)`, `campaigns(max)`, `upTo(max)` and `capabilities`; the cost is worked out once at the least each of them can be and once at the most. `scales` names the input a cap message tells the caller to lower. Without `cost` an insight has no default cap.
+Give the definition a `cost` to have a default cap and the check before the first request: `cost: (input, price) => price.one("stats") + price.list("leads.list", input.max_leads)`. `price` has `one(action)`, `list(action, max)`, `walk(action)`, `lookup(max)`, `campaignsIn(statuses, max)`, `campaigns(max)`, `upTo(max)` and `capabilities`; the cost is worked out once at the least each of them can be and once at the most. `scales` names the input a cap message tells the caller to lower. Without `cost` an insight has no default cap. Set `partialOnCap: true` when the answer still means something over part of the data: a request cap that stops `all` or `each` part way then keeps what they read, with `meta.complete: false` and a note, instead of failing.
 
 | On the context | What it does |
 | --- | --- |
@@ -317,6 +323,7 @@ Give the definition a `cost` to have a default cap and the check before the firs
 | `one(item)` | Records one lookup and returns the record. |
 | `page(page)` | Records one page and returns its items. An unfinished page marks the answer incomplete. |
 | `all(walk, cap)` | Walks a `listAll` to its end or its `max`, and marks the answer incomplete when `max` cut it short. `cap` (`{ max, what, input }`) names what was capped and the input that raises it, for the note. |
+| `each(items, read, what)` | Reads each item, a few side by side, and returns the results in order. With `partialOnCap`, an item whose read a request cap stopped is left out and a note says how many of the `what` were read. |
 | `note(text)` | Adds a note. The same note is kept once. |
 | `partial(reason)` | Marks the answer incomplete, with the reason as a note. |
 | `campaignsFound(count)` | Says how many campaigns were found, once they are listed. A run whose least cost for that many is over its cap stops there. The built-in insights call it after their campaign listing. |

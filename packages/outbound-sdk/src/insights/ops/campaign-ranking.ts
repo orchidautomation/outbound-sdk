@@ -184,6 +184,7 @@ export const campaignRanking = defineInsight({
   scales: "max_campaigns",
   name: "campaign_ranking",
   needs: ["stats.campaign"],
+  partialOnCap: true,
   next: "Use campaign_diagnosis on the campaign ranked last to see why it is behind.",
   run: async (context, options) => {
     const { entries, read } = await readCampaignTotals(context, options);
