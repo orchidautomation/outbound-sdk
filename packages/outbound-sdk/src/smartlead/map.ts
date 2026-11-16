@@ -30,6 +30,8 @@ import {
 } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
 import { leadStanding } from "../internal/lead-status.ts";
+import { notNegative } from "../internal/notes.ts";
+import type { Note } from "../internal/notes.ts";
 import { recordBase, refTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
 import { fromOne, toVariant, variantKey } from "../internal/sequence.ts";
@@ -91,25 +93,36 @@ const delayDays = (step: JsonObject): number | null =>
   count(field(step.seq_delay_details, "delay_in_days")) ??
   count(field(step.seq_delay_details, "delayInDays"));
 
-const toStep = (step: JsonObject, position: number): SequenceStep => {
+const toStep = (
+  step: JsonObject,
+  position: number,
+  note: Note
+): SequenceStep => {
   const variants = objects(step.sequence_variants).filter(
     (variant) => flag(variant.is_deleted) !== true
   );
 
+  const index = fromOne(step.seq_number) ?? position;
+
   return {
     action: "email",
     branch: null,
-    delayDays: delayDays(step),
-    index: fromOne(step.seq_number) ?? position,
+    delayDays: notNegative(delayDays(step), {
+      note,
+      unit: "days",
+      vendor: "Smartlead",
+      what: `Step ${index + 1}'s delay`,
+    }),
+    index,
     parentIndex: null,
     // With no variants the copy is on the step itself.
     variants: (variants.length === 0 ? [step] : variants).map(variantOf),
   };
 };
 
-const toSteps = (steps: Json | undefined): SequenceStep[] =>
+const toSteps = (steps: Json | undefined, note: Note): SequenceStep[] =>
   objects(steps)
-    .map(toStep)
+    .map((step, position) => toStep(step, position, note))
     .toSorted((left, right) => left.index - right.index)
     .map((step, position, sorted) => ({
       ...step,
@@ -120,7 +133,8 @@ const toSteps = (steps: Json | undefined): SequenceStep[] =>
 export const toSequence = (
   identity: Identity,
   campaignId: string,
-  body: Json
+  body: Json,
+  note: Note
 ): Sequence => {
   const steps = unwrap(body);
 
@@ -129,7 +143,7 @@ export const toSequence = (
     campaignRef: refTo(identity, campaignId) ?? "",
     kind: "main",
     name: null,
-    steps: toSteps(steps),
+    steps: toSteps(steps, note),
   };
 };
 
@@ -141,7 +155,8 @@ export const toSubsequence = (
   identity: Identity,
   parentId: string,
   campaign: JsonObject,
-  body: Json
+  body: Json,
+  note: Note
 ): Sequence => {
   const steps = unwrap(body);
 
@@ -153,7 +168,7 @@ export const toSubsequence = (
     campaignRef: refTo(identity, parentId) ?? "",
     kind: "subsequence",
     name: text(campaign.name),
-    steps: toSteps(steps),
+    steps: toSteps(steps, note),
   };
 };
 

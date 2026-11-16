@@ -140,6 +140,7 @@ const fetchPage = <Item, Filters>(
           complete,
           evidence: output.evidence,
           fetchedAt: output.fetchedAt,
+          notes: output.notes,
           stale: output.stale,
         }),
       };
@@ -226,6 +227,7 @@ const getOne = <Item>(
           complete: true,
           evidence: output.evidence,
           fetchedAt: output.fetchedAt,
+          notes: output.notes,
           stale: output.stale,
         }),
       };

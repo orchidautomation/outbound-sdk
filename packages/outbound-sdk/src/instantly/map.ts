@@ -22,6 +22,8 @@ import {
 } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
 import { listIn } from "../internal/lists.ts";
+import { notNegative } from "../internal/notes.ts";
+import type { Note } from "../internal/notes.ts";
 import { recordBase, refTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
 import { toVariant, variantKey } from "../internal/sequence.ts";
@@ -71,14 +73,41 @@ const DELAY_DAYS = new Map([
   ["minutes", 1 / 1440],
 ]);
 
+/**
+ * A wait in days, or `null` with a note when Instantly sent one that cannot
+ * be right: a negative number, or a unit it does not document.
+ * One odd step costs that step's wait, not the whole sequence.
+ */
 const days = (
   value: Json | undefined,
-  unit: Json | undefined
+  unit: Json | undefined,
+  step: number,
+  note: Note
 ): number | null => {
   const delay = count(value);
-  const perUnit = DELAY_DAYS.get(text(unit) ?? "days");
+  const unitName = text(unit) ?? "days";
+  const perUnit = DELAY_DAYS.get(unitName);
 
-  return delay === null || perUnit === undefined ? null : delay * perUnit;
+  if (delay === null) {
+    return null;
+  }
+
+  if (perUnit === undefined) {
+    note(
+      `Step ${step}'s delay is in a unit Instantly does not document (${unitName}); left out.`
+    );
+
+    return null;
+  }
+
+  const known = notNegative(delay, {
+    note,
+    unit: unitName,
+    vendor: "Instantly",
+    what: `Step ${step}'s delay`,
+  });
+
+  return known === null ? null : known * perUnit;
 };
 
 // `delay` is the wait before the NEXT email, so a step waits for the delay
@@ -87,26 +116,31 @@ const days = (
 const waitBefore = (
   step: JsonObject,
   previous: JsonObject | undefined,
-  subsequence: boolean
+  index: number,
+  subsequence: boolean,
+  note: Note
 ): number | null => {
   if (previous !== undefined) {
-    return days(previous.delay, previous.delay_unit);
+    return days(previous.delay, previous.delay_unit, index + 1, note);
   }
 
-  return subsequence ? days(step.pre_delay, step.pre_delay_unit) : 0;
+  return subsequence
+    ? days(step.pre_delay, step.pre_delay_unit, index + 1, note)
+    : 0;
 };
 
 /** Only the first entry of `sequences` is used, as the reference says. */
 const toSteps = (
   sequences: Json | undefined,
-  subsequence: boolean
+  subsequence: boolean,
+  note: Note
 ): SequenceStep[] => {
   const steps = objects(objects(sequences)[0]?.steps);
 
   return steps.map((step, index) => ({
     action: text(step.type) ?? "email",
     branch: null,
-    delayDays: waitBefore(step, steps[index - 1], subsequence),
+    delayDays: waitBefore(step, steps[index - 1], index, subsequence, note),
     index,
     parentIndex: index === 0 ? null : index - 1,
     // Variants are positional: Instantly gives them no ids.
@@ -121,7 +155,11 @@ const toSteps = (
 };
 
 /** A campaign's steps live inside the campaign object; there is no sequence endpoint. */
-export const toSequence = (identity: Identity, raw: JsonObject): Sequence => {
+export const toSequence = (
+  identity: Identity,
+  raw: JsonObject,
+  note: Note
+): Sequence => {
   const id = text(raw.id) ?? "";
 
   return {
@@ -129,7 +167,7 @@ export const toSequence = (identity: Identity, raw: JsonObject): Sequence => {
     campaignRef: refTo(identity, id) ?? "",
     kind: "main",
     name: null,
-    steps: toSteps(raw.sequences, false),
+    steps: toSteps(raw.sequences, false, note),
   };
 };
 
@@ -137,13 +175,14 @@ export const toSequence = (identity: Identity, raw: JsonObject): Sequence => {
 export const toSubsequence = (
   identity: Identity,
   raw: JsonObject,
-  campaignId: string
+  campaignId: string,
+  note: Note
 ): Sequence => ({
   ...recordBase(identity, text(raw.id) ?? "", raw),
   campaignRef: refTo(identity, text(raw.parent_campaign) ?? campaignId) ?? "",
   kind: "subsequence",
   name: text(raw.name),
-  steps: toSteps(raw.sequences, true),
+  steps: toSteps(raw.sequences, true, note),
 });
 
 const SENDER_STATUS = new Map<number, SenderStatus>([
@@ -166,14 +205,22 @@ const MAIL_PROVIDER = new Map<number, MailProvider>([
 ]);
 
 /** A mailbox. Instantly keys accounts by email address, not by an id. */
-export const toSender = (identity: Identity, raw: JsonObject): Sender => {
+export const toSender = (
+  identity: Identity,
+  raw: JsonObject,
+  note: Note
+): Sender => {
   const address = emailAddress(raw.email);
   const warmupStatus = count(raw.warmup_status);
 
   return {
     ...recordBase(identity, address ?? "", raw),
     address,
-    dailyLimit: count(raw.daily_limit),
+    dailyLimit: notNegative(count(raw.daily_limit), {
+      note,
+      vendor: "Instantly",
+      what: `The daily limit of ${address ?? "a mailbox"}`,
+    }),
     kind: "mailbox",
     linkedinUrl: null,
     mailProvider:
