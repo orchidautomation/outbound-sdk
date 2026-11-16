@@ -380,6 +380,7 @@ test("heyreach: a campaign's progress counts its leads by how far they got", asy
       inProgress: progress.inProgress,
       leads: progress.leads,
       notStarted: progress.notStarted,
+      skipped: progress.skipped,
       stopped: progress.stopped,
     },
     {
@@ -389,6 +390,7 @@ test("heyreach: a campaign's progress counts its leads by how far they got", asy
       inProgress: 8,
       leads: 9,
       notStarted: 0,
+      skipped: 0,
       stopped: 0,
     },
     "progressStats, with no count of blocked leads"

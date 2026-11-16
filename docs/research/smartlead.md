@@ -584,3 +584,27 @@ Ambiguous or not documented:
 Fetched 2026-11-16: `https://api.smartlead.ai/llms-full.txt`, pages `api-reference/campaigns/get-all` ("Get All Campaigns", example `"track_settings": ["DONT_EMAIL_OPEN", "DONT_LINK_CLICK"]`) and `api-reference/campaigns/get-by-id` (example `"track_settings": ["DONT_EMAIL_OPEN"]`). Both reads carry `track_settings`, the list of what is not tracked, as recorded above. Only the current setting is given.
 
 `GET /analytics/campaign/overall-stats` (api-reference/analytics/campaign-performance) has `sent`, `opened` and `unique_open_count` per campaign but no click count, so at workspace and mailbox scope a campaign with link tracking off counts as not measuring clicks. The workspace and daily rows have no click count anyway.
+
+## BLOCKED: bounced or block-listed (2026-11-16, for OUT-106)
+
+Question: can a lead's fields tell a block-listed BLOCKED lead that was never sent to (which would be `skipped`, `bounced: false`) apart from a real bounce? **Not from the documentation.** The mapping stays as it was: BLOCKED sets `bounced: true` and leaves progress `unknown`. All of this is from the docs. There is no Smartlead key (OUT-10), so nothing was checked live.
+
+Sources, fetched 2026-11-16: https://api.smartlead.ai/llms-full.txt (262 pages). The pages relied on:
+
+- https://api.smartlead.ai/core/leads. Its lead status table gives `BLOCKED` as "In block list". The older docs (see Lead status values above) say "bounced or on the block list".
+- https://api.smartlead.ai/api-reference/leads/get-by-campaign. The `status` filter lists `STARTED`, `INPROGRESS`, `COMPLETED`, `PAUSED`, `STOPPED` (no `BLOCKED`). The row example has no `email_stats`, no `last_sent_time` and no sent count.
+- https://api.smartlead.ai/api-reference/campaigns/get-leads, the duplicate page for the same URL. Only this page shows `last_sent_time` and `email_stats { is_opened, is_clicked, is_replied, is_bounced }` on a listed lead. Its envelope (`{ leads, offset, limit }`) conflicts with the other page and the legacy docs, and it was already treated as wrong (see List per campaign above).
+- https://api.smartlead.ai/api-reference/campaigns/get-lead-by-id. `email_stats` has only `is_opened`, `is_clicked` and `is_replied`.
+- https://api.smartlead.ai/api-reference/utilities/domain-block-list. Block-list entries carry a `source` of manual, bounce or spam, so a bounce itself puts an address on the block list. "Block-listed" therefore does not mean "never sent to".
+- https://api.smartlead.ai/guides/lead-management. "Blocked leads are automatically skipped during import", which is about leads that are never added to the campaign, not about a campaign lead with status BLOCKED.
+- https://api.smartlead.ai/api-reference/campaign-statistics/sequence-analytics. `total_stats` and each variant's `stats` carry `skipped_count`. No page defines what it counts. It is a per-step email count, not a count of leads, so it would not fit `CampaignProgress.skipped`. It stays unread.
+
+Why the split is not provable:
+
+1. The only lead shape with `is_bounced` or `last_sent_time` is the conflicting duplicate page.
+2. No page says what `is_bounced` or `last_sent_time` hold on a BLOCKED lead.
+3. Block-list entries can themselves come from bounces.
+
+A possible later route, which needs a live key: list a campaign's leads with `emailStatus=is_bounced` and treat a BLOCKED lead missing from that list as block-listed only. The filter's behaviour on BLOCKED leads is not documented.
+
+`CampaignProgress.skipped` is `null` on Smartlead (declared unfilled). `campaign_lead_stats.blocked` counts block-listed and bounced leads together.

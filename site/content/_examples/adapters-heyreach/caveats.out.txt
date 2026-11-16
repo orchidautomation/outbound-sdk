@@ -24,7 +24,7 @@
 
 - A lead is looked up by profile URL with two requests (GetCampaignsForLead and GetLead) and returned once per campaign it is in. A lead's id is its profile URL in every campaign, so a person's records share one ref and differ by campaignRef. The timeline is the lead's whole conversation history, the same on each of its records.
 
-- A looked-up lead's status follows leadStatus and never says replied, because GetCampaignsForLead reports no message status; Excluded and PendingOrExcludedToBeCalculated are unknown. createdAt is null (the creationTime beside a campaign is the campaign's), tags are empty and interest is null. A lookup cannot be combined with a saved list or a date range.
+- A looked-up lead's status follows leadStatus and never says replied, because GetCampaignsForLead reports no message status; Excluded (kept out by an exclusion filter or exclusion list) is skipped, and PendingOrExcludedToBeCalculated, not decided yet, is unknown. createdAt is null (the creationTime beside a campaign is the campaign's), tags are empty and interest is null. A lookup cannot be combined with a saved list or a date range.
 
 - HeyReach matches a profile URL whatever its scheme, www prefix, trailing slash or query, but by exact case: seen live, a slug sent in upper case is not found. The lookup sends the slug lowercased, so a profile HeyReach stores with upper-case letters would not be found. A slug with non-ASCII letters is sent percent-encoded; how HeyReach stores one is not known.
 

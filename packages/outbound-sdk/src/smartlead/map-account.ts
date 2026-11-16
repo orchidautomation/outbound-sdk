@@ -173,6 +173,9 @@ export const toCampaignProgress = (
     inProgress: count(field(stats, "inprogress")),
     leads: count(field(stats, "total")),
     notStarted: count(field(stats, "notStarted")),
+    // campaign_lead_stats has no skipped count; a block-listed lead is in
+    // blocked, which cannot be told apart from a bounce.
+    skipped: null,
     stopped: count(field(stats, "stopped")),
   };
 };

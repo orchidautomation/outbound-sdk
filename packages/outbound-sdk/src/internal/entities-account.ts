@@ -80,6 +80,12 @@ export const campaignProgressSchema = z.object({
   leads: count,
   /** Leads still waiting for their first step. */
   notStarted: count,
+  /**
+   * Leads the vendor decided never to send to, for example ones an exclusion
+   * rule kept out. Optional, so progress built or stored before the field
+   * existed still matches the schema.
+   */
+  skipped: count.optional(),
   /** Leads taken out of the sequence before its end. */
   stopped: count,
 });

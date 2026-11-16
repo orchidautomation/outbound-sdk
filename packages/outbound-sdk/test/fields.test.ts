@@ -422,6 +422,7 @@ test("campaign progress: counted from the leads in memory, and refused when turn
         status: "replied" as const,
       },
       { campaignId: "c1", id: "l4", status: "paused" as const },
+      { campaignId: "c1", id: "l6", status: "skipped" as const },
       { campaignId: "other", id: "l5" },
     ],
   };
@@ -433,7 +434,8 @@ test("campaign progress: counted from the leads in memory, and refused when turn
 
   const progress = await outbound.campaign("c1").progress();
 
-  assert.equal(progress.leads, 4);
+  assert.equal(progress.leads, 5);
+  assert.equal(progress.skipped, 1, "a skipped lead is counted on its own");
   assert.equal(progress.inProgress, 1);
   assert.equal(
     progress.completed,
