@@ -27,7 +27,9 @@ const input = z.object({
   campaign: z
     .string()
     .min(1)
-    .describe("The campaign's ref, for example `instantly:acme:abc123`"),
+    .describe(
+      "The campaign's ref, for example `instantly:acme:abc123`, or its name"
+    ),
   ...rangeFields,
   min_reply_rate: z
     .number()

@@ -28,7 +28,9 @@ const input = z.object({
   campaign: z
     .string()
     .min(1)
-    .describe("The campaign's ref, for example `instantly:acme:abc123`"),
+    .describe(
+      "The campaign's ref, for example `instantly:acme:abc123`, or its name"
+    ),
   max_body_words: limit(150, "The most words a body may have."),
   max_caps_words: limit(
     1,

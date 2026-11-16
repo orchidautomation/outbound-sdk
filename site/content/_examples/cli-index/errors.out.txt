@@ -3,7 +3,7 @@ NotFound: Campaign no-such-campaign was not found
 (exit code 1)
 
 $ outbound campaign
-Invalid: Missing a campaign id
+Invalid: Missing a campaign id or name
 (exit code 1)
 
 $ outbound campaigns --limit 0

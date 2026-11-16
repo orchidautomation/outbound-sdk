@@ -13,7 +13,7 @@ import { UNTRUSTED_NOTE } from "./shared.ts";
 import type { ToolDefinition } from "./shared.ts";
 
 const setupInput = z.object({
-  campaign: z.string().min(1).describe("The campaign's ref or id"),
+  campaign: z.string().min(1).describe("The campaign's ref, id or name"),
 });
 
 export const campaignSetup: ToolDefinition<z.infer<typeof setupInput>> = {

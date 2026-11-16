@@ -21,7 +21,7 @@ const input = z.object({
   campaign: z
     .string()
     .min(1)
-    .describe("The campaign's ref (provider:workspace:id)"),
+    .describe("The campaign's ref (provider:workspace:id) or name"),
   limit: z
     .number()
     .int()

@@ -20,7 +20,7 @@ import { labelOf, ratesOf, readDaily, readTotals } from "./shared.ts";
 import type { CampaignLabel, Measured } from "./shared.ts";
 
 const input = z.object({
-  campaign: z.string().min(3).describe("The campaign's ref"),
+  campaign: z.string().min(3).describe("The campaign's ref or name"),
   days: z
     .number()
     .int()

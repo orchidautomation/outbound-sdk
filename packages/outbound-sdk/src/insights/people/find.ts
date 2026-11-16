@@ -9,18 +9,40 @@ import { profileSlug } from "../../internal/url.ts";
 import { maskingOf } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 
+// One `@`, something before it, and a dot in the domain: the shape every
+// vendor checks before it searches. Anything else is refused here, not by them.
+const EMAIL = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/u;
+
+// `acme.com` or `@acme.com`: a company, not a person.
+const DOMAIN = /^@?[^\s@/:]+(?:\.[^\s@/:.]+)+$/u;
+
+/** The text without outer spaces or a leading `mailto:`, as copied from a link. */
+const bare = (identifier: string): string =>
+  identifier.trim().replace(/^mailto:/iu, "");
+
 /** `email:<address>` or `linkedin:<slug>`, or `null` when the text is neither. */
 export const personKey = (identifier: string): string | null => {
-  const value = identifier.trim();
+  const value = bare(identifier);
   const slug = profileSlug(value);
 
   if (slug !== null) {
     return `linkedin:${slug}`;
   }
 
-  return value.includes("@") && !value.includes(" ")
-    ? `email:${value.toLowerCase()}`
-    : null;
+  return EMAIL.test(value) ? `email:${value.toLowerCase()}` : null;
+};
+
+/** Why `identifier` names no person, for one that is not a lead ref either. */
+const notAPerson = (identifier: string): string => {
+  const value = bare(identifier);
+
+  if (DOMAIN.test(value)) {
+    return `"${value}" is a company domain, not a person. Use account_summary for a company domain`;
+  }
+
+  return value.includes("@")
+    ? `"${value}" is not a valid email address`
+    : "Give an email address, a LinkedIn profile URL or a lead ref";
 };
 
 /** Every exact identifier a lead carries. */
@@ -162,11 +184,9 @@ const startFrom = async (
   }
 
   if (!isLeadRef(identifier)) {
-    throw new OutboundError(
-      "Invalid",
-      "Give an email address, a LinkedIn profile URL or a lead ref",
-      { provider: outbound.provider }
-    );
+    throw new OutboundError("Invalid", notAPerson(identifier), {
+      provider: outbound.provider,
+    });
   }
 
   const instead =
@@ -217,6 +237,24 @@ const carries = (lead: Lead, key: string, start: Start): boolean => {
 };
 
 /**
+ * An adapter whose leads hold no LinkedIn profile answers a profile lookup
+ * with nothing, which would read as "in no campaign": the answer says why.
+ */
+const noteNoProfiles = (
+  context: InsightContext,
+  keys: readonly string[]
+): void => {
+  if (
+    context.outbound.fields.lead?.linkedinUrl === false &&
+    keys.some((key) => kindOf(key) === "linkedin")
+  ) {
+    context.note(
+      `${context.outbound.provider} leads have no LinkedIn field, so a LinkedIn profile finds no one there; search by email instead.`
+    );
+  }
+};
+
+/**
  * Asks the vendor for the person by each identifier. A record that carries a
  * second identifier is looked up under that one too, so an email address can
  * lead to a LinkedIn record. A lead ref is read first (`leads.get`) for its
@@ -233,6 +271,8 @@ export const findPerson = async (
   const lookup = lookupOf(context.outbound);
   const { masked } = lookup;
   const start = await startFrom(context, identifier, lookup);
+
+  noteNoProfiles(context, start.keys);
 
   if (masked.length > 0) {
     context.partial(

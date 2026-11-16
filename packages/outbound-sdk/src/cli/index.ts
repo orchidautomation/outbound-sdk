@@ -20,6 +20,7 @@ import { pluginsFor } from "./config.ts";
 import { createMcpServer } from "./mcp.ts";
 import { printAnswer } from "./output.ts";
 import { serveStdio } from "./stdio.ts";
+import { didYouMean } from "./suggest.ts";
 import { runNpm, runSelf, STANDALONE } from "./update.ts";
 import { packageVersion } from "./version.ts";
 
@@ -67,6 +68,7 @@ const OPTIONS = {
   provider: { type: "string" },
   raw: { type: "boolean" },
   redact: { type: "boolean" },
+  search: { type: "string" },
   sequence: { type: "boolean" },
   settings: { type: "boolean" },
   since: { type: "string" },
@@ -153,7 +155,7 @@ const parse = (argv: readonly string[]): Parsed => {
   if (named && !command && !STANDALONE.has(name)) {
     throw new OutboundError(
       "Invalid",
-      `Unknown command "${name}". Run "outbound help"`
+      `Unknown command "${name}".${didYouMean(name, [...COMMANDS.keys(), ...STANDALONE.keys(), "help", "providers"])} Run "outbound help"`
     );
   }
 

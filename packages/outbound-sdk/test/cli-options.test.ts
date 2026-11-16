@@ -110,7 +110,7 @@ test("--help lists each command's options, and each one listed is taken", async 
   assert.equal(leads.code, 0);
   assert.match(
     leads.out,
-    /^Usage: outbound leads \[--campaign ID \| --list ID\] \[--limit N\]$/mu
+    /^Usage: outbound leads \[--campaign ID\|NAME \| --list ID\|NAME\] \[--limit N\]$/mu
   );
   assert.match(leads.out, /--provider <id>/u);
 });
