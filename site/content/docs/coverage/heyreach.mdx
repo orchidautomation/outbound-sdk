@@ -128,4 +128,4 @@ Five reads stay in the native catalog and are also used by a normalized read. Lo
 
 ## Per-lead reply counts and automatic replies
 
-No HeyReach lead shape has a reply count, so `engagement` is `null` on every HeyReach lead. `hotLeads` takes a HeyReach lead's reply count and last reply time from the replies it reads within `recency_days`, leaving out replies flagged automatic. A campaign's leads carry no auto-tag, so where the record has no label it takes the class of the correspondent's newest auto-tag from those replies: an Interested tag earns the interest points, and the reason reads "marked positive by the vendor".
+No HeyReach lead shape has a reply count, so `engagement` is `null` on every HeyReach lead. `hotLeads` takes a HeyReach lead's reply count and last reply time from the replies it reads within `recency_days`, leaving out replies flagged automatic. A campaign's leads carry no auto-tag, so where the record has no label it takes the class of the correspondent's newest auto-tag from those replies: an Interested tag earns the interest points while `positive_labels` holds Interested, and the reason reads "marked positive by the vendor".

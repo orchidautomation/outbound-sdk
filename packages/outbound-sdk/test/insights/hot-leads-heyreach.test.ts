@@ -63,7 +63,7 @@ const CONVERSATIONS = [
   conversation("example-person-2", ["Interested"], [10, 12]),
 ];
 
-const run = async () => {
+const run = async (input: { positive_labels?: string[] } = {}) => {
   const clock = createClock();
   const unrouted: string[] = [];
   const fixtures = fixtureHandler([heyreach], unrouted);
@@ -89,7 +89,7 @@ const run = async () => {
   });
 
   const result = await clock.settle(
-    outbound.insights.hotLeads({}, { now: NOW })
+    outbound.insights.hotLeads(input, { now: NOW })
   );
 
   return { result, unrouted };
@@ -128,5 +128,18 @@ test("hot_leads on HeyReach does not say the vendor reports no reply data when i
       "This tool reports no per-lead open or click counts, so those are unknown, and reply counts and recency come from the replies read within recency_days."
     ),
     result.meta.notes.join(" ")
+  );
+});
+
+test("hot_leads on HeyReach gives an Interested tag no points when positive_labels leaves Interested out", async () => {
+  const { result } = await run({ positive_labels: ["Meeting Booked"] });
+
+  assert.deepEqual(
+    result.data.leads.map((each) => [each.lead.split("/").at(-1), each.score]),
+    [
+      ["example-person-3", 28.5714],
+      ["example-person-1", 27.1429],
+      ["example-person-2", 25.7143],
+    ]
   );
 });

@@ -173,11 +173,14 @@ export interface HotLeads {
 /**
  * Whether the lead's label is one of `positive_labels`. A lead with no label
  * whose vendor still classes it positive (HeyReach's auto-tag, read from its
- * replies) counts as positive; with no label and no such class it is unknown.
+ * replies) counts as positive while `positive_labels` holds Interested, the
+ * label that class stands for; with no label and no such class it is unknown.
  */
 const positiveOf = (lead: Lead, values: Input): boolean | null =>
   lead.interest === null
-    ? lead.interestCategory === "positive" || null
+    ? (lead.interestCategory === "positive" &&
+        isPositive("Interested", values.positive_labels)) ||
+      null
     : isPositive(lead.interest, values.positive_labels);
 
 const capped = (
