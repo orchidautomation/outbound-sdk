@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Campaign, Sequence } from "../../internal/entities.ts";
+import { OutboundError } from "../../internal/errors.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
 import { readCampaignsIn } from "../capped.ts";
 import { defineInsight } from "../define.ts";
@@ -265,16 +266,33 @@ const readPlacements = async (
   const perCampaign = await mapConcurrent(campaigns, async (campaign) => {
     const handle = context.outbound.campaign(campaign.ref);
 
-    const [sequence, stats] = await Promise.all([
-      handle.sequence(),
-      handle.stats({ scope: "step" }),
-    ]);
+    try {
+      const [sequence, stats] = await Promise.all([
+        handle.sequence(),
+        handle.stats({ scope: "step" }),
+      ]);
 
-    return placementsOf(
-      campaign,
-      context.one(sequence),
-      splitStats(context.rows(stats))
-    );
+      return placementsOf(
+        campaign,
+        context.one(sequence),
+        splitStats(context.rows(stats))
+      );
+    } catch (error) {
+      // One campaign the vendor cannot answer for costs that campaign, not
+      // the whole workspace. A cap, a timeout or a bad key still throws.
+      if (
+        !OutboundError.is(error) ||
+        (error.code !== "NotFound" && error.code !== "Provider")
+      ) {
+        throw error;
+      }
+
+      context.partial(
+        `Left out ${campaign.name}: its sequence or step stats could not be read (${error.message}).`
+      );
+
+      return [];
+    }
   });
 
   return perCampaign.flat();

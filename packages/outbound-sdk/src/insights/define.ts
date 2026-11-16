@@ -275,6 +275,12 @@ const track = (
   let evidence: Evidence = "exact";
   let complete = true;
 
+  const note = (text: string): void => {
+    if (!notes.includes(text)) {
+      notes.push(text);
+    }
+  };
+
   const seen = (meta: ResultMeta | undefined): void => {
     if (meta === undefined) {
       return;
@@ -282,11 +288,9 @@ const track = (
 
     requests += meta.requests;
     evidence = RANK[meta.evidence] > RANK[evidence] ? meta.evidence : evidence;
-  };
 
-  const note = (text: string): void => {
-    if (!notes.includes(text)) {
-      notes.push(text);
+    for (const text of meta.notes) {
+      note(text);
     }
   };
 

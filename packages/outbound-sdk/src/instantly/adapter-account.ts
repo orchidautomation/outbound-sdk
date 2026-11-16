@@ -113,7 +113,7 @@ export const accountReaders = (client: InstantlyClient): AccountReaders => {
       });
 
       return mapPage(page, (item) =>
-        toSubsequence(identity, item, query.campaignId)
+        toSubsequence(identity, item, query.campaignId, ctx.note)
       );
     },
     listTags: async (query, ctx) => {

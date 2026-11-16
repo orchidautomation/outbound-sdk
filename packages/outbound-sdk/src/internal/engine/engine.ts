@@ -134,6 +134,7 @@ export class RequestEngine {
           ? undefined
           : this.now() + merged.deadline,
       maxRequests: merged.maxRequests,
+      notes: [],
       // A cap from the instance is named by the option that set it there.
       maxRequestsSetBy:
         options.maxRequests === undefined &&
@@ -151,6 +152,11 @@ export class RequestEngine {
   contextFor(adapter: Adapter, state: CallState): AdapterContext {
     return {
       forAdapter: (other) => this.contextFor(other, state),
+      note: (text) => {
+        if (!state.notes.includes(text)) {
+          state.notes.push(text);
+        }
+      },
       request: (spec) =>
         execute(spec, {
           adapter,

@@ -360,7 +360,8 @@ export const readers = (
     getSequence: async (id, ctx) =>
       toSequence(
         identity,
-        await client.getObject(ctx, `/campaigns/${encodeURIComponent(id)}`)
+        await client.getObject(ctx, `/campaigns/${encodeURIComponent(id)}`),
+        ctx.note
       ),
     listCampaigns: async (query, ctx) =>
       await listCampaigns(client, ctx, query),

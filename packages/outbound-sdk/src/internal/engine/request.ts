@@ -42,6 +42,8 @@ export interface CallState {
    * the one already set.
    */
   beforeRequest: (() => void) | undefined;
+  /** What the adapter left out of the answer, and why. Each note once. */
+  readonly notes: string[];
 }
 
 export interface RequestEnvironment {

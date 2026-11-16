@@ -102,6 +102,7 @@ export const metaFor = (
   complete: input.complete,
   evidence: input.evidence,
   fetchedAt: input.fetchedAt ?? new Date(core.engine.now()).toISOString(),
+  notes: [...state.notes],
   provider: core.adapter.name,
   requests: state.requests,
   stale: input.stale ?? false,
