@@ -52,7 +52,7 @@ Rates are computed from the counts beside them. A count the vendor does not repo
 | `winning_steps` | Which step or variant drives replies | `stats.byStep` |
 | `sender_health` | Status, daily limit and warmup per sender, unhealthy first | `senders.list` |
 | `reply_samples` | Recent replies, optionally by category | `replies.list` |
-| `lead_runway` | Days until a campaign runs out of leads. An estimate. | `leads.byCampaign`, `stats.campaign`, `stats.byDay` |
+| `lead_runway` | Days until a campaign has no new leads left to start, at the pace of new leads started. An estimate. | `leads.byCampaign`, `stats.campaign`, `stats.byDay` |
 | `compare_clients` | The same counts for every client, side by side | the [`clients` plugin](/docs/plugins/clients), `stats.campaign` |
 | `cross_channel_lead` | Every record and message for one person | the [`identity` plugin](/docs/plugins/identity) |
 | `campaign_setup` | How one campaign is set up to send: windows, caps, tracking, stop rules | `campaigns.settings` |
@@ -75,6 +75,8 @@ The last column is the tool's own `needs`: the [capabilities](/docs/capabilities
 `campaign_overview`, `sender_health` and `reply_samples` return at most `limit` rows. Each says in `data.truncated` when more exist than it returned, and its card says so.
 
 `sender_health` counts problems over more senders than it lists: at least the first 100, or `limit` when that is larger, which is one vendor page and so costs no extra request. `data.unhealthy` counts the paused, disconnected and failing senders among the `data.checked` senders, and they are listed first. `data.all_checked` is `false` when the account has more senders than were checked.
+
+`deliverability_check` screens every sender, up to 500, from the sender list for a disconnected or failing status and a warmup score of 0, then checks the first `limit` in full, those with a problem first. `data.with_problems` counts problems across every screened sender. `data.checked` is how many were checked in full and `data.total` how many senders there are, or `null` past 500. `data.all_checked` is `false` when not every sender was checked in full, and `next` then says so.
 
 ## What is left out, and what is refused
 

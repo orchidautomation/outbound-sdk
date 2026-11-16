@@ -12,6 +12,6 @@ Fintech CFOs: 120 leads left, days left unknown
 Every figure after the lead counts is an estimate. It assumes:
   - Every remaining lead is contacted.
   - Remaining leads reply at the rate the campaign has had so far; leads already partway through the sequence may reply less.
-  - The daily pace stays what it was over the recent days. Days with no report count as no sends.
+  - The daily pace of new leads started stays what it was over the recent days. Days with no report count as none started.
 
 Vendor requests spent: 0

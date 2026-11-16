@@ -163,7 +163,7 @@ test("winning_steps ranks steps by reply rate", async () => {
   const outbound = createOutbound({
     adapter: memory({
       data: {
-        campaigns: [{ id: "c1" }],
+        campaigns: [{ id: "c1" }, { id: "idle" }],
         stats: [
           {
             campaignId: "c1",
@@ -386,20 +386,26 @@ test("reply_samples filters by category and campaign", async () => {
 });
 
 test("lead_runway divides active leads by the pace of new contacts", async () => {
-  const today = new Date().toISOString().slice(0, 10);
+  // The pace is read over complete days, so the row is yesterday's.
+  const yesterday = new Date(Date.now() - 86_400_000)
+    .toISOString()
+    .slice(0, 10);
 
   const outbound = createOutbound({
     adapter: memory({
       data: {
-        campaigns: [{ id: "c1" }],
+        campaigns: [{ id: "c1" }, { id: "idle" }],
         leads: [
           ...Array.from({ length: 30 }, (_, index) => ({
             campaignId: "c1",
             id: `a${index}`,
           })),
           { campaignId: "c1", id: "done", status: "completed" as const },
+          { campaignId: "idle", id: "waiting" },
         ],
-        stats: [{ campaignId: "c1", counts: { contacted: 70 }, date: today }],
+        stats: [
+          { campaignId: "c1", counts: { contacted: 70 }, date: yesterday },
+        ],
       },
     }),
   });
@@ -416,15 +422,25 @@ test("lead_runway divides active leads by the pace of new contacts", async () =>
     contacted_per_day: 10,
     counted_leads: 31,
     counting_stopped_at_max: false,
+    // No lead reports a step or a contact, so every active lead counts.
+    in_sequence: null,
+    not_started: null,
     runway_days: 3,
   });
   assert.ok(result.ok && result.meta.evidence === "derived");
 
-  const idle = data(
+  const idle = data(await call(outbound, "lead_runway", { campaign: "idle" }));
+
+  assert.equal(idle.contacted_per_day, null);
+  assert.equal(idle.runway_days, null, "no pace, no runway");
+
+  // Every lead read and none active: none left, as pipeline_forecast says.
+  const drained = data(
     await call(plain(), "lead_runway", { campaign: "cmp_agencies" })
   );
 
-  assert.equal(idle.runway_days, null, "no pace, no runway");
+  assert.equal(drained.active_leads, 0);
+  assert.equal(drained.runway_days, 0, "no leads left is zero days");
 });
 
 test("compare_clients and cross_channel_lead work once their plugins are on the instance", async () => {

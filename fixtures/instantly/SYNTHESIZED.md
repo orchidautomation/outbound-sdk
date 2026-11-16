@@ -23,6 +23,8 @@ Added on 2026-11-14 for the account-level reads, with values chosen so that no t
 
 Added on 2026-11-14 for the lookup by email: `listLeadsByEmail*.json`, the response of `POST /leads/list` with `contacts` set, written by hand from the same schema. One address is in two campaigns and one list, and one record spells it with capitals, which is an assumption about what Instantly can return, not something documented.
 
+Edited on 2026-11-16 for OUT-87: `lead_id` was removed from `getEmail.json`, `listEmails*.json` and `listReplies*.json`, because a live `GET /emails` reply (2026-11-15) carried `lead` and `from_address_email` but no `lead_id`; the reference marks `lead_id` "(if any)". Added the same day, by hand: `listReplies.sameLead.json`, two received emails in one thread from one lead, with only the keys seen on that live reply; and `listLeadsByEmail.repliers.json`, the lookup by email for the leads the email fixtures name, trimmed to the fields under test.
+
 - getAccount.json
 - getAccountDailyAnalytics.json
 - getAccountWarmupAnalytics.json
@@ -52,8 +54,10 @@ Added on 2026-11-14 for the lookup by email: `listLeadsByEmail*.json`, the respo
 - listLeads.page2.json
 - listLeadsByEmail.json
 - listLeadsByEmail.page2.json
+- listLeadsByEmail.repliers.json
 - listReplies.json
 - listReplies.page2.json
+- listReplies.sameLead.json
 - listSubsequences.json
 - listSubsequences.page2.json
 - listWebhooks.json

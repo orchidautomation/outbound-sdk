@@ -547,3 +547,15 @@ Fetched fresh on 2026-11-16: https://api.instantly.ai/openapi/api_v2.json (`info
 Seen live on 2026-11-15 (one four-step campaign, recorded in OUT-86): the UI's "Sequence started" was 430, `new_leads_contacted_count` 430, `contacted_count` 1,404 and `emails_sent_count` 1,501. Summed by day, `contacted` equalled `sent` on each of 16 days. On the workspace's largest campaign `contacted_count` was 164,146 against 28,754. So `contacted_count` counts lead-step contacts, whatever the reference says, and the reference's "unique contacts who received an email that day" repeats a lead on every day it is emailed.
 
 The adapter reads `contacted` (unique leads started) from `new_leads_contacted_count` on totals and from `new_leads_contacted` by day. A day's new leads add up across days without counting a lead twice. A step row reads `contacted` where it is sent, as the leads that step reached; the reference lists no such field, so it is usually `null`.
+
+## Which lead an email belongs to (2026-11-16, for OUT-87)
+
+Read on 2026-11-16 from https://api.instantly.ai/openapi/api_v2.json, the `Email` schema:
+
+- `lead`: "The email address of the lead that the email is associated with" (string or null).
+- `lead_id`: "The lead id (if any)" (uuid or null). Not in `required`.
+- `from_address_email`: "The sender email address, populated based on the eaccount" (read-only). On a received email the sender is the lead.
+
+A live reply from `GET /emails` (2026-11-15, through `outbound replies --raw`) had the keys `body`, `campaign_id`, `content_preview`, `eaccount`, `from_address_email`, `from_address_json`, `i_status`, `id`, `is_focused`, `is_unread`, `lead`, `message_id`, `organization_id`, `step`, `subject`, `thread_id`, `timestamp_created`, `timestamp_email`, `to_address_email_list`, `to_address_json`, `ue_type`: no `lead_id`.
+
+The adapter therefore builds a message's and a reply's `leadRef` from `lead`, lowercased, or on a received email (`ue_type` 2) from `from_address_email`, and only then from `lead_id`. A lead id names one campaign membership, so the address is also the one key that is the same person in every campaign. `leads.get` given an address looks the lead up with the `contacts` filter of `POST /leads/list` (one request, first record with that exact address); `leads.timeline` given an address uses it as the `lead` filter of `GET /emails` with no lead read first.

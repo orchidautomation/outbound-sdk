@@ -6,11 +6,17 @@ import { z } from "zod";
 import type { Campaign, Lead, LeadStatus } from "../../internal/entities.ts";
 import { plural } from "../../internal/numbers.ts";
 import { noun } from "../../internal/plural.ts";
+import {
+  newLeadsPerDay,
+  paceWindow,
+  runwayDays,
+  splitActive,
+} from "../../internal/runway.ts";
 import { readCapped } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
-import { percent, round, spoken, total } from "../stats.ts";
-import { labelOf, lastDays, ratesOf, readDaily, readTotals } from "./shared.ts";
+import { percent, round, spoken } from "../stats.ts";
+import { labelOf, ratesOf, readDaily, readTotals } from "./shared.ts";
 import type { CampaignLabel, Measured } from "./shared.ts";
 
 const input = z.object({
@@ -47,13 +53,24 @@ export interface PipelineForecast extends CampaignLabel {
   readonly byStatus: Readonly<Record<LeadStatus, number>>;
   /** Leads still active in the campaign: not replied, bounced, unsubscribed, paused or finished. */
   readonly remaining: number;
-  /** New leads contacted per day over the last `days`. `null` when the vendor has no daily contacted count. */
+  /**
+   * Active leads whose sequence has not started: no step sent, no contact.
+   * `null` when the vendor reports neither for any lead read.
+   */
+  readonly notStarted: number | null;
+  /** Active leads partway through the sequence. `null` with `notStarted`. */
+  readonly inSequence: number | null;
+  /**
+   * New leads started per day over the last `days`: the daily `contacted`
+   * count, never emails sent. `null` when the vendor has no daily contacted count.
+   */
   readonly dailyContactRate: number | null;
   /**
-   * `remaining` divided by `dailyContactRate`, and `0` when every lead was
-   * read and none is left. `null` when the remaining leads are unknown (the
-   * cap stopped the read, or a lead's status is unknown) or some remain with
-   * no contact rate to divide by.
+   * `notStarted` (or `remaining` when that is `null`) divided by
+   * `dailyContactRate`, and `0` when every lead was read and none is left to
+   * start. `null` when the leads left are unknown (the cap stopped the read,
+   * or a lead's status is unknown) or some are left with no pace to divide by.
+   * `lead_runway` returns the same figure as `runway_days`.
    */
   readonly daysLeft: number | null;
   /** The campaign's reply rate so far, over its whole history. */
@@ -109,47 +126,36 @@ const paceOf = async (
   const series = await readDaily(
     context,
     campaign,
-    lastDays(context.now, days)
+    paceWindow(context.now, days)
   );
 
-  const contacted = total(series.map((day) => day.counts.contacted));
-
-  return contacted === null ? null : round(contacted / days);
+  return newLeadsPerDay(
+    series.map((day) => day.counts),
+    days
+  );
 };
 
 const ASSUMPTIONS = [
   "Every remaining lead is contacted.",
   "Remaining leads reply at the rate the campaign has had so far; leads already partway through the sequence may reply less.",
-  "The daily pace stays what it was over the recent days. Days with no report count as no sends.",
+  "The daily pace of new leads started stays what it was over the recent days. Days with no report count as none started.",
 ];
 
 interface Left {
   readonly remaining: number;
+  readonly inSequence: number | null;
   readonly complete: boolean;
   readonly daysLeft: number | null;
 }
 
-/** Days of sending left. See `PipelineForecast.daysLeft`. */
-const daysLeftOf = (
-  byStatus: Readonly<Record<LeadStatus, number>>,
-  complete: boolean,
-  pace: number | null
-): number | null => {
-  const remaining = byStatus.active;
-
-  if (remaining === 0) {
-    return complete && byStatus.unknown === 0 ? 0 : null;
-  }
-
-  return pace === null || pace <= 0 ? null : round(remaining / pace);
-};
-
 const describe = (
-  { complete, daysLeft, remaining }: Left,
+  { complete, daysLeft, inSequence, remaining }: Left,
   forecast: Estimate
 ): string => {
   if (daysLeft === 0) {
-    return "No leads are left to contact; add leads to keep the campaign sending.";
+    return remaining === 0
+      ? "No leads are left to contact; add leads to keep the campaign sending."
+      : `No new leads are left to start; ${plural(inSequence ?? remaining, "lead")} ${noun(inSequence ?? remaining, "is", "are")} finishing the sequence. Add leads to keep the campaign starting new ones.`;
   }
 
   const leads = `${complete ? "" : "At least "}${plural(remaining, "lead")} ${noun(remaining, "remains", "remain")}`;
@@ -206,9 +212,10 @@ export const forecastCampaign = async (
     await readTotals(context, campaign.ref, { from: null, to: null })
   );
 
+  const split = splitActive(leads);
   const pace = await paceOf(context, campaign.ref, options.days);
   const expectedReplies = project(remaining, rates.replyRate);
-  const daysLeft = daysLeftOf(byStatus, complete, pace);
+  const daysLeft = runwayDays(split, byStatus, complete, pace);
 
   return {
     ...labelOf(campaign),
@@ -222,9 +229,14 @@ export const forecastCampaign = async (
     estimate: true,
     expectedPositive: project(remaining, rates.positiveRate),
     expectedReplies,
-    finding: describe({ complete, daysLeft, remaining }, expectedReplies),
+    finding: describe(
+      { complete, daysLeft, inSequence: split.inSequence, remaining },
+      expectedReplies
+    ),
+    inSequence: split.inSequence,
     leadsComplete: complete,
     leadsRead: leads.length,
+    notStarted: split.notStarted,
     positiveRate: rates.positiveRate,
     remaining,
     replyRate: rates.replyRate,
@@ -233,7 +245,7 @@ export const forecastCampaign = async (
 
 export const pipelineForecast = defineInsight({
   description:
-    "The leads one campaign has left and what they should produce: leads counted by status, the leads still active, the days of sending left at the recent daily contact rate, and the replies and positive replies to expect from the remaining leads at the campaign's reply rate so far, each with a low and a high figure from the 95% interval. Use it to decide when to load more leads. It is an estimate and lists what it assumes; a null means the vendor does not report the count behind it. Costs one request per page of leads, plus two stats requests.",
+    "The leads one campaign has left and what they should produce: leads counted by status, the leads still active, split into those not yet started and those partway through the sequence, the days until no lead is left to start at the recent pace of new leads started per day (the same figure lead_runway gives), and the replies and positive replies to expect from the remaining leads at the campaign's reply rate so far, each with a low and a high figure from the 95% interval. Use it to decide when to load more leads. It is an estimate and lists what it assumes; a null means the vendor does not report the count behind it. Costs one request per page of leads, plus two stats requests.",
   inputSchema: input,
   key: "pipelineForecast",
   cost: (values, price) =>
