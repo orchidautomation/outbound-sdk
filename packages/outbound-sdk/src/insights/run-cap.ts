@@ -63,7 +63,7 @@ export interface RunCap {
 }
 
 // A cap the caller set, not the vendor: retrying stops at the same place.
-const isCapStop = (cause: unknown): cause is OutboundError =>
+export const isCapStop = (cause: unknown): cause is OutboundError =>
   OutboundError.is(cause) &&
   cause.code === "RateLimited" &&
   (cause.limit === "call" || cause.limit === "run");

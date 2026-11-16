@@ -3,9 +3,9 @@
 // states up to one cap across all of them.
 
 import type { Campaign, CampaignStatus } from "../internal/entities.ts";
-import { OutboundError } from "../internal/errors.ts";
 import type { ListAll, PageResult } from "../internal/outbound/api.ts";
 import type { InsightContext } from "./define.ts";
+import { isCapStop } from "./run-cap.ts";
 import { capNote, wasCutShort } from "./tracked-reads.ts";
 import type { Cap } from "./tracked-reads.ts";
 
@@ -65,11 +65,7 @@ const settledPage = async <Item>(
   try {
     return await read;
   } catch (error) {
-    if (
-      OutboundError.is(error) &&
-      error.code === "RateLimited" &&
-      (error.limit === "call" || error.limit === "run")
-    ) {
+    if (isCapStop(error)) {
       return null;
     }
 
