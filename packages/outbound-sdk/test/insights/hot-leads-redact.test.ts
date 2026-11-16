@@ -1,9 +1,9 @@
 // hot_leads under the redact plugin, the MCP default (OUT-111, OUT-113).
 // Instantly names a reply's lead by address, and redact masks addresses, so
-// a reply's lead cannot be looked up at the vendor. That read says so and
-// marks the answer partial. Each person keeps one masked token (OUT-122), so
-// replies still match the leads that were read, and the leads Instantly labels
-// positive are still found by its own filter.
+// the reply names its lead by a token. Redact keeps, in memory, the address
+// behind each token it wrote and reads the lead with the address in its
+// place, so the answer ranks the same leads as without redact and still
+// shows no address.
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -19,9 +19,6 @@ import { createFetch, json } from "../helpers/http.ts";
 import { suite as instantly } from "../instantly/suite.ts";
 
 const NOW = Date.parse("2026-11-16T12:00:00.000Z");
-
-const NOT_LOOKED_UP =
-  "The redact plugin masks email addresses, which a reply can name its lead by, so leads that replied within recency_days and were not otherwise listed were not looked for.";
 
 const repliers = (
   fixture("instantly", "listLeadsByEmail.repliers.json") as {
@@ -109,26 +106,28 @@ for (const [strategy, options] of [
   ["mask", {}],
   ["hash", { strategy: "hash" }],
 ] as const) {
-  test(`hot_leads under a ${strategy} redact says it did not look up the lead that replied, and still matches replies`, async () => {
+  test(`hot_leads under a ${strategy} redact looks up the lead that replied through redact, and ranks the same leads`, async () => {
+    const plain = await build([]).run();
     const { lookups, run, unrouted } = build([redact(options)]);
     const result = await run();
 
     assert.deepEqual(unrouted, []);
-    assert.deepEqual(lookups(), [], "no lead is looked up by a masked address");
-    assert.equal(result.data.totals.repliesRead, 1);
-    assert.equal(result.data.totals.fromReplies, 0);
-    assert.equal(result.meta.complete, false);
-    assert.ok(
-      result.meta.notes.includes(NOT_LOOKED_UP),
-      result.meta.notes.join(" ")
-    );
     assert.deepEqual(
-      result.data.leads.map((lead) => lead.interest),
-      ["Interested"]
+      lookups(),
+      ["person16@example.com"],
+      "redact puts the address back on the call to the vendor"
     );
-    assert.ok(
-      result.data.leads.every((lead) => lead.email !== "person31@example.com"),
-      "the address stays masked"
+    assert.deepEqual(result.data.totals, plain.data.totals);
+    assert.equal(result.meta.complete, true, result.meta.notes.join(" "));
+    assert.deepEqual(result.meta.notes, plain.meta.notes);
+    assert.deepEqual(
+      result.data.leads.map((lead) => lead.score),
+      plain.data.leads.map((lead) => lead.score)
+    );
+    assert.doesNotMatch(
+      JSON.stringify(result),
+      /person16|person31|example\.com/u,
+      "no address in the answer"
     );
   });
 }

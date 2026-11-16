@@ -20,11 +20,13 @@
 // and stays, and so does a bare profile slug with no URL around it, which
 // cannot be told apart from one.
 
-import type { OutboundEvent } from "../internal/entities.ts";
+import type { Lead, OutboundEvent } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
 import { isJsonArray, isJsonObject, isString } from "../internal/json.ts";
+import type { ListAll } from "../internal/outbound/api.ts";
 import type {
+  Operation,
   OperationOutput,
   OutboundRecord,
 } from "../internal/outbound/operations.ts";
@@ -81,6 +83,23 @@ export interface RedactExtension {
      * given out.
      */
     readonly hash: (value: string) => string;
+    /**
+     * What a token this redact wrote for an address or a profile stands for,
+     * `email` or `linkedin`, or `null` when it wrote no such token. The
+     * value itself is never given out: a call that names the token, in a ref
+     * or a field, reaches the vendor with the value in its place, and its
+     * answer comes back masked.
+     */
+    readonly resolves: (token: string) => Identifier | null;
+    /**
+     * The leads behind the address tokens given, in one campaign or all,
+     * read with the addresses in their place and returned masked. A token
+     * this redact did not write for an address is left out.
+     */
+    readonly leadsByToken: (
+      tokens: readonly string[],
+      campaign: string | null
+    ) => ListAll<Lead>;
   };
 }
 
@@ -108,11 +127,67 @@ const keyedToken = (): ((value: string) => string) => {
 
 type Identifier = "email" | "linkedin";
 
+/** The most tokens one redact remembers the value of; the oldest go first. */
+export const KNOWN_TOKENS = 10_000;
+
+const TOKEN = /redacted:[0-9a-f]{16}/gu;
+
+/**
+ * The values behind the tokens this redact wrote for addresses and profiles,
+ * held in memory for its lifetime and never written out.
+ */
+interface Known {
+  readonly remember: (token: string, kind: Identifier, value: string) => string;
+  readonly kindOf: (token: string) => Identifier | null;
+  /** Puts each known token's value back, for a call on its way to the vendor. */
+  readonly unmask: (text: string) => string;
+  /** Puts the tokens back where a value from `unmask` appears. */
+  readonly remask: (text: string) => string;
+}
+
+const knownTokens = (): Known => {
+  const values = new Map<string, { kind: Identifier; value: string }>();
+
+  return {
+    kindOf: (token) => values.get(token)?.kind ?? null,
+    remask: (text) => {
+      let result = text;
+
+      for (const [token, { value }] of values) {
+        result = result.replaceAll(value, token);
+      }
+
+      return result;
+    },
+    remember: (token, kind, value) => {
+      values.delete(token);
+      values.set(token, { kind, value });
+
+      if (values.size > KNOWN_TOKENS) {
+        const [oldest] = values.keys();
+
+        if (oldest !== undefined) {
+          values.delete(oldest);
+        }
+      }
+
+      return token;
+    },
+    unmask: (text) =>
+      text.replaceAll(TOKEN, (token) => values.get(token)?.value ?? token),
+  };
+};
+
 interface Masks {
   readonly has: (field: RedactField) => boolean;
   readonly replace: Replace;
-  /** What an address or a profile slug in an id becomes: one token per person. */
-  readonly token: (value: string) => string;
+  readonly known: Known;
+  /** What an address or a profile in an id becomes: one token per person. */
+  readonly token: (
+    kind: Identifier,
+    value: string,
+    original?: string
+  ) => string;
   /** What an `email` or `linkedinUrl` field becomes. */
   readonly identifier: (
     field: Identifier,
@@ -132,17 +207,26 @@ const masksFor = (
 ): Masks => {
   const replace = replacer(strategy);
   const has = (field: RedactField): boolean => fields.has(field);
+  const known = knownTokens();
 
   if (strategy === "hash") {
     return {
       has,
-      identifier: (_field, value) => replace(value),
+      identifier: (field, value) =>
+        value === null
+          ? null
+          : known.remember(replace(value) ?? MASK, field, value),
+      known,
       replace,
-      token: (value) => replace(value) ?? MASK,
+      token: (kind, value, original = value) =>
+        known.remember(replace(value) ?? MASK, kind, original),
     };
   }
 
-  const token = keyedToken();
+  const keyed = keyedToken();
+
+  const token = (kind: Identifier, value: string, original = value): string =>
+    known.remember(keyed(value), kind, original);
 
   // Normalized as in an id, so the field and the ref get the same token.
   return {
@@ -151,10 +235,13 @@ const masksFor = (
       value === null
         ? null
         : token(
+            field,
             field === "email"
               ? value.toLowerCase()
-              : (profileSlug(value) ?? value)
+              : (profileSlug(value) ?? value),
+            value
           ),
+    known,
     replace,
     token,
   };
@@ -187,12 +274,12 @@ const maskId = (masks: Masks, id: string): string => {
   const slug = masks.has("linkedin") ? profileSlug(id) : null;
 
   if (slug !== null) {
-    return masks.token(slug);
+    return masks.token("linkedin", slug, id);
   }
 
   return masks.has("email")
     ? id.replaceAll(EMAIL_IN_ID, (address) =>
-        masks.token(address.toLowerCase())
+        masks.token("email", address.toLowerCase(), address)
       )
     : id;
 };
@@ -205,7 +292,7 @@ const maskRef = (masks: Masks, ref: string): string => {
     : makeRef(parts.provider, parts.workspaceId, maskId(masks, parts.sourceId));
 };
 
-const KEY_FIELDS: readonly RedactField[] = ["email", "linkedin"];
+const KEY_FIELDS: readonly Identifier[] = ["email", "linkedin"];
 
 // The identity plugin's `email:` and `linkedin:` keys keep their prefix.
 const maskKey = (masks: Masks, key: string): string => {
@@ -213,7 +300,7 @@ const maskKey = (masks: Masks, key: string): string => {
 
   return field === undefined || !masks.has(field)
     ? key
-    : `${field}:${masks.token(key.slice(field.length + 1))}`;
+    : `${field}:${masks.token(field, key.slice(field.length + 1))}`;
 };
 
 const maskEach = (
@@ -383,6 +470,30 @@ const redactEventData = (
   return result;
 };
 
+// A vendor's error can quote what it was asked for, so a call sent with a
+// value in place of a token fails with the token put back and no cause.
+const remasked = (known: Known, error: OutboundError): OutboundError =>
+  new OutboundError(error.code, known.remask(error.message), {
+    aborted: error.aborted,
+    limit: error.limit,
+    permanent: error.permanent,
+    provider: error.provider,
+    retryAfterMs: error.retryAfterMs,
+    status: error.status,
+    timedOut: error.timedOut,
+  });
+
+/** The call with the value of a token this redact wrote in place of it, in an id. */
+const unmasked = (known: Known, operation: Operation): Operation => {
+  if (!("id" in operation)) {
+    return operation;
+  }
+
+  const id = known.unmask(operation.id);
+
+  return id === operation.id ? operation : { ...operation, id };
+};
+
 /** Masks emails, names, companies, LinkedIn URLs, custom fields and message text. */
 export const redact = (
   options: RedactOptions = {}
@@ -406,16 +517,37 @@ export const redact = (
         data: redactEventData(masks, event.data),
         raw: null,
       }),
-    extend: () => ({
+    extend: (outbound) => ({
       redacted: {
         fields: [...fields].toSorted(),
         hash: (value) => masks.replace(value) ?? MASK,
+        leadsByToken: (tokens, campaign) => {
+          const emails = tokens.flatMap((token) =>
+            masks.known.kindOf(token) === "email"
+              ? masks.known.unmask(token)
+              : []
+          );
+
+          return campaign === null
+            ? outbound.leads.listAll({ emails })
+            : outbound.campaign(campaign).leads.listAll({ emails });
+        },
+        resolves: (token) => masks.known.kindOf(token),
         strategy,
       },
     }),
     name: "redact",
     wrap: async (operation, next): Promise<OperationOutput> => {
-      const output = await next(operation);
+      const sent = unmasked(masks.known, operation);
+      let output: OperationOutput;
+
+      try {
+        output = await next(sent);
+      } catch (error) {
+        throw sent !== operation && OutboundError.is(error)
+          ? remasked(masks.known, error)
+          : error;
+      }
 
       return {
         ...output,

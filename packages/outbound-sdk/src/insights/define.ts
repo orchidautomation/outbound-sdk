@@ -6,7 +6,7 @@
 import type { ZodObject, ZodType } from "zod";
 
 import type { CapabilityKey } from "../internal/capabilities.ts";
-import type { Evidence, MetricRow } from "../internal/entities.ts";
+import type { Evidence, Lead, MetricRow } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
 import { toJson, unknownKey } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
@@ -45,6 +45,17 @@ export interface Masking {
   readonly strategy: "hash" | "mask";
   /** The token the plugin writes in place of a value in a masked field. */
   readonly hash?: ((value: string) => string) | undefined;
+  /**
+   * What a token the plugin wrote stands for, `email` or `linkedin`, or
+   * `null` when it cannot put the value back on a call to the vendor.
+   */
+  readonly resolves?:
+    | ((token: string) => "email" | "linkedin" | null)
+    | undefined;
+  /** The leads behind address tokens, read through the plugin and returned masked. */
+  readonly leadsByToken?:
+    | ((tokens: readonly string[], campaign: string | null) => ListAll<Lead>)
+    | undefined;
 }
 
 /**
