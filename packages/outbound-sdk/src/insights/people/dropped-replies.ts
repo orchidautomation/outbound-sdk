@@ -382,7 +382,8 @@ interface Checked {
 /**
  * Settles each conversation as answered, too recent or dropped. An answer
  * sent by hand after the replies settles one without reading it, and so does
- * an open reply too recent to count. The rest are read in full, since a
+ * an open reply too recent to count, unless the listing stopped at its max
+ * and its answer may lie past the stop. The rest are read in full, since a
  * campaign send after the reply counts as an answer too.
  */
 const check = async (
@@ -449,7 +450,7 @@ const check = async (
 
 export const droppedReplies = defineInsight({
   description:
-    "Replies from prospects that nobody answered. Reads every reply since a date (14 days before now by default, up to 2,000 or max_replies), keeps the categories that need an answer, and reports a conversation as dropped when nothing was sent after the reply and it has waited longer than older_than_hours. Where the tool lists the messages sent by hand (messages.byHand), one listing of those in the window settles every answered conversation; a conversation is read in full, by its thread or the lead's timeline, only when it may be dropped. Returns the dropped replies longest waiting first with hours waiting, category, the campaign and its name, and the lead with their name, email and LinkedIn profile. A reply that could not be checked is counted in totals.unchecked, never reported as dropped. Costs one request per page of replies and of messages sent by hand, one per conversation read in full, and one per lead and per campaign among the dropped replies to name them. totals.moreRepliesExist is true when the read stopped with replies left unread.",
+    "Replies from prospects that nobody answered. Reads every reply since a date (14 days before now by default, up to 2,000 or max_replies), keeps the categories that need an answer, and reports a conversation as dropped when nothing was sent after the reply and it has waited longer than older_than_hours. Where the tool lists the messages sent by hand (messages.byHand), one listing of those in the window settles every answered conversation; a conversation is read in full, by its thread or the lead's timeline, only when it may be dropped, or when that listing stopped at its max and did not answer it. Returns the dropped replies longest waiting first with hours waiting, category, the campaign and its name, and the lead with their name, email and LinkedIn profile. A reply that could not be checked is counted in totals.unchecked, never reported as dropped. Costs one request per page of replies and of messages sent by hand, one per conversation read in full, and one per lead and per campaign among the dropped replies to name them. totals.moreRepliesExist is true when the read stopped with replies left unread.",
   inputSchema: input,
   key: "droppedReplies",
   cost: (values, price) => {
