@@ -570,7 +570,7 @@ const GLOBAL_HELP = [
   "  --config <file>          load plugins from a file whose default export is defineConfig({ plugins })",
   "  --redact                 mask personal fields (on by default for mcp)",
   "  --no-redact              do not mask personal fields, even for mcp",
-  "  --cache <seconds>        reuse an answer for this long",
+  "  --cache <seconds>        reuse an answer for this long, within this process (for mcp; use a config-file store to persist)",
   "  --max-requests <n>       the most vendor requests one command, or one MCP tool call, may make",
   "",
   "Each adapter reads its own key from the environment, for example INSTANTLY_API_KEY.",

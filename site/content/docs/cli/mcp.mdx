@@ -62,7 +62,7 @@ A key in a client's configuration file is stored in plain text on your disk by t
 | Flag | What it does |
 | --- | --- |
 | `--no-redact` | Turns the default `redact()` off. Records come back unmasked and reply text can be asked for. |
-| `--cache <seconds>` | Adds [`cache()`](/docs/plugins/cache): a repeat read within that time makes no vendor request. |
+| `--cache <seconds>` | Adds [`cache()`](/docs/plugins/cache): a repeat read within that time makes no vendor request. The cache is in memory and lives as long as the server. |
 | `--max-requests <n>` | Adds [`budget()`](/docs/plugins/budget): the most vendor requests one tool call may make. |
 | `--config <file>` | Loads plugins from a file. See below. |
 
@@ -74,7 +74,7 @@ The sample runs the real `outbound mcp` three times on the demo data: as it star
   ../../_examples/cli-mcp/plugins.out.txt
 </include>
 
-The server's `instructions` end with the plugins that are on, so a model can tell why a field is masked or a tool refuses. The tool count goes up by one with the config file because [`clients`](/docs/plugins/clients) adds `compare_clients`.
+The server's `instructions` end with the plugins that are on, so a model can tell why a field is masked or a tool refuses. With `redact()` on they also name the tools it left out and say that `--no-redact` offers them, so a model knows person lookup exists. The tool count goes up by one with the config file because [`clients`](/docs/plugins/clients) adds `compare_clients`.
 
 ### A config file
 
@@ -129,9 +129,9 @@ That is 9 built-in tools and 23 of the 27 insights on the in-memory adapter: `pe
 - `outbound mcp` serves `compare_clients` only with the `clients` plugin from a config file, and `cross_channel_lead` only with `--no-redact`, because `redact` masks the identifiers it matches on. The CLI always installs the `identity` plugin it needs.
 - A built-in tool or an insight whose adapter lacks a capability it needs is left out. On HeyReach that removes `winning_steps` and `campaign_setup`.
 
-A call to a tool that `redact` left out is answered with a protocol error (`-32602`) whose message names it: "person_summary is left out while the redact plugin is on: it needs what redact masks. Start the server with --no-redact to offer it; personal fields are then not masked." A name no tool has is still "Unknown tool".
+A call to a tool that `redact` left out is answered with a protocol error (`-32602`) whose message names it: "person_summary is left out while the redact plugin is on: it needs what redact masks. Start the server with --no-redact to offer it; personal fields are then not masked." A name no tool has is still "Unknown tool". The same tools are named once in `initialize`: "Left out while redact is on: cross_channel_lead, person_summary, … They match people by email or LinkedIn profile, which redact masks. Start the server with --no-redact to offer them; personal fields are then not masked." `tools/list` does not list them.
 
-The `instructions` string repeats the rule about reply text once for the whole server, then names the plugins that are on. It is a label for the model, not a safeguard. See [untrusted content](/docs/tools/untrusted-content).
+The `instructions` string repeats the rule about reply text once for the whole server, then names the plugins that are on and any tools left out. It is a label for the model, not a safeguard. See [untrusted content](/docs/tools/untrusted-content).
 
 ## Calls and errors
 

@@ -65,6 +65,29 @@ const describePlugins = (outbound: OutboundApi): string => {
   return `Plugins on: ${names.join(", ")}.${masked}`;
 };
 
+// Names the tools this server left out, so a model knows they exist and how
+// they are turned on. A call to one still answers with its own reason.
+const describeLeftOut = (
+  outbound: OutboundApi,
+  leftOut: Readonly<Record<string, string>> | undefined
+): string => {
+  const names = Object.keys(leftOut ?? {});
+
+  if (names.length === 0) {
+    return "";
+  }
+
+  if (!outbound.plugins.some((plugin) => plugin.name === "redact")) {
+    return ` Left out of this server: ${names.join(", ")}. A call to one returns the reason.`;
+  }
+
+  const native = names.includes("vendor_read")
+    ? " (vendor_read returns unmasked vendor payloads)"
+    : "";
+
+  return ` Left out while redact is on: ${names.join(", ")}. They match people by email or LinkedIn profile, which redact masks${native}. Start the server with --no-redact to offer them; personal fields are then not masked.`;
+};
+
 interface WithRequestBudget {
   readonly requestBudget: { readonly reset: () => void };
 }
@@ -116,7 +139,7 @@ export const createMcpServer = (
 ): McpServer => {
   const tools = createTools(outbound, options);
   const byName = new Map(tools.map((tool) => [tool.name, tool]));
-  const instructions = `${INSTRUCTIONS} ${describePlugins(outbound)}`;
+  const instructions = `${INSTRUCTIONS} ${describePlugins(outbound)}${describeLeftOut(outbound, options.leftOut)}`;
   const budget = budgetOf(outbound);
 
   const initialize = (id: RequestId, params: Json | undefined): JsonObject => {
