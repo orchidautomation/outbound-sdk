@@ -318,6 +318,11 @@ export const metricRowSchema = z.object({
   connectionsAccepted: count,
   /** LinkedIn only. */
   connectionsSent: count,
+  /**
+   * Leads who reached the end of the sequence. Optional: absent or `null`
+   * where the vendor does not report it.
+   */
+  completed: count.optional(),
   /** Unique leads contacted. */
   contacted: count,
   contentHash: z.string().nullable(),
@@ -327,9 +332,22 @@ export const metricRowSchema = z.object({
   evidence: evidenceSchema,
   /** LinkedIn only. */
   inmailsSent: count,
+  /**
+   * Leads in the campaign now, whatever their progress. A lead removed after
+   * its sequence started is still in `contacted`, so `contacted` can be a
+   * little over `leads`. Optional, like `completed`.
+   */
+  leads: count.optional(),
   /** Unique opens. `null` when open tracking is off. */
   opened: count,
   openedTotal: count,
+  /** Opportunities the vendor counts for the leads. Optional, like `completed`. */
+  opportunities: count.optional(),
+  /**
+   * What those opportunities are worth, in the vendor workspace's own
+   * currency, which the vendor does not name. Optional, like `completed`.
+   */
+  opportunityValue: count.optional(),
   positive: count,
   provider: z.string().min(1),
   /** Replies from people. Auto-replies are counted in `repliedAuto`. */

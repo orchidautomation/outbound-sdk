@@ -34,6 +34,7 @@ const LISTINGS = [
 
 const LOOKUPS = [
   "campaigns.get",
+  "campaigns.progress",
   "campaigns.settings",
   "leads.get",
   "senders.get",

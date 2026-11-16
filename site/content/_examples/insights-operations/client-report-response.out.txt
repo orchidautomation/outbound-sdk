@@ -93,7 +93,7 @@
       },
       "current": {
         "bounced": 40,
-        "contacted": 1085,
+        "contacted": 1001,
         "positive": 14,
         "replied": 49,
         "sent": 2170,
@@ -104,7 +104,7 @@
       "finding": "Replies per message sent went from 3.2% to 2.3%; within what chance would give (p = 0.0509).",
       "previous": {
         "bounced": 27,
-        "contacted": 1085,
+        "contacted": 1001,
         "positive": 21,
         "replied": 70,
         "sent": 2170,

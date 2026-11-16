@@ -2,5 +2,5 @@
 2. Agency owners: 63 of 840 = 0.075, interval 0.0591 to 0.0948
 3. SaaS founders: 63 of 1050 = 0.06, interval 0.0472 to 0.076
 4. Pilot test: 2 of 20 = 0.1, interval 0.0279 to 0.301
-5. Ecommerce ops: 21 of 1050 = 0.02, interval 0.0131 to 0.0304
+5. Ecommerce ops: 21 of 798 = 0.0263, interval 0.0173 to 0.0399
 gap: { difference: 0.0583, median: 0.075, top: 0.1333 }

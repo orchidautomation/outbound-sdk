@@ -572,3 +572,22 @@ Fetched fresh on 2026-11-16: https://api.instantly.ai/openapi/api_v2.json (`info
 Seen live on 2026-11-15 on one campaign (recorded in OUT-92): `reply_count_unique` 1 and `reply_count_automatic_unique` 11. One lead's four replies all came from `auto-responder+noreply@` at the lead's domain, 4 to 6 seconds after each send, reading "Your contact with ... has changed"; the lead's `email_reply_count` was 4. Another lead's two replies were a helpdesk autoresponder ("For technical support, please contact ..."). The reply to the fourth send (step id `0_3_0`) carried `step` `0_2_0`.
 
 So the adapter keeps `is_auto_reply` when it is present (and an Out of Office `i_status` as the vendor's word), and otherwise decides `isAuto` with the fixed rules in `src/internal/auto-reply.ts`, with `isAutoSource: "rule"`. In a timeline or thread page, a received email takes its step from the last sent email before it in its thread, and one under 60 seconds after that send is automatic. `fixtures/instantly/listEmails.autoReplies.json` and `listLeads.autoReplies.json` reproduce that campaign with fake addresses and names.
+
+## Leads, completed leads and opportunities on campaign totals (2026-11-16, for OUT-90)
+
+Fetched fresh on 2026-11-16: https://api.instantly.ai/openapi/api_v2.json (`info.version` 2.0.0, 198 paths). The fields, word for word:
+
+| Field | `GET /campaigns/analytics` | `GET /campaigns/analytics/overview` | Description |
+| --- | --- | --- | --- |
+| `leads_count` | yes, unless `exclude_total_leads_count=true` (default `false`) | absent | "The total number of leads" |
+| `completed_count` | yes | yes | "The number of leads that the campaign was completed for" |
+| `total_opportunities` | yes | yes | "The total number of unique opportunities created" |
+| `total_opportunity_value` | yes (a number) | yes (a number) | "The total value of opportunities created" |
+
+No currency is named anywhere in the spec, so the value is the workspace's own unit. Whether `leads_count` and `completed_count` follow `start_date` and `end_date` is not documented.
+
+Seen live on 2026-11-15 (the four-step campaign of OUT-86, recorded in OUT-90): `leads_count` 383, `completed_count` 343, `total_opportunities` 1, `total_opportunity_value` 500, `new_leads_contacted_count` 430, `contacted_count` 1,404. The UI showed Opportunities "1 | $500" and 383 leads on the Leads tab.
+
+So leads started (430) can exceed the leads still in the campaign (383): a lead removed after its sequence started is still counted as started. The mis-mapping OUT-86 fixed gave 1,404, about 3.7 times the leads.
+
+The adapter reads `leads`, `completed`, `opportunities` and `opportunityValue` from these fields on every-campaign rows (`GET /campaigns/analytics`). One campaign's total and the workspace total come from the overview, which has no `leads_count`, so `leads` is `null` there and the other three are read. A campaign's lead count is also in `campaigns.progress`. Daily, step and sender rows leave all four `null`.

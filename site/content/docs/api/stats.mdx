@@ -93,6 +93,12 @@ Every count on a `MetricRow` is a non-negative number, or `null` when the vendor
 | `connectionsSent` | LinkedIn connection requests sent. LinkedIn only. |
 | `connectionsAccepted` | LinkedIn connection requests accepted. LinkedIn only. |
 | `inmailsSent` | LinkedIn InMails sent. LinkedIn only. |
+| `leads` | Leads in the campaign now, whatever their progress. Optional. |
+| `completed` | Leads who reached the end of the sequence. Optional. |
+| `opportunities` | Opportunities the vendor counts for the leads. Optional. |
+| `opportunityValue` | What those opportunities are worth, in the vendor workspace's own currency. Optional. |
+
+`leads`, `completed`, `opportunities` and `opportunityValue` are optional: a row may leave them out, and the adapters in this package set them to `null` where the vendor does not report them. Today only Instantly fills them, on campaign and workspace totals; `leads` is only on the rows of `stats({ scope: "campaign" })`. `contacted` can be a little over `leads`, because a lead removed after its sequence started is still counted as contacted.
 
 The other fields say what the row is:
 
