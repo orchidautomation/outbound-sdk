@@ -6,6 +6,7 @@ import { test } from "node:test";
 
 import { cache } from "../../src/cache/index.ts";
 import { createOutbound, MemoryRateLimitStore } from "../../src/index.ts";
+import { createTools } from "../../src/tools/index.ts";
 import { fixtureHandler, harness } from "../helpers/adapter-suite.ts";
 import { createClock } from "../helpers/clock.ts";
 import { fixture } from "../helpers/fixtures.ts";
@@ -195,4 +196,58 @@ test("instantly: negative campaign limits are unknown with a note, and the setti
     "The campaign's daily limit of new leads is negative in Instantly (-2); left out.",
     "The gap between emails is negative in Instantly (-3 minutes); left out.",
   ]);
+});
+
+const toolCall = async (
+  answer: (request: RecordedRequest) => Response | undefined,
+  name: string,
+  input: Record<string, string | number>
+) => {
+  const { outbound, settle } = harness(suite, answer);
+  const tool = createTools(outbound).find((each) => each.name === name);
+
+  assert.ok(tool, `${name} is offered`);
+  const result = await settle(tool.call(input));
+  assert.ok(result.ok, JSON.stringify(result));
+
+  return result;
+};
+
+test("instantly: campaign_setup carries the note for a negative campaign limit", async () => {
+  const campaign = fixture("instantly", "getCampaign.json") as object;
+
+  const result = await toolCall(
+    campaignRead({ ...campaign, daily_limit: -1 }),
+    "campaign_setup",
+    { campaign: CAMPAIGN }
+  );
+
+  assert.deepEqual(result.meta.notes, [
+    "The campaign's daily limit is negative in Instantly (-1); left out.",
+  ]);
+});
+
+test("instantly: sender_health carries the note for a negative mailbox limit", async () => {
+  const listed = fixture("instantly", "listAccounts.json") as {
+    items: Record<string, unknown>[];
+  };
+
+  const [first, ...rest] = listed.items;
+  assert.ok(first !== undefined);
+
+  const result = await toolCall(
+    (request) =>
+      new URL(request.url).pathname === "/api/v2/accounts"
+        ? json({ items: [{ ...first, daily_limit: -5 }, ...rest] })
+        : undefined,
+    "sender_health",
+    { limit: 10 }
+  );
+
+  assert.ok(
+    result.meta.notes.includes(
+      `The daily limit of ${String(first.email)} is negative in Instantly (-5); left out.`
+    ),
+    result.meta.notes.join("\n")
+  );
 });

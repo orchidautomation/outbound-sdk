@@ -288,6 +288,15 @@ const readPlacements = async (
       );
     }
 
+    // The read that did answer still counts toward requests and notes.
+    if (sequence.status === "fulfilled") {
+      context.one(sequence.value);
+    }
+
+    if (stats.status === "fulfilled") {
+      context.rows(stats.value);
+    }
+
     const reasons: string[] = [];
 
     for (const each of [sequence, stats]) {

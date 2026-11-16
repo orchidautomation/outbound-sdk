@@ -57,7 +57,7 @@ const over = (
     ...options,
   });
 
-  return { outbound, settle: clock.settle, unrouted };
+  return { http, outbound, settle: clock.settle, unrouted };
 };
 
 test("step_funnel answers for a campaign with a negative step delay, and notes the unknown wait", async () => {
@@ -182,4 +182,22 @@ test("copy_reuse does not let a missing sequence hide a bad key on the same camp
   );
 
   assert.equal(error.code, "Unauthorized");
+});
+
+test("copy_reuse counts the request of a read that answered when it leaves the campaign out", async () => {
+  const { http, outbound, settle } = over((request) => {
+    const url = new URL(request.url);
+
+    return url.pathname === "/api/v2/campaigns/analytics/steps" &&
+      url.searchParams.get("campaign_id") === OTHER
+      ? json({ message: "Not found" }, 404)
+      : undefined;
+  });
+
+  const result = await settle(outbound.insights.copyReuse({}, { now: NOW }));
+
+  assert.equal(result.meta.complete, false);
+  // Every request but the one that failed: a failed read returns no meta to
+  // count from, while the other campaign's sequence read did answer.
+  assert.equal(result.meta.requests, http.requests.length - 1);
 });
