@@ -14,7 +14,8 @@ An adapter is thin. It describes each request and maps the response. It never re
 8. **Write `adapter.ts` and `index.ts`:** the read methods (one page per call) and the factory. Read the API key from the option, then from `<PROVIDER>_API_KEY`. Export `envVars`.
 9. **Register it:** add the subpath to `exports` in `packages/outbound-sdk/package.json`, an entry in `src/providers/index.ts`, and a loader in `src/loader/index.ts`.
 10. **Test it:** create `packages/outbound-sdk/test/<provider>.test.ts`, describe the routes to your fixtures and call `runAdapterSuite()`. Then add tests for what is specific to this vendor, with expected values taken from the documented payloads. Where a documented example repeats one number across fields, add a test with a distinct value per field.
-11. **Run `npm run check`.** It must pass before the pull request is opened.
+11. **Account for every count:** add the adapter's table to `docs/metric-glossary.md`, and once a real account exists, capture a parity case (`docs/vendor-parity.md`).
+12. **Run `npm run check`.** It must pass before the pull request is opened.
 
 ## What the shared suite checks
 

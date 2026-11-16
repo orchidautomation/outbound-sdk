@@ -55,7 +55,7 @@ export const CHECK_METRICS = {
   },
   lead_runway_days: {
     description:
-      "Days until a campaign runs out of leads at its recent contact rate. Read with `pipelineForecast`.",
+      "Days until a campaign has no new leads left to start, at its recent pace of new leads started per day. Read with `pipelineForecast`.",
     reads: "pipelineForecast",
     scope: ["client", "campaign"],
     unit: "days",

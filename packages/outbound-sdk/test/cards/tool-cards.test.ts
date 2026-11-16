@@ -330,6 +330,8 @@ const runway = (days: number | null, stopped: boolean) =>
           contacted_per_day: 35.5,
           counted_leads: 2000,
           counting_stopped_at_max: stopped,
+          in_sequence: 120,
+          not_started: 300,
           runway_days: days,
         },
         { evidence: "derived" }
@@ -340,18 +342,19 @@ const runway = (days: number | null, stopped: boolean) =>
 test("lead_runway gives the days left, or says no pace was measured", () => {
   includes(
     runway(11, true),
-    "About 11 days of leads left at the current pace.",
+    "About 11 days of new leads left at the current pace.",
     "Active leads: 420",
-    "Contacted per day: 35.5",
+    "Not started: 300",
+    "New leads per day: 35.5",
     "Lead counting stopped at the cap, so the real runway is longer.",
     "derived · instantly"
   );
   includes(
     runway(null, false),
-    "Nobody was contacted in the lookback window, so no pace can be measured.",
+    "No new leads were started in the lookback window, or the tool does not count them, so no pace can be measured.",
     "Runway: —"
   );
-  includes(runway(1, false), "About 1 day of leads left");
+  includes(runway(1, false), "About 1 day of new leads left");
 });
 
 test("compare_clients puts clients side by side", () => {
