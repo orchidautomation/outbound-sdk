@@ -15,17 +15,35 @@ interface Dated {
   readonly sentAt: string | null;
 }
 
-/**
- * Where a member stands: the cursor its current page was read from, and the
- * last record of that page already given out, if any.
- */
+/** The last record of a page already given out. */
+interface Given {
+  readonly ref: string;
+  readonly sentAt: string | null;
+  /** Every record already given out with the same time, `ref` among them. */
+  readonly tied: readonly string[];
+}
+
+/** Where a member stands: the cursor its current page was read from, and what of that page is given out. */
 interface Spot {
   readonly index: number;
   readonly at: Json | undefined;
-  readonly after:
-    | { readonly ref: string; readonly sentAt: string | null }
-    | undefined;
+  readonly after: Given | undefined;
 }
+
+const givenOf = (entry: Json): Given | undefined => {
+  const ref = text(field(entry, "afterRef"));
+  const tied = field(entry, "afterTied");
+
+  return ref === null
+    ? undefined
+    : {
+        ref,
+        sentAt: text(field(entry, "afterSentAt")),
+        tied: Array.isArray(tied)
+          ? tied.flatMap((each) => text(each) ?? [])
+          : [ref],
+      };
+};
 
 const spotsOf = (next: Json | undefined, size: number): readonly Spot[] => {
   const listed = field(next, "newest");
@@ -40,20 +58,10 @@ const spotsOf = (next: Json | undefined, size: number): readonly Spot[] => {
 
   return listed.flatMap((entry) => {
     const index = count(field(entry, "member"));
-    const ref = text(field(entry, "afterRef"));
 
     return index === null || index >= size
       ? []
-      : [
-          {
-            after:
-              ref === null
-                ? undefined
-                : { ref, sentAt: text(field(entry, "afterSentAt")) },
-            at: field(entry, "at") ?? undefined,
-            index,
-          },
-        ];
+      : [{ after: givenOf(entry), at: field(entry, "at") ?? undefined, index }];
   });
 };
 
@@ -62,13 +70,14 @@ const timeOf = (item: Pick<Dated, "sentAt">): number =>
   item.sentAt === null ? 0 : Date.parse(item.sentAt);
 
 /**
- * Where a re-read page resumes: after the last record given out. A page the
- * vendor changed in between, by a new or a deleted record, is resumed by
- * time when that record is gone: every record still waiting is older than it.
+ * Where a re-read page resumes: after the last record given out. When the
+ * vendor deleted that record in between, the page resumes by time: at the
+ * first record older than it, or as old but not given out yet.
  */
-const resumeAt = (items: readonly Dated[], spot: Spot): number => {
-  const { after } = spot;
-
+const resumeAt = (
+  items: readonly Dated[],
+  after: Given | undefined
+): number => {
   if (after === undefined) {
     return 0;
   }
@@ -79,9 +88,38 @@ const resumeAt = (items: readonly Dated[], spot: Spot): number => {
     return given + 1;
   }
 
-  const older = items.findIndex((item) => timeOf(item) < timeOf(after));
+  const time = timeOf(after);
 
-  return older === -1 ? items.length : older;
+  const waiting = items.findIndex(
+    (item) =>
+      timeOf(item) < time ||
+      (timeOf(item) === time && !after.tied.includes(item.ref))
+  );
+
+  return waiting === -1 ? items.length : waiting;
+};
+
+/** The last record given out on this page so far, with every record given out at its time. */
+const lastGiven = (
+  before: Given | undefined,
+  out: readonly Dated[]
+): Given | undefined => {
+  const last = out.at(-1);
+
+  if (last === undefined) {
+    return before;
+  }
+
+  const time = timeOf(last);
+
+  return {
+    ref: last.ref,
+    sentAt: last.sentAt,
+    tied: [
+      ...(before !== undefined && timeOf(before) === time ? before.tied : []),
+      ...out.flatMap((item) => (timeOf(item) === time ? [item.ref] : [])),
+    ],
+  };
 };
 
 /**
@@ -106,7 +144,7 @@ export const pageNewestFirst = async <Item extends Dated>(
         ? []
         : [
             readPage(member, ctx.forAdapter(member), spot.at).then((page) => ({
-              left: page.items.slice(resumeAt(page.items, spot)),
+              left: page.items.slice(resumeAt(page.items, spot.after)),
               page,
               spot,
             })),
@@ -138,14 +176,15 @@ export const pageNewestFirst = async <Item extends Dated>(
 
   const waiting = read.flatMap(({ left, page, spot }, at) => {
     const out = given[at] ?? [];
-    const last = out.at(-1);
 
     if (out.length < left.length) {
+      const after = lastGiven(spot.after, out);
+
       return [
         {
-          afterRef: last?.ref ?? spot.after?.ref ?? null,
-          afterSentAt:
-            last === undefined ? (spot.after?.sentAt ?? null) : last.sentAt,
+          afterRef: after?.ref ?? null,
+          afterSentAt: after?.sentAt ?? null,
+          afterTied: [...(after?.tied ?? [])],
           at: spot.at ?? null,
           member: spot.index,
         },
@@ -154,14 +193,7 @@ export const pageNewestFirst = async <Item extends Dated>(
 
     return page.next === undefined
       ? []
-      : [
-          {
-            afterRef: null,
-            afterSentAt: null,
-            at: page.next,
-            member: spot.index,
-          },
-        ];
+      : [{ at: page.next, member: spot.index }];
   });
 
   return waiting.length === 0

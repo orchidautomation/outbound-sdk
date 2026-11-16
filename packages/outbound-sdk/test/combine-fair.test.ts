@@ -456,3 +456,68 @@ test("a reply that arrives between two pages neither repeats nor drops one", asy
   assert.equal(new Set(refs).size, refs.length, "no reply repeats");
   assert.equal(refs.length, 160, "every reply listed at the start comes once");
 });
+
+const at = (minute: number) =>
+  new Date(Date.UTC(2026, 10, 16, 12, minute)).toISOString();
+
+test("a reply given out and then deleted between pages makes none repeat or go missing", async () => {
+  // g and b share a minute and are given out together; then g is deleted,
+  // so the next page resumes by time and must still list c once.
+
+  const email: MemoryMessage[] = [
+    { campaignId: uuid(1), direction: "in", id: "a", sentAt: at(50) },
+    { campaignId: uuid(1), direction: "in", id: "g", sentAt: at(30) },
+    { campaignId: uuid(1), direction: "in", id: "b", sentAt: at(30) },
+    { campaignId: uuid(1), direction: "in", id: "c", sentAt: at(10) },
+  ];
+
+  const later: MemoryMessage[] = Array.from({ length: 3 }, (_, index) => ({
+    campaignId: "300010",
+    direction: "in",
+    id: `k${index + 1}`,
+    sentAt: at(40 - index * 10),
+  }));
+
+  const outbound = createOutbound({
+    adapter: combine([
+      memory({
+        data: { campaigns: EMAIL_CAMPAIGNS, messages: email },
+        name: "instantly",
+        pageSize: 100,
+        workspaceId: "default",
+      }),
+      memory({
+        data: { campaigns: LINKEDIN_CAMPAIGNS, messages: later },
+        name: "heyreach",
+        pageSize: 2,
+        workspaceId: "default",
+      }),
+    ]),
+  });
+
+  const first = await outbound.replies.list();
+  const given = first.items.map((reply) => reply.ref);
+  assert.ok(given.includes("instantly:default:g"), given.join(", "));
+
+  email.splice(1, 1);
+
+  const refs = [...given];
+  let cursor: string | undefined = first.cursor;
+
+  while (cursor !== undefined) {
+    // oxlint-disable-next-line no-await-in-loop -- each page needs the previous page's cursor.
+    const page = await outbound.replies.list({ cursor });
+    refs.push(...page.items.map((reply) => reply.ref));
+    ({ cursor } = page);
+  }
+
+  assert.deepEqual(refs.toSorted(), [
+    "heyreach:default:k1",
+    "heyreach:default:k2",
+    "heyreach:default:k3",
+    "instantly:default:a",
+    "instantly:default:b",
+    "instantly:default:c",
+    "instantly:default:g",
+  ]);
+});
