@@ -290,7 +290,8 @@ test("instantly: a message maps direction, sender, lead and thread", async () =>
   assert.equal(message?.sentAt, "2026-11-14T00:40:11.109Z");
   assert.equal(
     message?.leadRef,
-    "instantly:client-a:01a1d77f-5e65-78a7-8eb0-0216d691e16c"
+    "instantly:client-a:person6@example.com",
+    "the lead's address: an email has no lead_id"
   );
   assert.equal(message?.threadId, "01a1d77f-5e65-78a7-8eb0-021717740220");
   const [, second] = page.items;

@@ -262,9 +262,29 @@ test("dropped_replies on Instantly reads each waiting person's lead and campaign
   );
   assert.equal(result.meta.requests, http.requests.length);
 
+  // An Instantly reply names its lead by address, read with a lookup by email.
+  assert.deepEqual(
+    result.data.dropped.map((each) => [each.lead, each.name, each.email]),
+    [
+      [
+        "instantly:client-a:person6@example.com",
+        "Sam Sample",
+        "person6@example.com",
+      ],
+      [
+        "instantly:client-a:person16@example.com",
+        "Robin Sample",
+        "person16@example.com",
+      ],
+      [
+        "instantly:client-a:person26@example.com",
+        "Kim Sample",
+        "person26@example.com",
+      ],
+    ]
+  );
+
   for (const each of result.data.dropped) {
-    assert.equal(each.name, "Alex Example");
-    assert.equal(each.email, "person1@example.com");
     assert.equal(each.campaignName, "My First Campaign");
   }
 });

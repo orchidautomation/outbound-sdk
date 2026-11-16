@@ -52,7 +52,7 @@ Every record except a stats row has `raw` set to `null`, whatever `fields` says.
 
 ### Ids and refs
 
-Some vendors use personal data as an id. Instantly addresses a mailbox by its email address, so a sender's `ref` and `sourceId` hold it, and so does every `senderRef` that points at the sender. HeyReach identifies a lead by its LinkedIn profile URL, which then sits in the lead's `ref` and in the `leadRef` of its messages.
+Some vendors use personal data as an id. Instantly addresses a mailbox by its email address, so a sender's `ref` and `sourceId` hold it, and so does every `senderRef` that points at the sender. An Instantly message names its lead by address too, so its `leadRef` holds it. HeyReach identifies a lead by its LinkedIn profile URL, which then sits in the lead's `ref` and in the `leadRef` of its messages.
 
 `redact` masks that part of `ref`, `sourceId` and every `*Ref` field, on records and on webhook events, when the matching field (`email` or `linkedin`) is being masked:
 

@@ -8,6 +8,14 @@ export const LIST = "01a1d77f-5e53-7eb1-ad45-7031e944ef51";
 export const THREAD = "01a1d77f-5e65-78a7-8eb0-021717740220";
 export const SENDER = "person1@example.com";
 
+/** The leads the email fixtures name, by address. */
+const REPLIERS = new Set([
+  "person6@example.com",
+  "person16@example.com",
+  "person26@example.com",
+  "person31@example.com",
+]);
+
 // A request that carries a cursor gets the last page.
 const paged = (name: string) => (request: RouteRequest) => {
   const body = request.body as { starting_after?: string } | undefined;
@@ -99,13 +107,18 @@ export const suite: AdapterSuite = {
       path: /^\/api\/v2\/accounts\/[^/]+$/u,
     },
     {
-      // A request with `contacts` is a lookup by email address.
-      fixture: (request) =>
-        paged(
-          (request.body as { contacts?: string[] } | undefined)?.contacts
-            ? "listLeadsByEmail"
-            : "listLeads"
-        )(request),
+      // A request with `contacts` is a lookup by email address. The leads the
+      // email fixtures name have their own answer.
+      fixture: (request) => {
+        const contacts = (request.body as { contacts?: string[] } | undefined)
+          ?.contacts;
+
+        if (contacts?.some((address) => REPLIERS.has(address)) === true) {
+          return "listLeadsByEmail.repliers.json";
+        }
+
+        return paged(contacts ? "listLeadsByEmail" : "listLeads")(request);
+      },
       method: "POST",
       path: "/api/v2/leads/list",
     },

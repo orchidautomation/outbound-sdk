@@ -8,7 +8,7 @@
 
 - Instantly sends next_starting_after on a last page too (seen live), and the page after it is empty. A listing therefore ends one request late; the small lookups for tags and labels stop at the first page that is not full.
 
-- A reply's category is read from the email's i_status using the lead interest status values (seen live: 0, 1, -1 and -2). A received email carries the lead's address but no lead id, so a reply's leadRef is null; a sent message has one. Instantly does not mark an email as automatic, so isAuto is null.
+- A reply's category is read from the email's i_status using the lead interest status values (seen live: 0, 1, -1 and -2). An email names its lead by address (lead_id was absent live), so a message's or reply's leadRef holds the lead's lowercased address, from lead or, on a received email, from_address_email. leads.get and leads.timeline take that ref; leads.get then returns the first record with the address, one of several when the person is in several campaigns. Instantly does not mark an email as automatic, so isAuto is null.
 
 - An email's step and a lead's last step are ids of the form sequence_step_variant, each counted from 0 (seen live, not documented); any other form gives a null step. Step analytics count steps from 0 too, and can hold a row with no step for counts Instantly could not tie to one.
 

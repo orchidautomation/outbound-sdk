@@ -532,6 +532,52 @@ test("deliverability_check lists each sender's failing records", () => {
   );
 });
 
+test("deliverability_check says when not every sender was checked in full", () => {
+  const partial = read(
+    cardFor(
+      "deliverability_check",
+      tool({
+        all_checked: false,
+        checked: 1,
+        screened: 30,
+        senders: [
+          {
+            address: "out28@example.com",
+            dns: {},
+            problems: ["status is disconnected"],
+          },
+        ],
+        total: 30,
+        with_problems: 4,
+      })
+    )
+  );
+
+  includes(
+    partial,
+    "🔴 4 of 30 senders have a problem.",
+    "1 of the 30 senders were checked in full, problems first; the rest were screened for status and warmup only. Raise limit to check more."
+  );
+  excludes(partial, "More senders exist");
+
+  includes(
+    read(
+      cardFor(
+        "deliverability_check",
+        tool({
+          all_checked: false,
+          checked: 500,
+          screened: 500,
+          senders: [],
+          total: null,
+          with_problems: 0,
+        })
+      )
+    ),
+    "More senders exist than the 500 screened."
+  );
+});
+
 test("audience_lists shows each list with its size", () => {
   includes(
     read(
