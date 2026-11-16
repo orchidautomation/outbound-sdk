@@ -129,6 +129,7 @@ $ outbound capabilities
       "lists.leads": true,
       "lists.list": true,
       "messages.body": "full",
+      "messages.byHand": false,
       "messages.byThread": true,
       "messages.list": true,
       "messages.since": "server",

@@ -175,11 +175,11 @@ export interface InsightInputs {
     readonly include_inbox?: boolean | undefined;
 
     /**
-     * The most replies to read. Each conversation among them costs one more request to check.
+     * The most replies to read. Null reads every reply since `since`, up to 2,000.
      *
-     * A whole number from 1 to 1000. Defaults to `50`.
+     * A whole number from 1 to 2000. Defaults to `null`.
      */
-    readonly max_replies?: number | undefined;
+    readonly max_replies?: number | null | undefined;
 
     /**
      * A reply counts as dropped only after waiting this many hours without an answer

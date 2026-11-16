@@ -113,6 +113,29 @@ export const sha256Hex = (input: string): string =>
     byte.toString(16).padStart(2, "0")
   ).join("");
 
+const BLOCK = 64;
+
+/** HMAC-SHA-256 (RFC 2104) of a UTF-8 message under `key`, as lowercase hex. */
+export const hmacSha256Hex = (key: Uint8Array, message: string): string => {
+  const block = new Uint8Array(BLOCK);
+  block.set(key.length > BLOCK ? sha256(key) : key);
+  const text = new TextEncoder().encode(message);
+  const inner = new Uint8Array(BLOCK + text.length);
+  const outer = new Uint8Array(BLOCK + 32);
+
+  for (const [index, byte] of block.entries()) {
+    inner[index] = byte ^ 0x36;
+    outer[index] = byte ^ 0x5c;
+  }
+
+  inner.set(text, BLOCK);
+  outer.set(sha256(inner), BLOCK);
+
+  return Array.from(sha256(outer), (byte) =>
+    byte.toString(16).padStart(2, "0")
+  ).join("");
+};
+
 /** A short stable id derived from the parts, for refs, event ids and cache keys. */
 export const stableId = (
   ...parts: (string | number | null | undefined)[]

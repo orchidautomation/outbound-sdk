@@ -27,13 +27,18 @@ for (const key of ["messages.body", "native"] as const) {
 
 const lead = await masked.leads.get("lead_dana");
 
+// An address or a profile becomes a token keyed for this instance, so people
+// can still be told apart. Its 16 hex characters change from run to run.
+const token = (value: string | null): string | null =>
+  value?.replace(/[0-9a-f]{16}$/u, "…") ?? null;
+
 console.log({
   company: lead.company,
   custom: lead.custom,
-  email: lead.email,
+  email: token(lead.email),
   firstName: lead.firstName,
   lastName: lead.lastName,
-  linkedinUrl: lead.linkedinUrl,
+  linkedinUrl: token(lead.linkedinUrl),
   raw: lead.raw,
   ref: lead.ref,
   status: lead.status,

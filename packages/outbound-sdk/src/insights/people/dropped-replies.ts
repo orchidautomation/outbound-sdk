@@ -28,6 +28,9 @@ const waited = (hours: number): string =>
 
 const DEFAULT_DAYS = 14;
 
+/** The most replies read from one window when `max_replies` is not set. */
+const WINDOW_REPLIES = 2000;
+
 const input = z.object({
   categories: z
     .array(replyCategorySchema)
@@ -52,10 +55,11 @@ const input = z.object({
     .number()
     .int()
     .min(1)
-    .max(1000)
-    .default(50)
+    .max(WINDOW_REPLIES)
+    .nullable()
+    .default(null)
     .describe(
-      "The most replies to read. Each conversation among them costs one more request to check."
+      "The most replies to read. Null reads every reply since `since`, up to 2,000."
     ),
   older_than_hours: z
     .number()
@@ -117,11 +121,11 @@ export interface DroppedReplies {
     readonly conversations: number;
     readonly answered: number;
     readonly dropped: number;
-    /** Unanswered, but waiting less than `older_than_hours`. */
+    /** Unanswered, as far as was read, but waiting less than `older_than_hours`. */
     readonly tooRecent: number;
     /** Could not be checked: no thread or lead to read, or no time on the reply. Not counted as dropped. */
     readonly unchecked: number;
-    /** `true` when `max_replies` stopped the read with more replies left, so dropped ones may be missing. */
+    /** `true` when `max_replies`, or the 2,000 replies one window reads, stopped the read with more replies left, so dropped ones may be missing. */
     readonly moreRepliesExist: boolean;
   };
   readonly since: string;
@@ -301,7 +305,7 @@ const named = async (
 const readReplies = (
   context: InsightContext,
   since: string,
-  max: number,
+  given: number | null,
   inbox: boolean
 ): Promise<Capped<Reply>> => {
   const { outbound } = context;
@@ -326,25 +330,168 @@ const readReplies = (
           ? { includeInbox, max: cap, since }
           : { includeInbox, max: cap }
       ),
-    max,
+    given ?? WINDOW_REPLIES,
     "replies",
-    "max_replies"
+    given === null
+      ? "the most one window reads; pass a later since"
+      : "max_replies"
   );
+};
+
+interface SentByHand {
+  readonly messages: readonly Message[];
+  /** `false` when the listing stopped at its max with more left. */
+  readonly whole: boolean;
+}
+
+/**
+ * The messages sent by hand since `since`, up to `max`, where the tool can
+ * list them by date on its side: one request per page. `null` where it
+ * cannot. Only an answer is read from them, so stopping at `max` leaves the
+ * rest to be read by thread and loses nothing.
+ */
+const sentByHand = async (
+  context: InsightContext,
+  since: string,
+  max: number
+): Promise<SentByHand | null> => {
+  const { capabilities, messages } = context.outbound;
+
+  if (
+    !capabilities["messages.byHand"] ||
+    capabilities["messages.since"] !== "server"
+  ) {
+    return null;
+  }
+
+  // Its cost is counted, but a stop at `max` does not make the answer partial.
+  const walk = messages.listAll({ byHand: true, max, since });
+  const found = await walk.toArray();
+
+  if (walk.meta !== undefined) {
+    context.one({ meta: walk.meta });
+  }
+
+  if (walk.truncated) {
+    context.note(
+      `The messages sent by hand stopped at ${max}, so each conversation they did not settle was read in full.`
+    );
+  }
+
+  return { messages: found, whole: !walk.truncated };
+};
+
+/** The messages sent by hand in one conversation: its thread, or its lead. */
+const answersIn = (
+  conversation: Conversation,
+  sent: readonly Message[]
+): Message[] =>
+  sent.filter((message) =>
+    conversation.by === "thread"
+      ? message.threadId === conversation.id
+      : message.leadRef === conversation.id
+  );
+
+interface Checkable extends Conversation {
+  readonly by: "thread" | "timeline";
+}
+
+interface Checked {
+  answered: number;
+  readonly dropped: DroppedReply[];
+  tooRecent: number;
+}
+
+/**
+ * Settles each conversation as answered, too recent or dropped. An answer
+ * sent by hand after the replies settles one without reading it, and so does
+ * an open reply too recent to count, unless the listing stopped at its max
+ * and its answer may lie past the stop. The rest are read in full, since a
+ * campaign send after the reply counts as an answer too.
+ */
+const check = async (
+  context: InsightContext,
+  checkable: readonly Checkable[],
+  sent: SentByHand | null,
+  olderThanHours: number
+): Promise<Checked> => {
+  const checked: Checked = { answered: 0, dropped: [], tooRecent: 0 };
+
+  const openIn = (
+    conversation: Checkable,
+    messages: readonly Message[]
+  ): DroppedReply[] =>
+    toDropped(
+      unanswered(conversation.replies, messages),
+      conversation.by,
+      context.now
+    );
+
+  // `false` when only a full read can say whether it is dropped.
+  const settle = (found: readonly DroppedReply[], whole: boolean): boolean => {
+    if (found.length === 0) {
+      checked.answered += 1;
+    } else if (found.every((each) => each.hoursWaiting < olderThanHours)) {
+      checked.tooRecent += 1;
+    } else if (whole) {
+      checked.dropped.push(...found);
+    } else {
+      return false;
+    }
+
+    return true;
+  };
+
+  const toRead =
+    sent === null
+      ? checkable
+      : checkable.filter((conversation) => {
+          const found = openIn(
+            conversation,
+            answersIn(conversation, sent.messages)
+          );
+
+          // A listing that stopped early may hold the answer past its stop.
+          return !((found.length === 0 || sent.whole) && settle(found, false));
+        });
+
+  const threads = await mapConcurrent(toRead, async (conversation) => ({
+    conversation,
+    messages: context.page(
+      await (conversation.by === "thread"
+        ? context.outbound.thread(conversation.id).messages()
+        : context.outbound.lead(conversation.id).timeline())
+    ),
+  }));
+
+  for (const { conversation, messages } of threads) {
+    settle(openIn(conversation, messages), true);
+  }
+
+  return checked;
 };
 
 export const droppedReplies = defineInsight({
   description:
-    "Replies from prospects that nobody answered. Reads the replies since a date (14 days before now by default), keeps the categories that need an answer, and for each conversation reads its thread, or the lead's timeline when there is no thread, and reports it as dropped when nothing was sent after the reply and it has waited longer than older_than_hours. Replies in conversations that belong to no campaign, such as a LinkedIn account's own messages on HeyReach, are set aside and counted in totals.notInCampaign unless include_inbox is true. Returns the dropped replies longest waiting first with hours waiting, category, the campaign and its name, and the lead with their name, email and LinkedIn profile. A reply that could not be checked is counted in totals.unchecked, never reported as dropped. Costs one request per page of replies, one per conversation checked, and one per lead and per campaign among the dropped replies to name them, so at most about three times max_replies requests. totals.moreRepliesExist is true when max_replies left replies unread.",
+    "Replies from prospects that nobody answered. Reads every reply since a date (14 days before now by default, up to 2,000 or max_replies), keeps the categories that need an answer, and reports a conversation as dropped when nothing was sent after the reply and it has waited longer than older_than_hours. Where the tool lists the messages sent by hand (messages.byHand), one listing of those in the window settles every answered conversation; a conversation is read in full, by its thread or the lead's timeline, only when it may be dropped, or when that listing stopped at its max and did not answer it. Replies in conversations that belong to no campaign, such as a LinkedIn account's own messages on HeyReach, are set aside and counted in totals.notInCampaign unless include_inbox is true. Returns the dropped replies longest waiting first with hours waiting, category, the campaign and its name, and the lead with their name, email and LinkedIn profile. A reply that could not be checked is counted in totals.unchecked, never reported as dropped. Costs one request per page of replies and of messages sent by hand, one per conversation read in full, and one per lead and per campaign among the dropped replies to name them. totals.moreRepliesExist is true when the read stopped with replies left unread.",
   inputSchema: input,
   key: "droppedReplies",
-  cost: (values, price) =>
-    price.list("replies.list", values.max_replies) +
-    price.upTo(values.max_replies) *
-      (price.walk("messages.list") +
-        (price.capabilities["leads.get"] === false
-          ? 0
-          : price.one("leads.get")) +
-        price.one("campaigns.get")),
+  cost: (values, price) => {
+    const most = values.max_replies ?? WINDOW_REPLIES;
+
+    return (
+      price.list("replies.list", most) +
+      (price.capabilities["messages.byHand"]
+        ? price.upTo(price.list("messages.list", most))
+        : 0) +
+      price.upTo(most) *
+        (price.walk("messages.list") +
+          (price.capabilities["leads.get"] === false
+            ? 0
+            : price.one("leads.get")) +
+          price.one("campaigns.get"))
+    );
+  },
   scales: "max_replies",
   name: "dropped_replies",
   needs: ["replies.list"],
@@ -395,9 +542,6 @@ export const droppedReplies = defineInsight({
     );
 
     const conversations = conversationsOf(kept, readers);
-    const dropped: DroppedReply[] = [];
-    let answered = 0;
-    let tooRecent = 0;
 
     // A conversation with no reader or no timed reply cannot be checked.
     const checkable = conversations.flatMap((conversation) =>
@@ -409,30 +553,21 @@ export const droppedReplies = defineInsight({
 
     const unchecked = conversations.length - checkable.length;
 
-    const threads = await mapConcurrent(checkable, async (conversation) => ({
-      conversation,
-      messages: context.page(
-        await (conversation.by === "thread"
-          ? context.outbound.thread(conversation.id).messages()
-          : context.outbound.lead(conversation.id).timeline())
-      ),
-    }));
+    const sent =
+      checkable.length === 0
+        ? null
+        : await sentByHand(
+            context,
+            since,
+            values.max_replies ?? WINDOW_REPLIES
+          );
 
-    for (const { conversation, messages } of threads) {
-      const found = toDropped(
-        unanswered(conversation.replies, messages),
-        conversation.by,
-        context.now
-      );
-
-      const old = found.filter(
-        (each) => each.hoursWaiting >= values.older_than_hours
-      );
-
-      dropped.push(...old);
-      answered += found.length === 0 ? 1 : 0;
-      tooRecent += found.length - old.length;
-    }
+    const { answered, dropped, tooRecent } = await check(
+      context,
+      checkable,
+      sent,
+      values.older_than_hours
+    );
 
     const withNames = await named(context, dropped);
 

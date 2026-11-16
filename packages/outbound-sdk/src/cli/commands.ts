@@ -22,7 +22,7 @@ import {
 } from "./by-name.ts";
 import { Answer, coverageOf, sections } from "./envelope.ts";
 import type { Printed } from "./envelope.ts";
-import { listedReplies, listing } from "./listing.ts";
+import { listedReplies, listing, WINDOW_LIMIT } from "./listing.ts";
 import { readNative } from "./native.ts";
 import { didYouMean } from "./suggest.ts";
 
@@ -423,20 +423,25 @@ const COMMAND_TABLE = {
       "limit",
       "since",
     ],
-    help: "replies [--campaign ID|NAME] [--category positive|negative|neutral|ooo|...] [--since ISO] [--limit N] [--bodies] [--by person] [--include-inbox]  one record per message; --by person gives one row per person; --include-inbox adds conversations outside every campaign (HeyReach)",
+    help: "replies [--campaign ID|NAME] [--category positive|negative|neutral|ooo|...] [--since ISO] [--limit N] [--bodies] [--by person] [--include-inbox]  one record per message; --by person gives one row per person. --limit defaults to 50, or with --since to the whole window up to 2000. --include-inbox adds conversations outside every campaign (HeyReach)",
     run: async (outbound, input) => {
       const by = choice(input, "by", REPLIES_BY);
+      const since = text(input, "since");
+
+      // A time window means all of it, up to a ceiling, unless --limit says otherwise.
+      const windowed =
+        since !== undefined && text(input, "limit") === undefined;
 
       const walk = outbound.replies.listAll({
         campaignId: await campaignOption(outbound, text(input, "campaign")),
         category: choice(input, "category", replyCategorySchema.options),
         include: input.flags.bodies === true ? ["body"] : undefined,
         includeInbox: input.flags["include-inbox"] === true || undefined,
-        max: count(input, "limit", 50),
-        since: text(input, "since"),
+        max: count(input, "limit", windowed ? WINDOW_LIMIT : 50),
+        since,
       });
 
-      return listedReplies(walk, input, by === "person");
+      return listedReplies(walk, input, by === "person", windowed);
     },
   },
   senders: {
