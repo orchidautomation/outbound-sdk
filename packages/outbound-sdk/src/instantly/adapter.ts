@@ -9,7 +9,8 @@ import type {
   Page,
   SenderQuery,
 } from "../internal/adapter.ts";
-import type { Campaign, Sender } from "../internal/entities.ts";
+import type { Campaign, Lead, Sender } from "../internal/entities.ts";
+import { OutboundError } from "../internal/errors.ts";
 import {
   emailAddress,
   isJsonObject,
@@ -248,10 +249,64 @@ const leadListBody = (query: LeadQuery): JsonObject => {
   return body;
 };
 
+const listLeads = async (
+  client: InstantlyClient,
+  query: LeadQuery,
+  ctx: AdapterContext
+): Promise<Page<Lead>> => {
+  if (query.linkedinUrl !== undefined) {
+    // An Instantly lead has no LinkedIn profile, so nothing can match.
+    return { items: [] };
+  }
+
+  const envelope = listEnvelope(
+    await client.post(ctx, "/leads/list", leadListBody(query)),
+    client.identity.provider,
+    "/leads/list"
+  );
+
+  const labels = await readLabels(
+    client,
+    ctx,
+    envelope.items.map((item) => item.lt_interest_status)
+  );
+
+  const leads = envelope.items.map((item) =>
+    toLead(client.identity, item, labels)
+  );
+
+  return {
+    // `contacts` is documented as the emails a lead needs to have, but not
+    // how it compares them, so the match is made exact here.
+    items:
+      query.email === undefined
+        ? leads
+        : leads.filter((lead) => lead.email === query.email),
+    next: envelope.next,
+  };
+};
+
 const leadReaders = (
   client: InstantlyClient
 ): Pick<Readers, "getLead" | "listLeads"> => ({
   getLead: async (id, ctx) => {
+    // A message's leadRef holds the lead's address: an email names its lead
+    // by address only. The first record with that address stands for it.
+    const address = emailAddress(id);
+
+    if (address !== null) {
+      const page = await listLeads(client, { email: address }, ctx);
+      const [lead] = page.items;
+
+      if (lead === undefined) {
+        throw new OutboundError("NotFound", "No lead has that address", {
+          provider: client.identity.provider,
+        });
+      }
+
+      return lead;
+    }
+
     const lead = await client.getObject(
       ctx,
       `/leads/${encodeURIComponent(id)}`
@@ -263,38 +318,7 @@ const leadReaders = (
       await readLabels(client, ctx, [lead.lt_interest_status])
     );
   },
-  listLeads: async (query, ctx) => {
-    if (query.linkedinUrl !== undefined) {
-      // An Instantly lead has no LinkedIn profile, so nothing can match.
-      return { items: [] };
-    }
-
-    const envelope = listEnvelope(
-      await client.post(ctx, "/leads/list", leadListBody(query)),
-      client.identity.provider,
-      "/leads/list"
-    );
-
-    const labels = await readLabels(
-      client,
-      ctx,
-      envelope.items.map((item) => item.lt_interest_status)
-    );
-
-    const leads = envelope.items.map((item) =>
-      toLead(client.identity, item, labels)
-    );
-
-    return {
-      // `contacts` is documented as the emails a lead needs to have, but not
-      // how it compares them, so the match is made exact here.
-      items:
-        query.email === undefined
-          ? leads
-          : leads.filter((lead) => lead.email === query.email),
-      next: envelope.next,
-    };
-  },
+  listLeads: async (query, ctx) => await listLeads(client, query, ctx),
 });
 
 export const readers = (

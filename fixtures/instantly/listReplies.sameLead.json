@@ -1,0 +1,54 @@
+{
+  "items": [
+    {
+      "id": "01a1d77f-5e65-78a7-8eb0-0211a0000002",
+      "timestamp_created": "2026-11-13T09:15:00.000Z",
+      "timestamp_email": "2026-11-13T09:15:00.000Z",
+      "message_id": "<example-thread-2@mail.example.com>",
+      "subject": "Re: A quick question",
+      "from_address_email": "person31@example.com",
+      "from_address_json": [],
+      "to_address_email_list": "sender31@example.com",
+      "to_address_json": [],
+      "body": {
+        "text": "Sounds good, tell me more."
+      },
+      "content_preview": "Sounds good, tell me more.",
+      "organization_id": "01a1d77f-5e65-78a7-8eb0-0212308950a6",
+      "campaign_id": "01a1d77f-5e65-78a7-8eb0-0213c3e7d6dc",
+      "eaccount": "sender31@example.com",
+      "lead": "person31@example.com",
+      "ue_type": 2,
+      "step": "0_1_0",
+      "i_status": 1,
+      "is_focused": 1,
+      "is_unread": 1,
+      "thread_id": "01a1d77f-5e65-78a7-8eb0-021717740231"
+    },
+    {
+      "id": "01a1d77f-5e65-78a7-8eb0-0211a0000001",
+      "timestamp_created": "2026-11-12T16:02:00.000Z",
+      "timestamp_email": "2026-11-12T16:02:00.000Z",
+      "message_id": "<example-thread-1@mail.example.com>",
+      "subject": "Re: A quick question",
+      "from_address_email": "person31@example.com",
+      "from_address_json": [],
+      "to_address_email_list": "sender31@example.com",
+      "to_address_json": [],
+      "body": {
+        "text": "Interested. What does it cost?"
+      },
+      "content_preview": "Interested. What does it cost?",
+      "organization_id": "01a1d77f-5e65-78a7-8eb0-0212308950a6",
+      "campaign_id": "01a1d77f-5e65-78a7-8eb0-0213c3e7d6dc",
+      "eaccount": "sender31@example.com",
+      "lead": "person31@example.com",
+      "ue_type": 2,
+      "step": "0_0_0",
+      "i_status": 1,
+      "is_focused": 1,
+      "is_unread": 1,
+      "thread_id": "01a1d77f-5e65-78a7-8eb0-021717740231"
+    }
+  ]
+}

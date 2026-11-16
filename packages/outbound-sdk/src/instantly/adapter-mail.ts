@@ -10,7 +10,7 @@ import type {
 } from "../internal/adapter.ts";
 import type { Message, Reply } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
-import { field, text } from "../internal/json.ts";
+import { emailAddress, field, text } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
 import { mapPage } from "../internal/page.ts";
 import { EMAILS_LANE } from "./capabilities.ts";
@@ -39,6 +39,13 @@ const leadAddress = async (
 ): Promise<string | undefined> => {
   if (leadId === undefined || cursor.lead !== undefined) {
     return cursor.lead;
+  }
+
+  // A message's leadRef is the lead's address already.
+  const given = emailAddress(leadId);
+
+  if (given !== null) {
+    return given;
   }
 
   const lead = await client.getObject(

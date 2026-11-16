@@ -199,6 +199,17 @@ export const toLead = (
 export const SCHEDULED = 4;
 const RECEIVED = 2;
 
+// An email names its lead by address in `lead`; `lead_id` is documented as
+// "if any" and was absent live. The address is the ref, so one person gives
+// one leadRef across every campaign. On a received email the sender is the
+// lead, so `from_address_email` stands in when `lead` is missing.
+const leadOf = (raw: JsonObject): string | null =>
+  emailAddress(raw.lead) ??
+  (count(raw.ue_type) === RECEIVED
+    ? emailAddress(raw.from_address_email)
+    : null) ??
+  text(raw.lead_id);
+
 const messageFields = (
   identity: Identity,
   raw: JsonObject,
@@ -211,7 +222,7 @@ const messageFields = (
     ...normalizeBody(text(body), includeBody),
     campaignRef: refTo(identity, text(raw.campaign_id)),
     channel: "email" as const,
-    leadRef: refTo(identity, text(raw.lead_id)),
+    leadRef: refTo(identity, leadOf(raw)),
     senderRef: refTo(identity, emailAddress(raw.eaccount)),
     sentAt: timestamp(raw.timestamp_email) ?? timestamp(raw.timestamp_created),
     subject: text(raw.subject),
