@@ -343,6 +343,12 @@ const sentByHand = async (
     context.one({ meta: walk.meta });
   }
 
+  if (walk.truncated) {
+    context.note(
+      `The messages sent by hand stopped at ${max}, so each conversation they did not settle was read in full.`
+    );
+  }
+
   return found;
 };
 

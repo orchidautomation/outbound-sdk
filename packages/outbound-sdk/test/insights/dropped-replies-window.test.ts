@@ -96,7 +96,16 @@ const ANSWERS = REPLIES.filter((_, index) => kindAt(index) === "human").map(
   }
 );
 
-const workspace = () => {
+// Answers by hand to conversations outside the window's replies, listed first.
+const elsewhere = (count: number) =>
+  Array.from({ length: count }, (_, index) => ({
+    ...ANSWERS[0],
+    id: `elsewhere-${index}`,
+    lead: `person${index + 1000}@example.com`,
+    thread_id: `elsewhere-${index}`,
+  }));
+
+const workspace = (padding = 0) => {
   const clock = createClock();
   const unrouted: string[] = [];
   const fixtures = fixtureHandler([instantly], unrouted);
@@ -139,7 +148,10 @@ const workspace = () => {
     if (type === "manual") {
       // Two pages, so a listing read to its end leaves the answer complete.
       if (url.searchParams.get("starting_after") === null) {
-        return json({ items: ANSWERS.slice(0, 20), next_starting_after: "a2" });
+        return json({
+          items: [...elsewhere(padding), ...ANSWERS.slice(0, 20)],
+          next_starting_after: "a2",
+        });
       }
 
       // A campaign send after the dropped reply, in the same listing, is not
@@ -225,6 +237,10 @@ test("dropped_replies reads the whole window by default and finds the 51st reply
     unchecked: 0,
   });
   assert.equal(result.meta.complete, true);
+  assert.ok(
+    result.meta.notes.every((note) => !note.includes("sent by hand stopped")),
+    JSON.stringify(result.meta.notes)
+  );
 
   // Two pages of replies, two of answers sent by hand, and only the dropped
   // conversation read in full.
@@ -292,4 +308,32 @@ test("dropped_replies without messages.byHand reads every conversation and gives
   assert.ok(
     urls.every((url) => url.searchParams.get("email_type") !== "manual")
   );
+});
+
+test("dropped_replies whose listing of messages sent by hand stops at max reads the rest in full and drops none of them", async () => {
+  const { clock, http, outbound } = workspace(170);
+
+  const result = await clock.settle(
+    outbound.insights.droppedReplies({ max_replies: 179 }, { now: NOW })
+  );
+
+  const urls = urlsOf(http.requests);
+
+  assert.deepEqual(
+    result.data.dropped.map((each) => each.reply),
+    ["instantly:client-a:reply-50"]
+  );
+  assert.equal(result.data.totals.answered, 29);
+  assert.equal(result.data.totals.moreRepliesExist, false);
+  assert.equal(result.meta.complete, true);
+  assert.ok(
+    result.meta.notes.includes(
+      "The messages sent by hand stopped at 179, so each conversation they did not settle was read in full."
+    ),
+    JSON.stringify(result.meta.notes)
+  );
+
+  // The 20 answers past the stop settle no conversation, so those 20 and
+  // the dropped one are read by thread.
+  assert.equal(threadReads(urls).length, 21);
 });
