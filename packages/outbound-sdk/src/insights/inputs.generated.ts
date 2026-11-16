@@ -397,6 +397,29 @@ export interface InsightInputs {
      */
     readonly spam_words?: string[] | undefined;
   };
+  /** The input of `copyPreview` (the `copy_preview` tool). */
+  readonly copyPreview: {
+    /**
+     * The campaign's ref, for example `instantly:acme:abc123`
+     *
+     * Not empty. Required.
+     */
+    readonly campaign: string;
+
+    /**
+     * The lead's ref to render the copy for. null picks the lead read with the most variables filled.
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly lead?: string | null | undefined;
+
+    /**
+     * The most leads to read when picking one. Ignored when `lead` is given.
+     *
+     * A whole number from 1 to 1000. Defaults to `100`.
+     */
+    readonly max_leads?: number | undefined;
+  };
   /** The input of `copyReuse` (the `copy_reuse` tool). */
   readonly copyReuse: {
     /**

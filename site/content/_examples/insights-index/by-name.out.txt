@@ -1,5 +1,5 @@
 tag_rollup complete: true
-insights: 26
+insights: 27
 bounce_watch needs [ 'stats.campaign' ]
 tools: [ 'hot_leads', 'client_report' ]
-handed to the model: 26
+handed to the model: 27

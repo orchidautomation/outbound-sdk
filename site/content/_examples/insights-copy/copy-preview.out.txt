@@ -1,0 +1,15 @@
+rendered for person1@example.com
+
+step 1 A
+  template subject: {{subject1}}
+  rendered subject: Hiring at Acme
+  template body:    <div>{{content1}}</div><div><br /></div><div>{{accountSignature}}</div>
+  rendered text:    "Saw Acme is hiring two SDRs. Worth a short call?\n\n{{accountSignature}}"
+  left as written:  accountSignature
+
+step 2 A
+  template subject: null
+  rendered subject: null
+  template body:    <div>Hi {{firstName|there}}, {{content2}}</div>
+  rendered text:    "Hi Ann, did my note reach you?"
+  left as written:  none

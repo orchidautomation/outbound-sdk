@@ -17,6 +17,7 @@ const REQUIRED = new Map<string, Json>([
   ["account_summary", { domain: "acme.example" }],
   ["campaign_diagnosis", { campaign: "cmp_founders" }],
   ["copy_audit", { campaign: "cmp_founders" }],
+  ["copy_preview", { campaign: "cmp_founders" }],
   ["person_summary", { person: "person1@example.com" }],
   ["personalization_gaps", { campaign: "cmp_founders" }],
   ["pipeline_forecast", { campaign: "cmp_founders" }],

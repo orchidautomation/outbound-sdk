@@ -172,6 +172,7 @@ test("an insight answers with the campaign's ref when given its bare vendor id, 
   for (const name of [
     "anomalies",
     "copy_audit",
+    "copy_preview",
     "personalization_gaps",
     "reply_timing",
     "step_funnel",
