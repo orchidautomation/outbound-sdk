@@ -145,7 +145,7 @@ test("a combined lookup that spans pages resumes only the tools with more to giv
   assert.equal(fake.http.requests.length, 4, "three alpha pages, one beta");
 });
 
-test("a listing that is not a person lookup still reads one tool after another", async () => {
+test("a listing across tools reads them side by side and takes their records in turn", async () => {
   const fake = tracked();
 
   const outbound = createOutbound({
@@ -160,10 +160,10 @@ test("a listing that is not a person lookup still reads one tool after another",
 
   assert.deepEqual(
     leads.map((lead) => lead.ref),
-    ["alpha:alpha:l1", "alpha:alpha:l2", "beta:beta:l1", "beta:beta:l2"],
-    "the first tool's records come first, in order"
+    ["alpha:alpha:l1", "beta:beta:l1", "alpha:alpha:l2", "beta:beta:l2"],
+    "one record from each tool in turn, so a cap leaves each its share"
   );
-  assert.equal(fake.mostHosts(), 1);
+  assert.equal(fake.mostHosts(), 2);
 });
 
 test("person_summary reads all three tools at once and reports every campaign record", async () => {
