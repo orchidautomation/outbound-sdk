@@ -351,7 +351,7 @@ test("hot_leads notes when the tool reports no engagement counts", async () => {
   assert.equal(result.data.leads[0]?.reason, "marked Interested.");
   assert.equal(result.data.totals.withoutData, 1);
   assert.deepEqual(result.meta.notes, [
-    "This tool reports no per-lead open, click or reply counts, so clicks and opens are unknown, and reply counts and recency come from the replies read within recency_days.",
+    "This tool reports no per-lead open or click counts, so those are unknown, and reply counts and recency come from the replies read within recency_days.",
   ]);
 });
 
@@ -414,6 +414,6 @@ test("hot_leads on two tools names only the tool whose leads lack the counts", a
   // The email tool's lead keeps its counts in the score.
   assert.deepEqual([top?.replies, top?.clicks, top?.opens], [2, 1, 3]);
   assert.deepEqual(result.meta.notes, [
-    "lntool reports no per-lead open, click or reply counts, so clicks and opens are unknown, and reply counts and recency come from the replies read within recency_days for its records. Records from the other tools carry what their vendor reports.",
+    "lntool reports no per-lead open or click counts, so those are unknown, and reply counts and recency come from the replies read within recency_days for its records. Records from the other tools carry what their vendor reports.",
   ]);
 });

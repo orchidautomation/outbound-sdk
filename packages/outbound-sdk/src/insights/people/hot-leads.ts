@@ -170,6 +170,16 @@ export interface HotLeads {
   };
 }
 
+/**
+ * Whether the lead's label is one of `positive_labels`. A lead with no label
+ * whose vendor still classes it positive (HeyReach's auto-tag, read from its
+ * replies) counts as positive; with no label and no such class it is unknown.
+ */
+const positiveOf = (lead: Lead, values: Input): boolean | null =>
+  lead.interest === null
+    ? lead.interestCategory === "positive" || null
+    : isPositive(lead.interest, values.positive_labels);
+
 const capped = (
   count: number | null,
   points: number,
@@ -239,7 +249,7 @@ const fade = (lead: Lead, values: Scoring, now: number): number => {
 
 const partsOf = (lead: Lead, values: Scoring, now: number): HotLeadParts => {
   const engagement = lead.engagement ?? null;
-  const positive = isPositive(lead.interest, values.positive_labels);
+  const positive = positiveOf(lead, values);
   const automatic = repliesDiscounted(lead, values);
 
   // A vendor that only sets the status still says the lead replied once.
@@ -303,7 +313,9 @@ const reasonOf = (
   const repliedAt = automatic ? null : (engagement?.lastRepliedAt ?? null);
 
   const facts = [
-    (parts.interest ?? 0) > 0 ? `marked ${lead.interest}` : null,
+    (parts.interest ?? 0) > 0
+      ? `marked ${lead.interest ?? "positive by the vendor"}`
+      : null,
     automatic ? discountedReason(lead, values) : null,
     (parts.replies ?? 0) > 0
       ? `replied ${plural(engagement?.replies ?? 1, "time")}`
@@ -404,13 +416,20 @@ export const hotLeads = defineInsight({
     const read = await readCandidates(context, values);
     const { leads } = read;
 
-    noteEngagement(
-      context,
-      leads,
-      read.replies === null
-        ? "scores rest on the interest label and the lead's status"
-        : "clicks and opens are unknown, and reply counts and recency come from the replies read within recency_days"
-    );
+    if (read.replies === null) {
+      noteEngagement(
+        context,
+        leads,
+        "scores rest on the interest label and the lead's status"
+      );
+    } else {
+      noteEngagement(
+        context,
+        leads,
+        "those are unknown, and reply counts and recency come from the replies read within recency_days",
+        "no per-lead open or click counts"
+      );
+    }
 
     const open = leads.filter(
       (lead) => lead.unsubscribed !== true && lead.bounced !== true
