@@ -129,7 +129,6 @@ test("runway: both tools divide the leads not started by new leads started per d
     campaign: "memory:acme:c1",
     contacted_per_day: 2,
     counted_leads: 31,
-    counting_stopped_at_max: false,
     in_sequence: 12,
     not_started: 18,
     // 18 not started at 2 a day; the 12 in sequence need no new contact.

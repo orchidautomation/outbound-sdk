@@ -8,6 +8,7 @@ import type { SenderHealth } from "../internal/entities-account.ts";
 import { OutboundError } from "../internal/errors.ts";
 import { toJson } from "../internal/json.ts";
 import type { NativeRead } from "../internal/native.ts";
+import { plural } from "../internal/numbers.ts";
 import { listProblemsOf, SCREENED_AT_MOST } from "../internal/sender-screen.ts";
 import { UNTRUSTED_NOTE } from "./shared.ts";
 import type { ToolDefinition } from "./shared.ts";
@@ -41,7 +42,9 @@ export const campaignSetup: ToolDefinition<z.infer<typeof setupInput>> = {
         track_opens: settings.tracking.opens,
       },
       meta: {
+        complete: settings.meta.complete,
         evidence: settings.meta.evidence,
+        notes: [],
         provider: outbound.provider,
         requests: settings.meta.requests,
       },
@@ -96,12 +99,12 @@ const spamRate = (health: SenderHealth): number | null => {
     : Math.round((spam / (spam + inbox)) * 10_000) / 10_000;
 };
 
-/** What `next` says when the full checks did not reach every sender. */
-const coverageNote = (
+/** What `meta.notes` says when the full checks did not reach every sender. */
+const coverageNotes = (
   checked: number,
   screened: number,
   complete: boolean
-): string => {
+): string[] => {
   const parts: string[] = [];
 
   if (checked < screened) {
@@ -116,14 +119,14 @@ const coverageNote = (
     );
   }
 
-  return parts.join(" ");
+  return parts;
 };
 
 export const deliverabilityCheck: ToolDefinition<
   z.infer<typeof deliverabilityInput>
 > = {
   description:
-    "Whether each sender can deliver: its DNS records (SPF, DKIM, DMARC, MX), whether the vendor can still sign in, block list status, and how much warmup mail landed in spam. Every sender (up to 500) is first screened from the sender list for a disconnected or failing status and a zero warmup score; the first limit senders, problems first, are then checked in full. with_problems counts problems across every screened sender. checked is how many were checked in full, total how many senders there are (null past 500); all_checked: false means not every sender was checked in full. Use it when bounces rise or replies drop. A null means the vendor does not report that check.",
+    "Whether each sender can deliver: its DNS records (SPF, DKIM, DMARC, MX), whether the vendor can still sign in, block list status, and how much warmup mail landed in spam. Every sender (up to 500) is first screened from the sender list for a disconnected or failing status and a zero warmup score; the first limit senders, problems first, are then checked in full. with_problems counts problems across every screened sender. checked is how many were checked in full, total how many senders there are (null past 500); meta.complete: false means not every sender was checked in full, and meta.notes says which were left out. Use it when bounces rise or replies drop. A null means the vendor does not report that check.",
   inputSchema: deliverabilityInput,
   name: "deliverability_check",
   needs: ["senders.health"],
@@ -180,12 +183,10 @@ export const deliverabilityCheck: ToolDefinition<
     );
 
     const complete = !walk.truncated;
-    const allChecked = complete && unchecked.length === 0;
-    const note = coverageNote(rows.length, screened.length, complete);
+    const notes = coverageNotes(rows.length, screened.length, complete);
 
     return {
       data: {
-        all_checked: allChecked,
         checked: rows.length,
         screened: screened.length,
         senders: ordered.map((entry) => entry.row),
@@ -194,13 +195,14 @@ export const deliverabilityCheck: ToolDefinition<
           rows.filter((entry) => entry.problems.length > 0).length +
           unchecked.filter((entry) => entry.listProblems.length > 0).length,
       },
-      meta: { evidence: "exact", provider: outbound.provider, requests },
-      // The coverage note names no tool, so it survives when a hint naming a
-      // tool that is not on offer would be replaced.
-      next:
-        note === ""
-          ? "Use sender_health for each sender's sending results, or campaign_setup to see what a campaign asks of its senders."
-          : note,
+      meta: {
+        complete: complete && unchecked.length === 0,
+        evidence: "exact",
+        notes,
+        provider: outbound.provider,
+        requests,
+      },
+      next: "Use sender_health for each sender's sending results, or campaign_setup to see what a campaign asks of its senders.",
       ok: true,
     };
   },
@@ -235,7 +237,13 @@ export const vendorRead: ToolDefinition<z.infer<typeof nativeInput>> = {
     if (input.name === undefined) {
       return {
         data: toJson({ reads: offered }),
-        meta: { evidence: "exact", provider: outbound.provider, requests: 0 },
+        meta: {
+          complete: true,
+          evidence: "exact",
+          notes: [],
+          provider: outbound.provider,
+          requests: 0,
+        },
         next: "Call vendor_read again with one of these names and its params.",
         ok: true,
       };
@@ -254,7 +262,9 @@ export const vendorRead: ToolDefinition<z.infer<typeof nativeInput>> = {
     return {
       data: { note: UNTRUSTED_NOTE, untrusted_content: result.data },
       meta: {
+        complete: result.meta.complete,
         evidence: result.meta.evidence,
+        notes: [],
         provider: outbound.provider,
         requests: result.meta.requests,
       },
@@ -270,7 +280,7 @@ const listsInput = z.object({
 
 export const audienceLists: ToolDefinition<z.infer<typeof listsInput>> = {
   description:
-    "The saved lead lists on the account with how many records each holds. Use it to see what audiences exist before asking about one campaign's leads.",
+    "The saved lead lists on the account with how many records each holds. Use it to see what audiences exist before asking about one campaign's leads. meta.complete: false means limit cut the list.",
   inputSchema: listsInput,
   name: "audience_lists",
   needs: ["lists.list"],
@@ -289,7 +299,11 @@ export const audienceLists: ToolDefinition<z.infer<typeof listsInput>> = {
         })),
       },
       meta: {
+        complete: !walk.truncated,
         evidence: walk.meta?.evidence ?? "exact",
+        notes: walk.truncated
+          ? [`Stopped at ${plural(lists.length, "list")} (limit); more exist.`]
+          : [],
         provider: outbound.provider,
         requests: walk.meta?.requests ?? 0,
       },

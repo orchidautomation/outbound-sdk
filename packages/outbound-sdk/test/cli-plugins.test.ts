@@ -287,7 +287,12 @@ test("--cache on a one-shot command says on stderr that it lasts one process", a
     "--cache lasts one process, so the next run reads from the vendor again. It helps outbound mcp; to persist, list cache({ ttl, store }) in a --config file."
   );
   // The answer still goes to stdout.
-  assert.ok(Array.isArray(JSON.parse(cached.out.join(""))));
+  assert.ok(
+    Array.isArray(
+      (JSON.parse(cached.out.join("")) as { data: { items: unknown } }).data
+        .items
+    )
+  );
 
   assert.equal((await outbound(["senders", "--compact"])).err, "");
   // mcp is one long process, so the cache is reused there and nothing is said.
@@ -432,7 +437,13 @@ const twoReads = (
 
       return {
         data: null,
-        meta: { evidence: "exact", provider: "test", requests: 2 },
+        meta: {
+          complete: true,
+          evidence: "exact",
+          notes: [],
+          provider: "test",
+          requests: 2,
+        },
         next: "",
         ok: true,
       };

@@ -316,14 +316,10 @@ test("insight tools are offered only when the adapter can serve them, and never 
   assert.ok(ok.ok, JSON.stringify(ok));
   assert.equal(ok.meta.provider, "combined");
 
-  const data = ok.data as {
-    complete: boolean;
-    notes: string[];
-    result: { found: boolean };
-  };
-
-  assert.equal(data.result.found, true);
-  assert.equal(data.complete, true);
+  // The answer is the data itself; coverage is in meta.
+  assert.equal((ok.data as { found: boolean }).found, true);
+  assert.equal(ok.meta.complete, true);
+  assert.deepEqual(ok.meta.notes, []);
   assert.match(ok.next, /account_summary/u);
 
   const bad = await tool.call({ person: "Jane Doe" });
@@ -427,9 +423,9 @@ test("the CLI lists the insights and runs one", async () => {
   const listed = await cli("insight");
   assert.equal(listed.code, 0);
   assert.ok(
-    (JSON.parse(listed.text) as { name: string }[]).some(
-      (each) => each.name === "person_summary"
-    )
+    (
+      JSON.parse(listed.text) as { data: { items: { name: string }[] } }
+    ).data.items.some((each) => each.name === "person_summary")
   );
 
   const ran = await cli(

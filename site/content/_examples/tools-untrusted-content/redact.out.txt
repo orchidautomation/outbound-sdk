@@ -1,5 +1,7 @@
 true {
+  complete: true,
   evidence: 'exact',
+  notes: [],
   provider: 'memory',
   requests: 0,
   today: '2026-11-14'

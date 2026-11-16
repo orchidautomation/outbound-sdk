@@ -33,6 +33,11 @@ export const INSIGHT_TOOL_CEILING = 500;
 /** What `next` says when every hint an insight wrote names a tool that is not on offer. */
 const NEXT_FALLBACK = "Pick another of the listed tools to go further.";
 
+// Said in every insight tool's description, so a model reads coverage where
+// every other tool reports it.
+const ANSWER_NOTE =
+  "The answer is in data, in camelCase like every insight's answer. meta.complete: false means it covers part of the data, and meta.notes says why.";
+
 /**
  * The insight's hint without the sentences that name an insight not on
  * offer, so a model is never sent to a tool it was not given.
@@ -80,13 +85,11 @@ const toTool = (
       );
 
       return {
-        data: {
-          complete: result.meta.complete,
-          notes: [...result.meta.notes],
-          result: result.data,
-        },
+        data: result.data,
         meta: {
+          complete: result.meta.complete,
           evidence: result.meta.evidence,
+          notes: [...result.meta.notes],
           provider: result.meta.provider,
           requests: result.meta.requests,
         },
@@ -113,7 +116,7 @@ const toTool = (
       );
     }
   },
-  description: definition.description,
+  description: `${definition.description} ${ANSWER_NOTE}`,
   fields: definition.inputSchema.shape,
   name: definition.name,
   needs: [...definition.needs],

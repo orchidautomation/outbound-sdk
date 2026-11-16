@@ -50,7 +50,7 @@ The output shows what the CLI does with the demo data. It does not show what a v
 | `--compact` | all that print JSON | Print the JSON on one line. |
 | `--raw` | all that print JSON | Keep each record's `raw`, the vendor's own payload. Left out by default: for a reply it can hold the whole quoted thread, `--bodies` or not. |
 | `--help`, `-h` | all | Print the usage text and exit 0. After a command, `outbound leads --help`, print that command's options and the ones every command takes. |
-| `--limit <n>` | `campaigns`, `senders`, `leads`, `lists`, `replies`, `tags`, `blocklist`, `webhooks`, `person` | Stop after this many records. A positive whole number. Defaults to 50. When a listing stops there and more records exist, standard error says so, for example "Stopped at 50 leads; more exist. Pass --limit to read more." Standard output is the same JSON either way. |
+| `--limit <n>` | `campaigns`, `senders`, `leads`, `lists`, `replies`, `tags`, `blocklist`, `webhooks`, `person` | Stop after this many records. A positive whole number. Defaults to 50. When a listing stops there and more records exist, `meta.complete` is `false` and `meta.notes` says so, for example "Stopped at 50 leads; more exist. Pass --limit to read more.", and standard error gets the same sentence. See [the envelope](/docs/cli#the-envelope). |
 | `--status <status>` | `campaigns` | Only campaigns with this status: `active`, `paused`, `draft`, `completed`, `archived` or `unknown`. |
 | `--search <text>` | `campaigns` | Only campaigns whose name contains this text, ignoring case. Every campaign is read to find them. |
 | `--stats` | `campaign` | The campaign's counts. |
@@ -75,7 +75,7 @@ The last five add [plugins](/docs/cli#plugins); the overview says which plugin e
 
 A flag a command does not take is refused before any request, with exit code 1: `outbound leads --since 2030-01-01` writes "Invalid: --since is not an option of leads". The flags in the last five rows, `--provider`, `--compact`, `--raw` and `--help` are taken by every command.
 
-When `campaign` gets one of `--stats`, `--sequence`, `--subsequences` and `--settings`, it prints that answer. Given two or more, it prints one object with each answer under its name: `outbound campaign <id> --stats --sequence` prints `{ "sequence": ..., "stats": ... }`.
+When `campaign` gets one of `--stats`, `--sequence`, `--subsequences` and `--settings`, its `data` is that answer. Given two or more, `data` holds each answer under its name: `outbound campaign <id> --stats --sequence` prints `data: { "sequence": ..., "stats": ... }`.
 
 ## providers and capabilities
 
@@ -113,9 +113,9 @@ A campaign id can be the vendor's id or a `ref` from any record. Other text, suc
 
 ## replies and thread
 
-Each record `replies` prints is one message, not one person: a lead who writes twice is two records. Standard error says how many people and threads sent them, for example "40 messages from 21 people in 9 threads." A count is left out when a reply has no lead or no thread. `--by person` prints one row per `leadRef` instead, with its `messages`, `firstAt`, `lastAt`, `categories` and `threadIds`; replies with no lead are grouped by thread, with `leadRef` `null`.
+Each record `replies` prints is one message, not one person: a lead who writes twice is two records. `meta.notes` and standard error say how many people and threads sent them, for example "40 messages from 21 people in 9 threads." A count is left out when a reply has no lead or no thread. `--by person` prints one row per `leadRef` instead, with its `messages`, `firstAt`, `lastAt`, `categories` and `threadIds`; replies with no lead are grouped by thread, with `leadRef` `null`.
 
-Message text is left out unless you pass `--bodies`: `bodyText` is `null` without it. The CLI prints the text as the vendor returned it. It does not truncate it or mark it as [untrusted content](/docs/tools/untrusted-content), so take care before piping it to a model.
+`thread` lists the conversation's messages in `data.items`, oldest first; an id with no messages exits 1 with `NotFound`. Message text is left out unless you pass `--bodies`: `bodyText` is `null` without it. The CLI prints the text as the vendor returned it. It does not truncate it or mark it as [untrusted content](/docs/tools/untrusted-content), so take care before piping it to a model.
 
 <include meta='title="conversations.ts"'>
   ../../_examples/cli-commands/conversations.ts
@@ -147,7 +147,7 @@ Message text is left out unless you pass `--bodies`: `bodyText` is `null` withou
   ../../_examples/cli-commands/agent.out.txt
 </include>
 
-Both commands exit 1 on failure, and say why in different places. A tool never throws, so `outbound tool` prints the tool's `{ "ok": false }` result on standard output, where a script can read `error` and `next`. An insight throws, so `outbound insight` writes the reason to standard error and prints nothing on standard output.
+Both commands exit 1 on failure, with `ok: false` and the `error` in the envelope. A tool never throws, so `outbound tool` prints its result there with `next`, and writes nothing to standard error. An insight throws, so `outbound insight` also writes `<code>: <message>` to standard error.
 
 `tools` lists `cross_channel_lead` because the CLI always installs the [identity](/docs/plugins/identity) plugin, and leaves it out with `--redact`, which masks the identifiers it matches on. It lists `compare_clients` only with the [clients](/docs/plugins/clients) plugin, from a file passed to [`--config`](/docs/cli#plugins). The insights are listed after the built-in tools, as `outbound mcp` serves them.
 

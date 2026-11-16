@@ -41,11 +41,12 @@
         },
         "status": "active"
       }
-    ],
-    "truncated": false
+    ]
   },
   "meta": {
+    "complete": true,
     "evidence": "exact",
+    "notes": [],
     "provider": "memory",
     "requests": 0,
     "today": "2026-11-14"
@@ -57,4 +58,4 @@ Campaign overview: SaaS founders leads at 10% reply rate.
 Campaign | Sent | Replies | Reply rate | Positive | Bounce
 SaaS founders | 350 | 14 | 10% | 7 | 2%
 Agency owners | 210 | 7 | 10% | — | —
-complete: false [ 'Stopped at 1 campaign (max_campaigns); more exist.' ]
+complete: undefined undefined

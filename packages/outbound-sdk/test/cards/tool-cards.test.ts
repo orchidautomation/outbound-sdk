@@ -173,20 +173,27 @@ test("sender_health counts the senders that are not active", () => {
   );
 });
 
-test("sender_health counts every checked sender, names each by address, and says what it left out", () => {
+test("sender_health counts every checked sender, names each by address, and shows what the tool left out", () => {
   const text = read(
     cardFor(
       "sender_health",
-      tool({
-        all_checked: false,
-        checked: 100,
-        senders: [
-          { ...sender("disconnected", {}), address: "jo@example.com" },
-          sender("active", {}),
-        ],
-        truncated: true,
-        unhealthy: 10,
-      })
+      tool(
+        {
+          checked: 100,
+          senders: [
+            { ...sender("disconnected", {}), address: "jo@example.com" },
+            sender("active", {}),
+          ],
+          unhealthy: 10,
+        },
+        {
+          complete: false,
+          notes: [
+            "More senders exist than the 100 checked; unhealthy counts only those.",
+            "Listed 2 senders (limit); more were checked.",
+          ],
+        }
+      )
     )
   );
 
@@ -196,21 +203,21 @@ test("sender_health counts every checked sender, names each by address, and says
     "jo@example.com | mailbox | disconnected",
     "s-active       | mailbox | active",
     "… and 98 more",
-    "2 of the 100 senders checked are in the answer, problems first. Raise limit to list more.",
-    "The account has more senders than the 100 checked."
+    "Note: More senders exist than the 100 checked; unhealthy counts only those.",
+    "Note: Listed 2 senders (limit); more were checked."
   );
 
   includes(
     read(
       cardFor(
         "sender_health",
-        tool({
-          all_checked: true,
-          checked: 70,
-          senders: [sender("active", {})],
-          truncated: true,
-          unhealthy: 0,
-        })
+        tool(
+          { checked: 70, senders: [sender("active", {})], unhealthy: 0 },
+          {
+            complete: false,
+            notes: ["Listed 1 sender (limit); more were checked."],
+          }
+        )
       )
     ),
     "🟢 No sender needs attention (70 checked)."
@@ -223,55 +230,58 @@ test("sender_health's more count covers every checked sender the card does not s
     cardFor(
       "sender_health",
       tool({
-        all_checked: true,
         checked: 70,
         senders: Array.from({ length: 50 }, (_, index) => ({
           ...sender(index < 10 ? "disconnected" : "active", {}),
           address: `s${index}@example.com`,
         })),
-        truncated: true,
         unhealthy: 10,
       })
     )
   );
 
-  includes(
-    text,
-    "🔴 10 of 70 senders need attention.",
-    "… and 62 more",
-    "50 of the 70 senders checked are in the answer, problems first. Raise limit to list more."
-  );
+  includes(text, "🔴 10 of 70 senders need attention.", "… and 62 more");
   excludes(text, "… and 42 more");
 });
 
-test("campaign_overview and reply_samples say when the list was cut at limit", () => {
+test("campaign_overview and reply_samples show the tool's note when limit cut the list", () => {
   includes(
     read(
       cardFor(
         "campaign_overview",
-        tool({
-          campaigns: [{ metrics: metrics(10, 1, 0.1), name: "Founders Q4" }],
-          truncated: true,
-        })
+        tool(
+          {
+            campaigns: [{ metrics: metrics(10, 1, 0.1), name: "Founders Q4" }],
+          },
+          {
+            complete: false,
+            notes: [
+              "Stopped at 1 campaign (limit); more active campaigns exist.",
+            ],
+          }
+        )
       )
     ),
-    "More campaigns exist than the 1 shown; raise limit to see them."
+    "Note: Stopped at 1 campaign (limit); more active campaigns exist."
   );
   includes(
     read(
       cardFor(
         "reply_samples",
-        tool({
-          replies: [{ category: "interested", received_at: null }],
-          truncated: true,
-        })
+        tool(
+          { replies: [{ category: "interested", received_at: null }] },
+          {
+            complete: false,
+            notes: ["Stopped at 1 reply (limit); more exist."],
+          }
+        )
       )
     ),
-    "More replies match than the 1 shown; raise limit to see them."
+    "Note: Stopped at 1 reply (limit); more exist."
   );
   excludes(
-    read(cardFor("reply_samples", tool({ replies: [], truncated: false }))),
-    "raise limit"
+    read(cardFor("reply_samples", tool({ replies: [] }))),
+    "Note: Stopped"
   );
 });
 
@@ -329,12 +339,19 @@ const runway = (days: number | null, stopped: boolean) =>
           campaign: "c1",
           contacted_per_day: 35.5,
           counted_leads: 2000,
-          counting_stopped_at_max: stopped,
           in_sequence: 120,
           not_started: 300,
           runway_days: days,
         },
-        { evidence: "derived" }
+        {
+          complete: !stopped,
+          evidence: "derived",
+          notes: stopped
+            ? [
+                "Counting stopped at 2,000 leads (max_leads); more exist, so the counts and the runway cover only those.",
+              ]
+            : [],
+        }
       )
     )
   );
@@ -346,7 +363,7 @@ test("lead_runway gives the days left, or says no pace was measured", () => {
     "Active leads: 420",
     "Not started: 300",
     "New leads per day: 35.5",
-    "Lead counting stopped at the cap, so the real runway is longer.",
+    "Note: Counting stopped at 2,000 leads (max_leads); more exist",
     "derived · instantly"
   );
   includes(
@@ -532,50 +549,40 @@ test("deliverability_check lists each sender's failing records", () => {
   );
 });
 
-test("deliverability_check says when not every sender was checked in full", () => {
+test("deliverability_check shows the tool's note when not every sender was checked in full", () => {
   const partial = read(
     cardFor(
       "deliverability_check",
-      tool({
-        all_checked: false,
-        checked: 1,
-        screened: 30,
-        senders: [
-          {
-            address: "out28@example.com",
-            dns: {},
-            problems: ["status is disconnected"],
-          },
-        ],
-        total: 30,
-        with_problems: 4,
-      })
+      tool(
+        {
+          checked: 1,
+          screened: 30,
+          senders: [
+            {
+              address: "out28@example.com",
+              dns: {},
+              problems: ["status is disconnected"],
+            },
+          ],
+          total: 30,
+          with_problems: 4,
+        },
+        {
+          complete: false,
+          notes: [
+            "Only 1 of 30 senders were checked in full, those with a problem in the sender list first; the rest were screened for status and warmup only, and with_problems counts what that found. Raise limit to check more.",
+          ],
+        }
+      )
     )
   );
 
   includes(
     partial,
     "🔴 4 of 30 senders have a problem.",
-    "1 of the 30 senders were checked in full, problems first; the rest were screened for status and warmup only. Raise limit to check more."
+    "Note: Only 1 of 30 senders were checked in full"
   );
-  excludes(partial, "More senders exist");
-
-  includes(
-    read(
-      cardFor(
-        "deliverability_check",
-        tool({
-          all_checked: false,
-          checked: 500,
-          screened: 500,
-          senders: [],
-          total: null,
-          with_problems: 0,
-        })
-      )
-    ),
-    "More senders exist than the 500 screened."
-  );
+  excludes(partial, "More than 500 senders exist");
 });
 
 test("audience_lists shows each list with its size", () => {

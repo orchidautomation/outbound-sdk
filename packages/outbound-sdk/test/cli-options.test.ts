@@ -27,15 +27,23 @@ const cli = async (...argv: string[]) => {
   return { code, err: err.join("\n"), out: out.join("\n") };
 };
 
-test("a listing stopped at --limit says so on stderr and leaves stdout the JSON", async () => {
+interface Listed {
+  data: { items: unknown[] };
+  meta: { complete: boolean; notes: string[] };
+}
+
+test("a listing stopped at --limit says so on stderr and in stdout's meta", async () => {
   const two = await cli("leads", "--limit", "2", "--compact");
+  const listed = JSON.parse(two.out) as Listed;
 
   assert.equal(two.code, 0);
-  assert.equal((JSON.parse(two.out) as unknown[]).length, 2);
+  assert.equal(listed.data.items.length, 2);
   assert.equal(
     two.err,
     "Stopped at 2 leads; more exist. Pass --limit to read more."
   );
+  assert.equal(listed.meta.complete, false);
+  assert.deepEqual(listed.meta.notes, [two.err]);
 
   const one = await cli("campaigns", "--limit", "1", "--compact");
 
@@ -49,6 +57,7 @@ test("a listing stopped at --limit says so on stderr and leaves stdout the JSON"
 
   assert.equal(all.code, 0);
   assert.equal(all.err, "");
+  assert.equal((JSON.parse(all.out) as Listed).meta.complete, true);
 });
 
 test("a flag a command does not take is Invalid, and exits 1 before any read", async () => {
@@ -75,7 +84,14 @@ test("a flag a command does not take is Invalid, and exits 1 before any read", a
 
     assert.equal(result.code, 1, argv.join(" "));
     assert.equal(result.err, message);
-    assert.equal(result.out, "");
+
+    const failed = JSON.parse(result.out) as {
+      ok: boolean;
+      error: { code: string; message: string };
+    };
+
+    assert.equal(failed.ok, false);
+    assert.equal(`${failed.error.code}: ${failed.error.message}`, message);
   }
 
   // The options every command takes stay accepted.
@@ -120,19 +136,22 @@ test("campaign --stats --sequence prints both", async () => {
 
   assert.equal(both.code, 0);
 
-  const parsed = JSON.parse(both.out) as {
-    sequence: { steps: unknown[] };
-    stats: { rows: unknown[] };
-  };
+  const parsed = (
+    JSON.parse(both.out) as {
+      data: { sequence: { steps: unknown[] }; stats: { rows: unknown[] } };
+    }
+  ).data;
 
   assert.deepEqual(Object.keys(parsed), ["sequence", "stats"]);
   assert.ok(parsed.sequence.steps.length > 0);
   assert.ok(parsed.stats.rows.length > 0);
 
-  // One section alone prints as it always has.
-  const stats = JSON.parse(
-    (await cli("campaign", "cmp_founders", "--stats")).out
-  ) as { rows: unknown[] };
+  // One section alone is the envelope's data itself.
+  const stats = (
+    JSON.parse((await cli("campaign", "cmp_founders", "--stats")).out) as {
+      data: { rows: unknown[] };
+    }
+  ).data;
 
   assert.ok(Array.isArray(stats.rows));
 });
@@ -177,7 +196,11 @@ test("records print without raw unless --raw asks for it", async () => {
 
     assert.equal(code, 0);
 
-    return JSON.parse(out.join("")) as Record<string, unknown>[];
+    return (
+      JSON.parse(out.join("")) as {
+        data: { items: Record<string, unknown>[] };
+      }
+    ).data.items;
   };
 
   const lean = await replies();

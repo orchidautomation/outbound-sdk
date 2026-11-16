@@ -5,14 +5,13 @@ tools/call
   "result": {
     "content": [
       {
-        "text": "{\"data\":{\"all_checked\":true,\"checked\":2,\"senders\":[{\"address\":\"outreach1@example.com\",\"daily_limit\":40,\"kind\":\"mailbox\",\"sender\":\"memory:acme:mbx_1\",\"status\":\"active\",\"warmup_enabled\":true,\"warmup_score\":96}],\"truncated\":true,\"unhealthy\":0},\"meta\":{\"evidence\":\"exact\",\"provider\":\"memory\",\"requests\":0,\"today\":\"2026-11-14\"},\"next\":\"Use deliverability_check for each sender's DNS, sign-in and block list status.\",\"ok\":true}",
+        "text": "{\"data\":{\"checked\":2,\"senders\":[{\"address\":\"outreach1@example.com\",\"daily_limit\":40,\"kind\":\"mailbox\",\"sender\":\"memory:acme:mbx_1\",\"status\":\"active\",\"warmup_enabled\":true,\"warmup_score\":96}],\"unhealthy\":0},\"meta\":{\"complete\":false,\"evidence\":\"exact\",\"notes\":[\"Listed 1 sender (limit); more were checked.\"],\"provider\":\"memory\",\"requests\":0,\"today\":\"2026-11-14\"},\"next\":\"Use deliverability_check for each sender's DNS, sign-in and block list status.\",\"ok\":true}",
         "type": "text"
       }
     ],
     "isError": false,
     "structuredContent": {
       "data": {
-        "all_checked": true,
         "checked": 2,
         "senders": [
           {
@@ -25,11 +24,14 @@ tools/call
             "warmup_score": 96
           }
         ],
-        "truncated": true,
         "unhealthy": 0
       },
       "meta": {
+        "complete": false,
         "evidence": "exact",
+        "notes": [
+          "Listed 1 sender (limit); more were checked."
+        ],
         "provider": "memory",
         "requests": 0,
         "today": "2026-11-14"

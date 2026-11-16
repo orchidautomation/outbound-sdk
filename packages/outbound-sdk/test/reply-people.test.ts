@@ -54,7 +54,7 @@ const adapter = (messages: readonly Seed[]) =>
 const cli = async (
   messages: readonly Seed[],
   ...argv: string[]
-): Promise<{ code: number; err: string[]; json: unknown }> => {
+): Promise<{ code: number; err: string[]; json: unknown; notes: unknown }> => {
   const out: string[] = [];
   const err: string[] = [];
 
@@ -68,18 +68,26 @@ const cli = async (
     },
   });
 
+  const printed = JSON.parse(out.join("")) as {
+    data: { items: unknown } | null;
+    meta: { notes: unknown };
+  };
+
+  // The records, inside the envelope (`null` on failure), and the notes stdout carries.
   return {
     code,
     err,
-    json: out.length === 0 ? null : JSON.parse(out.join("")),
+    json: printed.data?.items ?? null,
+    notes: printed.meta.notes,
   };
 };
 
-test("replies: stderr says how many people and threads sent the messages; stdout is still the records", async () => {
-  const { code, err, json } = await cli(ONE_PERSON_TWICE);
+test("replies: stderr and stdout's meta say how many people and threads sent the messages; data is the records", async () => {
+  const { code, err, json, notes } = await cli(ONE_PERSON_TWICE);
 
   assert.equal(code, 0);
   assert.deepEqual(err, ["3 messages from 2 people in 2 threads."]);
+  assert.deepEqual(notes, err);
   assert.ok(Array.isArray(json));
   assert.deepEqual(
     (json as { ref: string }[]).map((record) => record.ref),
@@ -204,7 +212,6 @@ test("reply_samples by person: one row per person", async () => {
         thread_ids: ["thr_1"],
       },
     ],
-    truncated: false,
     unique_people: 1,
     unique_threads: 1,
   });

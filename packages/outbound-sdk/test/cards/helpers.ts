@@ -43,7 +43,13 @@ export const read = (
   return cardToSlackFallbackText(card);
 };
 
-export const META = { evidence: "exact", provider: "instantly", requests: 3 };
+export const META = {
+  complete: true,
+  evidence: "exact",
+  notes: [] as string[],
+  provider: "instantly",
+  requests: 3,
+};
 
 /** A tool's successful result. */
 export const tool = (
@@ -57,16 +63,11 @@ export const tool = (
   ok: true,
 });
 
-/** An insight's successful result, wrapped the way `insightTools` wraps it. */
+/** An insight's successful result, as `insightTools` returns it. */
 export const insight = (
   result: unknown,
-  wrap: { complete?: boolean; notes?: string[] } = {}
-): ToolResult =>
-  tool({
-    complete: wrap.complete ?? true,
-    notes: wrap.notes ?? [],
-    result,
-  });
+  coverage: { complete?: boolean; notes?: string[] } = {}
+): ToolResult => tool(result, coverage);
 
 export const includes = (text: string, ...parts: string[]): void => {
   for (const part of parts) {

@@ -67,12 +67,15 @@ test("the CLI lists a vendor's native reads and runs one by name", async () => {
   const target = adapter(`http://127.0.0.1:${port}`);
 
   try {
-    const catalog = (await cli(target, "native")).json() as {
-      inboxUnread: { path: string };
-    };
+    const catalog = (
+      (await cli(target, "native")).json() as {
+        data: { inboxUnread: { path: string } };
+      }
+    ).data;
 
     assert.equal(catalog.inboxUnread.path, "/inbox/unread");
 
+    // The vendor's response is the envelope's data; meta counts the request.
     const result = (
       await cli(target, "native", "inboxUnread", "--input", '{"limit":5}')
     ).json() as { data: { unread: number }; meta: { requests: number } };

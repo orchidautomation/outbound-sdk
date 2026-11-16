@@ -4,6 +4,7 @@ import type { Lead, Message } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
 import type { Json } from "../internal/json.ts";
 import type { MetricCounts } from "../internal/metrics.ts";
+import { plural } from "../internal/numbers.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
 import {
   newLeadsPerDay,
@@ -34,7 +35,7 @@ const runwayInput = z.object({
 
 export const leadRunway: ToolDefinition<z.infer<typeof runwayInput>> = {
   description:
-    "How many days until a campaign has no new leads left to start. It counts the campaign's active leads, splits them into those not yet started and those partway through the sequence, and divides the ones not yet started by the new leads started per day over the lookback window (complete days ending yesterday). The pace is leads started, never emails sent: follow-ups to leads already in sequence do not count. pipeline_forecast gives the same figure as daysLeft. It is an estimate: it counts leads by listing them (up to max_leads), and when the vendor reports no lead's step or last contact, every active lead counts as not started.",
+    "How many days until a campaign has no new leads left to start. It counts the campaign's active leads, splits them into those not yet started and those partway through the sequence, and divides the ones not yet started by the new leads started per day over the lookback window (complete days ending yesterday). The pace is leads started, never emails sent: follow-ups to leads already in sequence do not count. pipeline_forecast gives the same figure as daysLeft. It is an estimate: it counts leads by listing them (up to max_leads; meta.complete: false means counting stopped there), and when the vendor reports no lead's step or last contact, every active lead counts as not started.",
   inputSchema: runwayInput,
   name: "lead_runway",
   needs: ["leads.byCampaign", "stats.campaign", "stats.byDay"],
@@ -59,13 +60,18 @@ export const leadRunway: ToolDefinition<z.infer<typeof runwayInput>> = {
         campaign: input.campaign,
         contacted_per_day: pace,
         counted_leads: leads.length,
-        counting_stopped_at_max: !complete,
         in_sequence: split.inSequence,
         not_started: split.notStarted,
         runway_days: runwayDays(split, { unknown }, complete, pace),
       },
       meta: {
+        complete: complete && stats.meta.complete,
         evidence: "derived",
+        notes: complete
+          ? []
+          : [
+              `Counting stopped at ${plural(leads.length, "lead")} (max_leads); more exist, so the counts and the runway cover only those.`,
+            ],
         provider: outbound.provider,
         requests: (walk.meta?.requests ?? 0) + stats.meta.requests,
       },
@@ -137,8 +143,11 @@ export const compareClients: ToolDefinition<z.infer<typeof compareInput>> = {
           sent: entry.counts.sent,
         })),
       },
+      // Every campaign is read, with no cap.
       meta: {
+        complete: true,
         evidence: "derived",
+        notes: [],
         provider: outbound.provider,
         requests,
       },
@@ -219,8 +228,11 @@ export const crossChannelLead: ToolDefinition<z.infer<typeof personInput>> = {
         })),
         timeline,
       },
+      // Every record that carries the identifier is read, with no cap.
       meta: {
+        complete: true,
         evidence: "derived",
+        notes: [],
         provider: outbound.provider,
         requests: person.requests,
       },

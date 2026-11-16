@@ -21,11 +21,12 @@
         },
         "status": "active"
       }
-    ],
-    "truncated": false
+    ]
   },
   "meta": {
+    "complete": true,
     "evidence": "exact",
+    "notes": [],
     "provider": "memory",
     "requests": 0,
     "today": "2026-11-14"
@@ -108,7 +109,9 @@
     "to": "2026-11-30"
   },
   "meta": {
+    "complete": true,
     "evidence": "exact",
+    "notes": [],
     "provider": "memory",
     "requests": 0,
     "today": "2026-11-14"

@@ -1,5 +1,5 @@
 13 tools; the first one:
-{"description":"How every campaign is doing right now: sends, replies, positive replies, bounces and reply rate for each campaign with the given status. One vendor request per campaign. Rates are computed from counts; a null means the vendor does not report that count. truncated: true means limit cut the list.","name":"campaign_overview","parameters":"(JSON Schema)","strict":false,"type":"function"}
+{"description":"How every campaign is doing right now: sends, replies, positive replies, bounces and reply rate for each campaign with the given status. One vendor request per campaign. Rates are computed from counts; a null means the vendor does not report that count. meta.complete: false means limit cut the list, and meta.notes says so.","name":"campaign_overview","parameters":"(JSON Schema)","strict":false,"type":"function"}
 function, type
 
 winning_steps {"campaign":"cmp_founders"}
@@ -54,7 +54,9 @@ winning_steps {"campaign":"cmp_founders"}
     ]
   },
   "meta": {
+    "complete": true,
     "evidence": "exact",
+    "notes": [],
     "provider": "memory",
     "requests": 0,
     "today": "2026-11-14"
@@ -66,60 +68,58 @@ winning_steps {"campaign":"cmp_founders"}
 campaign_ranking {"metric":"reply_rate"}
 {
   "data": {
-    "complete": true,
-    "notes": [],
-    "result": {
-      "gap": {
-        "difference": 0,
-        "median": 0.1,
-        "top": 0.1
+    "gap": {
+      "difference": 0,
+      "median": 0.1,
+      "top": 0.1
+    },
+    "ranked": [
+      {
+        "campaign": "memory:acme:cmp_founders",
+        "campaignName": "SaaS founders",
+        "channel": "email",
+        "provider": "memory",
+        "status": "active",
+        "count": 14,
+        "high": 0.1609,
+        "low": 0.0605,
+        "of": 140,
+        "rate": 0.1,
+        "basis": "contacted",
+        "sent": 350,
+        "rank": 1
       },
-      "ranked": [
-        {
-          "campaign": "memory:acme:cmp_founders",
-          "campaignName": "SaaS founders",
-          "channel": "email",
-          "provider": "memory",
-          "status": "active",
-          "count": 14,
-          "high": 0.1609,
-          "low": 0.0605,
-          "of": 140,
-          "rate": 0.1,
-          "basis": "contacted",
-          "sent": 350,
-          "rank": 1
-        },
-        {
-          "campaign": "memory:acme:cmp_agencies",
-          "campaignName": "Agency owners",
-          "channel": "email",
-          "provider": "memory",
-          "status": "active",
-          "count": 7,
-          "high": 0.1923,
-          "low": 0.0493,
-          "of": 70,
-          "rate": 0.1,
-          "basis": "contacted",
-          "sent": 210,
-          "rank": 2
-        }
-      ],
-      "tooFewSends": [],
-      "unknown": [],
-      "campaignsRead": 2,
-      "moreCampaignsExist": false,
-      "better": "higher",
-      "metric": "reply_rate",
-      "period": {
-        "from": null,
-        "to": null
+      {
+        "campaign": "memory:acme:cmp_agencies",
+        "campaignName": "Agency owners",
+        "channel": "email",
+        "provider": "memory",
+        "status": "active",
+        "count": 7,
+        "high": 0.1923,
+        "low": 0.0493,
+        "of": 70,
+        "rate": 0.1,
+        "basis": "contacted",
+        "sent": 210,
+        "rank": 2
       }
+    ],
+    "tooFewSends": [],
+    "unknown": [],
+    "campaignsRead": 2,
+    "moreCampaignsExist": false,
+    "better": "higher",
+    "metric": "reply_rate",
+    "period": {
+      "from": null,
+      "to": null
     }
   },
   "meta": {
+    "complete": true,
     "evidence": "exact",
+    "notes": [],
     "provider": "memory",
     "requests": 0
   },

@@ -74,7 +74,7 @@ A command runs with one [plugin](/docs/plugins) by default, [identity](/docs/plu
 
 ## Output
 
-A command prints one JSON value on standard output: indented by default, on one line with `--compact`. Records are the SDK's [records](/docs/api/records), with `meta` on a single read, less `raw`, the vendor's own payload; `--raw` keeps it. List commands print a plain array and stop at `--limit`, which defaults to 50.
+A command prints one JSON value on standard output, always in the same shape, the envelope: indented by default, on one line with `--compact`. Records in it are the SDK's [records](/docs/api/records), less `raw`, the vendor's own payload; `--raw` keeps it. List commands stop at `--limit`, which defaults to 50.
 
 <include meta='title="output.ts"'>../../_examples/cli-index/output.ts</include>
 
@@ -82,14 +82,39 @@ A command prints one JSON value on standard output: indented by default, on one 
   ../../_examples/cli-index/output.out.txt
 </include>
 
+## The envelope
+
+Every command prints the same top-level keys, so a script or an agent parses one shape and learns from standard output whether the answer is whole: `{ ok, data, meta: { complete, notes, provider, requests }, next }`.
+
+| Key | Holds |
+| --- | --- |
+| `ok` | `true` when the command got its answer, `false` when it failed. |
+| `data` | The answer. A list is in `data.items`. A record is the record without its `meta`. An insight's answer, a vendor read from `native` and a tool's result are their `data`. `null` on failure. |
+| `error` | On failure only: `code` and `message`, the same as standard error's `<code>: <message>`. |
+| `meta.complete` | `true` when the answer covers everything asked, `false` when it covers part of it, for example when `--limit` cut a list or a cap stopped a read. |
+| `meta.notes` | Why `complete` is `false`, and what else to know, for example "Stopped at 50 leads; more exist. Pass --limit to read more." Standard error gets the same notes. |
+| `meta.provider` | The adapter's id, or `null` for `providers`, which needs none. |
+| `meta.requests` | The vendor requests the command sent. A cache hit sends none. |
+| `next` | What to ask next, from a tool. Left out by other commands. |
+
+The rest of a record's, a tool's or an insight's `meta`, such as `evidence` and `fetchedAt`, stays in `meta` beside these; an insight's name is `meta.insight`. `--card` and `--slack` put the card or the Slack message in `data`. The MCP server, `version` and `update` do not print JSON, so they print no envelope.
+
+<include meta='title="envelope.ts"'>
+  ../../_examples/cli-index/envelope.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/cli-index/envelope.out.txt
+</include>
+
 ## Exit codes and errors
 
 | Exit code | When |
 | --- | --- |
 | `0` | The command ran and got its answer. |
-| `1` | Anything else: an unknown command or option, a missing argument, a flag value that is not one of the allowed words, a record that does not exist, a read the adapter cannot serve, a rejected key, or a tool whose result is `{ "ok": false }`. |
+| `1` | Anything else: an unknown command or option, a missing argument, a flag value that is not one of the allowed words, a record that does not exist (a campaign, sender, thread, or the campaign or list `leads` reads), a read the adapter cannot serve, a rejected key, or a tool whose result is `{ "ok": false }`. |
 
-On failure nothing is written to standard output, with one exception: `outbound tool` prints the tool's `{ "ok": false }` result there and writes nothing to standard error. Standard error gets `<code>: <message>`, where the code is an [`OutboundError` code](/docs/api/errors) such as `Invalid`, `NotFound`, `Unsupported` or `Unauthorized`, or `Error` for a failure that is not an `OutboundError`.
+A failure prints its envelope on standard output, `{ "ok": false, "data": null, "error": { "code", "message" }, "meta" }`, and `<code>: <message>` on standard error, where the code is an [`OutboundError` code](/docs/api/errors) such as `Invalid`, `NotFound`, `Unsupported` or `Unauthorized`, or `Error` for a failure that is not an `OutboundError`. A tool whose result is `{ "ok": false }` prints it in the envelope, with the tool's `error` and `next`, and writes nothing to standard error.
 
 <include meta='title="errors.ts"'>../../_examples/cli-index/errors.ts</include>
 

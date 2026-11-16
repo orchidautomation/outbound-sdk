@@ -8,18 +8,20 @@ import {
 import { OutboundError } from "../internal/errors.ts";
 import { isJsonObject, parseJson, toJson } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
-import { plural } from "../internal/numbers.ts";
-import type { ListAll, OutboundApi } from "../internal/outbound/api.ts";
-import {
-  countReplies,
-  describeReplyCounts,
-  repliesByPerson,
-} from "../internal/reply-people.ts";
+import type { OutboundApi } from "../internal/outbound/api.ts";
 import { providers } from "../providers/index.ts";
 import { resolveCampaign } from "../tools/by-name.ts";
 import { createTools } from "../tools/index.ts";
 import type { OutboundTool, ToolResult } from "../tools/index.ts";
-import { campaignOption, listOption, searchCampaigns } from "./by-name.ts";
+import {
+  campaignOption,
+  confirmScope,
+  listOption,
+  searchCampaigns,
+} from "./by-name.ts";
+import { Answer, coverageOf, sections } from "./envelope.ts";
+import type { Printed } from "./envelope.ts";
+import { listedReplies, listing } from "./listing.ts";
 import { readNative } from "./native.ts";
 import { didYouMean } from "./suggest.ts";
 
@@ -30,7 +32,7 @@ export interface CommandInput {
   readonly note: (text: string) => void;
 }
 
-type Command = (outbound: OutboundApi, input: CommandInput) => Promise<Json>;
+type Command = (outbound: OutboundApi, input: CommandInput) => Promise<Printed>;
 
 const text = (input: CommandInput, name: string): string | undefined => {
   const value = input.flags[name];
@@ -111,34 +113,6 @@ const fieldExceptions = (outbound: OutboundApi): Json =>
     })
   );
 
-/**
- * Every record of a walk. When `--limit` stopped it while more exist, a note
- * on stderr says so; stdout stays the JSON. `one` and `many` name a record.
- */
-const listed = async <Item>(
-  walk: ListAll<Item>,
-  input: CommandInput,
-  one: string,
-  many?: string
-): Promise<Item[]> => {
-  const items = await walk.toArray();
-
-  if (walk.truncated) {
-    input.note(
-      `Stopped at ${plural(items.length, one, many)}; more exist. Pass --limit to read more.`
-    );
-  }
-
-  return items;
-};
-
-const listing = async <Item>(
-  walk: ListAll<Item>,
-  input: CommandInput,
-  one: string,
-  many?: string
-): Promise<Json> => asJson(await listed(walk, input, one, many));
-
 const wantsCard = (input: CommandInput): boolean =>
   input.flags.slack === true || input.flags.card === true;
 
@@ -150,7 +124,7 @@ const drawn = async (
   name: string,
   result: ToolResult,
   input: CommandInput
-): Promise<Json> => {
+): Promise<Printed> => {
   if (!wantsCard(input)) {
     return asJson(result);
   }
@@ -159,7 +133,11 @@ const drawn = async (
   const { cardFor, toSlackMessage } = await import("../cards/index.ts");
   const card = cardFor(name, result);
 
-  return asJson(input.flags.slack === true ? toSlackMessage(card) : card);
+  // The card covers what the result covered.
+  return new Answer(
+    asJson(input.flags.slack === true ? toSlackMessage(card) : card),
+    coverageOf(asJson(result))
+  );
 };
 
 /** The tools `outbound mcp` offers: the built-in ones, then the insights. */
@@ -291,7 +269,7 @@ const COMMAND_TABLE = {
 
       const by = choice(input, "by", BY);
 
-      const read = {
+      const read: Record<(typeof SECTIONS)[number], () => Promise<Printed>> = {
         sequence: async () => asJson(await campaign.sequence()),
         settings: async () => asJson(await campaign.settings()),
         stats: async () =>
@@ -320,7 +298,7 @@ const COMMAND_TABLE = {
 
       return answers.length === 1
         ? (answers[0]?.[1] ?? null)
-        : Object.fromEntries(answers);
+        : sections(answers);
     },
   },
   campaigns: {
@@ -373,16 +351,23 @@ const COMMAND_TABLE = {
   leads: {
     flags: ["campaign", "limit", "list"],
     help: "leads [--campaign ID|NAME | --list ID|NAME] [--limit N]",
-    run: async (outbound, input) =>
-      listing(
-        outbound.leads.listAll({
-          campaignId: await campaignOption(outbound, text(input, "campaign")),
-          listId: await listOption(outbound, text(input, "list")),
-          max: count(input, "limit", 50),
-        }),
-        input,
-        "lead"
-      ),
+    run: async (outbound, input) => {
+      const scope = {
+        campaignId: await campaignOption(outbound, text(input, "campaign")),
+        listId: await listOption(outbound, text(input, "list")),
+      };
+
+      const walk = outbound.leads.listAll({
+        ...scope,
+        max: count(input, "limit", 50),
+      });
+
+      const answer = await listing(walk, input, "lead");
+
+      await confirmScope(outbound, scope, answer.size);
+
+      return answer;
+    },
   },
   lists: {
     flags: ["limit"],
@@ -441,12 +426,7 @@ const COMMAND_TABLE = {
         since: text(input, "since"),
       });
 
-      const replies = await listed(walk, input, "reply", "replies");
-
-      // Each record is a message; say how many people sent them.
-      input.note(`${describeReplyCounts(countReplies(replies))}.`);
-
-      return asJson(by === "person" ? repliesByPerson(replies) : replies);
+      return listedReplies(walk, input, by === "person");
     },
   },
   senders: {
@@ -484,12 +464,30 @@ const COMMAND_TABLE = {
   thread: {
     flags: ["bodies"],
     help: "thread <id> [--bodies]",
-    run: async (outbound, input) =>
-      asJson(
-        await outbound.thread(required(input, 0, "a thread id")).messages({
-          include: input.flags.bodies === true ? ["body"] : undefined,
-        })
-      ),
+    run: async (outbound, input) => {
+      const id = required(input, 0, "a thread id");
+
+      const thread = await outbound.thread(id).messages({
+        include: input.flags.bodies === true ? ["body"] : undefined,
+      });
+
+      // An unknown thread fails as an unknown campaign does.
+      if (thread.items.length === 0) {
+        throw new OutboundError(
+          "NotFound",
+          `No thread ${id}, or it has no messages`
+        );
+      }
+
+      // A list like every other: the messages, and whether there are more.
+      return new Answer(
+        asJson(thread.items),
+        coverageOf(
+          asJson({ meta: { ...thread.meta, complete: thread.complete } })
+        ),
+        true
+      );
+    },
   },
   tool: {
     flags: ["card", "input", "slack"],

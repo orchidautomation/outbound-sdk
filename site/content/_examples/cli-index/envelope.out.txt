@@ -1,0 +1,37 @@
+$ outbound campaigns --limit 1
+Stopped at 1 campaign; more exist. Pass --limit to read more.
+{
+  "data": {
+    "items": [
+      {
+        "provider": "memory",
+        "ref": "memory:default:cmp_founders",
+        "schemaVersion": 1,
+        "sourceId": "cmp_founders",
+        "workspaceId": "default",
+        "channel": "email",
+        "createdAt": "2026-10-22T09:00:00.000Z",
+        "name": "Q4 SaaS founders",
+        "status": "active",
+        "tags": [
+          "client-a"
+        ]
+      }
+    ]
+  },
+  "meta": {
+    "complete": false,
+    "notes": [
+      "Stopped at 1 campaign; more exist. Pass --limit to read more."
+    ],
+    "provider": "memory",
+    "requests": 0
+  },
+  "ok": true
+}
+
+$ outbound thread no-such-thread --compact
+{"data":null,"error":{"code":"NotFound","message":"No thread no-such-thread, or it has no messages"},"meta":{"complete":false,"notes":[],"provider":"memory","requests":0},"ok":false}
+NotFound: No thread no-such-thread, or it has no messages
+(exit code 1)
+
