@@ -223,9 +223,10 @@ export const leadSchema = z.object({
   progress: leadProgressSchema,
   /**
    * Who hosts the lead's own mailbox, as the vendor detected it. `null` when
-   * the vendor has not detected it or does not say.
+   * the vendor has not detected it or does not say. Optional, so a lead built
+   * or stored before the field existed still matches the schema.
    */
-  recipientMailProvider: recipientMailProviderSchema.nullable(),
+  recipientMailProvider: recipientMailProviderSchema.nullable().optional(),
   /** `true` once the lead replied. `null` when the vendor does not say. */
   replied: z.boolean().nullable(),
   /**

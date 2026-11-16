@@ -4,6 +4,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import { leadSchema } from "../../src/index.ts";
 import { harness } from "../helpers/adapter-suite.ts";
 import { fixture } from "../helpers/fixtures.ts";
 import { LEAD, suite } from "./suite.ts";
@@ -414,6 +415,28 @@ test("instantly: a lead's esp_code is its own mail provider, and In Queue or Not
       null,
       null,
     ]
+  );
+});
+
+test("a lead without recipientMailProvider, stored before the field existed, still matches the schema; an unlisted provider does not", async () => {
+  const { outbound, settle } = harness(suite);
+  const lead = await settle(outbound.leads.get(LEAD));
+  const { recipientMailProvider: _provider, ...older } = lead;
+
+  assert.equal(leadSchema.safeParse(older).success, true, "absent");
+  assert.equal(
+    leadSchema.safeParse({ ...older, recipientMailProvider: null }).success,
+    true,
+    "null"
+  );
+  assert.equal(
+    leadSchema.safeParse({ ...older, recipientMailProvider: "google" }).success,
+    true
+  );
+  assert.equal(
+    leadSchema.safeParse({ ...older, recipientMailProvider: "yahoo" }).success,
+    false,
+    "only google, microsoft and other are values"
   );
 });
 

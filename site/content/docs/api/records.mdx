@@ -151,7 +151,7 @@ What the vendor knows about a sender's deliverability. Its `sourceId` is the sen
 | `phone`, `location` | `string` or `null` | As the vendor stores them. |
 | `website` | `string` or `null` | The company's website or domain, as the vendor stores it. |
 | `companyLinkedinUrl` | `string` or `null` | The company's LinkedIn page. |
-| `recipientMailProvider` | `"google"`, `"microsoft"`, `"other"` or `null` | Who hosts the lead's own mailbox, as the vendor detected it. `null` when the vendor has not detected it or does not say. |
+| `recipientMailProvider` | `"google"`, `"microsoft"`, `"other"`, `null`, or absent | Who hosts the lead's own mailbox, as the vendor detected it. `null` when the vendor has not detected it or does not say. Every adapter sets it; it may be absent on a lead built or stored before the field existed, which still matches `leadSchema`. |
 | `interest` | `string` or `null` | The vendor's own label for how interested the lead is, for example `Meeting Booked`. |
 | `interestCategory` | a reply category or `null` | What `interest` means, in the categories a reply uses. `null` when the lead has no label or the vendor does not say what the label means. |
 | `campaignRef` | `string` or `null` |  |
