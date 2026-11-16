@@ -201,6 +201,27 @@ test("under mask, two people keep two refs, and the token is keyed to the plugin
   );
 });
 
+test("a profile URL with a malformed escape is masked, not a failed read", async () => {
+  const outbound = createOutbound({
+    adapter: memory({
+      data: {
+        leads: [
+          { id: "l1", linkedinUrl: "https://www.linkedin.com/in/example%" },
+          { id: "https://www.linkedin.com/in/example%zz" },
+        ],
+      },
+      name: "mailtool",
+      workspaceId: "agency",
+    }),
+    plugins: [redact()],
+  });
+
+  const [first, second] = (await outbound.leads.list()).items;
+  assert.match(first?.linkedinUrl ?? "", TOKEN);
+  assert.match(second?.sourceId ?? "", TOKEN);
+  assert.doesNotMatch(JSON.stringify([first, second]), /example%/u);
+});
+
 test("a hashed ref is stable, and the same wherever the record is pointed at", async () => {
   const outbound = createOutbound({
     adapter: tool(),
