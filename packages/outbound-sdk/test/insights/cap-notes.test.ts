@@ -111,9 +111,13 @@ const DATA_FOR: Readonly<Record<string, MemoryData>> = {
 };
 
 // A cap that applies only where the tool lacks a read: account_summary reads
-// campaign by campaign only when it cannot list every lead.
+// campaign by campaign only when it can neither search leads by domain nor
+// list every lead.
 const CAPABILITIES: Readonly<Record<string, Record<string, boolean>>> = {
-  "account_summary max_campaigns": { "leads.list": false },
+  "account_summary max_campaigns": {
+    "leads.byDomain": false,
+    "leads.list": false,
+  },
 };
 
 // A cap is an input that bounds how much is read, not a limit the answer

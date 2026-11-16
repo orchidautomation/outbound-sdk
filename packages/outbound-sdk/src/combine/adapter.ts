@@ -149,10 +149,13 @@ const lists = (members: readonly Adapter[]): Lists => ({
       return member.listLeads(scoped, memberCtx);
     };
 
-    const lookup = query.email !== undefined || query.linkedinUrl !== undefined;
+    const lookup =
+      query.email !== undefined ||
+      query.linkedinUrl !== undefined ||
+      query.domain !== undefined;
 
-    // A person lookup returns a record or two from each tool, so every tool is
-    // asked at once instead of one after another.
+    // A person or domain lookup returns a few records from each tool, so
+    // every tool is asked at once instead of one after another.
     if (lookup && query.campaignId === undefined) {
       return pageTogether(
         members,

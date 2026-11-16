@@ -105,6 +105,7 @@ $ outbound capabilities
     "events.parse": false,
     "events.verify": false,
     "leads.byCampaign": true,
+    "leads.byDomain": true,
     "leads.engagement": true,
     "leads.get": true,
     "leads.list": true,

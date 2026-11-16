@@ -76,21 +76,23 @@ Everyone at one company, across campaigns and tools, by exact email domain.
 | --- | --- | --- | --- |
 | `domain` | required | at least 3 characters | The company's domain, an email address at it, or a URL on it. |
 | `allow_free_domains` | `false` | boolean | Accept an email provider domain such as `gmail.com`, which is not one company. |
-| `max_leads` | 1,000 | 1 to 20,000 | The most leads to read in all. |
+| `max_leads` | 1,000 | 1 to 20,000 | The most leads to read in all: at the domain when the adapter searches by domain, in the workspace when it scans. |
 | `max_campaigns` | 20 | 1 to 200 | The most campaigns to read leads from, when the adapter cannot list every lead at once. |
 | `positive_labels` | `Interested`, `Meeting Booked`, `Meeting Completed` | at least 1 character each | Vendor interest labels that count as interested, matched without regard to case. |
 
 `data` (`AccountSummary`):
 
 - `domain`: the domain that was matched.
+- `foundBy`: `search` when the adapter found the domain's leads itself (`leads.byDomain`), `scan` when leads were read in order up to `max_leads` and matched here.
+- `finding`: one sentence on who was found. After a scan that stopped with leads unread and found nobody, it says so: `Checked the first 1,000 leads and more exist; none matched. This does not mean nobody at acme.com is in a campaign.`
 - `people`: one entry per email address, with `name`, `title`, `company`, `campaigns` (refs), `replied`, `interested` (`null` when they carry no label), `opens`, `clicks` and `replies` added up over their records, `lastRepliedAt`, and `records` (one per campaign, each with `autoReplied`). Sorted by most recent reply. A record the vendor labels out-of-office or bounced is `autoReplied: true`, and its replies do not count toward `replied`, `replies` or `lastRepliedAt`.
 - `totals`: `people`, `records`, `campaigns`, `replied`, `interested`, `leadsRead`, `leadsWithoutEmail` and `moreLeadsExist` (`true` when `max_leads` or `max_campaigns` left leads unread, so people may be missing).
 - `lastReply`: the most recent reply with a known time, or `null`.
 
-- **Needs:** `leads.list`. Without it, `leads.byCampaign`, and the insight reads campaign by campaign. With neither it is `Unsupported`.
-- **Costs:** one request per page of leads read. `max_leads` sets the ceiling. Once a lead has replies, one or two more for up to 200 of the newest replies, the campaign's when `campaign` is given, to find leads whose every reply was automatic.
+- **Needs:** `leads.byDomain`, and the adapter finds the domain's leads wherever they are in the workspace. Without it, `leads.list`, and the insight reads leads in order up to `max_leads`; without that, `leads.byCampaign`, and it reads campaign by campaign. With none of them it is `Unsupported`.
+- **Costs:** one request per page of leads read. `max_leads` sets the ceiling. With `leads.byDomain` only the domain's leads are read, usually one or two requests. Once a lead has replies, one or two more for up to 200 of the newest replies, the campaign's when `campaign` is given, to find leads whose every reply was automatic.
 - **Notes it can add:** the tool reports no per-lead open, click or reply counts, so those are `null`; a cap was reached. On a combined instance the note names only the tools whose records carry no counts, and is left out when every tool's records carry them: records from a tool that reports counts keep them.
-- **Does not:** find a lead that has only a LinkedIn profile (they are counted in `leadsWithoutEmail`), or treat a subdomain as the same company. It reads leads and filters them here, so it costs the same whether the company has one lead or fifty.
+- **Does not:** find a lead that has only a LinkedIn profile (a scan counts them in `leadsWithoutEmail`; a search by domain never reads them), or treat a subdomain as the same company. Without `leads.byDomain` it reads leads and filters them here, so it costs the same whether the company has one lead or fifty, and in a workspace larger than `max_leads` it can miss the company entirely: `totals.moreLeadsExist` and `finding` then say so.
 - **Refuses:** with `Unsupported`, before any read, while the [`redact` plugin](/docs/plugins/redact) masks `email`, which leaves no domain to match. It is then not offered as a tool.
 
 <include meta='title="account-summary.ts"'>

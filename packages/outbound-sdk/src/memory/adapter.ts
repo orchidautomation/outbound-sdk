@@ -57,6 +57,7 @@ const FULL_CAPABILITIES: CapabilityDeclaration = {
   "campaigns.settings": true,
   "campaigns.status": "server",
   "leads.byCampaign": true,
+  "leads.byDomain": true,
   "leads.engagement": true,
   "leads.get": true,
   "leads.list": true,
@@ -134,6 +135,8 @@ const selectLeads = (store: Store, query: LeadQuery): MemoryLead[] =>
         (lead.listIds ?? []).includes(query.listId)) &&
       (query.email === undefined ||
         lead.email?.trim().toLowerCase() === query.email) &&
+      (query.domain === undefined ||
+        lead.email?.trim().toLowerCase().split("@").at(-1) === query.domain) &&
       (query.linkedinUrl === undefined ||
         (profileSlug(lead.linkedinUrl) !== null &&
           profileSlug(lead.linkedinUrl) === profileSlug(query.linkedinUrl))) &&
