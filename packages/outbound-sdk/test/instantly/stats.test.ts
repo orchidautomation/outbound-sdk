@@ -29,7 +29,11 @@ test("instantly: campaign totals come from the overview, with interested leads a
   assert.equal(row?.scope, "campaign");
   assert.equal(row?.scopeRef, `instantly:client-a:${CAMPAIGN}`);
   assert.equal(row?.sent, 5000);
-  assert.equal(row?.contacted, 4500);
+  assert.equal(
+    row?.contacted,
+    200,
+    "new_leads_contacted_count, not contacted_count"
+  );
   assert.equal(row?.opened, 800);
   assert.equal(row?.replied, 300);
   assert.equal(row?.repliedAuto, 45);
@@ -165,7 +169,7 @@ test("instantly: each overview count is read from its own field", async () => {
       bounced: 11,
       clicked: 16,
       clickedTotal: 15,
-      contacted: 13,
+      contacted: 18,
       opened: 20,
       openedTotal: 19,
       positive: 29,
@@ -216,7 +220,7 @@ test("instantly: each daily count is read from its own field", async () => {
       bounced: 41,
       clicked: 50,
       clickedTotal: 42,
-      contacted: 43,
+      contacted: 44,
       date: "2026-10-05",
       opened: 51,
       openedTotal: 45,
