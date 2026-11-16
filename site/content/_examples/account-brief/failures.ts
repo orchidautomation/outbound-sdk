@@ -53,10 +53,14 @@ console.log(
   capped.meta.notes
 );
 
-// 5. An adapter that can list leads neither way refuses the insight.
+// 5. An adapter that can neither search nor list leads refuses the insight.
 const noLeads = createOutbound({
   adapter: memory({
-    capabilities: { "leads.byCampaign": false, "leads.list": false },
+    capabilities: {
+      "leads.byCampaign": false,
+      "leads.byDomain": false,
+      "leads.list": false,
+    },
     data: emailTool,
   }),
   plugins: [insights()],

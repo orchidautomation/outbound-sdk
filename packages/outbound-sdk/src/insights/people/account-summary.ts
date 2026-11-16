@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import type { Lead } from "../../internal/entities.ts";
 import { OutboundError } from "../../internal/errors.ts";
-import { plural } from "../../internal/numbers.ts";
+import { count, plural } from "../../internal/numbers.ts";
 import type { Capped } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
@@ -120,6 +120,16 @@ export interface AccountPerson {
 
 export interface AccountSummary {
   readonly domain: string;
+  /**
+   * `search` when the tool found the domain's leads itself (`leads.byDomain`),
+   * `scan` when leads were read in order and matched here, up to `max_leads`.
+   */
+  readonly foundBy: "scan" | "search";
+  /**
+   * One sentence on who was found. When a scan stopped with leads unread, it
+   * says that nobody matching does not mean nobody at the company is there.
+   */
+  readonly finding: string;
   /** Sorted by most recent reply, then people who replied at an unknown time, then the rest by email. */
   readonly people: readonly AccountPerson[];
   readonly totals: {
@@ -130,7 +140,10 @@ export interface AccountSummary {
     readonly interested: number;
     /** Leads looked at to find them. */
     readonly leadsRead: number;
-    /** Leads with no email address, which a domain cannot match. */
+    /**
+     * Leads with no email address, which a domain cannot match. A search by
+     * domain never returns them, so it is then 0.
+     */
     readonly leadsWithoutEmail: number;
     /**
      * `true` when `max_leads` or `max_campaigns` stopped the read with more
@@ -172,7 +185,36 @@ const parseDomain = (text: string, provider: string): string => {
 
 const readLeads = async (
   context: InsightContext,
+  domain: string,
   { max_campaigns: maxCampaigns, max_leads: maxLeads }: Input
+): Promise<Capped<Lead> & { readonly foundBy: AccountSummary["foundBy"] }> => {
+  const { outbound } = context;
+
+  // The tool finds the domain's leads itself, so the answer does not depend
+  // on where in the workspace they are.
+  if (outbound.capabilities["leads.byDomain"]) {
+    const found = await readCappedFlag(
+      context,
+      (cap) => outbound.leads.listAll({ domain, max: cap }),
+      maxLeads,
+      "leads at the domain",
+      "max_leads"
+    );
+
+    return { ...found, foundBy: "search" };
+  }
+
+  return {
+    ...(await scanLeads(context, maxCampaigns, maxLeads)),
+    foundBy: "scan",
+  };
+};
+
+/** Every lead in order, up to the caps, for a tool that cannot search by domain. */
+const scanLeads = async (
+  context: InsightContext,
+  maxCampaigns: number,
+  maxLeads: number
 ): Promise<Capped<Lead>> => {
   const { outbound } = context;
 
@@ -189,7 +231,7 @@ const readLeads = async (
   if (!outbound.capabilities["leads.byCampaign"]) {
     throw new OutboundError(
       "Unsupported",
-      `account_summary is not available: the ${outbound.provider} adapter supports neither leads.list nor leads.byCampaign`,
+      `account_summary is not available: the ${outbound.provider} adapter supports none of leads.byDomain, leads.list and leads.byCampaign`,
       { provider: outbound.provider }
     );
   }
@@ -286,6 +328,38 @@ const toPerson = (
   };
 };
 
+const findingOf = (
+  domain: string,
+  people: readonly AccountPerson[],
+  read: {
+    readonly capped: boolean;
+    readonly foundBy: AccountSummary["foundBy"];
+    readonly leadsRead: number;
+  }
+): string => {
+  const replied = people.filter((person) => person.replied).length;
+  const found = `${plural(people.length, "person", "people")} at ${domain}; ${count(replied)} replied`;
+
+  if (!read.capped) {
+    if (people.length > 0) {
+      return `${found}.`;
+    }
+
+    return read.foundBy === "search"
+      ? `No lead at ${domain} was found.`
+      : `Checked all ${plural(read.leadsRead, "lead")}; none is at ${domain}.`;
+  }
+
+  const checked =
+    read.foundBy === "search"
+      ? `Read ${plural(read.leadsRead, "lead")} at ${domain} (max_leads) and more exist`
+      : `Checked the first ${plural(read.leadsRead, "lead")} and more exist`;
+
+  return people.length === 0
+    ? `${checked}; none matched. This does not mean nobody at ${domain} is in a campaign.`
+    : `${found} in the leads read. ${checked}, so others at ${domain} may be missing.`;
+};
+
 /** Most recent reply first, then replies at an unknown time, then by email. */
 const byLastReply = (left: AccountPerson, right: AccountPerson): number =>
   (right.lastRepliedAt ?? "").localeCompare(left.lastRepliedAt ?? "") ||
@@ -312,7 +386,7 @@ const lastReplyOf = (
 
 export const accountSummary = defineInsight({
   description:
-    "Everyone at one company across campaigns and tools, from the company's domain or any email address at it: each person with their name, title, campaigns, status, interest label and open, click and reply counts, plus totals and who replied most recently. People are matched by exact email domain, so a lead with only a LinkedIn profile is not found, and an email provider domain such as gmail.com is refused unless allow_free_domains is true. A record the vendor labels out-of-office or bounced is marked autoReplied and its replies do not count as the person replying. Costs one request per page of leads read (max_leads sets the ceiling); totals.moreLeadsExist is true when that ceiling left leads unread. A count the vendor does not report is null.",
+    "Everyone at one company across campaigns and tools, from the company's domain or any email address at it: each person with their name, title, campaigns, status, interest label and open, click and reply counts, plus totals and who replied most recently. Where the tool can search leads by domain (leads.byDomain) it finds them wherever they are; otherwise it reads leads in order up to max_leads, and finding says when that left the company possibly unread. People are matched by exact email domain, so a lead with only a LinkedIn profile is not found, and an email provider domain such as gmail.com is refused unless allow_free_domains is true. A record the vendor labels out-of-office or bounced is marked autoReplied and its replies do not count as the person replying. Costs one request per page of leads read (max_leads sets the ceiling); totals.moreLeadsExist is true when that ceiling left leads unread. A count the vendor does not report is null.",
   inputSchema: input,
   key: "accountSummary",
   // Every address is masked, so no lead's domain can be read. A hash keeps
@@ -327,7 +401,8 @@ export const accountSummary = defineInsight({
       : "email addresses, whose domain it matches people by";
   },
   cost: (values, price) =>
-    price.capabilities["leads.list"] === false
+    price.capabilities["leads.list"] === false &&
+    !price.capabilities["leads.byDomain"]
       ? price.list("campaigns.list", values.max_campaigns) +
         price.upTo(values.max_campaigns - 1) * price.list("leads.list", 1) +
         price.upTo(1) * price.list("leads.list", values.max_leads)
@@ -347,7 +422,7 @@ export const accountSummary = defineInsight({
       );
     }
 
-    const read = await readLeads(context, values);
+    const read = await readLeads(context, domain, values);
     const leads = read.items;
 
     noteEngagement(context, leads, "those are null");
@@ -367,6 +442,12 @@ export const accountSummary = defineInsight({
 
     const summary: AccountSummary = {
       domain,
+      finding: findingOf(domain, people, {
+        capped: read.capped,
+        foundBy: read.foundBy,
+        leadsRead: leads.length,
+      }),
+      foundBy: read.foundBy,
       lastReply: lastReplyOf(people),
       people,
       totals: {

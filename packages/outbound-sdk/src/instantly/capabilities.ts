@@ -40,6 +40,9 @@ export const capabilities: CapabilityDeclaration = {
   // Instantly does not sign webhooks. Use a secret header or URL path.
   "events.verify": "secret",
   "leads.byCampaign": true,
+  // The `search` field of POST /leads/list, which matches whole words of the
+  // lead's email; the adapter keeps only addresses at exactly that domain.
+  "leads.byDomain": true,
   "leads.engagement": true,
   "leads.get": true,
   "leads.list": true,
@@ -202,6 +205,7 @@ export const caveats: readonly string[] = [
   "connected is true for an Active account and false for a Connection Error; every other account status is null.",
   "A lead's engagement.stepIndex is the last step sent, read from its status summary; lastOpenedAt is null when open tracking is off. A lead has no tags in Instantly, and the lead object was seen without a job title.",
   "A lead is found by email with the contacts filter of POST /leads/list, documented only as the emails a lead needs to have. Whether it compares whole addresses and ignores case is not documented and was not run live, so the adapter keeps only the records whose address equals the one asked for, and a page can hold fewer records than Instantly returned. One record comes back per campaign or list the address is in. A lead has no LinkedIn profile: a lookup by profile returns nothing and sends no request.",
+  "Leads at one domain are found with the search field of POST /leads/list, documented (read 2026-11-16) as matched against the lead's email and profile fields on whole words and the start of a value. Whether an address's domain counts as a whole word was not run live. The search also matches names, companies and titles, so the adapter keeps only the records whose address is at exactly that domain, and a page can hold fewer records than Instantly returned.",
   "A lead's interest is the documented label for lt_interest_status. A custom label costs one more read (lead-labels, first 100 labels), made only when a page holds a status that is not a built-in one; the same read gives a reply with a custom status its category.",
   "A listed lead list's size is null: the list object has no count. lists.get reads GET /lead-lists/{id}/verification-stats as well and takes total_leads from it, so one list by id costs two requests. kind is always leads.",
   "Native reads return what Instantly sends, unmapped. dfyAccounts never asks for passwords. Instantly refuses per-mailbox daily analytics (413) on a large workspace unless a mailbox is named, which the per-sender stats always do.",

@@ -1,5 +1,5 @@
 free domain: Invalid - gmail.com is an email provider, not one company. Pass allow_free_domains: true to read it anyway.
 a name: Invalid - "Northwind" is not a domain or an email address
-nobody: 0 people in 5 leads read
-capped: 1 false [ 'Stopped at 2 leads (max_leads); more exist.' ]
-no leads: Unsupported - account_summary is not available: the memory adapter supports neither leads.list nor leads.byCampaign
+nobody: 0 people in 0 leads read
+capped: 1 false [ 'Stopped at 2 leads at the domain (max_leads); more exist.' ]
+no leads: Unsupported - account_summary is not available: the memory adapter supports none of leads.byDomain, leads.list and leads.byCampaign

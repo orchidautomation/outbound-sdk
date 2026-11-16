@@ -3,8 +3,8 @@ Ben Okafor (Head of Sales): 2 campaigns, replied false, interested false, opens 
 totals: {
   campaigns: 3,
   interested: 1,
-  leadsRead: 12,
-  leadsWithoutEmail: 2,
+  leadsRead: 4,
+  leadsWithoutEmail: 0,
   moreLeadsExist: false,
   people: 2,
   records: 4,

@@ -36,6 +36,8 @@
 
 - A lead is found by email with the contacts filter of POST /leads/list, documented only as the emails a lead needs to have. Whether it compares whole addresses and ignores case is not documented and was not run live, so the adapter keeps only the records whose address equals the one asked for, and a page can hold fewer records than Instantly returned. One record comes back per campaign or list the address is in. A lead has no LinkedIn profile: a lookup by profile returns nothing and sends no request.
 
+- Leads at one domain are found with the search field of POST /leads/list, documented (read 2026-11-16) as matched against the lead's email and profile fields on whole words and the start of a value. Whether an address's domain counts as a whole word was not run live. The search also matches names, companies and titles, so the adapter keeps only the records whose address is at exactly that domain, and a page can hold fewer records than Instantly returned.
+
 - A lead's interest is the documented label for lt_interest_status. A custom label costs one more read (lead-labels, first 100 labels), made only when a page holds a status that is not a built-in one; the same read gives a reply with a custom status its category.
 
 - A listed lead list's size is null: the list object has no count. lists.get reads GET /lead-lists/{id}/verification-stats as well and takes total_leads from it, so one list by id costs two requests. kind is always leads.

@@ -51,6 +51,8 @@ Instantly declares every capability in the [table](/docs/adapters#what-each-adap
 
 `leads.lookup` works by email only. A lead in Instantly has no LinkedIn profile, so a lookup by profile returns nothing and sends no request.
 
+`leads.byDomain` uses the `search` field of `POST /leads/list` and keeps only the addresses at exactly that domain. It follows Instantly's documentation and has not been run against a live workspace yet.
+
 ## Rate limits
 
 The adapter declares what Instantly publishes: 100 requests per second and 6,000 per minute per workspace, shared across keys and API versions. `GET /emails` has its own lane at 20 per minute, which bounds how fast messages and replies can be listed: at 100 emails a page, 2,000 emails a minute at the declared limit and half that at the default `share`. Three native reads carry daily or monthly limits of their own (`leadLabelPrediction`, `localBusinessFilters`, `localBusinessSearch`), counted in the process only.

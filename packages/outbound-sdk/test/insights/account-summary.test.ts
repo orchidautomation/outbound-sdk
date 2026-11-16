@@ -76,8 +76,11 @@ const LINKEDIN: MemoryData = {
   ],
 };
 
+// A tool that cannot search leads by domain, so every lead is read in order.
+const SCAN = { "leads.byDomain": false };
+
 test("account_summary lists everyone at the domain with their campaigns, counts and the latest reply", async () => {
-  const result = await single(MAIL).insights.accountSummary(
+  const result = await single(MAIL, SCAN).insights.accountSummary(
     { domain: "bob@ACME.example" },
     { now: NOW }
   );
@@ -176,6 +179,8 @@ test("account_summary lists everyone at the domain with their campaigns, counts 
     lead: "memory:agency:l2",
     name: "Ann Example",
   });
+  assert.equal(data.foundBy, "scan");
+  assert.equal(data.finding, "4 people at acme.example; 2 replied.");
   assert.equal(result.meta.complete, true);
   assert.deepEqual(result.meta.notes, []);
 });
@@ -211,7 +216,7 @@ test("account_summary takes a bare domain or a URL, and positive_labels decides 
 });
 
 test("account_summary answers with nobody when the domain matches no lead or there are no leads", async () => {
-  const nobody = await single(MAIL).insights.accountSummary({
+  const nobody = await single(MAIL, SCAN).insights.accountSummary({
     domain: "other.example",
   });
 
@@ -219,6 +224,10 @@ test("account_summary answers with nobody when the domain matches no lead or the
   assert.equal(nobody.data.lastReply, null);
   assert.equal(nobody.data.totals.people, 0);
   assert.equal(nobody.data.totals.leadsRead, 8);
+  assert.equal(
+    nobody.data.finding,
+    "Checked all 8 leads; none is at other.example."
+  );
 
   const empty = await single({}).insights.accountSummary({
     domain: "acme.example",
@@ -268,7 +277,7 @@ test("account_summary refuses text that is no domain, and an email provider unle
 });
 
 test("account_summary says the answer is partial when max_leads stops the read", async () => {
-  const capped = await single(MAIL).insights.accountSummary({
+  const capped = await single(MAIL, SCAN).insights.accountSummary({
     domain: "acme.example",
     max_leads: 2,
   });
@@ -280,8 +289,25 @@ test("account_summary says the answer is partial when max_leads stops the read",
   assert.deepEqual(capped.meta.notes, [
     "Stopped at 2 leads (max_leads); more exist.",
   ]);
+  // The finding says it, not only the note.
+  assert.equal(
+    capped.data.finding,
+    "1 person at acme.example; 1 replied in the leads read. Checked the first 2 leads and more exist, so others at acme.example may be missing."
+  );
 
-  const exact = await single(MAIL).insights.accountSummary({
+  const missed = await single(MAIL, SCAN).insights.accountSummary({
+    domain: "notacme.example",
+    max_leads: 3,
+  });
+
+  assert.equal(missed.data.totals.people, 0);
+  assert.equal(missed.data.totals.moreLeadsExist, true);
+  assert.equal(
+    missed.data.finding,
+    "Checked the first 3 leads and more exist; none matched. This does not mean nobody at notacme.example is in a campaign."
+  );
+
+  const exact = await single(MAIL, SCAN).insights.accountSummary({
     domain: "acme.example",
     max_leads: 8,
   });
@@ -294,7 +320,7 @@ test("account_summary says the answer is partial when max_leads stops the read",
 });
 
 test("account_summary reads campaign by campaign when the tool cannot list every lead", async () => {
-  const outbound = single(MAIL, { "leads.list": false });
+  const outbound = single(MAIL, { ...SCAN, "leads.list": false });
 
   const result = await outbound.insights.accountSummary({
     domain: "acme.example",
@@ -333,13 +359,16 @@ test("account_summary is refused when leads can be listed neither way, and notes
   await assert.rejects(
     async () =>
       await single(MAIL, {
+        ...SCAN,
         "leads.byCampaign": false,
         "leads.list": false,
       }).insights.accountSummary({ domain: "acme.example" }),
     (error) =>
       OutboundError.is(error) &&
       error.code === "Unsupported" &&
-      /neither leads\.list nor leads\.byCampaign/u.test(error.message)
+      /none of leads\.byDomain, leads\.list and leads\.byCampaign/u.test(
+        error.message
+      )
   );
 
   const noCounts = await single(
@@ -435,4 +464,128 @@ test("account_summary on two tools names the tool whose records lack the counts,
   });
 
   assert.deepEqual(full.meta.notes, []);
+});
+
+// A workspace whose company leads come after many others, as in a real
+// workspace where the first max_leads leads are some other campaign's.
+const BURIED: MemoryData = {
+  campaigns: [{ id: "c1" }, { id: "c2" }],
+  leads: [
+    ...Array.from({ length: 30 }, (_, index) => ({
+      campaignId: "c1",
+      email: `person${index}@other.example`,
+      id: `x${index}`,
+    })),
+    ...(MAIL.leads ?? []),
+  ],
+};
+
+test("account_summary searches by domain where the tool can, so leads past max_leads are found", async () => {
+  const searched = await single(BURIED).insights.accountSummary({
+    domain: "acme.example",
+    max_leads: 10,
+  });
+
+  assert.equal(searched.data.foundBy, "search");
+  assert.deepEqual(
+    searched.data.people.map((person) => person.email),
+    [
+      "ann@acme.example",
+      "cy@acme.example",
+      "bob@acme.example",
+      "dee@acme.example",
+    ]
+  );
+  // Only the domain's five records were read.
+  assert.equal(searched.data.totals.leadsRead, 5);
+  assert.equal(searched.data.totals.moreLeadsExist, false);
+  assert.equal(searched.data.finding, "4 people at acme.example; 2 replied.");
+  assert.equal(searched.meta.complete, true);
+
+  // The same call on a tool that can only scan stops before the company.
+  const scanned = await single(BURIED, SCAN).insights.accountSummary({
+    domain: "acme.example",
+    max_leads: 10,
+  });
+
+  assert.equal(scanned.data.totals.people, 0);
+  assert.equal(scanned.data.totals.moreLeadsExist, true);
+  assert.equal(
+    scanned.data.finding,
+    "Checked the first 10 leads and more exist; none matched. This does not mean nobody at acme.example is in a campaign."
+  );
+});
+
+test("account_summary by search says when nobody is at the domain, and when max_leads cut the search short", async () => {
+  const nobody = await single(BURIED).insights.accountSummary({
+    domain: "nowhere.example",
+  });
+
+  assert.equal(nobody.data.totals.people, 0);
+  assert.equal(nobody.data.totals.leadsRead, 0);
+  assert.equal(nobody.data.finding, "No lead at nowhere.example was found.");
+  assert.equal(nobody.meta.complete, true);
+
+  const capped = await single(BURIED).insights.accountSummary({
+    domain: "acme.example",
+    max_leads: 2,
+  });
+
+  assert.equal(capped.data.totals.moreLeadsExist, true);
+  assert.equal(capped.meta.complete, false);
+  assert.deepEqual(capped.meta.notes, [
+    "Stopped at 2 leads at the domain (max_leads); more exist.",
+  ]);
+  assert.equal(
+    capped.data.finding,
+    "1 person at acme.example; 1 replied in the leads read. Read 2 leads at acme.example (max_leads) and more exist, so others at acme.example may be missing."
+  );
+});
+
+test("account_summary searches only when every combined tool can", async () => {
+  const both = createOutbound({
+    adapter: combine([
+      memory({ data: MAIL, name: "mailtool", workspaceId: "agency" }),
+      memory({ data: LINKEDIN, name: "lntool", workspaceId: "agency" }),
+    ]),
+    plugins: [insights()],
+  });
+
+  const searched = await both.insights.accountSummary({
+    domain: "acme.example",
+  });
+
+  assert.equal(searched.data.foundBy, "search");
+  assert.equal(searched.data.totals.records, 6);
+
+  const mixed = createOutbound({
+    adapter: combine([
+      memory({ data: MAIL, name: "mailtool", workspaceId: "agency" }),
+      memory({
+        capabilities: SCAN,
+        data: LINKEDIN,
+        name: "lntool",
+        workspaceId: "agency",
+      }),
+    ]),
+    plugins: [insights()],
+  });
+
+  assert.equal(mixed.capabilities["leads.byDomain"], false);
+
+  const scanned = await mixed.insights.accountSummary({
+    domain: "acme.example",
+  });
+
+  assert.equal(scanned.data.foundBy, "scan");
+  assert.equal(scanned.data.totals.records, 6);
+});
+
+test("leads.list refuses a domain filter on a tool that cannot search by domain, before any read", async () => {
+  const outbound = single(MAIL, SCAN);
+
+  await assert.rejects(
+    async () => await outbound.leads.list({ domain: "acme.example" }),
+    (error) => OutboundError.is(error) && error.code === "Unsupported"
+  );
 });

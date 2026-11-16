@@ -69,6 +69,8 @@ test("person_summary shows one person across campaigns and channels", () => {
 
 const account = (lastReply: AccountSummary["lastReply"]): AccountSummary => ({
   domain: "example.com",
+  finding: "1 person at example.com; 1 replied.",
+  foundBy: "search",
   lastReply,
   people: [
     {
@@ -122,6 +124,23 @@ test("account_summary names the last person to reply", () => {
     read(cardFor("account_summary", insight(account(null)))),
     "Nobody at this company has replied."
   );
+});
+
+test("account_summary with nobody found says whether the scan covered the workspace", () => {
+  const finding =
+    "Checked the first 1,000 leads and more exist; none matched. This does not mean nobody at example.com is in a campaign.";
+
+  const empty: AccountSummary = {
+    ...account(null),
+    finding,
+    foundBy: "scan",
+    people: [],
+    totals: { ...account(null).totals, moreLeadsExist: true, people: 0 },
+  };
+
+  const card = read(cardFor("account_summary", insight(empty)));
+  includes(card, finding);
+  excludes(card, "Nobody at this company has replied.");
 });
 
 const collisions = (found: number, leadsRead: number): LeadCollisions => ({

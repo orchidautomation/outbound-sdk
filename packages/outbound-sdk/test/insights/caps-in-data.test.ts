@@ -22,8 +22,13 @@ const BLOCKED: MemoryData = {
   leads: [{ campaignId: "c1", email: "dnc2400@example.org", id: "l1" }],
 };
 
-const card = async (data: MemoryData, name: string, input = {}) => {
-  const [tool] = insightTools(single(data), { only: [name] });
+const card = async (
+  data: MemoryData,
+  name: string,
+  input = {},
+  capabilities = {}
+) => {
+  const [tool] = insightTools(single(data, capabilities), { only: [name] });
   assert.ok(tool !== undefined, name);
 
   return read(cardFor(name, await tool.call(input)));
@@ -80,8 +85,11 @@ const COLD: MemoryData = {
   ],
 };
 
+// A tool that cannot search leads by domain, so account_summary scans.
+const SCAN = { "leads.byDomain": false };
+
 test("account_summary says in data that leads were left unread", async () => {
-  const capped = await single(COLD).insights.accountSummary({
+  const capped = await single(COLD, SCAN).insights.accountSummary({
     domain: "acme.example",
   });
 
@@ -89,8 +97,12 @@ test("account_summary says in data that leads were left unread", async () => {
   assert.equal(capped.data.totals.leadsRead, 1000);
   assert.equal(capped.data.totals.moreLeadsExist, true);
   assert.equal(capped.meta.complete, false);
+  assert.equal(
+    capped.data.finding,
+    "Checked the first 1,000 leads and more exist; none matched. This does not mean nobody at acme.example is in a campaign."
+  );
 
-  const control = await single(COLD).insights.accountSummary({
+  const control = await single(COLD, SCAN).insights.accountSummary({
     domain: "acme.example",
     max_leads: 2000,
   });
@@ -99,9 +111,18 @@ test("account_summary says in data that leads were left unread", async () => {
   assert.equal(control.data.totals.moreLeadsExist, false);
 
   includes(
-    await card(COLD, "account_summary", { domain: "acme.example" }),
-    "Stopped at 1,000 leads read; more exist, so people at this company may be missing."
+    await card(COLD, "account_summary", { domain: "acme.example" }, SCAN),
+    "Stopped at 1,000 leads read; more exist, so people at this company may be missing.",
+    "This does not mean nobody at acme.example is in a campaign."
   );
+
+  // A tool that searches by domain finds the lead past the first 1,000.
+  const searched = await single(COLD).insights.accountSummary({
+    domain: "acme.example",
+  });
+
+  assert.equal(searched.data.totals.people, 1);
+  assert.equal(searched.data.totals.moreLeadsExist, false);
 });
 
 test("account_summary says leads were left unread when it reads campaign by campaign", async () => {
@@ -113,7 +134,7 @@ test("account_summary says leads were left unread when it reads campaign by camp
     ],
   };
 
-  const perCampaign = { "leads.list": false };
+  const perCampaign = { ...SCAN, "leads.list": false };
 
   const capped = await single(data, perCampaign).insights.accountSummary({
     domain: "acme.example",

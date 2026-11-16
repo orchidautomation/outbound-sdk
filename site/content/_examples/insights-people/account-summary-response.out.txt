@@ -1,6 +1,8 @@
 {
   "data": {
     "domain": "northwind.example.com",
+    "finding": "2 people at northwind.example.com; 1 replied.",
+    "foundBy": "search",
     "lastReply": {
       "at": "2026-11-12T12:00:00.000Z",
       "campaign": "mailtool:acme:founders",
@@ -101,8 +103,8 @@
     "totals": {
       "campaigns": 3,
       "interested": 1,
-      "leadsRead": 12,
-      "leadsWithoutEmail": 2,
+      "leadsRead": 4,
+      "leadsWithoutEmail": 0,
       "moreLeadsExist": false,
       "people": 2,
       "records": 4,
