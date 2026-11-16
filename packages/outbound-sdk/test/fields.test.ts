@@ -394,7 +394,11 @@ test("redact: a lead's phone, website and company LinkedIn page are masked with 
   assert.equal(lead.phone, "[redacted]");
   assert.equal(lead.website, "[redacted]");
   assert.equal(lead.companyLinkedinUrl, "[redacted]");
-  assert.equal(lead.email, "[redacted]");
+  assert.match(
+    lead.email ?? "",
+    /^redacted:[0-9a-f]{16}$/u,
+    "an address is a keyed token, so people stay apart"
+  );
   assert.equal(lead.location, "Example City", "left as it is, like a title");
   assert.equal(JSON.stringify(lead).includes("+1555"), false);
 
