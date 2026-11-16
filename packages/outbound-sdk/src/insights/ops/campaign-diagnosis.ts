@@ -305,7 +305,7 @@ export const campaignDiagnosis = defineInsight({
       (capabilities.sequence === false ? 0 : price.one("sequence.get")) +
       (capabilities["senders.byCampaign"] === false
         ? 0
-        : price.list("senders.list", values.max_senders)) +
+        : price.campaignSenders(values.max_senders)) +
       (capabilities["stats.byDay"] === false ? 0 : price.one("stats")) +
       // The leads are read only when sends fell or stopped, which the data decides.
       (capabilities["stats.byDay"] === false ||

@@ -77,9 +77,9 @@ export const listFields = (costPerCampaign: string) => ({
     .int()
     .min(1)
     .max(200)
-    .default(25)
+    .default(50)
     .describe(`The most campaigns to read. Each costs ${costPerCampaign}.`),
-  statuses: statusesInput(["active", "paused", "completed"]),
+  statuses: statusesInput(["active"]),
 });
 
 export interface CampaignLabel {

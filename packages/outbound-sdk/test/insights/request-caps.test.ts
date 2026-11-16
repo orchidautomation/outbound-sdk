@@ -65,24 +65,25 @@ test("an insight whose least cost is over its cap is refused before any request"
   );
 });
 
+// Every state, so the listing takes a walk per state.
+const EVERY_STATE = {
+  max_campaigns: 25,
+  statuses: ["active", "paused", "completed"],
+};
+
 test("a run that fits before the listing is refused once the campaigns are counted, naming the input to lower", async () => {
   const { http, outbound } = over(world(60, 25));
   // Before the listing the least is 3 status pages and 1 workspace read.
-  const cost = insightCost(outbound, "client_report");
+  const cost = insightCost(outbound, "client_report", EVERY_STATE);
 
   assert.ok(cost);
   assert.ok(cost.min <= 30);
 
   const error = await rejection(
-    runInsightByName(
-      outbound,
-      "client_report",
-      {},
-      {
-        maxRequests: 30,
-        now: NOW,
-      }
-    )
+    runInsightByName(outbound, "client_report", EVERY_STATE, {
+      maxRequests: 30,
+      now: NOW,
+    })
   );
 
   // Only the campaign listing was read, one walk or two per state: the 25
@@ -108,7 +109,7 @@ test("a run that fits before the listing is refused once the campaigns are count
     runInsightByName(
       lowered.outbound,
       "client_report",
-      { max_campaigns: to },
+      { ...EVERY_STATE, max_campaigns: to },
       { maxRequests: 30, now: NOW }
     )
   );
@@ -161,7 +162,7 @@ test("the default cap stops a run its declared costs underprice, naming the defa
   assert.equal(error.limit, "call");
   assert.equal(
     error.message,
-    `copy_reuse stopped after ${cost.defaultCap} requests, at its default cap of ${cost.defaultCap} requests for this input, before it finished; nothing it read is returned. Lower max_campaigns to ${/to (?<to>\d+),/u.exec(error.message)?.groups?.to ?? "?"}, or pass maxRequests to raise it (Infinity removes the default).`
+    `copy_reuse stopped after ${cost.defaultCap} requests, at its default cap of ${cost.defaultCap} requests for this input, before it finished; nothing it read is returned. Pass maxRequests to raise it (Infinity removes the default).`
   );
 });
 

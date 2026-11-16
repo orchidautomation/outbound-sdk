@@ -143,7 +143,11 @@ test("suppression_check reports each lead still being sent to on the block list,
     moreLeadsExist: false,
     violations: 3,
   });
-  assert.equal(result.meta.complete, true);
+  // Entries it could not check leave the answer incomplete (OUT-127).
+  assert.equal(result.meta.complete, false);
+  assert.deepEqual(result.meta.notes, [
+    "2 of the block entries read name a company or another kind of entry no lead can be matched on, so they were not checked.",
+  ]);
 });
 
 test("suppression_check reads the campaigns in the statuses asked for", async () => {

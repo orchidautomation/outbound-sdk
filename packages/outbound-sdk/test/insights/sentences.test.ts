@@ -101,7 +101,7 @@ test("the numbers behind a sentence keep their precision", async () => {
   const report = await runInsightByName(
     outbound,
     "clientReport",
-    {},
+    { statuses: ["active", "paused", "completed"] },
     {
       now: NOW,
     }

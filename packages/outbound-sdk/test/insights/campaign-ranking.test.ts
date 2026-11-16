@@ -42,9 +42,12 @@ const DATA: MemoryData = {
 const NOVEMBER = { from: "2026-11-01", to: "2026-11-30" };
 
 test("campaign_ranking ranks by the low end of the interval, so a lucky small campaign does not win", async () => {
-  const result = await single(DATA).insights.campaignRanking(NOVEMBER, {
-    now: NOW,
-  });
+  const result = await single(DATA).insights.campaignRanking(
+    { ...NOVEMBER, statuses: ["active", "paused", "completed"] },
+    {
+      now: NOW,
+    }
+  );
 
   assert.equal(result.insight, "campaign_ranking");
   assert.equal(result.data.metric, "reply_rate");
@@ -114,7 +117,10 @@ test("campaign_ranking ranks by the low end of the interval, so a lucky small ca
 
 test("campaign_ranking counts the whole history without a range, and min_sent decides who is ranked", async () => {
   const outbound = single(DATA);
-  const whole = await outbound.insights.campaignRanking({});
+
+  const whole = await outbound.insights.campaignRanking({
+    statuses: ["active", "paused", "completed"],
+  });
 
   // Alpha over all time: 155 replies of 1,500 contacted is 10.33%, low end 8.89%.
   assert.deepEqual(
@@ -126,6 +132,7 @@ test("campaign_ranking counts the whole history without a range, and min_sent de
   );
 
   const loose = await outbound.insights.campaignRanking({
+    statuses: ["active", "paused", "completed"],
     ...NOVEMBER,
     min_sent: 5,
   });
@@ -152,6 +159,7 @@ test("campaign_ranking ranks bounce rate lowest first by the high end, and posit
   const outbound = single(DATA);
 
   const bounce = await outbound.insights.campaignRanking({
+    statuses: ["active", "paused", "completed"],
     ...NOVEMBER,
     metric: "bounce_rate",
   });
@@ -174,6 +182,7 @@ test("campaign_ranking ranks bounce rate lowest first by the high end, and posit
   );
 
   const positive = await outbound.insights.campaignRanking({
+    statuses: ["active", "paused", "completed"],
     ...NOVEMBER,
     metric: "positive_reply_rate",
   });
@@ -212,7 +221,10 @@ test("campaign_ranking reads only the asked statuses, with or without a vendor f
 
   const unfiltered = await single(DATA, {
     "campaigns.status": false,
-  }).insights.campaignRanking(NOVEMBER);
+  }).insights.campaignRanking({
+    ...NOVEMBER,
+    statuses: ["active", "paused", "completed"],
+  });
 
   assert.deepEqual(
     unfiltered.data.ranked.map((each) => each.campaignName),
@@ -225,7 +237,9 @@ test("campaign_ranking reads only the asked statuses, with or without a vendor f
 });
 
 test("campaign_ranking answers with nothing to rank, says when the cap cut the list, and needs campaign stats", async () => {
-  const empty = await single({}).insights.campaignRanking({});
+  const empty = await single({}).insights.campaignRanking({
+    statuses: ["active", "paused", "completed"],
+  });
 
   assert.deepEqual(empty.data.ranked, []);
   assert.deepEqual(empty.data.tooFewSends, []);
@@ -238,6 +252,7 @@ test("campaign_ranking answers with nothing to rank, says when the cap cut the l
   assert.equal(empty.meta.complete, true);
 
   const capped = await single(DATA).insights.campaignRanking({
+    statuses: ["active", "paused", "completed"],
     ...NOVEMBER,
     max_campaigns: 1,
   });
@@ -250,9 +265,9 @@ test("campaign_ranking answers with nothing to rank, says when the cap cut the l
 
   await assert.rejects(
     async () =>
-      await single(DATA, { "stats.campaign": false }).insights.campaignRanking(
-        {}
-      ),
+      await single(DATA, { "stats.campaign": false }).insights.campaignRanking({
+        statuses: ["active", "paused", "completed"],
+      }),
     unsupported("stats.campaign")
   );
 });
@@ -263,7 +278,10 @@ test("campaign_ranking ranks campaigns of two tools together", async () => {
     stats: [
       row("k1", "2026-11-05", { contacted: 400, replied: 100, sent: 400 }),
     ],
-  }).insights.campaignRanking(NOVEMBER);
+  }).insights.campaignRanking({
+    ...NOVEMBER,
+    statuses: ["active", "paused", "completed"],
+  });
 
   assert.deepEqual(
     result.data.ranked.map((each) => [
@@ -296,9 +314,12 @@ test("campaign_ranking names what each rate divides by, and its card shows that 
     ],
   });
 
-  const result = await outbound.insights.campaignRanking(NOVEMBER, {
-    now: NOW,
-  });
+  const result = await outbound.insights.campaignRanking(
+    { ...NOVEMBER, statuses: ["active", "paused", "completed"] },
+    {
+      now: NOW,
+    }
+  );
 
   assert.deepEqual(
     result.data.ranked.map((each) => [

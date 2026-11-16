@@ -1,6 +1,6 @@
 {
   "data": {
-    "campaignsRead": 5,
+    "campaignsRead": 4,
     "moreCampaignsExist": false,
     "campaigns": [
       {
@@ -193,17 +193,7 @@
       "from": "2026-10-31",
       "to": "2026-11-06"
     },
-    "tooFewSends": [
-      {
-        "campaign": "memory:acme:pilot",
-        "campaignName": "Pilot test",
-        "channel": "email",
-        "provider": "memory",
-        "status": "paused",
-        "currentSent": null,
-        "previousSent": null
-      }
-    ],
+    "tooFewSends": [],
     "total": {
       "change": {
         "bounceRate": 0.0066,

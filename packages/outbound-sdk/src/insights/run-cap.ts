@@ -135,9 +135,17 @@ export const runCap = <Input>(
     requests: counter.used(),
   });
 
+  // What a run that outgrew its estimate should lower is worked out from that
+  // same estimate, so a stop part way only advises raising the cap.
+  const outgrown = (): CapStop => ({
+    ...effect,
+    lower: undefined,
+    requests: counter.used(),
+  });
+
   // Counts every request of the run, and stops at the cap when there is one.
   const counter: RequestCounter = requestCounter(effect.cap, (provider) =>
-    stopped(spec.name, stop(effect.cap), provider)
+    stopped(spec.name, outgrown(), provider)
   );
 
   const check = (found?: number): void => {
@@ -165,8 +173,7 @@ export const runCap = <Input>(
     campaignsFound: check,
     capReached: (cause) => {
       if (isStopped()) {
-        // What fits is worked out from the estimate the run just outgrew, so only raising the cap is advised.
-        const at = { ...effect, lower: undefined, requests: counter.used() };
+        const at = outgrown();
 
         return `Stopped after ${plural(at.requests, "request")}, at ${capWords(at)}. ${advice(at)}`;
       }
@@ -179,7 +186,7 @@ export const runCap = <Input>(
       // A read stopped at the cap may surface re-wrapped, or as another
       // read's failure: the counter, not the error, says the cap was reached.
       throw isStopped()
-        ? stopped(spec.name, stop(effect.cap), outbound.provider)
+        ? stopped(spec.name, outgrown(), outbound.provider)
         : cause;
     },
     outbound: withGuard(outbound, counter),

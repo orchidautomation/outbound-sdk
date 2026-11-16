@@ -1,8 +1,8 @@
 insight: default cap at default inputs (heyreach, instantly, smartlead)
 person_summary: 74, 137, 62
 account_summary: 18, 31, 19
-lead_collisions: 156, 284, 181
-suppression_check: 181, 311, 183
+lead_collisions: 157, 289, 182
+suppression_check: 182, 316, 184
 dropped_replies: 256, 446, 322
 hot_leads: 66, 78, 109
 personalization_gaps: 13, 19, 14
@@ -10,21 +10,21 @@ step_funnel: -, 8, 8
 variant_test: -, 7, 7
 copy_audit: 9, 13, 11
 copy_preview: 8, 9, 9
-copy_reuse: -, 94, 83
+copy_reuse: -, 99, 84
 reply_timing: 29, 31, 29
 domain_health: 69, 194, 131
-sender_capacity: 11, 141, 104
-bounce_watch: 818, 1509, 1443
-warmup_readiness: 7, 7, 6
-sender_load: 103, 107, 71
-settings_audit: -, 103, 68
-campaign_diagnosis: 44, 76, 48
+sender_capacity: 22, 1406, 709
+bounce_watch: 819, 1577, 1444
+warmup_readiness: 18, 18, 17
+sender_load: 708, 1341, 644
+settings_audit: -, 139, 69
+campaign_diagnosis: 44, 82, 48
 pipeline_forecast: 34, 64, 38
 anomalies: 6, 7, 7
-period_comparison: 73, 149, 138
-campaign_ranking: 41, 82, 71
-channel_mix: 41, 82, 71
-tag_rollup: 41, 82, 71
-client_report: 322, 616, 479
+period_comparison: 134, 269, 262
+campaign_ranking: 71, 139, 132
+channel_mix: 71, 139, 132
+tag_rollup: 71, 139, 132
+client_report: 571, 1079, 822
 
-RateLimited (call): client_report needs at least 5 requests for this input (at most 380), and its cap is 3 requests (maxRequests). No request was sent. Raise maxRequests.
+RateLimited (call): client_report stopped after 3 requests, at the cap of 3 requests (maxRequests), before it finished; nothing it read is returned. Raise maxRequests.

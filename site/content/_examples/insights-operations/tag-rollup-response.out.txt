@@ -1,8 +1,8 @@
 {
   "data": {
-    "campaignsRead": 5,
+    "campaignsRead": 4,
     "moreCampaignsExist": false,
-    "campaigns": 5,
+    "campaigns": 4,
     "period": {
       "from": null,
       "to": null
@@ -67,36 +67,6 @@
         },
         "campaigns": 1,
         "tag": "agency"
-      },
-      {
-        "bounced": 0,
-        "contacted": 20,
-        "positive": 1,
-        "replied": 2,
-        "sent": 60,
-        "bounceRate": {
-          "count": 0,
-          "high": 0.0602,
-          "low": 0,
-          "of": 60,
-          "rate": 0
-        },
-        "positiveRate": {
-          "count": 1,
-          "high": 0.2361,
-          "low": 0.0089,
-          "of": 20,
-          "rate": 0.05
-        },
-        "replyRate": {
-          "count": 2,
-          "high": 0.301,
-          "low": 0.0279,
-          "of": 20,
-          "rate": 0.1
-        },
-        "campaigns": 1,
-        "tag": null
       },
       {
         "bounced": 54,

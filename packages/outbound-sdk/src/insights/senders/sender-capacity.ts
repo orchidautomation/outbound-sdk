@@ -23,18 +23,18 @@ const input = z.object({
     .int()
     .min(1)
     .max(200)
-    .default(25)
+    .default(50)
     .describe(
-      "The most active campaigns to read. Each costs up to 2 requests, or 3 when the vendor has no workspace totals."
+      "The most active campaigns to read. Each costs one read of its settings and one listing of its senders, plus 1 request when the vendor has no workspace totals."
     ),
   max_senders: z
     .number()
     .int()
     .min(1)
     .max(1000)
-    .default(200)
+    .default(1000)
     .describe(
-      "The most senders to read for the workspace, and for each campaign"
+      "The most senders to read for the workspace, and for each campaign. A listing costs 1 request per 100 senders, and on Instantly a campaign's listing costs 2 per 100 mailboxes in the workspace."
     ),
   split_uncounted: z
     .boolean()
@@ -255,7 +255,7 @@ export const senderCapacity = defineInsight({
           (price.one("campaigns.settings") +
             (capabilities["senders.byCampaign"] === false
               ? 0
-              : price.list("senders.list", values.max_senders)))) +
+              : price.campaignSenders(values.max_senders)))) +
       (capabilities["stats.byDay"] === false ? 0 : sends)
     );
   },

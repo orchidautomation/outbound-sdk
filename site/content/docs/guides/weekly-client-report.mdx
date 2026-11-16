@@ -67,7 +67,7 @@ Swap the adapter. Nothing else changes.
   ../../_examples/weekly-client-report/production.ts
 </include>
 
-`maxRequestsPerCall` caps what one call may spend. On a real vendor the report costs two stats requests per campaign, and for each active campaign three more plus a read of its leads (up to `max_leads_per_campaign`, default 500). The default `max_campaigns` is 25. If the cap is reached the call fails with `RateLimited` instead of spending your vendor quota; raise `maxRequestsPerCall` or lower `max_campaigns`.
+`maxRequestsPerCall` caps what one call may spend. On a real vendor the report costs two stats requests per campaign, and for each active campaign one more plus a read of its leads (up to `max_leads_per_campaign`, default 500). On Instantly a stats read is 2 requests, so each active campaign costs about 7, and a workspace with 24 active campaigns about 230. It reads active campaigns only by default (`statuses`), up to `max_campaigns`, 50. If the cap is reached the call fails with `RateLimited` instead of spending your vendor quota; raise `maxRequestsPerCall` or lower `max_campaigns`.
 
 ## One report per client
 

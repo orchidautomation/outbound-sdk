@@ -11,6 +11,7 @@ import { test } from "node:test";
 import { budget } from "../../src/budget/index.ts";
 import { run } from "../../src/cli/index.ts";
 import { OutboundError } from "../../src/index.ts";
+import type { CampaignStatus } from "../../src/index.ts";
 import {
   insightCost,
   insightTools,
@@ -60,13 +61,23 @@ for (const name of PARTIAL) {
   });
 }
 
+// 25 of the 60 campaigns, in every state.
+const EVERY_STATE: { max_campaigns: number; statuses: CampaignStatus[] } = {
+  max_campaigns: 25,
+  statuses: ["active", "paused", "completed"],
+};
+
+const EVERY_STATE_INPUT = JSON.stringify(EVERY_STATE);
+
 test("the default cap stops an underpriced run part way and says how to raise it", async () => {
   const { http, outbound } = over(world(60, 3), { perRead: 3 });
-  const cost = insightCost(outbound, "campaign_ranking");
+  const cost = insightCost(outbound, "campaign_ranking", EVERY_STATE);
 
   assert.ok(cost);
 
-  const result = await outbound.insights.campaignRanking({}, { now: NOW });
+  const result = await outbound.insights.campaignRanking(EVERY_STATE, {
+    now: NOW,
+  });
 
   assert.equal(http.requests.length, cost.defaultCap);
   assert.equal(result.meta.complete, false);
@@ -207,7 +218,12 @@ test("the CLI names --max-requests in a cap stop, never an SDK option", async ()
   assert.doesNotMatch(failed.err, SDK_WORDS);
   assert.doesNotMatch(failed.out, SDK_WORDS);
 
-  const partial = await cli("insight", "campaign_ranking");
+  const partial = await cli(
+    "insight",
+    "campaign_ranking",
+    "--input",
+    EVERY_STATE_INPUT
+  );
 
   assert.equal(partial.code, 0, partial.err);
 
@@ -221,13 +237,19 @@ test("the CLI names --max-requests in a cap stop, never an SDK option", async ()
 });
 
 test("--max-requests replaces an insight's default cap in the CLI", async () => {
-  const cost = insightCost(over(world(60, 3)).outbound, "campaign_ranking");
+  const cost = insightCost(
+    over(world(60, 3)).outbound,
+    "campaign_ranking",
+    EVERY_STATE
+  );
 
   assert.ok(cost);
 
   const raised = await cli(
     "insight",
     "campaign_ranking",
+    "--input",
+    EVERY_STATE_INPUT,
     "--max-requests",
     String(cost.defaultCap * 4)
   );

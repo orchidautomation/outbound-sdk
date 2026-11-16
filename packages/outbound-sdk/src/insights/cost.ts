@@ -32,6 +32,13 @@ export interface Price {
   /** Leads found by an email or a profile, up to `max`: `leads.lookup` where the adapter prices it. */
   readonly lookup: (max: number) => number;
   /**
+   * One campaign's senders, up to `max`: `senders.byCampaign` where the
+   * adapter prices it apart, as Instantly does because it reads the campaign
+   * again with each page of the workspace's mailboxes, otherwise a listing
+   * of `senders.list`.
+   */
+  readonly campaignSenders: (max: number) => number;
+  /**
    * A count only the data decides, up to `max`: 0 at the least, `max` at the
    * most. For example the active campaigns among those read.
    */
@@ -107,10 +114,10 @@ const pricer = (
       const filtered = capabilities["campaigns.status"] !== false;
 
       if (most) {
-        // Every state but the last may cost a page of its own.
+        // Every state but the last may cost a page of its own, and when no
+        // campaign matches, one more page counts the campaigns in other states.
         return filtered
-          ? (statuses - 1) * list("campaigns.list", 1) +
-              list("campaigns.list", max)
+          ? statuses * list("campaigns.list", 1) + list("campaigns.list", max)
           : list("campaigns.list", max);
       }
 
@@ -118,6 +125,13 @@ const pricer = (
 
       return (filtered ? Math.max(statuses, read) : read) * cost.perPage;
     },
+    campaignSenders: (max) =>
+      list(
+        costs["senders.byCampaign"] === undefined
+          ? "senders.list"
+          : "senders.byCampaign",
+        max
+      ),
     capabilities,
     list,
     lookup: (max) =>

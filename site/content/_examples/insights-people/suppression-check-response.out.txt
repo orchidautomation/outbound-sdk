@@ -79,9 +79,11 @@
   },
   "insight": "suppression_check",
   "meta": {
-    "complete": true,
+    "complete": false,
     "evidence": "exact",
-    "notes": [],
+    "notes": [
+      "1 of the block entries read name a company or another kind of entry no lead can be matched on, so they were not checked."
+    ],
     "requests": 0,
     "computedAt": "2026-11-14T12:00:00.000Z",
     "provider": "combined"

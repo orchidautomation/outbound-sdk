@@ -46,7 +46,10 @@ const CURRENT = { from: "2026-11-07", to: "2026-11-13" };
 const PREVIOUS = { from: "2026-10-31", to: "2026-11-06" };
 
 test("period_comparison sets the last days against the days before, per campaign and in total", async () => {
-  const result = await single(DATA).insights.periodComparison({}, { now: NOW });
+  const result = await single(DATA).insights.periodComparison(
+    { statuses: ["active", "paused", "completed"] },
+    { now: NOW }
+  );
 
   assert.equal(result.insight, "period_comparison");
   assert.equal(result.data.days, 7);
@@ -179,7 +182,7 @@ test("period_comparison follows days, min_sent, alpha and the statuses", async (
 
   // One day: 11-13 against 11-12. Only c1 sent on 11-12, and nothing on 11-13.
   const day = await outbound.insights.periodComparison(
-    { days: 1, min_sent: 0 },
+    { statuses: ["active", "paused", "completed"], days: 1, min_sent: 0 },
     { now: NOW }
   );
 
@@ -200,7 +203,7 @@ test("period_comparison follows days, min_sent, alpha and the statuses", async (
   );
 
   const strict = await outbound.insights.periodComparison(
-    { min_sent: 450 },
+    { statuses: ["active", "paused", "completed"], min_sent: 450 },
     { now: NOW }
   );
 
@@ -214,7 +217,7 @@ test("period_comparison follows days, min_sent, alpha and the statuses", async (
   );
 
   const doubtful = await outbound.insights.periodComparison(
-    { alpha: 0.0001 },
+    { statuses: ["active", "paused", "completed"], alpha: 0.0001 },
     { now: NOW }
   );
 
@@ -248,7 +251,10 @@ test("period_comparison reports a fall, and an unknown when a period has no coun
       row("u", "2026-11-02", { sent: 300 }),
       row("u", "2026-11-09", { sent: 300 }),
     ],
-  }).insights.periodComparison({}, { now: NOW });
+  }).insights.periodComparison(
+    { statuses: ["active", "paused", "completed"] },
+    { now: NOW }
+  );
 
   const [falling, unknown] = result.data.campaigns;
 
@@ -270,7 +276,10 @@ test("period_comparison reports a fall, and an unknown when a period has no coun
 });
 
 test("period_comparison has nothing to compare without campaigns, and says when the cap cut the list", async () => {
-  const empty = await single({}).insights.periodComparison({}, { now: NOW });
+  const empty = await single({}).insights.periodComparison(
+    { statuses: ["active", "paused", "completed"] },
+    { now: NOW }
+  );
 
   assert.deepEqual(empty.data.campaigns, []);
   assert.deepEqual(empty.data.tooFewSends, []);
@@ -279,7 +288,7 @@ test("period_comparison has nothing to compare without campaigns, and says when 
   assert.equal(empty.data.workspace?.current.sent, null);
 
   const capped = await single(DATA).insights.periodComparison(
-    { max_campaigns: 1 },
+    { statuses: ["active", "paused", "completed"], max_campaigns: 1 },
     { now: NOW }
   );
 
@@ -293,7 +302,10 @@ test("period_comparison has nothing to compare without campaigns, and says when 
 test("period_comparison leaves workspace totals out when the adapter has none, and needs campaign stats", async () => {
   const result = await single(DATA, {
     "stats.workspace": false,
-  }).insights.periodComparison({}, { now: NOW });
+  }).insights.periodComparison(
+    { statuses: ["active", "paused", "completed"] },
+    { now: NOW }
+  );
 
   assert.equal(result.data.workspace, null);
   assert.equal(result.data.total.current.sent, 1000);
@@ -306,7 +318,9 @@ test("period_comparison leaves workspace totals out when the adapter has none, a
     async () =>
       await single(DATA, {
         "stats.campaign": false,
-      }).insights.periodComparison({}),
+      }).insights.periodComparison({
+        statuses: ["active", "paused", "completed"],
+      }),
     unsupported("stats.campaign")
   );
 });
@@ -318,7 +332,10 @@ test("period_comparison compares campaigns of two tools and adds their workspace
       row("k1", "2026-11-02", { contacted: 200, replied: 10, sent: 200 }),
       row("k1", "2026-11-11", { contacted: 200, replied: 30, sent: 200 }),
     ],
-  }).insights.periodComparison({}, { now: NOW });
+  }).insights.periodComparison(
+    { statuses: ["active", "paused", "completed"] },
+    { now: NOW }
+  );
 
   // Seats went from 5% to 15%, the largest move.
   assert.deepEqual(
@@ -357,7 +374,10 @@ test("period_comparison divides a period's replies by messages sent, so a rate n
         sent: 300,
       }),
     ],
-  }).insights.periodComparison({}, { now: NOW });
+  }).insights.periodComparison(
+    { statuses: ["active", "paused", "completed"] },
+    { now: NOW }
+  );
 
   const [weekly] = result.data.campaigns;
 
@@ -390,7 +410,10 @@ test("period_comparison falls back to leads contacted for both periods when a pe
       row("k", "2026-11-02", { contacted: 100, replied: 2 }),
       row("k", "2026-11-09", { contacted: 50, replied: 8, sent: 200 }),
     ],
-  }).insights.periodComparison({}, { now: NOW });
+  }).insights.periodComparison(
+    { statuses: ["active", "paused", "completed"] },
+    { now: NOW }
+  );
 
   const [seats] = result.data.campaigns;
 

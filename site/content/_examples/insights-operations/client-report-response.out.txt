@@ -120,7 +120,7 @@
       },
       "verdict": "no_real_change"
     },
-    "campaignsRead": 5,
+    "campaignsRead": 4,
     "moreCampaignsExist": false,
     "actions": [
       {
@@ -166,7 +166,7 @@
         "number": 7
       }
     ],
-    "campaigns": 5,
+    "campaigns": 4,
     "days": 7,
     "leftOut": [],
     "period": {

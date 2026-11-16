@@ -174,7 +174,7 @@ Leads sitting in campaigns although they are on the block list.
 - **Needs:** `blocklist`, `leads.byCampaign`.
 - **Costs:** one request per page of block entries, plus one per page of each campaign's leads.
 - **Notes it can add:** a cap was reached.
-- **Does not:** match a company name or an entry of the vendor's kind `other`. Those are counted in `blockEntriesNotChecked`. It reports a lead once, by its most specific match: the address, then the profile, then the domain. It removes nobody from a campaign.
+- **Does not:** match a company name or an entry of the vendor's kind `other`. Those are counted in `blockEntriesNotChecked`, and while any are, `meta.complete` is `false` with a note saying how many were not checked. It reports a lead once, by its most specific match: the address, then the profile, then the domain. It removes nobody from a campaign.
 - **Refuses:** with `Unsupported`, before any read, while the [`redact` plugin](/docs/plugins/redact) masks `email` with its default `mask` strategy. It is then not offered as a tool. Under `strategy: "hash"` it still matches an exact address, and says the domain entries (and, when profiles are masked, the profile entries) could not be matched.
 
 <include meta='title="suppression-check.ts"'>

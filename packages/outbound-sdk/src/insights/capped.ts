@@ -57,6 +57,44 @@ export const campaignsReadOf = (read: Capped<Campaign>): CampaignsRead => ({
   moreCampaignsExist: read.capped,
 });
 
+const either = (words: readonly string[]): string =>
+  words.length < 2
+    ? words.join("")
+    : `${words.slice(0, -1).join(", ")} or ${words.at(-1)}`;
+
+/**
+ * When no campaign is in the states asked for but the workspace has others,
+ * the answer covers nothing, so it is marked incomplete with a note counting
+ * them, instead of reading as a clean run with nothing found.
+ */
+const noneMatched = (
+  context: InsightContext,
+  wanted: readonly CampaignStatus[],
+  others: readonly Campaign[],
+  more: boolean
+): void => {
+  if (others.length === 0) {
+    return;
+  }
+
+  const counts = new Map<string, number>();
+
+  for (const campaign of others) {
+    counts.set(campaign.status, (counts.get(campaign.status) ?? 0) + 1);
+  }
+
+  const byStatus = [...counts]
+    .toSorted(([a], [b]) => a.localeCompare(b))
+    .map(([status, count]) => `${count} ${status}`)
+    .join(", ");
+
+  const total = `${more ? "the first " : ""}${others.length} campaign${others.length === 1 ? "" : "s"}`;
+
+  context.partial(
+    `No campaign is ${either(wanted)}, so nothing was checked (${total}: ${byStatus}). Pass statuses to check the others.`
+  );
+};
+
 /**
  * The campaigns in the given states, up to `max` in all. Asks the vendor per
  * state when it can filter, and filters after reading when it cannot, so
@@ -87,6 +125,10 @@ export const readCampaignsIn = async (
 
     context.campaignsFound(items.length);
 
+    if (items.length === 0) {
+      noneMatched(context, wanted, every.items, every.capped);
+    }
+
     return { capped: every.capped, items };
   }
 
@@ -107,6 +149,12 @@ export const readCampaignsIn = async (
   }
 
   context.campaignsFound(found.length);
+
+  if (found.length === 0) {
+    const page = await campaigns.list();
+
+    noneMatched(context, wanted, context.page(page), page.cursor !== undefined);
+  }
 
   return { capped, items: found };
 };

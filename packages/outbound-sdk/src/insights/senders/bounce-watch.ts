@@ -259,7 +259,7 @@ export const bounceWatch = defineInsight({
       campaigns * price.one("stats") +
       (bySender
         ? price.upTo(campaigns) *
-          (price.list("senders.list", values.max_senders_per_campaign) +
+          (price.campaignSenders(values.max_senders_per_campaign) +
             values.max_senders_per_campaign * price.one("stats"))
         : 0)
     );

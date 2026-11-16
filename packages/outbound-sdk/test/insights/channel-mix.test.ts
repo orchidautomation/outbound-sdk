@@ -47,9 +47,12 @@ const LINKEDIN: MemoryData = {
 const NOVEMBER = { from: "2026-11-01", to: "2026-11-30" };
 
 test("channel_mix adds campaigns up per channel and tests the difference in reply rate", async () => {
-  const result = await pair(MAIL, LINKEDIN).insights.channelMix(NOVEMBER, {
-    now: NOW,
-  });
+  const result = await pair(MAIL, LINKEDIN).insights.channelMix(
+    { ...NOVEMBER, statuses: ["active", "paused", "completed"] },
+    {
+      now: NOW,
+    }
+  );
 
   assert.equal(result.insight, "channel_mix");
   assert.deepEqual(result.data.period, NOVEMBER);
@@ -132,6 +135,7 @@ test("channel_mix holds the difference to the alpha it is given, and counts the 
   const outbound = pair(MAIL, LINKEDIN);
 
   const strict = await outbound.insights.channelMix({
+    statuses: ["active", "paused", "completed"],
     ...NOVEMBER,
     alpha: 0.01,
   });
@@ -142,7 +146,10 @@ test("channel_mix holds the difference to the alpha it is given, and counts the 
     "The reply rate is 10% on LinkedIn against 6% on email; the difference could be chance (p = 0.0384)."
   );
 
-  const whole = await outbound.insights.channelMix({});
+  const whole = await outbound.insights.channelMix({
+    statuses: ["active", "paused", "completed"],
+  });
+
   const [email] = whole.data.channels;
 
   // m2's September row adds 70 sends, 77 contacted and 7 replies.
@@ -160,7 +167,10 @@ test("channel_mix holds the difference to the alpha it is given, and counts the 
 });
 
 test("channel_mix says there is nothing to compare with one channel, with none, or without counts", async () => {
-  const one = await single(MAIL).insights.channelMix(NOVEMBER);
+  const one = await single(MAIL).insights.channelMix({
+    ...NOVEMBER,
+    statuses: ["active", "paused", "completed"],
+  });
 
   assert.deepEqual(
     one.data.channels.map((each) => each.channel),
@@ -172,7 +182,9 @@ test("channel_mix says there is nothing to compare with one channel, with none, 
     "Only email campaigns were found, so there is nothing to compare."
   );
 
-  const none = await single({}).insights.channelMix({});
+  const none = await single({}).insights.channelMix({
+    statuses: ["active", "paused", "completed"],
+  });
 
   assert.deepEqual(none.data.channels, []);
   assert.deepEqual(none.data.byProvider, []);
@@ -184,7 +196,10 @@ test("channel_mix says there is nothing to compare with one channel, with none, 
   const dark = await pair(MAIL, {
     campaigns: [{ channel: "linkedin", id: "k9" }],
     stats: [row("k9", "2026-11-05", { contacted: 40, sent: 40 })],
-  }).insights.channelMix(NOVEMBER);
+  }).insights.channelMix({
+    ...NOVEMBER,
+    statuses: ["active", "paused", "completed"],
+  });
 
   const [, linkedin] = dark.data.channels;
   assert.equal(linkedin?.replied, null);
@@ -197,7 +212,10 @@ test("channel_mix says there is nothing to compare with one channel, with none, 
   const reversed = await pair(MAIL, {
     campaigns: [{ channel: "linkedin", id: "k8" }],
     stats: [row("k8", "2026-11-05", { contacted: 500, replied: 5, sent: 500 })],
-  }).insights.channelMix(NOVEMBER);
+  }).insights.channelMix({
+    ...NOVEMBER,
+    statuses: ["active", "paused", "completed"],
+  });
 
   assert.equal(reversed.data.comparison?.higher, "email");
   assert.equal(reversed.data.comparison?.difference, 0.05);
@@ -209,6 +227,7 @@ test("channel_mix says there is nothing to compare with one channel, with none, 
 
 test("channel_mix says when the cap cut the list, and needs campaign stats", async () => {
   const capped = await pair(MAIL, LINKEDIN).insights.channelMix({
+    statuses: ["active", "paused", "completed"],
     ...NOVEMBER,
     max_campaigns: 1,
   });
@@ -218,7 +237,9 @@ test("channel_mix says when the cap cut the list, and needs campaign stats", asy
 
   await assert.rejects(
     async () =>
-      await single(MAIL, { "stats.campaign": false }).insights.channelMix({}),
+      await single(MAIL, { "stats.campaign": false }).insights.channelMix({
+        statuses: ["active", "paused", "completed"],
+      }),
     unsupported("stats.campaign")
   );
 });
@@ -257,7 +278,10 @@ test("channel_mix divides replies only by the leads of the campaigns that report
         row("k2", "2026-11-05", { contacted: 100, replied: 20, sent: 100 }),
       ],
     }
-  ).insights.channelMix(NOVEMBER, { now: NOW });
+  ).insights.channelMix(
+    { ...NOVEMBER, statuses: ["active", "paused", "completed"] },
+    { now: NOW }
+  );
 
   const [email, linkedin] = result.data.channels;
 
@@ -312,7 +336,10 @@ test("a finding prints a p-value too small to round as p < 0.0001, never as p = 
         row("k1", "2026-11-05", { contacted: 5000, replied: 1000, sent: 5000 }),
       ],
     }
-  ).insights.channelMix(NOVEMBER, { now: NOW });
+  ).insights.channelMix(
+    { ...NOVEMBER, statuses: ["active", "paused", "completed"] },
+    { now: NOW }
+  );
 
   assert.equal(result.data.comparison?.test.pValue, 0);
   assert.equal(
@@ -326,7 +353,10 @@ test("a finding prints a p-value too small to round as p < 0.0001, never as p = 
       row("c1", "2026-11-03", { contacted: 5000, replied: 50, sent: 5000 }),
       row("c1", "2026-11-10", { contacted: 5000, replied: 1000, sent: 5000 }),
     ],
-  }).insights.periodComparison({}, { now: NOW });
+  }).insights.periodComparison(
+    { statuses: ["active", "paused", "completed"] },
+    { now: NOW }
+  );
 
   assert.equal(
     periods.data.total.finding,

@@ -19,7 +19,7 @@ const instanceAt = (now: number) =>
 
 test("a seven-day client report over the demo data has both periods", async () => {
   const report = await instanceAt(LATER).insights.clientReport(
-    {},
+    { statuses: ["active", "paused", "completed"] },
     { now: LATER }
   );
 
@@ -76,7 +76,7 @@ test("demoData refuses a now that is not a date", () => {
 
 test("a runway shorter than a day reads as less than a day, not 0 days", async () => {
   const report = await instanceAt(LATER).insights.clientReport(
-    {},
+    { statuses: ["active", "paused", "completed"] },
     { now: LATER }
   );
 

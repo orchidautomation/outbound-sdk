@@ -13,8 +13,10 @@ const input = z.object({
     .int()
     .min(1)
     .max(200)
-    .default(25)
-    .describe("The most campaigns to read. Each costs 1 request."),
+    .default(50)
+    .describe(
+      "The most campaigns to read. Each costs one listing of its senders."
+    ),
   max_campaigns_per_sender: z
     .number()
     .int()
@@ -26,9 +28,9 @@ const input = z.object({
     .int()
     .min(1)
     .max(1000)
-    .default(200)
+    .default(1000)
     .describe(
-      "The most senders to read for the workspace, and for each campaign"
+      "The most senders to read for the workspace, and for each campaign. A listing costs 1 request per 100 senders, and on Instantly a campaign's listing costs 2 per 100 mailboxes in the workspace."
     ),
   statuses: statusesInput(["active"]),
 });
@@ -123,14 +125,14 @@ const riskOf = (
 
 export const senderLoad = defineInsight({
   description:
-    "Senders that are overused or unused: the senders attached to more campaigns than allowed, the active senders attached to no campaign, and the campaigns that run on a single sender, on none, or on a sender that is not active. Use it when sends are uneven or before adding a campaign. Costs one listing of senders and of campaigns, then 1 request per campaign. Only campaigns in the given statuses are counted, so a sender used only by a paused campaign shows as unused unless paused is included.",
+    "Senders that are overused or unused: the senders attached to more campaigns than allowed, the active senders attached to no campaign, and the campaigns that run on a single sender, on none, or on a sender that is not active. Use it when sends are uneven or before adding a campaign. Costs one listing of senders and of campaigns, then one listing of each campaign's senders. Only campaigns in the given statuses are counted, so a sender used only by a paused campaign shows as unused unless paused is included.",
   inputSchema: input,
   key: "senderLoad",
   cost: (values, price) =>
     price.list("senders.list", values.max_senders) +
     price.campaignsIn(new Set(values.statuses).size, values.max_campaigns) +
     price.campaigns(values.max_campaigns) *
-      price.list("senders.list", values.max_senders),
+      price.campaignSenders(values.max_senders),
   scales: "max_campaigns",
   name: "sender_load",
   needs: ["senders.list", "senders.byCampaign"],

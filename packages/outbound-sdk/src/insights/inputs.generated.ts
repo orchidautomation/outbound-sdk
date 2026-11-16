@@ -547,16 +547,16 @@ export interface InsightInputs {
     readonly days?: number | undefined;
 
     /**
-     * The most active campaigns to read. Each costs up to 2 requests, or 3 when the vendor has no workspace totals.
+     * The most active campaigns to read. Each costs one read of its settings and one listing of its senders, plus 1 request when the vendor has no workspace totals.
      *
-     * A whole number from 1 to 200. Defaults to `25`.
+     * A whole number from 1 to 200. Defaults to `50`.
      */
     readonly max_campaigns?: number | undefined;
 
     /**
-     * The most senders to read for the workspace, and for each campaign
+     * The most senders to read for the workspace, and for each campaign. A listing costs 1 request per 100 senders, and on Instantly a campaign's listing costs 2 per 100 mailboxes in the workspace.
      *
-     * A whole number from 1 to 1000. Defaults to `200`.
+     * A whole number from 1 to 1000. Defaults to `1000`.
      */
     readonly max_senders?: number | undefined;
 
@@ -637,9 +637,9 @@ export interface InsightInputs {
     readonly check_health?: boolean | undefined;
 
     /**
-     * The most senders to check
+     * The most senders to check. The listing costs 1 request per 100 senders.
      *
-     * A whole number from 1 to 1000. Defaults to `100`.
+     * A whole number from 1 to 1000. Defaults to `1000`.
      */
     readonly max_senders?: number | undefined;
 
@@ -660,9 +660,9 @@ export interface InsightInputs {
   /** The input of `senderLoad` (the `sender_load` tool). */
   readonly senderLoad: {
     /**
-     * The most campaigns to read. Each costs 1 request.
+     * The most campaigns to read. Each costs one listing of its senders.
      *
-     * A whole number from 1 to 200. Defaults to `25`.
+     * A whole number from 1 to 200. Defaults to `50`.
      */
     readonly max_campaigns?: number | undefined;
 
@@ -674,9 +674,9 @@ export interface InsightInputs {
     readonly max_campaigns_per_sender?: number | undefined;
 
     /**
-     * The most senders to read for the workspace, and for each campaign
+     * The most senders to read for the workspace, and for each campaign. A listing costs 1 request per 100 senders, and on Instantly a campaign's listing costs 2 per 100 mailboxes in the workspace.
      *
-     * A whole number from 1 to 1000. Defaults to `200`.
+     * A whole number from 1 to 1000. Defaults to `1000`.
      */
     readonly max_senders?: number | undefined;
 
@@ -918,14 +918,14 @@ export interface InsightInputs {
     /**
      * The most campaigns to read. Each costs two stats requests.
      *
-     * A whole number from 1 to 200. Defaults to `25`.
+     * A whole number from 1 to 200. Defaults to `50`.
      */
     readonly max_campaigns?: number | undefined;
 
     /**
      * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
      *
-     * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active","paused","completed"]`.
+     * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active"]`.
      */
     readonly statuses?:
       | ("active" | "archived" | "completed" | "draft" | "paused" | "unknown")[]
@@ -971,14 +971,14 @@ export interface InsightInputs {
     /**
      * The most campaigns to read. Each costs one stats request.
      *
-     * A whole number from 1 to 200. Defaults to `25`.
+     * A whole number from 1 to 200. Defaults to `50`.
      */
     readonly max_campaigns?: number | undefined;
 
     /**
      * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
      *
-     * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active","paused","completed"]`.
+     * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active"]`.
      */
     readonly statuses?:
       | ("active" | "archived" | "completed" | "draft" | "paused" | "unknown")[]
@@ -1021,14 +1021,14 @@ export interface InsightInputs {
     /**
      * The most campaigns to read. Each costs one stats request.
      *
-     * A whole number from 1 to 200. Defaults to `25`.
+     * A whole number from 1 to 200. Defaults to `50`.
      */
     readonly max_campaigns?: number | undefined;
 
     /**
      * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
      *
-     * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active","paused","completed"]`.
+     * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active"]`.
      */
     readonly statuses?:
       | ("active" | "archived" | "completed" | "draft" | "paused" | "unknown")[]
@@ -1060,14 +1060,14 @@ export interface InsightInputs {
     /**
      * The most campaigns to read. Each costs one stats request.
      *
-     * A whole number from 1 to 200. Defaults to `25`.
+     * A whole number from 1 to 200. Defaults to `50`.
      */
     readonly max_campaigns?: number | undefined;
 
     /**
      * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
      *
-     * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active","paused","completed"]`.
+     * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active"]`.
      */
     readonly statuses?:
       | ("active" | "archived" | "completed" | "draft" | "paused" | "unknown")[]
@@ -1085,14 +1085,14 @@ export interface InsightInputs {
     /**
      * The most campaigns to read. Each costs two stats requests, and three more plus its leads when active.
      *
-     * A whole number from 1 to 200. Defaults to `25`.
+     * A whole number from 1 to 200. Defaults to `50`.
      */
     readonly max_campaigns?: number | undefined;
 
     /**
      * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
      *
-     * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active","paused","completed"]`.
+     * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active"]`.
      */
     readonly statuses?:
       | ("active" | "archived" | "completed" | "draft" | "paused" | "unknown")[]
