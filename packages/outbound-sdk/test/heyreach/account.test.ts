@@ -89,6 +89,7 @@ test("heyreach: a list's leads carry tags, custom fields, the newest auto-tag an
     location: "Example City 11",
     phone: null,
     progress: "unknown",
+    recipientMailProvider: null,
     replied: null,
     // The profile URL is the id, as everywhere else.
     sourceId: "https://www.linkedin.com/in/example-person-11",

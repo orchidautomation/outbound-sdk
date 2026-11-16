@@ -5,6 +5,7 @@ by status: {
   completed: 45,
   paused: 0,
   replied: 40,
+  skipped: 0,
   unknown: 0,
   unsubscribed: 5
 }

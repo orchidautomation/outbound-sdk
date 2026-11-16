@@ -7,6 +7,7 @@ import type {
   LeadEngagement,
   LeadProgress,
   Message,
+  RecipientMailProvider,
   Reply,
   ReplyCategory,
 } from "../internal/entities.ts";
@@ -94,12 +95,22 @@ const category = (
   );
 };
 
-// 1 active, 2 paused, 3 completed. -1 is bounced and -2 unsubscribed, which
-// say what came back and not where the lead is; -3 is "Skipped".
+// 1 active, 2 paused, 3 completed, -3 skipped (never sent). -1 is bounced and
+// -2 unsubscribed, which say what came back and not where the lead is.
 const LEAD_PROGRESS = new Map<number, LeadProgress>([
+  [-3, "skipped"],
   [1, "active"],
   [2, "paused"],
   [3, "completed"],
+]);
+
+// `esp_code`, the lead's own mail provider: 1 Google, 2 Microsoft, and 3
+// Zoho, 8 AirMail, 9 Yahoo, 10 Yandex, 12 Web.de, 13 Libero.it, 999 Other.
+// 0 "In Queue" and 1000 "Not Found" say it is not known.
+const RECIPIENT_PROVIDER = new Map<number, RecipientMailProvider>([
+  [1, "google"],
+  [2, "microsoft"],
+  ...[3, 8, 9, 10, 12, 13, 999].map((code) => [code, "other"] as const),
 ]);
 
 const BOUNCED = -1;
@@ -190,6 +201,8 @@ export const toLead = (
   linkedinUrl: null,
   location: null,
   phone: text(raw.phone),
+  recipientMailProvider:
+    RECIPIENT_PROVIDER.get(count(raw.esp_code) ?? Number.NaN) ?? null,
   // Instantly tags mailboxes and campaigns, never leads.
   tags: [],
   title: text(raw.job_title),

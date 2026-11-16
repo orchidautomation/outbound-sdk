@@ -39,10 +39,10 @@ Everything about one person across campaigns and channels: each campaign they ar
 
 - `found`: `false` when no record matched.
 - `identifiers`: every exact identifier the records carry, as `email:` and `linkedin:` keys.
-- `campaigns`: one entry per campaign, with `campaignName`, `campaignStatus`, `channel`, `provider`, `lead`, `leadStatus`, `interest` (the vendor's own label), `messagesSent`, `replies`, `replied`, `autoReplied`, `repliedStepIndexes` (counted from 0) and `repliedStepNumbers` (counted from 1), `lastStepIndex` and `lastStepNumber`, `firstContactedAt`, `lastContactedAt` and `lastRepliedAt`.
+- `campaigns`: one entry per campaign, with `campaignName`, `campaignStatus`, `channel`, `provider`, `lead`, `leadStatus`, `vendorLeadStatus`, `interest` (the vendor's own label), `messagesSent`, `replies`, `replied`, `autoReplied`, `repliedStepIndexes` (counted from 0) and `repliedStepNumbers` (counted from 1), `lastStepIndex` and `lastStepNumber`, `firstContactedAt`, `lastContactedAt` and `lastRepliedAt`.
 - `totals`: `campaigns`, `campaignsReplied`, `campaignReplyRate` (campaigns they replied in, divided by campaigns that sent them at least one message), `messagesSent`, `replies` and `byChannel`.
 
-A record the vendor labels out-of-office or bounced (the same rule as [`hotLeads`](#hotleads)) is `autoReplied: true`: its replies were automatic, so it counts 0 `replies`, is not `replied` and adds nothing to `campaignsReplied`. A reply in the thread flagged automatic (`isAuto: true`, by the vendor or a fixed rule) is not counted either, and a record whose every reply is flagged automatic is `autoReplied: true` too.
+A record the vendor labels out-of-office or bounced (the same rule as [`hotLeads`](#hotleads)) is `autoReplied: true`: its replies were automatic, so it counts 0 `replies`, is not `replied` and adds nothing to `campaignsReplied`. A reply in the thread flagged automatic (`isAuto: true`, by the vendor or a fixed rule) is not counted either, and a record whose every reply is flagged automatic is `autoReplied: true` too. When the vendor's status is `replied` only because of those automatic replies, `leadStatus` is where the lead is in the sequence instead (for example `completed`), so it agrees with `replied`; `vendorLeadStatus` keeps the vendor's status as it came.
 
 - **Needs:** `leads.lookup`, `leads.timeline`, and `leads.get` for a lead ref.
 - **Costs:** one lookup per identifier, one read of the lead for a lead ref, then up to 2 requests per campaign (the lead's timeline and the campaign).
@@ -160,7 +160,7 @@ Leads sitting in campaigns although they are on the block list.
 | Input | Default | Range | What it is |
 | --- | --- | --- | --- |
 | `statuses` | `["active"]` | at least one campaign status | Campaign statuses to check. |
-| `lead_statuses` | `["active", "paused", "unknown"]` | at least one of `active`, `paused`, `unknown`, `completed`, `replied`, `bounced`, `unsubscribed` | Lead statuses that count as a violation: by default the leads still being sent to, or yet to start. |
+| `lead_statuses` | `["active", "paused", "unknown"]` | at least one of `active`, `paused`, `unknown`, `completed`, `skipped`, `replied`, `bounced`, `unsubscribed` | Lead statuses that count as a violation: by default the leads still being sent to, or yet to start. |
 | `max_block_entries` | 2,000 | 1 to 100,000 | The most block list entries to read. |
 | `max_campaigns` | 20 | 1 to 200 | The most campaigns to check. |
 | `max_leads_per_campaign` | 500 | 1 to 20,000 | The most leads to read from each campaign. |

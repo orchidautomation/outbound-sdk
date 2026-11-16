@@ -248,6 +248,7 @@ export const toLead = (
     linkedinUrl: null,
     location: null,
     phone: null,
+    recipientMailProvider: null,
     tags: [],
     title: text(raw.title),
     website: null,

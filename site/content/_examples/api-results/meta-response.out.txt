@@ -38,6 +38,7 @@
       "linkedinUrl": null,
       "location": null,
       "phone": null,
+      "recipientMailProvider": null,
       "title": "Founder",
       "website": null
     },
@@ -68,6 +69,7 @@
       "linkedinUrl": null,
       "location": null,
       "phone": null,
+      "recipientMailProvider": null,
       "title": "CEO",
       "website": null
     }

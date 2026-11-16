@@ -115,7 +115,12 @@ export const capabilities: CapabilityDeclaration = {
 export const fields: FieldDeclaration = {
   campaignProgress: { failed: false },
   campaignSettings: { endDate: false },
-  lead: { companyLinkedinUrl: false, engagement: false, title: false },
+  lead: {
+    companyLinkedinUrl: false,
+    engagement: false,
+    recipientMailProvider: false,
+    title: false,
+  },
   // A message is not marked automatic; a reply is.
   message: { isAuto: false, isAutoSource: false, variantKey: false },
   metricRow: {
