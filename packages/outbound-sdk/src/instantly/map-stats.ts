@@ -40,6 +40,8 @@ export const overviewRow = (scope: RowScope, raw: JsonObject): MetricRow =>
     positive: count(raw.total_interested),
     replied: count(raw.reply_count_unique),
     repliedAuto: count(raw.reply_count_automatic_unique),
+    repliedAutoTotal: count(raw.reply_count_automatic),
+    repliedTotal: count(raw.reply_count),
     sent: count(raw.emails_sent_count),
     unsubscribed: count(raw.unsubscribed_count),
   });
@@ -63,6 +65,8 @@ export const campaignRow = (scope: RowScope, raw: JsonObject): MetricRow =>
     opportunityValue: count(raw.total_opportunity_value),
     replied: count(raw.reply_count_unique),
     repliedAuto: count(raw.reply_count_automatic_unique),
+    repliedAutoTotal: count(raw.reply_count_automatic),
+    repliedTotal: count(raw.reply_count),
     sent: count(raw.emails_sent_count),
     unsubscribed: count(raw.unsubscribed_count),
   });
@@ -81,6 +85,8 @@ const reportCounts = (
   openedTotal: count(raw.opened),
   replied: count(raw.unique_replies),
   repliedAuto: count(raw.unique_replies_automatic),
+  repliedAutoTotal: count(raw.replies_automatic),
+  repliedTotal: count(raw.replies),
   sent: count(raw.sent),
 });
 

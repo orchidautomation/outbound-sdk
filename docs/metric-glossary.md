@@ -34,10 +34,12 @@ Campaign totals are `GET /campaigns/analytics/overview` (one campaign) and `GET 
 | `positive` | `total_interested`, on the overview only | not captured | people |
 | `replied` | `reply_count_unique`; by day and step `unique_replies` | Unique replies | people |
 | `repliedAuto` | `reply_count_automatic_unique`; by day and step `unique_replies_automatic` | not captured | people |
+| `repliedAutoTotal` | `reply_count_automatic`; by day and step `replies_automatic` | Replies (with repliedTotal) | messages |
+| `repliedTotal` | `reply_count`; by day and step `replies` | Replies (with repliedAutoTotal) | messages |
 | `sent` | `emails_sent_count`; by day and step `sent` | Total sent | messages |
 | `unsubscribed` | `unsubscribed_count` | not captured | people |
 
-The labels come from the 2026-11-15 parity case. "Sequence started" was copied from the dashboard as written (OUT-86); the others were recorded as keys (`totalSent`, `uniqueReplies`, `openRate`, `clickRate`, `leadsTotal`, `opportunities`, `opportunityValue`; the dashboard showed opportunities as "1 | $500"), so check their exact wording on the next capture. The dashboard's "Replies" (13 in that case) is reply messages, human and automatic together. The SDK has no count for it.
+The labels come from the 2026-11-15 parity case. "Sequence started" was copied from the dashboard as written (OUT-86); the others were recorded as keys (`totalSent`, `uniqueReplies`, `openRate`, `clickRate`, `leadsTotal`, `opportunities`, `opportunityValue`; the dashboard showed opportunities as "1 | $500"), so check their exact wording on the next capture. The dashboard's "Replies" (13 in that case) is reply messages, human and automatic together: `repliedTotal` (2) plus `repliedAutoTotal` (11). Its "Unique replies" (1) is `replied`, people.
 
 ## Smartlead
 
@@ -62,6 +64,8 @@ Campaign totals are `GET /campaigns/{id}/analytics` (lifetime) and `GET /campaig
 | `positive` | `campaign_lead_stats.interested`; workspace and by day `positive_replied`; per step `positive_reply_count` | not captured | people |
 | `replied` | `reply_count`; in a window `non_ooo_reply_count`; workspace and by day `replied` | not captured | people (unverified) |
 | `repliedAuto` | in a window `total_reply_count` minus `non_ooo_reply_count` | not captured | messages (unverified) |
+| `repliedAutoTotal` | not reported | not captured | — |
+| `repliedTotal` | not reported | not captured | — |
 | `sent` | `sent_count`; workspace and by day `sent` | not captured | messages |
 | `unsubscribed` | `unsubscribed_count` | not captured | people |
 
@@ -88,6 +92,8 @@ Totals are `overallStats` of `POST /stats/GetOverallStats` and `POST /stats/GetO
 | `positive` | `autoTaggedInterested`, seen live, not in the API reference | not captured | people (unverified) |
 | `replied` | `totalMessageReplies` plus `totalInmailReplies` | not captured | messages (unverified) |
 | `repliedAuto` | not reported | not captured | — |
+| `repliedAutoTotal` | not reported | not captured | — |
+| `repliedTotal` | not reported | not captured | — |
 | `sent` | `messagesSent` | not captured | messages |
 | `unsubscribed` | not reported | not captured | — |
 
@@ -114,5 +120,7 @@ Campaign and workspace totals are the summaries of `POST /api/campaigns/{id}/sta
 | `positive` | `interested`; sender `interested_leads_count` | not captured | people |
 | `replied` | `unique_replies_per_contact`; sender `unique_replied_count`; per step `unique_replies` | not captured | people |
 | `repliedAuto` | not reported | not captured | — |
+| `repliedAutoTotal` | not reported | not captured | — |
+| `repliedTotal` | not reported | not captured | — |
 | `sent` | `emails_sent`; sender `emails_sent_count` | not captured | messages |
 | `unsubscribed` | `unsubscribed` | not captured | people |

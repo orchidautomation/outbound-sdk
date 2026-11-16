@@ -85,9 +85,11 @@ Every count on a `MetricRow` is a non-negative number, or `null` when the vendor
 | `openedTotal` | Every open, repeats included. |
 | `clicked` | Unique clicks: leads who clicked at least once. |
 | `clickedTotal` | Every click, repeats included. |
-| `replied` | Replies from people. Auto-replies are counted in `repliedAuto` where the vendor separates them. |
-| `repliedAuto` | Automatic replies. |
-| `positive` | Replies the vendor marked positive. |
+| `replied` | People who replied, each counted once however many replies they sent. Auto-replies are counted in `repliedAuto` where the vendor separates them. |
+| `repliedAuto` | People whose replies were automatic. |
+| `repliedTotal` | Reply messages from people, every reply counted: a lead who replied twice counts 2. Optional. |
+| `repliedAutoTotal` | Automatic reply messages, every one counted. Optional. |
+| `positive` | People the vendor marked positive. |
 | `bounced` | Messages that bounced. |
 | `unsubscribed` | Unsubscribes. |
 | `connectionsSent` | LinkedIn connection requests sent. LinkedIn only. |
@@ -97,6 +99,8 @@ Every count on a `MetricRow` is a non-negative number, or `null` when the vendor
 | `completed` | Leads who reached the end of the sequence. Optional. |
 | `opportunities` | Opportunities the vendor counts for the leads. Optional. |
 | `opportunityValue` | What those opportunities are worth, in the vendor workspace's own currency. Optional. |
+
+`replied` counts people and `repliedTotal` counts messages, the way `opened` and `openedTotal` do. Instantly's dashboard shows "Unique replies", which is `replied`, and "Replies", which is `repliedTotal` plus `repliedAutoTotal`. A [`Reply`](/docs/api/records#reply) record is one message, so a list of replies can be longer than `replied`. Today only Instantly fills `repliedTotal` and `repliedAutoTotal`; every other adapter sets them to `null`.
 
 `leads`, `completed`, `opportunities` and `opportunityValue` are optional: a row may leave them out, and the adapters in this package set them to `null` where the vendor does not report them. Today only Instantly fills them, on campaign and workspace totals; `leads` is only on the rows of `stats({ scope: "campaign" })`. `contacted` can be a little over `leads`, because a lead removed after its sequence started is still counted as contacted.
 

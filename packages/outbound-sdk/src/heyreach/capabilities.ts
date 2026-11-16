@@ -137,6 +137,8 @@ export const fields: FieldDeclaration = {
     openedTotal: false,
     opportunities: false,
     opportunityValue: false,
+    repliedAutoTotal: false,
+    repliedTotal: false,
     repliedAuto: false,
     stepIndex: false,
     unsubscribed: false,

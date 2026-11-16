@@ -128,6 +128,8 @@ export const fields: FieldDeclaration = {
     leads: false,
     opportunities: false,
     opportunityValue: false,
+    repliedAutoTotal: false,
+    repliedTotal: false,
     // total_reply_count less non_ooo_reply_count.
     repliedAuto: "derived",
   },

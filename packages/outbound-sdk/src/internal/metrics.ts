@@ -131,6 +131,8 @@ const COUNT_KEYS = [
   "positive",
   "replied",
   "repliedAuto",
+  "repliedAutoTotal",
+  "repliedTotal",
   "sent",
   "unsubscribed",
 ] as const satisfies readonly (keyof MetricRow)[];
@@ -156,6 +158,8 @@ export const emptyCounts = (): MetricCounts => ({
   positive: null,
   replied: null,
   repliedAuto: null,
+  repliedAutoTotal: null,
+  repliedTotal: null,
   sent: null,
   unsubscribed: null,
 });
