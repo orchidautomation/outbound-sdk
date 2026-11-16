@@ -10,6 +10,13 @@ import type { Adapter } from "../src/index.ts";
 import { memory } from "../src/memory/index.ts";
 import { EMAIL_TOOL, LINKEDIN_TOOL, PROFILE } from "./insights/helpers.ts";
 
+// The answer inside the envelope: a list's records, or the data itself.
+const answerOf = (text: string): never => {
+  const { data } = JSON.parse(text) as { data: { items?: unknown } | null };
+
+  return (data?.items ?? data) as never;
+};
+
 const cliOn = async (adapter: Adapter, ...argv: string[]) => {
   const out: string[] = [];
 
@@ -21,7 +28,7 @@ const cliOn = async (adapter: Adapter, ...argv: string[]) => {
     },
   });
 
-  return { code, json: () => JSON.parse(out.join("")) as never };
+  return { code, json: () => answerOf(out.join("")) };
 };
 
 const twoTools = () =>

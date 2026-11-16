@@ -1,38 +1,46 @@
 $ outbound tools
-[a JSON array of 37 tools, each with name, description and parameters (its inputs as JSON Schema): campaign_overview, campaign_trend, winning_steps, sender_health, reply_samples, lead_runway, cross_channel_lead, campaign_setup, deliverability_check, audience_lists, person_summary, account_summary, lead_collisions, suppression_check, dropped_replies, hot_leads, personalization_gaps, step_funnel, variant_test, copy_audit, copy_preview, copy_reuse, reply_timing, domain_health, sender_capacity, bounce_watch, warmup_readiness, sender_load, settings_audit, campaign_diagnosis, pipeline_forecast, anomalies, period_comparison, campaign_ranking, channel_mix, tag_rollup, client_report]
+[data.items: 37 tools, each with name, description and parameters (its inputs as JSON Schema): campaign_overview, campaign_trend, winning_steps, sender_health, reply_samples, lead_runway, cross_channel_lead, campaign_setup, deliverability_check, audience_lists, person_summary, account_summary, lead_collisions, suppression_check, dropped_replies, hot_leads, personalization_gaps, step_funnel, variant_test, copy_audit, copy_preview, copy_reuse, reply_timing, domain_health, sender_capacity, bounce_watch, warmup_readiness, sender_load, settings_audit, campaign_diagnosis, pipeline_forecast, anomalies, period_comparison, campaign_ranking, channel_mix, tag_rollup, client_report]
 
 $ outbound tool winning_steps
 {
-  "description": "Which step or variant of a campaign drives replies. Returns each step and variant with its sends, replies and reply rate, best first: rank 1 has the highest reply rate. step_index counts steps from 0, step_number from 1 as a person counts (say step_number to a person); step is a deprecated copy of step_index. Counts the vendor tied to no step come last with unattributed: true and rank null; an unattributed row with no counts is left out. A variant whose copy changed mid-campaign mixes old and new wording.",
-  "name": "winning_steps",
-  "parameters": {
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "type": "object",
-    "properties": {
-      "campaign": {
-        "type": "string",
-        "minLength": 1,
-        "description": "The campaign's ref, id or name"
+  "data": {
+    "description": "Which step or variant of a campaign drives replies. Returns each step and variant with its sends, replies and reply rate, best first: rank 1 has the highest reply rate. step_index counts steps from 0, step_number from 1 as a person counts (say step_number to a person); step is a deprecated copy of step_index. Counts the vendor tied to no step come last with unattributed: true and rank null; an unattributed row with no counts is left out. A variant whose copy changed mid-campaign mixes old and new wording.",
+    "name": "winning_steps",
+    "parameters": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "campaign": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The campaign's ref, id or name"
+        },
+        "from": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "to": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        }
       },
-      "from": {
-        "type": "string",
-        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
-      },
-      "to": {
-        "type": "string",
-        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
-      }
-    },
-    "required": [
-      "campaign"
-    ]
-  }
+      "required": [
+        "campaign"
+      ]
+    }
+  },
+  "meta": {
+    "complete": true,
+    "notes": [],
+    "provider": "memory",
+    "requests": 0
+  },
+  "ok": true
 }
 
 $ outbound tool sender_health --input '{"limit":1}'
 {
   "data": {
-    "all_checked": true,
     "checked": 2,
     "senders": [
       {
@@ -45,11 +53,14 @@ $ outbound tool sender_health --input '{"limit":1}'
         "warmup_score": 96
       }
     ],
-    "truncated": true,
     "unhealthy": 0
   },
   "meta": {
+    "complete": false,
     "evidence": "exact",
+    "notes": [
+      "Listed 1 sender (limit); more were checked."
+    ],
     "provider": "memory",
     "requests": 0,
     "today": "2026-11-14"
@@ -60,18 +71,25 @@ $ outbound tool sender_health --input '{"limit":1}'
 
 $ outbound tool campaign_trend --input '{"campaign":"cmp_founders","from":"last month"}'
 {
+  "data": null,
+  "meta": {
+    "complete": false,
+    "notes": [],
+    "provider": "memory",
+    "requests": 0
+  },
+  "next": "Check the input and try again.",
+  "ok": false,
   "error": {
     "code": "Invalid",
     "message": "campaign_trend: from Use YYYY-MM-DD",
     "retryable": false
-  },
-  "next": "Check the input and try again.",
-  "ok": false
+  }
 }
 (exit code 1)
 
 $ outbound insight
-[a JSON array of 27 insights, each with name, key, description, needs and parameters: person_summary, account_summary, lead_collisions, suppression_check, dropped_replies, hot_leads, personalization_gaps, step_funnel, variant_test, copy_audit, copy_preview, copy_reuse, reply_timing, domain_health, sender_capacity, bounce_watch, warmup_readiness, sender_load, settings_audit, campaign_diagnosis, pipeline_forecast, anomalies, period_comparison, campaign_ranking, channel_mix, tag_rollup, client_report]
+[data.items: 27 insights, each with name, key, description, needs and parameters: person_summary, account_summary, lead_collisions, suppression_check, dropped_replies, hot_leads, personalization_gaps, step_funnel, variant_test, copy_audit, copy_preview, copy_reuse, reply_timing, domain_health, sender_capacity, bounce_watch, warmup_readiness, sender_load, settings_audit, campaign_diagnosis, pipeline_forecast, anomalies, period_comparison, campaign_ranking, channel_mix, tag_rollup, client_report]
 
 $ outbound insight channel_mix --input '{"max_campaigns":5}'
 {
@@ -138,18 +156,33 @@ $ outbound insight channel_mix --input '{"max_campaigns":5}'
       "to": null
     }
   },
-  "insight": "channel_mix",
   "meta": {
     "complete": true,
     "evidence": "exact",
     "notes": [],
     "requests": 0,
     "computedAt": "2026-11-14T12:00:00.000Z",
-    "provider": "memory"
-  }
+    "provider": "memory",
+    "insight": "channel_mix"
+  },
+  "ok": true
 }
 
 $ outbound insight channel_mix --input '{"days":30}'
+{
+  "data": null,
+  "error": {
+    "code": "Invalid",
+    "message": "channel_mix: \"days\" is not an input. It takes: alpha, from, max_campaigns, statuses, to"
+  },
+  "meta": {
+    "complete": false,
+    "notes": [],
+    "provider": "memory",
+    "requests": 0
+  },
+  "ok": false
+}
 Invalid: channel_mix: "days" is not an input. It takes: alpha, from, max_campaigns, statuses, to
 (exit code 1)
 

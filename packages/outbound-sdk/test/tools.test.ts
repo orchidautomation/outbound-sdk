@@ -58,6 +58,15 @@ const data = (result: ToolResult): Record<string, unknown> => {
   return (result as { data: Record<string, unknown> }).data;
 };
 
+/** What a successful result says about how much it covers. */
+const coverage = (
+  result: ToolResult
+): { complete: boolean; notes: readonly string[] } => {
+  assert.ok(result.ok, JSON.stringify(result));
+
+  return { complete: result.meta.complete, notes: result.meta.notes };
+};
+
 test("offers only the tools the instance can serve", () => {
   assert.deepEqual(
     createTools(plain()).map((tool) => tool.name),
@@ -366,19 +375,22 @@ test("sender_health finds senders that need attention past the limit, and says w
 
   const outbound = createOutbound({ adapter: memory({ data: { senders } }) });
 
-  const payload = data(await call(outbound, "sender_health")) as {
-    all_checked: boolean;
+  const health = await call(outbound, "sender_health");
+
+  const payload = data(health) as {
     checked: number;
     senders: { address: string; status: string }[];
-    truncated: boolean;
     unhealthy: number;
   };
 
   assert.equal(payload.unhealthy, 10);
   assert.equal(payload.checked, 70);
-  assert.equal(payload.all_checked, true);
   assert.equal(payload.senders.length, 50, "the default limit is unchanged");
-  assert.equal(payload.truncated, true);
+  // Every sender was checked; limit cut only the list.
+  assert.deepEqual(coverage(health), {
+    complete: false,
+    notes: ["Listed 50 senders (limit); more were checked."],
+  });
   assert.deepEqual(
     payload.senders.slice(0, 10).map((sender) => sender.address),
     senders.slice(60).map((sender) => sender.address)
@@ -396,20 +408,25 @@ test("sender_health finds senders that need attention past the limit, and says w
     }),
   });
 
-  const partial = data(await call(many, "sender_health", { limit: 5 }));
+  const partial = await call(many, "sender_health", { limit: 5 });
 
-  assert.equal(partial.checked, 100);
-  assert.equal(partial.all_checked, false);
-  assert.equal(partial.truncated, true);
+  assert.equal(data(partial).checked, 100);
+  assert.deepEqual(coverage(partial), {
+    complete: false,
+    notes: [
+      "More senders exist than the 100 checked; unhealthy counts only those.",
+      "Listed 5 senders (limit); more were checked.",
+    ],
+  });
 
-  const all = data(await call(outbound, "sender_health", { limit: 70 }));
+  const all = await call(outbound, "sender_health", { limit: 70 });
 
-  assert.equal(all.truncated, false);
+  assert.deepEqual(coverage(all), { complete: true, notes: [] });
 });
 
 test("campaign_overview and reply_samples say when more exist than they return", async () => {
-  const one = data(await call(plain(), "campaign_overview", { limit: 1 }));
-  assert.equal(one.truncated, false);
+  const one = await call(plain(), "campaign_overview", { limit: 1 });
+  assert.equal(coverage(one).complete, true);
 
   const busy = createOutbound({
     adapter: memory({
@@ -427,15 +444,21 @@ test("campaign_overview and reply_samples say when more exist than they return",
     }),
   });
 
-  const replies = data(await call(busy, "reply_samples", { limit: 2 }));
-  assert.equal(replies.truncated, true);
+  const replies = await call(busy, "reply_samples", { limit: 2 });
+  assert.deepEqual(coverage(replies), {
+    complete: false,
+    notes: ["Stopped at 2 replies (limit); more exist."],
+  });
 
-  const everything = data(await call(busy, "reply_samples", { limit: 3 }));
-  assert.equal(everything.truncated, false);
+  const everything = await call(busy, "reply_samples", { limit: 3 });
+  assert.deepEqual(coverage(everything), { complete: true, notes: [] });
 
-  assert.equal(
-    data(await call(busy, "campaign_overview", { limit: 1 })).truncated,
-    true
+  assert.deepEqual(
+    coverage(await call(busy, "campaign_overview", { limit: 1 })),
+    {
+      complete: false,
+      notes: ["Stopped at 1 campaign (limit); more active campaigns exist."],
+    }
   );
 });
 
@@ -540,13 +563,13 @@ test("lead_runway divides active leads by the pace of new contacts", async () =>
     campaign: "c1",
     contacted_per_day: 10,
     counted_leads: 31,
-    counting_stopped_at_max: false,
     // No lead reports a step or a contact, so every active lead counts.
     in_sequence: null,
     not_started: null,
     runway_days: 3,
   });
   assert.ok(result.ok && result.meta.evidence === "derived");
+  assert.deepEqual(coverage(result), { complete: true, notes: [] });
 
   const idle = data(await call(outbound, "lead_runway", { campaign: "idle" }));
 

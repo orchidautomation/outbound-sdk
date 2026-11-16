@@ -7,6 +7,7 @@ import { OutboundError } from "../internal/errors.ts";
 import { field } from "../internal/json.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
 import { createOutbound } from "../internal/outbound/create.ts";
+import type { OutboundOptions } from "../internal/outbound/outbound.ts";
 import { fromEnv } from "../loader/index.ts";
 import { createTools } from "../tools/index.ts";
 import {
@@ -17,8 +18,11 @@ import {
   listProviders,
 } from "./commands.ts";
 import { pluginsFor } from "./config.ts";
+import { requestCounter, valueOf } from "./envelope.ts";
+import type { RunFacts } from "./envelope.ts";
 import { createMcpServer } from "./mcp.ts";
-import { printAnswer } from "./output.ts";
+import { OPTIONS } from "./options.ts";
+import { printAnswer, printFailure } from "./output.ts";
 import { serveStdio } from "./stdio.ts";
 import { didYouMean } from "./suggest.ts";
 import { runNpm, runSelf, STANDALONE } from "./update.ts";
@@ -45,40 +49,11 @@ export interface CliIo {
   readonly stdin?: (() => AsyncIterable<string> | Iterable<string>) | undefined;
   /** Replaces the adapter the environment would choose. Meant for tests. */
   readonly adapter?: Adapter | undefined;
+  /** Replaces the `fetch` vendor requests are sent with. Meant for tests. */
+  readonly fetch?: OutboundOptions["fetch"];
   /** Runs npm for `outbound update` and resolves to its output. Meant for tests. */
   readonly npm?: ((args: readonly string[]) => Promise<string>) | undefined;
 }
-
-const OPTIONS = {
-  bodies: { type: "boolean" },
-  by: { type: "string" },
-  cache: { type: "string" },
-  campaign: { type: "string" },
-  card: { type: "boolean" },
-  category: { type: "string" },
-  compact: { type: "boolean" },
-  config: { type: "string" },
-  from: { type: "string" },
-  help: { short: "h", type: "boolean" },
-  input: { type: "string" },
-  limit: { type: "string" },
-  list: { type: "string" },
-  "max-requests": { type: "string" },
-  "no-redact": { type: "boolean" },
-  provider: { type: "string" },
-  raw: { type: "boolean" },
-  redact: { type: "boolean" },
-  search: { type: "string" },
-  sequence: { type: "boolean" },
-  settings: { type: "boolean" },
-  since: { type: "string" },
-  slack: { type: "boolean" },
-  stats: { type: "boolean" },
-  status: { type: "string" },
-  subsequences: { type: "boolean" },
-  to: { type: "string" },
-  version: { short: "v", type: "boolean" },
-} as const;
 
 const serve = async (
   outbound: OutboundApi,
@@ -184,8 +159,14 @@ export const run = async (
   argv: readonly string[],
   io: CliIo
 ): Promise<number> => {
+  const counter = requestCounter();
+  let provider: string | null = null;
+  const facts = (): RunFacts => ({ provider, requests: counter.sent() });
+  let named: string | undefined;
+
   try {
     const { help, name, rest, values } = parse(argv);
+    named = name;
 
     if (await runSelf(name, values, io.npm ?? runNpm, io.stdout)) {
       return 0;
@@ -198,7 +179,7 @@ export const run = async (
     }
 
     if (name === "providers") {
-      printAnswer(io.stdout, listProviders(), values);
+      printAnswer(io.stdout, listProviders(), values, facts());
 
       return 0;
     }
@@ -210,7 +191,14 @@ export const run = async (
       io.adapter ?? (await fromEnv({ provider: values.provider }));
 
     const plugins = await pluginsFor(values, command === undefined, io.stderr);
-    const outbound = createOutbound({ adapter, plugins });
+
+    // Innermost, so it counts each request the engine sends, cache hits not.
+    if (command !== undefined) {
+      plugins.push(counter);
+    }
+
+    const outbound = createOutbound({ adapter, fetch: io.fetch, plugins });
+    ({ provider } = outbound);
 
     if (command === undefined) {
       // The same instance without redact, to tell which tools redact left out.
@@ -232,16 +220,17 @@ export const run = async (
       positionals: rest,
     });
 
-    printAnswer(io.stdout, answer, values);
+    printAnswer(io.stdout, answer, values, facts());
 
     // A tool never throws: its failure is a result, printed like any other.
     // The exit code still says the command did not get an answer.
-    return name === "tool" && field(answer, "ok") === false ? 1 : 0;
+    return name === "tool" && field(valueOf(answer), "ok") === false ? 1 : 0;
   } catch (error) {
     const code = OutboundError.is(error) ? error.code : "Error";
-    io.stderr(
-      `${code}: ${error instanceof Error ? error.message : String(error)}`
-    );
+    const message = error instanceof Error ? error.message : String(error);
+
+    printFailure(io.stdout, { argv, name: named }, { code, message }, facts());
+    io.stderr(`${code}: ${message}`);
 
     return 1;
   }

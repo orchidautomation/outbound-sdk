@@ -279,7 +279,7 @@ A declaration is what the adapter's code says it can do. It is not a live run. W
   ../../_examples/insights-index/by-name.out.txt
 </include>
 
-A tool call never throws. It returns `ok: true` with `data.result`, `data.complete` and `data.notes`, or `ok: false` with an error `code` and `message`. Both carry `next`, one sentence on what to ask after this.
+A tool call never throws. It returns `ok: true` with the answer as `data` and its coverage in `meta.complete` and `meta.notes`, or `ok: false` with an error `code` and `message`. Both carry `next`, one sentence on what to ask after this.
 
 ## From the command line
 

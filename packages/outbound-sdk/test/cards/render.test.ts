@@ -374,7 +374,6 @@ test("a digest section counts every checked sender in its more line", () => {
         {
           name: "sender_health",
           result: tool({
-            all_checked: true,
             checked: 70,
             senders: Array.from({ length: 50 }, (_, index) => ({
               address: `s${index}@example.com`,

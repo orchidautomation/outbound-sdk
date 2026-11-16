@@ -1,0 +1,33 @@
+// Every option the CLI parses. Which command takes which is checked against
+// each command's own list (see `checkFlags` in commands.ts).
+
+export const OPTIONS = {
+  bodies: { type: "boolean" },
+  by: { type: "string" },
+  cache: { type: "string" },
+  campaign: { type: "string" },
+  card: { type: "boolean" },
+  category: { type: "string" },
+  compact: { type: "boolean" },
+  config: { type: "string" },
+  from: { type: "string" },
+  help: { short: "h", type: "boolean" },
+  input: { type: "string" },
+  limit: { type: "string" },
+  list: { type: "string" },
+  "max-requests": { type: "string" },
+  "no-redact": { type: "boolean" },
+  provider: { type: "string" },
+  raw: { type: "boolean" },
+  redact: { type: "boolean" },
+  search: { type: "string" },
+  sequence: { type: "boolean" },
+  settings: { type: "boolean" },
+  since: { type: "string" },
+  slack: { type: "boolean" },
+  stats: { type: "boolean" },
+  status: { type: "string" },
+  subsequences: { type: "boolean" },
+  to: { type: "string" },
+  version: { short: "v", type: "boolean" },
+} as const;

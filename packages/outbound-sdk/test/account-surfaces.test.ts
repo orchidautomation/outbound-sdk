@@ -6,6 +6,13 @@ import { createOutbound } from "../src/index.ts";
 import { demoData, memory } from "../src/memory/index.ts";
 import { createTools } from "../src/tools/index.ts";
 
+// The answer inside the envelope: a list's records, or the data itself.
+const answerOf = (text: string): never => {
+  const { data } = JSON.parse(text) as { data: { items?: unknown } | null };
+
+  return (data?.items ?? data) as never;
+};
+
 const adapter = (capabilities = {}) =>
   memory({
     capabilities,
@@ -26,7 +33,7 @@ const cli = async (...argv: string[]) => {
     },
   });
 
-  return { code, json: () => JSON.parse(out.join("\n")) as never };
+  return { code, json: () => answerOf(out.join("\n")) };
 };
 
 const call = async (
@@ -101,20 +108,21 @@ test("the CLI reads settings, subsequences, health, lists, tags, the block list,
   );
 
   const thread = (await cli("thread", "thr_1", "--bodies")).json() as {
-    items: { sourceId: string; bodyText: string | null }[];
-  };
+    sourceId: string;
+    bodyText: string | null;
+  }[];
 
   assert.deepEqual(
-    thread.items.map((message) => message.sourceId),
+    thread.map((message) => message.sourceId),
     ["msg_1", "msg_2"]
   );
-  assert.equal(thread.items[0]?.bodyText, "Hi Alex, saw your launch.");
+  assert.equal(thread[0]?.bodyText, "Hi Alex, saw your launch.");
 
   const bare = (await cli("thread", "thr_1")).json() as {
-    items: { bodyText: string | null }[];
-  };
+    bodyText: string | null;
+  }[];
 
-  assert.equal(bare.items[0]?.bodyText, null);
+  assert.equal(bare[0]?.bodyText, null);
   assert.notEqual((await cli("health")).code, 0, "a sender id is required");
 });
 

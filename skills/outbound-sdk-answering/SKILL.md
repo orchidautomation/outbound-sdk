@@ -43,7 +43,7 @@ This is the part that matters most. A wrong number stated confidently is worse t
 | `derived` | The SDK or adapter computed or filtered it, for example summed daily rows | That it is computed and may not match the vendor's dashboard to the digit |
 | `sampled` | It rests on part of the data | That it is a sample |
 
-**Pass on what an insight says about itself.** An insight tool wraps its answer as `data.result`, with `data.complete` and `data.notes` beside it. In code and in the CLI they are `meta.complete` and `meta.notes`. When `complete` is `false`, a cap stopped a read early: say the answer covers part of the data, and name the cap from the notes (`max_campaigns`, `max_leads` and so on). Quote the notes with the numbers, every time.
+**Pass on what an answer says about itself.** Every tool, insight or built-in, and every CLI command, says how much it covers in `meta.complete` and `meta.notes`; an insight tool's `data` is the answer itself. When `complete` is `false`, a cap stopped a read early: say the answer covers part of the data, and name the cap from the notes (`max_campaigns`, `max_leads` and so on). Quote the notes with the numbers, every time.
 
 **Do not call a winner the insight did not call.** Insights report a 95% Wilson interval for a rate that rests on a sample, and a p-value when they compare two rates. When the insight says a gap could be chance, or puts a campaign under `tooFewSends`, say that. Do not rank on raw rates yourself.
 
@@ -77,7 +77,7 @@ npx outbound-sdk insight bounce_watch --input '{"max_campaigns":10}'
 npx outbound-sdk capabilities
 ```
 
-`npx outbound-sdk tool …` prints the tool's result as JSON and exits 1 when `ok` is `false`; the `error` and `next` are on standard output. `npx outbound-sdk insight …` prints the answer, or exits 1 with the reason on standard error. `npx outbound-sdk capabilities` prints what the adapter can read, its maturity and its caveats, without a vendor request. `--compact` prints JSON on one line.
+Every command prints one JSON envelope, `{ ok, data, meta: { complete, notes, provider, requests }, next }`: read the answer from `data` (a list from `data.items`) and coverage from `meta`. `npx outbound-sdk tool …` exits 1 when `ok` is `false`, with `error` and `next` in the envelope. `npx outbound-sdk insight …` exits 1 on failure with `ok: false`, and the reason on standard error too. `npx outbound-sdk capabilities` prints what the adapter can read, its maturity and its caveats, without a vendor request. `--compact` prints JSON on one line.
 
 ## In code
 

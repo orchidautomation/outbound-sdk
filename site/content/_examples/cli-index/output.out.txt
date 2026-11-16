@@ -1,16 +1,27 @@
 $ outbound tags
-[
-  {
+{
+  "data": {
+    "items": [
+      {
+        "provider": "memory",
+        "ref": "memory:default:tag_a",
+        "schemaVersion": 1,
+        "sourceId": "tag_a",
+        "workspaceId": "default",
+        "description": "Work for client A",
+        "name": "client-a"
+      }
+    ]
+  },
+  "meta": {
+    "complete": true,
+    "notes": [],
     "provider": "memory",
-    "ref": "memory:default:tag_a",
-    "schemaVersion": 1,
-    "sourceId": "tag_a",
-    "workspaceId": "default",
-    "description": "Work for client A",
-    "name": "client-a"
-  }
-]
+    "requests": 0
+  },
+  "ok": true
+}
 
 $ outbound tags --compact
-[{"provider":"memory","ref":"memory:default:tag_a","schemaVersion":1,"sourceId":"tag_a","workspaceId":"default","description":"Work for client A","name":"client-a"}]
+{"data":{"items":[{"provider":"memory","ref":"memory:default:tag_a","schemaVersion":1,"sourceId":"tag_a","workspaceId":"default","description":"Work for client A","name":"client-a"}]},"meta":{"complete":true,"notes":[],"provider":"memory","requests":0},"ok":true}
 

@@ -4,14 +4,16 @@ interface Named {
   readonly name: string;
 }
 
-// SAFETY: `outbound tools` and `outbound insight` print a JSON array of objects that each have a name.
+// SAFETY: `outbound tools` and `outbound insight` print a list in data.items, each with a name.
 const names = (text: string) =>
-  (JSON.parse(text) as Named[]).map((entry) => entry.name);
+  (JSON.parse(text) as { data: { items: Named[] } }).data.items.map(
+    (entry) => entry.name
+  );
 
 await outboundSummary(
   ["tools"],
   (text) =>
-    `a JSON array of ${names(text).length} tools, each with name, description and parameters (its inputs as JSON Schema): ${names(text).join(", ")}`
+    `data.items: ${names(text).length} tools, each with name, description and parameters (its inputs as JSON Schema): ${names(text).join(", ")}`
 );
 
 // A tool that needs input, given none, prints what it takes.
@@ -19,7 +21,7 @@ await outbound("tool", "winning_steps");
 
 await outbound("tool", "sender_health", "--input", '{"limit":1}');
 
-// A tool that fails prints its result on standard output and exits 1.
+// A tool that fails prints its result in the envelope and exits 1.
 await outbound(
   "tool",
   "campaign_trend",
@@ -30,7 +32,7 @@ await outbound(
 await outboundSummary(
   ["insight"],
   (text) =>
-    `a JSON array of ${names(text).length} insights, each with name, key, description, needs and parameters: ${names(text).join(", ")}`
+    `data.items: ${names(text).length} insights, each with name, key, description, needs and parameters: ${names(text).join(", ")}`
 );
 
 await outbound("insight", "channel_mix", "--input", '{"max_campaigns":5}');

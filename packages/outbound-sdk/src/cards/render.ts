@@ -9,7 +9,6 @@ import {
   flag,
   isJsonArray,
   isJsonObject,
-  list,
   text,
   toJson,
 } from "../internal/json.ts";
@@ -18,7 +17,7 @@ import type { ToolResult, ToolSuccess } from "../tools/index.ts";
 import { compact, layout } from "./content.ts";
 import type { CardContent, CardMeta, CardOptions, Stat } from "./content.ts";
 import { COPY_CARDS } from "./copy-cards.ts";
-import { bool, int, plural, safe, strings, words } from "./format.ts";
+import { int, plural, safe, strings, words } from "./format.ts";
 import { OPS_CARDS } from "./ops-cards.ts";
 import { PEOPLE_CARDS } from "./people-cards.ts";
 import { SENDER_CARDS } from "./sender-cards.ts";
@@ -66,22 +65,15 @@ interface Drawn {
 const draw = (name: string, result: ToolSuccess): Drawn => {
   const insight = INSIGHT_CARDS.get(name);
 
-  // An insight's tool result wraps its answer with the read's notes.
-  const data =
-    insight === undefined ? result.data : field(result.data, "result");
-
   const builder = insight ?? TOOL_CARDS.get(name);
 
   return {
     content:
-      builder === undefined
-        ? generic(name, result.data)
-        : builder(data ?? null),
+      builder === undefined ? generic(name, result.data) : builder(result.data),
     meta: {
-      complete:
-        insight === undefined || bool(result.data, "complete") !== false,
+      complete: result.meta.complete,
       evidence: result.meta.evidence,
-      notes: insight === undefined ? [] : strings(result.data, "notes"),
+      notes: [...result.meta.notes],
       provider: result.meta.provider,
       requests: result.meta.requests,
     },
@@ -120,8 +112,8 @@ const NOT_A_RESULT =
   "⚪ Nothing to show: this is not a tool or insight result.";
 
 /**
- * What came in, as a tool result: an insight's answer is wrapped the way
- * `insightTools` wraps it. `null` when it is neither.
+ * What came in, as a tool result: an insight's answer and its meta, the way
+ * `insightTools` returns them. `null` when it is neither.
  */
 const asToolResult = (input: CardInput): ToolResult | null => {
   const value = toJson(input);
@@ -151,17 +143,12 @@ const asToolResult = (input: CardInput): ToolResult | null => {
   const evidence = text(field(meta, "evidence"));
 
   return {
-    data:
-      ok === true
-        ? data
-        : {
-            complete: flag(field(meta, "complete")) ?? true,
-            notes: list(field(meta, "notes")),
-            result: data,
-          },
+    data,
     meta: {
+      complete: flag(field(meta, "complete")) ?? true,
       evidence: isEvidence(evidence) ? evidence : "derived",
       provider: text(field(meta, "provider")) ?? "unknown",
+      notes: strings(meta, "notes"),
       requests: count(field(meta, "requests")) ?? 0,
     },
     next: "",

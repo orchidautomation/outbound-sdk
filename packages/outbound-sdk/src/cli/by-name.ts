@@ -24,6 +24,33 @@ export const listOption = (
     ? Promise.resolve(undefined)
     : resolveList(outbound, value);
 
+/**
+ * When `leads --campaign` or `--list` found no lead, reads the campaign or
+ * list itself, so one that does not exist fails with `NotFound` as
+ * `outbound campaign <id>` does, instead of printing an empty list. It costs
+ * a request only when the list came back empty.
+ */
+export const confirmScope = async (
+  outbound: OutboundApi,
+  scope: {
+    readonly campaignId?: string | undefined;
+    readonly listId?: string | undefined;
+  },
+  found: number
+): Promise<void> => {
+  if (found > 0) {
+    return;
+  }
+
+  if (scope.campaignId !== undefined) {
+    await outbound.campaign(scope.campaignId).get();
+  }
+
+  if (scope.listId !== undefined && outbound.capabilities["lists.get"]) {
+    await outbound.list(scope.listId).get();
+  }
+};
+
 export interface CampaignSearch {
   readonly search: string;
   readonly status: CampaignStatus | undefined;

@@ -1,10 +1,33 @@
 $ outbound native
-{}
+{
+  "data": {},
+  "meta": {
+    "complete": true,
+    "notes": [],
+    "provider": "memory",
+    "requests": 0
+  },
+  "ok": true
+}
 
 $ outbound native inboxUnreadCount
+{
+  "data": null,
+  "error": {
+    "code": "Unsupported",
+    "message": "Reading the vendor's own data is not available: the memory adapter does not support it (native)"
+  },
+  "meta": {
+    "complete": false,
+    "notes": [],
+    "provider": "memory",
+    "requests": 0
+  },
+  "ok": false
+}
 Unsupported: Reading the vendor's own data is not available: the memory adapter does not support it (native)
 (exit code 1)
 
 $ outbound native --provider instantly
-[a JSON object of 105 reads, keyed by name, each with description, docs, method, path and params. The first three: deliverabilityAgent, deliverabilityAgentById, deliverabilityAgentFeed]
+[data: 105 reads, keyed by name, each with description, docs, method, path and params. The first three: deliverabilityAgent, deliverabilityAgentById, deliverabilityAgentFeed]
 

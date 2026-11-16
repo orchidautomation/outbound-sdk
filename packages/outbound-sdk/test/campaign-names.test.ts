@@ -19,6 +19,13 @@ import { agency, EMAIL_TOOL, PROFILE } from "./insights/helpers.ts";
 import { suite } from "./instantly/suite.ts";
 import { suite as smartleadSuite } from "./smartlead/suite.ts";
 
+// The answer inside the envelope: a list's records, or the data itself.
+const answerOf = (text: string): never => {
+  const { data } = JSON.parse(text) as { data: { items?: unknown } | null };
+
+  return (data?.items ?? data) as never;
+};
+
 // The Instantly fixtures list three campaigns over two pages.
 const FIRST = "01a1d77f-5e23-7a9a-9112-a6f7089f329f";
 const THIRD = "01a1d77f-5e23-7a9a-9112-a6f7089f3291";
@@ -128,7 +135,7 @@ test("instantly: an insight's campaign may be its name", async () => {
 
   assert.ok(result.ok, JSON.stringify(result));
   assert.equal(
-    (result.data as { result: { campaign: string } }).result.campaign,
+    (result.data as { campaign: string }).campaign,
     `instantly:client-a:${THIRD}`
   );
   assert.equal(result.meta.requests, paths().length, "the lookup is counted");
@@ -176,10 +183,7 @@ test("instantly: a LinkedIn lookup says Instantly leads have no LinkedIn field",
   const result = await call("person_summary", { person: PROFILE });
 
   assert.ok(result.ok, JSON.stringify(result));
-  assert.equal(
-    (result.data as { result: { found: boolean } }).result.found,
-    false
-  );
+  assert.equal((result.data as { found: boolean }).found, false);
   assert.deepEqual(paths(), []);
   assert.match(
     JSON.stringify(result),
@@ -212,7 +216,7 @@ const cli = async (adapter: Adapter, ...argv: string[]) => {
 
   return {
     code,
-    json: () => JSON.parse(out.join("")) as never,
+    json: () => answerOf(out.join("")),
     stderr: err.join("\n"),
   };
 };

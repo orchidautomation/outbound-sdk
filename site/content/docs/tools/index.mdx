@@ -15,7 +15,7 @@ related:
 Every tool:
 
 - **Takes one JSON object** and describes it as JSON Schema, so any model API can call it.
-- **Returns compact JSON** with `data`, `meta` and `next`. `meta.evidence` says how far to trust the numbers (`exact`, `sampled` or `derived`), `meta.requests` how many vendor requests the call made, `meta.today` is today's date in UTC (a model does not know it, and otherwise guesses the date range it asks for), and `next` suggests what to ask after this.
+- **Returns compact JSON** with `data`, `meta` and `next`. `meta.evidence` says how far to trust the numbers (`exact`, `sampled` or `derived`), `meta.requests` how many vendor requests the call made, `meta.today` is today's date in UTC (a model does not know it, and otherwise guesses the date range it asks for), `meta.complete` is `false` when the answer covers part of what was asked, with `meta.notes` saying why, and `next` suggests what to ask after this. Every tool, built-in or insight, reports coverage in `meta.complete` and `meta.notes` and nowhere else. `outbound tool` prints the result in [the CLI's envelope](/docs/cli#the-envelope).
 - **Never throws.** Bad input, a missing record and a read the adapter cannot serve all come back as `{ ok: false, error, next }`, which a model can read and recover from.
 - **Only reads.** No tool sends, pauses or edits anything.
 
@@ -72,11 +72,11 @@ The last column is the tool's own `needs`: the [capabilities](/docs/capabilities
 
 ## When a list is cut
 
-`campaign_overview`, `sender_health` and `reply_samples` return at most `limit` rows. Each says in `data.truncated` when more exist than it returned, and its card says so.
+`campaign_overview`, `sender_health`, `reply_samples` and `audience_lists` return at most `limit` rows. Each sets `meta.complete` to `false` when more exist than it returned, with a note such as "Stopped at 10 campaigns (limit); more active campaigns exist.", and its card shows the note.
 
-`sender_health` counts problems over more senders than it lists: at least the first 100, or `limit` when that is larger, which is one vendor page and so costs no extra request. `data.unhealthy` counts the paused, disconnected and failing senders among the `data.checked` senders, and they are listed first. `data.all_checked` is `false` when the account has more senders than were checked.
+`sender_health` counts problems over more senders than it lists: at least the first 100, or `limit` when that is larger, which is one vendor page and so costs no extra request. `data.unhealthy` counts the paused, disconnected and failing senders among the `data.checked` senders, and they are listed first. `meta.complete` is `false` when the account has more senders than were checked, or when `limit` left checked senders out of the list, and `meta.notes` says which.
 
-`deliverability_check` screens every sender, up to 500, from the sender list for a disconnected or failing status and a warmup score of 0, then checks the first `limit` in full, those with a problem first. `data.with_problems` counts problems across every screened sender. `data.checked` is how many were checked in full and `data.total` how many senders there are, or `null` past 500. `data.all_checked` is `false` when not every sender was checked in full, and `next` then says so.
+`deliverability_check` screens every sender, up to 500, from the sender list for a disconnected or failing status and a warmup score of 0, then checks the first `limit` in full, those with a problem first. `data.with_problems` counts problems across every screened sender. `data.checked` is how many were checked in full and `data.total` how many senders there are, or `null` past 500. `meta.complete` is `false` when not every sender was checked in full, and `meta.notes` says how many were and whether more than 500 exist.
 
 ## What is left out, and what is refused
 
@@ -140,7 +140,7 @@ The 26 [insights](/docs/insights) are tools of the same shape. `insightTools(out
   ../../_examples/tools-index/extra.out.txt
 </include>
 
-An insight tool wraps its answer as `data.result`, with `data.complete` and `data.notes` beside it. Like the twelve built-in tools, an insight whose adapter lacks a capability it needs is left out of the list.
+An insight tool returns the insight's answer as its `data`, and says how much it covers in `meta.complete` and `meta.notes`, as the built-in tools do. The insight's answer keeps its own camelCase keys, as every insight's answer does wherever it is read (see [names](/docs/insights#names)), so `step_funnel` returns `replyRate` while `winning_steps` returns `reply_rate`. Like the twelve built-in tools, an insight whose adapter lacks a capability it needs is left out of the list.
 
 ## Options
 

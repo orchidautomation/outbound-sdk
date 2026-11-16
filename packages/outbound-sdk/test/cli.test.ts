@@ -31,6 +31,12 @@ const cli = async (...argv: string[]) => {
     code,
     err: err.join("\n"),
     json: () => JSON.parse(out.join("\n")) as never,
+    /** The answer inside the envelope. */
+    data: () => (JSON.parse(out.join("\n")) as { data: unknown }).data as never,
+    /** A list's records, inside the envelope's `data.items`. */
+    items: () =>
+      (JSON.parse(out.join("\n")) as { data: { items: unknown } }).data
+        .items as never,
     out: out.join("\n"),
   };
 };
@@ -44,7 +50,7 @@ test("prints help with no command, and lists providers without a key", async () 
 
   const providers = await cli("providers", "--compact");
 
-  const list = providers.json() as {
+  const list = providers.items() as {
     id: string;
     envVars: { name: string }[];
   }[];
@@ -60,7 +66,7 @@ test("prints help with no command, and lists providers without a key", async () 
 });
 
 test("lists and reads through the SDK and prints JSON", async () => {
-  const campaigns = (await cli("campaigns", "--status", "active")).json() as {
+  const campaigns = (await cli("campaigns", "--status", "active")).items() as {
     ref: string;
   }[];
 
@@ -70,59 +76,59 @@ test("lists and reads through the SDK and prints JSON", async () => {
   );
 
   const one = (await cli("campaign", "cmp_founders")).json() as {
-    name: string;
+    data: { name: string };
     meta: { provider: string };
   };
 
-  assert.equal(one.name, "Q4 SaaS founders");
+  assert.equal(one.data.name, "Q4 SaaS founders");
   assert.equal(one.meta.provider, "memory");
 
   const sequence = (
     await cli("campaign", "cmp_founders", "--sequence")
-  ).json() as { steps: unknown[] };
+  ).data() as { steps: unknown[] };
 
   assert.equal(sequence.steps.length, 2);
 
   const stats = (
     await cli("campaign", "cmp_founders", "--stats", "--by", "day")
-  ).json() as { rows: unknown[] };
+  ).data() as { rows: unknown[] };
 
   // Three weeks of days.
   assert.equal(stats.rows.length, 21);
   assert.equal(
-    ((await cli("stats")).json() as { rows: { sent: number }[] }).rows[0]?.sent,
+    ((await cli("stats")).data() as { rows: { sent: number }[] }).rows[0]?.sent,
     943 + 1050
   );
   assert.equal(
-    ((await cli("senders", "--limit", "1")).json() as unknown[]).length,
+    ((await cli("senders", "--limit", "1")).items() as unknown[]).length,
     1
   );
   assert.equal(
-    ((await cli("leads", "--campaign", "cmp_founders")).json() as unknown[])
+    ((await cli("leads", "--campaign", "cmp_founders")).items() as unknown[])
       .length,
     2
   );
 
   const replies = (
     await cli("replies", "--category", "positive", "--bodies")
-  ).json() as { bodyText: string }[];
+  ).items() as { bodyText: string }[];
 
   assert.equal(replies[0]?.bodyText, "Thanks, happy to chat next week.");
   assert.equal(
-    ((await cli("limits")).json() as { provider: string }[])[0]?.provider,
+    ((await cli("limits")).items() as { provider: string }[])[0]?.provider,
     "memory"
   );
 });
 
 test("reports capabilities and caveats, and runs a tool", async () => {
-  const capabilities = (await cli("capabilities")).json() as {
+  const capabilities = (await cli("capabilities")).data() as {
     provider: string;
     capabilities: Record<string, unknown>;
   };
 
   assert.equal(capabilities.provider, "memory");
   assert.equal(capabilities.capabilities["leads.list"], true);
-  const tools = (await cli("tools")).json() as { name: string }[];
+  const tools = (await cli("tools")).items() as { name: string }[];
   assert.ok(tools.some((tool) => tool.name === "campaign_overview"));
 
   const result = (
@@ -137,7 +143,7 @@ test("reports capabilities and caveats, and runs a tool", async () => {
 });
 
 test("tools lists each tool's inputs, and a tool that needs input prints them when given none", async () => {
-  const tools = (await cli("tools")).json() as {
+  const tools = (await cli("tools")).items() as {
     name: string;
     description: string;
     parameters: { type: string; properties: Record<string, unknown> };
@@ -169,7 +175,7 @@ test("tools lists each tool's inputs, and a tool that needs input prints them wh
 
   assert.equal(schema.code, 0);
   assert.deepEqual(
-    schema.json(),
+    schema.data(),
     tools.find((tool) => tool.name === "lead_runway")
   );
 
@@ -190,7 +196,20 @@ test("tools lists each tool's inputs, and a tool that needs input prints them wh
   assert.equal(ran.ok, true);
 });
 
-test("a wrong command or argument exits 1 with a one-line reason on stderr", async () => {
+// A failure prints its envelope on stdout, with the code and message stderr has.
+const assertFailed = (out: string, pattern: RegExp): void => {
+  const failed = JSON.parse(out) as {
+    ok: boolean;
+    data: unknown;
+    error: { code: string; message: string };
+  };
+
+  assert.equal(failed.ok, false);
+  assert.equal(failed.data, null);
+  assert.match(`${failed.error.code}: ${failed.error.message}`, pattern);
+};
+
+test("a wrong command or argument exits 1 with a one-line reason on stderr, and its envelope on stdout", async () => {
   for (const [argv, pattern] of [
     [["nope"], /Invalid: Unknown command "nope"/u],
     [["campaign"], /Invalid: Missing a campaign id/u],
@@ -209,7 +228,7 @@ test("a wrong command or argument exits 1 with a one-line reason on stderr", asy
     const result = await cli(...argv);
     assert.equal(result.code, 1, argv.join(" "));
     assert.match(result.err, pattern);
-    assert.equal(result.out, "");
+    assertFailed(result.out, pattern);
   }
 });
 
@@ -232,17 +251,17 @@ test("a flag that takes a fixed word refuses any other, in one line that names t
     const result = await cli(...argv);
     assert.equal(result.code, 1, argv.join(" "));
     assert.match(result.err, pattern);
-    assert.equal(result.out, "");
+    assertFailed(result.out, pattern);
   }
 
-  const total = (await cli("stats", "--by", "total")).json() as {
+  const total = (await cli("stats", "--by", "total")).data() as {
     rows: { date: string | null }[];
   };
 
   assert.equal(total.rows.length, 1);
   assert.equal(total.rows[0]?.date, null);
   assert.ok(
-    ((await cli("stats", "--by", "day")).json() as { rows: unknown[] }).rows
+    ((await cli("stats", "--by", "day")).data() as { rows: unknown[] }).rows
       .length > 1
   );
 });
@@ -559,12 +578,12 @@ test("the executable serves MCP over stdio until stdin closes", async () => {
 test("the executable exits 1 and writes the reason to stderr for a wrong command", async () => {
   const result = await spawnCli(["nope"]);
   assert.equal(result.code, 1);
-  assert.equal(result.stdout, "");
+  assertFailed(result.stdout, /^Invalid: Unknown command "nope"/u);
   assert.match(result.stderr, /Invalid: Unknown command "nope"/u);
 });
 
 test("--card prints a tool's card and --slack a Slack message ready to post", async () => {
-  const card = (await cli("tool", "sender_health", "--card")).json() as {
+  const card = (await cli("tool", "sender_health", "--card")).data() as {
     root: string;
     elements: Record<string, { type: string; props: { title?: string } }>;
   };
@@ -572,7 +591,7 @@ test("--card prints a tool's card and --slack a Slack message ready to post", as
   assert.equal(card.elements[card.root]?.type, "Card");
   assert.equal(card.elements[card.root]?.props.title, "Sender health");
 
-  const slack = (await cli("tool", "sender_health", "--slack")).json() as {
+  const slack = (await cli("tool", "sender_health", "--slack")).data() as {
     text: string;
     blocks: { type: string }[];
   };
@@ -585,7 +604,7 @@ test("--card prints a tool's card and --slack a Slack message ready to post", as
 });
 
 test("--slack draws an insight too, and an unknown insight is still an error", async () => {
-  const slack = (await cli("insight", "hot_leads", "--slack")).json() as {
+  const slack = (await cli("insight", "hot_leads", "--slack")).data() as {
     text: string;
     blocks: { type: string }[];
   };
@@ -597,8 +616,12 @@ test("--slack draws an insight too, and an unknown insight is still an error", a
     2
   );
 
-  const plain = (await cli("insight", "hot_leads")).json() as { data: object };
-  assert.ok("data" in plain, "without a flag the answer is unchanged");
+  const plain = (await cli("insight", "hot_leads")).json() as {
+    data: object;
+    meta: { insight: string };
+  };
+
+  assert.equal(plain.meta.insight, "hot_leads", "without a flag, the answer");
 
   const unknown = await cli("insight", "no_such_insight", "--slack");
   assert.equal(unknown.code, 1);

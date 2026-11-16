@@ -4,6 +4,8 @@
 
 import { isJsonObject } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
+import { envelope, failedEnvelope } from "./envelope.ts";
+import type { Failure, Printed, RunFacts } from "./envelope.ts";
 
 /** The CLI's own `--compact` and `--raw`. */
 export interface PrintOptions {
@@ -33,7 +35,8 @@ export const withoutRaw = (value: Json): Json => {
   );
 };
 
-export const printAnswer = (
+/** Prints JSON as it is: indented, or on one line with `--compact`. */
+export const printJson = (
   write: (text: string) => void,
   value: Json,
   options: PrintOptions
@@ -45,4 +48,39 @@ export const printAnswer = (
       ? JSON.stringify(shown)
       : JSON.stringify(shown, null, 2)
   );
+};
+
+/** Prints a command's answer in the envelope (see `envelope.ts`). */
+export const printAnswer = (
+  write: (text: string) => void,
+  printed: Printed,
+  options: PrintOptions,
+  facts: RunFacts
+): void => {
+  printJson(write, envelope(printed, facts), options);
+};
+
+// Commands whose standard output is not JSON: the MCP server's protocol, and
+// version and update. A failure there goes to standard error only.
+const TEXT_COMMANDS: ReadonlySet<string> = new Set([
+  "mcp",
+  "update",
+  "version",
+]);
+
+/**
+ * Prints a command that failed in the envelope, so stdout keeps its shape.
+ * Parsing may have failed first, so `--compact` is read from the arguments.
+ */
+export const printFailure = (
+  write: (text: string) => void,
+  run: { readonly argv: readonly string[]; readonly name: string | undefined },
+  failure: Failure,
+  facts: RunFacts
+): void => {
+  if (!TEXT_COMMANDS.has(run.name ?? "")) {
+    printJson(write, failedEnvelope(failure, facts), {
+      compact: run.argv.includes("--compact"),
+    });
+  }
 };

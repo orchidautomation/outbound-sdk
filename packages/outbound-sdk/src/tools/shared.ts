@@ -26,6 +26,13 @@ export interface ToolSuccess {
      * otherwise guesses the range it asks for.
      */
     readonly today?: string | undefined;
+    /**
+     * `false` when the answer covers part of what was asked, for example
+     * when `limit` cut a list or a cap stopped a read; `notes` says why.
+     */
+    readonly complete: boolean;
+    /** What to know before trusting the answer, for example what was left out. */
+    readonly notes: readonly string[];
   };
   /** What to ask next. */
   readonly next: string;
