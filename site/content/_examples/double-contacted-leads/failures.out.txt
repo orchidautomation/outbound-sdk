@@ -5,8 +5,10 @@ no shared identifier: {
   acrossTools: 0,
   campaignsRead: 2,
   collisions: 0,
+  concurrent: 0,
   leadsRead: 3,
   leadsWithoutIdentifier: 1,
+  pastOverlaps: 0,
   withinTool: 0
 }
 bad input: Invalid

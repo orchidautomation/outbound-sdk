@@ -126,15 +126,17 @@ test("lead_collisions lists each person in two or more active campaigns, most ca
   ]);
   assert.equal(
     data.collisions[0]?.finding,
-    "person1@example.com is in 3 memory campaigns at once."
+    'person1@example.com is in 2 memory campaigns at once, and was in "Agencies" (completed).'
   );
   assert.deepEqual(data.totals, {
     acrossTools: 0,
     campaignsRead: 3,
     collisions: 2,
+    concurrent: 2,
     // 3 in c1, 4 in c2, 2 in c3.
     leadsRead: 9,
     leadsWithoutIdentifier: 2,
+    pastOverlaps: 0,
     withinTool: 2,
   });
   assert.equal(result.meta.complete, true);
@@ -221,11 +223,116 @@ test("lead_collisions marks a collision across tools and joins an address to a p
   );
   assert.equal(
     result.data.collisions[1]?.finding,
-    "person1b@example.com is in 2 campaigns across mailtool and lntool (email and linkedin)."
+    "person1b@example.com is in 2 campaigns across mailtool and lntool (email and linkedin) at once."
   );
   assert.equal(result.data.totals.acrossTools, 2);
   assert.equal(result.data.totals.withinTool, 2);
   assert.equal(result.meta.provider, "combined");
+});
+
+const PAST: MemoryData = {
+  campaigns: [
+    { id: "c1", name: "UG - AI Campaign" },
+    { id: "c2", name: "UG - Reachdesk Customers" },
+  ],
+  leads: [
+    // person1 finished one campaign and is now in another.
+    {
+      campaignId: "c1",
+      email: "person1@example.com",
+      id: "l1",
+      status: "completed",
+    },
+    { campaignId: "c2", email: "person1@example.com", id: "l2" },
+    // person2 is no longer sent to in either.
+    {
+      campaignId: "c1",
+      email: "person2@example.com",
+      id: "l3",
+      status: "replied",
+    },
+    {
+      campaignId: "c2",
+      email: "person2@example.com",
+      id: "l4",
+      status: "unsubscribed",
+    },
+    // person3 is active in both.
+    { campaignId: "c1", email: "person3@example.com", id: "l5" },
+    { campaignId: "c2", email: "person3@example.com", id: "l6" },
+  ],
+};
+
+test("lead_collisions reports only people active in two campaigns at once by default", async () => {
+  const result = await single(PAST).insights.leadCollisions({});
+
+  assert.deepEqual(
+    result.data.collisions.map((each) => [each.identifiers, each.stillActive]),
+    [[["email:person3@example.com"], 2]]
+  );
+  assert.equal(
+    result.data.collisions[0]?.finding,
+    "person3@example.com is in 2 memory campaigns at once."
+  );
+  assert.equal(result.data.totals.collisions, 1);
+  assert.equal(result.data.totals.concurrent, 1);
+  assert.equal(result.data.totals.pastOverlaps, 2);
+});
+
+test("lead_collisions reports past overlaps with include_past, without saying at once", async () => {
+  const result = await single(PAST).insights.leadCollisions({
+    include_past: true,
+  });
+
+  assert.deepEqual(
+    result.data.collisions.map((each) => [
+      each.identifiers[0],
+      each.stillActive,
+      each.finding,
+    ]),
+    [
+      // Most active campaigns first.
+      [
+        "email:person3@example.com",
+        2,
+        "person3@example.com is in 2 memory campaigns at once.",
+      ],
+      [
+        "email:person1@example.com",
+        1,
+        'person1@example.com was in "UG - AI Campaign" (completed) and is now active in "UG - Reachdesk Customers".',
+      ],
+      [
+        "email:person2@example.com",
+        0,
+        'person2@example.com was in "UG - AI Campaign" (replied) and "UG - Reachdesk Customers" (unsubscribed), and is active in none of them now.',
+      ],
+    ]
+  );
+  assert.deepEqual(
+    result.data.collisions
+      .filter((each) => each.stillActive < 2)
+      .map((each) => each.finding.includes("at once")),
+    [false, false]
+  );
+  assert.equal(result.data.totals.collisions, 3);
+  assert.equal(result.data.totals.concurrent, 1);
+  assert.equal(result.data.totals.pastOverlaps, 2);
+  assert.equal(result.data.totals.withinTool, 3);
+});
+
+test("lead_collisions refuses an include_past that is not a boolean", async () => {
+  await assert.rejects(
+    async () =>
+      await single(PAST).insights.leadCollisions({
+        // @ts-expect-error -- an input the schema rejects.
+        include_past: "yes",
+      }),
+    (error) =>
+      OutboundError.is(error) &&
+      error.code === "Invalid" &&
+      error.message.includes("include_past")
+  );
 });
 
 test("lead_collisions finds nothing with no campaigns, and nothing across tools without a shared identifier", async () => {
@@ -237,8 +344,10 @@ test("lead_collisions finds nothing with no campaigns, and nothing across tools 
       acrossTools: 0,
       campaignsRead: 0,
       collisions: 0,
+      concurrent: 0,
       leadsRead: 0,
       leadsWithoutIdentifier: 0,
+      pastOverlaps: 0,
       withinTool: 0,
     },
   });
@@ -254,11 +363,9 @@ test("lead_collisions says the answer is partial when a cap stops a read", async
     max_campaigns: 2,
   });
 
-  // c1 and c2 only: person1 is in both, person2 only in c1.
-  assert.deepEqual(
-    fewCampaigns.data.collisions.map((each) => each.identifiers[0]),
-    ["email:person1@example.com"]
-  );
+  // c1 and c2 only: person1 is in both but completed c2, person2 only in c1.
+  assert.deepEqual(fewCampaigns.data.collisions, []);
+  assert.equal(fewCampaigns.data.totals.pastOverlaps, 1);
   assert.equal(fewCampaigns.meta.complete, false);
   assert.deepEqual(fewCampaigns.meta.notes, [
     "Stopped at 2 campaigns (max_campaigns); more exist.",

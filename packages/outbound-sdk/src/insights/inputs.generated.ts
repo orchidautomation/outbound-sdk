@@ -62,6 +62,13 @@ export interface InsightInputs {
   /** The input of `leadCollisions` (the `lead_collisions` tool). */
   readonly leadCollisions: {
     /**
+     * Also report a person in two or more campaigns of whom fewer than two memberships are still active, for example one who completed one campaign and is now in another. By default only people active in two or more campaigns at once are reported.
+     *
+     * Defaults to `false`.
+     */
+    readonly include_past?: boolean | undefined;
+
+    /**
      * The most campaigns to read. Each costs one request per page of its leads.
      *
      * A whole number from 1 to 200. Defaults to `20`.
@@ -86,6 +93,23 @@ export interface InsightInputs {
   };
   /** The input of `suppressionCheck` (the `suppression_check` tool). */
   readonly suppressionCheck: {
+    /**
+     * Only a matching lead in one of these states is a violation: active, paused, unknown (not yet started, or the tool does not say), completed, replied, bounced or unsubscribed. Other matches are counted in totals.alreadyStopped. Defaults to the leads still being sent to.
+     *
+     * At least 1 item. Each one of `active`, `bounced`, `completed`, `paused`, `replied`, `unknown`, `unsubscribed`. Defaults to `["active","paused","unknown"]`.
+     */
+    readonly lead_statuses?:
+      | (
+          | "active"
+          | "bounced"
+          | "completed"
+          | "paused"
+          | "replied"
+          | "unknown"
+          | "unsubscribed"
+        )[]
+      | undefined;
+
     /**
      * The most block list entries to read. A vendor request returns about 50 to 100.
      *

@@ -1,4 +1,5 @@
-// lead_collisions: people being contacted by more than one campaign at once.
+// lead_collisions: people being contacted by more than one campaign at once,
+// and on request people who were in one campaign and are now in another.
 
 import { z } from "zod";
 
@@ -10,6 +11,12 @@ import { keysOfLead } from "./find.ts";
 import { campaignsIn, leadsOf, statusesField } from "./read.ts";
 
 const input = z.object({
+  include_past: z
+    .boolean()
+    .default(false)
+    .describe(
+      "Also report a person in two or more campaigns of whom fewer than two memberships are still active, for example one who completed one campaign and is now in another. By default only people active in two or more campaigns at once are reported."
+    ),
   max_campaigns: z
     .number()
     .int()
@@ -42,7 +49,7 @@ export interface LeadCollision {
   /** Every exact identifier the person's records carry, as `email:` or `linkedin:` keys. */
   readonly identifiers: readonly string[];
   readonly campaignCount: number;
-  /** Campaigns in which the lead's own status is still `active`. */
+  /** Campaigns in which the lead's own status is still `active`. Two or more means the outreach overlaps now. */
   readonly stillActive: number;
   /** `across_tools` when the campaigns are in more than one tool, otherwise `within_tool`. */
   readonly scope: "across_tools" | "within_tool";
@@ -53,10 +60,17 @@ export interface LeadCollision {
 }
 
 export interface LeadCollisions {
-  /** Most campaigns first, then collisions across tools, then by identifier. */
+  /** Most active campaigns first, then most campaigns, then collisions across tools, then by identifier. */
   readonly collisions: readonly LeadCollision[];
   readonly totals: {
     readonly collisions: number;
+    /** Collisions returned in which two or more memberships are still active. */
+    readonly concurrent: number;
+    /**
+     * People in two or more campaigns of whom fewer than two memberships are
+     * still active. They are in `collisions` only with `include_past`.
+     */
+    readonly pastOverlaps: number;
     readonly acrossTools: number;
     readonly withinTool: number;
     readonly campaignsRead: number;
@@ -127,33 +141,79 @@ const toCollision = (group: Group): LeadCollision[] => {
   const channels = [...new Set(campaigns.map((each) => each.channel))];
   const scope = providers.length > 1 ? "across_tools" : "within_tool";
   const identifiers = [...group.keys].toSorted();
+  const active = campaigns.filter((each) => each.leadStatus === "active");
 
   return [
     {
       campaignCount: campaigns.length,
       campaigns,
       channels,
-      finding:
-        scope === "across_tools"
-          ? `${shownKey(identifiers[0] ?? "")} is in ${campaigns.length} campaigns across ${providers.join(" and ")} (${channels.join(" and ")}).`
-          : `${shownKey(identifiers[0] ?? "")} is in ${campaigns.length} ${providers[0]} campaigns at once.`,
+      finding: findingOf(shownKey(identifiers[0] ?? ""), campaigns, {
+        channels,
+        providers,
+      }),
       identifiers,
       providers,
       scope,
-      stillActive: campaigns.filter((each) => each.leadStatus === "active")
-        .length,
+      stillActive: active.length,
     },
   ];
 };
 
+/** `"A"`, `"A" and "B"`, `"A", "B" and "C"`. */
+const listed = (parts: readonly string[]): string =>
+  parts.length < 2
+    ? (parts[0] ?? "")
+    : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`;
+
+const named = (campaigns: readonly CollisionCampaign[]): string =>
+  listed(campaigns.map((each) => `"${each.campaignName}"`));
+
+const withStatus = (campaigns: readonly CollisionCampaign[]): string =>
+  listed(
+    campaigns.map((each) => `"${each.campaignName}" (${each.leadStatus})`)
+  );
+
+/**
+ * Says "at once" only when two or more memberships are still active; a
+ * membership that stopped is named with its status as a past one.
+ */
+const findingOf = (
+  who: string,
+  campaigns: readonly CollisionCampaign[],
+  tools: {
+    readonly providers: readonly string[];
+    readonly channels: readonly string[];
+  }
+): string => {
+  const active = campaigns.filter((each) => each.leadStatus === "active");
+  const past = campaigns.filter((each) => each.leadStatus !== "active");
+
+  if (active.length >= 2) {
+    const where =
+      tools.providers.length > 1
+        ? `campaigns across ${tools.providers.join(" and ")} (${tools.channels.join(" and ")})`
+        : `${tools.providers[0]} campaigns`;
+
+    const also = past.length === 0 ? "" : `, and was in ${withStatus(past)}`;
+
+    return `${who} is in ${active.length} ${where} at once${also}.`;
+  }
+
+  return active.length === 0
+    ? `${who} was in ${withStatus(past)}, and is active in none of them now.`
+    : `${who} was in ${withStatus(past)} and is now active in ${named(active)}.`;
+};
+
 const worstFirst = (left: LeadCollision, right: LeadCollision): number =>
+  right.stillActive - left.stillActive ||
   right.campaignCount - left.campaignCount ||
   left.scope.localeCompare(right.scope) ||
   (left.identifiers[0] ?? "").localeCompare(right.identifiers[0] ?? "");
 
 export const leadCollisions = defineInsight({
   description:
-    "People who are in two or more campaigns at once, so they get overlapping outreach. Reads the campaigns in the given statuses (active by default) and their leads, matches people by exact email address or LinkedIn profile, and returns each person with their campaigns, channel and tool, most campaigns first. A collision across tools (for example email in one and LinkedIn in another) is marked across_tools; one inside a tool is within_tool. Costs one request per page of campaigns plus one per page of each campaign's leads; the caps make the answer incomplete rather than slow.",
+    "People who are in two or more campaigns at once, so they get overlapping outreach. Reads the campaigns in the given statuses (active by default) and their leads, matches people by exact email address or LinkedIn profile, and returns each person with their campaigns, channel and tool, most active campaigns first. By default a person counts only when their own status is active in two or more of the campaigns; include_past also reports people who finished, replied to or left one campaign and are in another, counted in totals.pastOverlaps either way. A collision across tools (for example email in one and LinkedIn in another) is marked across_tools; one inside a tool is within_tool. Costs one request per page of campaigns plus one per page of each campaign's leads; the caps make the answer incomplete rather than slow.",
   inputSchema: input,
   key: "leadCollisions",
   // A masked address is the same text for every lead, so every lead would
@@ -196,8 +256,11 @@ export const leadCollisions = defineInsight({
 
     const entries = perCampaign.flat();
 
-    const collisions = groupPeople(entries)
-      .flatMap(toCollision)
+    const overlaps = groupPeople(entries).flatMap(toCollision);
+    const pastOverlaps = overlaps.filter((each) => each.stillActive < 2).length;
+
+    const collisions = overlaps
+      .filter((each) => values.include_past || each.stillActive >= 2)
       .toSorted(worstFirst);
 
     const acrossTools = collisions.filter(
@@ -210,10 +273,12 @@ export const leadCollisions = defineInsight({
         acrossTools,
         campaignsRead: campaigns.length,
         collisions: collisions.length,
+        concurrent: collisions.filter((each) => each.stillActive >= 2).length,
         leadsRead: entries.length,
         leadsWithoutIdentifier: entries.filter(
           (entry) => keysOfLead(entry.lead).length === 0
         ).length,
+        pastOverlaps,
         withinTool: collisions.length - acrossTools,
       },
     };

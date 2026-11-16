@@ -51,9 +51,9 @@ How a collision is found:
 
 - Only campaigns in `statuses` are read. The default is `["active"]`.
 - Records that share an exact email address or LinkedIn profile are one person. A record that carries both joins the two groups: that is how Raj's LinkedIn record is tied to his email records above.
-- A person in two or more different campaigns is a collision. The same person twice in one campaign is not.
+- A person whose own status is `active` in two or more different campaigns is a collision. The same person twice in one campaign is not.
 - `scope` is `across_tools` when the campaigns are in more than one tool, otherwise `within_tool`.
-- `stillActive` counts the campaigns in which the lead's own status is still `active`. A lead who finished one sequence and is active in another has `stillActive` 1.
+- `stillActive` counts the campaigns in which the lead's own status is still `active`. A lead who finished one sequence and is active in another has `stillActive` 1, and is left out unless you pass `include_past: true`; `totals.pastOverlaps` counts them either way, and their `finding` names the finished campaign instead of saying "at once".
 
 How a block list match is found:
 
@@ -61,7 +61,7 @@ How a block list match is found:
 - The most specific match is reported: the address, then the profile, then the domain.
 - On several tools, an entry on one tool's list is matched against the other tools' leads as well, and `sameTool` is `false`. Sue above is blocked in the LinkedIn tool and still in an email campaign.
 - Entries that are a company name, or that the adapter maps to the kind `other`, cannot be matched to a lead. They are counted in `totals.blockEntriesNotChecked`.
-- A violation is reported whatever the lead's status. Leads still `active` come first; Leo, who finished his sequence, is last.
+- A violation is a lead still being sent to: by default its status is `active`, `paused` or `unknown`. A lead on the list who already unsubscribed, bounced, replied or finished is counted in `totals.alreadyStopped` instead; pass `lead_statuses` to change which statuses count. Leo, who finished his sequence, is not listed for that reason. Leads still `active` come first.
 
 ## Try it without a key
 
@@ -141,7 +141,7 @@ The defaults read up to 20 campaigns (`max_campaigns`, at most 200), 500 leads f
 
 ## Limits
 
-- "At once" means in two campaigns that are both in `statuses` when you ask. It does not compare send dates, so it does not say the person got two messages on the same day.
+- "At once" means the lead is `active` in two campaigns that are both in `statuses` when you ask. It does not compare send dates, so it does not say the person got two messages on the same day.
 - No fuzzy matching. `nina@example.com` and `n.ortega@example.com` are two people.
 - A domain entry matches that exact domain. A lead at a subdomain of it is not matched.
 - A clean result under a cap is not a clean account. Read `meta.complete` before you report "no overlaps".
