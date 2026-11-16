@@ -652,3 +652,18 @@ What the adapter does: a negative `delay` or `pre_delay`, or a unit outside the 
 ### Mailbox and campaign limits below zero (2026-11-16, for OUT-110)
 
 Same fetch. `components.schemas.Account.daily_limit`: `type: [null, number]`, "Daily email sending limit", no minimum. `Campaign.daily_limit` (`[null, number]`, "The daily limit for sending emails") and `Campaign.email_gap` (`[null, number]`, "The gap between emails in minutes") have no minimum either; `Campaign.daily_max_leads` (`[null, integer]`) has `minimum: 0`. None was seen negative live. The normalized `dailyLimit`, `dailyNewLeads` and `gapMinutes` must be 0 or more, so a negative value would have failed the whole mailbox or settings read the way the delay did. The adapter now maps a negative one to `null` with a note in `meta.notes`, for example "The daily limit of person1@example.com is negative in Instantly (-5); left out."
+
+## The list-email lane and other processes (2026-11-16, for OUT-114)
+
+Fetched fresh on 2026-11-16:
+
+- https://developer.instantly.ai/getting-started/rate-limit.md: unchanged. "The rate limit is shared between API v2 and API v1, and it applies to the entire Workspace, even if it's using multiple API keys." 100 requests a second and 6,000 a minute; over either, "the API requests will fail with the `429` status code". No headers and no `Retry-After` are named.
+- https://developer.instantly.ai/api-reference/email/list-email.md and https://api.instantly.ai/openapi/api_v2.json (`info.version` 2.0.0, 203 paths): `GET /api/v2/emails` still says "**Rate Limit:** This endpoint has a rate limit of 20 requests per minute, unlike other API endpoints." Its 429 is `{ statusCode: 429, error: "Too Many Requests", message: "Rate limit exceeded" }` with no headers declared. In the whole spec only `countLeadsFromSupersearch` and `previewLeadsFromSupersearch` declare a header on their 429.
+- `GET /api/v2/emails/{id}` still documents no limit of its own. `POST /api/v2/emails/test` (a write the SDK never sends) is "10 requests per minute per workspace".
+
+What follows for the adapter:
+
+- **The scope of the 20 a minute is still not stated.** The general limit is workspace-wide, and the stress test on 2026-11-16 (OUT-109) saw `dropped_replies` go from 0.76 s alone to 121 s while another process read emails on the same workspace. That is read as the lane being shared by every process and key on the workspace (inferred, not documented).
+- **No `Retry-After` comes with a 429**, so the engine now pauses the lane for the spacing of its published window, `60,000 / 20` = 3 s, before retrying, instead of 1 s. Five attempts then span at least 12 s of the minute rather than about 4 s.
+- **The SDK keeps each process inside half the lane, 10 a minute.** Two processes on one key each take their 10 and together reach Instantly's 20, which is where the 429s in the stress test came from. A `rateLimitStore` shared between them (`outbound-sdk/redis`, or one listed in a CLI `--config` file) makes them spend one budget.
+- **What the live run measured** (OUT-114): `replies --limit 1000` took 61.8 s for 11 requests and `--limit 2000` 62.6 s for 20, with nothing on stderr and no `throttledMs` in `meta`. That is the 10-a-minute share: ten requests go at once and the eleventh waits for the minute to pass.

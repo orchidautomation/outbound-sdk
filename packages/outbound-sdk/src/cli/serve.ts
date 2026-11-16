@@ -4,6 +4,7 @@ import { OutboundError } from "../internal/errors.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
 import { createTools, TOOL_NAMES } from "../tools/index.ts";
 import { createMcpServer } from "./mcp.ts";
+import type { ThrottleTotal } from "./progress.ts";
 import { serveStdio } from "./stdio.ts";
 import { didYouMean } from "./suggest.ts";
 import { packageVersion } from "./version.ts";
@@ -35,6 +36,8 @@ export const namedTools = (
 export interface ServeIo {
   readonly stdin?: (() => AsyncIterable<string> | Iterable<string>) | undefined;
   readonly stdout: (text: string) => void;
+  /** How long the server has waited on rate limits, for the note on a slow tool call. */
+  readonly throttled?: (() => ThrottleTotal) | undefined;
 }
 
 /**
@@ -92,6 +95,7 @@ export const serve = async (
     }),
     leftOut,
     only: TOOL_NAMES.filter(keeps),
+    throttled: io.throttled,
     version: packageVersion(),
   });
 

@@ -33,6 +33,17 @@ export interface ThrottleEvent {
   readonly provider: string;
   readonly lane: string;
   readonly waitMs: number;
+  /**
+   * `budget`: the SDK's own rate budget for the lane is full. `vendor`: the
+   * vendor answered 429, often because another process or tool on the same
+   * workspace spent the limit.
+   */
+  readonly cause: "budget" | "vendor";
+  /** The windows the SDK keeps the lane inside, after `share` and any slowdown. */
+  readonly windows: readonly {
+    readonly requests: number;
+    readonly perMs: number;
+  }[];
 }
 
 export interface RequestEvent {

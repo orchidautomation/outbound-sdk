@@ -99,13 +99,15 @@ It does not fire for the last failure, when no retry follows.
 
 `ThrottleEvent`:
 
-| Field      | Type     | Holds                       |
-| ---------- | -------- | --------------------------- |
-| `lane`     | `string` | The rate lane that is full. |
-| `waitMs`   | `number` | How long the SDK will wait. |
-| `provider` | `string` |                             |
+| Field | Type | Holds |
+| --- | --- | --- |
+| `lane` | `string` | The rate lane that is full. |
+| `waitMs` | `number` | How long the SDK will wait. |
+| `cause` | `"budget"` or `"vendor"` | `budget`: the SDK's own budget for the lane is full. `vendor`: the vendor answered 429, often because another process or tool on the same workspace spent the limit. |
+| `windows` | `{ requests, perMs }[]` | The windows the SDK keeps the lane inside, after `share` and any slowdown. |
+| `provider` | `string` |  |
 
-It fires when a request has to wait for the [rate budget](/docs/rate-limits). One request can wait more than once. The total for a call is `throttledMs` on `onAction` and on [`meta`](/docs/api/results).
+It fires when a request has to wait for the [rate budget](/docs/rate-limits), and before the wait that follows a 429, beside `onRetry`. One request can wait more than once. The total for a call is `throttledMs` on `onAction` and on [`meta`](/docs/api/results), and it includes the waits after a 429.
 
 ## A hook cannot fail a call
 

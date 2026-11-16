@@ -58,6 +58,11 @@ test("a profile slug ignores scheme, host prefix, case, trailing slash and query
   );
   assert.equal(profileSlug("https://example.com/in/x"), null);
   assert.equal(profileSlug(null), null);
+  assert.equal(
+    profileSlug("https://www.linkedin.com/in/Example%"),
+    "example%",
+    "a malformed escape is kept, not thrown"
+  );
 });
 
 test("leads are found by exact email or LinkedIn profile, one record per campaign", async () => {
