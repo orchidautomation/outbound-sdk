@@ -33,7 +33,14 @@ export interface PersonCampaign {
   readonly channel: "email" | "linkedin";
   readonly provider: string;
   readonly lead: string;
+  /**
+   * The lead's status, agreeing with `replied`: when the vendor says
+   * `replied` only because of automatic replies, this is where the lead is in
+   * the sequence instead, and `vendorLeadStatus` keeps the vendor's word.
+   */
   readonly leadStatus: string;
+  /** The lead's status as the vendor's record gives it, before automatic replies are set aside. */
+  readonly vendorLeadStatus: string;
   /** The vendor's own label, for example `Interested`. */
   readonly interest: string | null;
   readonly messagesSent: number;
@@ -255,7 +262,9 @@ const summarize = async (
     channel: campaign?.channel ?? (lead.email === null ? "linkedin" : "email"),
     interest: lead.interest,
     lead: lead.ref,
-    leadStatus: lead.status,
+    // The vendor's "replied" can count an out-of-office; the person did not reply.
+    leadStatus:
+      autoReplied && lead.status === "replied" ? lead.progress : lead.status,
     provider: lead.provider,
     autoReplied,
     replied: !autoReplied && (activity.replies > 0 || lead.replied === true),
@@ -264,6 +273,7 @@ const summarize = async (
     repliedStepIndexes: steps,
     repliedStepNumbers: steps.map((index) => index + 1),
     repliedSteps: steps,
+    vendorLeadStatus: lead.status,
   };
 };
 

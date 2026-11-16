@@ -30,7 +30,7 @@ const input = z.object({
     .min(1)
     .default([...SENDABLE])
     .describe(
-      "Only a matching lead in one of these states is a violation: active, paused, unknown (not yet started, or the tool does not say), completed, replied, bounced or unsubscribed. Other matches are counted in totals.alreadyStopped. Defaults to the leads still being sent to."
+      "Only a matching lead in one of these states is a violation: active, paused, unknown (not yet started, or the tool does not say), completed, skipped (the tool decided never to send), replied, bounced or unsubscribed. Other matches are counted in totals.alreadyStopped. Defaults to the leads still being sent to."
     ),
   max_block_entries: z
     .number()

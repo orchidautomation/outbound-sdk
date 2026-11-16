@@ -113,6 +113,15 @@ export const mailProviderSchema = z.enum([
 
 export type MailProvider = z.infer<typeof mailProviderSchema>;
 
+/** Who hosts a lead's own mailbox, the one the campaign sends to. */
+export const recipientMailProviderSchema = z.enum([
+  "google",
+  "microsoft",
+  "other",
+]);
+
+export type RecipientMailProvider = z.infer<typeof recipientMailProviderSchema>;
+
 export const senderSchema = z.object({
   ...base,
   /** Lowercased mailbox address. `null` for a LinkedIn seat. */
@@ -144,17 +153,23 @@ export const leadStatusSchema = z.enum([
   "completed",
   "paused",
   "replied",
+  "skipped",
   "unknown",
   "unsubscribed",
 ]);
 
 export type LeadStatus = z.infer<typeof leadStatusSchema>;
 
-/** Where a lead is in its sequence, whatever came back from it. */
+/**
+ * Where a lead is in its sequence, whatever came back from it. `skipped` is a
+ * lead the vendor decided never to send to, for example a duplicate or one
+ * over a domain limit: it is not waiting to start.
+ */
 export const leadProgressSchema = z.enum([
   "active",
   "completed",
   "paused",
+  "skipped",
   "unknown",
 ]);
 
@@ -206,6 +221,12 @@ export const leadSchema = z.object({
   phone: z.string().nullable(),
   /** Where the lead is in its sequence, whatever came back from it. */
   progress: leadProgressSchema,
+  /**
+   * Who hosts the lead's own mailbox, as the vendor detected it. `null` when
+   * the vendor has not detected it or does not say. Optional, so a lead built
+   * or stored before the field existed still matches the schema.
+   */
+  recipientMailProvider: recipientMailProviderSchema.nullable().optional(),
   /** `true` once the lead replied. `null` when the vendor does not say. */
   replied: z.boolean().nullable(),
   /**

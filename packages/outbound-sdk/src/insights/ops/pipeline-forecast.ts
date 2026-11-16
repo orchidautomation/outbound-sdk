@@ -51,7 +51,7 @@ export interface PipelineForecast extends CampaignLabel {
   /** `false` when `max_leads` stopped the read, so `remaining` is a minimum. */
   readonly leadsComplete: boolean;
   readonly byStatus: Readonly<Record<LeadStatus, number>>;
-  /** Leads still active in the campaign: not replied, bounced, unsubscribed, paused or finished. */
+  /** Leads still active in the campaign: not replied, bounced, unsubscribed, paused, skipped or finished. */
   readonly remaining: number;
   /**
    * Active leads whose sequence has not started: no step sent, no contact.
@@ -89,6 +89,7 @@ const countStatuses = (leads: readonly Lead[]): Record<LeadStatus, number> => {
     completed: 0,
     paused: 0,
     replied: 0,
+    skipped: 0,
     unknown: 0,
     unsubscribed: 0,
   };

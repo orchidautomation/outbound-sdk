@@ -201,6 +201,57 @@ test("person_summary does not count an out-of-office reply as the person replyin
   assert.match(result.meta.notes.join(" "), /out-of-office or bounced/u);
 });
 
+// The vendor's headline counts the out-of-office as a reply (OUT-100).
+const VENDOR_SAYS_REPLIED: MemoryData = {
+  campaigns: [{ id: "c1", name: "Out of office" }],
+  leads: [
+    {
+      campaignId: "c1",
+      email: "person1@acme.example",
+      engagement: { replies: 1 },
+      id: "l1",
+      interest: "Out of Office",
+      progress: "completed",
+      status: "replied",
+    },
+    {
+      campaignId: "c1",
+      email: "person2@acme.example",
+      engagement: { replies: 1 },
+      id: "l2",
+      interest: "Interested",
+      progress: "completed",
+      status: "replied",
+    },
+  ],
+};
+
+test("person_summary's leadStatus agrees with replied when the vendor's replied came only from an out-of-office", async () => {
+  const outbound = single(VENDOR_SAYS_REPLIED);
+
+  const away = await outbound.insights.personSummary({
+    person: "person1@acme.example",
+  });
+
+  const [auto] = away.data.campaigns;
+
+  assert.equal(auto?.replied, false);
+  assert.equal(auto?.autoReplied, true);
+  assert.equal(auto?.leadStatus, "completed", "where the lead is instead");
+  assert.equal(auto?.vendorLeadStatus, "replied", "the vendor's word is kept");
+
+  // A person who replied keeps the vendor's replied.
+  const human = await outbound.insights.personSummary({
+    person: "person2@acme.example",
+  });
+
+  const [replied] = human.data.campaigns;
+
+  assert.equal(replied?.replied, true);
+  assert.equal(replied?.leadStatus, "replied");
+  assert.equal(replied?.vendorLeadStatus, "replied");
+});
+
 test("account_summary does not count an out-of-office reply as the person replying", async () => {
   const result = await single(OUT_OF_OFFICE).insights.accountSummary({
     domain: "acme.example",

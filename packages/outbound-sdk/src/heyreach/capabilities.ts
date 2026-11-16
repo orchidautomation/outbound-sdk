@@ -115,6 +115,7 @@ export const fields: FieldDeclaration = {
     bounced: false,
     engagement: false,
     phone: false,
+    recipientMailProvider: false,
     unsubscribed: false,
     website: false,
   },

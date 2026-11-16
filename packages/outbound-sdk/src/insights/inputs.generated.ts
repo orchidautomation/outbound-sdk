@@ -94,9 +94,9 @@ export interface InsightInputs {
   /** The input of `suppressionCheck` (the `suppression_check` tool). */
   readonly suppressionCheck: {
     /**
-     * Only a matching lead in one of these states is a violation: active, paused, unknown (not yet started, or the tool does not say), completed, replied, bounced or unsubscribed. Other matches are counted in totals.alreadyStopped. Defaults to the leads still being sent to.
+     * Only a matching lead in one of these states is a violation: active, paused, unknown (not yet started, or the tool does not say), completed, skipped (the tool decided never to send), replied, bounced or unsubscribed. Other matches are counted in totals.alreadyStopped. Defaults to the leads still being sent to.
      *
-     * At least 1 item. Each one of `active`, `bounced`, `completed`, `paused`, `replied`, `unknown`, `unsubscribed`. Defaults to `["active","paused","unknown"]`.
+     * At least 1 item. Each one of `active`, `bounced`, `completed`, `paused`, `replied`, `skipped`, `unknown`, `unsubscribed`. Defaults to `["active","paused","unknown"]`.
      */
     readonly lead_statuses?:
       | (
@@ -105,6 +105,7 @@ export interface InsightInputs {
           | "completed"
           | "paused"
           | "replied"
+          | "skipped"
           | "unknown"
           | "unsubscribed"
         )[]

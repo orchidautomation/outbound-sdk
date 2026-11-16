@@ -14,6 +14,7 @@ import type {
   MailProvider,
   Message,
   MetricRow,
+  RecipientMailProvider,
   Reply,
   ReplyCategory,
   Sender,
@@ -105,6 +106,7 @@ export interface MemoryLead {
   readonly interest?: string;
   readonly interestCategory?: ReplyCategory;
   readonly companyLinkedinUrl?: string;
+  readonly recipientMailProvider?: RecipientMailProvider;
   readonly location?: string;
   readonly phone?: string;
   readonly website?: string;
@@ -248,6 +250,7 @@ const PROGRESS: ReadonlySet<string> = new Set([
   "active",
   "completed",
   "paused",
+  "skipped",
 ]);
 
 // A seed states its headline; the parts follow from it unless given.
@@ -287,6 +290,7 @@ export const toLead = (identity: Identity, seed: MemoryLead): Lead => ({
   linkedinUrl: seed.linkedinUrl ?? null,
   location: seed.location ?? null,
   phone: seed.phone ?? null,
+  recipientMailProvider: seed.recipientMailProvider ?? null,
   title: seed.title ?? null,
   website: seed.website ?? null,
 });

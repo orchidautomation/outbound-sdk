@@ -44,6 +44,7 @@ const person = (found: boolean): PersonSummary => ({
       repliedStepNumbers: [2],
       repliedSteps: [1],
       replies: 1,
+      vendorLeadStatus: "replied",
     },
   ],
   found,

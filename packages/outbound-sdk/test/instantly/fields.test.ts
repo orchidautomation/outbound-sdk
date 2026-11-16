@@ -4,6 +4,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import { leadSchema } from "../../src/index.ts";
 import { harness } from "../helpers/adapter-suite.ts";
 import { fixture } from "../helpers/fixtures.ts";
 import { LEAD, suite } from "./suite.ts";
@@ -368,10 +369,74 @@ test("instantly: a lead's status code is its progress or its outcome, and replie
       ["replied", "completed", true, false, false],
       ["bounced", "unknown", false, true, false],
       ["unsubscribed", "unknown", true, false, true],
-      ["unknown", "unknown", false, false, false],
+      // -3 is "Skipped" in the reference: never sent, not waiting to start.
+      ["skipped", "skipped", false, false, false],
       ["unknown", "unknown", null, null, null],
     ],
     "an unsubscribe outranks a reply, and a missing code is unknown, not false"
+  );
+});
+
+test("instantly: a lead's esp_code is its own mail provider, and In Queue or Not Found is unknown", async () => {
+  const [lead] = (
+    fixture("instantly", "listLeads.json") as {
+      items: Record<string, unknown>[];
+    }
+  ).items;
+
+  // The reference's esp_code values (api_v2.json, read 2026-11-16).
+  const codes = [1, 2, 3, 9, 999, 0, 1000, 4, null];
+
+  const { outbound, settle } = harness(suite, (request) =>
+    new URL(request.url).pathname.endsWith("/leads/list")
+      ? Response.json({
+          items: codes.map((esp_code, index) => ({
+            ...lead,
+            esp_code,
+            id: `lead-${index}`,
+          })),
+        })
+      : undefined
+  );
+
+  const page = await settle(outbound.leads.list());
+  assert.deepEqual(
+    page.items.map((each) => each.recipientMailProvider),
+    [
+      "google",
+      "microsoft",
+      // Zoho, Yahoo and Other.
+      "other",
+      "other",
+      "other",
+      // In Queue, Not Found, a code the reference does not list, and none.
+      null,
+      null,
+      null,
+      null,
+    ]
+  );
+});
+
+test("a lead without recipientMailProvider, stored before the field existed, still matches the schema; an unlisted provider does not", async () => {
+  const { outbound, settle } = harness(suite);
+  const lead = await settle(outbound.leads.get(LEAD));
+  const { recipientMailProvider: _provider, ...older } = lead;
+
+  assert.equal(leadSchema.safeParse(older).success, true, "absent");
+  assert.equal(
+    leadSchema.safeParse({ ...older, recipientMailProvider: null }).success,
+    true,
+    "null"
+  );
+  assert.equal(
+    leadSchema.safeParse({ ...older, recipientMailProvider: "google" }).success,
+    true
+  );
+  assert.equal(
+    leadSchema.safeParse({ ...older, recipientMailProvider: "yahoo" }).success,
+    false,
+    "only google, microsoft and other are values"
   );
 });
 

@@ -69,6 +69,7 @@ test("pipeline_forecast counts the leads left and projects replies from the repl
       completed: 1,
       paused: 1,
       replied: 2,
+      skipped: 0,
       unknown: 0,
       unsubscribed: 1,
     },

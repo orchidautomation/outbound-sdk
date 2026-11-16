@@ -285,6 +285,7 @@ const leadRecord = (
   linkedinUrl: text(lead.linkedin_profile),
   location: text(lead.location),
   phone: text(lead.phone_number),
+  recipientMailProvider: null,
   tags: [...place.tags],
   // Smartlead has no job title field; a title lives in the custom fields.
   title: null,

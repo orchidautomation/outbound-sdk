@@ -191,6 +191,7 @@ const profileFields = (
   location: text(field(profile, "location")),
   // HeyReach profiles carry no phone number and no company website.
   phone: null,
+  recipientMailProvider: null,
   title: text(field(profile, "position")),
   website: null,
 });

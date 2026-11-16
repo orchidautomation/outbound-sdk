@@ -105,6 +105,7 @@ export const fields: FieldDeclaration = {
     linkedinUrl: false,
     location: false,
     phone: false,
+    recipientMailProvider: false,
     tags: false,
     website: false,
   },
