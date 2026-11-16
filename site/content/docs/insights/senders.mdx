@@ -33,11 +33,11 @@ Deliverability per sending domain: DNS records, sign-in, block lists and the sha
 | Input | Default | Range | What it is |
 | --- | --- | --- | --- |
 | `max_senders` | 50 | 1 to 500 | The most senders to check. |
-| `max_spam_rate` | 0.1 | 0 to 1 | A domain whose warmup emails land in spam more often than this share is high risk. Its old name, `spam_rate_threshold`, works until 0.6.0, with a note. |
+| `max_spam_rate` | 0.1 | 0 to 1 | A domain whose warmup emails land in spam more often than this share is high risk. |
 
 `data` (`DomainHealth`):
 
-- `domains`: one entry per domain, worst first, with `risk` (`high`, `medium`, `low` or `unknown`), `reasons`, `mailboxes` (each with `address`, `status`, `connected`, `blacklisted`, `failingDns` and the vendor's own `issues`), `failingDns`, `disconnected`, `blacklisted` (`null` when no mailbox of the domain reports its block list status), `warmup` (pooled over the mailboxes that report it: `mailboxes`, `sent`, `spam`, and the spam rate as `count`, `of`, `rate`, `low` and `high`; `spamRate` and `interval` are its deprecated old form) and `notReported`.
+- `domains`: one entry per domain, worst first, with `risk` (`high`, `medium`, `low` or `unknown`), `reasons`, `mailboxes` (each with `address`, `status`, `connected`, `blacklisted`, `failingDns` and the vendor's own `issues`), `failingDns`, `disconnected`, `blacklisted` (`null` when no mailbox of the domain reports its block list status), `warmup` (pooled over the mailboxes that report it: `mailboxes`, `sent`, `spam`, and the spam rate as `count`, `of`, `rate`, `low` and `high`) and `notReported`.
 - `linkedinSeats`: seats have no domain. Each has `name`, `linkedinUrl`, `status`, `connected` and `issues`. Disconnected seats first.
 - `mailboxesWithoutDomain`: sender refs whose domain is not known.
 - `totals`: `senders`, `domains`, `high`, `medium`, `low`, `unknown` and `linkedinSeats`.
@@ -122,7 +122,7 @@ The campaigns whose bounce rate (bounced divided by sent) is over a threshold, a
 
 | Input | Default | Range | What it is |
 | --- | --- | --- | --- |
-| `max_bounce_rate` | 0.03 | 0 to 1 | The bounce rate that is too high. Its old name, `threshold`, works until 0.6.0, with a note. |
+| `max_bounce_rate` | 0.03 | 0 to 1 | The bounce rate that is too high. |
 | `min_sent` | 100 | 0 or more, whole | A campaign or sender with fewer sends than this is too small to judge. |
 | `from` | `null` | `YYYY-MM-DD` or `null` | First day to count. `null` for the vendor's whole history. |
 | `to` | `null` | `YYYY-MM-DD` or `null` | Last day to count. `null` for up to today. |
@@ -137,7 +137,7 @@ The campaigns whose bounce rate (bounced divided by sent) is over a threshold, a
 - `tooFewSends`: campaigns with fewer sends than `min_sent`, whatever their rate.
 - `unknown`: campaigns the vendor reports no sent or bounce count for, with the `reason`.
 - `totals`: `campaigns`, `over`, `clean`, `tooFewSends`, `unknown`, and `bounced`, `sent` and `rate` over the campaigns with known counts.
-- `maxBounceRate`, `minSent`: what was used. `threshold` is the deprecated old name of `maxBounceRate`.
+- `maxBounceRate`, `minSent`: what was used.
 - `sendersRead`: how many senders had their sent and bounce counts read. `null` when senders were not checked. An empty `senders` list with a low `sendersRead` means little was checked, not that every sender is clean.
 
 - **Needs:** `stats.campaign`. Checking senders also needs `stats.bySender` and `senders.byCampaign`.

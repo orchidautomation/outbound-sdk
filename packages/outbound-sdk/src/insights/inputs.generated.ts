@@ -490,13 +490,6 @@ export interface InsightInputs {
      * A number from 0 to 1. Defaults to `0.1`.
      */
     readonly max_spam_rate?: number | undefined;
-
-    /**
-     * @deprecated Renamed to `max_spam_rate`. Removed in 0.6.0.
-     *
-     * A number from 0 to 1.
-     */
-    readonly spam_rate_threshold?: number | undefined;
   };
   /** The input of `senderCapacity` (the `sender_capacity` tool). */
   readonly senderCapacity: {
@@ -578,13 +571,6 @@ export interface InsightInputs {
      * A whole number from 0 to 9,007,199,254,740,991. Defaults to `100`.
      */
     readonly min_sent?: number | undefined;
-
-    /**
-     * @deprecated Renamed to `max_bounce_rate`. Removed in 0.6.0.
-     *
-     * A number from 0 to 1.
-     */
-    readonly threshold?: number | undefined;
 
     /**
      * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
@@ -795,13 +781,6 @@ export interface InsightInputs {
      * A number from 0 to 168. Defaults to `20`.
      */
     readonly min_weekly_hours?: number | undefined;
-
-    /**
-     * @deprecated Renamed to `days`. Removed in 0.6.0.
-     *
-     * A whole number from 1 to 30.
-     */
-    readonly recent_days?: number | undefined;
   };
   /** The input of `pipelineForecast` (the `pipeline_forecast` tool). */
   readonly pipelineForecast: {
@@ -1135,12 +1114,5 @@ export interface InsightInputs {
      * A number, 0 or more. Defaults to `7`.
      */
     readonly runway_days?: number | undefined;
-
-    /**
-     * @deprecated Renamed to `limit`. Removed in 0.6.0.
-     *
-     * A whole number from 1 to 20.
-     */
-    readonly top?: number | undefined;
   };
 }

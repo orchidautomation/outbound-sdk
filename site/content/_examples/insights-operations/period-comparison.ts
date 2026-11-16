@@ -7,12 +7,14 @@ console.log(
 );
 
 for (const campaign of data.campaigns) {
-  console.log(`${campaign.name} (${campaign.verdict}): ${campaign.finding}`);
+  console.log(
+    `${campaign.campaignName} (${campaign.verdict}): ${campaign.finding}`
+  );
 }
 
 console.log(`all campaigns (${data.total.verdict}): ${data.total.finding}`);
 
 console.log(
   "too few sends:",
-  data.tooFewSends.map((campaign) => campaign.name)
+  data.tooFewSends.map((campaign) => campaign.campaignName)
 );

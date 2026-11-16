@@ -1,6 +1,6 @@
 ---
 title: Insights
-description: The 26 computed answers in outbound-sdk/insights, what every answer carries, how inputs and capabilities are checked, and how to run one by name, as an agent tool, from the command line, or define your own.
+description: The 27 computed answers in outbound-sdk/insights, what every answer carries, how inputs and capabilities are checked, and how to run one by name, as an agent tool, from the command line, or define your own.
 sidebar:
   label: Overview
 related:
@@ -165,7 +165,7 @@ The same word means the same thing in every insight.
 - **`campaign` in an answer is always the campaign's ref**, even when you passed its bare vendor id, and a campaign row carries `campaignName` beside it.
 - **A rate is `{ count, of, rate, low, high }`**: the count, what it is divided by, the rate and the ends of its 95% Wilson interval. A few figures stay plain numbers because no single count is behind them: `PeriodNumbers`' rates, `personSummary`'s `campaignReplyRate` and `personalizationGaps`' `affectedRate`.
 
-Names that broke this rule before 0.4.0 have new ones. The old name still works until 0.6.0: it gives the same answer with a note in `meta.notes`, the tool parameters mark it `deprecated`, and passing both names is `Invalid`.
+Names that broke this rule before 0.4.0 were renamed in 0.4.0 and the old names were removed in 0.6.0. An old input name is now `Invalid`, and the message lists the inputs the insight takes.
 
 | Insight | Old input | New input |
 | --- | --- | --- |
@@ -174,7 +174,7 @@ Names that broke this rule before 0.4.0 have new ones. The old name still works 
 | `campaignDiagnosis` | `recent_days` | `days` |
 | `clientReport` | `top` | `limit` (the `top` list in the answer keeps its name) |
 
-Old answer fields stay beside the new ones, marked `@deprecated` in the types, until 0.6.0: `name` beside `campaignName`, `interval` and `trials` beside `low`, `high` and `of`, `replyRate`, `replyRateInterval` and `replyRateBasis` beside `rates.replyRate`, `spamRate` beside `rate`, and bounceWatch's `threshold` beside `maxBounceRate`. [Cards](/docs/cards) draw either form.
+The old answer fields were removed in 0.6.0 too. Read `campaignName` for `name`, `low`, `high` and `of` for `interval` and `trials`, `rates.replyRate` for `replyRate`, `replyRateInterval` and `replyRateBasis`, `rate` for `spamRate`, and bounceWatch's `maxBounceRate` for `threshold`. [Cards](/docs/cards) read only the new fields, so a result stored before 0.4.0 does not show what only an old field held.
 
 ## The insights
 
@@ -325,7 +325,7 @@ The arithmetic is exported from `outbound-sdk/insights` as plain functions:
 | `round(value)` | Four decimal places. `null` stays `null` |
 | `tally(values)` | How often each value occurs, as a `Map` in first-seen order |
 
-`defineInsight` does not add your insight to `outbound.insights`, `listInsights` or `insightTools`. Those hold the built-in 26.
+`defineInsight` does not add your insight to `outbound.insights`, `listInsights` or `insightTools`. Those hold the built-in 27.
 
 ## Things to know
 

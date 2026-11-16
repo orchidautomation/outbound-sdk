@@ -22,32 +22,9 @@ export const RIGHT = "right";
 export const measured = (value: Json | undefined): string =>
   pctRange(num(value, "rate"), num(value, "low"), num(value, "high"));
 
-/**
- * A rate with `low` and `high` beside it, or the `interval` object a result
- * stored before those carries.
- */
-export const withInterval = (
-  value: JsonObject,
-  rateKey = "rate",
-  intervalKey = "interval"
-): string => {
-  const interval = child(value, intervalKey);
-
-  return pctRange(
-    num(value, rateKey),
-    num(value, "low") ?? num(interval, "low"),
-    num(value, "high") ?? num(interval, "high")
-  );
-};
-
-/** A row's `rates.replyRate`, or its older `replyRate` and `replyRateInterval`. */
-export const replyRate = (value: JsonObject): string => {
-  const rate = child(child(value, "rates"), "replyRate");
-
-  return "rate" in rate
-    ? measured(rate)
-    : withInterval(value, "replyRate", "replyRateInterval");
-};
+/** A row's `rates.replyRate`, with its interval. */
+export const replyRate = (value: JsonObject): string =>
+  measured(child(child(value, "rates"), "replyRate"));
 
 /** Sent, replies, positive and bounced, as fields. */
 export const totalStats = (totals: Json | undefined): Stat[] => [

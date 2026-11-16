@@ -11,7 +11,7 @@ for (const copy of data.reused) {
 }
 
 console.log(
-  `best copy: "${data.bestCopy?.subject}" at ${data.bestCopy?.replyRate} over ${data.bestCopy?.trials} sends`
+  `best copy: "${data.bestCopy?.subject}" at ${data.bestCopy?.rates.replyRate.rate} over ${data.bestCopy?.rates.replyRate.of} sends`
 );
 
 console.log(

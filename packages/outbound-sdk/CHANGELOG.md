@@ -1,5 +1,19 @@
 # outbound-sdk
 
+## 0.6.0
+
+### Minor Changes
+
+- **Breaking:** the insight names deprecated in 0.4.0 are removed, as announced (OUT-74).
+
+  - Old inputs are refused with `Invalid`, and the message lists the inputs the insight takes: `bounceWatch` `threshold` (use `max_bounce_rate`), `domainHealth` `spam_rate_threshold` (use `max_spam_rate`), `campaignDiagnosis` `recent_days` (use `days`) and `clientReport` `top` (use `limit`). The tool parameters and the generated input types no longer list them.
+  - Old answer fields are gone: `name` beside `campaignName` in every campaign row, `interval` and `trials` beside `low`, `high` and `of` (`bounceWatch`, `variantTest`, `domainHealth`'s `warmup`), `replyRate`, `replyRateInterval` and `replyRateBasis` beside `rates.replyRate` (`stepFunnel`, `copyReuse`), `spamRate` beside `domainHealth`'s `warmup.rate`, and `bounceWatch`'s `threshold` beside `maxBounceRate`.
+  - Cards read only the new fields. A result stored before 0.4.0 no longer shows what only an old field held.
+
+  Migration: rename the four inputs, and read `campaignName`, `low`, `high`, `of`, `rates.replyRate` and `maxBounceRate` where you read the old fields.
+- 5404198: **Behaviour change:** the CLI leaves each record's `raw` vendor payload out of its output; `--raw` keeps it (OUT-82). For Instantly, `outbound replies` printed the whole quoted thread inside `raw` even without `--bodies`. `native` output and the SDK API are unchanged.
+- f91ce72: New insight: `copyPreview` (`copy_preview` as a tool) shows a campaign's copy as written and as one real lead receives it (OUT-83). Each step and variant has its `template` subject and body exactly as stored, the `rendered` subject and body with the lead's values put into each `{{variable}}`, `{variable}` and `%variable%`, the rendered body as plain text, and the variables left as written. It reads copy that is all or partly templated, such as `{{subject1}}` and `{{content1}}` filled from custom fields. Pass `lead` to choose the lead, or leave it out to use the lead with the most variables filled. It finds and fills variables the same way `personalizationGaps` checks them.
+
 ## 0.5.0
 
 ### Minor Changes

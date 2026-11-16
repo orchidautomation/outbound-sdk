@@ -54,7 +54,7 @@ test("period_comparison sets the last days against the days before, per campaign
   assert.deepEqual(result.data.previous, PREVIOUS);
   // Rising moved 6 points, Flat half a point: largest change first.
   assert.deepEqual(
-    result.data.campaigns.map((each) => each.name),
+    result.data.campaigns.map((each) => each.campaignName),
     ["Rising", "Flat"]
   );
 
@@ -87,7 +87,6 @@ test("period_comparison sets the last days against the days before, per campaign
     finding:
       "Replies per message sent went from 6% to 12%; more than chance (p = 0.0009).",
     campaignName: "Rising",
-    name: "Rising",
     previous: {
       bounceRate: 0.02,
       bounced: 10,
@@ -129,7 +128,6 @@ test("period_comparison sets the last days against the days before, per campaign
       channel: "email",
       currentSent: 100,
       campaignName: "New",
-      name: "New",
       previousSent: null,
       provider: "memory",
       status: "paused",
@@ -190,7 +188,7 @@ test("period_comparison follows days, min_sent, alpha and the statuses", async (
   assert.deepEqual(day.data.campaigns, []);
   assert.deepEqual(
     day.data.tooFewSends.map((each) => [
-      each.name,
+      each.campaignName,
       each.currentSent,
       each.previousSent,
     ]),
@@ -207,11 +205,11 @@ test("period_comparison follows days, min_sent, alpha and the statuses", async (
   );
 
   assert.deepEqual(
-    strict.data.campaigns.map((each) => each.name),
+    strict.data.campaigns.map((each) => each.campaignName),
     ["Rising"]
   );
   assert.deepEqual(
-    strict.data.tooFewSends.map((each) => each.name),
+    strict.data.tooFewSends.map((each) => each.campaignName),
     ["Flat", "New"]
   );
 
@@ -229,7 +227,10 @@ test("period_comparison follows days, min_sent, alpha and the statuses", async (
   );
 
   assert.deepEqual(
-    archived.data.tooFewSends.map((each) => [each.name, each.currentSent]),
+    archived.data.tooFewSends.map((each) => [
+      each.campaignName,
+      each.currentSent,
+    ]),
     [["Archived", 800]]
   );
 });
@@ -257,7 +258,7 @@ test("period_comparison reports a fall, and an unknown when a period has no coun
   );
   assert.deepEqual(
     [
-      unknown?.name,
+      unknown?.campaignName,
       unknown?.verdict,
       unknown?.change.replyRate,
       unknown?.current.replied,
@@ -283,7 +284,7 @@ test("period_comparison has nothing to compare without campaigns, and says when 
   );
 
   assert.deepEqual(
-    capped.data.campaigns.map((each) => each.name),
+    capped.data.campaigns.map((each) => each.campaignName),
     ["Rising"]
   );
   assert.equal(capped.meta.complete, false);

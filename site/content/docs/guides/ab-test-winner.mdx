@@ -42,7 +42,7 @@ How a step gets its verdict:
 - **The rate.** Replies and positive replies are divided by leads contacted, or by sends when the vendor reports no contacted count. Opens and clicks are divided by messages delivered, or by sends. `basis` on each variant says which. Choose the metric with `metric` (default `replied`).
 - **Enough data.** A variant whose base is under `min_sent` (default 100) is not compared, even when its raw rate is the highest. With fewer than two variants over that bar the verdict is `too_little_data`.
 - **The test.** The leader is the variant with the highest rate among those with enough data. It is compared with every other one by a two-sided two-proportion z-test. It is a `winner` only when every comparison has a p-value under `alpha` (default 0.05, at most 0.5). Otherwise the verdict is `no_difference_yet`, and `pValue` is the leader against its closest rival.
-- **The interval.** Each variant also carries the 95% Wilson interval of its rate in `interval`.
+- **The interval.** Each variant also carries the 95% Wilson interval of its rate in `low` and `high`.
 - **`moreSendsNeeded` is rough.** For `no_difference_yet` it is how much larger the sample would have to be if both rates stayed exactly where they are, which they will not. For `too_little_data` it is the sends still missing to bring every variant to `min_sent`. It is `null` for a winner.
 
 A count the vendor does not report is `null`, never `0`, and a rate built on it is `null` too. `from` and `to` (`YYYY-MM-DD`) limit the days counted.

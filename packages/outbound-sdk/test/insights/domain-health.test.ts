@@ -105,14 +105,12 @@ test("domain_health groups mailboxes by domain and ranks the domains worst first
     // The Measured shape: spam over sent, the same as spamRate and interval.
     count: 30,
     high: 0.2061,
-    interval: { high: 0.2061, low: 0.1071 },
     low: 0.1071,
     of: 200,
     rate: 0.15,
     mailboxes: 2,
     sent: 200,
     spam: 30,
-    spamRate: 0.15,
   });
   assert.deepEqual(bad?.notReported, []);
   assert.deepEqual(bad?.mailboxes, [
@@ -144,18 +142,16 @@ test("domain_health groups mailboxes by domain and ranks the domains worst first
   assert.deepEqual(mid?.warmup, {
     count: 5,
     high: 0.2136,
-    interval: { high: 0.2136, low: 0.0435 },
     low: 0.0435,
     of: 50,
     rate: 0.1,
     mailboxes: 1,
     sent: 50,
     spam: 5,
-    spamRate: 0.1,
   });
   assert.equal(mid?.disconnected, 1);
 
-  assert.equal(good?.warmup.spamRate, 0.025);
+  assert.equal(good?.warmup.rate, 0.025);
   assert.deepEqual(good?.reasons, []);
   assert.equal(good?.mailboxes[0]?.address, "d@good.example");
 
@@ -189,14 +185,12 @@ test("domain_health keeps what the vendor does not report as null, and a silent 
   assert.deepEqual(quiet?.warmup, {
     count: null,
     high: null,
-    interval: null,
     low: null,
     of: null,
     rate: null,
     mailboxes: 0,
     sent: null,
     spam: null,
-    spamRate: null,
   });
   assert.deepEqual(quiet?.notReported, [
     "spf",
@@ -393,7 +387,7 @@ test("domain_health pools one domain's mailboxes across two tools", async () => 
     ["mailtool:agency:m1", "lntool:agency:m2"]
   );
   // 3 + 9 spam of 60 + 40 sent: 0.12 is over the default 0.1.
-  assert.equal(shared?.warmup.spamRate, 0.12);
+  assert.equal(shared?.warmup.rate, 0.12);
   assert.equal(shared?.risk, "high");
   assert.deepEqual(shared?.reasons, [
     "12 of 100 warmup emails landed in spam (12%, over 10%)",

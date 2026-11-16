@@ -8,7 +8,7 @@ import { memory } from "../../src/memory/index.ts";
 import type { MemoryData } from "../../src/memory/index.ts";
 import { must, ref, toolWithRows, withRows } from "./copy-helpers.ts";
 import type { StepRow } from "./copy-helpers.ts";
-import { NOW, single } from "./helpers.ts";
+import { bounds, NOW, single } from "./helpers.ts";
 
 const X = { body: "Body X", subject: "Quick question" };
 const Y = { body: "Body Y", subject: "Another idea" };
@@ -95,9 +95,9 @@ test("copy_reuse compares the same copy across campaigns and names the best copy
       x.campaigns,
       x.sent,
       x.replies,
-      x.trials,
-      x.replyRate,
-      x.replyRateInterval,
+      x.rates.replyRate.of,
+      x.rates.replyRate.rate,
+      bounds(x.rates.replyRate),
     ],
     [
       hash,
@@ -120,7 +120,7 @@ test("copy_reuse compares the same copy across campaigns and names the best copy
       use.places,
       use.sent,
       use.replies,
-      use.replyRate,
+      use.rates.replyRate.rate,
     ]),
     [
       [ref("c1"), "Founders", "memory", ["0:A"], 1000, 60, 0.06],
@@ -128,7 +128,7 @@ test("copy_reuse compares the same copy across campaigns and names the best copy
       [ref("c2"), "Agencies", "memory", ["0:A"], 1000, 20, 0.02],
     ]
   );
-  assert.deepEqual(x.uses[0]?.replyRateInterval, {
+  assert.deepEqual(bounds(x.uses[0]?.rates.replyRate), {
     high: 0.0765,
     low: 0.0469,
   });
@@ -138,11 +138,11 @@ test("copy_reuse compares the same copy across campaigns and names the best copy
     count: x.uses[0]?.replies,
     high: 0.0765,
     low: 0.0469,
-    of: x.uses[0]?.trials,
-    rate: x.uses[0]?.replyRate,
+    of: x.uses[0]?.rates.replyRate.of,
+    rate: x.uses[0]?.rates.replyRate.rate,
   });
-  assert.equal(x.rates.replyRate.rate, x.replyRate);
-  assert.equal(x.rates.replyRate.of, x.trials);
+  assert.equal(x.rates.replyRate.rate, x.rates.replyRate.rate);
+  assert.equal(x.rates.replyRate.of, x.rates.replyRate.of);
   // 0.06 - 0.02; 60/1000 against 20/1000 is z = 4.5644, p rounds to 0.
   assert.deepEqual(
     [x.spread, x.best, x.worst, x.spreadPValue, x.spreadIsReal],
@@ -155,12 +155,22 @@ test("copy_reuse compares the same copy across campaigns and names the best copy
 
   // Z: 3/40 in Retail is under the 100 needed, so one campaign is left and no spread is judged.
   assert.deepEqual(
-    [z.subject, z.sent, z.replies, z.replyRate, z.replyRateInterval],
+    [
+      z.subject,
+      z.sent,
+      z.replies,
+      z.rates.replyRate.rate,
+      bounds(z.rates.replyRate),
+    ],
     // 12 + 3 = 15 replies of 400 + 40 = 440 sends = 0.0341.
     ["", 440, 15, 0.0341, { high: 0.0555, low: 0.0208 }]
   );
   assert.deepEqual(
-    z.uses.map((use) => [use.campaign, use.replyRate, use.trials]),
+    z.uses.map((use) => [
+      use.campaign,
+      use.rates.replyRate.rate,
+      use.rates.replyRate.of,
+    ]),
     [
       [ref("c3"), 0.075, 40],
       [ref("c1"), 0.03, 400],
@@ -179,8 +189,8 @@ test("copy_reuse compares the same copy across campaigns and names the best copy
       best.campaigns,
       best.sent,
       best.replies,
-      best.replyRate,
-      best.replyRateInterval,
+      best.rates.replyRate.rate,
+      bounds(best.rates.replyRate),
     ],
     ["Another idea", 1, 500, 30, 0.06, { high: 0.0844, low: 0.0423 }]
   );
@@ -259,13 +269,13 @@ test("copy_reuse moves the spread and the best copy with min_sent, and the campa
       },
     },
     replies: null,
-    replyRate: null,
-    replyRateInterval: null,
     sent: null,
-    trials: null,
   });
   // The unknown campaign does not change the pooled rate.
-  assert.deepEqual([x?.sent, x?.replies, x?.replyRate], [3000, 110, 0.0367]);
+  assert.deepEqual(
+    [x?.sent, x?.replies, x?.rates.replyRate.rate],
+    [3000, 110, 0.0367]
+  );
   assert.equal(drafts.data.variantsWithoutStats, 2);
 
   const onlyDrafts = await outbound.insights.copyReuse(
@@ -334,8 +344,8 @@ test("copy_reuse leaves counts unknown when the vendor reports a split step as a
       use.places,
       use.sent,
       use.replies,
-      use.trials,
-      use.replyRate,
+      use.rates.replyRate.of,
+      use.rates.replyRate.rate,
     ]),
     [
       // 8 + 2 replies of 200 + 200 sends.
@@ -347,7 +357,7 @@ test("copy_reuse leaves counts unknown when the vendor reports a split step as a
   );
   // The pooled rate rests on the one campaign with both counts: 10 / 400.
   assert.deepEqual(
-    [x?.sent, x?.replies, x?.trials, x?.replyRate],
+    [x?.sent, x?.replies, x?.rates.replyRate.of, x?.rates.replyRate.rate],
     [900, 10, 400, 0.025]
   );
   assert.equal(result.data.variantsWithoutStats, 2);
@@ -447,7 +457,11 @@ test("copy_reuse matches copy across tools on a combined instance", async () => 
 
   assert.equal(result.data.campaignsRead, 4);
   assert.deepEqual(
-    x?.uses.map((use) => [use.campaign, use.provider, use.replyRate]),
+    x?.uses.map((use) => [
+      use.campaign,
+      use.provider,
+      use.rates.replyRate.rate,
+    ]),
     [
       [ref("c1", "mailtool"), "mailtool", 0.06],
       // 12 / 300 in the second tool.
@@ -457,7 +471,10 @@ test("copy_reuse matches copy across tools on a combined instance", async () => 
     ]
   );
   // 110 + 12 replies of 3000 + 300 sends = 122 / 3300 = 0.037.
-  assert.deepEqual([x?.sent, x?.replies, x?.replyRate], [3300, 122, 0.037]);
+  assert.deepEqual(
+    [x?.sent, x?.replies, x?.rates.replyRate.rate],
+    [3300, 122, 0.037]
+  );
 });
 
 const sameCopy = (counts: Record<string, Record<string, number>>) =>
@@ -486,7 +503,11 @@ test("copy_reuse divides every campaign's replies by the same base (OUT-58)", as
 
   assert.equal(result.data.basis, "sent");
   assert.deepEqual(
-    piece?.uses.map((use) => [use.campaignName, use.basis, use.replyRate]),
+    piece?.uses.map((use) => [
+      use.campaignName,
+      use.basis,
+      use.rates.replyRate.rate,
+    ]),
     [
       ["c1", "sent", 0.01],
       ["c2", "sent", 0.01],

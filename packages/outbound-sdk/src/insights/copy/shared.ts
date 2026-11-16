@@ -6,7 +6,6 @@ import { sumCounts } from "../../internal/metrics.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
 import type { Measured as Rate } from "../ops/shared.ts";
 import { rate, wilson } from "../stats.ts";
-import type { Interval } from "../stats.ts";
 
 export interface DayRange {
   readonly from: string | undefined;
@@ -119,12 +118,8 @@ export interface BasedRate extends Rate {
   readonly basis: RateBasis | null;
 }
 
-export interface Measured extends BasedRate {
-  /** @deprecated Use `of`. Removed in 0.6.0. */
-  readonly trials: number | null;
-  /** @deprecated Use `low` and `high`. Removed in 0.6.0. */
-  readonly interval: Interval | null;
-}
+/** A measured rate. */
+export type Measured = BasedRate;
 
 export const measure = (count: number | null, base: Base): Measured => {
   const interval = wilson(count, base.trials);
@@ -133,11 +128,9 @@ export const measure = (count: number | null, base: Base): Measured => {
     basis: base.basis,
     count,
     high: interval?.high ?? null,
-    interval,
     low: interval?.low ?? null,
     of: base.trials,
     rate: rate(count, base.trials),
-    trials: base.trials,
   };
 };
 
@@ -150,7 +143,7 @@ const NO_RATE: BasedRate = {
   rate: null,
 };
 
-/** The rate alone, without the deprecated `trials` and `interval`. */
+/** The rate alone, without any field a caller added beside it. */
 export const replyRateOf = (measured: Measured | null): BasedRate =>
   measured === null
     ? NO_RATE

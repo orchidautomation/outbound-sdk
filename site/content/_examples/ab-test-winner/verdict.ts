@@ -21,7 +21,7 @@ export const abVerdict = async (
 
     for (const variant of step.variants) {
       lines.push(
-        `  ${variant.variantKey}: ${percent(variant.rate)} (${variant.count} of ${variant.trials} ${variant.basis})${variant.enoughData ? "" : ", too few to compare"}`
+        `  ${variant.variantKey}: ${percent(variant.rate)} (${variant.count} of ${variant.of} ${variant.basis})${variant.enoughData ? "" : ", too few to compare"}`
       );
     }
 

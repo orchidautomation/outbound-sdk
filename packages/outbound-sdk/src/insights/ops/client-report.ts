@@ -4,7 +4,6 @@
 import { z } from "zod";
 
 import { mapConcurrent } from "../../internal/concurrency.ts";
-import { renamed } from "../../internal/renamed.ts";
 import type { CampaignsRead } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
@@ -26,8 +25,6 @@ import {
   volumeOf,
 } from "./shared.ts";
 import type { CampaignLabel, DayRange, ReplyBasis } from "./shared.ts";
-
-const limit = z.number().int().min(1).max(20);
 
 const input = z.object({
   ...listFields(
@@ -58,7 +55,13 @@ const input = z.object({
     .max(90)
     .default(7)
     .describe("The length of the period, in complete days ending yesterday"),
-  limit: limit.default(3).describe("How many best and worst campaigns to show"),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(20)
+    .default(3)
+    .describe("How many best and worst campaigns to show"),
   max_bounce_rate: z
     .number()
     .min(0)
@@ -91,7 +94,6 @@ const input = z.object({
     .describe(
       "A campaign with this many days of leads left or fewer is flagged"
     ),
-  top: renamed("limit", limit),
 });
 
 type Options = z.infer<typeof input>;

@@ -7,9 +7,9 @@ const { data } = await outbound.insights.campaignRanking({
 
 console.log(
   "ranked:",
-  data.ranked.map((campaign) => `${campaign.name} ${campaign.rate}`)
+  data.ranked.map((campaign) => `${campaign.campaignName} ${campaign.rate}`)
 );
 
 for (const campaign of data.unknown) {
-  console.log(`unknown: ${campaign.name}. ${campaign.reason}`);
+  console.log(`unknown: ${campaign.campaignName}. ${campaign.reason}`);
 }

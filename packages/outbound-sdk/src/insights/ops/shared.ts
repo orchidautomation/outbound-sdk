@@ -87,8 +87,6 @@ export interface CampaignLabel {
   /** The campaign's ref. */
   readonly campaign: string;
   readonly campaignName: string;
-  /** @deprecated Use `campaignName`. Removed in 0.6.0. */
-  readonly name: string;
   readonly status: CampaignStatus;
   readonly channel: "email" | "linkedin";
   readonly provider: string;
@@ -98,7 +96,6 @@ export const labelOf = (campaign: Campaign): CampaignLabel => ({
   campaign: campaign.ref,
   campaignName: campaign.name,
   channel: campaign.channel,
-  name: campaign.name,
   provider: campaign.provider,
   status: campaign.status,
 });

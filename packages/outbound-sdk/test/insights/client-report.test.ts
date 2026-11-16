@@ -135,7 +135,6 @@ test("client_report composes totals, best and worst campaigns, bounce problems, 
       high: 0.0768,
       low: 0.028,
       campaignName: "Middling",
-      name: "Middling",
       of: 300,
       provider: "memory",
       rank: 1,
@@ -146,7 +145,7 @@ test("client_report composes totals, best and worst campaigns, bounce problems, 
   ]);
   assert.deepEqual(
     result.data.bottom.map((each) => [
-      each.name,
+      each.campaignName,
       each.rank,
       each.count,
       each.of,
@@ -165,7 +164,6 @@ test("client_report composes totals, best and worst campaigns, bounce problems, 
       high: 0.1494,
       low: 0.0657,
       campaignName: "Bouncy",
-      name: "Bouncy",
       of: 200,
       provider: "memory",
       rate: 0.1,
@@ -195,7 +193,6 @@ test("client_report composes totals, best and worst campaigns, bounce problems, 
       dailyContactRate: 10,
       daysLeft: 0.5,
       campaignName: "Bouncy",
-      name: "Bouncy",
       provider: "memory",
       remaining: 5,
       status: "active",
@@ -206,7 +203,6 @@ test("client_report composes totals, best and worst campaigns, bounce problems, 
       dailyContactRate: 20,
       daysLeft: 2,
       campaignName: "Middling",
-      name: "Middling",
       provider: "memory",
       remaining: 40,
       status: "active",
@@ -264,7 +260,7 @@ test("client_report moves with top, the bounce limit, min_sent and the runway", 
 
   // Three campaigns are ranked and the default top is 3: none is left for the bottom.
   assert.deepEqual(
-    wide.data.top.map((each) => each.name),
+    wide.data.top.map((each) => each.campaignName),
     ["Middling", "Winner", "Bouncy"]
   );
   assert.deepEqual(wide.data.bottom, []);
@@ -285,7 +281,7 @@ test("client_report moves with top, the bounce limit, min_sent and the runway", 
 
   // Bouncy's 200 sends are now too few to rank or to call a bounce problem.
   assert.deepEqual(
-    strict.data.top.map((each) => each.name),
+    strict.data.top.map((each) => each.campaignName),
     ["Middling", "Winner"]
   );
   assert.deepEqual(strict.data.bounceProblems, []);
@@ -296,7 +292,7 @@ test("client_report moves with top, the bounce limit, min_sent and the runway", 
   );
 
   assert.deepEqual(
-    short.data.runningOutOfLeads?.map((each) => each.name),
+    short.data.runningOutOfLeads?.map((each) => each.campaignName),
     ["Bouncy"]
   );
 
@@ -306,7 +302,10 @@ test("client_report moves with top, the bounce limit, min_sent and the runway", 
   );
 
   assert.deepEqual(
-    long.data.runningOutOfLeads?.map((each) => [each.name, each.daysLeft]),
+    long.data.runningOutOfLeads?.map((each) => [
+      each.campaignName,
+      each.daysLeft,
+    ]),
     [
       ["Bouncy", 0.5],
       ["Middling", 2],
@@ -460,7 +459,7 @@ test("client_report is empty without campaigns, and says when a cap cut what it 
   );
 
   assert.deepEqual(
-    fewLeads.data.runningOutOfLeads?.map((each) => each.name),
+    fewLeads.data.runningOutOfLeads?.map((each) => each.campaignName),
     ["Bouncy", "Middling"]
   );
   assert.equal(fewLeads.meta.complete, false);
@@ -494,7 +493,10 @@ test("client_report covers the campaigns of two tools in one report", async () =
   );
   // One lead left at 100 / 7 = 14.29 a day.
   assert.deepEqual(
-    result.data.runningOutOfLeads?.map((each) => [each.name, each.daysLeft]),
+    result.data.runningOutOfLeads?.map((each) => [
+      each.campaignName,
+      each.daysLeft,
+    ]),
     [
       ["Seats", 0.07],
       ["Bouncy", 0.5],

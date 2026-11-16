@@ -19,7 +19,6 @@ import type {
   StatsResult,
   WithMeta,
 } from "../internal/outbound/api.ts";
-import { applyRenames, liveKeys } from "../internal/renamed.ts";
 import { inputProblem } from "../tools/input-problem.ts";
 import type { InsightCost } from "./cost.ts";
 import { runCap } from "./run-cap.ts";
@@ -342,45 +341,14 @@ const missing = (
 ): CapabilityKey[] =>
   needs.filter((key) => outbound.capabilities[key] === false);
 
-interface Prepared<Input> {
-  readonly input: Input;
-  /** One note for each deprecated input name the caller used. */
-  readonly notes: readonly string[];
-}
-
-/** The input with each old name moved to its new one, and a note for each. */
-const withRenames = (
-  outbound: OutboundApi,
-  spec: Pick<InsightEntry, "inputSchema" | "name">,
-  given: Json | undefined
-) => {
-  // An old input name still works for one minor release, with a note.
-  const renamed = applyRenames(spec.inputSchema.shape, given);
-
-  if ("conflict" in renamed) {
-    const { from, to } = renamed.conflict;
-
-    throw new OutboundError(
-      "Invalid",
-      `${spec.name}: pass \`${to}\` only; \`${from}\` is its old name`,
-      { provider: outbound.provider }
-    );
-  }
-
-  return renamed;
-};
-
 const prepare = <Key extends string, Input, Data, Given>(
   outbound: OutboundApi,
   spec: InsightSpec<Key, Input, Data, Given>,
-  given: Json | undefined
-): Prepared<Input> => {
-  const fields = spec.inputSchema.shape;
-  const renamed = withRenames(outbound, spec, given);
-  const { input } = renamed;
+  input: Json | undefined
+): Input => {
   // A misspelt or unsupported filter is refused. Dropping it would let the
   // insight quietly answer a wider question than the one asked.
-  const stray = unknownKey(liveKeys(fields), input);
+  const stray = unknownKey(Object.keys(spec.inputSchema.shape), input);
 
   if (stray !== undefined) {
     throw new OutboundError("Invalid", `${spec.name}: ${stray}`, {
@@ -432,7 +400,7 @@ const prepare = <Key extends string, Input, Data, Given>(
     );
   }
 
-  return { input: parsed.data, notes: renamed.notes };
+  return parsed.data;
 };
 
 const execute = async <Key extends string, Input, Data, Given>(
@@ -442,15 +410,11 @@ const execute = async <Key extends string, Input, Data, Given>(
   options: RunOptions = {}
 ): Promise<InsightResult<Data>> => {
   const checked = prepare(outbound, spec, input);
-  const cap = runCap(outbound, spec, checked.input, options);
+  const cap = runCap(outbound, spec, checked, options);
   const now = options.now ?? Date.now();
   const tracker = track(cap.outbound, now, cap.campaignsFound);
 
-  for (const note of checked.notes) {
-    tracker.context.note(note);
-  }
-
-  const data = await spec.run(tracker.context, checked.input).catch(cap.failed);
+  const data = await spec.run(tracker.context, checked).catch(cap.failed);
 
   const short = cap.shortNote();
 

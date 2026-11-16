@@ -25,10 +25,10 @@ import {
   campaignsCapped,
   flagged,
   LEFT,
+  measured,
   replyRate,
   RIGHT,
   verdict,
-  withInterval,
 } from "./parts.ts";
 import type { CardBuilder } from "./tool-cards.ts";
 
@@ -126,7 +126,7 @@ const variantTest: CardBuilder = (data) => {
             str(tested, "leader") === str(variant, "variantKey") ? " ★" : ""
           }`,
           int(num(variant, "sent")),
-          withInterval(variant),
+          measured(variant),
         ])
       ),
     },
@@ -239,7 +239,7 @@ const copyReuse: CardBuilder = (data) => {
         copyLabel(piece),
         int(num(piece, "campaigns")),
         int(num(piece, "sent")),
-        pct(num(piece, "replyRate")),
+        pct(num(child(child(piece, "rates"), "replyRate"), "rate")),
         pct(num(piece, "spread")),
       ]),
     },

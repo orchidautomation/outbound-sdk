@@ -4,9 +4,7 @@ const { data } = await outbound.insights.bounceWatch({});
 
 for (const campaign of data.over) {
   console.log(`${campaign.campaignName}: ${campaign.finding}`);
-  console.log(
-    `  95% interval: ${campaign.interval?.low} to ${campaign.interval?.high}`
-  );
+  console.log(`  95% interval: ${campaign.low} to ${campaign.high}`);
 
   for (const sender of campaign.senders ?? []) {
     console.log(
@@ -20,7 +18,7 @@ for (const campaign of data.tooFewSends) {
 }
 
 for (const campaign of data.unknown) {
-  console.log(`${campaign.name}: ${campaign.reason}`);
+  console.log(`${campaign.campaignName}: ${campaign.reason}`);
 }
 
 console.log("totals:", data.totals);

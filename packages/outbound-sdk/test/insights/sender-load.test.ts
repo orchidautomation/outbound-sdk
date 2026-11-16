@@ -99,7 +99,6 @@ test("sender_load finds overused senders, unused senders and campaigns on thin o
       ],
       issues: ["single_sender", "inactive_sender"],
       campaignName: "Alone and paused",
-      name: "Alone and paused",
       senders: 1,
     },
     {
@@ -116,7 +115,6 @@ test("sender_load finds overused senders, unused senders and campaigns on thin o
       ],
       issues: ["inactive_sender"],
       campaignName: "One dead",
-      name: "One dead",
       senders: 3,
     },
     {
@@ -125,7 +123,6 @@ test("sender_load finds overused senders, unused senders and campaigns on thin o
       inactive: [],
       issues: ["single_sender"],
       campaignName: "Alone",
-      name: "Alone",
       senders: 1,
     },
     {
@@ -142,7 +139,6 @@ test("sender_load finds overused senders, unused senders and campaigns on thin o
       ],
       issues: ["inactive_sender"],
       campaignName: "One broken",
-      name: "One broken",
       senders: 2,
     },
     {
@@ -151,7 +147,6 @@ test("sender_load finds overused senders, unused senders and campaigns on thin o
       inactive: [],
       issues: ["no_sender"],
       campaignName: "Empty",
-      name: "Empty",
       senders: 0,
     },
   ]);

@@ -61,7 +61,6 @@ test("campaign_ranking ranks by the low end of the interval, so a lucky small ca
       high: 0.1735,
       low: 0.1292,
       campaignName: "Alpha",
-      name: "Alpha",
       of: 1000,
       provider: "memory",
       rank: 1,
@@ -77,7 +76,6 @@ test("campaign_ranking ranks by the low end of the interval, so a lucky small ca
       high: 0.3178,
       low: 0.1183,
       campaignName: "Beta",
-      name: "Beta",
       of: 60,
       provider: "memory",
       rank: 2,
@@ -87,11 +85,19 @@ test("campaign_ranking ranks by the low end of the interval, so a lucky small ca
     },
   ]);
   assert.deepEqual(
-    result.data.tooFewSends.map((each) => [each.name, each.sent, each.reason]),
+    result.data.tooFewSends.map((each) => [
+      each.campaignName,
+      each.sent,
+      each.reason,
+    ]),
     [["Tiny", 10, "10 sends, under the 50 needed to rank."]]
   );
   assert.deepEqual(
-    result.data.unknown.map((each) => [each.name, each.sent, each.reason]),
+    result.data.unknown.map((each) => [
+      each.campaignName,
+      each.sent,
+      each.reason,
+    ]),
     [
       ["Silent", null, "The vendor reports no sends for this period."],
       ["Mute", 200, "The vendor does not report the count behind this rate."],
@@ -112,7 +118,7 @@ test("campaign_ranking counts the whole history without a range, and min_sent de
 
   // Alpha over all time: 155 replies of 1,500 contacted is 10.33%, low end 8.89%.
   assert.deepEqual(
-    whole.data.ranked.map((each) => [each.name, each.rate, each.low]),
+    whole.data.ranked.map((each) => [each.campaignName, each.rate, each.low]),
     [
       ["Beta", 0.2, 0.1183],
       ["Alpha", 0.1033, 0.0889],
@@ -126,7 +132,7 @@ test("campaign_ranking counts the whole history without a range, and min_sent de
 
   // 2 of 10 is 20% with a low end of 5.67%: ranked now, and last.
   assert.deepEqual(
-    loose.data.ranked.map((each) => [each.rank, each.name, each.low]),
+    loose.data.ranked.map((each) => [each.rank, each.campaignName, each.low]),
     [
       [1, "Alpha", 0.1292],
       [2, "Beta", 0.1183],
@@ -154,7 +160,7 @@ test("campaign_ranking ranks bounce rate lowest first by the high end, and posit
   // 10 of 1,000, 4 of 200, 6 of 60.
   assert.deepEqual(
     bounce.data.ranked.map((each) => [
-      each.name,
+      each.campaignName,
       each.count,
       each.of,
       each.rate,
@@ -174,14 +180,18 @@ test("campaign_ranking ranks bounce rate lowest first by the high end, and posit
 
   // 6 of 60 has a low end of 4.66%, above 30 of 1,000 at 2.11%.
   assert.deepEqual(
-    positive.data.ranked.map((each) => [each.name, each.rate, each.low]),
+    positive.data.ranked.map((each) => [
+      each.campaignName,
+      each.rate,
+      each.low,
+    ]),
     [
       ["Beta", 0.1, 0.0466],
       ["Alpha", 0.03, 0.0211],
     ]
   );
   assert.deepEqual(
-    positive.data.unknown.map((each) => each.name),
+    positive.data.unknown.map((each) => each.campaignName),
     ["Silent", "Mute"]
   );
 });
@@ -192,7 +202,11 @@ test("campaign_ranking reads only the asked statuses, with or without a vendor f
   });
 
   assert.deepEqual(
-    drafts.data.ranked.map((each) => [each.name, each.status, each.rate]),
+    drafts.data.ranked.map((each) => [
+      each.campaignName,
+      each.status,
+      each.rate,
+    ]),
     [["Draft", "draft", 1]]
   );
 
@@ -201,11 +215,11 @@ test("campaign_ranking reads only the asked statuses, with or without a vendor f
   }).insights.campaignRanking(NOVEMBER);
 
   assert.deepEqual(
-    unfiltered.data.ranked.map((each) => each.name),
+    unfiltered.data.ranked.map((each) => each.campaignName),
     ["Alpha", "Beta"]
   );
   assert.deepEqual(
-    unfiltered.data.tooFewSends.map((each) => each.name),
+    unfiltered.data.tooFewSends.map((each) => each.campaignName),
     ["Tiny"]
   );
 });
@@ -229,7 +243,7 @@ test("campaign_ranking answers with nothing to rank, says when the cap cut the l
   });
 
   assert.deepEqual(
-    capped.data.ranked.map((each) => each.name),
+    capped.data.ranked.map((each) => each.campaignName),
     ["Alpha"]
   );
   assert.equal(capped.meta.complete, false);

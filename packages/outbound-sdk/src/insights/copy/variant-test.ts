@@ -11,7 +11,6 @@ import type { InsightContext } from "../define.ts";
 import { rangeFields } from "../fields.ts";
 import { refOf } from "../ref.ts";
 import { compareRates, percent } from "../stats.ts";
-import type { Interval } from "../stats.ts";
 import {
   basesInWords,
   measure,
@@ -70,10 +69,6 @@ export interface TestedVariant {
   /** The 95% Wilson interval of the rate. `null` when the rate is unknown. */
   readonly low: number | null;
   readonly high: number | null;
-  /** @deprecated Use `of`. Removed in 0.6.0. */
-  readonly trials: number | null;
-  /** @deprecated Use `low` and `high`. Removed in 0.6.0. */
-  readonly interval: Interval | null;
   /** `false` when the base is under `min_sent` or the rate is unknown; such a variant is not compared. */
   readonly enoughData: boolean;
   /** Two-sided p-value against the leader. `null` for the leader, a variant not compared, and two rates that are both 0 or both 1. */
@@ -162,9 +157,7 @@ const candidateOf = (
   return {
     ...measured,
     enoughData:
-      measured.rate !== null &&
-      measured.trials !== null &&
-      measured.trials >= minSent,
+      measured.rate !== null && measured.of !== null && measured.of >= minSent,
     sent: counts.sent,
     variantKey,
   };
@@ -180,7 +173,7 @@ const shortfall = (
   }
 
   return candidates.reduce(
-    (sum, each) => sum + Math.max(0, minSent - (each.trials ?? 0)),
+    (sum, each) => sum + Math.max(0, minSent - (each.of ?? 0)),
     0
   );
 };
@@ -237,8 +230,7 @@ const testStep = (
     .filter((each) => each.enoughData)
     .toSorted(
       (left, right) =>
-        (right.rate ?? 0) - (left.rate ?? 0) ||
-        (right.trials ?? 0) - (left.trials ?? 0)
+        (right.rate ?? 0) - (left.rate ?? 0) || (right.of ?? 0) - (left.of ?? 0)
     );
 
   const [leader, rival] = ready;
@@ -253,8 +245,8 @@ const testStep = (
       .map((other) => [
         other.variantKey,
         compareRates(
-          { successes: leader.count, trials: leader.trials },
-          { successes: other.count, trials: other.trials },
+          { successes: leader.count, trials: leader.of },
+          { successes: other.count, trials: other.of },
           settings.alpha
         ),
       ])
@@ -293,7 +285,7 @@ const testStep = (
         ? null
         : sendsToSignificance(
             closest.z,
-            (leader.trials ?? 0) + (rival.trials ?? 0),
+            (leader.of ?? 0) + (rival.of ?? 0),
             settings.alpha
           ),
     pValue: closest?.pValue ?? null,

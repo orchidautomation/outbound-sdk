@@ -279,7 +279,7 @@ test("the campaign insights say in data that max_campaigns left campaigns unread
 
   assert.equal(control.data.campaignsRead, 31);
   assert.equal(control.data.moreCampaignsExist, false);
-  assert.equal(control.data.ranked[0]?.name, "Campaign 29");
+  assert.equal(control.data.ranked[0]?.campaignName, "Campaign 29");
 
   includes(
     await card(CROWDED, "campaign_ranking"),

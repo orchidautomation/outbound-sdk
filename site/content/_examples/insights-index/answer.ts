@@ -7,7 +7,9 @@ console.log("insight:", answer.insight);
 
 console.log(
   "data.ranked:",
-  answer.data.ranked.map((campaign) => `${campaign.rank}. ${campaign.name}`)
+  answer.data.ranked.map(
+    (campaign) => `${campaign.rank}. ${campaign.campaignName}`
+  )
 );
 
 console.log("meta:", answer.meta);

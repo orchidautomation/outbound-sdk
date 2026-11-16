@@ -88,7 +88,6 @@ test("pipeline_forecast counts the leads left and projects replies from the repl
     leadsComplete: true,
     leadsRead: 46,
     campaignName: "Pipeline",
-    name: "Pipeline",
     positiveRate: { count: 5, high: 0.0572, low: 0.0107, of: 200, rate: 0.025 },
     provider: "memory",
     remaining: 40,
@@ -314,7 +313,10 @@ test("client_report lists a campaign with no leads left first, with the action t
   );
 
   assert.deepEqual(
-    report.data.runningOutOfLeads?.map((each) => [each.name, each.daysLeft]),
+    report.data.runningOutOfLeads?.map((each) => [
+      each.campaignName,
+      each.daysLeft,
+    ]),
     [
       ["Founders", 0],
       ["Agencies", 6],

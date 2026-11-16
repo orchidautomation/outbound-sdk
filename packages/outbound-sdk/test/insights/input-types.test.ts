@@ -75,14 +75,12 @@ test("an input with a default may be left out", async () => {
   assert.equal(report.data.days, 7);
 });
 
-test("an old input name still type-checks, and is held to the new name's type", async () => {
-  const result = await outbound.insights.bounceWatch({ threshold: 0.05 });
-
-  assert.equal(result.data.threshold, 0.05);
-
+test("an input name removed in 0.6.0 is a type error and Invalid, naming the inputs it takes", async () => {
   await assert.rejects(
-    // @ts-expect-error -- `threshold` is a number, as `max_bounce_rate` is
-    async () => await outbound.insights.bounceWatch({ threshold: "high" }),
-    invalid(/bounce_watch: max_bounce_rate /u)
+    // @ts-expect-error -- `threshold` was renamed to `max_bounce_rate` in 0.4.0 and removed in 0.6.0
+    async () => await outbound.insights.bounceWatch({ threshold: 0.05 }),
+    invalid(
+      /bounce_watch: "threshold" is not an input\. It takes: .*max_bounce_rate/u
+    )
   );
 });

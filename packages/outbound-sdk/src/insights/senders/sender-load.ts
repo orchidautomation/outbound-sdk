@@ -58,8 +58,6 @@ export type CampaignSenderIssue =
 export interface CampaignSenderRisk {
   readonly campaign: string;
   readonly campaignName: string;
-  /** @deprecated Use `campaignName`. Removed in 0.6.0. */
-  readonly name: string;
   readonly senders: number;
   readonly issues: readonly CampaignSenderIssue[];
   /** The campaign's senders whose status is not active. */
@@ -120,7 +118,6 @@ const riskOf = (
         : `${campaign.name} has ${count}.`,
     inactive: inactive.map(loaded),
     issues,
-    name: campaign.name,
     senders: senders.length,
   };
 };

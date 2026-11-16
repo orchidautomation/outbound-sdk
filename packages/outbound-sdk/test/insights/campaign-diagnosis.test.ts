@@ -103,7 +103,7 @@ test("campaign_diagnosis lists what is wrong with a campaign, most serious first
 
   assert.equal(result.insight, "campaign_diagnosis");
   assert.deepEqual(
-    [result.data.campaign, result.data.name, result.data.status],
+    [result.data.campaign, result.data.campaignName, result.data.status],
     ["memory:agency:bad", "Struggling", "active"]
   );
   // 1,302 + 300 + 300 + 50 + 48 sends.

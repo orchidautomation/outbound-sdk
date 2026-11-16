@@ -3,7 +3,6 @@
     "campaign": "memory:acme:founders",
     "campaignName": "SaaS founders",
     "channel": "email",
-    "name": "SaaS founders",
     "provider": "memory",
     "status": "active",
     "assumptions": [
