@@ -177,7 +177,7 @@ export const envelope = (printed: Printed, facts: RunFacts): JsonObject => {
     const ok = value.ok === true;
 
     const wrapped: JsonObject = {
-      data: ok ? (value.data ?? null) : null,
+      data: value.data ?? null,
       meta,
       next: value.next ?? null,
       ok,

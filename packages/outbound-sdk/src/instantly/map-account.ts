@@ -26,6 +26,8 @@ import {
   withoutKeys,
 } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
+import { notNegative } from "../internal/notes.ts";
+import type { Note } from "../internal/notes.ts";
 import { eventTypesOf, recordBase, refTo, refsTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
 import { EVENT_TYPES } from "./webhooks.ts";
@@ -58,18 +60,25 @@ const toWindow = (raw: JsonObject): SendingWindow => ({
 /** The settings are fields of the campaign object itself. */
 export const toCampaignSettings = (
   identity: Identity,
-  raw: JsonObject
+  raw: JsonObject,
+  note: Note
 ): CampaignSettings => {
   const id = text(raw.id) ?? "";
   const schedule = raw.campaign_schedule;
 
+  const setting = (value: Json | undefined, what: string, unit?: string) =>
+    notNegative(count(value), { note, unit, vendor: "Instantly", what });
+
   return {
     ...recordBase(identity, id, raw),
     campaignRef: refTo(identity, id) ?? "",
-    dailyLimit: count(raw.daily_limit),
-    dailyNewLeads: count(raw.daily_max_leads),
+    dailyLimit: setting(raw.daily_limit, "The campaign's daily limit"),
+    dailyNewLeads: setting(
+      raw.daily_max_leads,
+      "The campaign's daily limit of new leads"
+    ),
     endDate: matching(field(schedule, "end_date"), DATE),
-    gapMinutes: count(raw.email_gap),
+    gapMinutes: setting(raw.email_gap, "The gap between emails", "minutes"),
     plainText: flag(raw.text_only),
     schedule: objects(field(schedule, "schedules")).map(toWindow),
     startDate: matching(field(schedule, "start_date"), DATE),

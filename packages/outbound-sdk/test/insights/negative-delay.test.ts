@@ -1,0 +1,203 @@
+// OUT-110: one campaign whose Instantly sequence has a step delay of -11
+// days. Every insight that reads the sequence still answers, and says why
+// that step's wait is unknown; copy_reuse leaves out a campaign it cannot
+// read instead of failing the whole workspace.
+
+import assert from "node:assert/strict";
+import { test } from "node:test";
+
+import {
+  createOutbound,
+  MemoryRateLimitStore,
+  OutboundError,
+} from "../../src/index.ts";
+import { insights } from "../../src/insights/index.ts";
+import { fixtureHandler } from "../helpers/adapter-suite.ts";
+import { createClock } from "../helpers/clock.ts";
+import { fixture } from "../helpers/fixtures.ts";
+import { createFetch, json } from "../helpers/http.ts";
+import type { RecordedRequest, Reply } from "../helpers/http.ts";
+import { CAMPAIGN, suite } from "../instantly/suite.ts";
+import { NOW } from "./helpers.ts";
+
+const REF = `instantly:client-a:${CAMPAIGN}`;
+const OTHER = "01a1d77f-5e23-7a9a-9112-a6f7089f3290";
+const NOTE = "Step 4's delay is negative in Instantly (-11 days); left out.";
+
+const NEGATIVE = {
+  ...(fixture("instantly", "getCampaign.json") as object),
+  ...(fixture("instantly", "getCampaign.negativeDelay.json") as object),
+};
+
+const over = (
+  answer: (request: RecordedRequest) => Reply | undefined = () => {},
+  options: { readonly retries?: number; readonly timeout?: number } = {}
+) => {
+  const clock = createClock();
+  const unrouted: string[] = [];
+  const fromFixtures = fixtureHandler([suite], unrouted);
+
+  const http = createFetch((request, index) => {
+    const path = new URL(request.url).pathname;
+
+    if (path === `/api/v2/campaigns/${CAMPAIGN}`) {
+      return json(NEGATIVE);
+    }
+
+    return answer(request) ?? fromFixtures(request, index);
+  });
+
+  const outbound = createOutbound({
+    adapter: suite.make(),
+    fetch: http.fetch,
+    plugins: [insights()],
+    rateLimitStore: new MemoryRateLimitStore(),
+    runtime: clock.runtime,
+    share: 1,
+    ...options,
+  });
+
+  return { http, outbound, settle: clock.settle, unrouted };
+};
+
+test("step_funnel answers for a campaign with a negative step delay, and notes the unknown wait", async () => {
+  const { outbound, settle, unrouted } = over();
+
+  const result = await settle(
+    outbound.insights.stepFunnel({ campaign: REF }, { now: NOW })
+  );
+
+  assert.deepEqual(unrouted, []);
+  assert.deepEqual(
+    result.data.steps.map((step) => step.delayDays),
+    [0, 2, 2, null]
+  );
+  assert.ok(result.meta.notes.includes(NOTE));
+});
+
+test("copy_audit, copy_preview and campaign_diagnosis answer for a campaign with a negative step delay", async () => {
+  const { outbound, settle, unrouted } = over();
+
+  const audit = await settle(
+    outbound.insights.copyAudit({ campaign: REF }, { now: NOW })
+  );
+
+  const preview = await settle(
+    outbound.insights.copyPreview({ campaign: REF }, { now: NOW })
+  );
+
+  const diagnosis = await settle(
+    outbound.insights.campaignDiagnosis({ campaign: REF }, { now: NOW })
+  );
+
+  assert.deepEqual(unrouted, []);
+  assert.ok(audit.meta.notes.includes(NOTE));
+  assert.deepEqual(
+    preview.data.steps.map((step) => step.delayDays),
+    [0, 2, 2, null]
+  );
+  assert.ok(preview.meta.notes.includes(NOTE));
+  assert.ok(diagnosis.meta.notes.includes(NOTE));
+});
+
+test("copy_reuse reads past a negative step delay, and leaves out a campaign whose sequence cannot be read", async () => {
+  // The other campaign answers with no campaign object: the vendor's fault,
+  // a Provider error.
+  const { outbound, settle, unrouted } = over((request) =>
+    new URL(request.url).pathname === `/api/v2/campaigns/${OTHER}`
+      ? json([])
+      : undefined
+  );
+
+  const result = await settle(outbound.insights.copyReuse({}, { now: NOW }));
+
+  assert.deepEqual(unrouted, []);
+  assert.equal(result.meta.complete, false);
+  assert.ok(result.meta.notes.includes(NOTE));
+  assert.ok(
+    result.meta.notes.some((note) =>
+      /^Left out .+: its sequence or step stats could not be read/u.test(note)
+    ),
+    result.meta.notes.join("\n")
+  );
+  assert.ok(
+    result.data.piecesOfCopy > 0,
+    "the readable campaign's copy is counted"
+  );
+});
+
+/** Reads of the other campaign: its own object, and its step stats. */
+const other =
+  (campaign: Reply, steps?: Reply) =>
+  (request: RecordedRequest): Reply | undefined => {
+    const url = new URL(request.url);
+
+    if (url.pathname === `/api/v2/campaigns/${OTHER}`) {
+      return campaign;
+    }
+
+    return steps !== undefined &&
+      url.pathname === "/api/v2/campaigns/analytics/steps" &&
+      url.searchParams.get("campaign_id") === OTHER
+      ? steps
+      : undefined;
+  };
+
+const failure = async (promise: Promise<unknown>) => {
+  try {
+    await promise;
+  } catch (error) {
+    assert.ok(OutboundError.is(error));
+
+    return error;
+  }
+
+  assert.fail("expected the insight to throw");
+};
+
+test("copy_reuse does not skip a campaign whose read timed out: the timeout throws", async () => {
+  const { outbound, settle } = over(other("hang"), {
+    retries: 0,
+    timeout: 1000,
+  });
+
+  const error = await failure(
+    settle(outbound.insights.copyReuse({}, { now: NOW }))
+  );
+
+  assert.equal(error.code, "Provider");
+  assert.equal(error.timedOut, true);
+});
+
+test("copy_reuse does not let a missing sequence hide a bad key on the same campaign's stats", async () => {
+  const { outbound, settle } = over(
+    other(
+      json({ message: "Not found" }, 404),
+      json({ message: "Invalid key" }, 401)
+    )
+  );
+
+  const error = await failure(
+    settle(outbound.insights.copyReuse({}, { now: NOW }))
+  );
+
+  assert.equal(error.code, "Unauthorized");
+});
+
+test("copy_reuse counts the request of a read that answered when it leaves the campaign out", async () => {
+  const { http, outbound, settle } = over((request) => {
+    const url = new URL(request.url);
+
+    return url.pathname === "/api/v2/campaigns/analytics/steps" &&
+      url.searchParams.get("campaign_id") === OTHER
+      ? json({ message: "Not found" }, 404)
+      : undefined;
+  });
+
+  const result = await settle(outbound.insights.copyReuse({}, { now: NOW }));
+
+  assert.equal(result.meta.complete, false);
+  // Every request but the one that failed: a failed read returns no meta to
+  // count from, while the other campaign's sequence read did answer.
+  assert.equal(result.meta.requests, http.requests.length - 1);
+});

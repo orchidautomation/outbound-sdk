@@ -41,6 +41,7 @@ The in-memory adapter sends no HTTP requests, so `requests` is 0 here. On a vend
 | `provider` | `string` | The adapter that answered. |
 | `workspaceId` | `string` | The workspace label it answered for. |
 | `stale` | `boolean` | `true` when an older answer was served because the vendor was down. |
+| `notes` | `string[]` | What the adapter left out of the answer and why, for example a value the vendor sent that cannot be right, mapped to `null`. Empty when nothing was left out. |
 
 ## Where meta sits
 

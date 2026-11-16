@@ -187,6 +187,15 @@ const nextFor = (cause: unknown, code: string): string => {
       : "The vendor's rate limit was reached. Wait a minute before calling again.";
   }
 
+  if (
+    OutboundError.is(cause) &&
+    code === "Provider" &&
+    cause.permanent &&
+    !cause.aborted
+  ) {
+    return "The vendor returned data the SDK cannot read, and it returns the same data on every call. Do not call again with the same input. Try another campaign, or report the field the message names.";
+  }
+
   return "Check the input and try again.";
 };
 

@@ -1,7 +1,7 @@
 unknown tool: {"error":{"code":"Invalid","message":"Unknown tool pause_campaign","retryable":false},"next":"Call one of the listed tools with a JSON object.","ok":false}
 not JSON: {"error":{"code":"Invalid","message":"The arguments are not valid JSON","retryable":false},"next":"Call one of the listed tools with a JSON object.","ok":false}
 bad value: {"error":{"code":"Invalid","message":"campaign_trend: from Use YYYY-MM-DD","retryable":false},"next":"Check the input and try again.","ok":false}
-unknown argument: {"error":{"code":"Invalid","message":"campaign_overview: \"client\" is not an input. It takes: from, limit, status, to","retryable":false},"next":"Check the input and try again.","ok":false}
+unknown argument: {"error":{"code":"Invalid","message":"campaign_overview: \"client\" is not an input. It takes: campaign, from, limit, status, to","retryable":false},"next":"Check the input and try again.","ok":false}
 not found: {"error":{"code":"NotFound","message":"Campaign cmp_nope was not found","retryable":false},"next":"Check the input and try again.","ok":false}
 not offered: {"error":{"code":"Invalid","message":"Unknown tool winning_steps","retryable":false},"next":"Call one of the listed tools with a JSON object.","ok":false}
 unsupported: {"error":{"code":"Unsupported","message":"Filtering replies by category is not available: the memory adapter does not support it (replies.category)","retryable":false},"next":"This tool is not available with the current adapter or plugins. Try another tool.","ok":false}

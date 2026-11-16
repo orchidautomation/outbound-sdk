@@ -132,7 +132,8 @@ export const readers = (client: EmailBisonClient): Readers => {
         await client.get(
           ctx,
           `/api/campaigns/v1.1/${segment(id)}/sequence-steps`
-        )
+        ),
+        ctx.note
       ),
     listCampaigns: async (query, ctx) => {
       if (query.senderId !== undefined) {

@@ -223,7 +223,7 @@ const campaignSenders = async (
   return {
     items: page.items
       .filter((account) => attached(account))
-      .map((account) => toSender(client.identity, account)),
+      .map((account) => toSender(client.identity, account, ctx.note)),
     next: page.next,
   };
 };
@@ -431,12 +431,14 @@ export const readers = (
     getSender: async (id, ctx) =>
       toSender(
         identity,
-        await client.getObject(ctx, `/accounts/${encodeURIComponent(id)}`)
+        await client.getObject(ctx, `/accounts/${encodeURIComponent(id)}`),
+        ctx.note
       ),
     getSequence: async (id, ctx) =>
       toSequence(
         identity,
-        await client.getObject(ctx, `/campaigns/${encodeURIComponent(id)}`)
+        await client.getObject(ctx, `/campaigns/${encodeURIComponent(id)}`),
+        ctx.note
       ),
     listCampaigns: async (query, ctx) =>
       await listCampaigns(client, ctx, query),
@@ -452,7 +454,7 @@ export const readers = (
         include_tags: true,
       });
 
-      return mapPage(page, (item) => toSender(identity, item));
+      return mapPage(page, (item) => toSender(identity, item, ctx.note));
     },
     listWorkspaces: async (_query, ctx) => {
       const workspace = await client.get(ctx, "/workspaces/current");

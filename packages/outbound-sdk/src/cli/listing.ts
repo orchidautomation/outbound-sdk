@@ -26,10 +26,11 @@ const listed = async <Item>(
   many?: string
 ): Promise<{ readonly items: Item[]; readonly coverage: Coverage }> => {
   const items = await walk.toArray();
+  const left = walk.meta?.notes ?? [];
 
   if (!walk.truncated) {
     return {
-      coverage: { complete: walk.meta?.complete ?? true, notes: [] },
+      coverage: { complete: walk.meta?.complete ?? true, notes: [...left] },
       items,
     };
   }
@@ -37,7 +38,7 @@ const listed = async <Item>(
   const note = `Stopped at ${plural(items.length, one, many)}; more exist. Pass --limit to read more.`;
   input.note(note);
 
-  return { coverage: { complete: false, notes: [note] }, items };
+  return { coverage: { complete: false, notes: [...left, note] }, items };
 };
 
 export const listing = async <Item>(

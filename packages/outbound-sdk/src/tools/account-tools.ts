@@ -44,7 +44,7 @@ export const campaignSetup: ToolDefinition<z.infer<typeof setupInput>> = {
       meta: {
         complete: settings.meta.complete,
         evidence: settings.meta.evidence,
-        notes: [],
+        notes: [...settings.meta.notes],
         provider: outbound.provider,
         requests: settings.meta.requests,
       },
@@ -264,7 +264,7 @@ export const vendorRead: ToolDefinition<z.infer<typeof nativeInput>> = {
       meta: {
         complete: result.meta.complete,
         evidence: result.meta.evidence,
-        notes: [],
+        notes: [...result.meta.notes],
         provider: outbound.provider,
         requests: result.meta.requests,
       },
