@@ -4,7 +4,8 @@ import { z } from "zod";
 
 import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { BlockEntry } from "../../internal/entities-account.ts";
-import type { Campaign, Lead } from "../../internal/entities.ts";
+import { leadStatusSchema } from "../../internal/entities.ts";
+import type { Campaign, Lead, LeadStatus } from "../../internal/entities.ts";
 import { profileSlug } from "../../internal/url.ts";
 import { defineInsight, maskingOf } from "../define.ts";
 import type { InsightContext } from "../define.ts";
@@ -16,7 +17,21 @@ import {
   statusesField,
 } from "./read.ts";
 
+/** The lead statuses still being sent to, or yet to start, by default. */
+const SENDABLE: readonly [LeadStatus, ...LeadStatus[]] = [
+  "active",
+  "paused",
+  "unknown",
+];
+
 const input = z.object({
+  lead_statuses: z
+    .array(leadStatusSchema)
+    .min(1)
+    .default([...SENDABLE])
+    .describe(
+      "Only a matching lead in one of these states is a violation: active, paused, unknown (not yet started, or the tool does not say), completed, replied, bounced or unsubscribed. Other matches are counted in totals.alreadyStopped. Defaults to the leads still being sent to."
+    ),
   max_block_entries: z
     .number()
     .int()
@@ -68,6 +83,7 @@ export interface SuppressionCampaign {
   readonly campaign: string;
   readonly campaignName: string;
   readonly leadsRead: number;
+  /** Leads whose status is in `lead_statuses` that are on the block list. */
   readonly violations: number;
 }
 
@@ -78,6 +94,12 @@ export interface SuppressionCheck {
   readonly byCampaign: readonly SuppressionCampaign[];
   readonly totals: {
     readonly violations: number;
+    /**
+     * Leads on the block list whose status is not in `lead_statuses`, so not
+     * counted as violations: most often they unsubscribed (which is why they
+     * are on the list), bounced or finished the sequence.
+     */
+    readonly alreadyStopped: number;
     readonly byMatch: {
       readonly email: number;
       readonly domain: number;
@@ -218,7 +240,7 @@ const activeFirst = (
 
 export const suppressionCheck = defineInsight({
   description:
-    "Leads sitting in campaigns although they are on the block list. Reads the block list, then the leads of each campaign in the given statuses (active by default), and matches a lead by exact email address, by email domain against domain entries, and by LinkedIn profile against profile entries. Returns each violation with the lead, the campaign, the entry and how it matched, counts per campaign, and how many block entries were read; totals.moreBlockEntriesExist is true when max_block_entries left entries unread, which were not checked. On several tools an entry on one tool's list is also matched against the other tools' leads and marked sameTool false. Costs one request per page of block entries plus one per page of each campaign's leads.",
+    "Leads sitting in campaigns although they are on the block list. Reads the block list, then the leads of each campaign in the given statuses (active by default), and matches a lead by exact email address, by email domain against domain entries, and by LinkedIn profile against profile entries. A match is a violation only when the lead's own status is in lead_statuses (active, paused or unknown by default, the leads still being sent to); a lead that already unsubscribed, bounced, replied or completed is counted in totals.alreadyStopped instead. Returns each violation with the lead, the campaign, the entry and how it matched, counts per campaign, and how many block entries were read; totals.moreBlockEntriesExist is true when max_block_entries left entries unread, which were not checked. On several tools an entry on one tool's list is also matched against the other tools' leads and marked sameTool false. Costs one request per page of block entries plus one per page of each campaign's leads.",
   inputSchema: input,
   key: "suppressionCheck",
   // A masked address is the same text for every lead, so nothing can match.
@@ -259,8 +281,10 @@ export const suppressionCheck = defineInsight({
       values.max_campaigns
     );
 
+    const sendable = new Set<string>(values.lead_statuses);
     const violations: SuppressionViolation[] = [];
     const byCampaign: SuppressionCampaign[] = [];
+    let alreadyStopped = 0;
 
     const read = await mapConcurrent(campaigns, async (campaign) => ({
       campaign,
@@ -275,11 +299,15 @@ export const suppressionCheck = defineInsight({
     }));
 
     for (const { campaign, items: leads } of read) {
-      const found = leads.flatMap((lead) => {
+      const matched = leads.flatMap((lead) => {
         const hit = matchLead(lead, blocked);
 
         return hit === null ? [] : [toViolation(lead, campaign, hit)];
       });
+
+      const found = matched.filter((each) => sendable.has(each.leadStatus));
+
+      alreadyStopped += matched.length - found.length;
 
       violations.push(...found);
       byCampaign.push({
@@ -299,6 +327,7 @@ export const suppressionCheck = defineInsight({
           left.campaign.localeCompare(right.campaign)
       ),
       totals: {
+        alreadyStopped,
         blockEntriesNotChecked: listed.capped ? null : blocked.notChecked,
         blockEntriesRead: entries.length,
         byMatch: {

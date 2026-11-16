@@ -1,4 +1,4 @@
-across_tools: ana@northwind.example.com is in 3 campaigns across mailtool and linkedintool (email and linkedin).
+across_tools: ana@northwind.example.com is in 2 campaigns across mailtool and linkedintool (email and linkedin) at once, and was in "SaaS founders" (replied).
   still active in 2 of 3: SaaS founders, Agency owners, LinkedIn founders
 within_tool: cy@example.com is in 2 mailtool campaigns at once.
   still active in 2 of 2: SaaS founders, Agency owners
@@ -6,7 +6,9 @@ totals: {
   acrossTools: 1,
   campaignsRead: 3,
   collisions: 2,
+  concurrent: 2,
   leadsRead: 11,
   leadsWithoutIdentifier: 0,
+  pastOverlaps: 0,
   withinTool: 1
 }

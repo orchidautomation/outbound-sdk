@@ -2,6 +2,7 @@ https://www.linkedin.com/in/hal-voss-example is in "LinkedIn founders" but the b
 fay@blocked.example.com is in "Agency owners" but the block list holds the domain blocked.example.com. (matched by domain, same tool: true)
 gus@example.com is in "Agency owners" but the block list holds the email gus@example.com. (matched by email, same tool: true)
 totals: {
+  alreadyStopped: 0,
   blockEntriesNotChecked: 1,
   blockEntriesRead: 4,
   byMatch: { domain: 1, email: 1, linkedin: 1 },
