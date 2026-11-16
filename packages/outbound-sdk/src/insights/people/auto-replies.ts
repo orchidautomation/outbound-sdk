@@ -33,9 +33,7 @@ export const refsOf = (lead: Lead): string[] =>
  * vendor or by a fixed rule. A lead with one reply not flagged is not in it,
  * nor is a lead none of whose replies were read. Reads at most
  * `AUTO_CHECK_REPLIES` replies, newest first, and nothing when no lead
- * counted replies or the tool cannot list replies. Under a redact that masks
- * addresses with `[redacted]`, every reply naming its lead by address names
- * the same ref, so nothing is matched and the answer is marked partial.
+ * counted replies or the tool cannot list replies.
  */
 export const autoOnlyRefs = async (
   context: InsightContext,
@@ -49,14 +47,6 @@ export const autoOnlyRefs = async (
   );
 
   if (replied.length === 0 || !outbound.capabilities["replies.list"]) {
-    return new Set();
-  }
-
-  if (addressesMasked(context) && maskingOf(outbound)?.strategy === "mask") {
-    context.partial(
-      `${ADDRESSES_MASKED} replies were not matched to leads to tell automatic replies from people.`
-    );
-
     return new Set();
   }
 

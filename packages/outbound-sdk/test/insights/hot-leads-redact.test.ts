@@ -1,8 +1,8 @@
 // hot_leads under the redact plugin, the MCP default (OUT-111). Instantly
-// names a reply's lead by address, and redact masks addresses, so under the
-// default `mask` every reply names the same masked ref and nothing links a
-// reply to its lead. The search past max_leads and the auto-reply check would
-// then quietly find nothing; instead they say so and mark the answer partial.
+// names a reply's lead by address, and redact masks addresses, so a reply's
+// lead past max_leads cannot be looked up at the vendor. The search would
+// quietly find nothing; instead it says so and marks the answer partial. Each
+// person keeps one masked token (OUT-122), so replies still match their leads.
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -137,23 +137,14 @@ for (const [strategy, options] of masking) {
   });
 }
 
-test("hot_leads under a masking redact says it skipped the auto-reply check", async () => {
-  const { run } = build([redact()]);
-  const result = await run();
+for (const [strategy, options] of masking) {
+  test(`hot_leads under a ${strategy} redact still tells automatic replies from people`, async () => {
+    const { run } = build([redact(options)]);
+    const result = await run();
 
-  assert.equal(result.meta.complete, false);
-  assert.ok(
-    result.meta.notes.includes(AUTO_CHECK),
-    result.meta.notes.join(" ")
-  );
-});
-
-test("hot_leads under a hashing redact still tells automatic replies from people", async () => {
-  const { run } = build([redact({ strategy: "hash" })]);
-  const result = await run();
-
-  assert.ok(
-    !result.meta.notes.includes(AUTO_CHECK),
-    result.meta.notes.join(" ")
-  );
-});
+    assert.ok(
+      !result.meta.notes.includes(AUTO_CHECK),
+      result.meta.notes.join(" ")
+    );
+  });
+}
