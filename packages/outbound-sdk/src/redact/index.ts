@@ -5,6 +5,6 @@
 // through unprotected. The vendor's raw payload is always dropped, because it
 // holds everything the normalized fields were taken from.
 
-export { ALL_FIELDS, MASK, redact } from "./plugin.ts";
+export { ALL_FIELDS, KNOWN_TOKENS, MASK, redact } from "./plugin.ts";
 
 export type { RedactExtension, RedactField, RedactOptions } from "./plugin.ts";

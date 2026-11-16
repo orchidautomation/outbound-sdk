@@ -93,7 +93,7 @@ test("hot_leads says in its data that leads went unscored when it cannot look pa
   assert.equal(result.data.totals.fromReplies, 0);
   assert.ok(
     result.meta.notes.includes(
-      "This tool cannot list replies or read one lead, so leads past max_leads that replied were not looked for."
+      "This tool cannot list replies, so leads were ranked from the lead records alone."
     )
   );
 });
@@ -247,17 +247,20 @@ test("hot_leads on Instantly does not read again a listed lead its reply names b
     const body = request.body === undefined ? {} : JSON.parse(request.body);
 
     if (url.pathname === "/api/v2/leads/list" && body.contacts === undefined) {
-      // One lead listed, with more left: person6.
-      return json({
-        items: repliers.items.slice(0, 1),
-        next_starting_after: "x",
-      });
+      // The leads labelled Interested: person16.
+      return json({ items: repliers.items.slice(1, 2) });
     }
 
     return url.searchParams.get("email_type") === "received"
       ? json({
-          items: ["person6@example.com", "person16@example.com"].map(
-            (lead, at) => ({ ...received, id: `reply-${at}`, lead })
+          // Both in person16's campaign, so the reply is the listed record's.
+          items: ["person16@example.com", "person31@example.com"].map(
+            (lead, at) => ({
+              ...received,
+              campaign_id: "01a1d77f-5e65-78a7-8eb0-0213c3e7d6dd",
+              id: `reply-${at}`,
+              lead,
+            })
           ),
         })
       : fixtures(request, index);
@@ -272,7 +275,12 @@ test("hot_leads on Instantly does not read again a listed lead its reply names b
     share: 1,
   });
 
-  await clock.settle(outbound.insights.hotLeads({ max_leads: 1 }));
+  await clock.settle(
+    outbound.insights.hotLeads(
+      {},
+      { now: Date.parse("2026-11-16T12:00:00.000Z") }
+    )
+  );
 
   const lookups = http.requests.flatMap((request) => {
     const body = request.body === undefined ? {} : JSON.parse(request.body);
@@ -281,5 +289,5 @@ test("hot_leads on Instantly does not read again a listed lead its reply names b
   });
 
   assert.deepEqual(unrouted, []);
-  assert.deepEqual(lookups, ["person16@example.com"], "person6 was listed");
+  assert.deepEqual(lookups, ["person31@example.com"], "person16 was listed");
 });

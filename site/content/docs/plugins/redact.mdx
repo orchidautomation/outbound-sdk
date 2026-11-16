@@ -57,6 +57,7 @@ Some vendors use personal data as an id. Instantly addresses a mailbox by its em
 `redact` masks that part of `ref`, `sourceId` and every `*Ref` field, on records and on webhook events, when the matching field (`email` or `linkedin`) is being masked:
 
 - With `mask`, the address or the URL becomes `redacted:` and 16 hex characters of an HMAC-SHA-256 under a random key the plugin makes and never gives out. One person gets one token, so two people keep two refs and every count and join by ref holds; the `email`, `address` and `linkedinUrl` fields get the same token, so an Instantly reply's `leadRef` still names its lead. The key lives as long as the plugin: tokens hold within one instance, one CLI command or one `outbound mcp` session, and differ in the next, so they cannot be looked up from an address.
+- A call that names a token this plugin wrote, in a ref or a field, reaches the vendor with the value in its place, and its answer comes back masked; a vendor error quotes the token, not the value. That is how an insight reads the lead behind a reply. The values live only in this plugin's memory, at most the newest 10,000 of them, and are never written out or returned.
 - With `hash`, it becomes the same token every time, so a record keeps its `ref` from one run to the next and a `senderRef` still equals the sender's `ref`. An address gives the token its `email` or `address` field gets.
 
 Either way, a masked ref never becomes one shared `[redacted]`, which would merge every lead into one.
@@ -80,7 +81,7 @@ It changes nothing in `meta`.
 
 | Member | Holds |
 | --- | --- |
-| `outbound.redacted` | `{ fields, strategy, hash }`: the fields being masked, sorted, `"mask"` or `"hash"`, and `hash(value)`, the text this redact writes in place of `value` in a masked field (the token under `hash`, `[redacted]` under `mask`, whose keyed tokens it never gives out), so a known address can be found among hashed records. Other plugins and the tools read it to know what they cannot see. |
+| `outbound.redacted` | `{ fields, strategy, hash, resolves, leadsByToken }`: the fields being masked, sorted, `"mask"` or `"hash"`, and `hash(value)`, the text this redact writes in place of `value` in a masked field (the token under `hash`, `[redacted]` under `mask`, whose keyed tokens it never gives out), so a known address can be found among hashed records. `resolves(token)` says whether a token this redact wrote stands for an `email` or a `linkedin` profile, or `null`, without giving the value. `leadsByToken(tokens, campaign)` reads the leads behind address tokens and returns them masked. Other plugins and the tools read it to know what they cannot see. |
 
 ## Webhook events
 

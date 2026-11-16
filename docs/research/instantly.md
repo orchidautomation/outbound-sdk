@@ -676,3 +676,13 @@ What follows for the adapter:
 - **No `Retry-After` comes with a 429**, so the engine now pauses the lane for the spacing of its published window, `60,000 / 20` = 3 s, before retrying, instead of 1 s. Five attempts then span at least 12 s of the minute rather than about 4 s.
 - **The SDK keeps each process inside half the lane, 10 a minute.** Two processes on one key each take their 10 and together reach Instantly's 20, which is where the 429s in the stress test came from. A `rateLimitStore` shared between them (`outbound-sdk/redis`, or one listed in a CLI `--config` file) makes them spend one budget.
 - **What the live run measured** (OUT-114): `replies --limit 1000` took 61.8 s for 11 requests and `--limit 2000` 62.6 s for 20, with nothing on stderr and no `throttledMs` in `meta`. That is the 10-a-minute share: ten requests go at once and the eleventh waits for the minute to pass.
+
+## Leads by positive interest, and many addresses at once (2026-11-16, for OUT-113)
+
+Fetched 2026-11-16: https://api.instantly.ai/openapi/api_v2.json (`info.version` 2.0.0), `POST /api/v2/leads/list` request body.
+
+- `filter` is one string. Its `x-enumDescriptions` include `FILTER_LEAD_INTERESTED` ("Filter for interested leads"), `FILTER_LEAD_MEETING_BOOKED`, `FILTER_LEAD_MEETING_COMPLETED`, `FILTER_LEAD_CLOSED` ("Filter for closed leads"), `FILTER_LEAD_CUSTOM_LABEL_POSITIVE` and `FILTER_LEAD_CUSTOM_LABEL_NEGATIVE`. One request takes one value, so `leads.byInterest` walks the five positive ones in turn, each to its last page. "Closed" is read as `lt_interest_status` 4, Won: the reference does not name the number a closed filter matches. Each lead returned is also kept only when its mapped `interestCategory` is `positive`.
+- `contacts` is "Array of emails the leads needs to have", items `format: email`, with no `maxItems`. `leads.lookupMany` sends every address of one call in it; hot_leads asks for at most 100 at a time. One person in several campaigns comes back once per campaign.
+- `limit` is 1 to 100. Instantly sends `next_starting_after` on a last page too (seen live, 2026-11-14), so both listings stop at the first page that is not full.
+
+Not run against a live workspace yet: whether `filter` combines with `campaign`, and how many addresses `contacts` takes in one request.

@@ -128,4 +128,4 @@ Five reads stay in the native catalog and are also used by a normalized read. Lo
 
 ## Per-lead reply counts and automatic replies
 
-No HeyReach lead shape has a reply count, so `engagement` is `null` on every HeyReach lead. `hotLeads` scores HeyReach leads from the interest label and the lead's status only, so an automatic reply cannot add reply points.
+No HeyReach lead shape has a reply count, so `engagement` is `null` on every HeyReach lead. `hotLeads` takes a HeyReach lead's reply count and last reply time from the replies it reads within `recency_days`, leaving out replies flagged automatic, and its interest from the label.

@@ -207,7 +207,7 @@ The tool and CLI name of each is the same words in snake case: `personSummary` i
 | `leadCollisions` | People in two or more campaigns at once, inside a tool or across tools | `leads.byCampaign` |
 | `suppressionCheck` | Leads in campaigns although they are on the block list | `blocklist`, `leads.byCampaign` |
 | `droppedReplies` | Replies nobody answered, longest waiting first | `replies.list` |
-| `hotLeads` | Who to call first, scored from interest, replies, clicks, opens and recency | `leads.list`, or `leads.byCampaign` with a campaign given |
+| `hotLeads` | Who to call first, scored from interest, replies, clicks, opens and recency | `leads.byInterest`, or else `leads.list` (`leads.byCampaign` with a campaign given) |
 | `personalizationGaps` | Leads that will get broken copy because a merge variable has no value | `sequence`, `leads.byCampaign` |
 
 ### Copy and sequence

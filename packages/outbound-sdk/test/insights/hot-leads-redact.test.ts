@@ -1,8 +1,9 @@
-// hot_leads under the redact plugin, the MCP default (OUT-111). Instantly
-// names a reply's lead by address, and redact masks addresses, so a reply's
-// lead past max_leads cannot be looked up at the vendor. The search would
-// quietly find nothing; instead it says so and marks the answer partial. Each
-// person keeps one masked token (OUT-122), so replies still match their leads.
+// hot_leads under the redact plugin, the MCP default (OUT-111, OUT-113).
+// Instantly names a reply's lead by address, and redact masks addresses, so
+// the reply names its lead by a token. Redact keeps, in memory, the address
+// behind each token it wrote and reads the lead with the address in its
+// place, so the answer ranks the same leads as without redact and still
+// shows no address.
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -11,7 +12,6 @@ import { createOutbound, MemoryRateLimitStore } from "../../src/index.ts";
 import type { OutboundPlugin } from "../../src/index.ts";
 import { insights } from "../../src/insights/index.ts";
 import { redact } from "../../src/redact/index.ts";
-import type { RedactOptions } from "../../src/redact/index.ts";
 import { fixtureHandler } from "../helpers/adapter-suite.ts";
 import { createClock } from "../helpers/clock.ts";
 import { fixture } from "../helpers/fixtures.ts";
@@ -19,12 +19,6 @@ import { createFetch, json } from "../helpers/http.ts";
 import { suite as instantly } from "../instantly/suite.ts";
 
 const NOW = Date.parse("2026-11-16T12:00:00.000Z");
-
-const PAST_CAP =
-  "The redact plugin masks email addresses, which a reply can name its lead by, so leads past max_leads that replied were not looked for.";
-
-const AUTO_CHECK =
-  "The redact plugin masks email addresses, which a reply can name its lead by, so replies were not matched to leads to tell automatic replies from people.";
 
 const repliers = (
   fixture("instantly", "listLeadsByEmail.repliers.json") as {
@@ -36,9 +30,8 @@ const [received] = (
   fixture("instantly", "listReplies.sameLead.json") as { items: object[] }
 ).items;
 
-// The live shape: the lead listing stops at max_leads on one lead that
-// replied, and another lead marked Interested, who replied three days ago, is
-// past the cap and found only through its reply.
+// One lead comes back from the filter for positive labels; another, who
+// replied three days ago, is found only through its reply.
 const build = (plugins: readonly OutboundPlugin[]) => {
   const clock = createClock();
   const unrouted: string[] = [];
@@ -51,7 +44,6 @@ const build = (plugins: readonly OutboundPlugin[]) => {
     if (url.pathname === "/api/v2/leads/list" && body.contacts === undefined) {
       return json({
         items: repliers.filter((lead) => lead.email === "person31@example.com"),
-        next_starting_after: "x",
       });
     }
 
@@ -84,8 +76,7 @@ const build = (plugins: readonly OutboundPlugin[]) => {
     share: 1,
   });
 
-  const run = () =>
-    clock.settle(outbound.insights.hotLeads({ max_leads: 1 }, { now: NOW }));
+  const run = () => clock.settle(outbound.insights.hotLeads({}, { now: NOW }));
 
   const lookups = () =>
     http.requests.flatMap((request) => {
@@ -97,7 +88,7 @@ const build = (plugins: readonly OutboundPlugin[]) => {
   return { lookups, run, unrouted };
 };
 
-test("hot_leads without redact finds the replied lead past max_leads", async () => {
+test("hot_leads without redact finds the lead that replied and the lead labelled positive", async () => {
   const { lookups, run, unrouted } = build([]);
   const result = await run();
 
@@ -108,43 +99,35 @@ test("hot_leads without redact finds the replied lead past max_leads", async () 
     "person16@example.com",
     "person31@example.com",
   ]);
-  assert.ok(!result.meta.notes.includes(PAST_CAP));
+  assert.equal(result.meta.complete, true, result.meta.notes.join(" "));
 });
 
-const masking: readonly [string, RedactOptions][] = [
+for (const [strategy, options] of [
   ["mask", {}],
   ["hash", { strategy: "hash" }],
-];
-
-for (const [strategy, options] of masking) {
-  test(`hot_leads under a ${strategy} redact says it did not look past max_leads, instead of dropping the replied lead silently`, async () => {
+] as const) {
+  test(`hot_leads under a ${strategy} redact looks up the lead that replied through redact, and ranks the same leads`, async () => {
+    const plain = await build([]).run();
     const { lookups, run, unrouted } = build([redact(options)]);
     const result = await run();
 
     assert.deepEqual(unrouted, []);
-    assert.deepEqual(lookups(), [], "no lead is looked up by a masked address");
-    assert.equal(result.data.totals.fromReplies, 0);
-    assert.equal(result.data.totals.moreLeadsExist, true);
-    assert.equal(result.meta.complete, false);
-    assert.ok(
-      result.meta.notes.includes(PAST_CAP),
-      result.meta.notes.join(" ")
+    assert.deepEqual(
+      lookups(),
+      ["person16@example.com"],
+      "redact puts the address back on the call to the vendor"
     );
-    assert.ok(
-      result.data.leads.every((lead) => lead.email !== "person16@example.com"),
-      "the address stays masked"
+    assert.deepEqual(result.data.totals, plain.data.totals);
+    assert.equal(result.meta.complete, true, result.meta.notes.join(" "));
+    assert.deepEqual(result.meta.notes, plain.meta.notes);
+    assert.deepEqual(
+      result.data.leads.map((lead) => lead.score),
+      plain.data.leads.map((lead) => lead.score)
     );
-  });
-}
-
-for (const [strategy, options] of masking) {
-  test(`hot_leads under a ${strategy} redact still tells automatic replies from people`, async () => {
-    const { run } = build([redact(options)]);
-    const result = await run();
-
-    assert.ok(
-      !result.meta.notes.includes(AUTO_CHECK),
-      result.meta.notes.join(" ")
+    assert.doesNotMatch(
+      JSON.stringify(result),
+      /person16|person31|example\.com/u,
+      "no address in the answer"
     );
   });
 }
