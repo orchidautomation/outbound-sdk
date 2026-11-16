@@ -11,6 +11,17 @@ The package is on npm as [outbound-sdk](https://www.npmjs.com/package/outbound-s
 
 On 2026-11-15 `npm install outbound-sdk` installed 0.2.0 into an empty project, the sample on the [introduction](/docs) ran from it, and from an empty folder `npx -y outbound-sdk providers` and `npx -y outbound-sdk mcp` answered.
 
+## The CLI on your PATH
+
+To run the [CLI](/docs/cli) from any folder without `npx`, install the package globally:
+
+```sh
+npm install -g outbound-sdk
+outbound version
+```
+
+That puts the binary on your PATH under both of its names, `outbound` and `outbound-sdk`. On 2026-11-16 `npm install -g outbound-sdk` installed 0.7.0, and `outbound version` and `outbound providers` answered. Code that imports the SDK still needs the package in its own project.
+
 ## From the repository
 
 The repository is public at [github.com/orchidautomation/outbound-sdk](https://github.com/orchidautomation/outbound-sdk). To run an unreleased commit, build the package, pack it, and install the tarball in your project. The repository needs Node 24.15 or later to build; the built package runs on Node 22.
