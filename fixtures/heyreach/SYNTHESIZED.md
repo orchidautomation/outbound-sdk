@@ -58,3 +58,8 @@ Built by hand. Field names and types were seen live in read-only requests to one
 
 - `getOverallStatsByCampaign.json` (`POST /stats/GetOverallStatsByCampaign`): built from the response schema in `openapi.json`, which has no example. Every count has its own value so a field read from the wrong key shows. The live fields the reference does not list (`uniqueLeadsContacted`, `autoTaggedInterested`) are left out.
 - `getListById.json` (`GET /list/GetById`) and `getWebhookById.json` (`GET /webhooks/GetWebhookById`): the first item of `listLists.json` and of `listWebhooks.json`. The reference gives both reads the fields of a list item.
+
+## Added 2026-11-16 for campaign conversations (OUT-124)
+
+- `getConversations.json` and `getConversations.page2.json` gained `campaignId` on each conversation. They stand for campaign conversations, and `GetConversationsV3` documents `campaignId` on those.
+- `getConversations.inbox.json` was built by hand in the `GetConversationsV3` shape. It holds one campaign conversation (with `campaignId`) and two that belong to no campaign (no `campaignId` key), a recruiter's message and an inbound pitch, each ending on the other person's message. That is the shape the 2026-11-16 stress test saw in a live inbox. Every value is made up.

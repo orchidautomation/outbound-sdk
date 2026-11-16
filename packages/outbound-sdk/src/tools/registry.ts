@@ -243,6 +243,81 @@ const withOfferedHints = (
       };
 };
 
+// The clients plugin adds `clients`; the identity plugin adds `person`.
+const pluginsOf = (outbound: OutboundApi): ReadonlyMap<string, boolean> =>
+  new Map([
+    ["clients", "clients" in outbound],
+    // person() refuses when redact masks the identifiers it links by.
+    ["identity", "person" in outbound && !masksIdentifiers(outbound)],
+    // Offered only when the vendor has reads of its own and no plugin turned them off.
+    [
+      "native",
+      outbound.capabilities.native &&
+        Object.keys(outbound.native.catalog).length > 0,
+    ],
+  ]);
+
+/** Whether the instance meets one need of a tool: a plugin it has, or a capability it supports. */
+const metOn = (outbound: OutboundApi): ((need: string) => boolean) => {
+  const added = pluginsOf(outbound);
+  const { capabilities } = outbound;
+
+  const isCapability = (need: string): need is CapabilityKey =>
+    Object.hasOwn(capabilities, need);
+
+  // Anything else a tool needs is a capability key. An unknown name is unmet.
+  return (need) =>
+    added.get(need) ?? (isCapability(need) && capabilities[need] !== false);
+};
+
+const NEEDS: ReadonlyMap<string, readonly string[]> = new Map(
+  [
+    campaignOverview,
+    campaignTrend,
+    winningSteps,
+    senderHealth,
+    replySamples,
+    leadRunway,
+    compareClients,
+    crossChannelLead,
+    campaignSetup,
+    deliverabilityCheck,
+    audienceLists,
+    vendorRead,
+  ].map((definition) => [definition.name, definition.needs])
+);
+
+/**
+ * Why `createTools` leaves a built-in tool out of this instance's set, in
+ * the words of an `Unsupported` error. `undefined` for a name that is not a
+ * built-in tool, or one the instance offers.
+ */
+export const leftOutReason = (
+  outbound: OutboundApi,
+  name: string
+): string | undefined => {
+  const met = metOn(outbound);
+  const unmet = (NEEDS.get(name) ?? []).filter((need) => !met(need));
+
+  if (unmet.length === 0) {
+    return undefined;
+  }
+
+  const plugins = unmet.filter((need) => pluginsOf(outbound).has(need));
+  const capabilities = unmet.filter((need) => !plugins.includes(need));
+
+  return `${name} is not available: ${[
+    ...(capabilities.length > 0
+      ? [
+          `the ${outbound.provider} adapter does not support ${capabilities.join(", ")}`,
+        ]
+      : []),
+    ...(plugins.length > 0
+      ? [`it needs ${plugins.join(", ")}, which this instance does not offer`]
+      : []),
+  ].join("; ")}`;
+};
+
 /**
  * The tool set for one instance. A tool that needs a plugin the instance does
  * not have, or a capability the adapter lacks or a plugin turned off, is left
@@ -272,27 +347,7 @@ export const createTools = (
   const wanted =
     options.only === undefined ? undefined : new Set<string>(options.only);
 
-  // The clients plugin adds `clients`; the identity plugin adds `person`.
-  const added = new Map([
-    ["clients", "clients" in outbound],
-    // person() refuses when redact masks the identifiers it links by.
-    ["identity", "person" in outbound && !masksIdentifiers(outbound)],
-    // Offered only when the vendor has reads of its own and no plugin turned them off.
-    [
-      "native",
-      outbound.capabilities.native &&
-        Object.keys(outbound.native.catalog).length > 0,
-    ],
-  ]);
-
-  const { capabilities } = outbound;
-
-  const isCapability = (need: string): need is CapabilityKey =>
-    Object.hasOwn(capabilities, need);
-
-  // Anything else a tool needs is a capability key. An unknown name is unmet.
-  const met = (need: string): boolean =>
-    added.get(need) ?? (isCapability(need) && capabilities[need] !== false);
+  const met = metOn(outbound);
 
   const offered = [
     ...all.filter(

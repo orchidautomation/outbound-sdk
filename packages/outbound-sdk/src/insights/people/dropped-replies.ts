@@ -42,6 +42,12 @@ const input = z.object({
     .describe(
       "Set to true to also check replies flagged automatic, by the vendor or by a fixed rule"
     ),
+  include_inbox: z
+    .boolean()
+    .default(false)
+    .describe(
+      "Set to true to also check replies in conversations that belong to no campaign, such as a LinkedIn account's own messages on HeyReach. false sets them aside and counts them in totals.notInCampaign."
+    ),
   max_replies: z
     .number()
     .int()
@@ -100,6 +106,13 @@ export interface DroppedReplies {
     readonly skippedByCategory: number;
     /** Left out because they are flagged automatic, by the vendor or by a fixed rule. */
     readonly skippedAuto: number;
+    /**
+     * Set aside because their conversation belongs to no campaign, such as a
+     * LinkedIn account's own messages; 0 with `include_inbox`. `null` when the
+     * vendor's replies are all campaign replies (no `replies.inbox`). Always
+     * set by dropped_replies; optional so a value built by hand stays valid.
+     */
+    readonly notInCampaign?: number | null;
     /** Conversations the remaining replies belong to. */
     readonly conversations: number;
     readonly answered: number;
@@ -288,7 +301,8 @@ const named = async (
 const readReplies = (
   context: InsightContext,
   since: string,
-  max: number
+  max: number,
+  inbox: boolean
 ): Promise<Capped<Reply>> => {
   const { outbound } = context;
   const filtered = outbound.capabilities["replies.since"] !== false;
@@ -299,10 +313,19 @@ const readReplies = (
     );
   }
 
+  // Replies outside every campaign are read too when the vendor marks them,
+  // so they can be counted when they are set aside.
+  const includeInbox =
+    inbox || outbound.capabilities["replies.inbox"] || undefined;
+
   return readCappedFlag(
     context,
     (cap) =>
-      outbound.replies.listAll(filtered ? { max: cap, since } : { max: cap }),
+      outbound.replies.listAll(
+        filtered
+          ? { includeInbox, max: cap, since }
+          : { includeInbox, max: cap }
+      ),
     max,
     "replies",
     "max_replies"
@@ -311,7 +334,7 @@ const readReplies = (
 
 export const droppedReplies = defineInsight({
   description:
-    "Replies from prospects that nobody answered. Reads the replies since a date (14 days before now by default), keeps the categories that need an answer, and for each conversation reads its thread, or the lead's timeline when there is no thread, and reports it as dropped when nothing was sent after the reply and it has waited longer than older_than_hours. Returns the dropped replies longest waiting first with hours waiting, category, the campaign and its name, and the lead with their name, email and LinkedIn profile. A reply that could not be checked is counted in totals.unchecked, never reported as dropped. Costs one request per page of replies, one per conversation checked, and one per lead and per campaign among the dropped replies to name them, so at most about three times max_replies requests. totals.moreRepliesExist is true when max_replies left replies unread.",
+    "Replies from prospects that nobody answered. Reads the replies since a date (14 days before now by default), keeps the categories that need an answer, and for each conversation reads its thread, or the lead's timeline when there is no thread, and reports it as dropped when nothing was sent after the reply and it has waited longer than older_than_hours. Replies in conversations that belong to no campaign, such as a LinkedIn account's own messages on HeyReach, are set aside and counted in totals.notInCampaign unless include_inbox is true. Returns the dropped replies longest waiting first with hours waiting, category, the campaign and its name, and the lead with their name, email and LinkedIn profile. A reply that could not be checked is counted in totals.unchecked, never reported as dropped. Costs one request per page of replies, one per conversation checked, and one per lead and per campaign among the dropped replies to name them, so at most about three times max_replies requests. totals.moreRepliesExist is true when max_replies left replies unread.",
   inputSchema: input,
   key: "droppedReplies",
   cost: (values, price) =>
@@ -341,14 +364,27 @@ export const droppedReplies = defineInsight({
       );
     }
 
-    const listed = await readReplies(context, since, values.max_replies);
+    const listed = await readReplies(
+      context,
+      since,
+      values.max_replies,
+      values.include_inbox
+    );
+
     const read = listed.items;
 
     // A reply with no time is kept: it is counted as unchecked below.
-    const replies = read.filter(
+    const inWindow = read.filter(
       (reply) =>
         reply.sentAt === null || Date.parse(reply.sentAt) >= Date.parse(since)
     );
+
+    const separates = context.outbound.capabilities["replies.inbox"];
+
+    const replies =
+      separates && !values.include_inbox
+        ? inWindow.filter((reply) => reply.campaignRef !== null)
+        : inWindow;
 
     const wanted = replies.filter((reply) =>
       values.categories.includes(reply.category)
@@ -413,6 +449,7 @@ export const droppedReplies = defineInsight({
         conversations: conversations.length,
         dropped: dropped.length,
         moreRepliesExist: listed.capped,
+        notInCampaign: separates ? inWindow.length - replies.length : null,
         repliesRead: read.length,
         skippedAuto: wanted.length - kept.length,
         skippedByCategory: replies.length - wanted.length,

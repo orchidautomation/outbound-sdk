@@ -63,6 +63,13 @@ export interface Capabilities {
   "replies.since": FilterGrade;
   /** Only the replies that are unread, or only the ones that are read. */
   "replies.unread": FilterGrade;
+  /**
+   * The vendor's inbox also holds conversations that belong to no campaign,
+   * such as a LinkedIn account's own messages. Their replies are left out of
+   * `replies.list` unless it is asked for `includeInbox`, and their messages
+   * and replies carry a null `campaignRef`.
+   */
+  "replies.inbox": boolean;
   "stats.workspace": StatGrade;
   "stats.campaign": StatGrade;
   /**
@@ -128,6 +135,7 @@ export const NO_CAPABILITIES: Capabilities = {
   "placementTests.list": false,
   "replies.category": false,
   "replies.list": false,
+  "replies.inbox": false,
   "replies.since": false,
   "replies.unread": false,
   "senders.byCampaign": false,

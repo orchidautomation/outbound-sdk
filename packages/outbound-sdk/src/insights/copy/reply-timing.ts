@@ -36,6 +36,12 @@ const input = z.object({
     .describe(
       "Count replies flagged automatic (isAuto true), such as out-of-office messages and autoresponders. false leaves them out of every figure and counts them in counts.autoReplies."
     ),
+  include_inbox: z
+    .boolean()
+    .default(false)
+    .describe(
+      "Also time conversations that belong to no campaign, such as a LinkedIn account's own messages on HeyReach. false leaves their messages out of every figure and counts them in counts.notInCampaign."
+    ),
   max_messages: z
     .number()
     .int()
@@ -128,6 +134,8 @@ export interface ReplyTiming {
     readonly unpairedShare: number | null;
     /** Received messages flagged automatic and left out of every figure; 0 with `include_auto`. Always set by reply_timing; optional so a value built by hand stays valid. */
     readonly autoReplies?: number;
+    /** Messages in conversations that belong to no campaign, left out of every figure; 0 with `include_inbox`. `null` when the vendor's conversations are all campaign ones (no `replies.inbox`). Always set by reply_timing; optional so a value built by hand stays valid. */
+    readonly notInCampaign?: number | null;
   };
 }
 
@@ -324,7 +332,7 @@ const noteGaps = (
 
 export const replyTiming = defineInsight({
   description:
-    "How fast people reply and when. Pairs each received message with the last message sent before it in the same thread (or to the same lead) and returns the median, 75th and 90th percentile of hours to reply, the share of replies within 1, 24 and 72 hours, replies by weekday and by hour of day, the weekday and hour of the sends that drew replies, and how many replies could not be paired; over a quarter unpaired, the answer is marked partial, since a reply to a send from before `since` cannot pair and those are the slow ones. Use it to choose follow-up delays and sending hours. Costs 1 request per page of messages, up to max_messages. A null figure means no reply could be paired. A received message flagged automatic (isAuto true: the vendor's flag, or a fixed rule on the sender, subject, canned phrases or a reply within a minute of the send) is left out and counted in counts.autoReplies unless include_auto is true; a message with no flag is counted as a reply.",
+    "How fast people reply and when. Pairs each received message with the last message sent before it in the same thread (or to the same lead) and returns the median, 75th and 90th percentile of hours to reply, the share of replies within 1, 24 and 72 hours, replies by weekday and by hour of day, the weekday and hour of the sends that drew replies, and how many replies could not be paired; over a quarter unpaired, the answer is marked partial, since a reply to a send from before `since` cannot pair and those are the slow ones. Use it to choose follow-up delays and sending hours. Messages in conversations that belong to no campaign, such as a LinkedIn account's own messages on HeyReach, are left out and counted in counts.notInCampaign unless include_inbox is true. Costs 1 request per page of messages, up to max_messages. A null figure means no reply could be paired. A received message flagged automatic (isAuto true: the vendor's flag, or a fixed rule on the sender, subject, canned phrases or a reply within a minute of the send) is left out and counted in counts.autoReplies unless include_auto is true; a message with no flag is counted as a reply.",
   inputSchema: input,
   key: "replyTiming",
   cost: (values, price) =>
@@ -347,11 +355,19 @@ export const replyTiming = defineInsight({
       args.max_messages
     );
 
+    const separates = context.outbound.capabilities["replies.inbox"];
+
+    // A conversation outside every campaign answers no send of ours.
+    const inCampaigns =
+      separates && !args.include_inbox
+        ? read.filter((message) => message.campaignRef !== null)
+        : read;
+
     // An auto-reply is left out before pairing, so the person's own reply
     // after it pairs with the send instead of counting as a follow-on.
     const messages = args.include_auto
-      ? read
-      : read.filter(
+      ? inCampaigns
+      : inCampaigns.filter(
           (message) => message.direction === "out" || message.isAuto !== true
         );
 
@@ -372,9 +388,10 @@ export const replyTiming = defineInsight({
       campaign:
         args.campaign === null ? null : refOf(context.outbound, args.campaign),
       counts: {
-        autoReplies: read.length - messages.length,
+        autoReplies: inCampaigns.length - messages.length,
         followOnReplies: paired.followOn,
         messagesRead: read.length,
+        notInCampaign: separates ? read.length - inCampaigns.length : null,
         paired: paired.pairs.length,
         received: received.length,
         sent: messages.length - received.length,

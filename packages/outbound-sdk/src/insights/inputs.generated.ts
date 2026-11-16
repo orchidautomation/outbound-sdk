@@ -168,6 +168,13 @@ export interface InsightInputs {
     readonly include_auto?: boolean | undefined;
 
     /**
+     * Set to true to also check replies in conversations that belong to no campaign, such as a LinkedIn account's own messages on HeyReach. false sets them aside and counts them in totals.notInCampaign.
+     *
+     * Defaults to `false`.
+     */
+    readonly include_inbox?: boolean | undefined;
+
+    /**
      * The most replies to read. Each conversation among them costs one more request to check.
      *
      * A whole number from 1 to 1000. Defaults to `50`.
@@ -499,6 +506,13 @@ export interface InsightInputs {
      * Defaults to `false`.
      */
     readonly include_auto?: boolean | undefined;
+
+    /**
+     * Also time conversations that belong to no campaign, such as a LinkedIn account's own messages on HeyReach. false leaves their messages out of every figure and counts them in counts.notInCampaign.
+     *
+     * Defaults to `false`.
+     */
+    readonly include_inbox?: boolean | undefined;
 
     /**
      * The most messages to read, sent and received together. A page of messages costs 1 request.
@@ -898,6 +912,13 @@ export interface InsightInputs {
           | "unsubscribed"
         )[]
       | undefined;
+
+    /**
+     * A day is judged only when its count or its baseline mean reaches this many, so one reply on a quiet day is not flagged. 0 judges every day.
+     *
+     * A whole number from 0 to 9,007,199,254,740,991. Defaults to `3`.
+     */
+    readonly min_count?: number | undefined;
 
     /**
      * The fewest baseline days with data a day needs to be tested

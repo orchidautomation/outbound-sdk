@@ -46,16 +46,20 @@ const counts = (stats: Json | undefined): MetricCounts => ({
   sent: count(field(stats, "messagesSent")),
 });
 
+// HeyReach counts `uniqueLeadsContacted` over the whole range only: every
+// day of `byDayStats` reports 0 while the range's total does not, so a
+// day's `contacted` is unknown, not 0.
 const row = (
   scope: RowScope,
   stats: Json | undefined,
   date: string | null
 ): MetricRow =>
   // Days are keyed by UTC midnight.
-  metricRow(scope, counts(stats), {
-    date,
-    timezone: date === null ? null : "UTC",
-  });
+  metricRow(
+    scope,
+    date === null ? counts(stats) : { ...counts(stats), contacted: null },
+    { date, timezone: date === null ? null : "UTC" }
+  );
 
 export const totalRow = (scope: RowScope, body: Json): MetricRow =>
   row(scope, field(body, "overallStats"), null);

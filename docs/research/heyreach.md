@@ -564,3 +564,21 @@ What the adapter does with it:
 - `progressStats.totalUsersExcluded` is `CampaignProgress.skipped`, a new optional field. A missing count is `null`.
 
 Not confirmed: the live run on 2026-11-14 saw only `Finished` from `GetCampaignsForLead` and a `totalUsersExcluded` of 0, so no live excluded lead has been read. `GetLeadsFromCampaign.leadCampaignStatus` is not documented to include `Excluded`; if it ever does, it maps to `skipped` too, because both fields share one mapping.
+
+## Campaign conversations and four edge cases (2026-11-16, for OUT-124 and OUT-128)
+
+Sources, fetched 2026-11-16:
+
+- https://docs.heyreach.io/hey-reach-api/inbox/get-conversations-v-3.md. "`items[].campaignId` is omitted entirely when the conversation is not tied to a campaign." The response schema types `campaignId` as an integer. `correspondentProfile` carries both `linkedin_id` and `profileUrl`, and the `leadLinkedInId` and `leadProfileUrl` filters "cannot be combined".
+- https://docs.heyreach.io/hey-reach-api/analytics/get-overall-stats.md. `startDate` and `endDate` are both required. The documented stat fields are unchanged from section 7. `uniqueLeadsContacted` is still not documented.
+- https://docs.heyreach.io/llms.txt (the page index).
+
+Live evidence comes from the 2026-11-16 stress test recorded in Linear OUT-121, OUT-124 and OUT-128, which cross-checked the CLI against HeyReach's own MCP. It was not run again for this change, and no live request was made.
+
+What the adapter does with it:
+
+- **Campaign conversations.** `GetConversationsV3` lists the sender's whole LinkedIn inbox. In the stress test, 115 people had conversations against HeyReach's 28 campaign replies, and 14 of 16 "dropped replies" were in no campaign. A message's `campaignRef` is now the conversation's `campaignId`, so it is `null` exactly for a conversation in no campaign. `replies.list` leaves those conversations out unless asked for `includeInbox`. `messages.list` keeps every conversation. The new `replies.inbox` capability says the vendor has such conversations, and `dropped_replies` and `reply_timing` use it to set them aside and count them (`notInCampaign`). A chatroom read (`GetChatroom`) carries no `campaignId`, so a thread read still has a `null` `campaignRef`.
+- **Daily `contacted`.** HeyReach reports `uniqueLeadsContacted` as 0 on each day of `byDayStats` and counts it only in `overallStats`. The stress test saw 0 on each of 2026-10-01 to 10-03 and 35 for the three days. A day's `contacted` is `null`. The range total is unchanged.
+- **`from` alone.** Both dates are required, so `from` alone is sent with `endDate` at the end of today (UTC), with a note. `to` alone is still refused, because there is no start to send.
+- **Profile URN or slug.** A LinkedIn profile URL holds either the vanity slug or the member id (`/in/ACoAA…`). The stress test saw both forms among leads and conversations, but never one person in both forms, and the docs say nothing about which form `profileUrl` takes. **Decision:** the lead id stays the profile URL, and `linkedin_id` is not added as a second identifier yet. Separating campaign conversations no longer matches URLs, because it reads `campaignId`. The release rerun should look for one person in both forms. If it finds one, a lead should be keyed by `linkedin_id` when present, with a test built on that live shape.
+- **Low counts in `anomalies`.** This is not a vendor fact. A LinkedIn workspace sends a handful of messages a day, so one reply against a baseline of 0.1 a day is a z-score of 3.5. `anomalies` now judges a day only when its count or its baseline mean reaches `min_count` (default 3).

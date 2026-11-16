@@ -15,7 +15,7 @@ Usage: outbound <command> [options]
   limits
   native [name] [--input JSON]   the vendor's own reads; no name lists them
   person <email or LinkedIn URL> [--limit N] [--card | --slack]  one person's campaigns across every tool
-  replies [--campaign ID|NAME] [--category positive|negative|neutral|ooo|...] [--since ISO] [--limit N] [--bodies] [--by person]  one record per message; --by person gives one row per person
+  replies [--campaign ID|NAME] [--category positive|negative|neutral|ooo|...] [--since ISO] [--limit N] [--bodies] [--by person] [--include-inbox]  one record per message; --by person gives one row per person; --include-inbox adds conversations outside every campaign (HeyReach)
   senders [--limit N]
   stats [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--by day|total]
   tags [--limit N]

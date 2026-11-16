@@ -174,6 +174,12 @@ export interface ReplyFilters extends TimeRange {
   readonly category?: ReplyCategory | undefined;
   /** `true` for unread replies only, `false` for read ones only. */
   readonly unread?: boolean | undefined;
+  /**
+   * Also return replies from conversations that belong to no campaign, such
+   * as a LinkedIn inbox's own messages. Only adapters whose `replies.inbox`
+   * capability is true leave any out; on the others this changes nothing.
+   */
+  readonly includeInbox?: boolean | undefined;
   readonly include?: readonly Include[] | undefined;
 }
 
