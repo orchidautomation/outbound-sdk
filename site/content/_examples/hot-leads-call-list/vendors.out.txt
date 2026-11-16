@@ -1,7 +1,7 @@
 instantly, every lead: ok
 smartlead, every lead: ok
-  note: This tool reports no per-lead open, click or reply counts, so clicks and opens are unknown, and reply counts and recency come from the replies read within recency_days.
+  note: This tool reports no per-lead open or click counts, so those are unknown, and reply counts and recency come from the replies read within recency_days.
 heyreach, every lead: ok
-  note: This tool reports no per-lead open, click or reply counts, so clicks and opens are unknown, and reply counts and recency come from the replies read within recency_days.
+  note: This tool reports no per-lead open or click counts, so those are unknown, and reply counts and recency come from the replies read within recency_days.
 heyreach, one campaign: ok
-  note: This tool reports no per-lead open, click or reply counts, so clicks and opens are unknown, and reply counts and recency come from the replies read within recency_days.
+  note: This tool reports no per-lead open or click counts, so those are unknown, and reply counts and recency come from the replies read within recency_days.
