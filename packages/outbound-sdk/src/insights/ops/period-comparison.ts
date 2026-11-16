@@ -2,12 +2,11 @@
 
 import { z } from "zod";
 
-import { mapConcurrent } from "../../internal/concurrency.ts";
-import type { Campaign, CampaignStatus } from "../../internal/entities.ts";
+import type { Campaign } from "../../internal/entities.ts";
 import { sumMeasured } from "../../internal/metrics.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
 import { campaignsReadOf, readCampaignsIn } from "../capped.ts";
-import type { CampaignsRead } from "../capped.ts";
+import type { CampaignsRead, Capped } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { compareRates, percent, pText, round } from "../stats.ts";
@@ -246,25 +245,19 @@ export interface Periods {
   readonly read: CampaignsRead;
 }
 
-/** Each campaign's totals for the last `days` and the `days` before: two stats requests per campaign. */
+/**
+ * The campaigns listed, each with its totals for the last `days` and the
+ * `days` before: two stats requests per campaign.
+ */
 export const readPeriods = async (
   context: InsightContext,
-  options: {
-    readonly days: number;
-    readonly max_campaigns: number;
-    readonly statuses: readonly CampaignStatus[];
-  }
+  listed: Capped<Campaign>,
+  days: number
 ): Promise<Periods> => {
-  const current = lastDays(context.now, options.days);
-  const previous = lastDays(context.now, options.days, 1);
+  const current = lastDays(context.now, days);
+  const previous = lastDays(context.now, days, 1);
 
-  const listed = await readCampaignsIn(
-    context,
-    options.statuses,
-    options.max_campaigns
-  );
-
-  const campaigns = await mapConcurrent(
+  const campaigns = await context.each(
     listed.items,
     async (campaign): Promise<CampaignPeriods> => {
       const [now, before] = await Promise.all([
@@ -273,7 +266,8 @@ export const readPeriods = async (
       ]);
 
       return { campaign, current: now, previous: before };
-    }
+    },
+    "campaigns"
   );
 
   return { campaigns, current, previous, read: campaignsReadOf(listed) };
@@ -304,14 +298,35 @@ export const noted = (
   return across.comparison;
 };
 
-const workspaceOf = async (
+interface WorkspaceRows {
+  readonly current: readonly MetricCounts[];
+  readonly previous: readonly MetricCounts[];
+}
+
+const readWorkspace = async (
   context: InsightContext,
-  periods: Periods,
-  alpha: number
-): Promise<Comparison | null> => {
+  days: number
+): Promise<WorkspaceRows | null> => {
   const { outbound } = context;
 
   if (outbound.capabilities["stats.workspace"] === false) {
+    return null;
+  }
+
+  return {
+    current: context.rows(await outbound.stats(lastDays(context.now, days))),
+    previous: context.rows(
+      await outbound.stats(lastDays(context.now, days, 1))
+    ),
+  };
+};
+
+const workspaceOf = (
+  context: InsightContext,
+  rows: WorkspaceRows | null,
+  alpha: number
+): Comparison | null => {
+  if (rows === null) {
     context.note(
       "Workspace totals were left out: the adapter has no workspace stats. `total` adds up the campaigns read."
     );
@@ -319,14 +334,11 @@ const workspaceOf = async (
     return null;
   }
 
-  const current = context.rows(await outbound.stats(periods.current));
-  const previous = context.rows(await outbound.stats(periods.previous));
-
   // A combined instance returns one row per tool, and the tools need not report the same counts.
   return noted(
     context,
     "Workspace totals",
-    compareAcross(current, previous, alpha),
+    compareAcross(rows.current, rows.previous, alpha),
     "tools"
   );
 };
@@ -345,9 +357,18 @@ export const periodComparison = defineInsight({
   scales: "max_campaigns",
   name: "period_comparison",
   needs: ["stats.campaign"],
+  partialOnCap: true,
   next: "Use campaign_diagnosis on the campaign whose reply rate fell the most.",
   run: async (context, options) => {
-    const periods = await readPeriods(context, options);
+    const listed = await readCampaignsIn(
+      context,
+      options.statuses,
+      options.max_campaigns
+    );
+
+    // Read before the campaigns, so a request cap that stops them part way leaves the workspace's totals in the answer.
+    const workspace = await readWorkspace(context, options.days);
+    const periods = await readPeriods(context, listed, options.days);
     const campaigns: CampaignComparison[] = [];
     const tooFewSends: ThinCampaign[] = [];
 
@@ -390,7 +411,7 @@ export const periodComparison = defineInsight({
         "Every campaign added together",
         totalOf(periods.campaigns, options.alpha)
       ),
-      workspace: await workspaceOf(context, periods, options.alpha),
+      workspace: workspaceOf(context, workspace, options.alpha),
     };
 
     return comparison;

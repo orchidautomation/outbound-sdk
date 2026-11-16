@@ -6,23 +6,24 @@ import {
   replyCategorySchema,
 } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
-import { isJsonObject, parseJson, toJson } from "../internal/json.ts";
+import { parseJson, toJson } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
 import { providers } from "../providers/index.ts";
 import { resolveCampaign } from "../tools/by-name.ts";
-import { createTools } from "../tools/index.ts";
-import type { OutboundTool, ToolResult } from "../tools/index.ts";
+import type { ToolResult } from "../tools/index.ts";
 import {
   campaignOption,
   confirmScope,
   listOption,
   searchCampaigns,
 } from "./by-name.ts";
+import { insightCaps, insightToolCaps } from "./config.ts";
 import { Answer, coverageOf, sections } from "./envelope.ts";
 import type { Printed } from "./envelope.ts";
 import { listedReplies, listing } from "./listing.ts";
 import { readNative } from "./native.ts";
+import { describeTool, offeredTools, requiresInput } from "./offered.ts";
 import { didYouMean } from "./suggest.ts";
 
 export interface CommandInput {
@@ -140,34 +141,6 @@ const drawn = async (
   );
 };
 
-/** The tools `outbound mcp` offers: the built-in ones, then the insights. */
-export const offeredTools = async (
-  outbound: OutboundApi
-): Promise<OutboundTool[]> => {
-  // Loaded on demand, so the other commands do not pay for the insights.
-  const { insightTools } = await import("../insights/index.ts");
-
-  return createTools(outbound, { extra: insightTools(outbound) });
-};
-
-/** A tool as `outbound tools` lists it: its inputs as JSON Schema, as `outbound insight` lists them. */
-const describeTool = (tool: OutboundTool): Json => ({
-  description: tool.description,
-  name: tool.name,
-  parameters: tool.parameters,
-});
-
-/** Whether the tool has an input with no default, so it cannot run on none. */
-const requiresInput = (tool: OutboundTool): boolean => {
-  const { parameters } = tool;
-
-  return (
-    isJsonObject(parameters) &&
-    Array.isArray(parameters.required) &&
-    parameters.required.length > 0
-  );
-};
-
 /** Lists the insights, or runs the one the first argument names. */
 const runInsight: Command = async (outbound, input) => {
   // Loaded on demand, so the other commands do not pay for the insights.
@@ -184,11 +157,21 @@ const runInsight: Command = async (outbound, input) => {
 
   // A card is drawn from the tool form of the answer.
   const [asTool] = wantsCard(input)
-    ? insightTools(outbound, { only: [name] })
+    ? insightTools(outbound, {
+        ...insightToolCaps(input.flags, false),
+        only: [name],
+      })
     : [];
 
   return asTool === undefined
-    ? asJson(await runInsightByName(outbound, name, insightInput))
+    ? asJson(
+        await runInsightByName(
+          outbound,
+          name,
+          insightInput,
+          insightCaps(input.flags, false)
+        )
+      )
     : drawn(name, await asTool.call(insightInput), input);
 };
 
@@ -495,7 +478,7 @@ const COMMAND_TABLE = {
     run: async (outbound, input) => {
       const name = required(input, 0, "a tool name");
 
-      const offered = await offeredTools(outbound);
+      const offered = await offeredTools(outbound, input.flags);
       const tool = offered.find((candidate) => candidate.name === name);
 
       if (tool === undefined) {
@@ -521,8 +504,8 @@ const COMMAND_TABLE = {
   tools: {
     flags: [],
     help: "tools",
-    run: async (outbound) => {
-      const offered = await offeredTools(outbound);
+    run: async (outbound, input) => {
+      const offered = await offeredTools(outbound, input.flags);
 
       return offered.map(describeTool);
     },

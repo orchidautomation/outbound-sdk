@@ -4,8 +4,9 @@
 
 import type { Campaign, CampaignStatus } from "../internal/entities.ts";
 import type { ListAll } from "../internal/outbound/api.ts";
-import { capNote } from "./define.ts";
-import type { Cap, InsightContext } from "./define.ts";
+import type { InsightContext } from "./define.ts";
+import { capNote } from "./tracked-reads.ts";
+import type { Cap } from "./tracked-reads.ts";
 
 export interface Capped<Item> {
   readonly items: Item[];

@@ -10,7 +10,6 @@ import type { Evidence, MetricRow } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
 import { toJson, unknownKey } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
-import { plural } from "../internal/numbers.ts";
 import type {
   ListAll,
   OutboundApi,
@@ -23,7 +22,9 @@ import { namesCampaign, withCampaign } from "../tools/by-name.ts";
 import { inputProblem } from "../tools/input-problem.ts";
 import type { InsightCost } from "./cost.ts";
 import { runCap } from "./run-cap.ts";
-import type { CapOptions } from "./run-cap.ts";
+import type { CapOptions, RunCap } from "./run-cap.ts";
+import { readsOf } from "./tracked-reads.ts";
+import type { Cap } from "./tracked-reads.ts";
 
 export interface InsightMeta {
   /** `exact` only when every read behind the answer was exact. */
@@ -85,52 +86,13 @@ export const maskedOutBy = (
     : entry.maskedOut(masking);
 };
 
+export type { Cap } from "./tracked-reads.ts";
+
 export interface InsightResult<Data> {
   readonly insight: string;
   readonly data: Data;
   readonly meta: InsightMeta;
 }
-
-/**
- * The cap a listing was read up to, for the note when it stops early:
- * `{ input: "max_campaigns", max: 25, what: "campaigns" }` gives "Stopped at
- * 25 campaigns (max_campaigns); more exist."
- */
-export interface Cap {
-  /** The cap as the caller set it, not the room left under it. */
-  readonly max: number;
-  /** What was counted, in the plural: `campaigns`, `leads of a campaign`. */
-  readonly what: string;
-  /** The input that raises the cap, or `null` for a cap no input sets. */
-  readonly input: string | null;
-}
-
-// A custom insight written before `Cap` existed names its cap as free text,
-// such as `50 campaigns`; that form is kept so its code still compiles.
-const stopNote = (cap: Cap | string | undefined): string => {
-  if (cap === undefined) {
-    return "A listing was cut off at its cap; more records exist.";
-  }
-
-  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- `cap` is a public argument that is either the old free-text form or a `Cap`
-  return typeof cap === "string"
-    ? `Stopped at ${cap}; more exist.`
-    : capNote(cap);
-};
-
-/**
- * `cap.what` for a cap of one: its first plural word in the singular, so
- * `recent replies looked through` becomes `recent reply looked through`.
- */
-const oneOf = (what: string): string =>
-  what.replace(
-    /\b(?<stem>\w+?)(?<end>ies|s)\b/u,
-    (_match, stem: string, end: string) => (end === "ies" ? `${stem}y` : stem)
-  );
-
-/** The note for a listing that a cap stopped with more records left. */
-export const capNote = (cap: Cap): string =>
-  `Stopped at ${plural(cap.max, oneOf(cap.what), cap.what)} (${cap.input ?? "a fixed cap"}); more exist.`;
 
 /** What an insight reads through. Every helper records the read's cost and evidence. */
 export interface InsightContext {
@@ -154,6 +116,18 @@ export interface InsightContext {
   readonly one: <Item>(item: WithMeta<Item>) => Item;
   /** Records a stats read's cost and returns its rows. */
   readonly rows: (stats: StatsResult) => readonly MetricRow[];
+  /**
+   * Reads each item, a few side by side, and returns the results in order.
+   * In an insight with `partialOnCap`, an item whose read a request cap
+   * stopped is left out, and the answer is marked incomplete with a note
+   * such as `Read 18 of 24 campaigns`; `what` names the items in the plural.
+   * Any other failure, and every failure elsewhere, is thrown.
+   */
+  readonly each: <Item, Result>(
+    items: readonly Item[],
+    read: (item: Item) => Promise<Result>,
+    what: string
+  ) => Promise<Result[]>;
   /** Adds a note to the answer. The same note is kept once. */
   readonly note: (text: string) => void;
   /** Marks the answer as covering part of the data, with the reason as a note. */
@@ -237,6 +211,13 @@ export interface InsightSpec<Key extends string, Input, Data, Given = Input> {
   readonly cost?: InsightCost<Input> | undefined;
   /** The input that makes a run cheaper when lowered, such as `max_campaigns`. */
   readonly scales?: (keyof Input & string) | undefined;
+  /**
+   * `true` when the answer still means something over part of the data: a
+   * request cap that stops `context.all` or `context.each` part way then
+   * keeps what they read, and the answer comes back with `complete: false`
+   * and a note naming the cap, instead of failing with `RateLimited`.
+   */
+  readonly partialOnCap?: boolean | undefined;
   readonly run: (context: InsightContext, input: Input) => Promise<Data>;
 }
 
@@ -263,17 +244,26 @@ const RANK: Readonly<Record<Evidence, number>> = {
 interface Tracker {
   readonly context: InsightContext;
   readonly meta: () => Omit<InsightMeta, "computedAt" | "provider">;
+  /** `true` once a read a request cap stopped was kept out of the answer. */
+  readonly absorbed: () => boolean;
 }
 
-const track = (
-  outbound: OutboundApi,
-  now: number,
-  campaignsFound: (count: number) => void
-): Tracker => {
+const track = (cap: RunCap, now: number, partialOnCap: boolean): Tracker => {
+  const { outbound } = cap;
   const notes: string[] = [];
   let requests = 0;
   let evidence: Evidence = "exact";
   let complete = true;
+  let absorbed = false;
+
+  // What stopped the read when a request cap did and the insight keeps what it read.
+  const kept = (cause: unknown): string | undefined => {
+    const reached = partialOnCap ? cap.capReached(cause) : undefined;
+
+    absorbed ||= reached !== undefined;
+
+    return reached;
+  };
 
   const seen = (meta: ResultMeta | undefined): void => {
     if (meta === undefined) {
@@ -296,18 +286,10 @@ const track = (
   };
 
   return {
+    absorbed: () => absorbed,
     context: {
-      all: async (walk, cap) => {
-        const items = await walk.toArray();
-        seen(walk.meta);
-
-        if (walk.truncated) {
-          partial(stopNote(cap));
-        }
-
-        return items;
-      },
-      campaignsFound,
+      ...readsOf({ kept, partial, seen }),
+      campaignsFound: cap.campaignsFound,
       note,
       now,
       one: (item) => {
@@ -332,7 +314,13 @@ const track = (
         return stats.rows;
       },
     },
-    meta: () => ({ complete, evidence, notes: [...notes], requests }),
+    // A read the cap stopped part way recorded no cost, so the cap's own count is the total.
+    meta: () => ({
+      complete,
+      evidence,
+      notes: [...notes],
+      requests: absorbed ? Math.max(requests, cap.used()) : requests,
+    }),
   };
 };
 
@@ -440,7 +428,7 @@ const execute = async <Key extends string, Input, Data, Given>(
   );
 
   const now = options.now ?? Date.now();
-  const tracker = track(cap.outbound, now, cap.campaignsFound);
+  const tracker = track(cap, now, spec.partialOnCap === true);
 
   // A campaign given by name is looked up first, counted like any other read.
   const data = await withCampaign(tracker.context.outbound, checked, (walk) =>
@@ -451,7 +439,8 @@ const execute = async <Key extends string, Input, Data, Given>(
 
   const short = cap.shortNote();
 
-  if (short !== undefined) {
+  // A read the cap stopped and the answer left out already has its note.
+  if (short !== undefined && !tracker.absorbed()) {
     tracker.context.partial(short);
   }
 

@@ -17,7 +17,8 @@ import {
   helpText,
   listProviders,
 } from "./commands.ts";
-import { pluginsFor } from "./config.ts";
+import { insightToolCaps, pluginsFor } from "./config.ts";
+import type { PluginFlags } from "./config.ts";
 import { requestCounter, valueOf } from "./envelope.ts";
 import type { RunFacts } from "./envelope.ts";
 import { createMcpServer } from "./mcp.ts";
@@ -60,13 +61,16 @@ export interface CliIo {
 const serve = async (
   outbound: OutboundApi,
   io: CliIo,
-  unmasked: OutboundApi | undefined
+  unmasked: OutboundApi | undefined,
+  flags: PluginFlags
 ): Promise<void> => {
   // Loaded on demand, so the other commands do not pay for the insights.
   const { insightTools } = await import("../insights/index.ts");
+  // A tool call may spend what --max-requests allows, which replaces an insight's default cap.
+  const options = insightToolCaps(flags, true);
 
   const offered = (instance: OutboundApi) =>
-    createTools(instance, { extra: insightTools(instance) }).map(
+    createTools(instance, { extra: insightTools(instance, options) }).map(
       (tool) => tool.name
     );
 
@@ -83,7 +87,7 @@ const serve = async (
   );
 
   const server = createMcpServer(outbound, {
-    extra: insightTools(outbound),
+    extra: insightTools(outbound, options),
     leftOut,
     version: packageVersion(),
   });
@@ -211,7 +215,7 @@ export const run = async (
           })
         : undefined;
 
-      await serve(outbound, io, unmasked);
+      await serve(outbound, io, unmasked, values);
 
       return 0;
     }
