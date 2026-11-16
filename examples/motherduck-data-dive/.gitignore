@@ -1,0 +1,6 @@
+node_modules/
+*.duckdb
+*.duckdb.wal
+staging/
+report.html
+package-lock.json
