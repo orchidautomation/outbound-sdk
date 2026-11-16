@@ -153,6 +153,10 @@ export interface LeadFilters extends TimeRange {
   readonly linkedinUrl?: string | undefined;
   /** Only the records whose email address is at exactly this domain, such as `acme.com`. Needs `leads.byDomain`. */
   readonly domain?: string | undefined;
+  /** Only the records of the people with exactly these email addresses, read in one listing. Needs `leads.lookupMany`. */
+  readonly emails?: readonly string[] | undefined;
+  /** `positive`: only the leads the vendor labels positive (`interestCategory` `positive`). Needs `leads.byInterest`. */
+  readonly interest?: "positive" | undefined;
 }
 
 export interface WebhookFilters {

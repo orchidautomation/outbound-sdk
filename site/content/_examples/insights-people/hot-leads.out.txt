@@ -2,16 +2,25 @@
   parts: { clicks: 5, interest: 50, opens: 5, recency: 17.1429, replies: 20 }
 84 eli@example.com: marked Meeting Booked, replied 1 time, last reply 7 days ago, 2 clicks, 4 opens.
   parts: { clicks: 10, interest: 50, opens: 4, recency: 10, replies: 10 }
-3 ben@northwind.example.com: 3 opens.
-  parts: { clicks: 0, interest: null, opens: 3, recency: null, replies: 0 }
+29.0476 gus@example.com: replied 1 time, last reply 0 days ago.
+  parts: {
+  clicks: null,
+  interest: null,
+  opens: null,
+  recency: 19.0476,
+  replies: 10
+}
 totals: {
   autoReplied: 0,
   excluded: 1,
   fromReplies: 0,
-  hot: 4,
+  hot: 7,
+  leadsRead: 12,
   moreLeadsExist: false,
   negative: 1,
-  leadsRead: 12,
-  scored: 5,
-  withoutData: 6
+  repliesRead: 8,
+  scored: 8,
+  stale: 0,
+  unreadable: 0,
+  withoutData: 3
 }

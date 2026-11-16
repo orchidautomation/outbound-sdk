@@ -41,6 +41,10 @@ export interface Capabilities {
   "leads.lookup": boolean;
   /** Find the leads whose email address is at one domain, without walking every lead. */
   "leads.byDomain": boolean;
+  /** Find the leads of many exact email addresses in one listing, without one lookup each. */
+  "leads.lookupMany": boolean;
+  /** List only the leads the vendor labels positive, without walking every lead. */
+  "leads.byInterest": boolean;
   /** Leads carry open, click and reply counts. */
   "leads.engagement": boolean;
   /** List the saved lead lists. */
@@ -111,10 +115,12 @@ export const NO_CAPABILITIES: Capabilities = {
   "events.verify": false,
   "leads.byCampaign": false,
   "leads.byDomain": false,
+  "leads.byInterest": false,
   "leads.engagement": false,
   "leads.get": false,
   "leads.list": false,
   "leads.lookup": false,
+  "leads.lookupMany": false,
   "leads.since": false,
   "leads.timeline": false,
   "lists.get": false,

@@ -636,3 +636,13 @@ Fetched 2026-11-16: `https://api.instantly.ai/openapi/api_v2.json`. Both `GET /a
 Seen live on 2026-11-15 (the issue): a campaign with both settings off shows "Open rate: Disabled" and "Click rate: Disabled" in the app, while `GET /campaigns/analytics/overview` returns `open_count: 0` and `link_click_count: 0`. So a 0 there does not mean nobody opened.
 
 What the adapter does: one campaign's stats read `GET /campaigns/{id}` after the report. Workspace and mailbox stats read `GET /campaigns/analytics` (every campaign's counts for the range, with `emails_sent_count`, `open_count_unique`, `link_click_count_unique`) and the campaign listing, at most 10 pages of 100. The rule is in `site/content/docs/api/stats.mdx`.
+
+## Leads by positive interest, and many addresses at once (2026-11-16, for OUT-113)
+
+Fetched 2026-11-16: https://api.instantly.ai/openapi/api_v2.json (`info.version` 2.0.0), `POST /api/v2/leads/list` request body.
+
+- `filter` is one string. Its `x-enumDescriptions` include `FILTER_LEAD_INTERESTED` ("Filter for interested leads"), `FILTER_LEAD_MEETING_BOOKED`, `FILTER_LEAD_MEETING_COMPLETED`, `FILTER_LEAD_CLOSED` ("Filter for closed leads"), `FILTER_LEAD_CUSTOM_LABEL_POSITIVE` and `FILTER_LEAD_CUSTOM_LABEL_NEGATIVE`. One request takes one value, so `leads.byInterest` walks the five positive ones in turn, each to its last page. "Closed" is read as `lt_interest_status` 4, Won: the reference does not name the number a closed filter matches. Each lead returned is also kept only when its mapped `interestCategory` is `positive`.
+- `contacts` is "Array of emails the leads needs to have", items `format: email`, with no `maxItems`. `leads.lookupMany` sends every address of one call in it; hot_leads asks for at most 100 at a time. One person in several campaigns comes back once per campaign.
+- `limit` is 1 to 100. Instantly sends `next_starting_after` on a last page too (seen live, 2026-11-14), so both listings stop at the first page that is not full.
+
+Not run against a live workspace yet: whether `filter` combines with `campaign`, and how many addresses `contacts` takes in one request.
