@@ -28,7 +28,8 @@
         ],
         "repliedSteps": [
           1
-        ]
+        ],
+        "vendorLeadStatus": "replied"
       },
       {
         "firstContactedAt": "2026-11-10T09:00:00.000Z",
@@ -51,7 +52,8 @@
         "lastStepNumber": 1,
         "repliedStepIndexes": [],
         "repliedStepNumbers": [],
-        "repliedSteps": []
+        "repliedSteps": [],
+        "vendorLeadStatus": "active"
       },
       {
         "firstContactedAt": "2026-11-04T09:00:00.000Z",
@@ -74,7 +76,8 @@
         "lastStepNumber": null,
         "repliedStepIndexes": [],
         "repliedStepNumbers": [],
-        "repliedSteps": []
+        "repliedSteps": [],
+        "vendorLeadStatus": "active"
       }
     ],
     "found": true,
