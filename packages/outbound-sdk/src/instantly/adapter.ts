@@ -270,6 +270,13 @@ const leadListBody = (query: LeadQuery): JsonObject => {
     body.contacts = [...query.emails];
   }
 
+  // `search` matches whole words of the lead's email and profile fields, so
+  // `acme.com` also finds names and companies that mention it. The adapter
+  // keeps only the addresses at exactly that domain.
+  if (query.domain !== undefined) {
+    body.search = query.domain;
+  }
+
   if (query.interest === "positive") {
     const { after, at } = interestAt(query.next);
 
@@ -278,18 +285,7 @@ const leadListBody = (query: LeadQuery): JsonObject => {
     if (after !== null) {
       body.starting_after = after;
     }
-
-    return body;
-  }
-
-  // `search` matches whole words of the lead's email and profile fields, so
-  // `acme.com` also finds names and companies that mention it. The adapter
-  // keeps only the addresses at exactly that domain.
-  if (query.domain !== undefined) {
-    body.search = query.domain;
-  }
-
-  if (isString(query.next)) {
+  } else if (isString(query.next)) {
     body.starting_after = query.next;
   }
 
@@ -322,31 +318,31 @@ const listLeads = async (
     toLead(client.identity, item, labels)
   );
 
-  if (query.interest === "positive" || query.emails !== undefined) {
-    return { items: chosen(query, leads), next: nextOf(query, envelope) };
-  }
-
   return {
-    // `contacts` is documented as the emails a lead needs to have, but not
-    // how it compares them, and `search` matches more than the address, so
-    // both matches are made exact here.
-    items: leads.filter(
-      (lead) =>
-        (query.email === undefined || lead.email === query.email) &&
-        (query.domain === undefined ||
-          lead.email?.split("@").at(-1) === query.domain)
-    ),
-    next: envelope.next,
+    items: chosen(query, leads),
+    next:
+      query.interest === "positive" || query.emails !== undefined
+        ? nextOf(query, envelope)
+        : envelope.next,
   };
 };
 
+/**
+ * The leads that meet every filter given. `contacts` is documented as the
+ * emails a lead needs to have, but not how it compares them, `search`
+ * matches more than the address, and `filter` is one status at a time, so
+ * every match is made exact here.
+ */
 const chosen = (query: LeadQuery, leads: readonly Lead[]): Lead[] => {
   const wanted = new Set(query.emails);
 
   return leads.filter(
     (lead) =>
+      (query.email === undefined || lead.email === query.email) &&
       (query.emails === undefined ||
         (lead.email !== null && wanted.has(lead.email))) &&
+      (query.domain === undefined ||
+        lead.email?.split("@").at(-1) === query.domain) &&
       (query.interest === undefined || lead.interestCategory === "positive")
   );
 };

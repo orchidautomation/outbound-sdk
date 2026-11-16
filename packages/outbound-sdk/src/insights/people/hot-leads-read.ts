@@ -28,6 +28,14 @@ const NOT_ENGAGED: ReadonlySet<ReplyCategory> = new Set<ReplyCategory>([
   "unsubscribe",
 ]);
 
+/** The labels the vendor's positive filter returns (`leads.byInterest`), lowercased. */
+const VENDOR_POSITIVE: ReadonlySet<string> = new Set([
+  "interested",
+  "meeting booked",
+  "meeting completed",
+  "won",
+]);
+
 /** What the reads take from the input. */
 export interface ReadInput {
   readonly campaign: string | null;
@@ -35,8 +43,21 @@ export interface ReadInput {
   readonly limit: number;
   readonly max_leads: number;
   readonly max_replies: number;
+  readonly positive_labels: readonly string[];
   readonly recency_days: number;
 }
+
+/**
+ * Whether a reply is the lead's: it names the lead, and when both say which
+ * campaign, the same one. One person is one record per campaign, so a reply
+ * in one campaign says nothing about the record in another.
+ */
+const belongs = (lead: Lead, reply: Reply): boolean =>
+  reply.leadRef !== null &&
+  refsOf(lead).includes(reply.leadRef) &&
+  (reply.campaignRef === null ||
+    lead.campaignRef === null ||
+    reply.campaignRef === lead.campaignRef);
 
 export interface Candidates {
   /** Every lead read, each once. */
@@ -134,14 +155,6 @@ const listedLeads = async (
 ) => {
   const { outbound } = context;
 
-  if (campaign === null && !outbound.capabilities["leads.list"]) {
-    throw new OutboundError(
-      "Unsupported",
-      `hot_leads needs a campaign here: the ${outbound.provider} adapter cannot list every lead (leads.list)`,
-      { provider: outbound.provider }
-    );
-  }
-
   const walk =
     campaign === null
       ? outbound.leads.listAll({ max })
@@ -159,7 +172,8 @@ const listedLeads = async (
 /** The ref each engaged reply names, newest first, with the campaign of its newest reply. */
 const repliedRefs = (
   replies: readonly Reply[],
-  campaign: string | null
+  campaign: string | null,
+  listed: readonly Lead[]
 ): Map<string, string | null> => {
   const refs = new Map<string, string | null>();
 
@@ -169,7 +183,8 @@ const repliedRefs = (
       reply.isAuto !== true &&
       !NOT_ENGAGED.has(reply.category) &&
       (campaign === null || reply.campaignRef === campaign) &&
-      !refs.has(reply.leadRef)
+      !refs.has(reply.leadRef) &&
+      !listed.some((lead) => belongs(lead, reply))
     ) {
       refs.set(reply.leadRef, reply.campaignRef);
     }
@@ -179,8 +194,10 @@ const repliedRefs = (
 };
 
 /**
- * One record per address: the one in the campaign of the person's newest
- * reply, else the first. A lookup returns one record per campaign.
+ * One record per person: the one in the campaign of the person's newest
+ * reply, else the first. A lookup returns one record per campaign, and a
+ * person is told apart by the ref the replies name them by, which carries
+ * the tool and the workspace.
  */
 const byAddress = (
   found: readonly Lead[],
@@ -189,18 +206,17 @@ const byAddress = (
   const chosen = new Map<string, Lead>();
 
   for (const lead of found) {
-    const address = lead.email;
+    const ref = refsOf(lead).find((each) => campaigns.has(each));
 
-    if (address !== null) {
-      const ref = refsOf(lead).find((each) => campaigns.has(each));
-      const wanted = ref === undefined ? undefined : campaigns.get(ref);
-      const kept = chosen.get(address);
+    if (ref !== undefined) {
+      const wanted = campaigns.get(ref);
+      const kept = chosen.get(ref);
 
       if (
         kept === undefined ||
         (kept.campaignRef !== wanted && lead.campaignRef === wanted)
       ) {
-        chosen.set(address, lead);
+        chosen.set(ref, lead);
       }
     }
   }
@@ -249,13 +265,7 @@ const repliedLeads = async (
   listed: readonly Lead[]
 ): Promise<{ leads: Lead[]; unreadable: number }> => {
   const { outbound } = context;
-  const known = new Set(listed.flatMap((lead) => refsOf(lead)));
-
-  const wanted = new Map(
-    [...repliedRefs(replies, values.campaign)].filter(
-      ([ref]) => !known.has(ref)
-    )
-  );
+  const wanted = repliedRefs(replies, values.campaign, listed);
 
   if (wanted.size === 0) {
     return { leads: [], unreadable: 0 };
@@ -271,9 +281,13 @@ const repliedLeads = async (
 
   const many = outbound.capabilities["leads.lookupMany"] === true;
 
-  const addresses = many
-    ? [...wanted.keys()].flatMap((ref) => address(ref) ?? [])
+  const byAddressRefs = many
+    ? [...wanted.keys()].filter((ref) => address(ref) !== null)
     : [];
+
+  const addresses = [
+    ...new Set(byAddressRefs.flatMap((ref) => address(ref) ?? [])),
+  ];
 
   const byRef = [...wanted.keys()].filter(
     (ref) => !many || address(ref) === null
@@ -315,7 +329,10 @@ const repliedLeads = async (
 
   return {
     leads: [...found, ...one.results.map(({ value }) => value)],
-    unreadable: addresses.length - found.length + one.errors.length,
+    unreadable:
+      byAddressRefs.filter(
+        (ref) => !found.some((lead) => refsOf(lead).includes(ref))
+      ).length + one.errors.length,
   };
 };
 
@@ -337,12 +354,9 @@ const NO_ENGAGEMENT: LeadEngagement = {
  * (HeyReach) gets recency and a count this way.
  */
 const withReplies = (lead: Lead, replies: readonly Reply[]): Lead => {
-  const refs = new Set(refsOf(lead));
-
   const mine = replies.filter(
     (reply) =>
-      reply.leadRef !== null &&
-      refs.has(reply.leadRef) &&
+      belongs(lead, reply) &&
       reply.isAuto !== true &&
       !NOT_ENGAGED.has(reply.category)
   );
@@ -384,6 +398,28 @@ export const readCandidates = async (
   const { outbound } = context;
   const filtered = outbound.capabilities["leads.byInterest"] === true;
 
+  // A label the vendor's positive filter does not return is only found by
+  // walking the list.
+  const walk =
+    !filtered ||
+    values.include_engagement_only ||
+    values.positive_labels.some(
+      (label) => !VENDOR_POSITIVE.has(label.trim().toLowerCase())
+    );
+
+  // Refused before any read, so an unsupported call costs nothing.
+  if (
+    walk &&
+    values.campaign === null &&
+    !outbound.capabilities["leads.list"]
+  ) {
+    throw new OutboundError(
+      "Unsupported",
+      `hot_leads needs a campaign here: the ${outbound.provider} adapter cannot list every lead (leads.list)`,
+      { provider: outbound.provider }
+    );
+  }
+
   const replies = await windowReplies(context, values);
 
   // An unknown campaign has no replies either, which would read as nobody
@@ -399,10 +435,9 @@ export const readCandidates = async (
     ? await positiveLeads(context, values)
     : { capped: false, leads: [] };
 
-  const walked =
-    !filtered || values.include_engagement_only
-      ? await listedLeads(context, values)
-      : { capped: false, leads: [] };
+  const walked = walk
+    ? await listedLeads(context, values)
+    : { capped: false, leads: [] };
 
   const listed = distinct([...positive.leads, ...walked.leads]);
 

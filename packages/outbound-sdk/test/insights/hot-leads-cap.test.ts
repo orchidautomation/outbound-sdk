@@ -253,8 +253,14 @@ test("hot_leads on Instantly does not read again a listed lead its reply names b
 
     return url.searchParams.get("email_type") === "received"
       ? json({
+          // Both in person16's campaign, so the reply is the listed record's.
           items: ["person16@example.com", "person31@example.com"].map(
-            (lead, at) => ({ ...received, id: `reply-${at}`, lead })
+            (lead, at) => ({
+              ...received,
+              campaign_id: "01a1d77f-5e65-78a7-8eb0-0213c3e7d6dd",
+              id: `reply-${at}`,
+              lead,
+            })
           ),
         })
       : fixtures(request, index);
