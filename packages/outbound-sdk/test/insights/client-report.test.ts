@@ -76,7 +76,7 @@ const BOUNCE_NOTE =
 
 test("client_report composes totals, best and worst campaigns, bounce problems, unusual days, leads left and actions", async () => {
   const result = await single(DATA).insights.clientReport(
-    { limit: 1 },
+    { statuses: ["active", "paused", "completed"], limit: 1 },
     { now: NOW }
   );
 
@@ -256,7 +256,11 @@ test("client_report composes totals, best and worst campaigns, bounce problems, 
 
 test("client_report moves with top, the bounce limit, min_sent and the runway", async () => {
   const outbound = single(DATA);
-  const wide = await outbound.insights.clientReport({}, { now: NOW });
+
+  const wide = await outbound.insights.clientReport(
+    { statuses: ["active", "paused", "completed"] },
+    { now: NOW }
+  );
 
   // Three campaigns are ranked and the default top is 3: none is left for the bottom.
   assert.deepEqual(
@@ -267,7 +271,7 @@ test("client_report moves with top, the bounce limit, min_sent and the runway", 
   assert.ok(!wide.data.actions.some((each) => each.kind === "review_campaign"));
 
   const tolerant = await outbound.insights.clientReport(
-    { max_bounce_rate: 0.2 },
+    { statuses: ["active", "paused", "completed"], max_bounce_rate: 0.2 },
     { now: NOW }
   );
 
@@ -275,7 +279,7 @@ test("client_report moves with top, the bounce limit, min_sent and the runway", 
   assert.ok(!tolerant.data.actions.some((each) => each.kind === "fix_bounces"));
 
   const strict = await outbound.insights.clientReport(
-    { min_sent: 250 },
+    { statuses: ["active", "paused", "completed"], min_sent: 250 },
     { now: NOW }
   );
 
@@ -287,7 +291,7 @@ test("client_report moves with top, the bounce limit, min_sent and the runway", 
   assert.deepEqual(strict.data.bounceProblems, []);
 
   const short = await outbound.insights.clientReport(
-    { runway_days: 1 },
+    { statuses: ["active", "paused", "completed"], runway_days: 1 },
     { now: NOW }
   );
 
@@ -297,7 +301,7 @@ test("client_report moves with top, the bounce limit, min_sent and the runway", 
   );
 
   const long = await outbound.insights.clientReport(
-    { runway_days: 10 },
+    { statuses: ["active", "paused", "completed"], runway_days: 10 },
     { now: NOW }
   );
 
@@ -318,7 +322,7 @@ test("client_report moves with the anomaly settings, alpha and the days", async 
   const outbound = single(DATA);
 
   const sensitive = await outbound.insights.clientReport(
-    { anomaly_threshold: 1.3 },
+    { statuses: ["active", "paused", "completed"], anomaly_threshold: 1.3 },
     { now: NOW }
   );
 
@@ -338,7 +342,7 @@ test("client_report moves with the anomaly settings, alpha and the days", async 
   );
 
   const demanding = await outbound.insights.clientReport(
-    { min_baseline_points: 6 },
+    { statuses: ["active", "paused", "completed"], min_baseline_points: 6 },
     { now: NOW }
   );
 
@@ -346,14 +350,14 @@ test("client_report moves with the anomaly settings, alpha and the days", async 
 
   // Only 11-04 falls in a 5-day baseline before 11-07, so no day can be tested.
   const brief = await outbound.insights.clientReport(
-    { baseline_days: 5 },
+    { statuses: ["active", "paused", "completed"], baseline_days: 5 },
     { now: NOW }
   );
 
   assert.deepEqual(brief.data.anomalies, []);
 
   const credulous = await outbound.insights.clientReport(
-    { alpha: 0.6 },
+    { statuses: ["active", "paused", "completed"], alpha: 0.6 },
     { now: NOW }
   );
 
@@ -371,7 +375,10 @@ test("client_report moves with the anomaly settings, alpha and the days", async 
   );
 
   // Three days: 11-11 to 11-13 against 11-08 to 11-10.
-  const three = await outbound.insights.clientReport({ days: 3 }, { now: NOW });
+  const three = await outbound.insights.clientReport(
+    { statuses: ["active", "paused", "completed"], days: 3 },
+    { now: NOW }
+  );
 
   assert.deepEqual(three.data.period, { from: "2026-11-11", to: "2026-11-13" });
   assert.deepEqual(
@@ -388,7 +395,10 @@ test("client_report leaves out the sections the adapter cannot serve, and names 
 
   const noDays = await single(DATA, {
     "stats.byDay": false,
-  }).insights.clientReport({ limit: 1 }, { now: NOW });
+  }).insights.clientReport(
+    { statuses: ["active", "paused", "completed"], limit: 1 },
+    { now: NOW }
+  );
 
   assert.equal(noDays.data.anomalies, null);
   assert.equal(noDays.data.runningOutOfLeads, null);
@@ -407,7 +417,10 @@ test("client_report leaves out the sections the adapter cannot serve, and names 
 
   const noLeads = await single(DATA, {
     "leads.byCampaign": false,
-  }).insights.clientReport({}, { now: NOW });
+  }).insights.clientReport(
+    { statuses: ["active", "paused", "completed"] },
+    { now: NOW }
+  );
 
   assert.equal(noLeads.data.runningOutOfLeads, null);
   assert.equal(noLeads.data.anomalies?.length, 1);
@@ -415,7 +428,10 @@ test("client_report leaves out the sections the adapter cannot serve, and names 
 
   const noWorkspace = await single(DATA, {
     "stats.workspace": false,
-  }).insights.clientReport({}, { now: NOW });
+  }).insights.clientReport(
+    { statuses: ["active", "paused", "completed"] },
+    { now: NOW }
+  );
 
   assert.equal(noWorkspace.data.anomalies, null);
   assert.equal(noWorkspace.data.runningOutOfLeads?.length, 2);
@@ -423,13 +439,18 @@ test("client_report leaves out the sections the adapter cannot serve, and names 
 
   await assert.rejects(
     async () =>
-      await single(DATA, { "stats.campaign": false }).insights.clientReport({}),
+      await single(DATA, { "stats.campaign": false }).insights.clientReport({
+        statuses: ["active", "paused", "completed"],
+      }),
     unsupported("stats.campaign")
   );
 });
 
 test("client_report is empty without campaigns, and says when a cap cut what it read", async () => {
-  const empty = await single({}).insights.clientReport({}, { now: NOW });
+  const empty = await single({}).insights.clientReport(
+    { statuses: ["active", "paused", "completed"] },
+    { now: NOW }
+  );
 
   assert.equal(empty.data.campaigns, 0);
   assert.equal(empty.data.totals.current.sent, null);
@@ -444,7 +465,7 @@ test("client_report is empty without campaigns, and says when a cap cut what it 
   assert.equal(empty.meta.complete, true);
 
   const capped = await single(DATA).insights.clientReport(
-    { max_campaigns: 1 },
+    { statuses: ["active", "paused", "completed"], max_campaigns: 1 },
     { now: NOW }
   );
 
@@ -454,7 +475,11 @@ test("client_report is empty without campaigns, and says when a cap cut what it 
   // Winner has 100 leads: with 50 read its runway is a minimum, so it is not
   // flagged even with a runway that would catch it, and the answer says it is partial.
   const fewLeads = await single(DATA).insights.clientReport(
-    { max_leads_per_campaign: 50, runway_days: 10 },
+    {
+      statuses: ["active", "paused", "completed"],
+      max_leads_per_campaign: 50,
+      runway_days: 10,
+    },
     { now: NOW }
   );
 
@@ -479,7 +504,10 @@ test("client_report covers the campaigns of two tools in one report", async () =
       row("k1", "2026-11-05", { contacted: 100, replied: 20, sent: 100 }),
       row("k1", "2026-11-12", { contacted: 100, replied: 25, sent: 100 }),
     ],
-  }).insights.clientReport({ limit: 1 }, { now: NOW });
+  }).insights.clientReport(
+    { statuses: ["active", "paused", "completed"], limit: 1 },
+    { now: NOW }
+  );
 
   assert.equal(result.data.campaigns, 5);
   // 25 of 100 has a low end of 17.55%, above Winner's 12.3%.
@@ -519,7 +547,10 @@ test("client_report divides by leads contacted when the vendor reports no messag
       row("k", "2026-11-09", { contacted: 30, replied: 6 }),
       row("m", "2026-11-09", { contacted: 30, replied: 3 }),
     ],
-  }).insights.clientReport({ limit: 1, min_sent: 10 }, { now: NOW });
+  }).insights.clientReport(
+    { statuses: ["active", "paused", "completed"], limit: 1, min_sent: 10 },
+    { now: NOW }
+  );
 
   assert.equal(result.data.replyRateBasis, "contacted");
   assert.equal(result.data.totals.replyRateBasis, "contacted");

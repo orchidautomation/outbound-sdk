@@ -157,7 +157,7 @@ Each tool call gets a fresh allowance of vendor requests, counted across every r
 | Tool | Default allowance per call |
 | --- | --- |
 | A built-in tool | 100 requests (`DEFAULT_TOOL_REQUESTS`) |
-| An [insight tool](/docs/insights#request-caps) | What its input can cost, a quarter more for retries and 4 on top, but never more than 500 (`INSIGHT_TOOL_CEILING`) |
+| An [insight tool](/docs/insights#request-caps) | What its input can cost, a quarter more for retries and 20 on top, but never more than 500 (`INSIGHT_TOOL_CEILING`) |
 
 The 500 ceiling keeps a model from buying itself a larger allowance by raising a `max_*` input. `maxRequestsPerToolCall` on `createTools` (or on `insightTools`) replaces the default; `Infinity` removes it. A `maxRequestsPerCall` on the instance and a `budget()` still apply under it, and the lowest cap stops the call. A caller can also pass `{ maxRequests }` as the second argument of one tool's `call`.
 

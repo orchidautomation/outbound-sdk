@@ -1,8 +1,8 @@
 {
   "data": {
     "gap": {
-      "difference": 0.0583,
-      "median": 0.075,
+      "difference": 0.0658,
+      "median": 0.0675,
       "top": 0.1333
     },
     "ranked": [
@@ -52,21 +52,6 @@
         "rank": 3
       },
       {
-        "campaign": "memory:acme:pilot",
-        "campaignName": "Pilot test",
-        "channel": "email",
-        "provider": "memory",
-        "status": "paused",
-        "count": 2,
-        "high": 0.301,
-        "low": 0.0279,
-        "of": 20,
-        "rate": 0.1,
-        "basis": "contacted",
-        "sent": 60,
-        "rank": 4
-      },
-      {
         "campaign": "memory:acme:ecom",
         "campaignName": "Ecommerce ops",
         "channel": "email",
@@ -79,12 +64,12 @@
         "rate": 0.0263,
         "basis": "contacted",
         "sent": 1680,
-        "rank": 5
+        "rank": 4
       }
     ],
     "tooFewSends": [],
     "unknown": [],
-    "campaignsRead": 5,
+    "campaignsRead": 4,
     "moreCampaignsExist": false,
     "better": "higher",
     "metric": "reply_rate",

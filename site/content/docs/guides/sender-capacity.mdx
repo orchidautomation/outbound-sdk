@@ -83,8 +83,8 @@ The HeyReach adapter cannot read campaign settings, because HeyReach puts sendin
 
 ## What it costs in vendor requests
 
-- `senderCapacity`: one listing of senders (up to `max_senders`, default 200), one listing of active campaigns (up to `max_campaigns`, default 25), then for each campaign one read of its settings and one listing of its senders, and one read of daily stats. When the adapter has no workspace stats, daily stats cost one read per campaign instead.
-- `warmupReadiness`: one listing of senders (up to `max_senders`, default 100). With `check_health`, one health read per mailbox more.
+- `senderCapacity`: one listing of senders (up to `max_senders`, default 1,000), one listing of active campaigns (up to `max_campaigns`, default 50), then for each campaign one read of its settings and one listing of its senders, and one read of daily stats. When the adapter has no workspace stats, daily stats cost one read per campaign instead.
+- `warmupReadiness`: one listing of senders (up to `max_senders`, default 1,000). With `check_health`, one health read per mailbox more.
 - `senderLoad`: one listing of senders, one listing of campaigns per status, then one listing of senders per campaign.
 
 The function above reads the senders three times and each campaign's senders twice, because each insight makes its own reads. If that matters, put the [cache plugin](/docs/plugins/cache) on the instance. On Instantly, listing one campaign's senders reads every mailbox in the workspace at two requests per page, so the per-campaign part is the expensive one.

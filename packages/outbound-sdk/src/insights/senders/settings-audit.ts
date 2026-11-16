@@ -321,7 +321,7 @@ export const settingsAudit = defineInsight({
       (price.one("campaigns.settings") +
         (price.capabilities["senders.byCampaign"] === false
           ? 0
-          : price.list("senders.list", values.max_senders_per_campaign))),
+          : price.campaignSenders(values.max_senders_per_campaign))),
   scales: "max_campaigns",
   name: "settings_audit",
   needs: ["campaigns.settings"],

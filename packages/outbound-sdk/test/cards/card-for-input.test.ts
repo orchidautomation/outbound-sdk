@@ -42,6 +42,7 @@ test("cardFor draws an insight method's result the same as its tool's result", a
 
 test("cardFor draws an insight result's notes and an incomplete read", async () => {
   const result = await instance().insights.campaignRanking({
+    statuses: ["active", "paused", "completed"],
     max_campaigns: 1,
   });
 

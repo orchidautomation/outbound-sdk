@@ -137,6 +137,14 @@ const pair = () =>
 
 const NOVEMBER = { from: "2026-11-01", to: "2026-11-30" };
 
+// Every state the tools have campaigns in, read 25 at most, so the email
+// tool alone holds more campaigns than the cap.
+const WIDE = {
+  ...NOVEMBER,
+  max_campaigns: 25,
+  statuses: ["active" as const, "paused" as const, "completed" as const],
+};
+
 const cli = async (...argv: string[]) => {
   const out: string[] = [];
   const err: string[] = [];
@@ -158,7 +166,7 @@ const dataOf = <Data>(text: string): Data =>
   (JSON.parse(text) as { data: Data }).data;
 
 test("channel_mix compares email and LinkedIn although the email tool has more campaigns than max_campaigns", async () => {
-  const { data, meta } = await pair().insights.channelMix(NOVEMBER);
+  const { data, meta } = await pair().insights.channelMix(WIDE);
 
   assert.deepEqual(
     data.channels.map((group) => [group.channel, group.campaigns]),
@@ -183,7 +191,7 @@ test("channel_mix compares email and LinkedIn although the email tool has more c
 
 test("max_campaigns is split evenly between tools that both have more than their share", async () => {
   const { data } = await pair().insights.channelMix({
-    ...NOVEMBER,
+    ...WIDE,
     statuses: ["completed", "draft"],
   });
 
@@ -194,6 +202,22 @@ test("max_campaigns is split evenly between tools that both have more than their
       ["email", 13],
       ["linkedin", 12],
     ]
+  );
+});
+
+test("a combined instance with no campaign in the default state says it checked nothing", async () => {
+  const { data, meta } = await createOutbound({
+    adapter: combine([heyreachLike()]),
+    plugins: [insights()],
+  }).insights.channelMix(NOVEMBER);
+
+  assert.equal(data.campaignsRead, 0);
+  assert.equal(meta.complete, false);
+  assert.ok(
+    meta.notes.includes(
+      "No campaign is active, so nothing was checked (18 campaigns: 8 completed, 10 draft). Pass statuses to check the others."
+    ),
+    meta.notes.join(" | ")
   );
 });
 
@@ -211,7 +235,7 @@ test("channel_mix never says a channel is absent when max_campaigns left campaig
 });
 
 test("campaign_ranking on the combined instance includes the LinkedIn campaign", async () => {
-  const { data } = await pair().insights.campaignRanking(NOVEMBER);
+  const { data } = await pair().insights.campaignRanking(WIDE);
 
   assert.match(JSON.stringify(data), /heyreach:default:300010/u);
 });

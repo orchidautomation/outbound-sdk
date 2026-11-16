@@ -55,8 +55,8 @@ Every read an insight makes has a cap you can set. The defaults keep one call to
 | Cap | Default | Where |
 | --- | --- | --- |
 | `max_campaigns` | 20 | The [people](/docs/insights/people) insights and `copyReuse` |
-| `max_campaigns` | 25 | The [senders](/docs/insights/senders) and [operations](/docs/insights/operations) insights that list campaigns |
-| `max_campaigns` | 50 | `bounceWatch` |
+| `max_campaigns` | 25 | `settingsAudit` |
+| `max_campaigns` | 50 | `bounceWatch`, `senderCapacity`, `senderLoad` and the [operations](/docs/insights/operations) insights that list campaigns |
 | `max_leads` | 500 | `hotLeads`, `personalizationGaps` |
 | `max_leads` | 1,000 | `accountSummary` |
 | `max_leads` | 2,000 | `pipelineForecast`, `campaignDiagnosis` |
@@ -65,11 +65,12 @@ Every read an insight makes has a cap you can set. The defaults keep one call to
 | `max_replies` | `null`: the whole window, up to 2,000 | `droppedReplies` |
 | `max_messages` | 2,000 | `replyTiming` |
 | `max_senders` | 50 | `domainHealth` |
-| `max_senders` | 100 | `warmupReadiness` |
-| `max_senders` | 200 | `senderCapacity`, `senderLoad` |
 | `max_senders` | 500 | `campaignDiagnosis` |
+| `max_senders` | 1,000 | `warmupReadiness`, `senderCapacity`, `senderLoad` |
 
-The range of each cap is on the insight's own section. Thresholds (a bounce rate that is too high, a warmup score that is too low) are inputs with defaults too.
+The range of each cap is on the insight's own section.
+
+An insight that reads campaigns in some states, active by default, and finds none in them checked nothing. Its answer has `meta.complete` set to `false` and a note that counts the campaigns there are, for example "No campaign is active, so nothing was checked (18 campaigns: 8 completed, 10 draft). Pass statuses to check the others." Finding those costs one more page of campaigns. A workspace with no campaigns at all is a complete, empty answer. Thresholds (a bounce rate that is too high, a warmup score that is too low) are inputs with defaults too.
 
 `maxRequestsPerCall` on `createOutbound` is a different limit. It is the most vendor requests one call may make, and a call that reaches it fails with `RateLimited` instead of returning part of an answer.
 
@@ -79,7 +80,7 @@ Each insight also has a cap on the vendor requests the whole run may send, retri
 
 Each insight states what it costs as arithmetic over the reads it makes and the costs the adapter declares. That cost is worked out twice for the input you pass: at the least every read can cost, and at the most, with every `max_*` cap in the input reached.
 
-- **The default cap** is the most, a quarter more for retries (each retry is a request) and 4 on top. An insight that works at its inputs today is not stopped by its default.
+- **The default cap** is the most, a quarter more for retries (each retry is a request) and 20 on top. An insight that works at its inputs today is not stopped by its default.
 - **`maxRequests`**, the second argument's option, replaces the default: `outbound.insights.clientReport({}, { maxRequests: 100 })`. `maxRequests: Infinity` removes the default. A `maxRequestsPerCall` on the instance and a [`budget()`](/docs/plugins/budget) still apply under it, and the lowest cap stops the run.
 - **`insightCost(outbound, name, input)`** returns `{ min, max, defaultCap }` for an input, or `null` where the cost is unknown.
 
@@ -91,7 +92,7 @@ Each insight states what it costs as arithmetic over the reads it makes and the 
   ../../_examples/insights-index/costs.out.txt
 </include>
 
-A `-` is an insight that adapter cannot serve. `bounceWatch` and `clientReport` are the ones whose default inputs can cost more than an [insight tool call](/docs/tools#request-caps) may spend, 500 requests: for `bounceWatch`, 50 campaigns, each over the bounce rate with 10 senders to read, is about 600; for `clientReport` on Instantly, each stats read also reads the campaign's [tracking settings](/docs/api/stats#opens-and-clicks-that-were-not-measured). Such a tool call stops at 500, and its result names the `max_campaigns` to ask for.
+A `-` is an insight that adapter cannot serve. `bounceWatch`, `clientReport`, `senderCapacity` and `senderLoad` are the ones whose default inputs can cost more than an [insight tool call](/docs/tools#request-caps) may spend, 500 requests: for `bounceWatch`, 50 campaigns, each over the bounce rate with 10 senders to read, is about 600; for `clientReport` on Instantly, each stats read also reads the campaign's [tracking settings](/docs/api/stats#opens-and-clicks-that-were-not-measured); for `senderCapacity` and `senderLoad` on Instantly, each campaign's senders are found by paging through every mailbox of the workspace, 2 requests a page, so the most counts 1,000 mailboxes for each of 50 campaigns. A workspace of 303 mailboxes and 24 active campaigns takes about 230. Such a tool call stops at 500, and its result names the `max_campaigns` to ask for.
 
 ### Refused before the first request
 

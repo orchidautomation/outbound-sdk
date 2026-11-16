@@ -321,6 +321,12 @@ export const suppressionCheck = defineInsight({
 
     const matches = tally(violations.map((each) => each.matchedBy));
 
+    if (blocked.notChecked > 0) {
+      context.partial(
+        `${blocked.notChecked} of the block entries read name a company or another kind of entry no lead can be matched on, so they were not checked.`
+      );
+    }
+
     const answer: SuppressionCheck = {
       byCampaign: byCampaign.toSorted(
         (left, right) =>

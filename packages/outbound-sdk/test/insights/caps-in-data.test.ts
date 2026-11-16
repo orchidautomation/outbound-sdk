@@ -242,7 +242,7 @@ test("dropped_replies notes a reply that carries no lead ref, instead of silentl
 const day = (days: number): string =>
   new Date(NOW - days * 86_400_000).toISOString().slice(0, 10);
 
-// 30 active campaigns, past the default max_campaigns of 25, and a paused one
+// 30 active campaigns, past a max_campaigns of 25, and a paused one
 // with a bounce problem that the active ones crowd out (OUT-46).
 const CROWDED: MemoryData = {
   campaigns: [
@@ -272,11 +272,26 @@ test("the campaign insights say in data that max_campaigns left campaigns unread
   const options = { now: NOW };
 
   const results = [
-    await outbound.insights.campaignRanking({}, options),
-    await outbound.insights.clientReport({}, options),
-    await outbound.insights.periodComparison({}, options),
-    await outbound.insights.tagRollup({}, options),
-    await outbound.insights.channelMix({}, options),
+    await outbound.insights.campaignRanking(
+      { max_campaigns: 25, statuses: ["active", "paused", "completed"] },
+      options
+    ),
+    await outbound.insights.clientReport(
+      { max_campaigns: 25, statuses: ["active", "paused", "completed"] },
+      options
+    ),
+    await outbound.insights.periodComparison(
+      { max_campaigns: 25, statuses: ["active", "paused", "completed"] },
+      options
+    ),
+    await outbound.insights.tagRollup(
+      { max_campaigns: 25, statuses: ["active", "paused", "completed"] },
+      options
+    ),
+    await outbound.insights.channelMix(
+      { max_campaigns: 25, statuses: ["active", "paused", "completed"] },
+      options
+    ),
     await outbound.insights.copyReuse({}, options),
   ];
 
@@ -296,7 +311,7 @@ test("the campaign insights say in data that max_campaigns left campaigns unread
   assert.equal(report?.data.campaignsRead, 25);
 
   const control = await outbound.insights.campaignRanking(
-    { max_campaigns: 40 },
+    { statuses: ["active", "paused", "completed"], max_campaigns: 40 },
     options
   );
 
@@ -305,7 +320,7 @@ test("the campaign insights say in data that max_campaigns left campaigns unread
   assert.equal(control.data.ranked[0]?.campaignName, "Campaign 29");
 
   includes(
-    await card(CROWDED, "campaign_ranking"),
+    await card(CROWDED, "campaign_ranking", { max_campaigns: 25 }),
     "🟡 Stopped at 25 campaigns read (max_campaigns); more exist and are not in this answer."
   );
 });

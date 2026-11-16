@@ -24,8 +24,8 @@ Five of them (`periodComparison`, `campaignRanking`, `channelMix`, `tagRollup` a
 
 | Input | Default | Range | What it is |
 | --- | --- | --- | --- |
-| `statuses` | `["active", "paused", "completed"]` | at least one campaign status | Only campaigns in one of these states are read. |
-| `max_campaigns` | 25 | 1 to 200 | The most campaigns to read. |
+| `statuses` | `["active"]` | at least one campaign status | Only campaigns in one of these states are read. Up to 0.7 the default also read paused and completed campaigns; pass `["active", "paused", "completed"]` to keep that. |
+| `max_campaigns` | 50 | 1 to 200 | The most campaigns to read. |
 
 Their `data` says how many campaigns were read in `campaignsRead`, and `moreCampaignsExist` is `true` when `max_campaigns` stopped the listing with campaigns left. Those campaigns are in no part of the answer: a campaign past the cap can be the best one, or the one with the bounce problem.
 

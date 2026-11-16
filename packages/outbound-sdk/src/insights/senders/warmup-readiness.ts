@@ -27,8 +27,10 @@ const input = z.object({
     .int()
     .min(1)
     .max(1000)
-    .default(100)
-    .describe("The most senders to check"),
+    .default(1000)
+    .describe(
+      "The most senders to check. The listing costs 1 request per 100 senders."
+    ),
   max_spam_rate: z
     .number()
     .min(0)

@@ -187,16 +187,15 @@ export interface ForecastOptions {
 }
 
 /** Reads one campaign's leads, totals and recent pace, and projects what is left. */
-export const forecastCampaign = async (
+/** How long a campaign's leads last: its leads by status and the recent pace of new leads started. */
+export const runwayOf = async (
   context: InsightContext,
   campaign: Campaign,
   options: ForecastOptions
-): Promise<PipelineForecast> => {
-  const handle = context.outbound.campaign(campaign.ref);
-
+) => {
   const { capped, items: leads } = await readCapped(
     context,
-    (max) => handle.leads.listAll({ max }),
+    (max) => context.outbound.campaign(campaign.ref).leads.listAll({ max }),
     {
       input: options.leadsInput,
       max: options.maxLeads,
@@ -205,18 +204,34 @@ export const forecastCampaign = async (
   );
 
   const complete = !capped;
-
   const byStatus = countStatuses(leads);
-  const remaining = byStatus.active;
+  const split = splitActive(leads);
+  const pace = await paceOf(context, campaign.ref, options.days);
+
+  return {
+    byStatus,
+    complete,
+    daysLeft: runwayDays(split, byStatus, complete, pace),
+    leadsRead: leads.length,
+    pace,
+    remaining: byStatus.active,
+    split,
+  };
+};
+
+export const forecastCampaign = async (
+  context: InsightContext,
+  campaign: Campaign,
+  options: ForecastOptions
+): Promise<PipelineForecast> => {
+  const { byStatus, complete, daysLeft, leadsRead, pace, remaining, split } =
+    await runwayOf(context, campaign, options);
 
   const rates = ratesOf(
     await readTotals(context, campaign.ref, { from: null, to: null })
   );
 
-  const split = splitActive(leads);
-  const pace = await paceOf(context, campaign.ref, options.days);
   const expectedReplies = project(remaining, rates.replyRate);
-  const daysLeft = runwayDays(split, byStatus, complete, pace);
 
   return {
     ...labelOf(campaign),
@@ -236,7 +251,7 @@ export const forecastCampaign = async (
     ),
     inSequence: split.inSequence,
     leadsComplete: complete,
-    leadsRead: leads.length,
+    leadsRead,
     notStarted: split.notStarted,
     positiveRate: rates.positiveRate,
     remaining,

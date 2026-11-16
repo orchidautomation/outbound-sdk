@@ -193,6 +193,10 @@ export const costs = {
   "senders.get": { perPage: 1 },
   // The account, its DNS test, then its warmup analytics.
   "senders.health": { perPage: 3 },
+  // A campaign's senders: the campaign again with each page of every mailbox,
+  // kept when the campaign names it (see the caveats). Pages follow the
+  // workspace's mailboxes, not the senders kept.
+  "senders.byCampaign": { pageSize: PAGE_SIZE, perPage: 2, perWalk: 1 },
   "senders.list": { pageSize: PAGE_SIZE, perPage: 1, perWalk: 1 },
   "sequence.get": { perPage: 1 },
   "sequence.subsequences": { pageSize: PAGE_SIZE, perPage: 1, perWalk: 1 },

@@ -3,8 +3,9 @@
 // states up to one cap across all of them.
 
 import type { Campaign, CampaignStatus } from "../internal/entities.ts";
-import type { ListAll } from "../internal/outbound/api.ts";
+import type { ListAll, PageResult } from "../internal/outbound/api.ts";
 import type { InsightContext } from "./define.ts";
+import { isCapStop } from "./run-cap.ts";
 import { capNote, wasCutShort } from "./tracked-reads.ts";
 import type { Cap } from "./tracked-reads.ts";
 
@@ -57,6 +58,96 @@ export const campaignsReadOf = (read: Capped<Campaign>): CampaignsRead => ({
   moreCampaignsExist: read.capped,
 });
 
+/** The page, or `null` when a request cap stopped it. */
+const settledPage = async <Item>(
+  read: Promise<PageResult<Item>>
+): Promise<PageResult<Item> | null> => {
+  try {
+    return await read;
+  } catch (error) {
+    if (isCapStop(error)) {
+      return null;
+    }
+
+    throw error;
+  }
+};
+
+const either = (words: readonly string[]): string =>
+  words.length < 2
+    ? words.join("")
+    : `${words.slice(0, -1).join(", ")} or ${words.at(-1)}`;
+
+/**
+ * When no campaign is in the states asked for but the workspace has others,
+ * the answer covers nothing, so it is marked incomplete with a note counting
+ * them, instead of reading as a clean run with nothing found.
+ */
+const noneMatched = (
+  context: InsightContext,
+  wanted: readonly CampaignStatus[],
+  others: readonly Campaign[],
+  more: boolean
+): void => {
+  if (others.length === 0) {
+    return;
+  }
+
+  const counts = new Map<string, number>();
+
+  for (const campaign of others) {
+    counts.set(campaign.status, (counts.get(campaign.status) ?? 0) + 1);
+  }
+
+  const byStatus = [...counts]
+    .toSorted(([a], [b]) => a.localeCompare(b))
+    .map(([status, count]) => `${count} ${status}`)
+    .join(", ");
+
+  const total = `${more ? "the first " : ""}${others.length} campaign${others.length === 1 ? "" : "s"}`;
+
+  context.partial(
+    `No campaign is ${either(wanted)}, so nothing was checked (${total}: ${byStatus}). Pass statuses to check the others.`
+  );
+};
+
+/**
+ * Campaigns in the states asked for, and every campaign when the read had
+ * to list them all to filter by state.
+ */
+interface CampaignsIn extends Capped<Campaign> {
+  readonly every?: readonly Campaign[];
+}
+
+/**
+ * When the read found no campaign in the states asked for and nothing was
+ * left unread, counts the others: from the campaigns already listed when
+ * there are any, otherwise from one page of the listing.
+ */
+const countOthers = async (
+  context: InsightContext,
+  wanted: readonly CampaignStatus[],
+  every: readonly Campaign[] | undefined
+): Promise<void> => {
+  if (every !== undefined) {
+    noneMatched(context, wanted, every, false);
+
+    return;
+  }
+
+  const page = await settledPage(context.outbound.campaigns.list());
+
+  if (page === null) {
+    context.partial(
+      `No campaign is ${either(wanted)}, so nothing was checked; a request cap stopped the count of the others.`
+    );
+
+    return;
+  }
+
+  noneMatched(context, wanted, context.page(page), page.cursor !== undefined);
+};
+
 /**
  * How `max` is shared among tools that have `counts` campaigns each: the
  * tools with fewer than an even share keep all theirs, and the rest split
@@ -94,7 +185,7 @@ const readOne = async (
   context: InsightContext,
   wanted: readonly CampaignStatus[],
   cap: Cap
-): Promise<Capped<Campaign>> => {
+): Promise<CampaignsIn> => {
   const { campaigns } = context.outbound;
 
   if (context.outbound.capabilities["campaigns.status"] === false) {
@@ -108,7 +199,7 @@ const readOne = async (
       wanted.includes(campaign.status)
     );
 
-    return { capped: every.capped, items };
+    return { capped: every.capped, every: every.items, items };
   }
 
   const found: Campaign[] = [];
@@ -139,7 +230,7 @@ const readShared = async (
   context: InsightContext,
   wanted: readonly CampaignStatus[],
   cap: Cap
-): Promise<Capped<Campaign>> => {
+): Promise<CampaignsIn> => {
   const { outbound } = context;
   const tools = await context.all(outbound.workspaces.listAll());
 
@@ -204,5 +295,9 @@ export const readCampaignsIn = async (
 
   context.campaignsFound(read.items.length);
 
-  return read;
+  if (read.items.length === 0 && !read.capped) {
+    await countOthers(context, wanted, read.every);
+  }
+
+  return { capped: read.capped, items: read.items };
 };

@@ -79,8 +79,8 @@ Whether the senders can send what the campaigns ask.
 | Input | Default | Range | What it is |
 | --- | --- | --- | --- |
 | `days` | 7 | 1 to 90 | How many full days before today to average the sends over. |
-| `max_campaigns` | 25 | 1 to 200 | The most active campaigns to read. |
-| `max_senders` | 200 | 1 to 1,000 | The most senders to read for the workspace, and for each campaign. |
+| `max_campaigns` | 50 | 1 to 200 | The most active campaigns to read. |
+| `max_senders` | 1,000 | 1 to 1,000 | The most senders to read for the workspace, and for each campaign. |
 
 `data` (`SenderCapacity`):
 
@@ -172,7 +172,7 @@ Which senders are not ready to send, each with its reasons.
 | `min_score` | 90 | 0 to 100 | The warmup score a mailbox needs to be ready. |
 | `check_health` | `false` | boolean | Also check each mailbox's DNS records and warmup spam. |
 | `max_spam_rate` | 0.1 | 0 to 1 | With `check_health`, a mailbox whose warmup emails land in spam more often than this share is not ready. |
-| `max_senders` | 100 | 1 to 1,000 | The most senders to check. |
+| `max_senders` | 1,000 | 1 to 1,000 | The most senders to check. |
 
 `data` (`WarmupReadiness`):
 
@@ -222,8 +222,8 @@ Senders that are overused or unused, and campaigns that depend on too few sender
 | --- | --- | --- | --- |
 | `max_campaigns_per_sender` | 3 | 1 or more, whole | A sender attached to more campaigns than this is overused. |
 | `statuses` | `["active"]` | at least one campaign status | Campaign statuses to look at. |
-| `max_campaigns` | 25 | 1 to 200 | The most campaigns to read. |
-| `max_senders` | 200 | 1 to 1,000 | The most senders to read for the workspace, and for each campaign. |
+| `max_campaigns` | 50 | 1 to 200 | The most campaigns to read. |
+| `max_senders` | 1,000 | 1 to 1,000 | The most senders to read for the workspace, and for each campaign. |
 
 `data` (`SenderLoad`):
 

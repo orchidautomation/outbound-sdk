@@ -1,40 +1,40 @@
 {
   "data": {
-    "campaignsRead": 5,
+    "campaignsRead": 4,
     "moreCampaignsExist": false,
     "comparison": {
-      "difference": 0.0783,
+      "difference": 0.0786,
       "higher": "linkedin",
       "test": {
         "pValue": 0,
         "significant": true,
-        "z": -5.407
+        "z": -5.4379
       }
     },
     "finding": "The reply rate is 13.3% on LinkedIn against 5.5% on email; the difference is more than chance (p < 0.0001).",
     "byProvider": [
       {
         "bounced": 96,
-        "contacted": 2708,
-        "positive": 36,
-        "replied": 149,
-        "sent": 5940,
+        "contacted": 2688,
+        "positive": 35,
+        "replied": 147,
+        "sent": 5880,
         "acceptance": null,
-        "campaigns": 4,
+        "campaigns": 3,
         "channel": "email",
         "positiveRate": {
-          "count": 36,
-          "high": 0.0183,
-          "low": 0.0096,
-          "of": 2708,
-          "rate": 0.0133
+          "count": 35,
+          "high": 0.0181,
+          "low": 0.0094,
+          "of": 2688,
+          "rate": 0.013
         },
         "replyRate": {
-          "count": 149,
-          "high": 0.0643,
-          "low": 0.047,
-          "of": 2708,
-          "rate": 0.055
+          "count": 147,
+          "high": 0.0639,
+          "low": 0.0467,
+          "of": 2688,
+          "rate": 0.0547
         },
         "provider": "memory"
       },
@@ -73,26 +73,26 @@
     "channels": [
       {
         "bounced": 96,
-        "contacted": 2708,
-        "positive": 36,
-        "replied": 149,
-        "sent": 5940,
+        "contacted": 2688,
+        "positive": 35,
+        "replied": 147,
+        "sent": 5880,
         "acceptance": null,
-        "campaigns": 4,
+        "campaigns": 3,
         "channel": "email",
         "positiveRate": {
-          "count": 36,
-          "high": 0.0183,
-          "low": 0.0096,
-          "of": 2708,
-          "rate": 0.0133
+          "count": 35,
+          "high": 0.0181,
+          "low": 0.0094,
+          "of": 2688,
+          "rate": 0.013
         },
         "replyRate": {
-          "count": 149,
-          "high": 0.0643,
-          "low": 0.047,
-          "of": 2708,
-          "rate": 0.055
+          "count": 147,
+          "high": 0.0639,
+          "low": 0.0467,
+          "of": 2688,
+          "rate": 0.0547
         }
       },
       {
