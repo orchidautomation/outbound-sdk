@@ -461,8 +461,8 @@ const at = (minute: number) =>
   new Date(Date.UTC(2026, 10, 16, 12, minute)).toISOString();
 
 test("a reply given out and then deleted between pages makes none repeat or go missing", async () => {
-  // g and b share a minute and are given out together; then g is deleted,
-  // so the next page resumes by time and must still list c once.
+  // g and b share a minute and are given out together; then b, the last
+  // given out, is deleted, so the next page resumes by time and lists c once.
 
   const email: MemoryMessage[] = [
     { campaignId: uuid(1), direction: "in", id: "a", sentAt: at(50) },
@@ -497,9 +497,11 @@ test("a reply given out and then deleted between pages makes none repeat or go m
 
   const first = await outbound.replies.list();
   const given = first.items.map((reply) => reply.ref);
-  assert.ok(given.includes("instantly:default:g"), given.join(", "));
+  assert.ok(given.includes("instantly:default:b"), given.join(", "));
+  assert.ok(!given.includes("instantly:default:c"), given.join(", "));
 
-  email.splice(1, 1);
+  // b is the last one given out, so the next page cannot find it.
+  email.splice(2, 1);
 
   const refs = [...given];
   let cursor: string | undefined = first.cursor;
