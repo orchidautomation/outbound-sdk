@@ -528,3 +528,22 @@ Ambiguous or not documented:
 - Nothing in the spec says whether a page past the end returns `{ items: [] }` or omits `items`. The schema requires it, so an absent `items` is treated as a broken answer.
 - `next_starting_after` is typed `string` and is not marked nullable. The live run of 2026-11-14 found it sent on a last page too. Reading a `null` as "no next page" stays lenient.
 - `fixtures/instantly/` matches the spec: every `list*.json` is `{ items, next_starting_after? }`, and the four analytics fixtures are bare arrays.
+
+## Which count is "contacted" (2026-11-16, for OUT-86)
+
+Fetched fresh on 2026-11-16: https://api.instantly.ai/openapi/api_v2.json (`info.version` 2.0.0, 198 paths). The descriptions, word for word:
+
+| Endpoint | Field | Description |
+| --- | --- | --- |
+| `GET /campaigns/analytics` | `contacted_count` | "Number of leads for whom the sequence has started" |
+| `GET /campaigns/analytics` | `new_leads_contacted_count` | "The total number of new leads contacted" |
+| `GET /campaigns/analytics/overview` | `contacted_count` | "The total number of unique leads contacted" |
+| `GET /campaigns/analytics/overview` | `new_leads_contacted_count` | "The total number of new leads contacted" |
+| `GET /campaigns/analytics/daily` | `contacted` | "The total number of unique contacts who received an email that day" |
+| `GET /campaigns/analytics/daily` | `new_leads_contacted` | "The total number of new leads contacted that day" |
+| `GET /accounts/analytics/daily` | `contacted`, `new_leads_contacted` | the same, "on this date from this account" |
+| `GET /campaigns/analytics/steps` | none | no contacted field is documented |
+
+Seen live on 2026-11-15 (one four-step campaign, recorded in OUT-86): the UI's "Sequence started" was 430, `new_leads_contacted_count` 430, `contacted_count` 1,404 and `emails_sent_count` 1,501. Summed by day, `contacted` equalled `sent` on each of 16 days. On the workspace's largest campaign `contacted_count` was 164,146 against 28,754. So `contacted_count` counts lead-step contacts, whatever the reference says, and the reference's "unique contacts who received an email that day" repeats a lead on every day it is emailed.
+
+The adapter reads `contacted` (unique leads started) from `new_leads_contacted_count` on totals and from `new_leads_contacted` by day. A day's new leads add up across days without counting a lead twice. A step row reads `contacted` where it is sent, as the leads that step reached; the reference lists no such field, so it is usually `null`.

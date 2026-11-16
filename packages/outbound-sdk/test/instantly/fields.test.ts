@@ -158,7 +158,7 @@ test("instantly: every campaign's totals come from one request, each count from 
       bounced: 117,
       clicked: 115,
       clickedTotal: 114,
-      contacted: 102,
+      contacted: 104,
       opened: 106,
       // open_count is leads who opened on this report, not every open.
       openedTotal: null,
