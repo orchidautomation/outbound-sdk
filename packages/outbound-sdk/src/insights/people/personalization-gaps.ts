@@ -6,6 +6,8 @@ import type { Lead, Sequence } from "../../internal/entities.ts";
 import { defineInsight } from "../define.ts";
 import { refOf } from "../ref.ts";
 import { rate } from "../stats.ts";
+import { stepAt } from "../step.ts";
+import type { StepPosition } from "../step.ts";
 import { isBuiltin, keyOf, keysWithValue, variablesIn } from "../variables.ts";
 import { leadsOf } from "./read.ts";
 
@@ -32,9 +34,7 @@ const input = z.object({
     ),
 });
 
-export interface VariableUse {
-  /** The step, counted from 0. */
-  readonly step: number;
+export interface VariableUse extends StepPosition {
   readonly variant: string;
   readonly field: "body" | "subject";
   readonly fallback: boolean;
@@ -101,17 +101,22 @@ const findVariables = (sequence: Sequence): Map<string, Found> => {
     step.variants.flatMap((variant) =>
       FIELDS.map((field) => ({
         field,
-        step: step.index,
+        stepIndex: step.index,
         text: variant[field] ?? "",
         variant: variant.variantKey,
       }))
     )
   );
 
-  for (const { field, step, text, variant } of texts) {
+  for (const { field, stepIndex, text, variant } of texts) {
     for (const { fallback, name } of variablesIn(text)) {
       const entry = found.get(keyOf(name)) ?? { name, uses: [] };
-      entry.uses.push({ fallback: fallback !== null, field, step, variant });
+      entry.uses.push({
+        ...stepAt(stepIndex),
+        fallback: fallback !== null,
+        field,
+        variant,
+      });
       found.set(keyOf(name), entry);
     }
   }
@@ -154,7 +159,7 @@ const toVariable = (
       leadsWithoutValue: known ? without : null,
       name,
       source,
-      steps: [...new Set(uses.map((use) => use.step))].toSorted(
+      steps: [...new Set(uses.map((use) => use.stepIndex))].toSorted(
         (left, right) => left - right
       ),
       uses,

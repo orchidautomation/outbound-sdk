@@ -94,6 +94,25 @@ test("person_summary reports each campaign, replies and the steps replied to, ac
     ]
   );
 
+  // Steps both ways: the second email is index 1 and number 2. The
+  // deprecated `repliedSteps` and `lastStep` keep their count from 0.
+  assert.deepEqual(
+    result.data.campaigns.map((campaign) => [
+      campaign.repliedStepIndexes,
+      campaign.repliedStepNumbers,
+      campaign.repliedSteps,
+      campaign.lastStepIndex,
+      campaign.lastStepNumber,
+      campaign.lastStep,
+    ]),
+    [
+      [[1], [2], [1], 2, 3, 2],
+      [[3], [4], [3], 0, 1, 0],
+      [[], [], [], null, null, null],
+      [[], [], [], null, null, null],
+    ]
+  );
+
   const [first] = result.data.campaigns;
   assert.equal(first?.firstContactedAt, "2026-11-01T09:00:00.000Z");
   assert.equal(first?.lastContactedAt, "2026-11-06T09:00:00.000Z");

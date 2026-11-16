@@ -164,6 +164,7 @@ The same word means the same thing in every insight.
 - **`limit` is how many items come back. `max_*` caps what is read.** `max_leads` caps every lead read; `max_leads_per_campaign` caps each campaign's.
 - **`max_<metric>_rate` and `min_<metric>_rate` are cutoffs**, such as `max_bounce_rate`. `anomalies`' `threshold` is a z-score, not a rate, and keeps its name, as do `recency_days` (how fast `hotLeads` lets a reply fade) and `baseline_days`.
 - **`campaign` in an answer is always the campaign's ref**, even when you passed its bare vendor id, and a campaign row carries `campaignName` beside it.
+- **A step is `stepIndex` and `stepNumber`.** `stepIndex` counts from 0, as vendors and the records' `stepIndex` do: the first email is 0. `stepNumber` counts from 1, as a person does: the first email is step 1. Every sentence and card says the step number, as "step 2 (of 4)" when the sequence's length is known. A field that names one step does the same with a suffix (`topStepIndex` and `topStepNumber`), and a list of steps is `…StepIndexes` and `…StepNumbers`. The [built-in tools](/docs/tools) say `step_index` and `step_number`.
 - **A rate is `{ count, of, rate, low, high }`**: the count, what it is divided by, the rate and the ends of its 95% Wilson interval. A few figures stay plain numbers because no single count is behind them: `PeriodNumbers`' rates, `personSummary`'s `campaignReplyRate` and `personalizationGaps`' `affectedRate`.
 
 Names that broke this rule before 0.4.0 were renamed in 0.4.0 and the old names were removed in 0.6.0. An old input name is now `Invalid`, and the message lists the inputs the insight takes.
@@ -176,6 +177,14 @@ Names that broke this rule before 0.4.0 were renamed in 0.4.0 and the old names 
 | `clientReport` | `top` | `limit` (the `top` list in the answer keeps its name) |
 
 The old answer fields were removed in 0.6.0 too. Read `campaignName` for `name`, `low`, `high` and `of` for `interval` and `trials`, `rates.replyRate` for `replyRate`, `replyRateInterval` and `replyRateBasis`, `rate` for `spamRate`, and bounceWatch's `maxBounceRate` for `threshold`. [Cards](/docs/cards) read only the new fields, so a result stored before 0.4.0 does not show what only an old field held.
+
+A bare step number meant a count from 0 in the data and a count from 1 in sentences, so it was misread. From the next minor release each answer carries both numbers; the old names keep their old meaning, counted from 0, and are deprecated, to be removed in 0.8.0. Read the new names instead:
+
+| Insight | Deprecated | Read instead |
+| --- | --- | --- |
+| `stepFunnel` | `step`, `topStep`, `lastStepEarningPlace` | `stepIndex` or `stepNumber`, `topStepIndex` or `topStepNumber`, `lastStepEarningPlaceIndex` or `lastStepEarningPlaceNumber` |
+| `personSummary` | `lastStep`, `repliedSteps` | `lastStepIndex` or `lastStepNumber`, `repliedStepIndexes` or `repliedStepNumbers` |
+| `variantTest`, `copyAudit`, `copyPreview`, `personalizationGaps` (each use) | `step` | `stepIndex` or `stepNumber` |
 
 ## The insights
 

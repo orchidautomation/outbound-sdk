@@ -7,6 +7,8 @@ import { htmlToText, looksLikeHtml } from "../../internal/text.ts";
 import { defineInsight, maskingOf } from "../define.ts";
 import { leadsOf } from "../people/read.ts";
 import { refOf } from "../ref.ts";
+import { stepAt } from "../step.ts";
+import type { StepPosition } from "../step.ts";
 import {
   fillVariables,
   keyOf,
@@ -62,9 +64,7 @@ export interface PreviewVariant {
   readonly unfilled: readonly string[];
 }
 
-export interface PreviewStep {
-  /** The step, counted from 0. */
-  readonly step: number;
+export interface PreviewStep extends StepPosition {
   readonly action: string;
   readonly delayDays: number | null;
   readonly variants: readonly PreviewVariant[];
@@ -169,7 +169,7 @@ const previewStep = (
 ): PreviewStep => ({
   action: step.action,
   delayDays: step.delayDays,
-  step: step.index,
+  ...stepAt(step.index),
   variants: step.variants.map((variant) => {
     const unfilled = new Set<string>();
     const subject = render(variant.subject, lead, unfilled);

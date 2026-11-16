@@ -19,7 +19,7 @@ Step 2: too_little_data
   B: 1.3% (5 of 400 contacted)
   40 more sends before the variants are compared
 
-Step 1 brings the most replies: 72 of 128. Every step up to step 3 still earns its place.
+Step 1 (of 3) brings the most replies: 72 of 128. Every step up to step 3 (of 3) still earns its place.
   step 0: 56.3% of all replies
   step 1: 37.5% of all replies
   step 2: 6.3% of all replies

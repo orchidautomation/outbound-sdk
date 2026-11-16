@@ -113,7 +113,119 @@ test("step_funnel reports each step's sends, replies, rate, share and the drop f
   });
   assert.equal(
     result.data.finding,
-    "Step 1 brings the most replies: 30 of 42. Step 2 is the last whose reply rate is reliably above the bar; the 1 later step sent 500 messages for 0 replies."
+    "Step 1 (of 4) brings the most replies: 30 of 42. Step 2 (of 4) is the last whose reply rate is reliably above the bar; the 1 later step sent 500 messages for 0 replies."
+  );
+});
+
+test("step_funnel numbers each step from 0 as stepIndex and from 1 as stepNumber, and keeps the deprecated step and top/last names", async () => {
+  const result = await single(FUNNEL).insights.stepFunnel(
+    { campaign: ref("c1") },
+    { now: NOW }
+  );
+
+  assert.deepEqual(
+    result.data.steps.map((step) => [step.stepIndex, step.stepNumber]),
+    [
+      [0, 1],
+      [1, 2],
+      [2, 3],
+      [3, 4],
+    ]
+  );
+  // The deprecated `step` keeps its meaning: counted from 0, like `stepIndex`.
+  assert.deepEqual(
+    result.data.steps.map((step) => step.step),
+    [0, 1, 2, 3]
+  );
+
+  assert.deepEqual(
+    [
+      result.data.topStepIndex,
+      result.data.topStepNumber,
+      result.data.topStep,
+      result.data.lastStepEarningPlaceIndex,
+      result.data.lastStepEarningPlaceNumber,
+      result.data.lastStepEarningPlace,
+    ],
+    [0, 1, 0, 1, 2, 1]
+  );
+});
+
+test("step_funnel does not call one reply reliably above the bar", async () => {
+  // The live case: the second email has 1 reply in 369; its interval starts above 0.
+  const result = await single({
+    campaigns: [
+      {
+        id: "c1",
+        steps: [
+          { variants: variant },
+          { variants: variant },
+          { variants: variant },
+          { variants: variant },
+        ],
+      },
+    ],
+    stats: [
+      {
+        campaignId: "c1",
+        counts: { replied: 0, sent: 400 },
+        date: "2026-11-01",
+        stepIndex: 0,
+      },
+      {
+        campaignId: "c1",
+        counts: { replied: 1, sent: 369 },
+        date: "2026-11-04",
+        stepIndex: 1,
+      },
+    ],
+  }).insights.stepFunnel({ campaign: ref("c1") }, { now: NOW });
+
+  const [first, second] = result.data.steps;
+
+  assert.ok((second?.rates.replyRate.low ?? 0) > 0);
+  assert.equal(second?.earnsPlace, null);
+  // At or under the bar is a `false` whatever the count.
+  assert.equal(first?.earnsPlace, false);
+  assert.equal(result.data.lastStepEarningPlaceIndex, null);
+  assert.equal(result.data.lastStepEarningPlace, null);
+  assert.equal(result.data.topStepNumber, 2);
+  assert.equal(
+    result.data.finding,
+    "Step 2 (of 4) brings the most replies: 1 of 1. Too few replies to tell whether any step's reply rate is reliably above the bar: a step needs at least 5."
+  );
+  assert.doesNotMatch(result.data.finding, /Step 2 \(of 4\) is the last/u);
+});
+
+test("step_funnel counts a step with 5 replies above the bar as earning its place", async () => {
+  const result = await single({
+    campaigns: [
+      { id: "c1", steps: [{ variants: variant }, { variants: variant }] },
+    ],
+    stats: [
+      {
+        campaignId: "c1",
+        counts: { replied: 5, sent: 100 },
+        date: "2026-11-01",
+        stepIndex: 0,
+      },
+      {
+        campaignId: "c1",
+        counts: { replied: 4, sent: 100 },
+        date: "2026-11-04",
+        stepIndex: 1,
+      },
+    ],
+  }).insights.stepFunnel({ campaign: ref("c1") }, { now: NOW });
+
+  assert.deepEqual(
+    result.data.steps.map((step) => step.earnsPlace),
+    [true, null]
+  );
+  assert.equal(result.data.lastStepEarningPlaceNumber, 1);
+  assert.match(
+    result.data.finding,
+    /Step 1 \(of 2\) is the last whose reply rate is reliably above the bar/u
   );
 });
 

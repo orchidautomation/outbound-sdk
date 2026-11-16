@@ -69,6 +69,8 @@
         "action": "email",
         "severity": "high",
         "step": 2,
+        "stepIndex": 2,
+        "stepNumber": 3,
         "variantKey": "A"
       },
       {
@@ -78,6 +80,8 @@
         "action": "email",
         "severity": "medium",
         "step": 2,
+        "stepIndex": 2,
+        "stepNumber": 3,
         "variantKey": "A"
       },
       {
@@ -87,6 +91,8 @@
         "action": "email",
         "severity": "medium",
         "step": 2,
+        "stepIndex": 2,
+        "stepNumber": 3,
         "variantKey": "A"
       },
       {
@@ -96,6 +102,8 @@
         "action": "email",
         "severity": "medium",
         "step": 2,
+        "stepIndex": 2,
+        "stepNumber": 3,
         "variantKey": "A"
       },
       {
@@ -105,6 +113,8 @@
         "action": "email",
         "severity": "low",
         "step": 2,
+        "stepIndex": 2,
+        "stepNumber": 3,
         "variantKey": "A"
       },
       {
@@ -114,6 +124,8 @@
         "action": "email",
         "severity": "low",
         "step": 2,
+        "stepIndex": 2,
+        "stepNumber": 3,
         "variantKey": "A"
       },
       {
@@ -123,6 +135,8 @@
         "action": "email",
         "severity": "low",
         "step": 2,
+        "stepIndex": 2,
+        "stepNumber": 3,
         "variantKey": "A"
       }
     ],

@@ -53,9 +53,11 @@
         ],
         "uses": [
           {
+            "step": 0,
+            "stepIndex": 0,
+            "stepNumber": 1,
             "fallback": false,
             "field": "body",
-            "step": 0,
             "variant": "A"
           }
         ]
@@ -71,9 +73,11 @@
         ],
         "uses": [
           {
+            "step": 0,
+            "stepIndex": 0,
+            "stepNumber": 1,
             "fallback": false,
             "field": "body",
-            "step": 0,
             "variant": "A"
           }
         ]
@@ -90,21 +94,27 @@
         ],
         "uses": [
           {
+            "step": 0,
+            "stepIndex": 0,
+            "stepNumber": 1,
             "fallback": false,
             "field": "subject",
-            "step": 0,
             "variant": "A"
           },
           {
+            "step": 0,
+            "stepIndex": 0,
+            "stepNumber": 1,
             "fallback": false,
             "field": "body",
-            "step": 0,
             "variant": "A"
           },
           {
+            "step": 1,
+            "stepIndex": 1,
+            "stepNumber": 2,
             "fallback": true,
             "field": "body",
-            "step": 1,
             "variant": "A"
           }
         ]
@@ -120,9 +130,11 @@
         ],
         "uses": [
           {
+            "step": 0,
+            "stepIndex": 0,
+            "stepNumber": 1,
             "fallback": false,
             "field": "body",
-            "step": 0,
             "variant": "A"
           }
         ]

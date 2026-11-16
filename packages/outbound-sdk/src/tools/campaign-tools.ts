@@ -9,7 +9,7 @@ import type { Evidence } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
 import type { Json } from "../internal/json.ts";
 import { day, optionalRange, summarize, untrusted, weakest } from "./shared.ts";
-import type { ToolDefinition } from "./shared.ts";
+import type { MetricSummary, ToolDefinition } from "./shared.ts";
 
 const overviewInput = z.object({
   ...optionalRange,
@@ -158,9 +158,23 @@ const stepsInput = z.object({
   to: day.optional(),
 });
 
+const COUNTS = [
+  "sent",
+  "contacted",
+  "replied",
+  "positive",
+  "opened",
+  "bounced",
+  "connections_sent",
+  "connections_accepted",
+] as const;
+
+const isEmpty = (metrics: MetricSummary): boolean =>
+  COUNTS.every((key) => (metrics[key] ?? 0) === 0);
+
 export const winningSteps: ToolDefinition<z.infer<typeof stepsInput>> = {
   description:
-    "Which step or variant of a campaign drives replies. Returns each step and variant with its sends, replies and reply rate, best first. A variant whose copy changed mid-campaign mixes old and new wording.",
+    "Which step or variant of a campaign drives replies. Returns each step and variant with its sends, replies and reply rate, best first: rank 1 has the highest reply rate. step_index counts steps from 0, step_number from 1 as a person counts (say step_number to a person); step is a deprecated copy of step_index. Counts the vendor tied to no step come last with unattributed: true and rank null; an unattributed row with no counts is left out. A variant whose copy changed mid-campaign mixes old and new wording.",
   inputSchema: stepsInput,
   name: "winning_steps",
   needs: ["stats.byStep"],
@@ -169,17 +183,32 @@ export const winningSteps: ToolDefinition<z.infer<typeof stepsInput>> = {
       .campaign(input.campaign)
       .stats({ from: input.from, scope: "step", to: input.to });
 
-    const steps = stats.rows
-      .map((row) => ({
-        metrics: summarize(row),
-        step: row.stepIndex,
-        variant: row.variantKey,
-      }))
+    const rows = stats.rows
+      .map((row) => ({ index: row.stepIndex, metrics: summarize(row), row }))
+      // A row tied to no step with no counts says nothing.
+      .filter(({ index, metrics }) => index !== null || !isEmpty(metrics));
+
+    const ranked = rows
+      .filter((each) => each.index !== null)
       .toSorted(
         (left, right) =>
-          (right.metrics.reply_rate ?? -1) - (left.metrics.reply_rate ?? -1)
-      )
-      .map((step) => ({ ...step, metrics: { ...step.metrics } }));
+          (right.metrics.reply_rate ?? -1) - (left.metrics.reply_rate ?? -1) ||
+          (left.index ?? 0) - (right.index ?? 0)
+      );
+
+    const steps = [
+      ...ranked,
+      ...rows.filter((each) => each.index === null),
+    ].map(({ index, metrics, row }, position) => ({
+      metrics: { ...metrics },
+      rank: index === null ? null : position + 1,
+      // Deprecated copy of step_index, removed in 0.8.0.
+      step: index,
+      step_index: index,
+      step_number: index === null ? null : index + 1,
+      unattributed: index === null,
+      variant: row.variantKey,
+    }));
 
     return {
       data: { campaign: input.campaign, steps },

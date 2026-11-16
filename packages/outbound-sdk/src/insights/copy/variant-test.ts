@@ -11,6 +11,8 @@ import type { InsightContext } from "../define.ts";
 import { rangeFields } from "../fields.ts";
 import { refOf } from "../ref.ts";
 import { compareRates, percent } from "../stats.ts";
+import { stepAt } from "../step.ts";
+import type { StepPosition } from "../step.ts";
 import {
   basesInWords,
   measure,
@@ -75,9 +77,7 @@ export interface TestedVariant {
   readonly pValueVsLeader: number | null;
 }
 
-export interface VariantStepTest {
-  /** Counted from 0. */
-  readonly step: number;
+export interface VariantStepTest extends StepPosition {
   readonly verdict: VariantVerdict;
   /** The variant with the highest rate among those with enough data. `null` when fewer than two have enough. */
   readonly leader: string | null;
@@ -211,7 +211,7 @@ const tooLittle = (
   moreSendsNeeded: comparable ? shortfall(candidates, settings.minSent) : null,
   pValue: null,
   reason: reasonFor(candidates, settings, comparable),
-  step,
+  ...stepAt(step),
   variants: candidates.map((each) => ({ ...each, pValueVsLeader: null })),
   verdict: "too_little_data",
 });
@@ -272,7 +272,7 @@ const testStep = (
       moreSendsNeeded: null,
       pValue: closest?.pValue ?? null,
       reason: `Variant ${leader.variantKey} (${percent(leader.rate)}) beats every other variant by more than chance at alpha ${settings.alpha}.${aside}`,
-      step,
+      ...stepAt(step),
       variants,
       verdict: "winner",
     };
@@ -290,7 +290,7 @@ const testStep = (
           ),
     pValue: closest?.pValue ?? null,
     reason: `Variant ${leader.variantKey} (${percent(leader.rate)}) leads variant ${rival.variantKey} (${percent(rival.rate)}), but a gap this size could be chance.${aside}`,
-    step,
+    ...stepAt(step),
     variants,
     verdict: "no_difference_yet",
   };
@@ -380,7 +380,8 @@ export const variantTest = defineInsight({
       )
       .toSorted(
         (left, right) =>
-          ORDER[left.verdict] - ORDER[right.verdict] || left.step - right.step
+          ORDER[left.verdict] - ORDER[right.verdict] ||
+          left.stepIndex - right.stepIndex
       );
 
     const reported = variantsReported(context, rows);

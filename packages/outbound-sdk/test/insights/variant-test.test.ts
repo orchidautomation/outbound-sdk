@@ -66,6 +66,14 @@ test("variant_test names a winner only when the gap is more than chance", async 
   assert.equal(result.data.metric, "replied");
   assert.equal(result.data.variantStatsReported, true);
 
+  // Each step both ways; the deprecated `step` is the index, counted from 0.
+  assert.ok(
+    result.data.steps.every(
+      (step) =>
+        step.stepNumber === step.stepIndex + 1 && step.step === step.stepIndex
+    )
+  );
+
   // Winners first, then no difference yet, then too little data; by step within each.
   assert.deepEqual(
     result.data.steps.map((step) => [

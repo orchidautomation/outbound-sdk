@@ -18,6 +18,8 @@ import {
   UNTRUSTED_NOTE,
 } from "../src/tools/index.ts";
 import type { ToolResult } from "../src/tools/index.ts";
+import { withRows } from "./insights/copy-helpers.ts";
+import type { StepRow } from "./insights/copy-helpers.ts";
 
 const plain = () =>
   createOutbound({
@@ -239,16 +241,78 @@ test("winning_steps ranks steps by reply rate", async () => {
 
   const steps = data(await call(outbound, "winning_steps", { campaign: "c1" }))
     .steps as {
-    step: number;
+    rank: number | null;
+    step: number | null;
+    step_index: number | null;
+    step_number: number | null;
+    unattributed: boolean;
     metrics: { reply_rate: number };
   }[];
 
   assert.deepEqual(
-    steps.map((step) => [step.step, step.metrics.reply_rate]),
+    steps.map((step) => [
+      step.rank,
+      step.step_index,
+      step.step_number,
+      step.metrics.reply_rate,
+    ]),
     [
-      [1, 0.09],
-      [0, 0.02],
+      [1, 1, 2, 0.09],
+      [2, 0, 1, 0.02],
     ]
+  );
+  // The deprecated `step` keeps its meaning: counted from 0, like `step_index`.
+  assert.deepEqual(
+    steps.map((step) => step.step),
+    [1, 0]
+  );
+  assert.ok(steps.every((step) => !step.unattributed));
+});
+
+const winningRows = async (rows: readonly StepRow[]) => {
+  const outbound = withRows({ campaigns: [{ id: "c1" }] }, rows);
+
+  return data(await call(outbound, "winning_steps", { campaign: "c1" }))
+    .steps as {
+    rank: number | null;
+    step_index: number | null;
+    step_number: number | null;
+    unattributed: boolean;
+  }[];
+};
+
+const stepRow = (index: number | null, replied: number, sent: number) => ({
+  campaignId: "c1",
+  counts: { replied, sent },
+  step: index,
+});
+
+test("winning_steps lists counts tied to no step last and unranked, and leaves out an empty one", async () => {
+  const labelled = await winningRows([
+    stepRow(null, 3, 40),
+    stepRow(2, 1, 100),
+    stepRow(0, 5, 100),
+  ]);
+
+  assert.deepEqual(
+    labelled.map((row) => [
+      row.rank,
+      row.step_index,
+      row.step_number,
+      row.unattributed,
+    ]),
+    [
+      [1, 0, 1, false],
+      [2, 2, 3, false],
+      [null, null, null, true],
+    ]
+  );
+
+  const empty = await winningRows([stepRow(null, 0, 0), stepRow(0, 5, 100)]);
+
+  assert.deepEqual(
+    empty.map((row) => row.step_index),
+    [0]
   );
 });
 

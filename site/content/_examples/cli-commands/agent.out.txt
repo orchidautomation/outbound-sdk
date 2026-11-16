@@ -3,7 +3,7 @@ $ outbound tools
 
 $ outbound tool winning_steps
 {
-  "description": "Which step or variant of a campaign drives replies. Returns each step and variant with its sends, replies and reply rate, best first. A variant whose copy changed mid-campaign mixes old and new wording.",
+  "description": "Which step or variant of a campaign drives replies. Returns each step and variant with its sends, replies and reply rate, best first: rank 1 has the highest reply rate. step_index counts steps from 0, step_number from 1 as a person counts (say step_number to a person); step is a deprecated copy of step_index. Counts the vendor tied to no step come last with unattributed: true and rank null; an unattributed row with no counts is left out. A variant whose copy changed mid-campaign mixes old and new wording.",
   "name": "winning_steps",
   "parameters": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
