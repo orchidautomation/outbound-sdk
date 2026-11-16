@@ -75,6 +75,7 @@ A page of campaigns reads at most 10 pages of 100 tag assignments. A page with m
 
 ## Vendor behavior that affects your code
 
+- **`contacted` is leads started.** It is Instantly's "Sequence started": `new_leads_contacted_count` on totals and `new_leads_contacted` by day. Instantly's `contacted_count` counts each step a lead reaches (seen live: 1,404 against 430 started), and daily `contacted` is everyone emailed that day, so neither is read. A step row's `contacted`, where Instantly sends it, is the leads that step reached.
 - **Steps count from 0.** An email names its step as `sequence_step_variant`, each counted from 0. This was seen live and is not documented.
 - **A reply has no lead ref.** A received email carries the lead's address but no lead id, so `reply.leadRef` is `null`. Match on the address.
 - **The email list is not every email.** A lead on its sixth step was seen with one sent email and two replies. A timeline or thread can be shorter than the sequence; `lead.engagement.stepIndex` says how far the lead got.
