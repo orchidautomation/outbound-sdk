@@ -212,6 +212,7 @@ export const toLead = (
 /** `ue_type`: 1 sent from a campaign, 2 received, 3 sent by hand, 4 scheduled. */
 export const SCHEDULED = 4;
 const RECEIVED = 2;
+const SENT_BY_HAND = 3;
 
 // An email names its lead by address in `lead`; `lead_id` is documented as
 // "if any" and was absent live. The address is the ref, so one person gives
@@ -247,6 +248,9 @@ const messageFields = (
 
 export const isScheduled = (raw: JsonObject): boolean =>
   count(raw.ue_type) === SCHEDULED;
+
+export const isSentByHand = (raw: JsonObject): boolean =>
+  count(raw.ue_type) === SENT_BY_HAND;
 
 /** `true` when a list response holds an excerpt instead of the whole body. */
 export const isTruncated = (raw: JsonObject): boolean =>
