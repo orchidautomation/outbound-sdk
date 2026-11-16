@@ -198,22 +198,40 @@ const suppressionCheck: CardBuilder = (data) => {
   };
 };
 
+/** Why an answer with nothing dropped cannot say that nothing was. */
+const notChecked = (totals: JsonObject): string | null => {
+  const unchecked = num(totals, "unchecked") ?? 0;
+
+  if (unchecked > 0) {
+    return `🟡 Could not check ${plural(unchecked, "conversation")}, so a reply there may be waiting.`;
+  }
+
+  return bool(totals, "moreRepliesExist") === true
+    ? "🟡 Could not check every reply: the read stopped with more left."
+    : null;
+};
+
 const droppedReplies: CardBuilder = (data) => {
   const totals = child(data, "totals");
   const dropped = rows(data, "dropped");
   const [longest] = dropped;
+  const unchecked = num(totals, "unchecked") ?? 0;
 
   return {
-    bullets:
-      bool(totals, "moreRepliesExist") === true
+    bullets: [
+      ...(bool(totals, "moreRepliesExist") === true
         ? [
             `🟡 Stopped at ${plural(num(totals, "repliesRead") ?? 0, "reply", "replies")} read; more exist and were not checked.`,
           ]
-        : [],
+        : []),
+      ...(longest !== undefined && unchecked > 0
+        ? [`🟡 Could not check ${plural(unchecked, "conversation")}.`]
+        : []),
+    ],
     finding: verdict(
       num(totals, "repliesRead"),
       longest === undefined
-        ? null
+        ? notChecked(totals)
         : `🔴 ${plural(dropped.length, "reply", "replies")} waiting. The longest has waited ${waiting(num(longest, "hoursWaiting"))}.`,
       "Every reply read has an answer."
     ),
@@ -222,6 +240,7 @@ const droppedReplies: CardBuilder = (data) => {
       ["Answered", int(num(totals, "answered"))],
       ["Conversations", int(num(totals, "conversations"))],
       ["Too recent to count", int(num(totals, "tooRecent"))],
+      ["Could not check", int(unchecked)],
     ],
     table: {
       align: [LEFT, LEFT, LEFT, RIGHT],

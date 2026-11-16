@@ -321,6 +321,38 @@ test("dropped_replies leads with the longest wait", () => {
   includes(read(cardFor("dropped_replies", insight(dropped(0, 0)))), NOTHING);
 });
 
+test("dropped_replies with nothing dropped says what it could not check, not that nothing was", () => {
+  const base = dropped(0, 9);
+  const unchecked = { ...base, totals: { ...base.totals, unchecked: 3 } };
+  const card = read(cardFor("dropped_replies", insight(unchecked)));
+
+  includes(
+    card,
+    "🟡 Could not check 3 conversations, so a reply there may be waiting.",
+    "Could not check: 3"
+  );
+  assert.doesNotMatch(card, /Every reply read has an answer/u);
+
+  const stopped = {
+    ...base,
+    totals: { ...base.totals, moreRepliesExist: true },
+  };
+
+  includes(
+    read(cardFor("dropped_replies", insight(stopped))),
+    "🟡 Could not check every reply: the read stopped with more left."
+  );
+
+  const some = dropped(1, 9);
+  const partly = { ...some, totals: { ...some.totals, unchecked: 2 } };
+
+  includes(
+    read(cardFor("dropped_replies", insight(partly))),
+    "🔴 1 reply waiting.",
+    "🟡 Could not check 2 conversations."
+  );
+});
+
 const lead = (name: string | null, email: string | null, score: number) => ({
   campaign: "c1",
   clicks: null,

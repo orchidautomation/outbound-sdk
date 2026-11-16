@@ -355,6 +355,15 @@ Re-read on 2026-11-14 from `https://api.instantly.ai/openapi/api_v2.json` (`info
 
 - `GET /api/v2/emails?search=thread:<thread id>`: "a special string that starts with \"thread:\" to search for emails in a specific thread".
 
+### Messages sent by hand (`messages.byHand`, OUT-115)
+
+Fetched 2026-11-16 from `https://api.instantly.ai/openapi/api_v2.json` (`info.version` 2.0.0, `GET /api/v2/emails`) and `https://developer.instantly.ai/api-reference/email/list-email.md`. **Docs-verified, not live-verified.**
+
+- `email_type` takes `received`, `sent` or `manual`, described only as "The type of the email to filter by."
+- The email's `ue_type` is "Email type based on the life cycle of the email": `1` Sent from campaign, `2` Received, `3` Sent, `4` Scheduled.
+- The adapter sends `email_type=manual` with `min_timestamp_created` for a window, and keeps only emails whose `ue_type` is `3`, so a campaign send never counts as sent by hand even if `manual` turns out to mean something wider.
+- Unconfirmed until a live run: that `manual` returns the emails sent from the Unibox (or a connected mailbox) and not only some of them. `dropped_replies` uses this listing only to find answers; a conversation it shows no answer for is still read in full, so a gap here costs requests, never a wrong `dropped`.
+
 ### Message bodies (`messages.body`: full)
 
 - In a list, `body_fallback_reason` (`too_large` or `unavailable`) marks a body that is only an excerpt: "Get the full body from `GET /api/v2/emails/{id}`". When bodies are asked for, the adapter reads each such email on its own.

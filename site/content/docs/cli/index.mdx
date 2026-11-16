@@ -74,7 +74,7 @@ A command runs with one [plugin](/docs/plugins) by default, [identity](/docs/plu
 
 ## Output
 
-A command prints one JSON value on standard output, always in the same shape, the envelope: indented by default, on one line with `--compact`. Records in it are the SDK's [records](/docs/api/records), less `raw`, the vendor's own payload; `--raw` keeps it. List commands stop at `--limit`, which defaults to 50.
+A command prints one JSON value on standard output, always in the same shape, the envelope: indented by default, on one line with `--compact`. Records in it are the SDK's [records](/docs/api/records), less `raw`, the vendor's own payload; `--raw` keeps it. List commands stop at `--limit`, which defaults to 50; `replies --since` reads the whole window instead, up to 2,000 records.
 
 <include meta='title="output.ts"'>../../_examples/cli-index/output.ts</include>
 

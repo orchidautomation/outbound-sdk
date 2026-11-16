@@ -205,16 +205,16 @@ Replies from prospects that nobody answered, longest waiting first.
 | `older_than_hours` | 24 | 0 or more | A reply counts as dropped only after waiting this long without an answer. |
 | `categories` | `["positive", "neutral", "unknown"]` | at least one reply category | Reply categories that need an answer. |
 | `include_auto` | `false` | boolean | Also check replies the vendor marks as automatic. |
-| `max_replies` | 50 | 1 to 1,000 | The most replies to read. |
+| `max_replies` | `null` | 1 to 2,000, or `null` | The most replies to read. `null` reads every reply since `since`, up to 2,000. |
 
 `data` (`DroppedReplies`):
 
 - `dropped`: one entry per conversation, with `reply` (the oldest unanswered reply), `lead` and the person's `name`, `email` and `linkedinUrl`, `campaign` and its `campaignName`, `channel`, `provider`, `category`, `subject`, `receivedAt`, `hoursWaiting`, `unansweredReplies`, `checkedBy` (`thread` or `timeline`) and a `finding` sentence.
-- `totals`: `repliesRead`, `skippedByCategory`, `skippedAuto`, `conversations`, `answered`, `dropped`, `tooRecent`, `unchecked` and `moreRepliesExist` (`true` when `max_replies` left replies unread, so dropped ones may be missing).
+- `totals`: `repliesRead`, `skippedByCategory`, `skippedAuto`, `conversations`, `answered`, `dropped`, `tooRecent`, `unchecked` and `moreRepliesExist` (`true` when `max_replies`, or the 2,000 one window reads, left replies unread, so dropped ones may be missing).
 - `since` and `olderThanHours`: what was used.
 
-- **Needs:** `replies.list`. To check a conversation it also needs `messages.list` with `messages.byThread` or `leads.timeline`.
-- **Costs:** one request per page of replies, one per conversation checked, and one read of each listed lead and campaign to name them. About `max_replies` requests plus two per listed reply.
+- **Needs:** `replies.list`. To check a conversation it also needs `messages.list` with `messages.byThread` or `leads.timeline`. With `messages.byHand` and `messages.since` on the server (Instantly), one listing of the messages sent by hand in the window settles every conversation answered by hand, and only the others are read in full.
+- **Costs:** one request per page of replies and of messages sent by hand, one per conversation read in full, and one read of each listed lead and campaign to name them.
 - **Notes it can add:** the adapter cannot filter replies by date, so the newest were read and filtered here; the adapter cannot read one lead, so the names are `null`; a reply carries no lead ref (Smartlead ties a reply to no lead), so its names are `null`; a lead or campaign could not be read, so its names are `null`; the adapter can read neither a conversation nor a timeline, so no reply could be checked; a cap was reached.
 - **Does not:** report a reply it could not check as dropped. Those are counted in `totals.unchecked`. "Answered" means a message was sent after the reply in the same conversation. It does not read what the message said.
 

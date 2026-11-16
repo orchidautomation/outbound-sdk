@@ -179,7 +179,7 @@ const WAITING = waiting(NOW);
 
 test("dropped_replies says in data that replies were left unread", async () => {
   const capped = await single(WAITING).insights.droppedReplies(
-    {},
+    { max_replies: 50 },
     { now: NOW }
   );
 
@@ -204,7 +204,9 @@ test("the dropped_replies card says when the cap was hit", async () => {
 
   assert.ok(tool !== undefined);
 
-  const text = read(cardFor("dropped_replies", await tool.call({})));
+  const text = read(
+    cardFor("dropped_replies", await tool.call({ max_replies: 50 }))
+  );
 
   includes(
     text,

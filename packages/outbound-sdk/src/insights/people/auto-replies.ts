@@ -19,6 +19,18 @@ export const ADDRESSES_MASKED =
 export const addressesMasked = (context: InsightContext): boolean =>
   maskingOf(context.outbound)?.fields.includes("email") ?? false;
 
+/** The start of a note for a check redact keeps from running. */
+export const ADDRESSES_MASKED =
+  "The redact plugin masks email addresses, which a reply can name its lead by, so";
+
+/**
+ * `true` when the redact plugin masks email addresses. A reply can name its
+ * lead by address (Instantly's do), and a masked address cannot be read back
+ * as a lead.
+ */
+export const addressesMasked = (context: InsightContext): boolean =>
+  maskingOf(context.outbound)?.fields.includes("email") ?? false;
+
 /** A lead's own ref and, when it has an address, the ref a reply may name it by. */
 export const refsOf = (lead: Lead): string[] =>
   lead.email === null
