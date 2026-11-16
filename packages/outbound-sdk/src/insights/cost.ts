@@ -200,14 +200,19 @@ const stops = new WeakMap<OutboundError, CapStop>();
 export const capStopOf = (cause: unknown): CapStop | undefined =>
   OutboundError.is(cause) ? stops.get(cause) : undefined;
 
-const capWords = (effect: CapInEffect): string =>
+export const capWords = (effect: CapInEffect): string =>
   effect.isDefault
     ? `its default cap of ${plural(effect.cap, "request")} for this input`
     : `the cap of ${plural(effect.cap, "request")} (${effect.setting})`;
 
-const advice = (stop: CapStop): string => {
+// A CLI flag such as `--max-requests` takes a whole number, never Infinity.
+const removable = (setting: string): string =>
+  setting.startsWith("--") ? "" : " (Infinity removes the default)";
+
+/** What to change for a run that stopped at its cap: the input to lower, and the setting to raise. */
+export const advice = (stop: CapStop): string => {
   const raise = stop.isDefault
-    ? `pass ${stop.setting} to raise it (Infinity removes the default)`
+    ? `pass ${stop.setting} to raise it${removable(stop.setting)}`
     : `raise ${stop.setting}`;
 
   const text =
@@ -249,7 +254,7 @@ export const refusal = (
 
   const why =
     room < stop.cap
-      ? `only ${plural(room, "request")} ${room === 1 ? "is" : "are"} left of budget()'s run`
+      ? `only ${plural(room, "request")} ${room === 1 ? "is" : "are"} left of the run's budget`
       : cap;
 
   return capError(

@@ -19,6 +19,13 @@ export interface BudgetOptions {
    * `maxRequestsPerCall` on `createOutbound` does.
    */
   readonly per?: "call" | "run" | undefined;
+  /**
+   * What the message of a stopped run tells the reader to raise, for a
+   * surface that sets the budget its own way: the CLI names its
+   * `--max-requests` flag. Without it the message names `budget()` and
+   * `requestBudget.reset()`.
+   */
+  readonly setting?: string | undefined;
 }
 
 export interface BudgetExtension {
@@ -53,7 +60,7 @@ export const budget = (
   const spent = (provider: string): OutboundError =>
     new OutboundError(
       "RateLimited",
-      `The run used its budget of ${plural(options.maxRequests, "request")} to ${provider}. Call requestBudget.reset() to start a new run, or raise budget()'s maxRequests.`,
+      `The run used its budget of ${plural(options.maxRequests, "request")} to ${provider}. ${options.setting === undefined ? "Call requestBudget.reset() to start a new run, or raise budget()'s maxRequests." : `Raise ${options.setting}.`}`,
       { limit: "run", provider }
     );
 
@@ -83,7 +90,7 @@ export const budget = (
       ) {
         // The engine stops the call once it has made this many requests.
         state.maxRequests = options.maxRequests;
-        state.maxRequestsSetBy = "budget()'s maxRequests";
+        state.maxRequestsSetBy = options.setting ?? "budget()'s maxRequests";
       }
 
       if (!live.has(state)) {

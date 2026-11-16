@@ -15,6 +15,7 @@ import { parseRef } from "../../internal/ref.ts";
 import { confirmCampaign } from "../campaign.ts";
 import { maskingOf } from "../define.ts";
 import type { InsightContext } from "../define.ts";
+import { wasCutShort } from "../tracked-reads.ts";
 import { ADDRESSES_MASKED, addressesMasked, refsOf } from "./auto-replies.ts";
 
 const DAY = 86_400_000;
@@ -137,7 +138,7 @@ const positiveLeads = async (
     what: "leads labelled positive",
   });
 
-  return { capped: walk.truncated, leads };
+  return { capped: walk.truncated || wasCutShort(leads), leads };
 };
 
 /** The lead list in the vendor's order, up to `max_leads`. */
@@ -158,7 +159,7 @@ const listedLeads = async (
     what: campaign === null ? "leads" : "leads of a campaign",
   });
 
-  return { capped: walk.truncated, leads };
+  return { capped: walk.truncated || wasCutShort(leads), leads };
 };
 
 /** The ref each engaged reply names, newest first, with the campaign of its newest reply. */

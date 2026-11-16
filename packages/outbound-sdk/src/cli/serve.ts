@@ -3,6 +3,7 @@
 import { OutboundError } from "../internal/errors.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
 import { createTools, TOOL_NAMES } from "../tools/index.ts";
+import type { InsightToolCaps } from "./config.ts";
 import { createMcpServer } from "./mcp.ts";
 import type { ThrottleTotal } from "./progress.ts";
 import { serveStdio } from "./stdio.ts";
@@ -48,13 +49,14 @@ export const serve = async (
   outbound: OutboundApi,
   io: ServeIo,
   unmasked: OutboundApi | undefined,
-  wanted: ReadonlySet<string> | undefined
+  wanted: ReadonlySet<string> | undefined,
+  caps: InsightToolCaps
 ): Promise<void> => {
   // Loaded on demand, so the other commands do not pay for the insights.
   const { insightTools } = await import("../insights/index.ts");
 
   const offered = (instance: OutboundApi) =>
-    createTools(instance, { extra: insightTools(instance) }).map(
+    createTools(instance, { extra: insightTools(instance, caps) }).map(
       (tool) => tool.name
     );
 
@@ -91,6 +93,7 @@ export const serve = async (
   const server = createMcpServer(outbound, {
     // Given the allowlist, so no insight's hint names an insight left out.
     extra: insightTools(outbound, {
+      ...caps,
       only: wanted === undefined ? undefined : [...wanted],
     }),
     leftOut,

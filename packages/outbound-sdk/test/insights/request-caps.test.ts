@@ -254,7 +254,7 @@ test("a run budget with too little left refuses the insight before any request",
 
   assert.equal(http.requests.length, 0);
   assert.equal(error.limit, "call");
-  assert.match(error.message, /only 1 request is left of budget\(\)'s run/u);
+  assert.match(error.message, /only 1 request is left of the run's budget/u);
 });
 
 test("a per-call budget still applies under the default and is not read as a run's remainder", async () => {

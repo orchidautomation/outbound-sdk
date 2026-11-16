@@ -8,7 +8,7 @@ import type { OutboundOptions } from "../internal/outbound/outbound.ts";
 import { fromEnv } from "../loader/index.ts";
 import { parse } from "./args.ts";
 import { COMMANDS, listProviders } from "./commands.ts";
-import { setupFor } from "./config.ts";
+import { insightToolCaps, setupFor } from "./config.ts";
 import { requestCounter, valueOf } from "./envelope.ts";
 import type { RunFacts } from "./envelope.ts";
 import { printAnswer, printFailure } from "./output.ts";
@@ -130,7 +130,9 @@ export const run = async (
         outbound,
         { ...io, throttled: monitor.total },
         unmasked,
-        namedTools(values.tools)
+        namedTools(values.tools),
+        // A tool call may spend what --max-requests allows, which replaces an insight's default cap.
+        insightToolCaps(values, true)
       );
 
       return 0;

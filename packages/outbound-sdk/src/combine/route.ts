@@ -111,11 +111,46 @@ const waiting = (next: Json | undefined, size: number): readonly Position[] => {
   });
 };
 
+/** How the pages of several members, in the members' order, become one page. */
+export type Merge<Item> = (pages: readonly (readonly Item[])[]) => Item[];
+
+/** One member's items after another's, in the members' order. */
+const inOrder = <Item>(pages: readonly (readonly Item[])[]): Item[] =>
+  pages.flat();
+
 /**
- * One page of a listing read from every member at the same time, for reads
- * that return few records, such as a lookup by exact address. Items keep the
- * members' order. The cursor holds each member still to finish, so the next
- * page asks only those, again side by side.
+ * The members' items taken in turn, one from each, so a cap on the walk
+ * (`max_campaigns`, `--limit`) leaves every member its share instead of
+ * filling up on the first one.
+ */
+export const inTurn = <Item>(pages: readonly (readonly Item[])[]): Item[] => {
+  const longest = Math.max(0, ...pages.map((items) => items.length));
+
+  return Array.from({ length: longest }, (_, at) =>
+    pages.flatMap((items) => items.slice(at, at + 1))
+  ).flat();
+};
+
+/** Reads one member's page from `next`, its own cursor. */
+export type ReadPage<Item> = (
+  member: Adapter,
+  memberCtx: AdapterContext,
+  next: Json | undefined
+) => Promise<Page<Item>>;
+
+/** How a listing that spans every member reads them and makes one page. */
+export type Across<Item> = (
+  members: readonly Adapter[],
+  ctx: AdapterContext,
+  query: PageQuery,
+  read: ReadPage<Item>
+) => Promise<Page<Item>>;
+
+/**
+ * One page of a listing read from every member at the same time. `merge`
+ * says how their items become one page; by default they keep the members'
+ * order, as a lookup by exact address wants. The cursor holds each member
+ * still to finish, so the next page asks only those, again side by side.
  */
 export const pageTogether = async <Item>(
   members: readonly Adapter[],
@@ -125,7 +160,8 @@ export const pageTogether = async <Item>(
     member: Adapter,
     memberCtx: AdapterContext,
     next: Json | undefined
-  ) => Promise<Page<Item>>
+  ) => Promise<Page<Item>>,
+  merge: Merge<Item> = inOrder
 ): Promise<Page<Item>> => {
   const pages = await Promise.all(
     waiting(query.next, members.length).flatMap((at) => {
@@ -146,9 +182,17 @@ export const pageTogether = async <Item>(
     page.next === undefined ? [] : [{ member: index, next: page.next }]
   );
 
-  const items = pages.flatMap(({ page }) => page.items);
+  const items = merge(pages.map(({ page }) => page.items));
 
   return unfinished.length === 0
     ? { items }
     : { items, next: { together: unfinished } };
 };
+
+/** Every member read at once, their records taken one from each in turn. */
+export const takeInTurn = <Item>(
+  members: readonly Adapter[],
+  ctx: AdapterContext,
+  query: PageQuery,
+  read: ReadPage<Item>
+): Promise<Page<Item>> => pageTogether(members, ctx, query, read, inTurn);
