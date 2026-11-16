@@ -185,11 +185,11 @@ The last command constructed the Instantly adapter with a placeholder key and li
 
 `outbound update` asks npm for the newest published version, through the `npm` on your `PATH`. If you already have it, the command says so and changes nothing. Otherwise what it does depends on how the package was installed:
 
-- **Global install** (`npm install --global outbound-sdk`): it runs `npm install --global outbound-sdk@latest`.
+- **Global install** (`npm install --global outbound-sdk`): it runs `npm install --global outbound-sdk@<version>` with the version npm just named. For a few minutes after a release, npm lists the new version before it serves the download, and the install fails with `E404` or `ETARGET`. `update` then tries again every 30 seconds for up to 15 minutes, and says so once.
 - **Installed in a project**: it prints `npm install outbound-sdk@latest` for you to run. It does not run it, because that would rewrite the project's `package.json` and lockfile.
 - **Run through npx**: it prints `npx outbound-sdk@latest <command>`, since npx keeps its own copy.
 
-If npm cannot be reached, the command exits with code 1 and prints npm's error.
+If npm cannot be reached, or the install fails for another reason, such as `EACCES` on a global folder you cannot write to, the command exits with code 1 and prints npm's error code and the line that says what went wrong.
 
 ## mcp
 

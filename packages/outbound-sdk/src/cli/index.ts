@@ -53,6 +53,8 @@ export interface CliIo {
   readonly fetch?: OutboundOptions["fetch"];
   /** Runs npm for `outbound update` and resolves to its output. Meant for tests. */
   readonly npm?: ((args: readonly string[]) => Promise<string>) | undefined;
+  /** Waits between `outbound update` install retries. Meant for tests. */
+  readonly sleep?: ((ms: number) => Promise<void>) | undefined;
 }
 
 const serve = async (
@@ -168,7 +170,7 @@ export const run = async (
     const { help, name, rest, values } = parse(argv);
     named = name;
 
-    if (await runSelf(name, values, io.npm ?? runNpm, io.stdout)) {
+    if (await runSelf(name, values, io.npm ?? runNpm, io.stdout, io.sleep)) {
       return 0;
     }
 
