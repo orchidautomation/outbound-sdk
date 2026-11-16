@@ -335,16 +335,13 @@ const sentByHand = async (
     return null;
   }
 
-  const found: Message[] = [];
-  let cursor: string | undefined;
+  // Its cost is counted, but a stop at `max` does not make the answer partial.
+  const walk = messages.listAll({ byHand: true, max, since });
+  const found = await walk.toArray();
 
-  do {
-    // oxlint-disable-next-line no-await-in-loop -- each page needs the cursor of the one before.
-    const page = await messages.list({ byHand: true, cursor, since });
-
-    found.push(...context.page(page));
-    ({ cursor } = page);
-  } while (cursor !== undefined && found.length < max);
+  if (walk.meta !== undefined) {
+    context.one({ meta: walk.meta });
+  }
 
   return found;
 };

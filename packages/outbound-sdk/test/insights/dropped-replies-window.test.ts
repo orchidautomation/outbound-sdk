@@ -137,11 +137,16 @@ const workspace = () => {
     }
 
     if (type === "manual") {
+      // Two pages, so a listing read to its end leaves the answer complete.
+      if (url.searchParams.get("starting_after") === null) {
+        return json({ items: ANSWERS.slice(0, 20), next_starting_after: "a2" });
+      }
+
       // A campaign send after the dropped reply, in the same listing, is not
       // an answer by hand: it is left out, so that conversation is read.
       return json({
         items: [
-          ...ANSWERS,
+          ...ANSWERS.slice(20),
           {
             ...REPLIES[50],
             id: "campaign-send",
@@ -221,13 +226,13 @@ test("dropped_replies reads the whole window by default and finds the 51st reply
   });
   assert.equal(result.meta.complete, true);
 
-  // Two pages of replies, one of answers sent by hand, and only the dropped
+  // Two pages of replies, two of answers sent by hand, and only the dropped
   // conversation read in full.
   assert.deepEqual(
     urls
       .filter((url) => url.pathname === "/api/v2/emails")
       .map((url) => url.searchParams.get("email_type")),
-    ["received", "received", "manual", null]
+    ["received", "received", "manual", "manual", null]
   );
   assert.deepEqual(threadReads(urls), ["thread:thread-50"]);
   assert.ok(result.meta.requests <= 10, `${result.meta.requests} requests`);
