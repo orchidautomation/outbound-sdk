@@ -92,23 +92,33 @@ export interface MetaInput {
   readonly complete: boolean;
   readonly stale?: boolean | undefined;
   readonly fetchedAt?: string | undefined;
+  /** The output's notes. They join the call's, so a walk keeps every page's. */
+  readonly notes?: readonly string[] | undefined;
 }
 
 export const metaFor = (
   core: Core,
   state: CallState,
   input: MetaInput
-): ResultMeta => ({
-  complete: input.complete,
-  evidence: input.evidence,
-  fetchedAt: input.fetchedAt ?? new Date(core.engine.now()).toISOString(),
-  notes: [...state.notes],
-  provider: core.adapter.name,
-  requests: state.requests,
-  stale: input.stale ?? false,
-  throttledMs: state.throttledMs,
-  workspaceId: core.adapter.workspaceId,
-});
+): ResultMeta => {
+  for (const text of input.notes ?? []) {
+    if (!state.notes.includes(text)) {
+      state.notes.push(text);
+    }
+  }
+
+  return {
+    complete: input.complete,
+    evidence: input.evidence,
+    fetchedAt: input.fetchedAt ?? new Date(core.engine.now()).toISOString(),
+    notes: [...state.notes],
+    provider: core.adapter.name,
+    requests: state.requests,
+    stale: input.stale ?? false,
+    throttledMs: state.throttledMs,
+    workspaceId: core.adapter.workspaceId,
+  };
+};
 
 const matches = <Item>(
   schema: ZodType<Item>,

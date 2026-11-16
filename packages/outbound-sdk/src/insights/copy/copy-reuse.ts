@@ -259,6 +259,13 @@ const spreadOf = (
   };
 };
 
+/**
+ * A campaign the vendor cannot answer for costs that campaign, not the whole
+ * workspace. A cap, a timeout or a bad key still throws.
+ */
+const skippable = (error: OutboundError): boolean =>
+  !error.timedOut && (error.code === "NotFound" || error.code === "Provider");
+
 const readPlacements = async (
   context: InsightContext,
   campaigns: readonly Campaign[]
@@ -266,33 +273,42 @@ const readPlacements = async (
   const perCampaign = await mapConcurrent(campaigns, async (campaign) => {
     const handle = context.outbound.campaign(campaign.ref);
 
-    try {
-      const [sequence, stats] = await Promise.all([
-        handle.sequence(),
-        handle.stats({ scope: "step" }),
-      ]);
+    // Both reads settle before either failure is judged, so a bad key or a
+    // cap on one is never hidden by a skippable failure of the other.
+    const [sequence, stats] = await Promise.allSettled([
+      handle.sequence(),
+      handle.stats({ scope: "step" }),
+    ]);
 
+    if (sequence.status === "fulfilled" && stats.status === "fulfilled") {
       return placementsOf(
         campaign,
-        context.one(sequence),
-        splitStats(context.rows(stats))
+        context.one(sequence.value),
+        splitStats(context.rows(stats.value))
       );
-    } catch (error) {
-      // One campaign the vendor cannot answer for costs that campaign, not
-      // the whole workspace. A cap, a timeout or a bad key still throws.
-      if (
-        !OutboundError.is(error) ||
-        (error.code !== "NotFound" && error.code !== "Provider")
-      ) {
+    }
+
+    const reasons: string[] = [];
+
+    for (const each of [sequence, stats]) {
+      if (each.status === "fulfilled") {
+        continue;
+      }
+
+      const error: unknown = each.reason;
+
+      if (!OutboundError.is(error) || !skippable(error)) {
         throw error;
       }
 
-      context.partial(
-        `Left out ${campaign.name}: its sequence or step stats could not be read (${error.message}).`
-      );
-
-      return [];
+      reasons.push(error.message);
     }
+
+    context.partial(
+      `Left out ${campaign.name}: its sequence or step stats could not be read (${reasons.join("; ")}).`
+    );
+
+    return [];
   });
 
   return perCampaign.flat();

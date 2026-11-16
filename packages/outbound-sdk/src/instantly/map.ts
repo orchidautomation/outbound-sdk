@@ -22,6 +22,8 @@ import {
 } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
 import { listIn } from "../internal/lists.ts";
+import { notNegative } from "../internal/notes.ts";
+import type { Note } from "../internal/notes.ts";
 import { recordBase, refTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
 import { toVariant, variantKey } from "../internal/sequence.ts";
@@ -71,9 +73,6 @@ const DELAY_DAYS = new Map([
   ["minutes", 1 / 1440],
 ]);
 
-/** Says what was left out of a record, and why. */
-export type Note = (text: string) => void;
-
 /**
  * A wait in days, or `null` with a note when Instantly sent one that cannot
  * be right: a negative number, or a unit it does not document.
@@ -101,15 +100,14 @@ const days = (
     return null;
   }
 
-  if (delay < 0) {
-    note(
-      `Step ${step}'s delay is negative in Instantly (${delay} ${unitName}); left out.`
-    );
+  const known = notNegative(delay, {
+    note,
+    unit: unitName,
+    vendor: "Instantly",
+    what: `Step ${step}'s delay`,
+  });
 
-    return null;
-  }
-
-  return delay * perUnit;
+  return known === null ? null : known * perUnit;
 };
 
 // `delay` is the wait before the NEXT email, so a step waits for the delay
@@ -207,14 +205,22 @@ const MAIL_PROVIDER = new Map<number, MailProvider>([
 ]);
 
 /** A mailbox. Instantly keys accounts by email address, not by an id. */
-export const toSender = (identity: Identity, raw: JsonObject): Sender => {
+export const toSender = (
+  identity: Identity,
+  raw: JsonObject,
+  note: Note
+): Sender => {
   const address = emailAddress(raw.email);
   const warmupStatus = count(raw.warmup_status);
 
   return {
     ...recordBase(identity, address ?? "", raw),
     address,
-    dailyLimit: count(raw.daily_limit),
+    dailyLimit: notNegative(count(raw.daily_limit), {
+      note,
+      vendor: "Instantly",
+      what: `The daily limit of ${address ?? "a mailbox"}`,
+    }),
     kind: "mailbox",
     linkedinUrl: null,
     mailProvider:

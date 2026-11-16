@@ -57,7 +57,8 @@ export const accountReaders = (client: InstantlyClient): AccountReaders => {
     getCampaignSettings: async (id, ctx) =>
       toCampaignSettings(
         identity,
-        await client.getObject(ctx, `/campaigns/${encodeURIComponent(id)}`)
+        await client.getObject(ctx, `/campaigns/${encodeURIComponent(id)}`),
+        ctx.note
       ),
     getSenderHealth: async (id, ctx) => {
       const account = await client.getObject(

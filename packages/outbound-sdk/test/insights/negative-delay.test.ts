@@ -6,13 +6,17 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { createOutbound, MemoryRateLimitStore } from "../../src/index.ts";
+import {
+  createOutbound,
+  MemoryRateLimitStore,
+  OutboundError,
+} from "../../src/index.ts";
 import { insights } from "../../src/insights/index.ts";
 import { fixtureHandler } from "../helpers/adapter-suite.ts";
 import { createClock } from "../helpers/clock.ts";
 import { fixture } from "../helpers/fixtures.ts";
 import { createFetch, json } from "../helpers/http.ts";
-import type { RecordedRequest } from "../helpers/http.ts";
+import type { RecordedRequest, Reply } from "../helpers/http.ts";
 import { CAMPAIGN, suite } from "../instantly/suite.ts";
 import { NOW } from "./helpers.ts";
 
@@ -26,7 +30,8 @@ const NEGATIVE = {
 };
 
 const over = (
-  answer: (request: RecordedRequest) => Response | undefined = () => {}
+  answer: (request: RecordedRequest) => Reply | undefined = () => {},
+  options: { readonly retries?: number; readonly timeout?: number } = {}
 ) => {
   const clock = createClock();
   const unrouted: string[] = [];
@@ -49,6 +54,7 @@ const over = (
     rateLimitStore: new MemoryRateLimitStore(),
     runtime: clock.runtime,
     share: 1,
+    ...options,
   });
 
   return { outbound, settle: clock.settle, unrouted };
@@ -118,4 +124,62 @@ test("copy_reuse reads past a negative step delay, and leaves out a campaign who
     result.data.piecesOfCopy > 0,
     "the readable campaign's copy is counted"
   );
+});
+
+/** Reads of the other campaign: its own object, and its step stats. */
+const other =
+  (campaign: Reply, steps?: Reply) =>
+  (request: RecordedRequest): Reply | undefined => {
+    const url = new URL(request.url);
+
+    if (url.pathname === `/api/v2/campaigns/${OTHER}`) {
+      return campaign;
+    }
+
+    return steps !== undefined &&
+      url.pathname === "/api/v2/campaigns/analytics/steps" &&
+      url.searchParams.get("campaign_id") === OTHER
+      ? steps
+      : undefined;
+  };
+
+const failure = async (promise: Promise<unknown>) => {
+  try {
+    await promise;
+  } catch (error) {
+    assert.ok(OutboundError.is(error));
+
+    return error;
+  }
+
+  assert.fail("expected the insight to throw");
+};
+
+test("copy_reuse does not skip a campaign whose read timed out: the timeout throws", async () => {
+  const { outbound, settle } = over(other("hang"), {
+    retries: 0,
+    timeout: 1000,
+  });
+
+  const error = await failure(
+    settle(outbound.insights.copyReuse({}, { now: NOW }))
+  );
+
+  assert.equal(error.code, "Provider");
+  assert.equal(error.timedOut, true);
+});
+
+test("copy_reuse does not let a missing sequence hide a bad key on the same campaign's stats", async () => {
+  const { outbound, settle } = over(
+    other(
+      json({ message: "Not found" }, 404),
+      json({ message: "Invalid key" }, 401)
+    )
+  );
+
+  const error = await failure(
+    settle(outbound.insights.copyReuse({}, { now: NOW }))
+  );
+
+  assert.equal(error.code, "Unauthorized");
 });

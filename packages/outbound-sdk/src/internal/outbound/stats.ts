@@ -72,6 +72,7 @@ export const readStats = async (
         complete: true,
         evidence: output.evidence,
         fetchedAt: output.fetchedAt,
+        notes: output.notes,
         stale: output.stale,
       }),
       rows: checked(core, metricRowSchema, output.items, "stats"),

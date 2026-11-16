@@ -149,12 +149,17 @@ export class RequestEngine {
     };
   }
 
-  contextFor(adapter: Adapter, state: CallState): AdapterContext {
+  /** `notes` collects what the adapter says it left out; the call's own by default. */
+  contextFor(
+    adapter: Adapter,
+    state: CallState,
+    notes: string[] = state.notes
+  ): AdapterContext {
     return {
-      forAdapter: (other) => this.contextFor(other, state),
+      forAdapter: (other) => this.contextFor(other, state, notes),
       note: (text) => {
-        if (!state.notes.includes(text)) {
-          state.notes.push(text);
+        if (!notes.includes(text)) {
+          notes.push(text);
         }
       },
       request: (spec) =>

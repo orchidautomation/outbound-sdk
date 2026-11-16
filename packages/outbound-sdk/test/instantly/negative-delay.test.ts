@@ -4,11 +4,14 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { harness } from "../helpers/adapter-suite.ts";
+import { cache } from "../../src/cache/index.ts";
+import { createOutbound, MemoryRateLimitStore } from "../../src/index.ts";
+import { fixtureHandler, harness } from "../helpers/adapter-suite.ts";
+import { createClock } from "../helpers/clock.ts";
 import { fixture } from "../helpers/fixtures.ts";
-import { json } from "../helpers/http.ts";
+import { createFetch, json } from "../helpers/http.ts";
 import type { RecordedRequest } from "../helpers/http.ts";
-import { CAMPAIGN, suite } from "./suite.ts";
+import { CAMPAIGN, SENDER, suite } from "./suite.ts";
 
 const NEGATIVE = fixture("instantly", "getCampaign.negativeDelay.json");
 
@@ -117,4 +120,79 @@ test("instantly: a subsequence's negative pre_delay leaves its first wait unknow
     subsequences.meta?.notes.join(" ") ?? "",
     /Step 1's delay is negative in Instantly \(-2 /u
   );
+});
+
+test("instantly: a cached sequence keeps the note its first read gave", async () => {
+  const clock = createClock();
+  const unrouted: string[] = [];
+  const fromFixtures = fixtureHandler([suite], unrouted);
+
+  const http = createFetch(
+    (request, index) =>
+      campaignRead(NEGATIVE)(request) ?? fromFixtures(request, index)
+  );
+
+  const outbound = createOutbound({
+    adapter: suite.make(),
+    fetch: http.fetch,
+    plugins: [cache({ now: () => 0, ttl: 60 })],
+    rateLimitStore: new MemoryRateLimitStore(),
+    runtime: clock.runtime,
+    share: 1,
+  });
+
+  const first = await clock.settle(outbound.campaign(CAMPAIGN).sequence());
+  const second = await clock.settle(outbound.campaign(CAMPAIGN).sequence());
+
+  assert.equal(http.requests.length, 1, "the second read is a cache hit");
+  assert.deepEqual(second.meta.notes, first.meta.notes);
+  assert.deepEqual(second.meta.notes, [
+    "Step 4's delay is negative in Instantly (-11 days); left out.",
+  ]);
+});
+
+const ACCOUNT = fixture("instantly", "getAccount.json") as object;
+
+test("instantly: a negative daily limit on a mailbox is unknown with a note, and the mailbox still reads", async () => {
+  const { outbound, settle } = harness(suite, (request) =>
+    decodeURIComponent(new URL(request.url).pathname) ===
+    `/api/v2/accounts/${SENDER}`
+      ? json({ ...ACCOUNT, daily_limit: -5, email: SENDER })
+      : undefined
+  );
+
+  const sender = await settle(outbound.senders.get(SENDER));
+
+  assert.equal(sender.dailyLimit, null);
+  assert.equal(sender.address, SENDER);
+  assert.deepEqual(sender.meta.notes, [
+    `The daily limit of ${SENDER} is negative in Instantly (-5); left out.`,
+  ]);
+});
+
+test("instantly: negative campaign limits are unknown with a note, and the settings still read", async () => {
+  const campaign = fixture("instantly", "getCampaign.json") as object;
+
+  const { outbound, settle } = harness(
+    suite,
+    campaignRead({
+      ...campaign,
+      daily_limit: -1,
+      daily_max_leads: -2,
+      email_gap: -3,
+    })
+  );
+
+  const settings = await settle(outbound.campaign(CAMPAIGN).settings());
+
+  assert.deepEqual(
+    [settings.dailyLimit, settings.dailyNewLeads, settings.gapMinutes],
+    [null, null, null]
+  );
+  assert.ok(settings.schedule.length > 0, "the rest of the settings are read");
+  assert.deepEqual(settings.meta.notes, [
+    "The campaign's daily limit is negative in Instantly (-1); left out.",
+    "The campaign's daily limit of new leads is negative in Instantly (-2); left out.",
+    "The gap between emails is negative in Instantly (-3 minutes); left out.",
+  ]);
 });
