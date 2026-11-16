@@ -375,27 +375,42 @@ const NO_ENGAGEMENT: LeadEngagement = {
  * The lead with what its replies in the window say: at least that many
  * replies, and the newest of them as its last reply when its record reports
  * none or an older one. A vendor whose lead records carry no counts
- * (HeyReach) gets recency and a count this way.
+ * (HeyReach) gets recency and a count this way, and its interest class
+ * where the vendor keeps one on the lead and the record has none.
  */
 const withReplies = (lead: Lead, replies: readonly Reply[]): Lead => {
-  const mine = replies.filter(
-    (reply) =>
-      belongs(lead, reply) &&
-      reply.isAuto !== true &&
-      !NOT_ENGAGED.has(reply.category)
+  const all = replies.filter((reply) => belongs(lead, reply));
+
+  // A category the vendor keeps on the lead, not on one reply (HeyReach's
+  // auto-tag), is the lead's when its record carries no label.
+  const labelled =
+    lead.interest === null && lead.interestCategory === null
+      ? all.find(
+          (reply) =>
+            reply.categorySource === "lead" && reply.category !== "unknown"
+        )
+      : undefined;
+
+  const classed =
+    labelled === undefined
+      ? lead
+      : { ...lead, interestCategory: labelled.category };
+
+  const mine = all.filter(
+    (reply) => reply.isAuto !== true && !NOT_ENGAGED.has(reply.category)
   );
 
   const [newest] = mine;
 
   if (newest === undefined) {
-    return lead;
+    return classed;
   }
 
   const engagement = lead.engagement ?? NO_ENGAGEMENT;
   const last = engagement.lastRepliedAt;
 
   return {
-    ...lead,
+    ...classed,
     engagement: {
       ...engagement,
       lastRepliedAt:

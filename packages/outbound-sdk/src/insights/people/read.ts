@@ -190,7 +190,8 @@ const COUNTS = "no per-lead open, click or reply counts";
 export const noteEngagement = (
   context: InsightContext,
   leads: readonly Lead[],
-  effect: string
+  effect: string,
+  counts = COUNTS
 ): void => {
   const { outbound } = context;
 
@@ -199,7 +200,7 @@ export const noteEngagement = (
   }
 
   if (leads.every((lead) => lead.provider === outbound.provider)) {
-    context.note(`This tool reports ${COUNTS}, so ${effect}.`);
+    context.note(`This tool reports ${counts}, so ${effect}.`);
 
     return;
   }
@@ -214,7 +215,7 @@ export const noteEngagement = (
 
   if (lacking.length > 0) {
     context.note(
-      `${lacking.join(", ")} ${lacking.length === 1 ? "reports" : "report"} ${COUNTS}, so ${effect} for ${lacking.length === 1 ? "its" : "their"} records. Records from the other tools carry what their vendor reports.`
+      `${lacking.join(", ")} ${lacking.length === 1 ? "reports" : "report"} ${counts}, so ${effect} for ${lacking.length === 1 ? "its" : "their"} records. Records from the other tools carry what their vendor reports.`
     );
   }
 };
