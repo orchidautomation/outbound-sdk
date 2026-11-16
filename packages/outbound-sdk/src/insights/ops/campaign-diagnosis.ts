@@ -4,16 +4,28 @@
 import { z } from "zod";
 
 import type { CampaignSettings } from "../../internal/entities-account.ts";
-import type { Sender } from "../../internal/entities.ts";
+import type { Campaign, Sender } from "../../internal/entities.ts";
+import {
+  leadsToStart,
+  newLeadsPerDay,
+  runwayDays,
+  splitActive,
+} from "../../internal/runway.ts";
+import { SCREENED_AT_MOST } from "../../internal/sender-screen.ts";
 import { readCapped } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { rangeFields } from "../fields.ts";
 import { total } from "../stats.ts";
-import { diagnose, unknownRates } from "./diagnosis-checks.ts";
+import {
+  diagnose,
+  sendsFellOrStopped,
+  unknownRates,
+} from "./diagnosis-checks.ts";
 import type {
   DiagnosisFinding,
   Facts,
+  LeadsLeft,
   RecentSends,
 } from "./diagnosis-checks.ts";
 import {
@@ -50,13 +62,24 @@ const input = z.object({
     0.3,
     "A fall in sends, recent days against the days before, over this share is a finding"
   ),
+  max_leads: z
+    .number()
+    .int()
+    .min(1)
+    .max(50_000)
+    .default(2000)
+    .describe(
+      "The most leads to read when sends fell or stopped, to tell lead runout from a fault. A page of leads is one request."
+    ),
   max_senders: z
     .number()
     .int()
     .min(1)
-    .max(500)
-    .default(50)
-    .describe("The most senders of the campaign to read"),
+    .max(SCREENED_AT_MOST)
+    .default(SCREENED_AT_MOST)
+    .describe(
+      "The most of the campaign's own senders to read and screen for a status that is not active or a warmup score of 0"
+    ),
   min_positive_share: share(
     0.2,
     "A share of replies that are positive under this is a finding"
@@ -115,11 +138,62 @@ const readRecent = async (
 
   const sends = sentIn(recent.from, recent.to);
 
+  // The recent window is the pace window lead_runway and pipeline_forecast
+  // use: the `days` complete days ending yesterday.
+  const started = newLeadsPerDay(
+    series.flatMap((day) =>
+      day.date >= recent.from && day.date <= recent.to ? [day.counts] : []
+    ),
+    days
+  );
+
   return {
     before: total(sentIn(before.from, before.to)),
     days,
     daysWithData: sends.filter((value) => value !== null).length,
     sent: total(sends),
+    startedPerDay: started,
+  };
+};
+
+/**
+ * The leads left to start, read only to tell lead runout from a fault. `null`
+ * when the adapter cannot list them, the cap stopped the read (the count would
+ * be a minimum, so runout cannot be claimed) or the vendor lists none (a
+ * campaign that sent has leads, so an empty listing says nothing).
+ */
+const readLeadsLeft = async (
+  context: InsightContext,
+  campaign: string,
+  recent: RecentSends,
+  maxLeads: number
+): Promise<LeadsLeft | null> => {
+  if (!context.outbound.capabilities["leads.byCampaign"]) {
+    context.note(
+      "Lead runout: the adapter cannot list a campaign's leads, so a fall in sends was not checked against the leads left."
+    );
+
+    return null;
+  }
+
+  const { capped, items: leads } = await readCapped(
+    context,
+    (max) => context.outbound.campaign(campaign).leads.listAll({ max }),
+    { input: "max_leads", max: maxLeads, what: "leads" }
+  );
+
+  if (capped || leads.length === 0) {
+    return null;
+  }
+
+  const split = splitActive(leads);
+  const unknown = leads.filter((lead) => lead.status === "unknown").length;
+
+  return {
+    active: split.active,
+    daysLeft: runwayDays(split, { unknown }, true, recent.startedPerDay),
+    inSequence: split.inSequence,
+    toStart: leadsToStart(split),
   };
 };
 
@@ -183,6 +257,17 @@ const readExtras = async (
   };
 };
 
+const leadsIfSendsFell = async (
+  context: InsightContext,
+  campaign: Campaign,
+  recent: RecentSends | null,
+  options: { readonly maxLeads: number; readonly maxSendDrop: number }
+): Promise<LeadsLeft | null> =>
+  recent !== null &&
+  sendsFellOrStopped(campaign, recent, { maxSendDrop: options.maxSendDrop })
+    ? await readLeadsLeft(context, campaign.ref, recent, options.maxLeads)
+    : null;
+
 const summarize = (findings: readonly DiagnosisFinding[]): string => {
   const [first] = findings;
 
@@ -193,7 +278,7 @@ const summarize = (findings: readonly DiagnosisFinding[]): string => {
 
 export const campaignDiagnosis = defineInsight({
   description:
-    "Why one campaign is underperforming: a list of findings, most serious first, each with a code, a plain-language finding, the numbers behind it and what to look at next. It checks for too little volume to judge, a low reply rate (with its 95% interval), a high bounce rate, few positive replies among replies, sends falling or stopped over the last days, a one or two step sequence, a sender that is not active, open tracking being off, and a schedule or daily limit that holds volume back. Also returns what could not be checked; an empty list means nothing was found, not that all is well. Costs up to 7 requests.",
+    "Why one campaign is underperforming: a list of findings, most serious first, each with a code, a plain-language finding, the numbers behind it and what to look at next. It checks for too little volume to judge, a low reply rate (with its 95% interval), a high bounce rate, few positive replies among replies, sends falling or stopped over the last days, told apart from the campaign running out of leads (under a day of new leads left to start at the recent pace, the pace lead_runway uses), a one or two step sequence, any of the campaign's own senders (up to 500) that is not active or has a warmup score of 0, open or click tracking being off, and a schedule or daily limit that holds volume back. Also returns what could not be checked; an empty list means nothing was found, not that all is well. Costs up to 6 requests, plus one per page of the campaign's senders and, only when sends fell or stopped, one per page of its leads.",
   inputSchema: input,
   key: "campaignDiagnosis",
   cost: (values, price) => {
@@ -209,7 +294,12 @@ export const campaignDiagnosis = defineInsight({
       (capabilities["senders.byCampaign"] === false
         ? 0
         : price.list("senders.list", values.max_senders)) +
-      (capabilities["stats.byDay"] === false ? 0 : price.one("stats"))
+      (capabilities["stats.byDay"] === false ? 0 : price.one("stats")) +
+      // The leads are read only when sends fell or stopped, which the data decides.
+      (capabilities["stats.byDay"] === false ||
+      capabilities["leads.byCampaign"] === false
+        ? 0
+        : price.upTo(1) * price.list("leads.list", values.max_leads))
     );
   },
   scales: "max_senders",
@@ -228,9 +318,15 @@ export const campaignDiagnosis = defineInsight({
       recentDays: options.days,
     });
 
+    const leads = await leadsIfSendsFell(context, campaign, extras.recent, {
+      maxLeads: options.max_leads,
+      maxSendDrop: options.max_send_drop,
+    });
+
     const facts: Facts = {
       ...extras,
       campaign,
+      leads,
       opened: counts.opened,
       rates: ratesOf(counts),
       totals: totalsOf(counts),

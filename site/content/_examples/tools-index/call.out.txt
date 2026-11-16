@@ -36,6 +36,7 @@
 {
   "data": {
     "campaign": "cmp_founders",
+    "from": "2026-11-01",
     "metric": "replied",
     "points": [
       {
@@ -103,7 +104,8 @@
         "timezone": "UTC",
         "value": 2
       }
-    ]
+    ],
+    "to": "2026-11-30"
   },
   "meta": {
     "evidence": "exact",

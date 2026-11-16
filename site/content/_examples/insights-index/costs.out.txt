@@ -18,7 +18,7 @@ bounce_watch: 818, 822, 756
 warmup_readiness: 7, 7, 6
 sender_load: 103, 107, 71
 settings_audit: -, 103, 68
-campaign_diagnosis: 12, 16, 12
+campaign_diagnosis: 43, 72, 44
 pipeline_forecast: 34, 62, 36
 anomalies: 6, 6, 6
 period_comparison: 73, 84, 73

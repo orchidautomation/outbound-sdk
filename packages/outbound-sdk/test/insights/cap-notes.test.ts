@@ -93,6 +93,23 @@ const REQUIRED: Readonly<Record<string, Record<string, string>>> = {
   variant_test: { campaign: "memory:agency:c1" },
 };
 
+// A cap that applies only to some data: campaign_diagnosis reads leads only
+// when sends fell, so here c1 sent 1,000 a day 11 to 13 days ago, far over
+// the 100 a day since.
+const DATA_FOR: Readonly<Record<string, MemoryData>> = {
+  "campaign_diagnosis max_leads": {
+    ...DATA,
+    stats: [
+      ...(DATA.stats ?? []),
+      ...[11, 12, 13].map((day) => ({
+        campaignId: "c1",
+        counts: { contacted: 1000, sent: 1000 },
+        date: daysAgo(day).slice(0, 10),
+      })),
+    ],
+  },
+};
+
 // A cap that applies only where the tool lacks a read: account_summary reads
 // campaign by campaign only when it cannot list every lead.
 const CAPABILITIES: Readonly<Record<string, Record<string, boolean>>> = {
@@ -120,7 +137,7 @@ test("every cap note names the input that raises it", async () => {
 
     for (const cap of caps) {
       const run = `${definition.name} ${cap}`;
-      const outbound = single(DATA, CAPABILITIES[run] ?? {});
+      const outbound = single(DATA_FOR[run] ?? DATA, CAPABILITIES[run] ?? {});
 
       // oxlint-disable-next-line no-await-in-loop -- one run at a time keeps a failure's message about one insight.
       const result = await definition.execute(

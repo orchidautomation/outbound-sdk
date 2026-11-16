@@ -155,6 +155,24 @@ export const offeredTools = async (
   return createTools(outbound, { extra: insightTools(outbound) });
 };
 
+/** A tool as `outbound tools` lists it: its inputs as JSON Schema, as `outbound insight` lists them. */
+const describeTool = (tool: OutboundTool): Json => ({
+  description: tool.description,
+  name: tool.name,
+  parameters: tool.parameters,
+});
+
+/** Whether the tool has an input with no default, so it cannot run on none. */
+const requiresInput = (tool: OutboundTool): boolean => {
+  const { parameters } = tool;
+
+  return (
+    isJsonObject(parameters) &&
+    Array.isArray(parameters.required) &&
+    parameters.required.length > 0
+  );
+};
+
 /** Lists the insights, or runs the one the first argument names. */
 const runInsight: Command = async (outbound, input) => {
   // Loaded on demand, so the other commands do not pay for the insights.
@@ -443,7 +461,7 @@ const COMMAND_TABLE = {
   },
   tool: {
     flags: ["card", "input", "slack"],
-    help: "tool <name> [--input JSON] [--card | --slack]",
+    help: "tool <name> [--input JSON] [--card | --slack]  without --input, a tool that needs input prints what it takes",
     run: async (outbound, input) => {
       const name = required(input, 0, "a tool name");
 
@@ -457,11 +475,14 @@ const COMMAND_TABLE = {
         );
       }
 
-      return drawn(
-        name,
-        await tool.call(parseInput(text(input, "input"))),
-        input
-      );
+      const given = text(input, "input");
+
+      // Nothing to run on: say what the tool takes instead of failing on it.
+      if (given === undefined && requiresInput(tool)) {
+        return describeTool(tool);
+      }
+
+      return drawn(name, await tool.call(parseInput(given)), input);
     },
   },
   tools: {
@@ -470,10 +491,7 @@ const COMMAND_TABLE = {
     run: async (outbound) => {
       const offered = await offeredTools(outbound);
 
-      return offered.map((tool) => ({
-        description: tool.description,
-        name: tool.name,
-      }));
+      return offered.map(describeTool);
     },
   },
   webhooks: {

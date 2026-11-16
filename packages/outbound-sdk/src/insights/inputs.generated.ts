@@ -779,9 +779,16 @@ export interface InsightInputs {
     readonly max_send_drop?: number | undefined;
 
     /**
-     * The most senders of the campaign to read
+     * The most leads to read when sends fell or stopped, to tell lead runout from a fault. A page of leads is one request.
      *
-     * A whole number from 1 to 500. Defaults to `50`.
+     * A whole number from 1 to 50,000. Defaults to `2000`.
+     */
+    readonly max_leads?: number | undefined;
+
+    /**
+     * The most of the campaign's own senders to read and screen for a status that is not active or a warmup score of 0
+     *
+     * A whole number from 1 to 500. Defaults to `500`.
      */
     readonly max_senders?: number | undefined;
 

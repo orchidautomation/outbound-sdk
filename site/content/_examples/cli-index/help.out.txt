@@ -20,7 +20,7 @@ Usage: outbound <command> [options]
   stats [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--by day|total]
   tags [--limit N]
   thread <id> [--bodies]
-  tool <name> [--input JSON] [--card | --slack]
+  tool <name> [--input JSON] [--card | --slack]  without --input, a tool that needs input prints what it takes
   tools
   webhooks [--campaign ID] [--limit N]
   mcp                      start a local MCP server on stdio (redact is on)

@@ -136,6 +136,60 @@ test("reports capabilities and caveats, and runs a tool", async () => {
   assert.equal(result.data.campaigns[0]?.name, "Agency owners");
 });
 
+test("tools lists each tool's inputs, and a tool that needs input prints them when given none", async () => {
+  const tools = (await cli("tools")).json() as {
+    name: string;
+    description: string;
+    parameters: { type: string; properties: Record<string, unknown> };
+  }[];
+
+  // Every tool, built-in and insight alike, carries its JSON Schema, as `insight` does.
+  assert.ok(tools.length > 10);
+
+  for (const tool of tools) {
+    assert.deepEqual(Object.keys(tool).toSorted(), [
+      "description",
+      "name",
+      "parameters",
+    ]);
+    assert.equal(tool.parameters.type, "object", tool.name);
+  }
+
+  const deliverability = tools.find(
+    (tool) => tool.name === "deliverability_check"
+  );
+
+  assert.deepEqual(
+    Object.keys(deliverability?.parameters.properties ?? {}).toSorted(),
+    ["campaign", "limit"]
+  );
+
+  // lead_runway requires `campaign`: with no --input it says what it takes and exits 0.
+  const schema = await cli("tool", "lead_runway");
+
+  assert.equal(schema.code, 0);
+  assert.deepEqual(
+    schema.json(),
+    tools.find((tool) => tool.name === "lead_runway")
+  );
+
+  // Given --input, it runs and fails on the missing input, as before.
+  const empty = await cli("tool", "lead_runway", "--input", "{}");
+
+  assert.equal(empty.code, 1);
+  assert.match(
+    (empty.json() as { error: { message: string } }).error.message,
+    /`campaign` is required/u
+  );
+
+  // A tool that needs no input still runs on none.
+  const ran = (await cli("tool", "campaign_overview")).json() as {
+    ok: boolean;
+  };
+
+  assert.equal(ran.ok, true);
+});
+
 test("a wrong command or argument exits 1 with a one-line reason on stderr", async () => {
   for (const [argv, pattern] of [
     [["nope"], /Invalid: Unknown command "nope"/u],

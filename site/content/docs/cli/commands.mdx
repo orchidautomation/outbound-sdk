@@ -32,8 +32,8 @@ The output shows what the CLI does with the demo data. It does not show what a v
 | `blocklist` | Blocked addresses and domains | `outbound.blocklist.listAll` |
 | `webhooks` | Webhook subscriptions registered at the vendor | `outbound.webhooks.listAll` |
 | `limits` | The current rate budget | `outbound.limits` |
-| `tools` | The [AI tools](/docs/tools) the instance can serve, then the [insights](/docs/insights), as `outbound mcp` lists them | `createTools` with `insightTools` |
-| `tool <name>` | Runs one of them | `tool.call` |
+| `tools` | The [AI tools](/docs/tools) the instance can serve, then the [insights](/docs/insights), as `outbound mcp` lists them, each with its `name`, `description` and inputs as JSON Schema (`parameters`) | `createTools` with `insightTools` |
+| `tool <name>` | Runs one of them. Without `--input`, a tool that has a required input prints its `name`, `description` and `parameters` instead | `tool.call` |
 | `insight [name]` | Lists the [insights](/docs/insights), or runs one | `listInsights`, `runInsightByName` |
 | `person <email or URL>` | Every campaign one person is in, across every tool | `runInsightByName("person_summary")` |
 | `native [name]` | Lists the vendor's [own reads](/docs/native), or runs one | `outbound.native` |
@@ -136,7 +136,7 @@ Message text is left out unless you pass `--bodies`: `bodyText` is `null` withou
 
 ## tools, tool and insight
 
-`tools` lists the [AI tools](/docs/tools) and the insights, as `outbound mcp` serves them, and `tool` runs any of them with the same input a model would send. `insight` with no name lists the 27 insights with their input schemas, and with a name runs one.
+`tools` lists the [AI tools](/docs/tools) and the insights, as `outbound mcp` serves them, each with its inputs as JSON Schema in `parameters`, and `tool` runs any of them with the same input a model would send. Given no `--input`, a tool with a required input prints its `name`, `description` and `parameters` instead of failing. `insight` with no name lists the 27 insights with their input schemas, and with a name runs one.
 
 <include meta='title="agent.ts"'>../../_examples/cli-commands/agent.ts</include>
 

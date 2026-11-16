@@ -59,14 +59,15 @@ Every read an insight makes has a cap you can set. The defaults keep one call to
 | `max_campaigns` | 50 | `bounceWatch` |
 | `max_leads` | 500 | `hotLeads`, `personalizationGaps` |
 | `max_leads` | 1,000 | `accountSummary` |
-| `max_leads` | 2,000 | `pipelineForecast` |
+| `max_leads` | 2,000 | `pipelineForecast`, `campaignDiagnosis` |
 | `max_leads_per_campaign` | 500 | `leadCollisions`, `suppressionCheck`, `clientReport` |
 | `max_block_entries` | 2,000 | `suppressionCheck` |
 | `max_replies` | 50 | `droppedReplies` |
 | `max_messages` | 2,000 | `replyTiming` |
-| `max_senders` | 50 | `domainHealth`, `campaignDiagnosis` |
+| `max_senders` | 50 | `domainHealth` |
 | `max_senders` | 100 | `warmupReadiness` |
 | `max_senders` | 200 | `senderCapacity`, `senderLoad` |
+| `max_senders` | 500 | `campaignDiagnosis` |
 
 The range of each cap is on the insight's own section. Thresholds (a bounce rate that is too high, a warmup score that is too low) are inputs with defaults too.
 

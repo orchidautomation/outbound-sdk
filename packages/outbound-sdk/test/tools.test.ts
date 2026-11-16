@@ -159,6 +159,61 @@ test("campaign_trend returns one point per day for the chosen count", async () =
   ]);
 });
 
+/** The UTC day `back` days before now, `YYYY-MM-DD`. */
+const daysBack = (back: number) =>
+  new Date(Date.now() - back * 86_400_000).toISOString().slice(0, 10);
+
+test("campaign_trend reads the last 30 days up to today when from and to are left out", async () => {
+  const day = daysBack;
+
+  const outbound = createOutbound({
+    adapter: memory({
+      data: {
+        campaigns: [{ id: "c1" }],
+        stats: [
+          { campaignId: "c1", counts: { replied: 9 }, date: day(31) },
+          { campaignId: "c1", counts: { replied: 4 }, date: day(30) },
+          { campaignId: "c1", counts: { replied: 2 }, date: day(1) },
+        ],
+      },
+    }),
+  });
+
+  // Only `campaign`: the day 31 back is left out, the one 30 back is the first.
+  const recent = await call(outbound, "campaign_trend", { campaign: "c1" });
+
+  assert.ok(recent.ok, JSON.stringify(recent));
+  assert.deepEqual(
+    [data(recent).from, data(recent).to, data(recent).points],
+    [
+      day(30),
+      day(0),
+      [
+        { date: day(30), timezone: "UTC", value: 4 },
+        { date: day(1), timezone: "UTC", value: 2 },
+      ],
+    ]
+  );
+
+  // `to` alone: 30 days before it.
+  const until = await call(outbound, "campaign_trend", {
+    campaign: "c1",
+    to: day(10),
+  });
+
+  assert.deepEqual([data(until).from, data(until).to], [day(40), day(10)]);
+
+  // A `to` in the right shape that is no day is refused, not read.
+  const impossible = await call(outbound, "campaign_trend", {
+    campaign: "c1",
+    to: "2026-13-45",
+  });
+
+  assert.ok(!impossible.ok);
+  assert.equal(impossible.error.code, "Invalid");
+  assert.match(impossible.error.message, /`to` is not a real day/u);
+});
+
 test("winning_steps ranks steps by reply rate", async () => {
   const outbound = createOutbound({
     adapter: memory({
