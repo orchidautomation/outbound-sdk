@@ -87,7 +87,10 @@ for (const strategy of ["mask", "hash"] as const) {
     const { outbound, settle } = instantly([redact({ strategy })]);
 
     const result = await settle(
-      outbound.insights.hotLeads({ campaign: CAMPAIGN }, { now: NOW })
+      outbound.insights.hotLeads(
+        { campaign: CAMPAIGN, include_engagement_only: true },
+        { now: NOW }
+      )
     );
 
     assert.equal(result.data.leads.length, 1);
