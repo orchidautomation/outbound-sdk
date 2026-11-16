@@ -53,6 +53,23 @@ npm --prefix site run build      # the site builds
 
 `npm test` fails when a sample prints something other than its recorded output, when a page has a code fence that is a program, when a sample is not shown on any page, and when the site's claims about maturity or publication no longer match the code (`site/test/site-truth.test.ts`). When the SDK changes what a sample prints, re-record and review the diff; do not edit an `.out.txt` by hand.
 
+### Reference pages and the code
+
+These tests hold a reference table to the code it describes. Add, remove or rename one of these things in the code and its page has to change in the same pull request:
+
+| Page | Held to | Test |
+| --- | --- | --- |
+| `cli/commands.mdx`: the commands, the flags and which commands take each | what `outbound help` prints | `site/test/reference-truth.test.ts` |
+| `tools/index.mdx`: the tools, their count and what each needs | `TOOL_NAMES` and each tool's `needs` | `site/test/reference-truth.test.ts` |
+| `api/errors.mdx`: the codes | `OutboundErrorCode` | `site/test/reference-truth.test.ts` |
+| `capabilities.mdx`: every key, and their count | `CAPABILITY_KEYS` | `site/test/reference-truth.test.ts` |
+| `adapters/index.mdx`: the capability table | what each adapter declares | `packages/outbound-sdk/test/adapters-doc.test.ts` |
+| `coverage/<vendor>.mdx`: every vendor endpoint | the normalized reads and the native catalog | `packages/outbound-sdk/test/coverage-docs.test.ts` |
+| `insights/index.mdx`: the insights and what each needs | `listInsights()` | `packages/outbound-sdk/test/insights-doc.test.ts` |
+| `status.mdx`, the status notice, the banner, one page per subpath | each adapter's maturity, the package's `exports` | `site/test/site-truth.test.ts` |
+
+`npm run test:docs` runs only these. CI runs them as the `docs-sync` job on every ready pull request, on every push to `main` and nightly, and `npm test` runs them too. `npm run check:changed` runs the tests when a page under `site/content/` or a skill changes.
+
 ## Publish
 
 The site is deployed by hand with the Vercel CLI, from a build made on your machine. Merging a pull request does **not** update it.

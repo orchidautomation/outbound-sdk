@@ -26,6 +26,17 @@ test("a fixture change runs the tests but is not linted", () => {
   assert.equal(plan.typecheck, false);
 });
 
+test("a site page or skill change runs the tests that hold it to the code", () => {
+  for (const file of [
+    "site/content/docs/capabilities.mdx",
+    "skills/outbound-sdk-setup/SKILL.md",
+  ]) {
+    const plan = planFor([file]);
+    assert.equal(plan.tests, true, file);
+    assert.equal(plan.typecheck, false, file);
+  }
+});
+
 test("deleted files are not passed to the linter", () => {
   const plan = planFor(["scripts/gone.mjs"], () => false);
   assert.deepEqual(plan.lint, []);
