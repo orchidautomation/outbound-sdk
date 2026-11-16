@@ -3,7 +3,7 @@
 
 import { z } from "zod";
 
-import { mapConcurrent } from "../../internal/concurrency.ts";
+import { readCampaignsIn } from "../capped.ts";
 import type { CampaignsRead } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
@@ -17,6 +17,7 @@ import type { CampaignPeriods, Comparison } from "./period-comparison.ts";
 import { forecastCampaign } from "./pipeline-forecast.ts";
 import {
   labelOf,
+  lastDays,
   listFields,
   RATE_WORDS,
   ratesOf,
@@ -249,15 +250,19 @@ const readRunways = async (
     campaign.status === "active" ? [campaign] : []
   );
 
-  const forecasts = await mapConcurrent(active, async (campaign) => ({
-    campaign,
-    forecast: await forecastCampaign(context, campaign, {
-      days: options.days,
-      leadsInput: "max_leads_per_campaign",
-      leadsWhat: "leads of a campaign",
-      maxLeads: options.max_leads_per_campaign,
+  const forecasts = await context.each(
+    active,
+    async (campaign) => ({
+      campaign,
+      forecast: await forecastCampaign(context, campaign, {
+        days: options.days,
+        leadsInput: "max_leads_per_campaign",
+        leadsWhat: "leads of a campaign",
+        maxLeads: options.max_leads_per_campaign,
+      }),
     }),
-  }));
+    "active campaigns' leads"
+  );
 
   const runways: LeadRunway[] = forecasts.flatMap(({ campaign, forecast }) =>
     forecast.leadsComplete &&
@@ -364,9 +369,23 @@ export const clientReport = defineInsight({
   scales: "max_campaigns",
   name: "client_report",
   needs: ["stats.campaign"],
+  partialOnCap: true,
   next: "Use campaign_diagnosis on a campaign an action item names, with from and to set to this report's `period`, or period_comparison for every campaign's change.",
   run: async (context, options) => {
-    const periods = await readPeriods(context, options);
+    const listed = await readCampaignsIn(
+      context,
+      options.statuses,
+      options.max_campaigns
+    );
+
+    // Read before the campaigns, so a request cap that stops them part way leaves the unusual days in the report.
+    const anomalies = await readAnomalies(
+      context,
+      lastDays(context.now, options.days),
+      options
+    );
+
+    const periods = await readPeriods(context, listed, options.days);
 
     const totals = noted(
       context,
@@ -386,7 +405,7 @@ export const clientReport = defineInsight({
     );
 
     const sections: Sections = {
-      anomalies: await readAnomalies(context, periods.current, options),
+      anomalies,
       bottom: ranking.ranked
         .slice(options.limit)
         .slice(-options.limit)

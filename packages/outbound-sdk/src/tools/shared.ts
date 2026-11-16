@@ -177,9 +177,10 @@ export const capNext = (
     readonly input: string;
     readonly to: number;
     readonly sure: boolean;
-  }
+  },
+  setting = "maxRequestsPerToolCall"
 ): string => {
-  const ask = `the user to raise maxRequestsPerToolCall (${isDefault ? "default" : "set to"} ${cap} here)`;
+  const ask = `the user to raise ${setting} (${isDefault ? "default" : "set to"} ${cap} here)`;
 
   return `Do not call again with the same input. ${lower === undefined ? `Ask ${ask}` : `Lower ${lower.input} to ${lower.to}${lower.sure ? "" : " or less"}, or ask ${ask}`}.`;
 };

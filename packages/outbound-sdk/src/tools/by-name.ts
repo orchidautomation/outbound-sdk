@@ -9,6 +9,8 @@ import { OutboundError } from "../internal/errors.ts";
 import type { ListAll, OutboundApi } from "../internal/outbound/api.ts";
 import { parseRef } from "../internal/ref.ts";
 
+const COMBINED = "combined";
+
 const UUID = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/iu;
 
 const DIGITS = /^\d+$/u;
@@ -30,11 +32,16 @@ const ID_FORMS: ReadonlyMap<string, RegExp> = new Map([
  * Whether `value` is surely a ref or an id, so it is used with no lookup: a
  * ref, an id in the vendor's documented form, or, on an instance whose id
  * form is not known (a test adapter, your own adapter), any text without a
- * space, as before names were accepted.
+ * space, as before names were accepted. On a combined instance only a ref
+ * is: a bare id names no member, so it is looked up like a name.
  */
 export const isIdentifier = (outbound: OutboundApi, value: string): boolean => {
   if (parseRef(value) !== null) {
     return true;
+  }
+
+  if (outbound.provider === COMBINED) {
+    return false;
   }
 
   const form = ID_FORMS.get(outbound.provider);
@@ -63,28 +70,25 @@ const listed = (matches: readonly Named[]): string => {
 };
 
 /**
- * What `value` names among `records`: a record whose id it is, used as given;
+ * What `value` names among `records`: the record whose id it is, by its ref;
  * else the record whose name it is, ignoring case and outer spaces, or the
- * only one whose name contains it; else `undefined`. Two or more names that
- * match are refused with the candidates, never guessed.
+ * only one whose name contains it; else `undefined`. Two or more that match,
+ * such as one id in two tools of a combined instance, are refused with the
+ * candidates, never guessed.
  */
 const pick = (
   records: readonly Named[],
   value: string,
   what: string
 ): string | undefined => {
-  if (records.some((record) => record.sourceId === value)) {
-    return value;
-  }
-
   const wanted = value.trim().toLowerCase();
   const nameOf = (record: Named) => (record.name ?? "").trim().toLowerCase();
+  const byId = records.filter((record) => record.sourceId === value);
   const exact = records.filter((record) => nameOf(record) === wanted);
 
   const matches =
-    exact.length > 0
-      ? exact
-      : records.filter((record) => nameOf(record).includes(wanted));
+    [byId, exact].find((found) => found.length > 0) ??
+    records.filter((record) => nameOf(record).includes(wanted));
 
   if (matches.length > 1) {
     throw new OutboundError(
@@ -123,7 +127,7 @@ const resolve = async (
     return found;
   }
 
-  if (ID_FORMS.has(outbound.provider) || outbound.provider === "combined") {
+  if (ID_FORMS.has(outbound.provider) || outbound.provider === COMBINED) {
     throw new OutboundError(
       "NotFound",
       `No ${what} has the id or name "${value}". Give its ref or id, or list the ${what}s to find it`
@@ -161,6 +165,34 @@ export const namesCampaign = <Input>(
   const parsed = withCampaignField.safeParse(input);
 
   return parsed.success && !isIdentifier(outbound, parsed.data.campaign);
+};
+
+/**
+ * Where a read of this input goes: on a combined instance whose `campaign`
+ * is a ref, the member that ref names, so what that member supports applies
+ * rather than what every member does. Anything else stays on `outbound`; a
+ * ref of no member is refused later, by the read it reaches.
+ */
+export const routedByCampaign = <Input>(
+  outbound: OutboundApi,
+  input: Input
+): OutboundApi => {
+  const parsed = withCampaignField.safeParse(input);
+  const parts = parsed.success ? parseRef(parsed.data.campaign) : null;
+
+  if (outbound.provider !== COMBINED || parts === null) {
+    return outbound;
+  }
+
+  try {
+    return outbound.workspace(`${parts.provider}:${parts.workspaceId}`);
+  } catch (error) {
+    if (OutboundError.is(error) && error.code === "NotFound") {
+      return outbound;
+    }
+
+    throw error;
+  }
 };
 
 /** The input with its `campaign`, when it is text, resolved to a ref or id. */

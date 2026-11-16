@@ -4,8 +4,8 @@ Last reply: Ava Chen on 2026-11-12
   Ava Chen <ava.chen@northwind.example>, CEO
     replied, interested; replies 2, clicks 1, opens 7
     in mailtool:agency:em_founders: replied, Interested
-    in mailtool:agency:em_ops: active
     in lntool:agency:li_execs: active
+    in mailtool:agency:em_ops: active
   Ben Ortiz <ben.ortiz@northwind.example>, Head of Operations
     replied, labelled, not as interested; replies 1, clicks 0, opens 3
     in mailtool:agency:em_ops: replied, Not Interested

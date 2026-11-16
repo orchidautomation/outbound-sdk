@@ -152,6 +152,46 @@ const wantsRedact = (
   return !fromConfig && (flags.redact === true || mcp);
 };
 
+/** What a cap message tells a CLI user to raise. */
+export const capSetting = (mcp: boolean): string =>
+  mcp ? "--max-requests on outbound mcp" : "--max-requests";
+
+/**
+ * The cap an insight runs under from the CLI: `--max-requests` when set,
+ * which replaces the insight's default cap as `budget()` caps the whole
+ * command, and messages that name the flag.
+ */
+export interface InsightCaps {
+  readonly maxRequests: number | undefined;
+  readonly capSetting: string;
+}
+
+export const insightCaps = (flags: PluginFlags, mcp: boolean): InsightCaps => ({
+  capSetting: capSetting(mcp),
+  maxRequests:
+    flags["max-requests"] === undefined
+      ? undefined
+      : positiveInteger("max-requests", flags["max-requests"]),
+});
+
+/** The same caps, as `insightTools` takes them. */
+export interface InsightToolCaps {
+  readonly capSetting: string;
+  readonly maxRequestsPerToolCall: number | undefined;
+}
+
+export const insightToolCaps = (
+  flags: PluginFlags,
+  mcp: boolean
+): InsightToolCaps => {
+  const caps = insightCaps(flags, mcp);
+
+  return {
+    capSetting: caps.capSetting,
+    maxRequestsPerToolCall: caps.maxRequests,
+  };
+};
+
 /**
  * The plugins for one command, outermost first: redact, then the config
  * file's plugins, then cache, then budget, then identity, next to the
@@ -203,7 +243,7 @@ export const setupFor = async (
     const { budget } = await import("../budget/index.ts");
     // A run is reset before each MCP tool call, so this caps one tool call.
     // Outside the MCP server a command is one run.
-    plugins.push(budget({ maxRequests, per: "run" }));
+    plugins.push(budget({ maxRequests, per: "run", setting: capSetting(mcp) }));
   }
 
   // identity links one person's records across tools, for `outbound person`

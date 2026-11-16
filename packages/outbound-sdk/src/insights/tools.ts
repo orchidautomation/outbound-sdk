@@ -25,6 +25,12 @@ export interface InsightToolsOptions {
    * removes the default.
    */
   readonly maxRequestsPerToolCall?: number | undefined;
+  /**
+   * What a cap message tells the user to raise. Defaults to
+   * `maxRequestsPerToolCall`; a surface that sets the cap its own way names
+   * its own, as `outbound mcp` names `--max-requests`.
+   */
+  readonly capSetting?: string | undefined;
 }
 
 /** The most an insight tool call may send when no cap is set, whatever its input. */
@@ -58,10 +64,11 @@ const toTool = (
   outbound: OutboundApi,
   definition: InsightEntry,
   next: string,
-  perCall: number | undefined
+  options: InsightToolsOptions
 ): OutboundTool => ({
   call: async (given, callOptions) => {
-    const set = callOptions?.maxRequests ?? perCall;
+    const set = callOptions?.maxRequests ?? options.maxRequestsPerToolCall;
+    const capSetting = options.capSetting ?? "maxRequestsPerToolCall";
 
     try {
       const input = jsonInput(given);
@@ -77,11 +84,8 @@ const toTool = (
         outbound,
         input,
         set === undefined
-          ? {
-              capCeiling: INSIGHT_TOOL_CEILING,
-              capSetting: "maxRequestsPerToolCall",
-            }
-          : { capSetting: "maxRequestsPerToolCall", maxRequests: set }
+          ? { capCeiling: INSIGHT_TOOL_CEILING, capSetting }
+          : { capSetting, maxRequests: set }
       );
 
       return {
@@ -103,7 +107,7 @@ const toTool = (
         return failure(
           error,
           stop.requests,
-          capNext(stop.cap, stop.isDefault, stop.lower)
+          capNext(stop.cap, stop.isDefault, stop.lower, capSetting)
         );
       }
 
@@ -181,11 +185,6 @@ export const insightTools = (
   const names = new Set(offered.map((definition) => definition.name));
 
   return offered.map((definition) =>
-    toTool(
-      outbound,
-      definition,
-      hintFor(definition.next, names),
-      options.maxRequestsPerToolCall
-    )
+    toTool(outbound, definition, hintFor(definition.next, names), options)
   );
 };
