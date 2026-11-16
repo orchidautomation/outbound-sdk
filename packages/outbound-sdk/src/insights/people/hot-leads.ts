@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { Lead, ReplyCategory } from "../../internal/entities.ts";
 import { OutboundError } from "../../internal/errors.ts";
 import { plural } from "../../internal/numbers.ts";
+import { makeRef } from "../../internal/ref.ts";
 import { confirmCampaign } from "../campaign.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
@@ -365,7 +366,15 @@ const repliedPastCap = async (
     }
   );
 
-  const listed = new Set(read.map((lead) => lead.ref));
+  // A reply can name its lead by address (Instantly does), so a listed lead
+  // counts as listed under either ref.
+  const listed = new Set(
+    read.flatMap((lead) =>
+      lead.email === null
+        ? [lead.ref]
+        : [lead.ref, makeRef(lead.provider, lead.workspaceId, lead.email)]
+    )
+  );
 
   const refs = replies
     .filter(

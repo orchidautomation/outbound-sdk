@@ -1,0 +1,56 @@
+{
+  "items": [
+    {
+      "id": "01a1d77f-5e65-78a7-8eb0-0216d691e16c",
+      "timestamp_created": "2026-11-14T00:40:07.768Z",
+      "organization": "01a1d77f-5158-772f-ad63-67d98f6cd2f4",
+      "campaign": "01a1d77f-5e65-78a7-8eb0-0213c3e7d6dc",
+      "status": 1,
+      "email": "person6@example.com",
+      "first_name": "Sam",
+      "last_name": "Sample",
+      "company_name": "Example Co",
+      "email_reply_count": 1,
+      "lt_interest_status": 0
+    },
+    {
+      "id": "01a1d77f-5e65-78a7-8eb0-0216d691e16d",
+      "timestamp_created": "2026-11-14T00:40:07.768Z",
+      "organization": "01a1d77f-5158-772f-ad63-67d98f6cd2f4",
+      "campaign": "01a1d77f-5e65-78a7-8eb0-0213c3e7d6dd",
+      "status": 1,
+      "email": "person16@example.com",
+      "first_name": "Robin",
+      "last_name": "Sample",
+      "company_name": "Example Co",
+      "email_reply_count": 1,
+      "lt_interest_status": 1
+    },
+    {
+      "id": "01a1d77f-5e65-78a7-8eb0-0216d691e16e",
+      "timestamp_created": "2026-11-14T00:40:07.768Z",
+      "organization": "01a1d77f-5158-772f-ad63-67d98f6cd2f4",
+      "campaign": "01a1d77f-5e65-78a7-8eb0-0213c3e7d6de",
+      "status": 1,
+      "email": "person26@example.com",
+      "first_name": "Kim",
+      "last_name": "Sample",
+      "company_name": "Example Co",
+      "email_reply_count": 1,
+      "lt_interest_status": 0
+    },
+    {
+      "id": "01a1d77f-5e65-78a7-8eb0-0216d691e131",
+      "timestamp_created": "2026-11-14T00:40:07.768Z",
+      "organization": "01a1d77f-5158-772f-ad63-67d98f6cd2f4",
+      "campaign": "01a1d77f-5e65-78a7-8eb0-0213c3e7d6dc",
+      "status": 1,
+      "email": "person31@example.com",
+      "first_name": "Lee",
+      "last_name": "Sample",
+      "company_name": "Example Co",
+      "email_reply_count": 1,
+      "lt_interest_status": 1
+    }
+  ]
+}

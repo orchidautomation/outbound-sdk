@@ -77,7 +77,7 @@ A page of campaigns reads at most 10 pages of 100 tag assignments. A page with m
 
 - **`contacted` is leads started.** It is Instantly's "Sequence started": `new_leads_contacted_count` on totals and `new_leads_contacted` by day. Instantly's `contacted_count` counts each step a lead reaches (seen live: 1,404 against 430 started), and daily `contacted` is everyone emailed that day, so neither is read. A step row's `contacted`, where Instantly sends it, is the leads that step reached.
 - **Steps count from 0.** An email names its step as `sequence_step_variant`, each counted from 0. This was seen live and is not documented.
-- **A reply has no lead ref.** A received email carries the lead's address but no lead id, so `reply.leadRef` is `null`. Match on the address.
+- **A message's lead ref holds the lead's address.** An email names its lead by address, not by lead id, so `reply.leadRef` and `message.leadRef` are `instantly:<workspace>:<address>`, lowercased. One person has one `leadRef` across campaigns, so replies can be counted per person. It is not the lead's `ref`, which is a lead id per campaign: join it to a lead on `lead.email`. `outbound.lead(reply.leadRef)` works and returns the first lead record with that address.
 - **The email list is not every email.** A lead on its sixth step was seen with one sent email and two replies. A timeline or thread can be shorter than the sequence; `lead.engagement.stepIndex` says how far the lead got.
 - **A listing ends one request late.** Instantly sends a next-page marker on the last page too, and the page after it is empty.
 - **Open counts come back even with open tracking off.** The analytics response does not say whether tracking was on.

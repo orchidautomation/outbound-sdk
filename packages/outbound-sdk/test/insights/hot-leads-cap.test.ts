@@ -16,7 +16,8 @@ import type {
 } from "../../src/memory/index.ts";
 import { fixtureHandler } from "../helpers/adapter-suite.ts";
 import { createClock } from "../helpers/clock.ts";
-import { createFetch } from "../helpers/http.ts";
+import { fixture } from "../helpers/fixtures.ts";
+import { createFetch, json } from "../helpers/http.ts";
 import { suite as instantly } from "../instantly/suite.ts";
 import { NOW, single } from "./helpers.ts";
 
@@ -226,4 +227,59 @@ test("hot_leads on Instantly past the cap counts every request it makes", async 
     ),
     "it read the replies"
   );
+});
+
+test("hot_leads on Instantly does not read again a listed lead its reply names by address", async () => {
+  const clock = createClock();
+  const unrouted: string[] = [];
+  const fixtures = fixtureHandler([instantly], unrouted);
+
+  const repliers = fixture("instantly", "listLeadsByEmail.repliers.json") as {
+    items: object[];
+  };
+
+  const [received] = (
+    fixture("instantly", "listReplies.sameLead.json") as { items: object[] }
+  ).items;
+
+  const http = createFetch((request, index) => {
+    const url = new URL(request.url);
+    const body = request.body === undefined ? {} : JSON.parse(request.body);
+
+    if (url.pathname === "/api/v2/leads/list" && body.contacts === undefined) {
+      // One lead listed, with more left: person6.
+      return json({
+        items: repliers.items.slice(0, 1),
+        next_starting_after: "x",
+      });
+    }
+
+    return url.searchParams.get("email_type") === "received"
+      ? json({
+          items: ["person6@example.com", "person16@example.com"].map(
+            (lead, at) => ({ ...received, id: `reply-${at}`, lead })
+          ),
+        })
+      : fixtures(request, index);
+  });
+
+  const outbound = createOutbound({
+    adapter: instantly.make(),
+    fetch: http.fetch,
+    plugins: [insights()],
+    rateLimitStore: new MemoryRateLimitStore(),
+    runtime: clock.runtime,
+    share: 1,
+  });
+
+  await clock.settle(outbound.insights.hotLeads({ max_leads: 1 }));
+
+  const lookups = http.requests.flatMap((request) => {
+    const body = request.body === undefined ? {} : JSON.parse(request.body);
+
+    return body.contacts ?? [];
+  });
+
+  assert.deepEqual(unrouted, []);
+  assert.deepEqual(lookups, ["person16@example.com"], "person6 was listed");
 });
