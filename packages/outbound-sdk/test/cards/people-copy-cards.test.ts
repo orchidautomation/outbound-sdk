@@ -419,26 +419,6 @@ test("step_funnel charts replies by step and repeats the insight's finding", () 
   );
 });
 
-test("step_funnel still draws a result stored before rates.replyRate", () => {
-  const { rates: _dropped, ...old } = step(0, 24);
-
-  includes(
-    read(
-      cardFor(
-        "step_funnel",
-        insight({
-          campaign: "c1",
-          finding: "Step 1 brings the most replies.",
-          steps: [old],
-          totals: { replies: 24, sent: 400 },
-          unattributed: { replies: null, rows: 0, sent: null },
-        })
-      )
-    ),
-    "1    | 400  | 24      | 6% (4–8%)"
-  );
-});
-
 const tested = (reported: boolean | null): VariantTest => ({
   alpha: 0.05,
   campaign: "c1",
@@ -455,13 +435,11 @@ const tested = (reported: boolean | null): VariantTest => ({
         count: 10 + index * 20,
         enoughData: true,
         high: 0.07,
-        interval: { high: 0.07, low: 0.01 },
         low: 0.01,
         of: 500,
         pValueVsLeader: null,
         rate: (10 + index * 20) / 500,
         sent: 500,
-        trials: 500,
         variantKey,
       })),
       verdict: "winner",

@@ -10,7 +10,6 @@ import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { statusesInput } from "../fields.ts";
 import { compareRates, percent, round } from "../stats.ts";
-import type { Interval } from "../stats.ts";
 import { pooled, sharedBaseOf } from "./reuse-base.ts";
 import type { BaseOf } from "./reuse-base.ts";
 import { groupBy, replyRateOf, splitStats } from "./shared.ts";
@@ -49,12 +48,6 @@ export interface CopyUse {
   readonly rates: { readonly replyRate: BasedRate };
   /** What the rate divides by: leads contacted or messages sent. */
   readonly basis: RateBasis | null;
-  /** @deprecated Use `rates.replyRate.of`. Removed in 0.6.0. */
-  readonly trials: number | null;
-  /** @deprecated Use `rates.replyRate.rate`. Removed in 0.6.0. */
-  readonly replyRate: number | null;
-  /** @deprecated Use `rates.replyRate.low` and `.high`. Removed in 0.6.0. */
-  readonly replyRateInterval: Interval | null;
 }
 
 export interface CopyPiece {
@@ -68,12 +61,6 @@ export interface CopyPiece {
   /** Replies over the base, added up across campaigns. */
   readonly rates: { readonly replyRate: BasedRate };
   readonly basis: RateBasis | null;
-  /** @deprecated Use `rates.replyRate.of`. Removed in 0.6.0. */
-  readonly trials: number | null;
-  /** @deprecated Use `rates.replyRate.rate`. Removed in 0.6.0. */
-  readonly replyRate: number | null;
-  /** @deprecated Use `rates.replyRate.low` and `.high`. Removed in 0.6.0. */
-  readonly replyRateInterval: Interval | null;
 }
 
 export interface ReusedCopy extends CopyPiece {
@@ -172,10 +159,7 @@ const useOf = (placements: readonly Placement[], baseOf: BaseOf): CopyUse[] => {
       provider: first.campaign.provider,
       rates: { replyRate: replyRateOf(sum) },
       replies: sum.count,
-      replyRate: sum.rate,
-      replyRateInterval: sum.interval,
       sent: sum.sent,
-      trials: sum.trials,
     },
   ];
 };
@@ -204,24 +188,22 @@ const pieceOf = (
       contentHash: first.contentHash,
       rates: { replyRate: replyRateOf(sum) },
       replies: sum.count,
-      replyRate: sum.rate,
-      replyRateInterval: sum.interval,
       sent: sum.sent,
       subject: first.subject,
-      trials: sum.trials,
     },
   ];
 };
 
 interface Rated {
-  readonly replyRate: number | null;
-  readonly trials: number | null;
+  readonly rates: { readonly replyRate: BasedRate };
 }
 
 /** Best rate first; on a tie the larger base; an unknown rate last. */
-const byRate = (left: Rated, right: Rated): number =>
-  (right.replyRate ?? -1) - (left.replyRate ?? -1) ||
-  (right.trials ?? 0) - (left.trials ?? 0);
+const byRate = (
+  { rates: { replyRate: left } }: Rated,
+  { rates: { replyRate: right } }: Rated
+): number =>
+  (right.rate ?? -1) - (left.rate ?? -1) || (right.of ?? 0) - (left.of ?? 0);
 
 const spreadOf = (
   uses: readonly CopyUse[],
@@ -229,7 +211,9 @@ const spreadOf = (
   comparable: boolean
 ) => {
   const judged = uses.filter(
-    (use) => use.replyRate !== null && (use.trials ?? 0) >= minSent
+    (use) =>
+      use.rates.replyRate.rate !== null &&
+      (use.rates.replyRate.of ?? 0) >= minSent
   );
 
   const [best] = judged;
@@ -254,8 +238,8 @@ const spreadOf = (
   }
 
   const test = compareRates(
-    { successes: best.replies, trials: best.trials },
-    { successes: worst.replies, trials: worst.trials }
+    { successes: best.replies, trials: best.rates.replyRate.of },
+    { successes: worst.replies, trials: worst.rates.replyRate.of }
   );
 
   const real = test?.significant ?? false;
@@ -263,9 +247,11 @@ const spreadOf = (
   return {
     best: best.campaign,
     finding: real
-      ? `The same copy gets ${percent(best.replyRate)} in ${best.campaignName} and ${percent(worst.replyRate)} in ${worst.campaignName}; the gap is more than chance, so the audience or the sender differs, not the copy.`
-      : `The same copy gets ${percent(best.replyRate)} in ${best.campaignName} and ${percent(worst.replyRate)} in ${worst.campaignName}; a gap this size could be chance.`,
-    spread: round((best.replyRate ?? 0) - (worst.replyRate ?? 0)),
+      ? `The same copy gets ${percent(best.rates.replyRate.rate)} in ${best.campaignName} and ${percent(worst.rates.replyRate.rate)} in ${worst.campaignName}; the gap is more than chance, so the audience or the sender differs, not the copy.`
+      : `The same copy gets ${percent(best.rates.replyRate.rate)} in ${best.campaignName} and ${percent(worst.rates.replyRate.rate)} in ${worst.campaignName}; a gap this size could be chance.`,
+    spread: round(
+      (best.rates.replyRate.rate ?? 0) - (worst.rates.replyRate.rate ?? 0)
+    ),
     spreadIsReal: real,
     spreadPValue: test?.pValue ?? null,
     worst: worst.campaign,
@@ -353,8 +339,8 @@ export const copyReuse = defineInsight({
     const [bestCopy] = pieces
       .flatMap(({ piece }) =>
         comparable &&
-        piece.replyRate !== null &&
-        (piece.trials ?? 0) >= min_sent
+        piece.rates.replyRate.rate !== null &&
+        (piece.rates.replyRate.of ?? 0) >= min_sent
           ? [piece]
           : []
       )

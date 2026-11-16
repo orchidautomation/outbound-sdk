@@ -4,7 +4,7 @@ import { test } from "node:test";
 import { OutboundError } from "../../src/index.ts";
 import type { CampaignStatus } from "../../src/index.ts";
 import type { MemoryData } from "../../src/memory/index.ts";
-import { NOW, single } from "./helpers.ts";
+import { bounds, NOW, single } from "./helpers.ts";
 import { pair, ref, refused } from "./senders-helpers.ts";
 
 const row = (
@@ -62,19 +62,16 @@ test("bounce_watch lists the campaigns over the threshold worst first, with thei
       bounced: 80,
       campaign: ref("c1"),
       finding: "80 of 1000 sends bounced (8%), over the 3% threshold.",
-      interval: { high: 0.0985, low: 0.0647 },
       count: 80,
       high: 0.0985,
       low: 0.0647,
       of: 1000,
       campaignName: "Hot",
-      name: "Hot",
       rate: 0.08,
       senders: [
         {
           address: "s1@example.com",
           bounced: 60,
-          interval: { high: 0.1266, low: 0.0785 },
           count: 60,
           high: 0.1266,
           low: 0.0785,
@@ -88,7 +85,6 @@ test("bounce_watch lists the campaigns over the threshold worst first, with thei
         {
           address: "s2@example.com",
           bounced: 20,
-          interval: { high: 0.061, low: 0.026 },
           count: 20,
           high: 0.061,
           low: 0.026,
@@ -106,20 +102,17 @@ test("bounce_watch lists the campaigns over the threshold worst first, with thei
       bounced: 20,
       campaign: ref("c2"),
       finding: "20 of 400 sends bounced (5%), over the 3% threshold.",
-      interval: { high: 0.076, low: 0.0326 },
       count: 20,
       high: 0.076,
       low: 0.0326,
       of: 400,
       campaignName: "Warm",
-      name: "Warm",
       rate: 0.05,
       // s4 has no stats, so it is not named.
       senders: [
         {
           address: "s2@example.com",
           bounced: 20,
-          interval: { high: 0.061, low: 0.026 },
           count: 20,
           high: 0.061,
           low: 0.026,
@@ -145,7 +138,7 @@ test("bounce_watch lists the campaigns over the threshold worst first, with thei
     tooFewSends: 2,
     unknown: 3,
   });
-  assert.equal(data.threshold, 0.03);
+  assert.equal(data.maxBounceRate, 0.03);
   assert.equal(data.minSent, 100);
   // s1, s2 and s3 were read; s4 has no stats, which the notes say.
   assert.equal(data.sendersRead, 3);
@@ -185,13 +178,11 @@ test("bounce_watch sets small campaigns apart and never calls an unknown count c
       bounced: 10,
       campaign: ref("c4"),
       finding: "10 of 40 sends bounced; under 100 sends is too few to judge.",
-      interval: { high: 0.4019, low: 0.1419 },
       count: 10,
       high: 0.4019,
       low: 0.1419,
       of: 40,
       campaignName: "Small",
-      name: "Small",
       rate: 0.25,
       senders: null,
       sent: 40,
@@ -201,13 +192,11 @@ test("bounce_watch sets small campaigns apart and never calls an unknown count c
       bounced: 0,
       campaign: ref("c8"),
       finding: "0 of 0 sends bounced; under 100 sends is too few to judge.",
-      interval: null,
       count: 0,
       high: null,
       low: null,
       of: 0,
       campaignName: "Nothing sent",
-      name: "Nothing sent",
       rate: null,
       senders: null,
       sent: 0,
@@ -218,21 +207,18 @@ test("bounce_watch sets small campaigns apart and never calls an unknown count c
     {
       campaign: ref("c5"),
       campaignName: "No bounce count",
-      name: "No bounce count",
       reason: "The vendor does not report a bounce count.",
       status: "active",
     },
     {
       campaign: ref("c6"),
       campaignName: "No stats",
-      name: "No stats",
       reason: "The vendor returned no stats for the period.",
       status: "active",
     },
     {
       campaign: ref("c7"),
       campaignName: "No sent count",
-      name: "No sent count",
       reason: "The vendor does not report a sent count.",
       status: "active",
     },
@@ -246,7 +232,7 @@ test("bounce_watch moves campaigns and senders with the threshold and with min_s
   });
 
   assert.deepEqual(
-    strict.data.over.map((campaign) => campaign.name),
+    strict.data.over.map((campaign) => campaign.campaignName),
     ["Hot"]
   );
   assert.deepEqual(
@@ -261,7 +247,7 @@ test("bounce_watch moves campaigns and senders with the threshold and with min_s
   });
 
   assert.deepEqual(
-    loose.data.over.map((campaign) => campaign.name),
+    loose.data.over.map((campaign) => campaign.campaignName),
     ["Hot", "Warm", "Fine"]
   );
   assert.equal(loose.data.totals.clean, 0);
@@ -272,7 +258,7 @@ test("bounce_watch moves campaigns and senders with the threshold and with min_s
   });
 
   assert.deepEqual(
-    small.data.over.map((campaign) => [campaign.name, campaign.rate]),
+    small.data.over.map((campaign) => [campaign.campaignName, campaign.rate]),
     [
       ["Small", 0.25],
       ["Hot", 0.08],
@@ -287,7 +273,7 @@ test("bounce_watch moves campaigns and senders with the threshold and with min_s
   });
 
   assert.deepEqual(
-    none.data.tooFewSends.map((campaign) => campaign.name),
+    none.data.tooFewSends.map((campaign) => campaign.campaignName),
     ["Nothing sent"]
   );
 });
@@ -303,7 +289,7 @@ test("bounce_watch counts only the days asked for", async () => {
   assert.equal(hot?.sent, 400);
   assert.equal(hot?.bounced, 60);
   assert.equal(hot?.rate, 0.15);
-  assert.deepEqual(hot?.interval, { high: 0.1883, low: 0.1183 });
+  assert.deepEqual(bounds(hot), { high: 0.1883, low: 0.1183 });
 
   const early = await single(DATA).insights.bounceWatch({
     ...EVERY,
@@ -312,7 +298,7 @@ test("bounce_watch counts only the days asked for", async () => {
 
   assert.deepEqual(
     early.data.over.map((campaign) => [
-      campaign.name,
+      campaign.campaignName,
       campaign.sent,
       campaign.bounced,
       campaign.rate,
@@ -364,7 +350,6 @@ test("bounce_watch has nothing to report with no campaigns", async () => {
     minSent: 100,
     over: [],
     sendersRead: null,
-    threshold: 0.03,
     tooFewSends: [],
     totals: {
       bounced: null,
@@ -440,7 +425,7 @@ test("bounce_watch ranks campaigns of two tools together", async () => {
     data.over.map((campaign) => [
       campaign.campaign,
       campaign.rate,
-      campaign.interval,
+      bounds(campaign),
       campaign.senders?.map((sender) => sender.sender),
     ]),
     [
@@ -461,14 +446,14 @@ test("bounce_watch reads active campaigns unless asked for more, and never asks 
   const active = await single(DATA).insights.bounceWatch({ from: null });
 
   assert.ok(active.data.over.every((each) => each.status === "active"));
-  assert.ok(!active.data.over.some((each) => each.name === "Warm"));
+  assert.ok(!active.data.over.some((each) => each.campaignName === "Warm"));
   assert.equal(active.data.totals.campaigns, 7);
 
   const paused = await single(DATA).insights.bounceWatch({
     statuses: ["active", "paused"],
   });
 
-  assert.ok(paused.data.over.some((each) => each.name === "Warm"));
+  assert.ok(paused.data.over.some((each) => each.campaignName === "Warm"));
   assert.equal(paused.data.totals.campaigns, 8);
 
   // Before `statuses` it listed every campaign once, as an adapter that

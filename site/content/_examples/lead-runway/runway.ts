@@ -54,7 +54,7 @@ export const leadRunway = async (
     requests += meta.requests;
 
     for (const note of meta.notes) {
-      notes.add(`${data.name}: ${note}`);
+      notes.add(`${data.campaignName}: ${note}`);
     }
   }
 
@@ -71,7 +71,7 @@ export const leadRunway = async (
     const flagged = forecast.daysLeft !== null && forecast.daysLeft <= warnDays;
 
     lines.push(
-      `${flagged ? "ADD LEADS " : ""}${forecast.name}: ${forecast.leadsComplete ? "" : "at least "}${forecast.remaining} leads left, ${days(forecast)}`,
+      `${flagged ? "ADD LEADS " : ""}${forecast.campaignName}: ${forecast.leadsComplete ? "" : "at least "}${forecast.remaining} leads left, ${days(forecast)}`,
       `    ${replies(forecast)}`
     );
   }

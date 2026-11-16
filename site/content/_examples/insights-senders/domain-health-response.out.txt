@@ -52,14 +52,9 @@
           "low": 0.1071,
           "of": 200,
           "rate": 0.15,
-          "interval": {
-            "high": 0.2061,
-            "low": 0.1071
-          },
           "mailboxes": 2,
           "sent": 200,
-          "spam": 30,
-          "spamRate": 0.15
+          "spam": 30
         }
       },
       {
@@ -96,14 +91,9 @@
           "low": 0.0136,
           "of": 400,
           "rate": 0.025,
-          "interval": {
-            "high": 0.0454,
-            "low": 0.0136
-          },
           "mailboxes": 2,
           "sent": 400,
-          "spam": 10,
-          "spamRate": 0.025
+          "spam": 10
         }
       },
       {
@@ -139,11 +129,9 @@
           "low": null,
           "of": null,
           "rate": null,
-          "interval": null,
           "mailboxes": 0,
           "sent": null,
-          "spam": null,
-          "spamRate": null
+          "spam": null
         }
       }
     ],

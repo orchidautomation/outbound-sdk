@@ -124,3 +124,13 @@ export const agency = () =>
     ]),
     plugins: [insights()],
   });
+
+/** A rate's 95% interval as `{ high, low }`, or `null` when it has none. */
+export const bounds = (
+  rate:
+    | { readonly high: number | null; readonly low: number | null }
+    | undefined
+) =>
+  rate === undefined || rate.low === null || rate.high === null
+    ? null
+    : { high: rate.high, low: rate.low };

@@ -7,7 +7,7 @@ import { insights } from "../../src/insights/index.ts";
 import { memory } from "../../src/memory/index.ts";
 import type { MemoryData } from "../../src/memory/index.ts";
 import { ref, withRows } from "./copy-helpers.ts";
-import { NOW, single } from "./helpers.ts";
+import { bounds, NOW, single } from "./helpers.ts";
 
 const variant = [{ body: "Hello", subject: "Quick question" }];
 
@@ -68,7 +68,7 @@ test("step_funnel reports each step's sends, replies, rate, share and the drop f
       step.delayDays,
       step.sent,
       step.replies,
-      step.replyRate,
+      step.rates.replyRate.rate,
       step.shareOfReplies,
       step.sentDrop,
       step.sentDropRate,
@@ -86,21 +86,21 @@ test("step_funnel reports each step's sends, replies, rate, share and the drop f
   );
 
   // Wilson at 95%: 30 of 1000 is 0.0211 to 0.0425, 12 of 800 is 0.0086 to 0.026.
-  assert.deepEqual(result.data.steps[0]?.replyRateInterval, {
+  assert.deepEqual(bounds(result.data.steps[0]?.rates.replyRate), {
     high: 0.0425,
     low: 0.0211,
   });
-  assert.deepEqual(result.data.steps[1]?.replyRateInterval, {
+  assert.deepEqual(bounds(result.data.steps[1]?.rates.replyRate), {
     high: 0.026,
     low: 0.0086,
   });
-  assert.deepEqual(result.data.steps[2]?.replyRateInterval, {
+  assert.deepEqual(bounds(result.data.steps[2]?.rates.replyRate), {
     high: 0.0076,
     low: 0,
   });
-  assert.equal(result.data.steps[3]?.replyRateInterval, null);
-  assert.equal(result.data.steps[0]?.replyRateBasis, "sent");
-  assert.equal(result.data.steps[3]?.replyRateBasis, null);
+  assert.equal(bounds(result.data.steps[3]?.rates.replyRate), null);
+  assert.equal(result.data.steps[0]?.rates.replyRate.basis, "sent");
+  assert.equal(result.data.steps[3]?.rates.replyRate.basis, null);
   assert.deepEqual(result.data.steps[0]?.variants, []);
 
   assert.equal(result.data.topStep, 0);
@@ -205,7 +205,7 @@ test("step_funnel splits a step by variant, keeps counts tied to no step apart, 
 
   // The step's total is its variants added up: 500 + 500 sends, 20 + 10 replies.
   assert.deepEqual(
-    [first?.sent, first?.replies, first?.replyRate],
+    [first?.sent, first?.replies, first?.rates.replyRate.rate],
     [1000, 30, 0.03]
   );
   assert.deepEqual(first?.variants, [
@@ -222,8 +222,6 @@ test("step_funnel splits a step by variant, keeps counts tied to no step apart, 
         },
       },
       replies: 20,
-      replyRate: 0.04,
-      replyRateInterval: { high: 0.061, low: 0.026 },
       sent: 500,
       variantKey: "A",
     },
@@ -240,15 +238,18 @@ test("step_funnel splits a step by variant, keeps counts tied to no step apart, 
         },
       },
       replies: 10,
-      replyRate: 0.02,
-      replyRateInterval: { high: 0.0364, low: 0.0109 },
       sent: 500,
       variantKey: "B",
     },
   ]);
 
   assert.deepEqual(
-    [second?.sent, second?.replies, second?.replyRate, second?.replyRateBasis],
+    [
+      second?.sent,
+      second?.replies,
+      second?.rates.replyRate.rate,
+      second?.rates.replyRate.basis,
+    ],
     [700, 6, 0.02, "contacted"]
   );
   // `rates.replyRate` holds what the deprecated fields hold: 6 of 300 contacted.
@@ -294,8 +295,8 @@ test("step_funnel keeps an unknown reply count unknown", async () => {
     [
       step?.sent,
       step?.replies,
-      step?.replyRate,
-      step?.replyRateInterval,
+      step?.rates.replyRate.rate,
+      bounds(step?.rates.replyRate),
       step?.shareOfReplies,
       step?.earnsPlace,
     ],
@@ -398,7 +399,7 @@ test("step_funnel reads a campaign by its ref on a combined instance", async () 
       step.action,
       step.sent,
       step.replies,
-      step.replyRate,
+      step.rates.replyRate.rate,
     ]),
     [["connection_request", 300, 9, 0.03]]
   );

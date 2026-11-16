@@ -379,7 +379,7 @@ export const periodComparison = defineInsight({
             right.change.replyRate === null
               ? null
               : Math.abs(right.change.replyRate)
-          ) || left.name.localeCompare(right.name)
+          ) || left.campaignName.localeCompare(right.campaignName)
       ),
       current: periods.current,
       days: options.days,

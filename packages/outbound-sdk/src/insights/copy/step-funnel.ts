@@ -8,7 +8,6 @@ import { defineInsight } from "../define.ts";
 import { rangeFields } from "../fields.ts";
 import { refOf } from "../ref.ts";
 import { rate, total } from "../stats.ts";
-import type { Interval } from "../stats.ts";
 import {
   measure,
   perLead,
@@ -17,7 +16,7 @@ import {
   splitStats,
   sumRows,
 } from "./shared.ts";
-import type { BasedRate, RateBasis, StepStats } from "./shared.ts";
+import type { BasedRate, StepStats } from "./shared.ts";
 
 const input = z.object({
   campaign: z
@@ -42,10 +41,6 @@ export interface FunnelVariant {
   readonly sent: number | null;
   readonly replies: number | null;
   readonly rates: { readonly replyRate: BasedRate };
-  /** @deprecated Use `rates.replyRate.rate`. Removed in 0.6.0. */
-  readonly replyRate: number | null;
-  /** @deprecated Use `rates.replyRate.low` and `.high`. Removed in 0.6.0. */
-  readonly replyRateInterval: Interval | null;
 }
 
 export interface FunnelStep {
@@ -59,12 +54,6 @@ export interface FunnelStep {
   readonly replies: number | null;
   /** Replies divided by leads contacted, or messages sent, as `basis` says. */
   readonly rates: { readonly replyRate: BasedRate };
-  /** @deprecated Use `rates.replyRate.rate`. Removed in 0.6.0. */
-  readonly replyRate: number | null;
-  /** @deprecated Use `rates.replyRate.low` and `.high`. Removed in 0.6.0. */
-  readonly replyRateInterval: Interval | null;
-  /** @deprecated Use `rates.replyRate.basis`. Removed in 0.6.0. */
-  readonly replyRateBasis: RateBasis | null;
   /** This step's replies divided by every reply in the campaign, unattributed ones included. */
   readonly shareOfReplies: number | null;
   /** Sends of the step before minus this step's sends. `null` for the first step or an unknown count. */
@@ -116,8 +105,6 @@ const variantsOf = (
           ?.contentHash ?? null,
       rates: { replyRate: replyRateOf(measured) },
       replies: counts.replied,
-      replyRate: measured.rate,
-      replyRateInterval: measured.interval,
       sent: counts.sent,
       variantKey,
     };
@@ -134,19 +121,17 @@ const draftOf = (
   const measured =
     counts === null ? null : measure(counts.replied, perLead(counts));
 
-  const interval = measured?.interval ?? null;
-
   return {
     action: step?.action ?? null,
     delayDays: step?.delayDays ?? null,
-    earnsPlace: interval === null ? null : interval.low > minReplyRate,
+    earnsPlace:
+      measured === null || measured.low === null
+        ? null
+        : measured.low > minReplyRate,
     inSequence: step !== undefined,
     parent: step === undefined ? null : step.parentIndex,
     rates: { replyRate: replyRateOf(measured) },
     replies: counts?.replied ?? null,
-    replyRate: measured?.rate ?? null,
-    replyRateBasis: measured?.basis ?? null,
-    replyRateInterval: interval,
     sent: counts?.sent ?? null,
     step: index,
     variants: variantsOf(stats, step),

@@ -20,12 +20,6 @@
           }
         },
         "replies": 60,
-        "replyRate": 0.06,
-        "replyRateBasis": "sent",
-        "replyRateInterval": {
-          "high": 0.0765,
-          "low": 0.0469
-        },
         "sent": 1000,
         "step": 0,
         "variants": [
@@ -42,11 +36,6 @@
               }
             },
             "replies": 40,
-            "replyRate": 0.08,
-            "replyRateInterval": {
-              "high": 0.1071,
-              "low": 0.0593
-            },
             "sent": 500,
             "variantKey": "A"
           },
@@ -63,11 +52,6 @@
               }
             },
             "replies": 20,
-            "replyRate": 0.04,
-            "replyRateInterval": {
-              "high": 0.061,
-              "low": 0.026
-            },
             "sent": 500,
             "variantKey": "B"
           }
@@ -92,12 +76,6 @@
           }
         },
         "replies": 16,
-        "replyRate": 0.02,
-        "replyRateBasis": "sent",
-        "replyRateInterval": {
-          "high": 0.0322,
-          "low": 0.0123
-        },
         "sent": 800,
         "step": 1,
         "variants": [
@@ -114,11 +92,6 @@
               }
             },
             "replies": 10,
-            "replyRate": 0.025,
-            "replyRateInterval": {
-              "high": 0.0454,
-              "low": 0.0136
-            },
             "sent": 400,
             "variantKey": "A"
           },
@@ -135,11 +108,6 @@
               }
             },
             "replies": 6,
-            "replyRate": 0.015,
-            "replyRateInterval": {
-              "high": 0.0323,
-              "low": 0.0069
-            },
             "sent": 400,
             "variantKey": "B"
           }
@@ -164,12 +132,6 @@
           }
         },
         "replies": 1,
-        "replyRate": 0.0017,
-        "replyRateBasis": "sent",
-        "replyRateInterval": {
-          "high": 0.0094,
-          "low": 0.0003
-        },
         "sent": 600,
         "step": 2,
         "variants": [],

@@ -31,7 +31,6 @@ const label = (name: string): CampaignLabel => ({
   campaign: `instantly:acme:${name}`,
   campaignName: name,
   channel: "email",
-  name,
   provider: "instantly",
   status: "active",
 });
@@ -54,9 +53,7 @@ const bounce = (over: number, clean: number): BounceWatch => ({
     count: 40,
     finding: "Founders Q4 bounces at 8%, above the 3% limit.",
     high: 0.1,
-    interval: { high: 0.1, low: 0.06 },
     low: 0.06,
-    name: "Founders Q4",
     of: 500,
     rate: 0.08,
     senders: null,
@@ -64,7 +61,6 @@ const bounce = (over: number, clean: number): BounceWatch => ({
     status: "active",
   })),
   sendersRead: 2,
-  threshold: 0.03,
   tooFewSends: [],
   totals: {
     bounced: 40,
@@ -86,10 +82,7 @@ test("bounce_watch draws from campaignName, maxBounceRate and low and high", () 
   const renamed: BounceWatch = {
     ...bounce(1, 0),
     maxBounceRate: 0.04,
-    over: [
-      { ...row, campaignName: "New name", high: 0.11, low: 0.05, name: "Old" },
-    ],
-    threshold: 0.09,
+    over: [{ ...row, campaignName: "New name", high: 0.11, low: 0.05 }],
   };
 
   const text = read(cardFor("bounce_watch", insight(renamed)));
@@ -98,37 +91,6 @@ test("bounce_watch draws from campaignName, maxBounceRate and low and high", () 
     text,
     "🔴 Above the 4% bounce limit: 1 campaign.",
     "New name | 500  | 40      | 8% (5–11%)"
-  );
-  excludes(text, "Old", "9%");
-});
-
-test("bounce_watch still draws a result stored before campaignName and low and high", () => {
-  const old = {
-    minSent: 100,
-    over: [
-      {
-        bounced: 40,
-        campaign: "c1",
-        finding: "",
-        interval: { high: 0.1, low: 0.06 },
-        name: "Founders Q4",
-        rate: 0.08,
-        senders: null,
-        sent: 500,
-        status: "active",
-      },
-    ],
-    sendersRead: null,
-    threshold: 0.03,
-    tooFewSends: [],
-    totals: { campaigns: 1, clean: 0, over: 1, rate: 0.08 },
-    unknown: [],
-  };
-
-  includes(
-    read(cardFor("bounce_watch", insight(old))),
-    "🔴 Above the 3% bounce limit: 1 campaign.",
-    "Founders Q4 | 500  | 40      | 8% (6–10%)"
   );
 });
 
@@ -168,14 +130,12 @@ const domain = (name: string, risk: DomainReport["risk"]): DomainReport => ({
   warmup: {
     count: 12,
     high: null,
-    interval: null,
     low: null,
     mailboxes: 1,
     of: 100,
     rate: risk === "high" ? 0.12 : null,
     sent: 100,
     spam: 12,
-    spamRate: risk === "high" ? 0.12 : null,
   },
 });
 
@@ -317,7 +277,6 @@ const load = (problems: boolean, senders: number): SenderLoad => ({
           finding: "Founders Q4 has one sender.",
           inactive: [],
           issues: ["single_sender"],
-          name: "Founders Q4",
           senders: 1,
         },
       ]
@@ -614,7 +573,7 @@ test("campaign_ranking ranks by the measured rate with its interval", () => {
   );
 });
 
-test("the ops cards name a campaign by campaignName, or by name in an older result", () => {
+test("the ops cards name a campaign by campaignName", () => {
   const fresh = ranking(["Founders"], 0);
   const [first] = fresh.ranked;
   assert.ok(first);
@@ -624,22 +583,12 @@ test("the ops cards name a campaign by campaignName, or by name in an older resu
       "campaign_ranking",
       insight({
         ...fresh,
-        ranked: [{ ...first, campaignName: "New name", name: "Old" }],
+        ranked: [{ ...first, campaignName: "New name" }],
       })
     )
   );
 
   includes(renamed, "New name ranks first at 6%.");
-  excludes(renamed, "Old");
-
-  // A result stored before `campaignName` has only `name`.
-  const { campaignName: _dropped, ...old } = first;
-
-  includes(
-    read(cardFor("campaign_ranking", insight({ ...fresh, ranked: [old] }))),
-    "Founders ranks first at 6%.",
-    "1 | Founders | 500  | 6% (4–8%)"
-  );
 });
 
 const channelGroup = (channel: "email" | "linkedin", replied: number) => ({

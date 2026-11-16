@@ -17,7 +17,6 @@
         "issues": [
           "inactive_sender"
         ],
-        "name": "Agency owners",
         "senders": 3
       },
       {
@@ -28,7 +27,6 @@
         "issues": [
           "single_sender"
         ],
-        "name": "Ecommerce ops",
         "senders": 1
       },
       {
@@ -39,7 +37,6 @@
         "issues": [
           "single_sender"
         ],
-        "name": "LinkedIn founders",
         "senders": 1
       }
     ],

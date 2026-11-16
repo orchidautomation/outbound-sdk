@@ -8,7 +8,7 @@ import { memory } from "../../src/memory/index.ts";
 import type { MemoryData, MemoryStats } from "../../src/memory/index.ts";
 import { must, ref, toolWithRows, withRows } from "./copy-helpers.ts";
 import type { StepRow } from "./copy-helpers.ts";
-import { NOW, single } from "./helpers.ts";
+import { bounds, NOW, single } from "./helpers.ts";
 
 const DATA: MemoryData = { campaigns: [{ id: "c1" }, { id: "c2" }] };
 
@@ -104,13 +104,11 @@ test("variant_test names a winner only when the gap is more than chance", async 
       count: 60,
       enoughData: true,
       high: 0.0765,
-      interval: { high: 0.0765, low: 0.0469 },
       low: 0.0469,
       of: 1000,
       pValueVsLeader: null,
       rate: 0.06,
       sent: 1000,
-      trials: 1000,
       variantKey: "A",
     },
     {
@@ -118,13 +116,11 @@ test("variant_test names a winner only when the gap is more than chance", async 
       count: 30,
       enoughData: true,
       high: 0.0425,
-      interval: { high: 0.0425, low: 0.0211 },
       low: 0.0211,
       of: 1000,
       pValueVsLeader: 0.0012,
       rate: 0.03,
       sent: 1000,
-      trials: 1000,
       variantKey: "B",
     },
   ]);
@@ -212,7 +208,7 @@ test("variant_test judges on positive replies, opens or clicks, and keeps an unr
   const positive = await stepZero({ metric: "positive" });
 
   assert.deepEqual(
-    [positive.verdict, positive.leader, positive.variants[0]?.trials],
+    [positive.verdict, positive.leader, positive.variants[0]?.of],
     ["winner", "A", 1100]
   );
 
@@ -248,7 +244,7 @@ test("variant_test judges on positive replies, opens or clicks, and keeps an unr
       clicked.moreSendsNeeded,
       clicked.variants[0]?.count,
       clicked.variants[0]?.rate,
-      clicked.variants[0]?.interval,
+      bounds(clicked.variants[0]),
       clicked.variants[0]?.enoughData,
     ],
     ["too_little_data", null, null, null, null, null, false]

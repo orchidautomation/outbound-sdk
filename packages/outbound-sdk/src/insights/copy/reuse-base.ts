@@ -33,7 +33,7 @@ export const pooled = (
   });
 
   const replies = total(measured.map((each) => each.count));
-  const trials = total(measured.map((each) => each.trials));
+  const trials = total(measured.map((each) => each.of));
   const bases = new Set(measured.map((each) => each.basis));
   const [basis = null] = bases.size === 1 ? bases : [];
 

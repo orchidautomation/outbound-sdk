@@ -7,12 +7,10 @@ import type { SenderHealth } from "../../internal/entities-account.ts";
 import type { Sender } from "../../internal/entities.ts";
 import { plural } from "../../internal/numbers.ts";
 import { noun } from "../../internal/plural.ts";
-import { renamed } from "../../internal/renamed.ts";
 import { defineInsight } from "../define.ts";
 import { measure } from "../ops/shared.ts";
 import type { Measured } from "../ops/shared.ts";
-import { percent, wilson } from "../stats.ts";
-import type { Interval } from "../stats.ts";
+import { percent } from "../stats.ts";
 import {
   DNS_RECORDS,
   domainOf,
@@ -24,8 +22,6 @@ import {
 } from "./read.ts";
 import type { DnsRecord } from "./read.ts";
 
-const maxSpamRate = z.number().min(0).max(1);
-
 const input = z.object({
   max_senders: z
     .number()
@@ -34,12 +30,14 @@ const input = z.object({
     .max(500)
     .default(50)
     .describe("The most senders to check. Each costs 1 request."),
-  max_spam_rate: maxSpamRate
+  max_spam_rate: z
+    .number()
+    .min(0)
+    .max(1)
     .default(0.1)
     .describe(
       "A domain whose warmup emails land in spam more often than this share is high risk"
     ),
-  spam_rate_threshold: renamed("max_spam_rate", maxSpamRate),
 });
 
 export type DomainRisk = "high" | "low" | "medium" | "unknown";
@@ -61,10 +59,6 @@ export interface DomainWarmup extends Measured {
   readonly mailboxes: number;
   readonly sent: number | null;
   readonly spam: number | null;
-  /** @deprecated Use `rate`: warmup emails in spam (`count`) over those sent (`of`). Removed in 0.6.0. */
-  readonly spamRate: number | null;
-  /** @deprecated Use `low` and `high`. Removed in 0.6.0. */
-  readonly interval: Interval | null;
 }
 
 export interface DomainReport {
@@ -128,11 +122,9 @@ const pooledWarmup = (checked: readonly Checked[]): DomainWarmup => {
   if (reported.length === 0) {
     return {
       ...measure(null, null),
-      interval: null,
       mailboxes: 0,
       sent: null,
       spam: null,
-      spamRate: null,
     };
   }
 
@@ -142,11 +134,9 @@ const pooledWarmup = (checked: readonly Checked[]): DomainWarmup => {
 
   return {
     ...measured,
-    interval: wilson(spam, sent),
     mailboxes: reported.length,
     sent,
     spam,
-    spamRate: measured.rate,
   };
 };
 

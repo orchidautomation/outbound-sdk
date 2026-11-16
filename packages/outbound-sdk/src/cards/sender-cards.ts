@@ -22,22 +22,21 @@ import {
   countStats,
   flagged,
   LEFT,
+  measured,
   RIGHT,
   verdict,
-  withInterval,
 } from "./parts.ts";
 import type { CardBuilder } from "./tool-cards.ts";
 
 const senderName = (sender: JsonObject): string =>
   str(sender, "address") ?? str(sender, "name") ?? show(sender, "sender");
 
-const warmupRate = (warmup: JsonObject): number | null =>
-  num(warmup, "rate") ?? num(warmup, "spamRate");
+const warmupRate = (warmup: JsonObject): number | null => num(warmup, "rate");
 
 const bounceWatch: CardBuilder = (data) => {
   const totals = child(data, "totals");
   const over = rows(data, "over");
-  const threshold = pct(num(data, "maxBounceRate") ?? num(data, "threshold"));
+  const threshold = pct(num(data, "maxBounceRate"));
 
   return {
     finding: verdict(
@@ -61,7 +60,7 @@ const bounceWatch: CardBuilder = (data) => {
         campaignNameOf(campaign),
         int(num(campaign, "sent")),
         int(num(campaign, "bounced")),
-        withInterval(campaign),
+        measured(campaign),
       ]),
     },
     title: "Bounce watch",

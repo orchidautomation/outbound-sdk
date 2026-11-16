@@ -4,18 +4,14 @@ import { z } from "zod";
 
 import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Campaign, MetricRow } from "../../internal/entities.ts";
-import { renamed } from "../../internal/renamed.ts";
 import { rangeOf } from "../copy/shared.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { rangeFields, statusesInput } from "../fields.ts";
 import { measure } from "../ops/shared.ts";
 import type { Measured } from "../ops/shared.ts";
-import { percent, rate, total, wilson } from "../stats.ts";
-import type { Interval } from "../stats.ts";
+import { percent, rate, total } from "../stats.ts";
 import { readCampaigns, readCampaignSenders } from "./read.ts";
-
-const maxBounceRate = z.number().min(0).max(1);
 
 const input = z.object({
   ...rangeFields,
@@ -25,7 +21,10 @@ const input = z.object({
     .describe(
       "Also check the senders of each campaign over the threshold. Costs 1 listing per such campaign and 1 request per sender."
     ),
-  max_bounce_rate: maxBounceRate
+  max_bounce_rate: z
+    .number()
+    .min(0)
+    .max(1)
     .default(0.03)
     .describe("The bounce rate, bounced divided by sent, that is too high"),
   max_campaigns: z
@@ -50,7 +49,6 @@ const input = z.object({
     .describe(
       "A campaign or sender with fewer sends than this is too small to judge"
     ),
-  threshold: renamed("max_bounce_rate", maxBounceRate),
   statuses: statusesInput(["active"]),
 });
 
@@ -59,8 +57,6 @@ export interface BounceCounts extends Measured {
   readonly sent: number;
   /** Bounced (`count`) divided by sent (`of`). `null` when nothing was sent. */
   readonly rate: number | null;
-  /** @deprecated Use `low` and `high`, the Wilson interval of the rate. Removed in 0.6.0. */
-  readonly interval: Interval | null;
 }
 
 export interface BounceSender extends BounceCounts {
@@ -72,8 +68,6 @@ export interface BounceSender extends BounceCounts {
 export interface BounceCampaign extends BounceCounts {
   readonly campaign: string;
   readonly campaignName: string;
-  /** @deprecated Use `campaignName`. Removed in 0.6.0. */
-  readonly name: string;
   readonly status: string;
   readonly finding: string;
   /**
@@ -87,8 +81,6 @@ export interface BounceCampaign extends BounceCounts {
 export interface BounceUnknown {
   readonly campaign: string;
   readonly campaignName: string;
-  /** @deprecated Use `campaignName`. Removed in 0.6.0. */
-  readonly name: string;
   readonly status: string;
   readonly reason: string;
 }
@@ -113,8 +105,6 @@ export interface BounceWatch {
   };
   /** The `max_bounce_rate` the campaigns were held to. */
   readonly maxBounceRate: number;
-  /** @deprecated Use `maxBounceRate`. Removed in 0.6.0. */
-  readonly threshold: number;
   readonly minSent: number;
   /**
    * Senders whose sent and bounce counts were read. `null` when senders were
@@ -131,7 +121,6 @@ interface Range {
 const countsOf = (bounced: number, sent: number): BounceCounts => ({
   ...measure(bounced, sent),
   bounced,
-  interval: wilson(bounced, sent),
   sent,
 });
 
@@ -312,7 +301,6 @@ export const bounceWatch = defineInsight({
       const entry = {
         campaign: campaign.ref,
         campaignName: campaign.name,
-        name: campaign.name,
         status: campaign.status,
       };
 
@@ -377,7 +365,6 @@ export const bounceWatch = defineInsight({
       minSent,
       over: over.toSorted(byRate),
       sendersRead: withSenders ? seen.read.size : null,
-      threshold,
       tooFewSends: tooFewSends.toSorted(byRate),
       totals: {
         bounced,

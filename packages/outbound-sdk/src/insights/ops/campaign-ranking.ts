@@ -107,7 +107,7 @@ const order = (metric: RankingMetric) => (left: Scored, right: Scored) =>
   (metric === "bounce_rate"
     ? descending(right.high, left.high) || descending(right.rate, left.rate)
     : descending(left.low, right.low) || descending(left.rate, right.rate)) ||
-  left.name.localeCompare(right.name);
+  left.campaignName.localeCompare(right.campaignName);
 
 /**
  * Ranks campaigns that sent enough, and sets the rest aside with the reason.

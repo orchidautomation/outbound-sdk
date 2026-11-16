@@ -9,7 +9,10 @@ console.log(
   data.top.map((campaign) => campaign.campaignName).join(", ")
 );
 
-console.log("bottom:", data.bottom.map((campaign) => campaign.name).join(", "));
+console.log(
+  "bottom:",
+  data.bottom.map((campaign) => campaign.campaignName).join(", ")
+);
 
 for (const item of data.actions) {
   console.log(`${item.kind}: ${item.action}`);

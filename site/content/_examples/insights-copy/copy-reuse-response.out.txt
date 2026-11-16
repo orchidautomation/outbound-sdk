@@ -17,14 +17,8 @@
         }
       },
       "replies": 52,
-      "replyRate": 0.0473,
-      "replyRateInterval": {
-        "high": 0.0615,
-        "low": 0.0362
-      },
       "sent": 1100,
-      "subject": "Quick question about {{company}}",
-      "trials": 1100
+      "subject": "Quick question about {{company}}"
     },
     "campaignsRead": 2,
     "moreCampaignsExist": false,
@@ -46,14 +40,8 @@
           }
         },
         "replies": 52,
-        "replyRate": 0.0473,
-        "replyRateInterval": {
-          "high": 0.0615,
-          "low": 0.0362
-        },
         "sent": 1100,
         "subject": "Quick question about {{company}}",
-        "trials": 1100,
         "best": "memory:acme:founders",
         "finding": "The same copy gets 8% in SaaS founders and 2% in Agency owners; the gap is more than chance, so the audience or the sender differs, not the copy.",
         "spread": 0.06,
@@ -80,13 +68,7 @@
               }
             },
             "replies": 40,
-            "replyRate": 0.08,
-            "replyRateInterval": {
-              "high": 0.1071,
-              "low": 0.0593
-            },
-            "sent": 500,
-            "trials": 500
+            "sent": 500
           },
           {
             "campaign": "memory:acme:agencies",
@@ -107,13 +89,7 @@
               }
             },
             "replies": 12,
-            "replyRate": 0.02,
-            "replyRateInterval": {
-              "high": 0.0346,
-              "low": 0.0115
-            },
-            "sent": 600,
-            "trials": 600
+            "sent": 600
           }
         ]
       },
@@ -133,14 +109,8 @@
           }
         },
         "replies": 19,
-        "replyRate": 0.0224,
-        "replyRateInterval": {
-          "high": 0.0346,
-          "low": 0.0144
-        },
         "sent": 850,
         "subject": null,
-        "trials": 850,
         "best": "memory:acme:founders",
         "finding": "The same copy gets 2.5% in SaaS founders and 2% in Agency owners; a gap this size could be chance.",
         "spread": 0.005,
@@ -167,13 +137,7 @@
               }
             },
             "replies": 10,
-            "replyRate": 0.025,
-            "replyRateInterval": {
-              "high": 0.0454,
-              "low": 0.0136
-            },
-            "sent": 400,
-            "trials": 400
+            "sent": 400
           },
           {
             "campaign": "memory:acme:agencies",
@@ -194,13 +158,7 @@
               }
             },
             "replies": 9,
-            "replyRate": 0.02,
-            "replyRateInterval": {
-              "high": 0.0376,
-              "low": 0.0106
-            },
-            "sent": 450,
-            "trials": 450
+            "sent": 450
           }
         ]
       }
