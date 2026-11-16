@@ -33,6 +33,8 @@ export interface ToolSuccess {
     readonly complete: boolean;
     /** What to know before trusting the answer, for example what was left out. */
     readonly notes: readonly string[];
+    /** Set by `outbound mcp` when the call waited long on rate limits: the milliseconds it waited. */
+    readonly throttledMs?: number | undefined;
   };
   /** What to ask next. */
   readonly next: string;
@@ -51,7 +53,13 @@ export interface ToolFailure {
     readonly retryable?: boolean | undefined;
   };
   /** Set when the tool sent vendor requests before it failed. */
-  readonly meta?: { readonly requests: number } | undefined;
+  readonly meta?:
+    | {
+        readonly requests: number;
+        /** Set by `outbound mcp` when the call waited long on rate limits. */
+        readonly throttledMs?: number | undefined;
+      }
+    | undefined;
   readonly next: string;
 }
 
@@ -186,6 +194,15 @@ const nextFor = (cause: unknown, code: string): string => {
     return cause.permanent
       ? "A request cap the user set was reached; the message says which. Do not call again with the same input."
       : "The vendor's rate limit was reached. Wait a minute before calling again.";
+  }
+
+  if (
+    OutboundError.is(cause) &&
+    code === "Provider" &&
+    cause.permanent &&
+    !cause.aborted
+  ) {
+    return "The vendor returned data the SDK cannot read, and it returns the same data on every call. Do not call again with the same input. Try another campaign, or report the field the message names.";
   }
 
   return "Check the input and try again.";

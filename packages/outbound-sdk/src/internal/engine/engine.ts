@@ -134,6 +134,7 @@ export class RequestEngine {
           ? undefined
           : this.now() + merged.deadline,
       maxRequests: merged.maxRequests,
+      notes: [],
       // A cap from the instance is named by the option that set it there.
       maxRequestsSetBy:
         options.maxRequests === undefined &&
@@ -148,9 +149,19 @@ export class RequestEngine {
     };
   }
 
-  contextFor(adapter: Adapter, state: CallState): AdapterContext {
+  /** `notes` collects what the adapter says it left out; the call's own by default. */
+  contextFor(
+    adapter: Adapter,
+    state: CallState,
+    notes: string[] = state.notes
+  ): AdapterContext {
     return {
-      forAdapter: (other) => this.contextFor(other, state),
+      forAdapter: (other) => this.contextFor(other, state, notes),
+      note: (text) => {
+        if (!notes.includes(text)) {
+          notes.push(text);
+        }
+      },
       request: (spec) =>
         execute(spec, {
           adapter,

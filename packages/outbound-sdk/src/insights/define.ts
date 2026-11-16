@@ -23,7 +23,7 @@ import { inputProblem } from "../tools/input-problem.ts";
 import type { InsightCost } from "./cost.ts";
 import { runCap } from "./run-cap.ts";
 import type { CapOptions, RunCap } from "./run-cap.ts";
-import { readsOf } from "./tracked-reads.ts";
+import { capNote, readsOf, stopNote } from "./tracked-reads.ts";
 import type { Cap } from "./tracked-reads.ts";
 
 export interface InsightMeta {
@@ -269,6 +269,12 @@ const track = (cap: RunCap, now: number, partialOnCap: boolean): Tracker => {
       return reached;
     };
 
+  const note = (text: string): void => {
+    if (!notes.includes(text)) {
+      notes.push(text);
+    }
+  };
+
   const seen = (meta: ResultMeta | undefined): void => {
     if (meta === undefined) {
       return;
@@ -276,11 +282,9 @@ const track = (cap: RunCap, now: number, partialOnCap: boolean): Tracker => {
 
     requests += meta.requests;
     evidence = RANK[meta.evidence] > RANK[evidence] ? meta.evidence : evidence;
-  };
 
-  const note = (text: string): void => {
-    if (!notes.includes(text)) {
-      notes.push(text);
+    for (const text of meta.notes) {
+      note(text);
     }
   };
 
@@ -289,11 +293,37 @@ const track = (cap: RunCap, now: number, partialOnCap: boolean): Tracker => {
     note(reason);
   };
 
+  // Where each per-record cap's one note sits in `notes`, and how many stops it counts.
+  const perStops = new Map<string, { readonly at: number; times: number }>();
+
+  const stopped = (listed: Cap | string | undefined): void => {
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- `listed` is a public argument that is either the old free-text form or a `Cap`
+    if (typeof listed !== "object" || listed.per === undefined) {
+      partial(stopNote(listed));
+
+      return;
+    }
+
+    complete = false;
+
+    const key = JSON.stringify([
+      listed.max,
+      listed.what,
+      listed.input,
+      listed.per,
+    ]);
+
+    const stop = perStops.get(key) ?? { at: notes.push("") - 1, times: 0 };
+    stop.times += 1;
+    perStops.set(key, stop);
+    notes[stop.at] = capNote(listed, stop.times);
+  };
+
   return {
     absorbed: () => absorbed,
-    strictAll: readsOf({ kept: keptWhen(false), partial, seen }).all,
+    strictAll: readsOf({ kept: keptWhen(false), partial, seen, stopped }).all,
     context: {
-      ...readsOf({ kept: keptWhen(partialOnCap), partial, seen }),
+      ...readsOf({ kept: keptWhen(partialOnCap), partial, seen, stopped }),
       campaignsFound: cap.campaignsFound,
       note,
       now,

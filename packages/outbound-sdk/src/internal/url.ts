@@ -25,6 +25,7 @@ const LINKEDIN_PROFILE = /linkedin\.com\/(?:in|pub)\/(?<slug>[^/?#\s]+)/iu;
  * The part of a LinkedIn profile URL that names the person, lowercased, or
  * `null` when the text is not a profile URL. Two URLs for the same person can
  * differ in scheme, host prefix, trailing slash and query; the slug does not.
+ * A slug that is not valid percent-encoding is kept undecoded.
  */
 export const profileSlug = (url: string | null | undefined): string | null => {
   const slug =
@@ -32,5 +33,14 @@ export const profileSlug = (url: string | null | undefined): string | null => {
       ? undefined
       : LINKEDIN_PROFILE.exec(url)?.groups?.slug;
 
-  return slug === undefined ? null : decodeURIComponent(slug).toLowerCase();
+  if (slug === undefined) {
+    return null;
+  }
+
+  try {
+    return decodeURIComponent(slug).toLowerCase();
+  } catch {
+    // A stray `%` is not an escape; the slug is kept as it was written.
+    return slug.toLowerCase();
+  }
 };

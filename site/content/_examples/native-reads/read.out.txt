@@ -22,6 +22,7 @@
   complete: true,
   evidence: 'exact',
   fetchedAt: '2026-11-14T12:00:00.000Z',
+  notes: [],
   provider: 'heyreach',
   requests: 1,
   stale: false,

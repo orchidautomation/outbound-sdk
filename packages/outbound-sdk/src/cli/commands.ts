@@ -21,7 +21,7 @@ import {
 import { insightCaps, insightToolCaps } from "./config.ts";
 import { Answer, coverageOf, sections } from "./envelope.ts";
 import type { Printed } from "./envelope.ts";
-import { listedReplies, listing } from "./listing.ts";
+import { listedReplies, listing, WINDOW_LIMIT } from "./listing.ts";
 import { readNative } from "./native.ts";
 import { describeTool, offeredTools, requiresInput } from "./offered.ts";
 import { didYouMean } from "./suggest.ts";
@@ -397,19 +397,24 @@ const COMMAND_TABLE = {
   },
   replies: {
     flags: ["bodies", "by", "campaign", "category", "limit", "since"],
-    help: "replies [--campaign ID|NAME] [--category positive|negative|neutral|ooo|...] [--since ISO] [--limit N] [--bodies] [--by person]  one record per message; --by person gives one row per person",
+    help: "replies [--campaign ID|NAME] [--category positive|negative|neutral|ooo|...] [--since ISO] [--limit N] [--bodies] [--by person]  one record per message; --by person gives one row per person. --limit defaults to 50, or with --since to the whole window up to 2000",
     run: async (outbound, input) => {
       const by = choice(input, "by", REPLIES_BY);
+      const since = text(input, "since");
+
+      // A time window means all of it, up to a ceiling, unless --limit says otherwise.
+      const windowed =
+        since !== undefined && text(input, "limit") === undefined;
 
       const walk = outbound.replies.listAll({
         campaignId: await campaignOption(outbound, text(input, "campaign")),
         category: choice(input, "category", replyCategorySchema.options),
         include: input.flags.bodies === true ? ["body"] : undefined,
-        max: count(input, "limit", 50),
-        since: text(input, "since"),
+        max: count(input, "limit", windowed ? WINDOW_LIMIT : 50),
+        since,
       });
 
-      return listedReplies(walk, input, by === "person");
+      return listedReplies(walk, input, by === "person", windowed);
     },
   },
   senders: {
@@ -474,7 +479,7 @@ const COMMAND_TABLE = {
   },
   tool: {
     flags: ["card", "input", "slack"],
-    help: "tool <name> [--input JSON] [--card | --slack]  without --input, a tool that needs input prints what it takes",
+    help: "tool <name> [--input JSON] [--card | --slack]  without --input, a tool that needs input fails with what it takes (exit 2)",
     run: async (outbound, input) => {
       const name = required(input, 0, "a tool name");
 
@@ -493,9 +498,19 @@ const COMMAND_TABLE = {
 
       const given = text(input, "input");
 
-      // Nothing to run on: say what the tool takes instead of failing on it.
+      // Nothing to run on: a failure a script can tell from an answer, with
+      // what the tool takes as its data.
       if (given === undefined && requiresInput(tool)) {
-        return describeTool(tool);
+        return {
+          data: describeTool(tool),
+          error: {
+            code: "InputRequired",
+            message: `${name} needs --input. data.parameters lists what it takes`,
+            retryable: false,
+          },
+          next: `Run outbound tool ${name} --input '<JSON>' with the inputs data.parameters lists.`,
+          ok: false,
+        };
       }
 
       return drawn(name, await tool.call(parseInput(given)), input);
@@ -542,37 +557,3 @@ export const listProviders = (): Json =>
     name: provider.name,
     note: provider.note,
   }));
-
-const GLOBAL_HELP = [
-  "Options:",
-  "  --provider <id>          the adapter to use, or all for every provider whose key is set (default: OUTBOUND_SDK_PROVIDER)",
-  "  --compact                print JSON on one line",
-  "  --raw                    keep each record's raw vendor payload (left out by default)",
-  "  --config <file>          load plugins from a file whose default export is defineConfig({ plugins })",
-  "  --redact                 mask personal fields (on by default for mcp)",
-  "  --no-redact              do not mask personal fields, even for mcp",
-  "  --cache <seconds>        reuse an answer for this long, within this process (for mcp; use a config-file store to persist)",
-  "  --max-requests <n>       the most vendor requests one command, or one MCP tool call, may make",
-  "",
-  "Each adapter reads its own key from the environment, for example INSTANTLY_API_KEY.",
-];
-
-/** Every command with its options, then the options every command takes. */
-export const helpText = (): string =>
-  [
-    "outbound: read-only access to outbound sending tools",
-    "",
-    "Usage: outbound <command> [options]",
-    "",
-    "  providers",
-    ...[...COMMANDS.values()].map((command) => `  ${command.help}`),
-    "  mcp                      start a local MCP server on stdio (redact is on)",
-    "  version                  print the installed version (also --version, -v)",
-    "  update                   check npm for a newer version and say how to get it",
-    "",
-    ...GLOBAL_HELP,
-  ].join("\n");
-
-/** One command's options, then the options every command takes. */
-export const commandHelp = (command: CommandSpec): string =>
-  [`Usage: outbound ${command.help}`, "", ...GLOBAL_HELP].join("\n");

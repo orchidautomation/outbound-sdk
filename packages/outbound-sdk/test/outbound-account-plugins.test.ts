@@ -7,7 +7,7 @@ import { createOutbound, OutboundError } from "../src/index.ts";
 import type { Adapter } from "../src/index.ts";
 import { memory } from "../src/memory/index.ts";
 import type { MemoryData } from "../src/memory/index.ts";
-import { MASK, redact } from "../src/redact/index.ts";
+import { redact } from "../src/redact/index.ts";
 
 const DATA: MemoryData = {
   blocklist: [
@@ -114,10 +114,14 @@ test("redact masks a blocked address or profile and leaves domains and account r
     plugins: [redact()],
   });
 
-  assert.deepEqual(
-    (await outbound.blocklist.list()).items.map((entry) => entry.value),
-    [MASK, "example.org", MASK]
-  );
+  const [address, domain, profile] = (
+    await outbound.blocklist.list()
+  ).items.map((entry) => entry.value);
+
+  assert.match(address ?? "", /^redacted:[0-9a-f]{16}$/u);
+  assert.equal(domain, "example.org");
+  assert.match(profile ?? "", /^redacted:[0-9a-f]{16}$/u);
+  assert.notEqual(address, profile);
   assert.equal((await outbound.campaign("cmp_1").settings()).dailyLimit, 40);
   assert.equal((await outbound.sender("snd_1").health()).dns.spf, true);
   assert.equal((await outbound.lists.list()).items[0]?.name, "Founders");

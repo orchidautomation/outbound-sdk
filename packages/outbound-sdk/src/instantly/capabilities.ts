@@ -12,7 +12,14 @@ export const BASE_URL = "https://api.instantly.ai/api/v2";
 export const API_KEY_ENV = "INSTANTLY_API_KEY";
 export const WORKSPACE_ENV = "INSTANTLY_WORKSPACE_ID";
 
-/** `GET /emails` has its own limit, far below the workspace limit. */
+/**
+ * `GET /emails` has its own limit of 20 a minute, far below the workspace
+ * limit. Every process on the workspace draws on it: the general limit is
+ * documented as workspace-wide, and on 2026-11-16 a second process reading
+ * emails slowed the first from 0.76 s to 121 s. The SDK counts per process
+ * unless a shared `rateLimitStore` is given, so two processes on one key
+ * meet at Instantly's 429. See docs/research/instantly.md.
+ */
 export const EMAILS_LANE = "emails";
 export const PAGE_SIZE = 100;
 
@@ -61,6 +68,8 @@ export const capabilities: CapabilityDeclaration = {
   // A list response can cut a large body short (`body_fallback_reason`); the
   // adapter then reads that email on its own, where the body is whole.
   "messages.body": "full",
+  // email_type=manual on GET /emails, kept to ue_type 3 (sent, not from a campaign).
+  "messages.byHand": true,
   "messages.byThread": true,
   "messages.list": true,
   "messages.since": "server",
@@ -198,6 +207,7 @@ export const caveats: readonly string[] = [
   "A placement test's kind reads type 1 as a one-time test and 2 as an automated one: the reference names the two kinds in that order and gives the numbers no names. A test's results stay native, because Instantly reports them as one row per test email.",
   "Instantly sends next_starting_after on a last page too (seen live), and the page after it is empty. A listing therefore ends one request late; the small lookups for tags and labels stop at the first page that is not full.",
   "A reply's category is read from the email's i_status using the lead interest status values (seen live: 0, 1, -1 and -2). An email names its lead by address (lead_id was absent live), so a message's or reply's leadRef holds the lead's lowercased address, from lead or, on a received email, from_address_email. leads.get and leads.timeline take that ref; leads.get then returns the first record with the address, one of several when the person is in several campaigns. No live email carried the documented is_auto_reply and the email list cannot filter by it, so when it is missing isAuto is decided by a fixed rule (isAutoSource rule): a machine sender address (noreply, auto-responder, mailer-daemon), an automatic subject (OOO, Out of Office, Automatic reply, \"is no longer at\"), a canned autoresponder phrase in the body, or, in a timeline or thread, a reply within a minute of the send it answers. An Out of Office i_status counts as the vendor saying so. leftCompany is true when the reply says the person left or the contact changed. In a timeline or thread a received email takes its stepIndex from the send it answers, since its own step lags on the last step.",
+  "Messages sent by hand (byHand) are read with email_type=manual on GET /emails, which the reference names but does not describe, and only emails with ue_type 3 (Sent) are kept: a campaign send is ue_type 1. Not run against a live workspace.",
   "An email's step and a lead's last step are ids of the form sequence_step_variant, each counted from 0 (seen live, not documented); any other form gives a null step. Step analytics count steps from 0 too, and can hold a row with no step for counts Instantly could not tie to one.",
   "Whether reply_count includes automatic replies is not documented; replied uses the unique reply count and repliedAuto the unique automatic count.",
   "Open counts are returned even when a campaign has open tracking turned off, because the analytics response does not say whether tracking was on.",

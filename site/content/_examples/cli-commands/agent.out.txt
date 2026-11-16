@@ -30,13 +30,21 @@ $ outbound tool winning_steps
     }
   },
   "meta": {
-    "complete": true,
+    "complete": false,
     "notes": [],
     "provider": "memory",
-    "requests": 0
+    "requests": 0,
+    "throttledMs": 0
   },
-  "ok": true
+  "next": "Run outbound tool winning_steps --input '<JSON>' with the inputs data.parameters lists.",
+  "ok": false,
+  "error": {
+    "code": "InputRequired",
+    "message": "winning_steps needs --input. data.parameters lists what it takes",
+    "retryable": false
+  }
 }
+(exit code 2)
 
 $ outbound tool sender_health --input '{"limit":1}'
 {
@@ -63,7 +71,8 @@ $ outbound tool sender_health --input '{"limit":1}'
     ],
     "provider": "memory",
     "requests": 0,
-    "today": "2026-11-14"
+    "today": "2026-11-14",
+    "throttledMs": 0
   },
   "next": "Use deliverability_check for each sender's DNS, sign-in and block list status.",
   "ok": true
@@ -76,7 +85,8 @@ $ outbound tool campaign_trend --input '{"campaign":"cmp_founders","from":"last 
     "complete": false,
     "notes": [],
     "provider": "memory",
-    "requests": 0
+    "requests": 0,
+    "throttledMs": 0
   },
   "next": "Check the input and try again.",
   "ok": false,
@@ -163,6 +173,7 @@ $ outbound insight channel_mix --input '{"max_campaigns":5}'
     "requests": 0,
     "computedAt": "2026-11-14T12:00:00.000Z",
     "provider": "memory",
+    "throttledMs": 0,
     "insight": "channel_mix"
   },
   "ok": true
@@ -179,7 +190,8 @@ $ outbound insight channel_mix --input '{"days":30}'
     "complete": false,
     "notes": [],
     "provider": "memory",
-    "requests": 0
+    "requests": 0,
+    "throttledMs": 0
   },
   "ok": false
 }

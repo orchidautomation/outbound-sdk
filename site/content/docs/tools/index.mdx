@@ -126,7 +126,7 @@ HeyReach's adapter declares no per-step stats and no campaign settings, so `winn
 | The vendor's rate limit, past the SDK's retries | `RateLimited` | To wait a minute before calling again |
 | Anything that is not an `OutboundError` | `Provider` | The error's message |
 
-Every failure has `error.retryable`: `false` when the same call would fail the same way again (bad input, a missing record, a read that is not allowed, a cap of your own), `true` when it may work later (the vendor's rate limit or an outage). A cap stop is never retryable, so a model is not invited to loop on it.
+Every failure has `error.retryable`: `false` when the same call would fail the same way again (bad input, a missing record, a read that is not allowed, a cap of your own), `true` when it may work later (the vendor's rate limit or an outage). A vendor record the SDK cannot read is a `Provider` error with `retryable: false`, because the vendor returns the same record every time; its `next` says to try another campaign or report the field the message names. A cap stop is never retryable, so a model is not invited to loop on it.
 
 Input is strict. An argument a tool does not take is reported as `Invalid`, never dropped, so a model that invents a filter learns that the filter did nothing. The other codes are the ones on the [errors](/docs/api/errors) page.
 

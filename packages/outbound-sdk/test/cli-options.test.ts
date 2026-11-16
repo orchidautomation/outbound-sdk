@@ -32,6 +32,30 @@ interface Listed {
   meta: { complete: boolean; notes: string[] };
 }
 
+test("a negative --limit, or none, gets the CLI's own Invalid, not parseArgs' words", async () => {
+  // What the stress test met: `--limit -5` was refused as an ambiguous option.
+  for (const argv of [
+    ["campaigns", "--limit", "-5"],
+    ["leads", "--limit", "-5", "--compact"],
+  ]) {
+    const result = await cli(...argv);
+
+    assert.equal(result.code, 1);
+    assert.equal(
+      result.err,
+      "Invalid: --limit must be a positive whole number"
+    );
+  }
+
+  const missing = await cli("campaigns", "--limit");
+
+  assert.equal(missing.code, 1);
+  assert.match(
+    missing.err,
+    /^Invalid: Option '--limit <value>' argument missing$/u
+  );
+});
+
 test("a listing stopped at --limit says so on stderr and in stdout's meta", async () => {
   const two = await cli("leads", "--limit", "2", "--compact");
   const listed = JSON.parse(two.out) as Listed;

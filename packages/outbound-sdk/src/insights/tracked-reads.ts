@@ -19,11 +19,18 @@ export interface Cap {
   readonly what: string;
   /** The input that raises the cap, or `null` for a cap no input sets. */
   readonly input: string | null;
+  /**
+   * What the cap applies to each of, in the plural, for a cap read once per
+   * record such as `max_senders_per_campaign`: `campaigns`. Every stop at
+   * it shares one note that counts them: "Stopped at 100 senders in 22
+   * campaigns (max_senders_per_campaign); more exist."
+   */
+  readonly per?: string | undefined;
 }
 
 // A custom insight written before `Cap` existed names its cap as free text,
 // such as `50 campaigns`; that form is kept so its code still compiles.
-const stopNote = (cap: Cap | string | undefined): string => {
+export const stopNote = (cap: Cap | string | undefined): string => {
   if (cap === undefined) {
     return "A listing was cut off at its cap; more records exist.";
   }
@@ -44,9 +51,18 @@ const oneOf = (what: string): string =>
     (_match, stem: string, end: string) => (end === "ies" ? `${stem}y` : stem)
   );
 
-/** The note for a listing that a cap stopped with more records left. */
-export const capNote = (cap: Cap): string =>
-  `Stopped at ${plural(cap.max, oneOf(cap.what), cap.what)} (${cap.input ?? "a fixed cap"}); more exist.`;
+/**
+ * The note for a listing that a cap stopped with more records left. `times`
+ * is how many records of `cap.per` it stopped in.
+ */
+export const capNote = (cap: Cap, times = 1): string => {
+  const within =
+    cap.per === undefined
+      ? ""
+      : ` in ${plural(times, oneOf(cap.per), cap.per)}`;
+
+  return `Stopped at ${plural(cap.max, oneOf(cap.what), cap.what)}${within} (${cap.input ?? "a fixed cap"}); more exist.`;
+};
 
 /** What a part of a listing is called in a note: `leads`, or `records` for a cap given as text. */
 const recordsOf = (cap: Cap | string | undefined): string =>
@@ -80,6 +96,8 @@ export interface Recorder {
   readonly kept: (cause: unknown) => string | undefined;
   readonly partial: (reason: string) => void;
   readonly seen: (meta: ResultMeta | undefined) => void;
+  /** Notes a listing its cap stopped with more records left. */
+  readonly stopped: (cap: Cap | string | undefined) => void;
 }
 
 /**
@@ -93,7 +111,12 @@ export interface TrackedReads {
   readonly each: Each;
 }
 
-export const readsOf = ({ kept, partial, seen }: Recorder): TrackedReads => {
+export const readsOf = ({
+  kept,
+  partial,
+  seen,
+  stopped,
+}: Recorder): TrackedReads => {
   let itemsInFlight = 0;
 
   const all = async <Item>(
@@ -128,7 +151,7 @@ export const readsOf = ({ kept, partial, seen }: Recorder): TrackedReads => {
     seen(walk.meta);
 
     if (walk.truncated) {
-      partial(stopNote(listed));
+      stopped(listed);
     }
 
     return items;

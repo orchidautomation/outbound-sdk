@@ -40,7 +40,7 @@ A value is `false` or something truthy, so `if (outbound.capabilities["leads.lis
 
 ## Every key
 
-`CAPABILITY_KEYS` is the list of all 46. `Capabilities` is the type of the map, and `CapabilityKey` the type of a key.
+`CAPABILITY_KEYS` is the list of all 47. `Capabilities` is the type of the map, and `CapabilityKey` the type of a key.
 
 ### Campaigns and sequences
 
@@ -87,6 +87,7 @@ Listing campaigns and reading one need no key. Every adapter can.
 | --- | --- | --- |
 | `messages.list` | boolean | `messages.list`, `campaign(id).messages`, `lead(id).timeline()`, `thread(id).messages()` |
 | `messages.byThread` | boolean | The `threadId` filter and `thread(id).messages()` |
+| `messages.byHand` | boolean | The `byHand` filter on messages: only the ones a person sent by hand, not by a campaign |
 | `messages.since` | `server`, `client`, `false` | The `since` and `until` filters on messages |
 | `messages.body` | `full`, `sampled`, `false` | `include: ["body"]` on messages and on replies |
 | `replies.list` | boolean | `replies.list` and `campaign(id).replies` |

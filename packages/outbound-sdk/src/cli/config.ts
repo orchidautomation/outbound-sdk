@@ -5,6 +5,7 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
+import type { RateLimitStore } from "../internal/engine/rate-store.ts";
 import { OutboundError } from "../internal/errors.ts";
 import type { OutboundPlugin } from "../internal/outbound/plugins.ts";
 
@@ -12,6 +13,13 @@ import type { OutboundPlugin } from "../internal/outbound/plugins.ts";
 export interface CliConfig {
   /** Plugins for the instance, outermost first, as in `createOutbound`. */
   readonly plugins?: readonly OutboundPlugin[] | undefined;
+  /**
+   * Where the rate budget is counted, as in `createOutbound`. A vendor's
+   * limit covers the whole workspace, so two terminals, or the CLI and an
+   * MCP server, on one key slow each other down unless they share a store
+   * such as `redisRateLimitStore()`. Defaults to this process alone.
+   */
+  readonly rateLimitStore?: RateLimitStore | undefined;
 }
 
 /** Returns the config unchanged. It exists so an editor can check its shape. */
@@ -32,7 +40,10 @@ const isPlugin = (value: unknown): value is OutboundPlugin =>
   typeof value.name === "string";
 
 interface ConfigModule {
-  readonly default: { readonly plugins?: unknown };
+  readonly default: {
+    readonly plugins?: unknown;
+    readonly rateLimitStore?: unknown;
+  };
 }
 
 const isConfigModule = (value: unknown): value is ConfigModule =>
@@ -45,7 +56,22 @@ const isConfigModule = (value: unknown): value is ConfigModule =>
 const isPluginList = (value: unknown): value is readonly OutboundPlugin[] =>
   Array.isArray(value) && value.every(isPlugin);
 
-const loadConfig = async (file: string): Promise<readonly OutboundPlugin[]> => {
+const isStore = (value: unknown): value is RateLimitStore =>
+  typeof value === "object" &&
+  value !== null &&
+  "reserve" in value &&
+  typeof value.reserve === "function" &&
+  "pause" in value &&
+  typeof value.pause === "function" &&
+  "usage" in value &&
+  typeof value.usage === "function";
+
+interface LoadedConfig {
+  readonly plugins: readonly OutboundPlugin[];
+  readonly rateLimitStore: RateLimitStore | undefined;
+}
+
+const loadConfig = async (file: string): Promise<LoadedConfig> => {
   let loaded: unknown;
 
   try {
@@ -74,7 +100,16 @@ const loadConfig = async (file: string): Promise<readonly OutboundPlugin[]> => {
     );
   }
 
-  return plugins;
+  const { rateLimitStore } = loaded.default;
+
+  if (rateLimitStore !== undefined && !isStore(rateLimitStore)) {
+    throw new OutboundError(
+      "Invalid",
+      `The config file ${file} must export rateLimitStore as a rate limit store, such as redisRateLimitStore({ evaluate })`
+    );
+  }
+
+  return { plugins, rateLimitStore };
 };
 
 const positiveInteger = (flag: string, value: string): number => {
@@ -140,7 +175,15 @@ export const insightCaps = (flags: PluginFlags, mcp: boolean): InsightCaps => ({
 });
 
 /** The same caps, as `insightTools` takes them. */
-export const insightToolCaps = (flags: PluginFlags, mcp: boolean) => {
+export interface InsightToolCaps {
+  readonly capSetting: string;
+  readonly maxRequestsPerToolCall: number | undefined;
+}
+
+export const insightToolCaps = (
+  flags: PluginFlags,
+  mcp: boolean
+): InsightToolCaps => {
   const caps = insightCaps(flags, mcp);
 
   return {
@@ -152,17 +195,24 @@ export const insightToolCaps = (flags: PluginFlags, mcp: boolean) => {
 /**
  * The plugins for one command, outermost first: redact, then the config
  * file's plugins, then cache, then budget, then identity, next to the
- * request engine.
+ * request engine, and the config file's rate limit store.
  * `mcp` turns redact on unless `--no-redact` is set. `note` gets a line for
  * stderr when a flag will not do what its name suggests.
  */
-export const pluginsFor = async (
+export const setupFor = async (
   flags: PluginFlags,
   mcp: boolean,
   note: (text: string) => void
-): Promise<OutboundPlugin[]> => {
-  const configured =
-    flags.config === undefined ? [] : await loadConfig(flags.config);
+): Promise<{
+  plugins: OutboundPlugin[];
+  rateLimitStore: RateLimitStore | undefined;
+}> => {
+  const loaded =
+    flags.config === undefined
+      ? { plugins: [], rateLimitStore: undefined }
+      : await loadConfig(flags.config);
+
+  const configured = loaded.plugins;
 
   const fromConfig = configured.some((plugin) => plugin.name === "redact");
   const plugins: OutboundPlugin[] = [];
@@ -203,5 +253,5 @@ export const pluginsFor = async (
     plugins.push(identity());
   }
 
-  return plugins;
+  return { plugins, rateLimitStore: loaded.rateLimitStore };
 };

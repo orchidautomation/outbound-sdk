@@ -243,7 +243,8 @@ export const suppressionCheck = defineInsight({
     "Leads sitting in campaigns although they are on the block list. Reads the block list, then the leads of each campaign in the given statuses (active by default), and matches a lead by exact email address, by email domain against domain entries, and by LinkedIn profile against profile entries. A match is a violation only when the lead's own status is in lead_statuses (active, paused or unknown by default, the leads still being sent to); a lead that already unsubscribed, bounced, replied or completed is counted in totals.alreadyStopped instead. Returns each violation with the lead, the campaign, the entry and how it matched, counts per campaign, and how many block entries were read; totals.moreBlockEntriesExist is true when max_block_entries left entries unread, which were not checked. On several tools an entry on one tool's list is also matched against the other tools' leads and marked sameTool false. Costs one request per page of block entries plus one per page of each campaign's leads.",
   inputSchema: input,
   key: "suppressionCheck",
-  // A masked address is the same text for every lead, so nothing can match.
+  // Under mask an address is a token keyed for the plugin. Whether people
+  // tools match by it is OUT-107's decision, so it stays refused until then.
   // A hashed one still matches the same address on the list.
   maskedOut: ({ fields, strategy }) =>
     fields.includes("email") && strategy === "mask"

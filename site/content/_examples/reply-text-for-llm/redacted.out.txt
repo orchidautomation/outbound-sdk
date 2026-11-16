@@ -3,10 +3,10 @@ heyreach native: true -> false
 {
   company: '[redacted]',
   custom: { phone: '[redacted]' },
-  email: '[redacted]',
+  email: 'redacted:…',
   firstName: '[redacted]',
   lastName: '[redacted]',
-  linkedinUrl: '[redacted]',
+  linkedinUrl: 'redacted:…',
   raw: null,
   ref: 'memory:acme:lead_dana',
   status: 'replied'

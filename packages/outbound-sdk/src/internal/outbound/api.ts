@@ -53,6 +53,8 @@ export interface ResultMeta {
   readonly workspaceId: string;
   /** `true` when an older answer was served because the vendor was down. */
   readonly stale: boolean;
+  /** What the adapter left out, and why: a vendor value it could not use, mapped to `null`. */
+  readonly notes: readonly string[];
 }
 
 export type WithMeta<Item> = Item & { readonly meta: ResultMeta };
@@ -164,6 +166,8 @@ export interface MessageFilters extends TimeRange {
   readonly leadId?: string | undefined;
   /** A `threadId` from an earlier message. */
   readonly threadId?: string | undefined;
+  /** `true` for the messages a person sent by hand only, leaving out the ones a campaign sent. Needs `messages.byHand`. */
+  readonly byHand?: true | undefined;
   readonly include?: readonly Include[] | undefined;
 }
 

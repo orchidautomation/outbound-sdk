@@ -99,7 +99,8 @@ $ outbound providers
     "complete": true,
     "notes": [],
     "provider": null,
-    "requests": 0
+    "requests": 0,
+    "throttledMs": 0
   },
   "ok": true
 }
@@ -128,6 +129,7 @@ $ outbound capabilities
       "lists.leads": true,
       "lists.list": true,
       "messages.body": "full",
+      "messages.byHand": false,
       "messages.byThread": true,
       "messages.list": true,
       "messages.since": "server",
@@ -165,7 +167,8 @@ $ outbound capabilities
     "complete": true,
     "notes": [],
     "provider": "memory",
-    "requests": 0
+    "requests": 0,
+    "throttledMs": 0
   },
   "ok": true
 }
