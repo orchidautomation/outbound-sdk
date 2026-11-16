@@ -262,6 +262,56 @@ test("a lane has its own stricter cap on top of the global budget", async () => 
   assert.equal(clock.elapsed(), 1000);
 });
 
+const emailsLane: LimitDeclaration = {
+  lanes: { emails: [{ perMs: 60_000, requests: 20 }] },
+  source: "test",
+  windows: [{ perMs: 1000, requests: 100 }],
+};
+
+test("a throttle wait names its cause and the windows it waits on", async () => {
+  const { clock, make, throttles } = setup(sequence(json(page)), {
+    adapter: { lane: "emails", limits: emailsLane },
+    outbound: { share: 0.5 },
+  });
+
+  const outbound = make();
+
+  for (let call = 0; call < 11; call += 1) {
+    await clock.settle(outbound.campaigns.list());
+  }
+
+  assert.deepEqual(throttles, [
+    {
+      cause: "budget",
+      lane: "emails",
+      provider: "testvendor",
+      waitMs: 60_000,
+      windows: [{ perMs: 60_000, requests: 10 }],
+    },
+  ]);
+});
+
+test("a 429 with no Retry-After pauses a lane until one more request fits, and counts as throttle time", async () => {
+  const { clock, outbound, throttles } = setup(
+    sequence(
+      json({ message: "Rate limit exceeded", statusCode: 429 }, 429),
+      json(page)
+    ),
+    { adapter: { lane: "emails", limits: emailsLane } }
+  );
+
+  const result = await clock.settle(outbound.campaigns.list());
+
+  // 20 a minute frees a slot every 3 s; the backoff of the first retry is
+  // shorter, so the lane's spacing sets the wait.
+  assert.equal(clock.elapsed(), 3000);
+  assert.equal(result.meta.throttledMs, 3000);
+  assert.deepEqual(
+    throttles.map((event) => [event.cause, event.lane, event.waitMs]),
+    [["vendor", "emails", 3000]]
+  );
+});
+
 test("caps requests in flight per credential", async () => {
   let inFlight = 0;
   let peak = 0;

@@ -33,6 +33,8 @@ export interface ToolSuccess {
     readonly complete: boolean;
     /** What to know before trusting the answer, for example what was left out. */
     readonly notes: readonly string[];
+    /** Set by `outbound mcp` when the call waited long on rate limits: the milliseconds it waited. */
+    readonly throttledMs?: number | undefined;
   };
   /** What to ask next. */
   readonly next: string;
@@ -51,7 +53,13 @@ export interface ToolFailure {
     readonly retryable?: boolean | undefined;
   };
   /** Set when the tool sent vendor requests before it failed. */
-  readonly meta?: { readonly requests: number } | undefined;
+  readonly meta?:
+    | {
+        readonly requests: number;
+        /** Set by `outbound mcp` when the call waited long on rate limits. */
+        readonly throttledMs?: number | undefined;
+      }
+    | undefined;
   readonly next: string;
 }
 

@@ -1,0 +1,56 @@
+{
+  "id": "01a1d77f-5e23-7a9a-9112-a6f7089f329f",
+  "name": "Negative delay",
+  "status": 1,
+  "timestamp_created": "2026-10-01T12:00:00.000Z",
+  "sequences": [
+    {
+      "steps": [
+        {
+          "type": "email",
+          "delay": 2,
+          "delay_unit": "days",
+          "variants": [
+            {
+              "subject": "Quick question, {{firstName}}",
+              "body": "Hi {{firstName}},<br/><br/>A short first note."
+            }
+          ]
+        },
+        {
+          "type": "email",
+          "delay": 2,
+          "delay_unit": "days",
+          "variants": [
+            {
+              "subject": "",
+              "body": "Following up on my last note."
+            }
+          ]
+        },
+        {
+          "type": "email",
+          "delay": -11,
+          "delay_unit": "days",
+          "variants": [
+            {
+              "subject": "",
+              "body": "One more thought before I go."
+            }
+          ]
+        },
+        {
+          "type": "email",
+          "delay": 1,
+          "delay_unit": "days",
+          "variants": [
+            {
+              "subject": "",
+              "body": "Last one from me."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

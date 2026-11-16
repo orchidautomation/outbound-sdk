@@ -5,7 +5,8 @@ $ outbound native
     "complete": true,
     "notes": [],
     "provider": "memory",
-    "requests": 0
+    "requests": 0,
+    "throttledMs": 0
   },
   "ok": true
 }
@@ -21,7 +22,8 @@ $ outbound native inboxUnreadCount
     "complete": false,
     "notes": [],
     "provider": "memory",
-    "requests": 0
+    "requests": 0,
+    "throttledMs": 0
   },
   "ok": false
 }
