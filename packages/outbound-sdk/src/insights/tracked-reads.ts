@@ -53,6 +53,14 @@ const recordsOf = (cap: Cap | string | undefined): string =>
   // oxlint-disable-next-line anti-slop/no-runtime-typeof -- `cap` is a public argument that is either the old free-text form or a `Cap`
   cap === undefined || typeof cap === "string" ? "records" : cap.what;
 
+// The listings a request cap cut short whose records were kept, so a caller
+// that tells a whole listing from a capped one counts them as capped.
+const cutShort = new WeakSet<readonly unknown[]>();
+
+/** `true` when `items` came from a listing a request cap stopped part way. */
+export const wasCutShort = (items: readonly unknown[]): boolean =>
+  cutShort.has(items);
+
 /** What `context.all` is. */
 export type All = <Item>(
   walk: ListAll<Item>,
@@ -105,6 +113,10 @@ export const readsOf = ({ kept, partial, seen }: Recorder): TrackedReads => {
 
       // SAFETY: a walk's partial records are the records it lists.
       const read = [...(error.partial?.items ?? [])] as Item[];
+
+      // The pages it finished say how far to trust the records kept.
+      seen(walk.meta);
+      cutShort.add(read);
 
       partial(
         `${reached} A listing of ${recordsOf(listed)} kept the ${read.length} it had read.`

@@ -90,6 +90,54 @@ test("an insight without partialOnCap still fails at its cap", async () => {
   assert.match(outcome.rejected.message, /nothing it read is returned/u);
 });
 
+test("a sender listing a cap cut short counts as capped, so utilization is not made up", async () => {
+  const data = world(6, 3);
+
+  // Workspace sends in the window, from every sender together.
+  const sends = ["2026-11-10", "2026-11-12"].map((date) => ({
+    campaignId: "c1",
+    counts: { sent: 70 },
+    date,
+  }));
+
+  // One request per call: the 12 senders take two pages, so only 10 are kept.
+  const { outbound } = over(
+    { ...data, stats: [...(data.stats ?? []), ...sends] },
+    { maxRequestsPerCall: 1 }
+  );
+
+  const result = await outbound.insights.senderCapacity({}, { now: NOW });
+
+  assert.equal(result.meta.complete, false);
+  assert.equal(result.data.capacity.activeSenders, 10);
+  assert.equal(result.data.sends?.total, 140);
+  assert.equal(result.data.sends?.fromUncounted, null);
+  assert.equal(result.data.utilization, null);
+  assert.match(
+    result.meta.notes.join(" "),
+    /A listing of senders kept the 10 it had read\./u
+  );
+});
+
+test("a campaign named in the input is never resolved from part of the campaigns", async () => {
+  const data = world(12, 3);
+
+  const campaigns = (data.campaigns ?? []).map((campaign, index) =>
+    index === 0 || index === 11 ? { ...campaign, name: "Same name" } : campaign
+  );
+
+  // The two campaigns of that name are on different pages of the listing.
+  const { outbound } = over({ ...data, campaigns }, { maxRequestsPerCall: 1 });
+
+  const outcome = await settled(
+    outbound.insights.hotLeads({ campaign: "Same name" }, { now: NOW })
+  );
+
+  assert.ok("rejected" in outcome, "the name is not picked from one page");
+  assert.ok(OutboundError.is(outcome.rejected));
+  assert.equal(outcome.rejected.code, "RateLimited");
+});
+
 test("a run budget that stops hot_leads part way keeps the leads it listed", async () => {
   const { http, outbound } = over(world(1, 60), {
     plugins: [budget({ maxRequests: 5, per: "run" })],

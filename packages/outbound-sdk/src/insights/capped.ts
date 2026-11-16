@@ -5,7 +5,7 @@
 import type { Campaign, CampaignStatus } from "../internal/entities.ts";
 import type { ListAll } from "../internal/outbound/api.ts";
 import type { InsightContext } from "./define.ts";
-import { capNote } from "./tracked-reads.ts";
+import { capNote, wasCutShort } from "./tracked-reads.ts";
 import type { Cap } from "./tracked-reads.ts";
 
 export interface Capped<Item> {
@@ -28,7 +28,7 @@ export const readCapped = async <Item>(
     const walk = open(room);
     const items = await context.all(walk, cap);
 
-    return { capped: walk.truncated, items };
+    return { capped: walk.truncated || wasCutShort(items), items };
   }
 
   // No room left: `max` must be at least 1, so read one record to learn

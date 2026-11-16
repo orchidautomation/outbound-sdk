@@ -246,6 +246,8 @@ interface Tracker {
   readonly meta: () => Omit<InsightMeta, "computedAt" | "provider">;
   /** `true` once a read a request cap stopped was kept out of the answer. */
   readonly absorbed: () => boolean;
+  /** `context.all` that never keeps a listing a cap cut short, for a lookup that must see every record. */
+  readonly strictAll: InsightContext["all"];
 }
 
 const track = (cap: RunCap, now: number, partialOnCap: boolean): Tracker => {
@@ -256,14 +258,16 @@ const track = (cap: RunCap, now: number, partialOnCap: boolean): Tracker => {
   let complete = true;
   let absorbed = false;
 
-  // What stopped the read when a request cap did and the insight keeps what it read.
-  const kept = (cause: unknown): string | undefined => {
-    const reached = partialOnCap ? cap.capReached(cause) : undefined;
+  // What stopped the read when a request cap did and the read may keep what it got.
+  const keptWhen =
+    (allowed: boolean) =>
+    (cause: unknown): string | undefined => {
+      const reached = allowed ? cap.capReached(cause) : undefined;
 
-    absorbed ||= reached !== undefined;
+      absorbed ||= reached !== undefined;
 
-    return reached;
-  };
+      return reached;
+    };
 
   const seen = (meta: ResultMeta | undefined): void => {
     if (meta === undefined) {
@@ -287,8 +291,9 @@ const track = (cap: RunCap, now: number, partialOnCap: boolean): Tracker => {
 
   return {
     absorbed: () => absorbed,
+    strictAll: readsOf({ kept: keptWhen(false), partial, seen }).all,
     context: {
-      ...readsOf({ kept, partial, seen }),
+      ...readsOf({ kept: keptWhen(partialOnCap), partial, seen }),
       campaignsFound: cap.campaignsFound,
       note,
       now,
@@ -431,8 +436,10 @@ const execute = async <Key extends string, Input, Data, Given>(
   const tracker = track(cap, now, spec.partialOnCap === true);
 
   // A campaign given by name is looked up first, counted like any other read.
+  // A name found among part of the campaigns could be another's, so the
+  // lookup fails at a cap even where the insight keeps a partial answer.
   const data = await withCampaign(tracker.context.outbound, checked, (walk) =>
-    tracker.context.all(walk)
+    tracker.strictAll(walk)
   )
     .then((resolved) => spec.run(tracker.context, resolved))
     .catch(cap.failed);
