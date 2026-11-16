@@ -47,6 +47,29 @@ test("--tools offers only the built-in tools and insights it names, in a smaller
   assert.ok(two.bytes * 5 < every.bytes, `${two.bytes} of ${every.bytes}`);
 });
 
+const nextOf = (out: readonly string[]): string =>
+  (
+    JSON.parse(out[0] ?? "") as {
+      result: { structuredContent: { next: string } };
+    }
+  ).result.structuredContent.next;
+
+test("an insight --tools offers names no insight it left out in next", async () => {
+  const call = {
+    id: 2,
+    jsonrpc: "2.0",
+    method: "tools/call",
+    params: { arguments: {}, name: "bounce_watch" },
+  };
+
+  const every = await serve([], [call]);
+  const only = await serve(["--tools", "bounce_watch"], [call]);
+
+  // Without --tools, bounce_watch points to its siblings.
+  assert.match(nextOf(every.out), /domain_health|settings_audit/u);
+  assert.doesNotMatch(nextOf(only.out), /domain_health|settings_audit/u);
+});
+
 test("--tools refuses a name it cannot offer, with the closest one, before serving", async () => {
   const typo = await serve(["--tools", "campaign_overveiw"], [LIST]);
 

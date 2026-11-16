@@ -86,7 +86,10 @@ export const serve = async (
   );
 
   const server = createMcpServer(outbound, {
-    extra: insightTools(outbound).filter((tool) => keeps(tool.name)),
+    // Given the allowlist, so no insight's hint names an insight left out.
+    extra: insightTools(outbound, {
+      only: wanted === undefined ? undefined : [...wanted],
+    }),
     leftOut,
     only: TOOL_NAMES.filter(keeps),
     version: packageVersion(),

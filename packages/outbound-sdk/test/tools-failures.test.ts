@@ -60,6 +60,40 @@ test("a vendor record the SDK cannot read is not retryable, and next does not bl
   assert.match(result.next, /report the field the message names/u);
 });
 
+test("an unreadable record in a listing stays not retryable through the walk", async () => {
+  const base = memory({ data: demoData({ now: NOW }) });
+
+  const outbound = createOutbound({
+    adapter: {
+      ...base,
+      listCampaigns: async (query, ctx) => {
+        const page = await base.listCampaigns(query, ctx);
+
+        return {
+          ...page,
+          items: page.items.map((campaign) => ({
+            ...campaign,
+            status: "running" as never,
+          })),
+        };
+      },
+    },
+  });
+
+  const tool = createTools(outbound).find(
+    (candidate) => candidate.name === "campaign_overview"
+  );
+
+  assert.ok(tool);
+
+  const result = await tool.call({});
+
+  assert.ok(!result.ok);
+  assert.match(result.error.message, /invalid record for campaigns\.list/u);
+  assert.equal(result.error.retryable, false);
+  assert.match(result.next, /Do not call again with the same input/u);
+});
+
 test("a vendor failure that can pass on a retry is still retryable", async () => {
   const base = memory({ data: demoData({ now: NOW }) });
 
