@@ -107,7 +107,8 @@ export const readers = (client: SmartleadClient): Readers => {
       toSequence(
         identity,
         id,
-        await client.get(ctx, `/campaigns/${segment(id)}/sequences`)
+        await client.get(ctx, `/campaigns/${segment(id)}/sequences`),
+        ctx.note
       ),
     listCampaigns: async (query, ctx) => {
       const { senderId } = query;

@@ -9,6 +9,8 @@
 import type { Sequence, SequenceStep } from "../internal/entities.ts";
 import { count, field, objects, text } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
+import { notNegative } from "../internal/notes.ts";
+import type { Note } from "../internal/notes.ts";
 import { recordBase, refTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
 import { toVariant, variantKey } from "../internal/sequence.ts";
@@ -59,13 +61,19 @@ export const stepRows = (body: Json | undefined): JsonObject[] =>
 export const toSequence = (
   identity: Identity,
   campaignId: string,
-  body: Json
+  body: Json,
+  note: Note
 ): Sequence => {
   const steps: SequenceStep[] = groupSteps(stepRows(body)).map(
     (group, index) => ({
       action: "email",
       branch: null,
-      delayDays: count(group.head.wait_in_days),
+      delayDays: notNegative(count(group.head.wait_in_days), {
+        note,
+        unit: "days",
+        vendor: "EmailBison",
+        what: `Step ${index + 1}'s wait`,
+      }),
       index,
       parentIndex: index === 0 ? null : index - 1,
       variants: group.variants.map((variant, position) =>

@@ -188,7 +188,7 @@ export const campaignTrend: ToolDefinition<z.infer<typeof trendInput>> = {
       meta: {
         complete: stats.meta.complete,
         evidence: stats.meta.evidence,
-        notes: [],
+        notes: [...stats.meta.notes],
         provider: outbound.provider,
         requests: stats.meta.requests,
       },
@@ -261,7 +261,7 @@ export const winningSteps: ToolDefinition<z.infer<typeof stepsInput>> = {
       meta: {
         complete: stats.meta.complete,
         evidence: stats.meta.evidence,
-        notes: [],
+        notes: [...stats.meta.notes],
         provider: outbound.provider,
         requests: stats.meta.requests,
       },
@@ -304,6 +304,7 @@ export const senderHealth: ToolDefinition<z.infer<typeof healthInput>> = {
     const cut = walk.truncated || senders.length > input.limit;
 
     const notes = [
+      ...(walk.meta?.notes ?? []),
       ...(walk.truncated
         ? [
             `More senders exist than the ${senders.length} checked; unhealthy counts only those.`,
