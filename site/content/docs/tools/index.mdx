@@ -52,7 +52,7 @@ Rates are computed from the counts beside them. A count the vendor does not repo
 | `winning_steps` | Which step or variant drives replies | `stats.byStep` |
 | `sender_health` | Status, daily limit and warmup per sender, unhealthy first | `senders.list` |
 | `reply_samples` | Recent replies, optionally by category | `replies.list` |
-| `lead_runway` | Days until a campaign runs out of leads. An estimate. | `leads.byCampaign`, `stats.campaign`, `stats.byDay` |
+| `lead_runway` | Days until a campaign has no new leads left to start, at the pace of new leads started. An estimate. | `leads.byCampaign`, `stats.campaign`, `stats.byDay` |
 | `compare_clients` | The same counts for every client, side by side | the [`clients` plugin](/docs/plugins/clients), `stats.campaign` |
 | `cross_channel_lead` | Every record and message for one person | the [`identity` plugin](/docs/plugins/identity) |
 | `campaign_setup` | How one campaign is set up to send: windows, caps, tracking, stop rules | `campaigns.settings` |

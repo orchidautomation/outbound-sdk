@@ -284,8 +284,8 @@ const leadRunway: CardBuilder = (data) => {
   return {
     finding:
       days === null
-        ? "Nobody was contacted in the lookback window, so no pace can be measured."
-        : `About ${plural(days, "day")} of leads left at the current pace.`,
+        ? "No new leads were started in the lookback window, or the tool does not count them, so no pace can be measured."
+        : `About ${plural(days, "day")} of new leads left at the current pace.`,
     notes:
       bool(data, "counting_stopped_at_max") === true
         ? ["Lead counting stopped at the cap, so the real runway is longer."]
@@ -293,7 +293,8 @@ const leadRunway: CardBuilder = (data) => {
     stats: [
       ["Runway", days === null ? DASH : plural(days, "day")],
       ["Active leads", int(num(data, "active_leads"))],
-      ["Contacted per day", int(num(data, "contacted_per_day"))],
+      ["Not started", int(num(data, "not_started"))],
+      ["New leads per day", int(num(data, "contacted_per_day"))],
       ["Leads counted", int(num(data, "counted_leads"))],
     ],
     subtitle: show(data, "campaign"),

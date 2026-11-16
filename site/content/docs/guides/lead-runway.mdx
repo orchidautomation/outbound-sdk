@@ -10,7 +10,7 @@ related:
   - /docs/guides/diagnose-campaign
 ---
 
-A campaign that runs out of leads stops sending without an error. `pipelineForecast` counts one campaign's leads by status, takes the ones still active as "remaining", divides by the number of new leads contacted per day over the last week, and projects the replies still to come at the campaign's reply rate so far.
+A campaign that runs out of leads stops sending without an error. `pipelineForecast` counts one campaign's leads by status, takes the ones still active as "remaining", divides the ones not yet started by the number of new leads started per day over the last week, and projects the replies still to come at the campaign's reply rate so far.
 
 It answers for one campaign per call, and it reads that campaign's leads to count them, up to a cap. This guide puts it in a loop over the active campaigns and shows what that loop costs. Everything after the lead counts is an estimate, and the answer lists its own assumptions. Nothing is added, paused or changed.
 
@@ -41,8 +41,9 @@ The full response of `pipelineForecast` is in the **Response** tab on [`pipeline
 What the forecast holds, and what it assumes:
 
 - **`remaining` is a count.** It is the leads whose status is `active`: not replied, bounced, unsubscribed, paused or completed. It is exact when `leadsComplete` is `true`, and a minimum when `max_leads` stopped the read.
-- **`dailyContactRate` is new leads contacted over the last `days` complete days (default 7, ending yesterday), divided by `days`.** A day with no report counts as no sends, so a campaign that paused for half the week has half the pace.
-- **`daysLeft` is `remaining` divided by that pace.** It is `null` when the vendor reports no daily contacted count or the pace is 0. It is calendar days at last week's pace, weekends included.
+- **`notStarted` and `inSequence` split `remaining`** by whether the lead's sequence has started (a step sent or a contact time). A lead partway through the sequence needs no new lead slot, so the runway leaves it out. When no lead read reports a step or a contact, both are `null` and every active lead counts as not started.
+- **`dailyContactRate` is new leads started over the last `days` complete days (default 7, ending yesterday), divided by `days`.** It is the daily `contacted` count, never emails sent, which are mostly follow-ups. A day with no report counts as none started, so a campaign that paused for half the week has half the pace.
+- **`daysLeft` is `notStarted` (or `remaining`) divided by that pace.** It is `null` when the vendor reports no daily contacted count or the pace is 0. It is calendar days at last week's pace, weekends included. The `lead_runway` tool gives the same figure.
 - **`expectedReplies` is `remaining` times the campaign's reply rate over its whole history**, with `low` and `high` from the 95% Wilson interval of that rate. `expectedPositive` does the same for positive replies.
 - **`assumptions` says what this takes for granted:** every remaining lead is contacted; remaining leads reply at the rate so far, though leads already partway through the sequence may reply less; and the pace stays what it was.
 
