@@ -67,7 +67,7 @@ The output shows what the CLI does with the demo data. It does not show what a v
 | `--input <json>` | `tool`, `insight`, `native` | The input, as a JSON object in one argument. Defaults to `{}`. |
 | `--card`, `--slack` | `tool`, `insight`, `person` | Print the answer as a [card](/docs/cards), or as a Slack message. |
 | `--redact`, `--no-redact` | all that need an adapter | Mask personal fields, or do not. Masking is on by default for `mcp` only. |
-| `--cache <seconds>` | all that need an adapter | Reuse an answer for this long. |
+| `--cache <seconds>` | all that need an adapter | Reuse an answer for this long, within this process. Each command is a new process, so only `mcp` reuses answers; a one-shot command says so on stderr. Use a store in a config file to persist. |
 | `--max-requests <n>` | all that need an adapter | The most vendor requests one command, or one MCP tool call, may make. |
 | `--config <file>` | all that need an adapter | Load plugins from a file. |
 

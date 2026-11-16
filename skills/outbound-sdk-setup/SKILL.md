@@ -80,7 +80,7 @@ It answers `{"id":1,"jsonrpc":"2.0","result":{}}` and exits when its input close
 
 ## 4. Plugins
 
-**`outbound mcp` masks personal data by default.** It runs with `redact()`, so emails, names, companies and message text come back masked, reply text is refused, and `cross_channel_lead` is not offered. Tell the user before turning it off. Turn it off only when the agent needs reply text or the person lookup, by adding `--no-redact` to the client's `args`.
+**`outbound mcp` masks personal data by default.** It runs with `redact()`, so emails, names, companies and message text come back masked, reply text is refused, and the tools that match people by email or LinkedIn profile, such as `cross_channel_lead` and `person_summary`, are not offered. The server's `initialize` instructions name each tool it left out. Tell the user before turning it off. Turn it off only when the agent needs reply text or the person lookup, by adding `--no-redact` to the client's `args`.
 
 Three flags cover the usual needs. Add them after `mcp` in `args`:
 
