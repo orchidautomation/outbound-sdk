@@ -33,7 +33,7 @@ $ outbound tools
     "name": "campaign_setup"
   },
   {
-    "description": "Whether each sender can deliver: its DNS records (SPF, DKIM, DMARC, MX), whether the vendor can still sign in, block list status, and how much warmup mail landed in spam. Senders with a problem are listed first. Use it when bounces rise or replies drop. A null means the vendor does not report that check.",
+    "description": "Whether each sender can deliver: its DNS records (SPF, DKIM, DMARC, MX), whether the vendor can still sign in, block list status, and how much warmup mail landed in spam. Every sender (up to 500) is first screened from the sender list for a disconnected or failing status and a zero warmup score; the first limit senders, problems first, are then checked in full. with_problems counts problems across every screened sender. checked is how many were checked in full, total how many senders there are (null past 500); all_checked: false means not every sender was checked in full. Use it when bounces rise or replies drop. A null means the vendor does not report that check.",
     "name": "deliverability_check"
   },
   {

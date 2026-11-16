@@ -178,7 +178,7 @@ HeyReach reports no per-step stats and no readable campaign settings, so four in
 Starting the server and `tools/list` make no vendor request. A tool call spends requests against the vendor's rate limit, and each result reports the number in `meta.requests`.
 
 - `campaign_overview` reads the campaign list, then stats once per campaign, up to `limit` campaigns (default 10).
-- `deliverability_check` reads one or more requests per sender, up to `limit` senders (default 10).
+- `deliverability_check` reads the sender list (up to 500 senders), then one or more requests per sender it checks in full, up to `limit` senders (default 10).
 - `vendor_read` is one request per call. With no `name` it lists the reads on offer and makes none.
 
 `outbound mcp` sets no cap unless you start it with `--max-requests <n>`. That adds `budget()`, which the server resets before each tool call, so `n` is the most one tool call may spend. A tool that reaches it returns `RateLimited` with `isError: true`.

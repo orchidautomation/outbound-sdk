@@ -409,6 +409,8 @@ const dns = (sender: JsonObject, record: string): string => {
 const deliverabilityCheck: CardBuilder = (data) => {
   const senders = rows(data, "senders");
   const broken = num(data, "with_problems") ?? 0;
+  const screened = num(data, "screened") ?? senders.length;
+  const checked = num(data, "checked") ?? senders.length;
 
   return {
     bullets: senders.flatMap((sender) => {
@@ -419,12 +421,22 @@ const deliverabilityCheck: CardBuilder = (data) => {
         : [`🔴 **${show(sender, "address")}**: ${problems.join("; ")}`];
     }),
     finding: verdict(
-      senders.length,
+      screened,
       broken === 0
         ? null
-        : `🔴 ${int(broken)} of ${plural(senders.length, "sender")} ${noun(broken, "has", "have")} a problem.`,
-      `No problem found on ${plural(senders.length, "sender")}.`
+        : `🔴 ${int(broken)} of ${plural(screened, "sender")} ${noun(broken, "has", "have")} a problem.`,
+      `No problem found on ${plural(screened, "sender")}.`
     ),
+    notes: [
+      ...(checked < screened
+        ? [
+            `${int(checked)} of the ${int(screened)} senders were checked in full, problems first; the rest were screened for status and warmup only. Raise limit to check more.`,
+          ]
+        : []),
+      ...(bool(data, "all_checked") === false && num(data, "total") === null
+        ? [`More senders exist than the ${int(screened)} screened.`]
+        : []),
+    ],
     table: {
       align: [LEFT, "center", "center", "center", "center", LEFT, RIGHT],
       headers: [
