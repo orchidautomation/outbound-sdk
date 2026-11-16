@@ -1,3 +1,3 @@
 false
 {"error":{"code":"Unsupported","message":"Filtering replies by category is not available: the memory adapter does not support it (replies.category)","retryable":false},"next":"This tool is not available with the current adapter or plugins. Try another tool.","ok":false}
-{"error":{"code":"Invalid","message":"reply_samples: \"campaign_name\" is not an input. It takes: campaign, category, include_bodies, limit, since","retryable":false},"next":"Check the input and try again.","ok":false}
+{"error":{"code":"Invalid","message":"reply_samples: \"campaign_name\" is not an input. It takes: by, campaign, category, include_bodies, limit, since","retryable":false},"next":"Check the input and try again.","ok":false}

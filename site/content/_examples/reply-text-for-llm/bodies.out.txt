@@ -1,5 +1,7 @@
 {
   "truncated": true,
+  "unique_people": 1,
+  "unique_threads": null,
   "replies": [
     {
       "body": null,
@@ -15,6 +17,8 @@
 }
 {
   "truncated": false,
+  "unique_people": 3,
+  "unique_threads": null,
   "replies": [
     {
       "body": {
