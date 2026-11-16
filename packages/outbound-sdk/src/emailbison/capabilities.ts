@@ -128,6 +128,8 @@ export const fields: FieldDeclaration = {
     leads: false,
     opportunities: false,
     opportunityValue: false,
+    repliedAutoTotal: false,
+    repliedTotal: false,
     repliedAuto: false,
     // No read says which timezone its days are in.
     timezone: false,

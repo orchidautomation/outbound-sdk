@@ -25,7 +25,7 @@ The output shows what the CLI does with the demo data. It does not show what a v
 | `health <sender id>` | One sender's DNS, sign-in and warmup state | `outbound.sender(id).health` |
 | `leads` | Leads, across the account or in one campaign or list | `outbound.leads.listAll` |
 | `lists` | Saved lead lists | `outbound.lists.listAll` |
-| `replies` | Replies from prospects | `outbound.replies.listAll` |
+| `replies` | Replies from prospects, one record per message | `outbound.replies.listAll` |
 | `thread <id>` | The messages in one conversation | `outbound.thread(id).messages` |
 | `stats` | Workspace totals, or one row per day | `outbound.stats` |
 | `tags` | Tags | `outbound.tags.listAll` |
@@ -57,7 +57,7 @@ The output shows what the CLI does with the demo data. It does not show what a v
 | `--subsequences` | `campaign` | The campaign's subsequences. |
 | `--settings` | `campaign` | How the campaign is set up to send. |
 | `--from <day>`, `--to <day>` | `campaign --stats`, `stats` | First and last day, `YYYY-MM-DD`. |
-| `--by day\|total` | `campaign --stats`, `stats` | `day` gives one row per day. `total`, the default, gives one total row. Any other value is refused as `Invalid`. |
+| `--by <grouping>` | `campaign --stats`, `stats`, `replies` | For stats, `day` gives one row per day and `total`, the default, one total row. For `replies`, `person` gives one row per person instead of one per message. Any other value is refused as `Invalid`. |
 | `--campaign <id>` | `leads`, `replies`, `webhooks` | Only records for this campaign. |
 | `--list <id>` | `leads` | Only leads in this saved list. |
 | `--category <category>` | `replies` | Only replies in this category: `positive`, `negative`, `neutral`, `ooo`, `bounce`, `unsubscribe` or `unknown`. |
@@ -111,6 +111,8 @@ A campaign id can be the vendor's id or a `ref` from any record. A count the ven
 </include>
 
 ## replies and thread
+
+Each record `replies` prints is one message, not one person: a lead who writes twice is two records. Standard error says how many people and threads sent them, for example "40 messages from 21 people in 9 threads." A count is left out when a reply has no lead or no thread. `--by person` prints one row per `leadRef` instead, with its `messages`, `firstAt`, `lastAt`, `categories` and `threadIds`; replies with no lead are grouped by thread, with `leadRef` `null`.
 
 Message text is left out unless you pass `--bodies`: `bodyText` is `null` without it. The CLI prints the text as the vendor returned it. It does not truncate it or mark it as [untrusted content](/docs/tools/untrusted-content), so take care before piping it to a model.
 

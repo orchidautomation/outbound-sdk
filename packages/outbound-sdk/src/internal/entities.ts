@@ -266,6 +266,10 @@ export const messageSchema = z.object({
 
 export type Message = z.infer<typeof messageSchema>;
 
+/**
+ * One received message, not one person: a lead who replies twice in a thread
+ * is two replies. Count people by `leadRef`, as `MetricRow.replied` does.
+ */
 export const replySchema = z.object({
   ...messageFields,
   category: replyCategorySchema,
@@ -350,9 +354,22 @@ export const metricRowSchema = z.object({
   opportunityValue: count.optional(),
   positive: count,
   provider: z.string().min(1),
-  /** Replies from people. Auto-replies are counted in `repliedAuto`. */
+  /**
+   * People who replied, auto-replies left out: each lead is counted once,
+   * however many replies they sent. Auto-replies are counted in `repliedAuto`.
+   */
   replied: count,
+  /** People whose replies were automatic, counted once each. */
   repliedAuto: count,
+  /** Automatic reply messages, each one counted. Optional, like `repliedTotal`. */
+  repliedAutoTotal: count.optional(),
+  /**
+   * Reply messages from people, auto-replies left out: a lead who replied
+   * twice counts 2. Optional: absent or `null` where the vendor does not
+   * report it. Instantly's dashboard "Replies" is `repliedTotal` plus
+   * `repliedAutoTotal`.
+   */
+  repliedTotal: count.optional(),
   schemaVersion: z.literal(SCHEMA_VERSION),
   scope: metricScopeSchema,
   scopeRef: z.string(),

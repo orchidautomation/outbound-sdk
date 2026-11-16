@@ -10,6 +10,11 @@ import { isJsonObject, parseJson, toJson } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
 import { plural } from "../internal/numbers.ts";
 import type { ListAll, OutboundApi } from "../internal/outbound/api.ts";
+import {
+  countReplies,
+  describeReplyCounts,
+  repliesByPerson,
+} from "../internal/reply-people.ts";
 import { providers } from "../providers/index.ts";
 import { createTools } from "../tools/index.ts";
 import type { OutboundTool, ToolResult } from "../tools/index.ts";
@@ -65,6 +70,7 @@ const choice = <Value extends string>(
 };
 
 const BY = ["day", "total"] as const;
+const REPLIES_BY = ["person"] as const;
 
 const parseInput = (source: string | undefined): Json => {
   const parsed = source === undefined ? {} : parseJson(source);
@@ -105,12 +111,12 @@ const fieldExceptions = (outbound: OutboundApi): Json =>
  * Every record of a walk. When `--limit` stopped it while more exist, a note
  * on stderr says so; stdout stays the JSON. `one` and `many` name a record.
  */
-const listing = async <Item>(
+const listed = async <Item>(
   walk: ListAll<Item>,
   input: CommandInput,
   one: string,
   many?: string
-): Promise<Json> => {
+): Promise<Item[]> => {
   const items = await walk.toArray();
 
   if (walk.truncated) {
@@ -119,8 +125,15 @@ const listing = async <Item>(
     );
   }
 
-  return asJson(items);
+  return items;
 };
+
+const listing = async <Item>(
+  walk: ListAll<Item>,
+  input: CommandInput,
+  one: string,
+  many?: string
+): Promise<Json> => asJson(await listed(walk, input, one, many));
 
 const wantsCard = (input: CommandInput): boolean =>
   input.flags.slack === true || input.flags.card === true;
@@ -401,21 +414,26 @@ const COMMAND_TABLE = {
       }),
   },
   replies: {
-    flags: ["bodies", "campaign", "category", "limit", "since"],
-    help: "replies [--campaign ID] [--category positive|negative|neutral|ooo|...] [--since ISO] [--limit N] [--bodies]",
-    run: (outbound, input) =>
-      listing(
-        outbound.replies.listAll({
-          campaignId: text(input, "campaign"),
-          category: choice(input, "category", replyCategorySchema.options),
-          include: input.flags.bodies === true ? ["body"] : undefined,
-          max: count(input, "limit", 50),
-          since: text(input, "since"),
-        }),
-        input,
-        "reply",
-        "replies"
-      ),
+    flags: ["bodies", "by", "campaign", "category", "limit", "since"],
+    help: "replies [--campaign ID] [--category positive|negative|neutral|ooo|...] [--since ISO] [--limit N] [--bodies] [--by person]  one record per message; --by person gives one row per person",
+    run: async (outbound, input) => {
+      const by = choice(input, "by", REPLIES_BY);
+
+      const walk = outbound.replies.listAll({
+        campaignId: text(input, "campaign"),
+        category: choice(input, "category", replyCategorySchema.options),
+        include: input.flags.bodies === true ? ["body"] : undefined,
+        max: count(input, "limit", 50),
+        since: text(input, "since"),
+      });
+
+      const replies = await listed(walk, input, "reply", "replies");
+
+      // Each record is a message; say how many people sent them.
+      input.note(`${describeReplyCounts(countReplies(replies))}.`);
+
+      return asJson(by === "person" ? repliesByPerson(replies) : replies);
+    },
   },
   senders: {
     flags: ["limit"],

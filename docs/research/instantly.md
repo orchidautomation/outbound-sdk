@@ -604,3 +604,20 @@ Seen live on 2026-11-15 (the four-step campaign of OUT-86, recorded in OUT-90): 
 So leads started (430) can exceed the leads still in the campaign (383): a lead removed after its sequence started is still counted as started. The mis-mapping OUT-86 fixed gave 1,404, about 3.7 times the leads.
 
 The adapter reads `leads`, `completed`, `opportunities` and `opportunityValue` from these fields on every-campaign rows (`GET /campaigns/analytics`). One campaign's total and the workspace total come from the overview, which has no `leads_count`, so `leads` is `null` there and the other three are read. A campaign's lead count is also in `campaigns.progress`. Daily, step and sender rows leave all four `null`.
+
+## Reply messages beside unique replies (2026-11-16, for OUT-88)
+
+Fetched fresh on 2026-11-16: https://api.instantly.ai/openapi/api_v2.json (`info.version` 2.0.0). The fields, word for word:
+
+| Field | Endpoint | Description |
+| --- | --- | --- |
+| `reply_count` | `GET /campaigns/analytics`, `GET /campaigns/analytics/overview` | "The total number of replies received (if a lead replies multiple times, each reply is counted)" |
+| `reply_count_automatic` | `GET /campaigns/analytics` | "The total number of automatic replies detected" |
+| `reply_count_automatic` | `GET /campaigns/analytics/overview` | "The total number of automatic replies received (e.g., out-of-office)" |
+| `replies` | `GET /campaigns/analytics/daily`, `GET /campaigns/analytics/steps` | "The total number of replies" |
+| `replies_automatic` | `GET /campaigns/analytics/daily`, `GET /campaigns/analytics/steps` | "The total number of automatic replies detected" |
+| `replies`, `replies_automatic` | `GET /accounts/analytics/daily` | "The total number of replies received on this date for this account", "The total number of automatic replies detected on this date for this account" |
+
+The spec does not say whether `reply_count` leaves out automatic replies. The 2026-11-15 parity case (`fixtures/parity/instantly/four-step-campaign-2026-11-15.json`) settles it for the campaign report: `reply_count` 2 and `reply_count_automatic` 11, and the dashboard's "Replies" showed 13. So `reply_count` is human reply messages and the dashboard adds the two.
+
+The adapter reads `repliedTotal` from `reply_count` (by day and step `replies`) and `repliedAutoTotal` from `reply_count_automatic` (by day and step `replies_automatic`), beside the unique `replied` and `repliedAuto`, the same way `openedTotal` sits beside `opened`.

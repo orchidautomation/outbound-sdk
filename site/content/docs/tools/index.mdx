@@ -165,4 +165,6 @@ A call that reaches its allowance stops before the next request and returns `ok:
 
 ## Reply text
 
+Each record `reply_samples` returns is one message, not one person, and its description tells the model so. `data.unique_people` and `data.unique_threads` count the people and threads behind the replies, or are `null` when a reply has no lead or thread. With `by: "person"` it returns `data.people`, one row per person with their `messages`, `first_at`, `last_at`, `categories` and `thread_ids`, in place of `data.replies`.
+
 `reply_samples` leaves reply text out unless the model asks for it, and marks it as untrusted when it does. Read [untrusted content](/docs/tools/untrusted-content) before you let a model read replies.

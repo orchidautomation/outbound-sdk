@@ -2,6 +2,8 @@ import { outbound } from "./cli.ts";
 
 await outbound("replies", "--category", "positive", "--limit", "1");
 
+await outbound("replies", "--by", "person");
+
 await outbound(
   "replies",
   "--campaign",

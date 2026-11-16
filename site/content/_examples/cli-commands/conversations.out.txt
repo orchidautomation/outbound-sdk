@@ -1,4 +1,5 @@
 $ outbound replies --category positive --limit 1
+1 message from 1 person in 1 thread.
 [
   {
     "provider": "memory",
@@ -25,7 +26,25 @@ $ outbound replies --category positive --limit 1
   }
 ]
 
+$ outbound replies --by person
+1 message from 1 person in 1 thread.
+[
+  {
+    "categories": [
+      "positive"
+    ],
+    "firstAt": "2026-11-12T09:30:00.000Z",
+    "lastAt": "2026-11-12T09:30:00.000Z",
+    "leadRef": "memory:default:lead_1",
+    "messages": 1,
+    "threadIds": [
+      "thr_1"
+    ]
+  }
+]
+
 $ outbound replies --campaign cmp_founders --since 2026-11-12T00:00:00Z --bodies --compact
+1 message from 1 person in 1 thread.
 [{"provider":"memory","ref":"memory:default:msg_2","schemaVersion":1,"sourceId":"msg_2","workspaceId":"default","bodyHtml":null,"bodyText":"Thanks, happy to chat next week.","campaignRef":"memory:default:cmp_founders","channel":"email","leadRef":"memory:default:lead_1","senderRef":"memory:default:mbx_1","sentAt":"2026-11-12T09:30:00.000Z","stepIndex":null,"subject":"Re: Quick question","threadId":"thr_1","variantKey":null,"category":"positive","categorySource":"vendor","direction":"in","isAuto":false,"unread":null}]
 
 $ outbound thread thr_1 --bodies

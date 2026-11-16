@@ -35,8 +35,14 @@ interface ProviderParity {
 const disabledWhenNull = (value: number | null) =>
   value === null ? "disabled" : value;
 
-const NO_TOTAL_REPLIES =
-  "The SDK counts people who replied (replied) and auto-replies (repliedAuto), not reply messages";
+/** The dashboard's "Replies" is reply messages, human and automatic added. */
+const replyMessages = (row: MetricRow): number | null =>
+  row.repliedTotal === null ||
+  row.repliedTotal === undefined ||
+  row.repliedAutoTotal === null ||
+  row.repliedAutoTotal === undefined
+    ? null
+    : row.repliedTotal + row.repliedAutoTotal;
 
 const INSTANTLY: ProviderParity = {
   mapping: {
@@ -45,7 +51,7 @@ const INSTANTLY: ProviderParity = {
     openRate: (row) => disabledWhenNull(row.opened),
     opportunities: (row) => row.opportunities ?? null,
     opportunityValue: (row) => row.opportunityValue ?? null,
-    replies: { unmapped: NO_TOTAL_REPLIES },
+    replies: replyMessages,
     sequenceStarted: (row) => row.contacted,
     totalSent: (row) => row.sent,
     uniqueReplies: (row) => row.replied,
@@ -116,6 +122,21 @@ test("parity: the old Instantly mapping (contacted_count) is rejected", async ()
   assert.deepEqual(compareParity(first.parity.ui, before, INSTANTLY.mapping), [
     '"sequenceStarted": the dashboard shows 430, the SDK gives 1404',
   ]);
+});
+
+test("parity: Instantly replies read as reply_count alone are rejected", async () => {
+  assert.ok(first);
+  const row = await replay(INSTANTLY, first.parity.endpoint, first.parity.raw);
+
+  // The dashboard's "Replies" adds the automatic ones (OUT-88).
+  assert.equal(row.repliedTotal, 2);
+  assert.equal(row.repliedAutoTotal, 11);
+  const humanOnly = { ...row, repliedAutoTotal: 0 };
+
+  assert.deepEqual(
+    compareParity(first.parity.ui, humanOnly, INSTANTLY.mapping),
+    ['"replies": the dashboard shows 13, the SDK gives 2']
+  );
 });
 
 test("parity: a dashboard label with no declared reading is rejected", async () => {

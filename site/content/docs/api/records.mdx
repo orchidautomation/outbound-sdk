@@ -190,7 +190,7 @@ One message sent or received.
 
 ## Reply
 
-A received message with a category. It has every `Message` field, `direction` is always `"in"`, and it adds:
+A received message with a category. A `Reply` is one message, not one person: a lead who writes twice in a thread is two replies. To count people, count distinct `leadRef`s; stats count people in `replied` and messages in `repliedTotal`. It has every `Message` field, `direction` is always `"in"`, and it adds:
 
 | Field | Type | Holds |
 | --- | --- | --- |

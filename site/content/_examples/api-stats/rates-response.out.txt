@@ -28,6 +28,8 @@
       "positive": 6,
       "replied": 15,
       "repliedAuto": null,
+      "repliedAutoTotal": null,
+      "repliedTotal": null,
       "sent": 350,
       "unsubscribed": 1,
       "contentHash": null,
