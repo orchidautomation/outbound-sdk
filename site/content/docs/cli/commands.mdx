@@ -50,7 +50,7 @@ The output shows what the CLI does with the demo data. It does not show what a v
 | `--compact` | all that print JSON | Print the JSON on one line. |
 | `--raw` | all that print JSON | Keep each record's `raw`, the vendor's own payload. Left out by default: for a reply it can hold the whole quoted thread, `--bodies` or not. |
 | `--help`, `-h` | all | Print the usage text and exit 0. After a command, `outbound leads --help`, print that command's options and the ones every command takes. |
-| `--limit <n>` | `campaigns`, `senders`, `leads`, `lists`, `replies`, `tags`, `blocklist`, `webhooks`, `person` | Stop after this many records. A positive whole number. Defaults to 50. When a listing stops there and more records exist, `meta.complete` is `false` and `meta.notes` says so, for example "Stopped at 50 leads; more exist. Pass --limit to read more.", and standard error gets the same sentence. See [the envelope](/docs/cli#the-envelope). |
+| `--limit <n>` | `campaigns`, `senders`, `leads`, `lists`, `replies`, `tags`, `blocklist`, `webhooks`, `person` | Stop after this many records. A positive whole number. Defaults to 50, except for `replies` with `--since`, where it defaults to the whole window, up to 2,000 records. When a listing stops there and more records exist, `meta.complete` is `false` and `meta.notes` says so, for example "Stopped at 50 leads; more exist. Pass --limit to read more.", and standard error gets the same sentence. See [the envelope](/docs/cli#the-envelope). |
 | `--status <status>` | `campaigns` | Only campaigns with this status: `active`, `paused`, `draft`, `completed`, `archived` or `unknown`. |
 | `--search <text>` | `campaigns` | Only campaigns whose name contains this text, ignoring case. Every campaign is read to find them. |
 | `--stats` | `campaign` | The campaign's counts. |
@@ -62,7 +62,7 @@ The output shows what the CLI does with the demo data. It does not show what a v
 | `--campaign <id or name>` | `leads`, `replies`, `webhooks` | Only records for this campaign. |
 | `--list <id or name>` | `leads` | Only leads in this saved list. |
 | `--category <category>` | `replies` | Only replies in this category: `positive`, `negative`, `neutral`, `ooo`, `bounce`, `unsubscribe` or `unknown`. |
-| `--since <ISO date>` | `replies` | Only replies on or after this time. |
+| `--since <ISO date>` | `replies` | Only replies on or after this time. Without `--limit`, every reply in the window is read, up to 2,000; a window that holds more stops there with `meta.complete` `false` and a note that names the ceiling. |
 | `--bodies` | `replies`, `thread` | Include message text. Left out by default. |
 | `--input <json>` | `tool`, `insight`, `native` | The input, as a JSON object in one argument. Defaults to `{}`. |
 | `--card`, `--slack` | `tool`, `insight`, `person` | Print the answer as a [card](/docs/cards), or as a Slack message. |

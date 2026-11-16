@@ -166,6 +166,8 @@ export interface MessageFilters extends TimeRange {
   readonly leadId?: string | undefined;
   /** A `threadId` from an earlier message. */
   readonly threadId?: string | undefined;
+  /** `true` for the messages a person sent by hand only, leaving out the ones a campaign sent. Needs `messages.byHand`. */
+  readonly byHand?: true | undefined;
   readonly include?: readonly Include[] | undefined;
 }
 
