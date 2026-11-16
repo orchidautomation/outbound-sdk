@@ -1,0 +1,32 @@
+{
+  "provider": "instantly",
+  "capturedAt": "2026-11-15",
+  "source": "OUT-86: one live four-step campaign, the dashboard's campaign analytics over the last 4 weeks",
+  "endpoint": "GET /api/v2/campaigns/analytics",
+  "raw": [
+    {
+      "campaign_id": "01a1d77f-5e23-7a9a-9112-a6f7089f329f",
+      "completed_count": 343,
+      "contacted_count": 1404,
+      "emails_sent_count": 1501,
+      "leads_count": 383,
+      "new_leads_contacted_count": 430,
+      "reply_count": 2,
+      "reply_count_automatic": 11,
+      "reply_count_unique": 1,
+      "total_opportunities": 1,
+      "total_opportunity_value": 500
+    }
+  ],
+  "ui": {
+    "sequenceStarted": 430,
+    "totalSent": 1501,
+    "uniqueReplies": 1,
+    "replies": 13,
+    "opportunities": 1,
+    "opportunityValue": 500,
+    "openRate": "disabled",
+    "clickRate": "disabled",
+    "leadsTotal": 383
+  }
+}
