@@ -21,6 +21,11 @@ campaign_overview: {
       "type": "string",
       "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
     },
+    "campaign": {
+      "description": "One campaign's ref, id or name, to read only it; status and limit are then not used. Leave out for every campaign with the status",
+      "type": "string",
+      "minLength": 1
+    },
     "limit": {
       "default": 10,
       "description": "How many campaigns to include",

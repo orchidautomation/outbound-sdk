@@ -21,6 +21,8 @@ export interface OperationOutput {
   readonly stale?: boolean | undefined;
   /** When the answer was fetched, if a plugin served it from a store. ISO 8601 UTC. */
   readonly fetchedAt?: string | undefined;
+  /** What the adapter left out of these records, and why. */
+  readonly notes?: readonly string[] | undefined;
 }
 
 export const unsupported = (adapter: Adapter, kind: string): OutboundError =>

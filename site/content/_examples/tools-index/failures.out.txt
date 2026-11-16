@@ -2,7 +2,7 @@ An argument the tool does not take
 {
   "error": {
     "code": "Invalid",
-    "message": "campaign_overview: \"client\" is not an input. It takes: from, limit, status, to",
+    "message": "campaign_overview: \"client\" is not an input. It takes: campaign, from, limit, status, to",
     "retryable": false
   },
   "next": "Check the input and try again.",

@@ -8,23 +8,9 @@ import type {
   Sender,
 } from "../../internal/entities.ts";
 import { OutboundError } from "../../internal/errors.ts";
-import type { ListAll } from "../../internal/outbound/api.ts";
 import { readCampaignsIn, readCapped as readUpTo } from "../capped.ts";
 import type { Capped } from "../capped.ts";
 import type { InsightContext } from "../define.ts";
-
-/** Walks a listing up to `max` records, and says so in a note naming `input` when more exist. */
-export const readCapped = async <Item>(
-  context: InsightContext,
-  walk: (max: number) => ListAll<Item>,
-  max: number,
-  what: string,
-  input: string
-): Promise<Item[]> => {
-  const { items } = await readUpTo(context, walk, { input, max, what });
-
-  return items;
-};
 
 /** The campaigns in the given statuses, up to `max_campaigns`. */
 export const readCampaigns = async (
@@ -38,20 +24,22 @@ export const readCampaigns = async (
 };
 
 /** The senders attached to one campaign, up to `max`. */
-export const readCampaignSenders = (
+export const readCampaignSenders = async (
   context: InsightContext,
   campaign: Campaign,
   max: number,
   input: string
-): Promise<Sender[]> =>
-  readCapped(
+): Promise<Sender[]> => {
+  // One note for every campaign the cap stopped in, not one per campaign.
+  const { items } = await readUpTo(
     context,
     (cap) =>
       context.outbound.campaign(campaign.ref).senders.listAll({ max: cap }),
-    max,
-    `senders of campaign ${campaign.name}`,
-    input
+    { input, max, per: "campaigns", what: "senders" }
   );
+
+  return items;
+};
 
 /** Every sender of the workspace, up to `max_senders`, and whether more exist. */
 export const readSenders = (
