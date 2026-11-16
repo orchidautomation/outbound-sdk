@@ -333,7 +333,26 @@ test("dropped_replies whose listing of messages sent by hand stops at max reads 
     JSON.stringify(result.meta.notes)
   );
 
-  // The 20 answers past the stop settle no conversation, so those 20 and
-  // the dropped one are read by thread.
-  assert.equal(threadReads(urls).length, 21);
+  // The 20 answers past the stop settle no conversation, so those 20, the
+  // dropped one and the recent one, whose answer may lie past the stop, are
+  // read by thread.
+  assert.equal(threadReads(urls).length, 22);
+});
+
+test("dropped_replies whose listing of messages sent by hand stops at max does not count a young answered reply as too recent", async () => {
+  const { clock, http, outbound } = workspace(170);
+
+  // Every reply is younger than 200 hours, so none past the stop may be
+  // settled as too recent from the listing alone.
+  const result = await clock.settle(
+    outbound.insights.droppedReplies(
+      { max_replies: 179, older_than_hours: 200 },
+      { now: NOW }
+    )
+  );
+
+  assert.deepEqual(result.data.dropped, []);
+  assert.equal(result.data.totals.answered, 29);
+  assert.equal(result.data.totals.tooRecent, 2);
+  assert.equal(threadReads(urlsOf(http.requests)).length, 22);
 });

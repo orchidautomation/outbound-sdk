@@ -315,6 +315,12 @@ const readReplies = (
   );
 };
 
+interface SentByHand {
+  readonly messages: readonly Message[];
+  /** `false` when the listing stopped at its max with more left. */
+  readonly whole: boolean;
+}
+
 /**
  * The messages sent by hand since `since`, up to `max`, where the tool can
  * list them by date on its side: one request per page. `null` where it
@@ -325,7 +331,7 @@ const sentByHand = async (
   context: InsightContext,
   since: string,
   max: number
-): Promise<Message[] | null> => {
+): Promise<SentByHand | null> => {
   const { capabilities, messages } = context.outbound;
 
   if (
@@ -349,7 +355,7 @@ const sentByHand = async (
     );
   }
 
-  return found;
+  return { messages: found, whole: !walk.truncated };
 };
 
 /** The messages sent by hand in one conversation: its thread, or its lead. */
@@ -382,7 +388,7 @@ interface Checked {
 const check = async (
   context: InsightContext,
   checkable: readonly Checkable[],
-  sent: readonly Message[] | null,
+  sent: SentByHand | null,
   olderThanHours: number
 ): Promise<Checked> => {
   const checked: Checked = { answered: 0, dropped: [], tooRecent: 0 };
@@ -415,10 +421,15 @@ const check = async (
   const toRead =
     sent === null
       ? checkable
-      : checkable.filter(
-          (conversation) =>
-            !settle(openIn(conversation, answersIn(conversation, sent)), false)
-        );
+      : checkable.filter((conversation) => {
+          const found = openIn(
+            conversation,
+            answersIn(conversation, sent.messages)
+          );
+
+          // A listing that stopped early may hold the answer past its stop.
+          return !((found.length === 0 || sent.whole) && settle(found, false));
+        });
 
   const threads = await mapConcurrent(toRead, async (conversation) => ({
     conversation,
