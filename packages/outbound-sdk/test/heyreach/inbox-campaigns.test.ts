@@ -175,12 +175,35 @@ test("reply_timing on a combined instance leaves out the inbox of the tool that 
   const clock = createClock();
   const { http } = inboxFetch();
 
-  // A tool without an inbox of its own turns replies.inbox off for the pair.
+  // An email tool with no inbox of its own turns replies.inbox off for the
+  // pair. Its one conversation names no campaign, yet it is outreach and
+  // must be kept: only HeyReach's campaign-less conversations are its inbox.
+  const mail = memory({
+    data: {
+      leads: [{ email: "person1@example.com", id: "l1" }],
+      messages: [
+        {
+          direction: "out",
+          id: "m1",
+          leadId: "l1",
+          sentAt: "2026-10-10T09:00:00.000Z",
+          threadId: "t1",
+        },
+        {
+          direction: "in",
+          id: "m2",
+          leadId: "l1",
+          sentAt: "2026-10-10T13:00:00.000Z",
+          threadId: "t1",
+        },
+      ],
+    },
+    name: "mailtool",
+    workspaceId: "agency",
+  });
+
   const outbound = createOutbound({
-    adapter: combine([
-      suite.make(),
-      memory({ data: {}, name: "mailtool", workspaceId: "agency" }),
-    ]),
+    adapter: combine([suite.make(), mail]),
     fetch: http.fetch,
     plugins: [insights()],
     rateLimitStore: new MemoryRateLimitStore(),
@@ -197,10 +220,18 @@ test("reply_timing on a combined instance leaves out the inbox of the tool that 
     )
   );
 
-  assert.equal(result.data.counts.messagesRead, 4);
-  assert.equal(result.data.counts.notInCampaign, 2);
-  assert.equal(result.data.counts.received, 1);
-  assert.equal(result.data.counts.unpaired, 0);
+  const { counts, timeToReply } = result.data;
+
+  assert.equal(counts.messagesRead, 6, "both tools' messages were read");
+  assert.equal(counts.notInCampaign, 2, "HeyReach's two DMs, and nothing else");
+  assert.equal(
+    counts.received,
+    2,
+    "HeyReach's campaign reply and the email reply"
+  );
+  assert.equal(counts.paired, 2);
+  assert.equal(counts.unpaired, 0);
+  assert.equal(timeToReply.sample, 2);
 });
 
 /** The replies `outbound` prints for `argv`, over the inbox fixture. */
