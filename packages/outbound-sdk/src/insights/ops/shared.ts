@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Campaign, CampaignStatus } from "../../internal/entities.ts";
-import { sumCounts } from "../../internal/metrics.ts";
+import { sumMeasured } from "../../internal/metrics.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
 import { campaignsReadOf, readCampaignsIn } from "../capped.ts";
 import type { CampaignsRead } from "../capped.ts";
@@ -300,7 +300,7 @@ export const readTotals = async (
   campaign: string,
   range: OpenRange
 ): Promise<MetricCounts> =>
-  sumCounts(
+  sumMeasured(
     context.rows(
       await context.outbound
         .campaign(campaign)
@@ -352,7 +352,7 @@ const readAllTotals = async (
   }
 
   return new Map(
-    [...byCampaign].map(([ref, counts]) => [ref, sumCounts(counts)])
+    [...byCampaign].map(([ref, counts]) => [ref, sumMeasured(counts)])
   );
 };
 
@@ -424,6 +424,6 @@ export const readDaily = async (
   }
 
   return [...days]
-    .map(([date, group]) => ({ counts: sumCounts(group), date }))
+    .map(([date, group]) => ({ counts: sumMeasured(group), date }))
     .toSorted((left, right) => left.date.localeCompare(right.date));
 };

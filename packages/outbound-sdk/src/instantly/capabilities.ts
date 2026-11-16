@@ -181,7 +181,10 @@ export const costs = {
   "senders.list": { pageSize: PAGE_SIZE, perPage: 1, perWalk: 1 },
   "sequence.get": { perPage: 1 },
   "sequence.subsequences": { pageSize: PAGE_SIZE, perPage: 1, perWalk: 1 },
-  stats: { perPage: 1 },
+  // The counts, then the tracking settings: the campaign, or for a workspace
+  // or mailbox the per-campaign report and the campaign listing. The bound
+  // is for up to 100 campaigns; each further 100 adds a listing page.
+  stats: { perPage: 2, perPageAtMost: 3 },
   "tags.list": { pageSize: PAGE_SIZE, perPage: 1, perWalk: 1 },
   "webhooks.list": { pageSize: PAGE_SIZE, perPage: 1, perWalk: 1 },
   "workspaces.list": { perPage: 1 },

@@ -329,6 +329,17 @@ export const evidenceSchema = z.enum(["derived", "exact", "sampled"]);
 
 export type Evidence = z.infer<typeof evidenceSchema>;
 
+export const trackingStateSchema = z.enum(["mixed", "off", "on"]).nullable();
+
+export type TrackingState = z.infer<typeof trackingStateSchema>;
+
+const trackingSchema = z.object({
+  clicks: trackingStateSchema,
+  opens: trackingStateSchema,
+});
+
+export type MetricTracking = z.infer<typeof trackingSchema>;
+
 /**
  * Counts only. Rates are computed from these in `metrics.ts`, so every
  * adapter and plugin agrees on what a reply rate is.
@@ -363,7 +374,10 @@ export const metricRowSchema = z.object({
    * little over `leads`. Optional, like `completed`.
    */
   leads: count.optional(),
-  /** Unique opens. `null` when open tracking is off. */
+  /**
+   * Unique opens. `null` when a campaign behind the row had open tracking
+   * off and recorded no opens, including when tracking is `mixed`.
+   */
   opened: count,
   openedTotal: count,
   /** Opportunities the vendor counts for the leads. Optional, like `completed`. */
@@ -403,6 +417,14 @@ export const metricRowSchema = z.object({
    * lifetime total. A vendor's "day" is not always UTC.
    */
   timezone: z.string().nullable(),
+  /**
+   * The open and click tracking of the campaigns behind the row, as their
+   * settings are now: `on`, `off`, `mixed` when some campaigns track and
+   * some do not, or `null` when a setting is unknown. Optional: absent when
+   * the adapter did not read the settings. A count the campaigns did not
+   * measure is `null`; see `docs/api/stats`.
+   */
+  tracking: trackingSchema.optional(),
   unsubscribed: count,
   variantKey: z.string().nullable(),
   workspaceId: z.string().min(1),

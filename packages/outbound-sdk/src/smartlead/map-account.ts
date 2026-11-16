@@ -30,6 +30,7 @@ import {
 import type { Json, JsonObject } from "../internal/json.ts";
 import { eventTypesOf, recordBase, refTo, refsTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
+import type { TrackingFlags } from "../internal/tracking.ts";
 import { reputation, withoutSecrets } from "./map.ts";
 import { EVENT_TYPES } from "./webhooks.ts";
 
@@ -93,6 +94,12 @@ const tracked = (value: Json | undefined, off: string): boolean | null => {
     : null;
 };
 
+/** Open and link tracking from a campaign's `track_settings`. */
+export const trackingFlags = (raw: JsonObject): TrackingFlags => ({
+  clicks: tracked(raw.track_settings, "LINK_CLICK"),
+  opens: tracked(raw.track_settings, "EMAIL_OPEN"),
+});
+
 // Only two values say what a reply does. The others (stop on an open or on a
 // click) do not say whether a reply also stops the lead.
 const STOP_ON_REPLY = new Map([
@@ -140,10 +147,7 @@ export const toSettings = (
     startDate: timestamp(raw.schedule_start_time)?.slice(0, 10) ?? null,
     stopOnAutoReply: stopOnAutoReply(raw, stopOnReply),
     stopOnReply,
-    tracking: {
-      clicks: tracked(raw.track_settings, "LINK_CLICK"),
-      opens: tracked(raw.track_settings, "EMAIL_OPEN"),
-    },
+    tracking: trackingFlags(raw),
   };
 };
 

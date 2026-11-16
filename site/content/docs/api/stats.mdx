@@ -81,9 +81,9 @@ Every count on a `MetricRow` is a non-negative number, or `null` when the vendor
 | `sent` | Messages sent: email sends, or LinkedIn messages. |
 | `delivered` | Messages delivered. |
 | `contacted` | Unique leads contacted. |
-| `opened` | Unique opens. `null` when open tracking is off. |
+| `opened` | Unique opens. `null` when the campaigns behind the row did not measure opens; see [opens and clicks that were not measured](#opens-and-clicks-that-were-not-measured). |
 | `openedTotal` | Every open, repeats included. |
-| `clicked` | Unique clicks: leads who clicked at least once. |
+| `clicked` | Unique clicks: leads who clicked at least once. `null` when they were not measured, like `opened`. |
 | `clickedTotal` | Every click, repeats included. |
 | `replied` | People who replied, each counted once however many replies they sent. Auto-replies are counted in `repliedAuto` where the vendor separates them. |
 | `repliedAuto` | People whose replies were automatic. |
@@ -116,7 +116,18 @@ The other fields say what the row is:
 | `variantKey` | `string` or `null` | The variant, for a per-variant row. |
 | `contentHash` | `string` or `null` | The hash of the copy the row is for, where known. |
 | `evidence` | `"exact"`, `"derived"`, `"sampled"` | How this row was obtained. |
+| `tracking` | `{ opens, clicks }`, each `"on"`, `"off"`, `"mixed"` or `null`. Optional | The open and click tracking of the campaigns behind the row, as their settings are now. `mixed` means some track and some do not; `null` that a setting is unknown. Absent when the adapter did not read the settings. |
 | `provider`, `workspaceId`, `schemaVersion` |  | As on every [record](/docs/api/records). |
+
+## Opens and clicks that were not measured
+
+A campaign with open or link tracking off records no opens or clicks, so its 0 would read as "nobody opened". An open or click count is a number only when every campaign behind the row measured it; otherwise it is `null`, and `tracking` says why. Opens and clicks are decided separately.
+
+- **One campaign** (its total, its days or its steps). With tracking off and no opens in the whole range, `opened` and `openedTotal` are `null` on every row, so a daily series never mixes 0 and `null`. With tracking off but opens in the range, the numbers stand: vendors report only the current setting, so those opens were recorded while tracking was on. `tracking.opens` is `"off"` either way. Clicks follow the same rule with `clicked` and `clickedTotal`.
+- **Mixed tracking.** A workspace, sender or other total over several campaigns judges each campaign that sent in the range. When every one measured opens, the vendor's number stands. When any did not, the count is `null` and `tracking.opens` is `"off"` or `"mixed"`, never a sum of the tracked campaigns alone: that sum divided by every send would understate the open rate without saying so. For the tracked part, read `stats({ scope: "campaign" })`, which returns a row per campaign, each judged on its own.
+- **Unknown settings.** When the settings cannot be read, or a flag is not reported, the counts are as the vendor sent them and `tracking` is absent or `null`.
+
+Reading the settings costs extra requests: one for a campaign, and the per-campaign report plus the campaign listing for a workspace or sender total. Each [adapter page](/docs/adapters) lists them. HeyReach has no tracking, and EmailBison has no click setting, so its `tracking.clicks` is `null`.
 
 What a vendor counts as an open or a reply differs in the details. Each adapter's `caveats` and its [adapter page](/docs/adapters) record what is known.
 
@@ -149,7 +160,7 @@ What a vendor counts as an open or a reply differs in the details. Each adapter'
 
 - A rate is `{ value: null, basis: null }` when its numerator is missing, or when every base it could use is missing or 0. The sample has no LinkedIn counts, so `acceptanceRate` is `null`.
 - Read `basis` before comparing two rates. A reply rate over `contacted` and one over `sent` are different numbers for the same campaign.
-- An open rate is `null` when open tracking is off. Where it exists, mail privacy features inflate it.
+- An open rate is `null` when opens were not measured (see above). Where it exists, mail privacy features inflate it.
 
 `METRIC_DEFINITIONS` holds a `name` and a one-sentence `description` for each rate, keyed by the same six names. Use them as labels and tooltips so a report says what its numbers mean.
 

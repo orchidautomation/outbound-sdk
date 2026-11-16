@@ -578,3 +578,9 @@ Ambiguous or not documented:
 - **`GET /leads/{id}/campaigns` is not in the current reference.** Only the deprecated Notion docs show it.
 - No page documents what an empty list looks like. A documented empty list is read as `[]`, `{ ok: true, data: [] }`, or an object whose list field is `[]`.
 - `fixtures/smartlead/` matches these shapes, with both forms kept where the docs disagree (`*.newdocs.json`).
+
+## Tracking settings behind open and click counts (2026-11-16, for OUT-89)
+
+Fetched 2026-11-16: `https://api.smartlead.ai/llms-full.txt`, pages `api-reference/campaigns/get-all` ("Get All Campaigns", example `"track_settings": ["DONT_EMAIL_OPEN", "DONT_LINK_CLICK"]`) and `api-reference/campaigns/get-by-id` (example `"track_settings": ["DONT_EMAIL_OPEN"]`). Both reads carry `track_settings`, the list of what is not tracked, as recorded above. Only the current setting is given.
+
+`GET /analytics/campaign/overall-stats` (api-reference/analytics/campaign-performance) has `sent`, `opened` and `unique_open_count` per campaign but no click count, so at workspace and mailbox scope a campaign with link tracking off counts as not measuring clicks. The workspace and daily rows have no click count anyway.

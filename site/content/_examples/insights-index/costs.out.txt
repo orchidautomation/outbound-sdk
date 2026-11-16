@@ -6,25 +6,25 @@ suppression_check: 181, 311, 183
 dropped_replies: 256, 446, 322
 hot_leads: 66, 78, 109
 personalization_gaps: 13, 19, 14
-step_funnel: -, 7, 7
-variant_test: -, 6, 6
+step_funnel: -, 8, 8
+variant_test: -, 7, 7
 copy_audit: 9, 13, 11
 copy_preview: 8, 9, 9
-copy_reuse: -, 69, 58
+copy_reuse: -, 94, 83
 reply_timing: 29, 31, 29
 domain_health: 69, 194, 131
-sender_capacity: 11, 139, 103
-bounce_watch: 818, 822, 756
+sender_capacity: 11, 141, 104
+bounce_watch: 818, 1509, 1443
 warmup_readiness: 7, 7, 6
 sender_load: 103, 107, 71
 settings_audit: -, 103, 68
-campaign_diagnosis: 44, 73, 46
-pipeline_forecast: 34, 62, 36
-anomalies: 6, 6, 6
-period_comparison: 73, 84, 73
-campaign_ranking: 41, 51, 39
-channel_mix: 41, 51, 39
-tag_rollup: 41, 51, 39
-client_report: 322, 489, 353
+campaign_diagnosis: 44, 76, 48
+pipeline_forecast: 34, 64, 38
+anomalies: 6, 7, 7
+period_comparison: 73, 149, 138
+campaign_ranking: 41, 82, 71
+channel_mix: 41, 82, 71
+tag_rollup: 41, 82, 71
+client_report: 322, 616, 479
 
-RateLimited (call): client_report needs at least 4 requests for this input (at most 279), and its cap is 3 requests (maxRequests). No request was sent. Raise maxRequests.
+RateLimited (call): client_report needs at least 5 requests for this input (at most 380), and its cap is 3 requests (maxRequests). No request was sent. Raise maxRequests.

@@ -158,7 +158,10 @@ test("smartlead: a campaign's dated totals fill a missing bound and refuse more 
       ]),
       [
         ["2025-03-01", "2025-03-10"],
+        // Each total is followed by the campaign, for its tracking settings.
+        [null, null],
         ["2025-01-01", "2025-01-31"],
+        [null, null],
       ],
       "a missing end is today, a missing start is 30 days before the end"
     );
@@ -175,7 +178,7 @@ test("smartlead: a campaign's dated totals fill a missing bound and refuse more 
       settle(outbound.campaign(CAMPAIGN).stats({ from: "2025-01-01" })),
       { code: "Invalid" }
     );
-    assert.equal(requests.length, 2, "refused before any request");
+    assert.equal(requests.length, 4, "refused before any request");
   } finally {
     mock.timers.reset();
   }
@@ -460,7 +463,14 @@ test("smartlead: a step without variants returns its total, and steps have no da
       settle(outbound.campaign(CAMPAIGN).stats({ by: "day", scope: "step" })),
       { code: "Unsupported" }
     );
-    assert.equal(requests.length, 1);
+    assert.deepEqual(
+      requests.map((request) => urlOf(request).pathname),
+      [
+        `${API}/campaigns/${CAMPAIGN}/sequence-analytics`,
+        `${API}/campaigns/${CAMPAIGN}`,
+      ],
+      "the step totals, then the campaign for its tracking; nothing for the refused read"
+    );
   } finally {
     mock.timers.reset();
   }
@@ -478,8 +488,10 @@ test("smartlead: a mailbox's totals are its row of the per-mailbox list, found b
       [
         `${API}/email-accounts/123/`,
         `${API}/analytics/mailbox/name-wise-health-metrics`,
+        `${API}/analytics/campaign/overall-stats`,
+        `${API}/campaigns/`,
       ],
-      "the mailbox is read for its address, then the list"
+      "the mailbox is read for its address, then the list, then every campaign's tracking"
     );
     assert.deepEqual(query(urlOf(requests[1])), {
       api_key: KEY,

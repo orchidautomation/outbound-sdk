@@ -2,6 +2,7 @@ import type { AdapterContext, StatsQuery } from "../internal/adapter.ts";
 import type { MetricRow } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
 import { text } from "../internal/json.ts";
+import { applyTracking, ownTracking } from "../internal/tracking.ts";
 import type { InstantlyClient } from "./client.ts";
 import {
   campaignRow,
@@ -11,6 +12,12 @@ import {
   summedRow,
 } from "./map-stats.ts";
 import type { RowScope } from "./map-stats.ts";
+import {
+  campaignFlags,
+  everyCampaignFlags,
+  reportTracking,
+  workspaceTracking,
+} from "./stats-tracking.ts";
 
 const range = (query: StatsQuery) => ({
   end_date: query.to,
@@ -27,10 +34,43 @@ const senderStats = async (
     query: { ...range(query), emails: scope.scopeId },
   });
 
-  return query.by === "day"
-    ? days.map((day) => dailyRow(scope, day))
-    : [summedRow(scope, days)];
+  const rows =
+    query.by === "day"
+      ? days.map((day) => dailyRow(scope, day))
+      : [summedRow(scope, days)];
+
+  // A mailbox sends for many campaigns, so it is judged like the workspace.
+  return applyTracking(
+    rows,
+    await workspaceTracking(client, ctx, range(query))
+  );
 };
+
+/** One campaign's rows, judged on that campaign's settings. */
+const ownRows = async (
+  client: InstantlyClient,
+  ctx: AdapterContext,
+  campaignId: string,
+  rows: MetricRow[]
+): Promise<MetricRow[]> => {
+  const flags = await campaignFlags(client, ctx, campaignId);
+
+  return applyTracking(
+    rows,
+    flags === null ? null : [ownTracking(flags, rows)]
+  );
+};
+
+/** A campaign's rows, or the workspace's when no campaign is named. */
+const judged = async (
+  client: InstantlyClient,
+  ctx: AdapterContext,
+  query: StatsQuery,
+  rows: MetricRow[]
+): Promise<MetricRow[]> =>
+  query.scopeId === undefined
+    ? applyTracking(rows, await workspaceTracking(client, ctx, range(query)))
+    : await ownRows(client, ctx, query.scopeId, rows);
 
 /** Reads the analytics endpoint that matches the scope and grouping. */
 export const readStats = async (
@@ -64,12 +104,24 @@ export const readStats = async (
       query: range(query),
     });
 
+    // Each campaign is judged on its own settings, from the listing.
+    const flags = await everyCampaignFlags(client, ctx);
+
     return campaigns.flatMap((campaign) => {
       const scopeId = text(campaign.campaign_id);
 
-      return scopeId === null
-        ? []
-        : [campaignRow({ ...scope, scopeId }, campaign)];
+      if (scopeId === null) {
+        return [];
+      }
+
+      const row = campaignRow({ ...scope, scopeId }, campaign);
+
+      return applyTracking(
+        [row],
+        flags === null
+          ? null
+          : [{ ...reportTracking(campaign, flags.get(scopeId)), sent: null }]
+      );
     });
   }
 
@@ -88,7 +140,12 @@ export const readStats = async (
       query: { ...range(query), campaign_id: query.scopeId },
     });
 
-    return steps.map((step) => stepRow(scope, step));
+    return await judged(
+      client,
+      ctx,
+      query,
+      steps.map((step) => stepRow(scope, step))
+    );
   }
 
   if (query.by === "day") {
@@ -96,7 +153,12 @@ export const readStats = async (
       query: { ...range(query), campaign_id: query.scopeId },
     });
 
-    return days.map((day) => dailyRow(scope, day));
+    return await judged(
+      client,
+      ctx,
+      query,
+      days.map((day) => dailyRow(scope, day))
+    );
   }
 
   const overview = await client.getObject(
@@ -107,5 +169,5 @@ export const readStats = async (
     }
   );
 
-  return [overviewRow(scope, overview)];
+  return await judged(client, ctx, query, [overviewRow(scope, overview)]);
 };

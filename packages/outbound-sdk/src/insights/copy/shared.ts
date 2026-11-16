@@ -2,7 +2,7 @@
 // rate with its interval.
 
 import type { MetricRow } from "../../internal/entities.ts";
-import { sumCounts } from "../../internal/metrics.ts";
+import { sumMeasured } from "../../internal/metrics.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
 import type { Measured as Rate } from "../ops/shared.ts";
 import { rate, wilson } from "../stats.ts";
@@ -156,9 +156,12 @@ export const replyRateOf = (measured: Measured | null): BasedRate =>
         rate: measured.rate,
       };
 
-/** Adds rows of counts; a count no row reports stays `null`. */
+/**
+ * Adds rows of counts; a count no row reports stays `null`, and an open or
+ * click count is `null` when any row that sent did not measure it.
+ */
 export const sumRows = (rows: readonly MetricRow[]): MetricCounts =>
-  sumCounts(rows);
+  sumMeasured(rows);
 
 /** Groups values by a key, in first-seen order. */
 export const groupBy = <Value, Key>(

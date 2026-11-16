@@ -9,6 +9,8 @@ Columns:
 - **Vendor UI label**: the label the vendor's dashboard shows for the same number. Filled only where a parity case (`docs/vendor-parity.md`) recorded it; `not captured` otherwise.
 - **Unit**: what the vendor field counts. `people` are distinct leads, `messages` are emails or LinkedIn messages and invitations, `events` are opens or clicks, so one message can have many. `money` is an amount in the vendor workspace's own currency. `(unverified)` means the vendor's documentation does not say and no parity case has settled it. `—` when the count is not reported.
 
+An open or click count read from these fields is set to `null` when the campaigns behind the row did not measure it (tracking off with nothing recorded, or mixed tracking); the row's `tracking` field says why. The rule and its costs are in `site/content/docs/api/stats.mdx`, under "Opens and clicks that were not measured".
+
 The SDK's own meaning of each count is in `packages/outbound-sdk/src/internal/metrics.ts`. Where the unit here differs from it (a `messages` count in a field the SDK defines as people), the adapter is wrong or the vendor offers nothing better; see the adapter's research note.
 
 ## Instantly

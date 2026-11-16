@@ -121,7 +121,7 @@ test("instantly: unread replies are asked for with is_unread, and without the fi
   );
 });
 
-test("instantly: every campaign's totals come from one request, each count from its own field", async () => {
+test("instantly: every campaign's totals come from one report and the campaign listing, each count from its own field", async () => {
   const { outbound, requests, settle } = harness(suite);
 
   const stats = await settle(
@@ -129,7 +129,11 @@ test("instantly: every campaign's totals come from one request, each count from 
   );
 
   const url = new URL(requests[0]?.url ?? "");
-  assert.equal(requests.length, 1);
+  assert.deepEqual(
+    requests.map((request) => new URL(request.url).pathname),
+    ["/api/v2/campaigns/analytics", "/api/v2/campaigns"],
+    "the listing is read once for every campaign's tracking settings"
+  );
   assert.equal(url.pathname, "/api/v2/campaigns/analytics");
   assert.equal(url.searchParams.get("id"), null, "no id is every campaign");
   assert.equal(url.searchParams.get("start_date"), "2026-10-01");
