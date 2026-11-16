@@ -7,11 +7,18 @@
 //
 // Ids and refs: some vendors use an email address or a LinkedIn profile URL
 // as a record's id (a mailbox on Instantly, a lead on HeyReach), so that part
-// of `ref`, `sourceId` and every `*Ref` field is masked like the field itself.
-// Under `hash` the same id always gives the same token, so a record keeps its
-// ref from one call to the next. What remains: an id the vendor made up (a
-// number, a UUID) is not personal data and stays, and so does a bare profile
-// slug with no URL around it, which cannot be told apart from one.
+// of `ref`, `sourceId`, every `*Ref` field and every person key is replaced
+// by a token. An address or a profile is how records are counted and joined,
+// so it never becomes one shared `[redacted]`, which would merge everyone
+// into one person (OUT-122). Under `mask` the token is a keyed hash, under a
+// key made for this plugin and never shown, and the `email` and `linkedinUrl`
+// fields get the same token as the id: two people keep two refs and a reply
+// still joins its lead while the plugin lives, and the token cannot be traced
+// back to the address or profile. Under `hash` the same value always gives
+// the same token, so a record keeps its ref from one run to the next. What
+// remains: an id the vendor made up (a number, a UUID) is not personal data
+// and stays, and so does a bare profile slug with no URL around it, which
+// cannot be told apart from one.
 
 import type { OutboundEvent } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
@@ -23,7 +30,7 @@ import type {
 } from "../internal/outbound/operations.ts";
 import type { OutboundPlugin } from "../internal/outbound/plugins.ts";
 import { makeRef, parseRef } from "../internal/ref.ts";
-import { stableId } from "../internal/sha256.ts";
+import { hmacSha256Hex, stableId } from "../internal/sha256.ts";
 import { profileSlug } from "../internal/url.ts";
 
 export type RedactField =
@@ -40,8 +47,10 @@ export interface RedactOptions {
   /** What to mask. Defaults to everything. */
   readonly fields?: readonly RedactField[] | undefined;
   /**
-   * `mask` replaces a value with `[redacted]`. `hash` replaces it with a
-   * stable token, so the same person can still be counted and joined.
+   * `mask` replaces a value with `[redacted]`, and an address or a profile
+   * with a token keyed for this plugin, so people can still be counted and
+   * joined while it lives. `hash` replaces every value with a stable token,
+   * so the same person gets the same token from one run to the next.
    */
   readonly strategy?: "hash" | "mask" | undefined;
 }
@@ -68,7 +77,8 @@ export interface RedactExtension {
      * What this redact writes in place of `value` in a masked field: the
      * stable token under `hash`, so a caller can find a known address among
      * hashed records without the records holding it; `[redacted]` under
-     * `mask`.
+     * `mask`, whose tokens for addresses and profiles are keyed and never
+     * given out.
      */
     readonly hash: (value: string) => string;
   };
@@ -88,10 +98,67 @@ const replacer =
       : `redacted:${stableId(value).slice(0, 16)}`;
   };
 
+// A key for this plugin alone, so a token names one person to the records it
+// came with and to nothing outside them.
+const keyedToken = (): ((value: string) => string) => {
+  const key = crypto.getRandomValues(new Uint8Array(32));
+
+  return (value) => `redacted:${hmacSha256Hex(key, value).slice(0, 16)}`;
+};
+
+type Identifier = "email" | "linkedin";
+
 interface Masks {
   readonly has: (field: RedactField) => boolean;
   readonly replace: Replace;
+  /** What an address or a profile slug in an id becomes: one token per person. */
+  readonly token: (value: string) => string;
+  /** What an `email` or `linkedinUrl` field becomes. */
+  readonly identifier: (
+    field: Identifier,
+    value: string | null
+  ) => string | null;
 }
+
+const maskIdentifier = (
+  masks: Masks,
+  field: Identifier,
+  value: string | null
+): string | null => (masks.has(field) ? masks.identifier(field, value) : value);
+
+const masksFor = (
+  fields: ReadonlySet<RedactField>,
+  strategy: "hash" | "mask"
+): Masks => {
+  const replace = replacer(strategy);
+  const has = (field: RedactField): boolean => fields.has(field);
+
+  if (strategy === "hash") {
+    return {
+      has,
+      identifier: (_field, value) => replace(value),
+      replace,
+      token: (value) => replace(value) ?? MASK,
+    };
+  }
+
+  const token = keyedToken();
+
+  // Normalized as in an id, so the field and the ref get the same token.
+  return {
+    has,
+    identifier: (field, value) =>
+      value === null
+        ? null
+        : token(
+            field === "email"
+              ? value.toLowerCase()
+              : (profileSlug(value) ?? value)
+          ),
+    replace,
+    token,
+  };
+};
 
 const maskIf = (
   masks: Masks,
@@ -120,13 +187,12 @@ const maskId = (masks: Masks, id: string): string => {
   const slug = masks.has("linkedin") ? profileSlug(id) : null;
 
   if (slug !== null) {
-    return masks.replace(slug) ?? MASK;
+    return masks.token(slug);
   }
 
   return masks.has("email")
-    ? id.replaceAll(
-        EMAIL_IN_ID,
-        (address) => masks.replace(address.toLowerCase()) ?? MASK
+    ? id.replaceAll(EMAIL_IN_ID, (address) =>
+        masks.token(address.toLowerCase())
       )
     : id;
 };
@@ -147,7 +213,7 @@ const maskKey = (masks: Masks, key: string): string => {
 
   return field === undefined || !masks.has(field)
     ? key
-    : `${field}:${masks.replace(key.slice(field.length + 1)) ?? MASK}`;
+    : `${field}:${masks.token(key.slice(field.length + 1))}`;
 };
 
 const maskEach = (
@@ -186,7 +252,7 @@ const maskIdentifiers = <Item extends Fields>(
   return { ...item, ...changed } as Item;
 };
 
-const BLOCK_FIELDS = new Map<string, RedactField>([
+const BLOCK_FIELDS = new Map<string, Identifier>([
   ["email", "email"],
   ["linkedin", "linkedin"],
 ]);
@@ -215,10 +281,10 @@ const redactFields = (masks: Masks, record: OutboundRecord): OutboundRecord => {
       // The company's LinkedIn page and its website name the company too.
       companyLinkedinUrl: maskIf(masks, "company", record.companyLinkedinUrl),
       custom: maskCustom(masks, record.custom),
-      email: maskIf(masks, "email", record.email),
+      email: maskIdentifier(masks, "email", record.email),
       firstName: maskIf(masks, "name", record.firstName),
       lastName: maskIf(masks, "name", record.lastName),
-      linkedinUrl: maskIf(masks, "linkedin", record.linkedinUrl),
+      linkedinUrl: maskIdentifier(masks, "linkedin", record.linkedinUrl),
       phone: maskIf(masks, "phone", record.phone),
       raw: null,
       website: maskIf(masks, "company", record.website),
@@ -227,7 +293,7 @@ const redactFields = (masks: Masks, record: OutboundRecord): OutboundRecord => {
 
   if ("value" in record) {
     // A block list entry names a person only when it is an address or a profile.
-    const blocked: RedactField | undefined = BLOCK_FIELDS.get(record.kind);
+    const blocked = BLOCK_FIELDS.get(record.kind);
 
     return {
       ...record,
@@ -235,7 +301,7 @@ const redactFields = (masks: Masks, record: OutboundRecord): OutboundRecord => {
       value:
         blocked === undefined
           ? record.value
-          : (maskIf(masks, blocked, record.value) ?? MASK),
+          : (maskIdentifier(masks, blocked, record.value) ?? MASK),
     };
   }
 
@@ -257,8 +323,8 @@ const redactFields = (masks: Masks, record: OutboundRecord): OutboundRecord => {
   if ("kind" in record) {
     return {
       ...record,
-      address: maskIf(masks, "email", record.address),
-      linkedinUrl: maskIf(masks, "linkedin", record.linkedinUrl),
+      address: maskIdentifier(masks, "email", record.address),
+      linkedinUrl: maskIdentifier(masks, "linkedin", record.linkedinUrl),
       name: maskIf(masks, "name", record.name),
       raw: null,
     };
@@ -277,6 +343,15 @@ const redactFields = (masks: Masks, record: OutboundRecord): OutboundRecord => {
 
 const redactRecord = (masks: Masks, record: OutboundRecord): OutboundRecord =>
   maskIdentifiers(masks, redactFields(masks, record));
+
+const maskEventField = (
+  masks: Masks,
+  field: RedactField,
+  value: string
+): string | null =>
+  field === "email" || field === "linkedin"
+    ? maskIdentifier(masks, field, value)
+    : maskIf(masks, field, value);
 
 const EVENT_FIELDS = new Map<string, RedactField>([
   ["leadEmail", "email"],
@@ -299,7 +374,9 @@ const redactEventData = (
       // An object could hold anything, so only plain values are kept.
       result[key] = isJsonObject(value) || Array.isArray(value) ? MASK : value;
     } else {
-      result[key] = isString(value) ? maskIf(masks, field, value) : null;
+      result[key] = isString(value)
+        ? maskEventField(masks, field, value)
+        : null;
     }
   }
 
@@ -313,10 +390,7 @@ export const redact = (
   const fields = new Set(options.fields ?? ALL_FIELDS);
   const strategy = options.strategy ?? "mask";
 
-  const masks: Masks = {
-    has: (field) => fields.has(field),
-    replace: replacer(strategy),
-  };
+  const masks = masksFor(fields, strategy);
 
   return {
     // Asking for bodies while they are being removed is a contradiction, so

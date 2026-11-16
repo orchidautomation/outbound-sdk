@@ -50,15 +50,26 @@ const tool = (): Adapter =>
 
 type Keyed = Readonly<Record<string, unknown>>;
 
+const TOKEN = /^redacted:[0-9a-f]{16}$/u;
+
 test("redact masks the person keys identity adds, and hashes them to match the field", async () => {
   const masked = createOutbound({
     adapter: tool(),
     plugins: [redact(), identity()],
   });
 
-  const [lead] = (await masked.leads.list()).items as readonly Keyed[];
-  assert.equal(lead?.personKey, `email:${MASK}`);
-  assert.deepEqual(lead?.personKeys, [`email:${MASK}`, `linkedin:${MASK}`]);
+  const [lead, other] = (await masked.leads.list()).items as readonly Keyed[];
+  assert.equal(lead?.personKey, `email:${String(lead?.email)}`);
+  assert.match(String(lead?.email), TOKEN);
+  assert.deepEqual(lead?.personKeys, [
+    lead?.personKey,
+    `linkedin:${String(lead?.linkedinUrl)}`,
+  ]);
+  assert.equal(
+    other?.personKey,
+    `linkedin:${String(lead?.linkedinUrl)}`,
+    "the same profile is the same key on both records"
+  );
   assert.ok(
     !/person1|example-person/iu.test(JSON.stringify(await masked.leads.list())),
     "no address or slug is left anywhere in the listing"
@@ -120,23 +131,32 @@ test("person() refuses under a redact that masks identifiers, and works when it 
 test("redact masks an address or a profile URL inside an id and every ref", async () => {
   const outbound = createOutbound({ adapter: tool(), plugins: [redact()] });
   const [sender] = (await outbound.senders.list()).items;
-  assert.equal(sender?.sourceId, MASK);
-  assert.equal(sender?.ref, `mailtool:agency:${MASK}`);
-
   const [message] = (await outbound.messages.list()).items;
-  assert.equal(message?.senderRef, `mailtool:agency:${MASK}`);
+  const leads = (await outbound.leads.list()).items;
+  const [first, second] = leads;
+  assert.ok(sender && message && first && second);
+
+  assert.match(sender.sourceId, TOKEN);
+  assert.equal(sender.ref, `mailtool:agency:${sender.sourceId}`);
+  assert.equal(sender.address, sender.sourceId, "the field joins its id");
+
+  assert.equal(message.senderRef, sender.ref, "a ref still joins");
   assert.equal(
-    message?.leadRef,
+    message.leadRef,
     "mailtool:agency:l1",
     "an id the vendor made up is not personal data and stays"
   );
-  assert.equal(message?.ref, "mailtool:agency:m1");
+  assert.equal(message.ref, "mailtool:agency:m1");
 
-  const leads = (await outbound.leads.list()).items;
-  assert.equal(leads[0]?.ref, "mailtool:agency:l1");
-  assert.equal(leads[1]?.sourceId, MASK);
-  assert.equal(leads[1]?.ref, `mailtool:agency:${MASK}`);
-  assert.equal(leads[1]?.campaignRef, "mailtool:agency:c1");
+  assert.equal(first.ref, "mailtool:agency:l1");
+  assert.match(second.sourceId, TOKEN);
+  assert.equal(second.ref, `mailtool:agency:${second.sourceId}`);
+  assert.equal(
+    second.sourceId,
+    first.linkedinUrl,
+    "one profile is one token, as an id and as a field"
+  );
+  assert.equal(second.campaignRef, "mailtool:agency:c1");
 
   const everything = JSON.stringify([
     await outbound.senders.list(),
@@ -145,6 +165,40 @@ test("redact masks an address or a profile URL inside an id and every ref", asyn
   ]);
 
   assert.ok(!/outreach@|example-person/iu.test(everything), everything);
+});
+
+test("under mask, two people keep two refs, and the token is keyed to the plugin (OUT-122)", async () => {
+  const people = memory({
+    data: {
+      campaigns: [{ id: "c1", name: "Founders" }],
+      leads: [1, 2, 3].map((index) => ({
+        campaignId: "c1",
+        id: `https://www.linkedin.com/in/example-person-${index}`,
+      })),
+    },
+    name: "heyreach",
+    workspaceId: "default",
+  });
+
+  const plugin = redact();
+  const outbound = createOutbound({ adapter: people, plugins: [plugin] });
+  const refs = (await outbound.leads.list()).items.map((lead) => lead.ref);
+  const again = (await outbound.leads.list()).items.map((lead) => lead.ref);
+
+  assert.equal(new Set(refs).size, 3, "never one [redacted] for everyone");
+  assert.deepEqual(again, refs, "stable while the plugin lives");
+  assert.ok(
+    !refs.some((ref) => /example-person|linkedin/u.test(ref)),
+    String(refs)
+  );
+
+  const other = createOutbound({ adapter: people, plugins: [redact()] });
+  const [elsewhere] = (await other.leads.list()).items;
+  assert.notEqual(
+    elsewhere?.ref,
+    refs[0],
+    "another plugin has another key, so a token cannot be looked up from a profile"
+  );
 });
 
 test("a hashed ref is stable, and the same wherever the record is pointed at", async () => {
@@ -197,8 +251,15 @@ test("ids are masked only for the fields redact was asked to mask, in events too
   };
 
   const redacted = redact().event?.(event);
-  assert.equal(redacted?.leadRef, `mailtool:agency:${MASK}`);
-  assert.equal(redacted?.senderRef, MASK, "a bare id is masked as it stands");
+  assert.match(
+    redacted?.leadRef ?? "",
+    /^mailtool:agency:redacted:[0-9a-f]{16}$/u
+  );
+  assert.match(
+    redacted?.senderRef ?? "",
+    TOKEN,
+    "a bare id is masked as it stands"
+  );
   assert.equal(redacted?.campaignRef, "mailtool:agency:c1");
   assert.equal(redacted?.messageRef, null);
 });

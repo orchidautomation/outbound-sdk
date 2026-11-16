@@ -48,7 +48,7 @@ The note is the exported constant `UNTRUSTED_NOTE` and the cut-off is `DEFAULT_B
 
 ## Mask every field: `redact()`
 
-With no options, `redact()` masks every field it knows and replaces each value with `[redacted]`. List it first in `plugins` so it is the outermost layer.
+With no options, `redact()` masks every field it knows and replaces each value with `[redacted]`, and an email address or a profile with a token keyed for that instance, so people stay apart. List it first in `plugins` so it is the outermost layer.
 
 <include meta='title="redacted.ts"'>
   ../../_examples/reply-text-for-llm/redacted.ts
@@ -153,7 +153,7 @@ All three declare full message bodies and reply categories. On Smartlead and Hey
 ## Limits
 
 - Redaction masks the fields `email`, `name`, `company`, `linkedin`, `custom`, `subject` and `body`. It does not mask a lead's `title`, and it does not look inside any text.
-- An id the vendor built from an email address or a LinkedIn profile URL is masked inside `ref`, `sourceId` and every `*Ref` field. On HeyReach a lead's id is its profile URL, so with `redact` on its `ref` holds `[redacted]` or a token in its place, and cannot be passed back to `outbound.lead()`. Any other id is left as it is.
+- An id the vendor built from an email address or a LinkedIn profile URL is masked inside `ref`, `sourceId` and every `*Ref` field. On HeyReach a lead's id is its profile URL, so with `redact` on its `ref` holds a token in its place, one per person, and cannot be passed back to `outbound.lead()`. Any other id is left as it is.
 - `redact` turns off `outbound.native` and `outbound.raw`. On an instance without `redact`, both return the vendor's payload unmasked: do not hand them to code a model drives.
 - Marking text as untrusted does not stop prompt injection.
 - Truncation is by character count, 500 by default in the tools. It can cut a word or a sentence in half.
