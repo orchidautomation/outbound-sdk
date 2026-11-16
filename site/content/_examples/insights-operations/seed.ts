@@ -110,7 +110,8 @@ export const seed: MemoryData = {
     // Bounces alternate between 1 and 3 a day, then 14 on 2026-11-11.
     ...daily("ecom", (daysAgo) => ({
       bounced: daysAgo === 3 ? 14 : 1 + (daysAgo % 2) * 2,
-      contacted: 50,
+      // 798 over the 21 days, under twice the 400 leads.
+      contacted: 38,
       positive: 0,
       replied: 1,
       sent: 80,

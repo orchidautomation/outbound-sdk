@@ -3,19 +3,19 @@
     "campaignsRead": 5,
     "moreCampaignsExist": false,
     "comparison": {
-      "difference": 0.083,
+      "difference": 0.0783,
       "higher": "linkedin",
       "test": {
         "pValue": 0,
         "significant": true,
-        "z": -5.9757
+        "z": -5.407
       }
     },
-    "finding": "The reply rate is 13.3% on LinkedIn against 5% on email; the difference is more than chance (p < 0.0001).",
+    "finding": "The reply rate is 13.3% on LinkedIn against 5.5% on email; the difference is more than chance (p < 0.0001).",
     "byProvider": [
       {
         "bounced": 96,
-        "contacted": 2960,
+        "contacted": 2708,
         "positive": 36,
         "replied": 149,
         "sent": 5940,
@@ -24,17 +24,17 @@
         "channel": "email",
         "positiveRate": {
           "count": 36,
-          "high": 0.0168,
-          "low": 0.0088,
-          "of": 2960,
-          "rate": 0.0122
+          "high": 0.0183,
+          "low": 0.0096,
+          "of": 2708,
+          "rate": 0.0133
         },
         "replyRate": {
           "count": 149,
-          "high": 0.0588,
-          "low": 0.043,
-          "of": 2960,
-          "rate": 0.0503
+          "high": 0.0643,
+          "low": 0.047,
+          "of": 2708,
+          "rate": 0.055
         },
         "provider": "memory"
       },
@@ -73,7 +73,7 @@
     "channels": [
       {
         "bounced": 96,
-        "contacted": 2960,
+        "contacted": 2708,
         "positive": 36,
         "replied": 149,
         "sent": 5940,
@@ -82,17 +82,17 @@
         "channel": "email",
         "positiveRate": {
           "count": 36,
-          "high": 0.0168,
-          "low": 0.0088,
-          "of": 2960,
-          "rate": 0.0122
+          "high": 0.0183,
+          "low": 0.0096,
+          "of": 2708,
+          "rate": 0.0133
         },
         "replyRate": {
           "count": 149,
-          "high": 0.0588,
-          "low": 0.043,
-          "of": 2960,
-          "rate": 0.0503
+          "high": 0.0643,
+          "low": 0.047,
+          "of": 2708,
+          "rate": 0.055
         }
       },
       {

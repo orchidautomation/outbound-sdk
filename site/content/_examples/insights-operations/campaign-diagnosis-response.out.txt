@@ -90,23 +90,23 @@
       },
       "positiveRate": {
         "count": 0,
-        "high": 0.0036,
+        "high": 0.0048,
         "low": 0,
-        "of": 1050,
+        "of": 798,
         "rate": 0
       },
       "replyRate": {
         "count": 21,
-        "high": 0.0304,
-        "low": 0.0131,
-        "of": 1050,
-        "rate": 0.02
+        "high": 0.0399,
+        "low": 0.0173,
+        "of": 798,
+        "rate": 0.0263
       }
     },
     "summary": "6 findings. Most serious: Bounce rate is 3.2% (54 of 1680 sends), over the 3% limit.",
     "totals": {
       "bounced": 54,
-      "contacted": 1050,
+      "contacted": 798,
       "positive": 0,
       "replied": 21,
       "sent": 1680

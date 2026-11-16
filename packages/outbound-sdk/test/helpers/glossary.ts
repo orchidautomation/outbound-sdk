@@ -1,6 +1,6 @@
 // Reads docs/metric-glossary.md and reports where it disagrees with the code.
 
-const UNIT = /^(?:people|messages|events)(?: \(unverified\))?$/u;
+const UNIT = /^(?:people|messages|events|money)(?: \(unverified\))?$/u;
 const NOT_REPORTED = "not reported";
 
 export interface GlossaryAdapter {

@@ -88,17 +88,46 @@ export const computeRates = (row: MetricRow): Record<MetricName, Rate> => ({
   unsubscribeRate: perLead(row, row.unsubscribed),
 });
 
+/**
+ * How many times a campaign's leads its count of leads contacted may be
+ * before the count reads as a fault. Leads removed after their sequence
+ * started stay in `contacted`, so it can pass `leads` on correct data (seen
+ * live: 430 started against 383 leads). A count that also takes in each step
+ * a lead reaches is several times the leads (1,404 against 383 on a
+ * four-step campaign). Two times sits between the two.
+ */
+export const CONTACTED_LEADS_LIMIT = 2;
+
+/**
+ * `true` when `contacted` is more than `CONTACTED_LEADS_LIMIT` times `leads`,
+ * which means the count of leads contacted is not what it says. `false` when
+ * either is unknown or the campaign has no leads to compare with.
+ */
+export const contactedBeyondLeads = (
+  contacted: number | null,
+  leads: number | null | undefined
+): boolean =>
+  contacted !== null &&
+  leads !== null &&
+  leads !== undefined &&
+  leads > 0 &&
+  contacted > leads * CONTACTED_LEADS_LIMIT;
+
 const COUNT_KEYS = [
   "bounced",
   "clicked",
   "clickedTotal",
+  "completed",
   "connectionsAccepted",
   "connectionsSent",
   "contacted",
   "delivered",
   "inmailsSent",
+  "leads",
   "opened",
   "openedTotal",
+  "opportunities",
+  "opportunityValue",
   "positive",
   "replied",
   "repliedAuto",
@@ -113,13 +142,17 @@ export const emptyCounts = (): MetricCounts => ({
   bounced: null,
   clicked: null,
   clickedTotal: null,
+  completed: null,
   connectionsAccepted: null,
   connectionsSent: null,
   contacted: null,
   delivered: null,
   inmailsSent: null,
+  leads: null,
   opened: null,
   openedTotal: null,
+  opportunities: null,
+  opportunityValue: null,
   positive: null,
   replied: null,
   repliedAuto: null,
@@ -139,7 +172,7 @@ export const sumCounts = (rows: readonly MetricCounts[]): MetricCounts => {
     for (const key of COUNT_KEYS) {
       const value = row[key];
 
-      if (value !== null) {
+      if (value !== null && value !== undefined) {
         total[key] = (total[key] ?? 0) + value;
       }
     }
