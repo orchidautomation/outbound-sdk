@@ -184,7 +184,7 @@ test("plugin event hooks run on every event and can drop one", async () => {
     provider: "instantly",
   });
 
-  assert.equal(redacted?.data.leadEmail, "[redacted]");
+  assert.match(String(redacted?.data.leadEmail), /^redacted:[0-9a-f]{16}$/u);
   assert.equal(redacted?.data.text, "[redacted]");
   assert.equal(redacted?.raw, null);
   assert.equal(redacted?.type, "reply.received");

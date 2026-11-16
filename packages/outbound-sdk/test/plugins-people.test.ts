@@ -14,6 +14,8 @@ import type { Adapter, OutboundEvent } from "../src/index.ts";
 import { memory } from "../src/memory/index.ts";
 import { MASK, redact } from "../src/redact/index.ts";
 
+const TOKEN = /^redacted:[0-9a-f]{16}$/u;
+
 const emailTool = (): Adapter =>
   memory({
     data: {
@@ -124,11 +126,11 @@ test("redact masks every personal field and drops the raw payload", async () => 
   });
 
   const [lead] = (await outbound.leads.list()).items;
-  assert.equal(lead?.email, MASK);
+  assert.match(lead?.email ?? "", TOKEN, "an address is a keyed token");
   assert.equal(lead?.firstName, MASK);
   assert.equal(lead?.lastName, MASK);
   assert.equal(lead?.company, MASK);
-  assert.equal(lead?.linkedinUrl, MASK);
+  assert.match(lead?.linkedinUrl ?? "", TOKEN, "so is a profile");
   assert.deepEqual(lead?.custom, { phone: MASK });
   assert.equal(lead?.raw, null);
   assert.equal(
@@ -138,7 +140,7 @@ test("redact masks every personal field and drops the raw payload", async () => 
   );
 
   const [sender] = (await outbound.senders.list()).items;
-  assert.equal(sender?.address, MASK);
+  assert.match(sender?.address ?? "", TOKEN);
   assert.equal(sender?.name, MASK);
 
   const [message] = (await outbound.messages.list()).items;
@@ -227,8 +229,9 @@ test("redact masks webhook event data and fails closed on an unknown record", as
   };
 
   const redacted = plugin.event?.(event);
+  assert.match(String(redacted?.data.leadEmail), TOKEN);
   assert.deepEqual(redacted?.data, {
-    leadEmail: MASK,
+    leadEmail: redacted?.data.leadEmail,
     nested: MASK,
     stepIndex: 0,
     text: MASK,
