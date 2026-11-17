@@ -46,6 +46,7 @@ export const toSentMessage = (
   subject: text(raw.email_subject),
   // A campaign email is not in the master inbox, so it has no thread there.
   threadId: null,
+  url: null,
   variantKey: null,
 });
 
@@ -72,6 +73,8 @@ const inboxFields = (
   subject: text(raw.subject) ?? text(raw.email_subject),
   // Any reply in a conversation reads the whole conversation.
   threadId: text(raw.id),
+  // EmailBison documents no link to one master inbox conversation.
+  url: null,
   variantKey: null,
 });
 

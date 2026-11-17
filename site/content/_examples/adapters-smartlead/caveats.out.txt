@@ -68,3 +68,5 @@
 
 - Block list entries with an @ are emails, the rest domains.
 
+- A message's or reply's url is null: Smartlead documents no link to one master inbox conversation. The app_url and ui_master_inbox_link of its webhooks are documented with the master inbox page only (https://app.smartlead.ai/app/master-inbox), and no read returns a link.
+

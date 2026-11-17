@@ -15,7 +15,8 @@ reply_samples {}
       "is_auto": null,
       "lead": "memory:default:lead_riley",
       "received_at": "2026-11-11T15:30:00.000Z",
-      "reply": "memory:default:msg_in"
+      "reply": "memory:default:msg_in",
+      "url": null
     }
   ]
 }
@@ -37,7 +38,8 @@ reply_samples { include_bodies: true }
       "is_auto": null,
       "lead": "memory:default:lead_riley",
       "received_at": "2026-11-11T15:30:00.000Z",
-      "reply": "memory:default:msg_in"
+      "reply": "memory:default:msg_in",
+      "url": null
     }
   ]
 }

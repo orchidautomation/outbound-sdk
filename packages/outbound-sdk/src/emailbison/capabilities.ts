@@ -116,6 +116,8 @@ export const fields: FieldDeclaration = {
     isAuto: false,
     isAutoSource: false,
     stepIndex: false,
+    // No link to one master inbox conversation is documented.
+    url: false,
     variantKey: false,
   },
   metricRow: {
@@ -141,6 +143,7 @@ export const fields: FieldDeclaration = {
     // A fixed rule reads the sender, subject and body when automated_reply is missing.
     leftCompany: "derived",
     stepIndex: false,
+    url: false,
     variantKey: false,
   },
   sender: { linkedinUrl: false },
@@ -215,4 +218,5 @@ export const caveats: readonly string[] = [
   "Webhook signatures are not verified: the signing scheme behind webhooks_secret_key is undocumented. Put a secret in the webhook URL.",
   "Block list entries come from two lists: emails first, then domains.",
   "A lead list's size is leads_succeeded.",
+  "A message's or reply's url is null: EmailBison documents no link to one master inbox conversation, and no read returns one.",
 ];

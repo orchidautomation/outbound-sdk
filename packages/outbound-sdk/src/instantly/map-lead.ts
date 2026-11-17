@@ -236,6 +236,18 @@ const leadOf = (raw: JsonObject): string | null =>
     : null) ??
   text(raw.lead_id);
 
+// The Unibox link Instantly itself sends as `unibox_url` on reply webhooks
+// ("URL to view the conversation in Unibox"). Read live on 2026-11-17: it is
+// this thread's id after `thread:`, and the workspace in `selected_wks`.
+const uniboxUrl = (raw: JsonObject): string | null => {
+  const thread = text(raw.thread_id);
+  const workspace = text(raw.organization_id);
+
+  return thread === null || workspace === null
+    ? null
+    : `https://app.instantly.ai/app/unibox?thread_search=thread:${encodeURIComponent(thread)}&selected_wks=${encodeURIComponent(workspace)}`;
+};
+
 const messageFields = (
   identity: Identity,
   raw: JsonObject,
@@ -253,6 +265,7 @@ const messageFields = (
     sentAt: timestamp(raw.timestamp_email) ?? timestamp(raw.timestamp_created),
     subject: text(raw.subject),
     threadId: text(raw.thread_id),
+    url: uniboxUrl(raw),
     ...stepPosition(raw.step),
   };
 };
