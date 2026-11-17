@@ -1,15 +1,12 @@
 // Tools about how the account is set up, not how it is performing: a
-// campaign's settings, each sender's deliverability and the saved lead lists.
+// campaign's settings and the saved lead lists.
 
 import { z } from "zod";
 
-import { mapConcurrent } from "../internal/concurrency.ts";
-import type { SenderHealth } from "../internal/entities-account.ts";
 import { OutboundError } from "../internal/errors.ts";
 import { toJson } from "../internal/json.ts";
 import type { NativeRead } from "../internal/native.ts";
 import { plural } from "../internal/numbers.ts";
-import { listProblemsOf, SCREENED_AT_MOST } from "../internal/sender-screen.ts";
 import { UNTRUSTED_NOTE } from "./shared.ts";
 import type { ToolDefinition } from "./shared.ts";
 
@@ -49,160 +46,6 @@ export const campaignSetup: ToolDefinition<z.infer<typeof setupInput>> = {
         requests: settings.meta.requests,
       },
       next: "Use campaign_trend to see whether volume matches these caps, or deliverability_check for the senders.",
-      ok: true,
-    };
-  },
-};
-
-const deliverabilityInput = z.object({
-  campaign: z
-    .string()
-    .min(1)
-    .optional()
-    .describe("Only the senders attached to this campaign"),
-  limit: z
-    .number()
-    .int()
-    .min(1)
-    .max(25)
-    .default(10)
-    .describe(
-      "How many senders to check in full, problems first. One or more vendor requests each."
-    ),
-});
-
-const DNS_RECORDS = ["spf", "dkim", "dmarc", "mx"] as const;
-
-/** What is wrong with a sender, in plain words. Empty when nothing is. */
-const problemsOf = (health: SenderHealth): string[] => {
-  const problems = DNS_RECORDS.flatMap((record) =>
-    health.dns[record] === false ? [`${record.toUpperCase()} record fails`] : []
-  );
-
-  if (health.connected === false) {
-    problems.push("the vendor cannot sign in to this sender");
-  }
-
-  if (health.blacklisted === true) {
-    problems.push("on a block list");
-  }
-
-  return [...problems, ...health.issues];
-};
-
-const spamRate = (health: SenderHealth): number | null => {
-  const spam = health.warmup?.spam ?? null;
-  const inbox = health.warmup?.inbox ?? null;
-
-  return spam === null || inbox === null || spam + inbox === 0
-    ? null
-    : Math.round((spam / (spam + inbox)) * 10_000) / 10_000;
-};
-
-/** What `meta.notes` says when the full checks did not reach every sender. */
-const coverageNotes = (
-  checked: number,
-  screened: number,
-  complete: boolean
-): string[] => {
-  const parts: string[] = [];
-
-  if (checked < screened) {
-    parts.push(
-      `Only ${checked} of ${screened} senders were checked in full, those with a problem in the sender list first; the rest were screened for status and warmup only, and with_problems counts what that found. Raise limit to check more.`
-    );
-  }
-
-  if (!complete) {
-    parts.push(
-      `More than ${screened} senders exist; those past the first ${screened} were not screened.`
-    );
-  }
-
-  return parts;
-};
-
-export const deliverabilityCheck: ToolDefinition<
-  z.infer<typeof deliverabilityInput>
-> = {
-  description:
-    "Whether each sender can deliver: its DNS records (SPF, DKIM, DMARC, MX), whether the vendor can still sign in, block list status, and how much warmup mail landed in spam. Every sender (up to 500) is first screened from the sender list for a disconnected or failing status and a zero warmup score; the first limit senders, problems first, are then checked in full. with_problems counts problems across every screened sender. checked is how many were checked in full, total how many senders there are (null past 500); meta.complete: false means not every sender was checked in full, and meta.notes says which were left out. Use it when bounces rise or replies drop. A null means the vendor does not report that check.",
-  inputSchema: deliverabilityInput,
-  name: "deliverability_check",
-  needs: ["senders.health"],
-  run: async (outbound, input) => {
-    const walk = outbound.senders.listAll({
-      campaignId: input.campaign,
-      max: SCREENED_AT_MOST,
-    });
-
-    const listed = await walk.toArray();
-
-    const screened = listed.map((sender) => ({
-      listProblems: listProblemsOf(sender),
-      sender,
-    }));
-
-    const ranked = screened.toSorted(
-      (left, right) => right.listProblems.length - left.listProblems.length
-    );
-
-    const chosen = ranked.slice(0, input.limit);
-    const unchecked = ranked.slice(input.limit);
-    let requests = walk.meta?.requests ?? 0;
-
-    const checks = await mapConcurrent(chosen, async (entry) => ({
-      ...entry,
-      health: await outbound.sender(entry.sender.ref).health(),
-    }));
-
-    const rows = checks.map(({ health, listProblems, sender }) => {
-      const problems = [...listProblems, ...problemsOf(health)];
-      requests += health.meta.requests;
-
-      return {
-        problems,
-        row: {
-          address: sender.address,
-          blacklisted: health.blacklisted,
-          checked_at: health.checkedAt,
-          connected: health.connected,
-          dns: { ...health.dns },
-          domain: health.domain,
-          problems,
-          sender: sender.ref,
-          status: sender.status,
-          warmup_score: health.warmup?.score ?? null,
-          warmup_spam_rate: spamRate(health),
-        },
-      };
-    });
-
-    const ordered = rows.toSorted(
-      (left, right) => right.problems.length - left.problems.length
-    );
-
-    const complete = !walk.truncated;
-    const notes = coverageNotes(rows.length, screened.length, complete);
-
-    return {
-      data: {
-        checked: rows.length,
-        screened: screened.length,
-        senders: ordered.map((entry) => entry.row),
-        total: complete ? screened.length : null,
-        with_problems:
-          rows.filter((entry) => entry.problems.length > 0).length +
-          unchecked.filter((entry) => entry.listProblems.length > 0).length,
-      },
-      meta: {
-        complete: complete && unchecked.length === 0,
-        evidence: "exact",
-        notes,
-        provider: outbound.provider,
-        requests,
-      },
-      next: "Use sender_health for each sender's sending results, or campaign_setup to see what a campaign asks of its senders.",
       ok: true,
     };
   },

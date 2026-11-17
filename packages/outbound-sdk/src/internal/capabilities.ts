@@ -31,6 +31,8 @@ export interface Capabilities {
   "senders.warmup": boolean;
   /** DNS records, connection state and warmup traffic for one sender. */
   "senders.health": boolean;
+  /** The same health for every sender, a page at a time, in a few requests a page instead of a few per sender. */
+  "senders.healthList": boolean;
   /** List every lead on the credential, across campaigns. */
   "leads.list": boolean;
   "leads.get": boolean;
@@ -153,6 +155,7 @@ export const NO_CAPABILITIES: Capabilities = {
   "senders.byCampaign": false,
   "senders.get": false,
   "senders.health": false,
+  "senders.healthList": false,
   "senders.list": false,
   "senders.warmup": false,
   sequence: false,

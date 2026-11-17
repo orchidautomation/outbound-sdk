@@ -580,9 +580,9 @@ export interface InsightInputs {
   /** The input of `domainHealth` (the `domain_health` tool). */
   readonly domainHealth: {
     /**
-     * The most senders to check. Each costs 1 request.
+     * The most senders to check. Leave out for 500 where the vendor reads health a page at a time (a few requests per 100 senders), or 50 where each sender costs 1 to 3 requests.
      *
-     * A whole number from 1 to 500. Defaults to `50`.
+     * A whole number from 1 to 500. Defaults to `null`.
      */
     readonly max_senders?: number | undefined;
 

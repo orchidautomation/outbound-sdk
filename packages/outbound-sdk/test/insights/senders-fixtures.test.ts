@@ -23,10 +23,15 @@ import { NOW } from "./helpers.ts";
 
 const GONE = "person11@example.com";
 
-/** An instance over one vendor's fixtures; `answer` may replace a response. */
+/**
+ * An instance over one vendor's fixtures; `answer` may replace a response.
+ * `oneByOne` turns off reading health a page at a time, so each mailbox's
+ * health is its own read.
+ */
 const over = (
   suite: AdapterSuite,
-  answer: (request: RecordedRequest) => Response | undefined = () => {}
+  answer: (request: RecordedRequest) => Response | undefined = () => {},
+  oneByOne = false
 ) => {
   const clock = createClock();
   const unrouted: string[] = [];
@@ -36,8 +41,18 @@ const over = (
     (request, index) => answer(request) ?? fromFixtures(request, index)
   );
 
+  const adapter = suite.make();
+
   const outbound = createOutbound({
-    adapter: suite.make(),
+    adapter: oneByOne
+      ? {
+          ...adapter,
+          capabilities: {
+            ...adapter.capabilities,
+            "senders.healthList": false,
+          },
+        }
+      : adapter,
     fetch: http.fetch,
     plugins: [insights()],
     rateLimitStore: new MemoryRateLimitStore(),
@@ -102,7 +117,7 @@ test("sender_capacity on Instantly counts only the days in its window", async ()
 });
 
 test("domain_health and warmup_readiness leave out a mailbox the vendor no longer finds", async () => {
-  const domains = over(instantly, failing(404));
+  const domains = over(instantly, failing(404), true);
 
   const health = await domains.settle(
     domains.outbound.insights.domainHealth({})
@@ -117,7 +132,7 @@ test("domain_health and warmup_readiness leave out a mailbox the vendor no longe
   assert.equal(health.meta.complete, false);
   assert.ok(health.meta.notes.some((note) => note.includes(GONE)));
 
-  const warmup = over(instantly, failing(404));
+  const warmup = over(instantly, failing(404), true);
 
   const readiness = await warmup.settle(
     warmup.outbound.insights.warmupReadiness({ check_health: true })
@@ -136,14 +151,14 @@ const denied = (error: unknown): boolean =>
   OutboundError.is(error) && error.code === "Unauthorized";
 
 test("domain_health and warmup_readiness still fail when one mailbox's read is refused", async () => {
-  const domains = over(instantly, failing(401));
+  const domains = over(instantly, failing(401), true);
 
   await assert.rejects(
     domains.settle(domains.outbound.insights.domainHealth({})),
     denied
   );
 
-  const warmup = over(instantly, failing(401));
+  const warmup = over(instantly, failing(401), true);
 
   await assert.rejects(
     warmup.settle(

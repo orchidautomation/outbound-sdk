@@ -40,7 +40,7 @@ A value is `false` or something truthy, so `if (outbound.capabilities["leads.lis
 
 ## Every key
 
-`CAPABILITY_KEYS` is the list of all 51. `Capabilities` is the type of the map, and `CapabilityKey` the type of a key.
+`CAPABILITY_KEYS` is the list of all 52. `Capabilities` is the type of the map, and `CapabilityKey` the type of a key.
 
 ### Campaigns and sequences
 
@@ -64,6 +64,7 @@ Listing campaigns and reading one need no key. Every adapter can.
 | `senders.get` | boolean | `senders.get`, `sender(id).get()`, and `sender(id).warmup()` |
 | `senders.warmup` | boolean | `sender(id).warmup()` |
 | `senders.health` | boolean | `sender(id).health()` |
+| `senders.healthList` | boolean | `senderHealth.list` and `senderHealth.listAll`: every sender's health a page at a time, with `campaignId` too where `senders.byCampaign` is true |
 
 ### Leads and lists
 

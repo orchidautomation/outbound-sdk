@@ -329,6 +329,11 @@ export interface Adapter<Native extends NativeCatalog = NoNative> {
     senderId: string,
     ctx: AdapterContext
   ) => Promise<SenderHealth>;
+  /** A page of senders' health, the senders listed as `listSenders` lists them. */
+  readonly listSenderHealth?: (
+    query: SenderQuery,
+    ctx: AdapterContext
+  ) => Promise<Page<SenderHealth>>;
   readonly listLists?: (
     query: PageQuery,
     ctx: AdapterContext

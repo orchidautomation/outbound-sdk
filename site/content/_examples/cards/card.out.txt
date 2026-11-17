@@ -26,6 +26,10 @@ Sender health: 🟢 No sender needs attention (2 checked).
           {
             "text": "*Not active*\n0",
             "type": "mrkdwn"
+          },
+          {
+            "text": "*Failing*\n0",
+            "type": "mrkdwn"
           }
         ],
         "type": "section"
@@ -49,6 +53,15 @@ Sender health: 🟢 No sender needs attention (2 checked).
             "block": {
               "text": {
                 "text": "Not active\n*0*",
+                "type": "mrkdwn"
+              },
+              "type": "section"
+            }
+          },
+          {
+            "block": {
+              "text": {
+                "text": "Failing\n*0*",
                 "type": "mrkdwn"
               },
               "type": "section"

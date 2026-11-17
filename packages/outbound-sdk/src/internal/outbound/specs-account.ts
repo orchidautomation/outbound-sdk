@@ -24,7 +24,7 @@ import type {
 import { sequenceSchema } from "../entities.ts";
 import type { Sequence } from "../entities.ts";
 import { OutboundError } from "../errors.ts";
-import type { WebhookFilters } from "./api.ts";
+import type { SenderFilters, WebhookFilters } from "./api.ts";
 import type { GetSpec, ListSpec } from "./collections.ts";
 import type { Core } from "./core.ts";
 
@@ -68,6 +68,36 @@ export const healthGet = (core: Core): GetSpec<SenderHealth> => ({
   schema: senderHealthSchema,
   toOperation: (id) => ({ id, kind: "senders.health" }),
   what: "Health for sender",
+});
+
+export const healthList = (
+  core: Core
+): ListSpec<SenderHealth, SenderFilters> => ({
+  action: "senders.healthList",
+  takes: { campaignId: true },
+  keyOf: (item) => item.senderRef,
+  prepare: (filters) => {
+    requireCapability(
+      core.gate,
+      "senders.healthList",
+      "Listing every sender's health"
+    );
+
+    if (filters.campaignId !== undefined) {
+      requireCapability(
+        core.gate,
+        "senders.byCampaign",
+        "Listing a campaign's senders"
+      );
+    }
+
+    return { campaignId: filters.campaignId };
+  },
+  schema: senderHealthSchema,
+  toOperation: (filters, page) => ({
+    kind: "senders.healthList",
+    query: { ...filters, ...page },
+  }),
 });
 
 export const subsequenceList = (

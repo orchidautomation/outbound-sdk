@@ -12,6 +12,7 @@ import type {
   BlockEntry,
   LeadList,
   PlacementTest,
+  SenderHealth,
   Tag,
   WebhookSubscription,
 } from "../entities-account.ts";
@@ -75,6 +76,7 @@ import type { OutboundPlugin } from "./plugins.ts";
 import { makeRawClient } from "./raw.ts";
 import {
   blocklistList,
+  healthList,
   listGet,
   listList,
   placementTestList,
@@ -183,6 +185,7 @@ export class Outbound<
   readonly #layers: readonly OutboundPlugin[];
   readonly campaigns: Collection<Campaign, CampaignFilters>;
   readonly senders: Collection<Sender, SenderFilters>;
+  readonly senderHealth: ReadCollection<SenderHealth, SenderFilters>;
   readonly leads: Collection<Lead, LeadFilters>;
   readonly messages: ReadCollection<Message, MessageFilters>;
   readonly replies: ReadCollection<Reply, ReplyFilters>;
@@ -246,6 +249,7 @@ export class Outbound<
       senderList(this.#core),
       senderGet(this.#core)
     );
+    this.senderHealth = makeReadCollection(this.#core, healthList(this.#core));
     this.leads = makeCollection(
       this.#core,
       leadList(this.#core),

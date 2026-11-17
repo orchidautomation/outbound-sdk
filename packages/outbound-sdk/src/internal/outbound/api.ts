@@ -390,6 +390,12 @@ export interface OutboundApi {
   readonly fields: FieldCoverage;
   readonly campaigns: Collection<Campaign, CampaignFilters>;
   readonly senders: Collection<Sender, SenderFilters>;
+  /**
+   * Every sender's health, listed like `senders`: DNS records, connection
+   * state and warmup traffic in a few requests a page, where one sender's
+   * `health()` costs a few requests each. Needs `senders.healthList`.
+   */
+  readonly senderHealth: ReadCollection<SenderHealth, SenderFilters>;
   readonly leads: Collection<Lead, LeadFilters>;
   readonly messages: ReadCollection<Message, MessageFilters>;
   readonly replies: ReadCollection<Reply, ReplyFilters>;

@@ -419,3 +419,11 @@ Read-only, live, on 2026-11-17: the string values of `POST /inbox/GetConversatio
 Fetched 2026-11-17: https://docs.heyreach.io/openapi.json (`info.version` 1.0.0, 105 paths). `POST /api/public/lead/GetLead` still takes `{ profileUrl }` (`type: string, format: uri`, required) and nothing else, so a lead is named by its profile URL and this adapter's lead and message refs are `heyreach:<workspace>:<profile URL>`.
 
 Seen live on 2026-11-17 (read-only): a `leadRef` from `replies --by person` had that shape, and `person_summary` given it found the person. It worked only because the profile URL inside the ref was matched as a LinkedIn profile; a HeyReach ref given to an instance that reads only Instantly was searched there by profile rather than refused. Now a ref is recognised first, its profile URL is used with no request, and a ref of a tool the instance does not read is `Invalid` before any request.
+
+## A failing LinkedIn account's impact (OUT-142)
+
+Fetched 2026-11-17 from `https://docs.heyreach.io/hey-reach-api/linked-in-accounts/get-all.md`, `https://docs.heyreach.io/hey-reach-api/linked-in-accounts/get-by-id.md`, `https://docs.heyreach.io/hey-reach-api/linked-in-accounts/get-account-status.md` and `https://docs.heyreach.io/llms.txt`.
+
+- `POST /li_account/GetAll` and `GET /li_account/GetById` return `id`, `emailAddress`, `firstName`, `lastName`, `isActive`, `activeCampaigns` (a count), `authIsValid`, `isValidNavigator`, `isValidRecruiter`, `profileUrl`, the four cooldown flags and `accountLimits`. None is a time.
+- `GET /li_account/GetAccountStatus/{accountId}` returns `accountId`, `status`, `failureReason`, `profile`, `salesNavigator.authenticated` and `recruiter.authenticated`, "Cached for 10 seconds". No time of the last successful sign-in.
+- So a failing account's `last_authenticated_at` is null with a reason, its active campaigns come from `campaigns.bySender` (`POST /campaign/GetAll` with `accountIds`), and its recent sends from the per-account daily stats. HeyReach has no batched health read: health stays one `GetAccountStatus` per account, so `senders.healthList` is false.

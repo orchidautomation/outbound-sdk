@@ -102,7 +102,7 @@ All three declare what the function needs. What each vendor reports inside a hea
 
 ## What it costs in vendor requests
 
-- `domainHealth`: one listing of senders, then one health read per sender, up to `max_senders` (default 50). A health read is three vendor requests on Instantly, two on Smartlead and one on HeyReach.
+- `domainHealth`: one listing of senders, then their health. On Instantly every sender's health is read a page of 100 at a time, three requests a page (the page, one DNS test for its domains, one warmup report), up to `max_senders` (default 500). Elsewhere it is one health read per sender, up to `max_senders` (default 50): two requests each on Smartlead and EmailBison, one on HeyReach.
 - `bounceWatch`: one listing of campaigns, then one stats read per campaign, up to `max_campaigns` (default 50). For each campaign over the threshold: one listing of its senders and one stats read per sender, up to `max_senders_per_campaign` (default 10). A sender shared by several campaigns is read once. Pass `include_senders: false` to skip that part.
 
 `maxRequestsPerCall` on the instance caps what each call may spend. It is not a total for the run: for that, add [budget](/docs/plugins/budget). Past it a call fails with `RateLimited` instead of spending your vendor quota.
@@ -120,7 +120,7 @@ All three declare what the function needs. What each vendor reports inside a hea
 | What happened | What you get | What to do |
 | --- | --- | --- |
 | The notifier throws or rejects | The read succeeds. The failure is swallowed and reported nowhere. | Catch and log inside your notifier. A check that returns no alerts is not proof the notifier works. |
-| More senders than `max_senders` | `meta.complete` is `false` and a note says where it stopped | Raise the cap (up to 500), or accept a check of the first senders. |
+| More senders than `max_senders` | `meta.complete` is `false` and a note says where it stopped | Raise the cap (up to 500), or accept a check of the first senders. On Instantly the default already covers 500. |
 | The vendor reports no DNS record for a domain | Risk `unknown`, with `spf`, `dkim`, `dmarc` and `mx` in `notReported` | Check the domain's DNS with another tool. |
 | The adapter has no stats per sender, or cannot list a campaign's senders | Campaigns are still checked; `senders` is `null` and a note says why | Find the sender in the vendor tool. |
 | The adapter cannot read sender health | `Unsupported` for `domainHealth`, before any request | Run `bounceWatch` alone. |
@@ -128,7 +128,7 @@ All three declare what the function needs. What each vendor reports inside a hea
 
 ## Limits
 
-- On Instantly, each sender's health read costs three requests and makes Instantly run a live DNS test for that mailbox. Do not schedule the check more often than you need the answer.
+- On Instantly, each page of health makes Instantly run a live DNS test for every domain on the page. Do not schedule the check more often than you need the answer.
 - No background watching. An alert fires only after a read your code made, and only for the records that read returned.
 - The alert rules see one record at a time. They cannot express "three days in a row" or "up 50% on last week". For trends, use `anomalies` or `periodComparison` from [insights](/docs/insights/operations).
 - `bounceRateAbove` and `replyRateBelow` skip rows with fewer than `minSent` sends (default 50).

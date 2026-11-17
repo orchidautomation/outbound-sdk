@@ -146,6 +146,7 @@ $ outbound capabilities
       "senders.byCampaign": true,
       "senders.get": true,
       "senders.health": true,
+      "senders.healthList": false,
       "senders.list": true,
       "senders.warmup": true,
       "sequence": true,

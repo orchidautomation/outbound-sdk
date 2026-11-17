@@ -1,7 +1,12 @@
 // The account-level reads: settings, health, lists, block list, tags,
 // subsequences and webhook subscriptions.
 
-import type { PageQuery, SubsequenceQuery, WebhookQuery } from "../adapter.ts";
+import type {
+  PageQuery,
+  SenderQuery,
+  SubsequenceQuery,
+  WebhookQuery,
+} from "../adapter.ts";
 import {
   idFor,
   optionalId,
@@ -19,6 +24,7 @@ export type AccountOperation =
   | { readonly kind: "lists.list"; readonly query: PageQuery }
   | { readonly kind: "placementTests.list"; readonly query: PageQuery }
   | { readonly kind: "senders.health"; readonly id: string }
+  | { readonly kind: "senders.healthList"; readonly query: SenderQuery }
   | { readonly kind: "sequence.subsequences"; readonly query: SubsequenceQuery }
   | { readonly kind: "tags.list"; readonly query: PageQuery }
   | { readonly kind: "webhooks.get"; readonly id: string }
@@ -32,6 +38,7 @@ const ACCOUNT_KINDS: ReadonlySet<string> = new Set<AccountOperation["kind"]>([
   "lists.list",
   "placementTests.list",
   "senders.health",
+  "senders.healthList",
   "sequence.subsequences",
   "tags.list",
   "webhooks.get",
@@ -148,6 +155,22 @@ export const dispatchAccount = async (
       }
 
       return output(await adapter.listPlacementTests(operation.query, ctx));
+    }
+
+    case "senders.healthList": {
+      if (adapter.listSenderHealth === undefined) {
+        throw unsupported(adapter, operation.kind);
+      }
+
+      return output(
+        await adapter.listSenderHealth(
+          {
+            ...operation.query,
+            campaignId: optionalId(adapter, operation.query.campaignId),
+          },
+          ctx
+        )
+      );
     }
 
     case "tags.list": {
