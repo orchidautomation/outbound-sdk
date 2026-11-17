@@ -258,6 +258,12 @@ const messageFields = {
   stepIndex: z.number().int().nonnegative().nullable(),
   subject: z.string().nullable(),
   threadId: z.string().nullable(),
+  /**
+   * A link that opens this conversation in the vendor's app, built only from
+   * a URL scheme the vendor documents or that was verified live. `null` when
+   * the vendor has none; absent from adapters that predate it.
+   */
+  url: z.url().nullable().optional(),
   variantKey: z.string().nullable(),
 };
 

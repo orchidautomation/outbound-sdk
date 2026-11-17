@@ -121,8 +121,14 @@ export const fields: FieldDeclaration = {
     recipientMailProvider: false,
     title: false,
   },
-  // A message is not marked automatic; a reply is.
-  message: { isAuto: false, isAutoSource: false, variantKey: false },
+  // A message is not marked automatic; a reply is. No link to one master
+  // inbox conversation is documented.
+  message: {
+    isAuto: false,
+    isAutoSource: false,
+    url: false,
+    variantKey: false,
+  },
   metricRow: {
     completed: false,
     connectionsAccepted: false,
@@ -150,6 +156,7 @@ export const fields: FieldDeclaration = {
     leftCompany: "derived",
     // The master inbox does not say which step a reply answers.
     stepIndex: false,
+    url: false,
     variantKey: false,
   },
   sender: { linkedinUrl: false },
@@ -246,4 +253,5 @@ export const caveats: readonly string[] = [
   "Webhooks are listed per campaign; without one the adapter walks the campaigns and returns each once. User-level or client-level webhooks may appear under none.",
   "Placement tests are read from SmartDelivery (smartdelivery.smartlead.ai) with the same key: an account without the product is refused. The list is documented without pages, and manual is read as a one-time test. A test's results stay native, because SmartDelivery reports them as rates.",
   "Block list entries with an @ are emails, the rest domains.",
+  "A message's or reply's url is null: Smartlead documents no link to one master inbox conversation. The app_url and ui_master_inbox_link of its webhooks are documented with the master inbox page only (https://app.smartlead.ai/app/master-inbox), and no read returns a link.",
 ];

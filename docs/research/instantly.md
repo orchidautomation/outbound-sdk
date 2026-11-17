@@ -694,3 +694,13 @@ Fetched 2026-11-16: https://api.instantly.ai/openapi/api_v2.json (`info.version`
 - `limit` is 1 to 100. Instantly sends `next_starting_after` on a last page too (seen live, 2026-11-14), so both listings stop at the first page that is not full.
 
 Not run against a live workspace yet: whether `filter` combines with `campaign`, and how many addresses `contacts` takes in one request.
+
+## Conversation links (OUT-140, 2026-11-17)
+
+Sources, read 2026-11-17: `https://developer.instantly.ai/guides/webhook-events.md` (`unibox_url`: "URL to view the conversation in Unibox (only for reply events)"), `https://developer.instantly.ai/api-reference/schemas/email.md` and the `GET /emails` reference (no link field on an email), and `https://help.instantly.ai/en/articles/6576561-how-to-manage-unibox-best-practices-for-replying-to-leads` (the Unibox, no URL scheme).
+
+The docs name the field but not how the link is built. Read-only, live, on 2026-11-17: `GET /api/v2/webhook-events` lists deliveries without their payload, and `GET /api/v2/webhook-events/{id}` returns one with `payload` (keys `id`, `timestamp_created`, `timestamp_created_date`, `organization_id`, `success`, `retry_count`, `will_retry`, `webhook_url`, `payload`, `status_code`, `error_message`, `timestamp_next_retry`, `retry_group_id`, `retry_successful`, `lead_email`, `response_time_ms`). Of 100 recent deliveries, the 4 `reply_received` ones carried `unibox_url` and the others (`email_sent`, `lead_unsubscribed`) had it null. Each was
+
+`https://app.instantly.ai/app/unibox?thread_search=thread:<thread_id>&selected_wks=<organization_id>`
+
+and for all 4, `GET /api/v2/emails/{payload.email_id}` returned the same `thread_id` and `organization_id`. The `thread:` search is the same documented search value the thread read already uses. 100 live thread ids held only letters, digits, `-` and `_`, so they need no escaping. The adapter builds the link from those two fields on every message and reply; without either the url is null. Not done: opening the link in a browser. Computer use was off on the Mac it was checked from, so the claim rests on Instantly emitting this exact URL, not on a page load. The link needs a signed-in session in that workspace.

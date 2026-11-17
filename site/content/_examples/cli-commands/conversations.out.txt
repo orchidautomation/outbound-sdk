@@ -19,6 +19,7 @@ $ outbound replies --category positive --limit 1
         "stepIndex": null,
         "subject": "Re: Quick question",
         "threadId": "thr_1",
+        "url": null,
         "variantKey": null,
         "category": "positive",
         "categorySource": "vendor",
@@ -73,7 +74,7 @@ $ outbound replies --by person
 
 $ outbound replies --campaign cmp_founders --since 2026-11-12T00:00:00Z --bodies --compact
 1 message from 1 person in 1 thread.
-{"data":{"items":[{"provider":"memory","ref":"memory:default:msg_2","schemaVersion":1,"sourceId":"msg_2","workspaceId":"default","bodyHtml":null,"bodyText":"Thanks, happy to chat next week.","campaignRef":"memory:default:cmp_founders","channel":"email","leadRef":"memory:default:lead_1","senderRef":"memory:default:mbx_1","sentAt":"2026-11-12T09:30:00.000Z","stepIndex":null,"subject":"Re: Quick question","threadId":"thr_1","variantKey":null,"category":"positive","categorySource":"vendor","direction":"in","isAuto":false,"unread":null}]},"meta":{"complete":true,"notes":["1 message from 1 person in 1 thread."],"provider":"memory","requests":0,"throttledMs":0},"ok":true}
+{"data":{"items":[{"provider":"memory","ref":"memory:default:msg_2","schemaVersion":1,"sourceId":"msg_2","workspaceId":"default","bodyHtml":null,"bodyText":"Thanks, happy to chat next week.","campaignRef":"memory:default:cmp_founders","channel":"email","leadRef":"memory:default:lead_1","senderRef":"memory:default:mbx_1","sentAt":"2026-11-12T09:30:00.000Z","stepIndex":null,"subject":"Re: Quick question","threadId":"thr_1","url":null,"variantKey":null,"category":"positive","categorySource":"vendor","direction":"in","isAuto":false,"unread":null}]},"meta":{"complete":true,"notes":["1 message from 1 person in 1 thread."],"provider":"memory","requests":0,"throttledMs":0},"ok":true}
 
 $ outbound thread thr_1 --bodies
 {
@@ -95,6 +96,7 @@ $ outbound thread thr_1 --bodies
         "stepIndex": 0,
         "subject": "Quick question",
         "threadId": "thr_1",
+        "url": null,
         "variantKey": "A",
         "direction": "out"
       },
@@ -114,6 +116,7 @@ $ outbound thread thr_1 --bodies
         "stepIndex": null,
         "subject": "Re: Quick question",
         "threadId": "thr_1",
+        "url": null,
         "variantKey": null,
         "direction": "in",
         "isAuto": false,

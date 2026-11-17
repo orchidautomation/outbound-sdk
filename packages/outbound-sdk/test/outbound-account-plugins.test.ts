@@ -157,7 +157,7 @@ test("the scrubber replaces what could identify a customer in account records", 
     ["value-1", "value-2"]
   );
   const scrubbedHook = scrubber.record(hook);
-  assert.ok("url" in scrubbedHook);
+  assert.ok("campaignRefs" in scrubbedHook);
   assert.equal(scrubbedHook.url, "https://example.com/webhook");
   assert.equal(scrubbedHook.name, "value-3");
   assert.deepEqual(scrubbedHook.campaignRefs, ["memory:client-a:cmp_1"]);
