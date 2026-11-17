@@ -35,7 +35,7 @@ The output shows what the CLI does with the demo data. It does not show what a v
 | `tools` | The [AI tools](/docs/tools) the instance can serve, then the [insights](/docs/insights), as `outbound mcp` lists them, each with its `name`, `description` and inputs as JSON Schema (`parameters`) | `createTools` with `insightTools` |
 | `tool <name>` | Runs one of them. Without `--input`, a tool that has a required input fails with `InputRequired` and exit code 2, with its `name`, `description` and `parameters` in `data` | `tool.call` |
 | `insight [name]` | Lists the [insights](/docs/insights), or runs one | `listInsights`, `runInsightByName` |
-| `person <email or URL>` | Every campaign one person is in, across every tool | `runInsightByName("person_summary")` |
+| `person <email, URL or lead ref>` | Every campaign one person is in, across every tool | `runInsightByName("person_summary")` |
 | `native [name]` | Lists the vendor's [own reads](/docs/native), or runs one | `outbound.native` |
 | `mcp` | Starts the [MCP server](/docs/cli/mcp) on stdio | `createMcpServer` |
 | `help` | The usage text. Also `--help`, `-h`, or no command. |  |
@@ -155,7 +155,7 @@ Both commands exit 1 on failure, with `ok: false` and the `error` in the envelop
 
 ## person
 
-`person` takes an email address or a LinkedIn profile URL and prints the `person_summary` insight: every campaign that person is in, in every tool the CLI reads. With several vendor keys set and no provider named, that is every one of them, so one command finds a person on Instantly and on HeyReach. `--card` and `--slack` print it as a [card](/docs/cards), as `tool` and `insight` do.
+`person` takes an email address, a LinkedIn profile URL or a lead ref exactly as another command printed it (a reply's `leadRef`, a lead's `ref`), and prints the `person_summary` insight: every campaign that person is in, in every tool the CLI reads. With several vendor keys set and no provider named, that is every one of them, so one command finds a person on Instantly and on HeyReach. `--card` and `--slack` print it as a [card](/docs/cards), as `tool` and `insight` do.
 
 <include meta='title="person.ts"'>
   ../../_examples/cli-commands/person.ts

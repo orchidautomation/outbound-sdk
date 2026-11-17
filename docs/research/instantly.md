@@ -694,3 +694,13 @@ Fetched 2026-11-16: https://api.instantly.ai/openapi/api_v2.json (`info.version`
 - `limit` is 1 to 100. Instantly sends `next_starting_after` on a last page too (seen live, 2026-11-14), so both listings stop at the first page that is not full.
 
 Not run against a live workspace yet: whether `filter` combines with `campaign`, and how many addresses `contacts` takes in one request.
+
+## A lead ref given where a person is asked for (2026-11-17, for OUT-138)
+
+Fetched 2026-11-17: https://api.instantly.ai/openapi/api_v2.json (`info.version` 2.0.0, 203 paths).
+
+- `POST /api/v2/leads/list`: `contacts` is `type: array`, items `type: string, format: email` ("Array of emails the leads needs to have"). Unchanged from 2026-11-16.
+- `GET /api/v2/leads/{id}`: `id` is `format: uuid` ("The ID of the requested item").
+- `components.schemas.Email`: `lead` is "The email address of the lead that the email is associated with"; `lead_id` is "The lead id (if any)", `format: uuid`. `GET /api/v2/emails` filters by `lead`, "The email of the lead to filter emails by."
+
+Seen live on 2026-11-17 (read-only): `replies --by person` returned `leadRef` as `instantly:<workspace>:<address>`, as this adapter builds it (OUT-87). Passing that ref to `person_summary` failed with `instantly responded 400: body/contacts/0 must match format "email"`: the insight's address check allowed colons before the `@`, so the whole ref was sent in `contacts`. What changed (in the shared person input, not in this adapter): a lead ref is recognised before an address, a ref whose id is an address is looked up by that address with no read of the lead, and any other ref is read once with `GET /leads/{id}` for its address.

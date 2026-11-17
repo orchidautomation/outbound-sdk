@@ -16,11 +16,32 @@ export interface InsightInputs {
     readonly max_campaigns?: number | undefined;
 
     /**
-     * The person's email address or LinkedIn profile URL, or a lead ref as the other people insights return
+     * The person's email address, for example jane@acme.com
      *
-     * At least 3 characters. Required.
+     * Defaults to `null`.
      */
-    readonly person: string;
+    readonly email?: string | undefined;
+
+    /**
+     * A lead ref exactly as another tool returned it (provider:workspace:id), for example a reply's leadRef or a lead's ref. A ref's provider picks the tool it is read from
+     *
+     * Defaults to `null`.
+     */
+    readonly lead_ref?: string | undefined;
+
+    /**
+     * The person's LinkedIn profile URL
+     *
+     * Defaults to `null`.
+     */
+    readonly linkedin_url?: string | undefined;
+
+    /**
+     * Any of an email address, a LinkedIn profile URL or a lead ref as another tool returned it (provider:workspace:id). Give exactly one of person, lead_ref, email and linkedin_url
+     *
+     * Defaults to `null`.
+     */
+    readonly person?: string | undefined;
   };
   /** The input of `accountSummary` (the `account_summary` tool). */
   readonly accountSummary: {

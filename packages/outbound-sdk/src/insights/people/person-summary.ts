@@ -4,27 +4,31 @@ import { z } from "zod";
 
 import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Lead, Message } from "../../internal/entities.ts";
+import {
+  checkPerson,
+  personFields,
+  personOf,
+} from "../../tools/person-input.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { rate } from "../stats.ts";
-import { findPerson, isLeadRef } from "./find.ts";
+import { findPerson, refNeedsRead } from "./find.ts";
 import { isAutoReplied } from "./read.ts";
 
-const input = z.object({
-  max_campaigns: z
-    .number()
-    .int()
-    .min(1)
-    .max(50)
-    .default(20)
-    .describe("The most campaigns to report on. Each costs up to 2 requests."),
-  person: z
-    .string()
-    .min(3)
-    .describe(
-      "The person's email address or LinkedIn profile URL, or a lead ref as the other people insights return"
-    ),
-});
+const input = z
+  .object({
+    max_campaigns: z
+      .number()
+      .int()
+      .min(1)
+      .max(50)
+      .default(20)
+      .describe(
+        "The most campaigns to report on. Each costs up to 2 requests."
+      ),
+    ...personFields,
+  })
+  .superRefine(checkPerson);
 
 export interface PersonCampaign {
   readonly campaign: string | null;
@@ -298,11 +302,11 @@ const byChannel = (campaigns: readonly PersonCampaign[]) => {
 
 export const personSummary = defineInsight({
   description:
-    "Everything about one person across campaigns and channels, from their email address, LinkedIn profile or a lead ref: each campaign they are in, how many messages they were sent, whether and how often they replied, which steps they replied to, their interest label, and totals by channel. Records are linked by exact identifier only, so an email finds a LinkedIn record only when a tool holds both for that person. A record the vendor labels out-of-office or bounced counts no replies, since they were automatic, and a reply in the thread flagged automatic (isAuto, from the vendor or a fixed rule) is not counted either. Costs one lookup per identifier, one request to read a lead ref, then up to 2 requests per campaign.",
+    "Everything about one person across campaigns and channels, from one of lead_ref (a lead ref exactly as another tool returned it), email, linkedin_url, or person (any of the three): each campaign they are in, how many messages they were sent, whether and how often they replied, which steps they replied to, their interest label, and totals by channel. Records are linked by exact identifier only, so an email finds a LinkedIn record only when a tool holds both for that person. A record the vendor labels out-of-office or bounced counts no replies, since they were automatic, and a reply in the thread flagged automatic (isAuto, from the vendor or a fixed rule) is not counted either. A lead ref from a tool or workspace the instance does not read is refused before any request. Costs one lookup per identifier, one request to read a lead ref whose id is not already an address or profile (an Instantly reply's leadRef and a HeyReach ref need none), then up to 2 requests per campaign.",
   inputSchema: input,
   key: "personSummary",
   cost: (values, price) =>
-    (isLeadRef(values.person)
+    (refNeedsRead(personOf(values))
       ? price.one("leads.get") +
         price.upTo(2) * price.lookup(values.max_campaigns)
       : price.lookup(values.max_campaigns) +
@@ -323,10 +327,11 @@ export const personSummary = defineInsight({
       : null;
   },
   needs: ["leads.lookup", "leads.timeline"],
-  needsFor: ({ person }) => (isLeadRef(person) ? ["leads.get"] : []),
+  needsFor: (values) => (refNeedsRead(personOf(values)) ? ["leads.get"] : []),
   next: "Use account_summary with their email domain to see everyone at the same company.",
-  run: async (context, { max_campaigns: maxCampaigns, person }) => {
-    const found = await findPerson(context, person, maxCampaigns);
+  run: async (context, values) => {
+    const maxCampaigns = values.max_campaigns;
+    const found = await findPerson(context, personOf(values), maxCampaigns);
     const timelines: Timelines = new Map();
 
     const campaigns = await mapConcurrent(found.records, (lead) =>

@@ -10,6 +10,12 @@ import { OutboundError } from "../internal/errors.ts";
 import type { Include, OutboundApi } from "../internal/outbound/api.ts";
 import type { OutboundRecord } from "../internal/outbound/operations.ts";
 import type { OutboundPlugin } from "../internal/outbound/plugins.ts";
+import {
+  assertRefReadable,
+  leadRefParts,
+  PERSON_FORMS,
+  personKey,
+} from "../internal/person.ts";
 import { keysOf, toKey } from "./keys.ts";
 
 export interface PersonLead extends Lead {
@@ -228,25 +234,67 @@ const assertIdentifiersReadable = (outbound: OutboundApi): void => {
 const bySentAt = (left: Message, right: Message): number =>
   (left.sentAt ?? "").localeCompare(right.sentAt ?? "");
 
+/**
+ * The key to look the person up by, and the lead a ref names when it was
+ * read for one. A lead ref whose vendor id is an address or a profile URL
+ * gives the key with no request; any other ref's lead is read.
+ */
+const start = async (
+  outbound: OutboundApi,
+  identifier: string,
+  tally: Tally
+): Promise<{ key: string; lead: Lead | null }> => {
+  const ref = leadRefParts(identifier);
+
+  if (ref === null) {
+    const key = toKey(identifier);
+
+    if (key === null) {
+      throw new OutboundError(
+        "Invalid",
+        `person() needs a person key, or ${PERSON_FORMS}`,
+        { provider: outbound.provider }
+      );
+    }
+
+    return { key, lead: null };
+  }
+
+  assertRefReadable(outbound, { ...ref, text: identifier.trim() });
+
+  const local = personKey(ref.sourceId);
+
+  if (local !== null) {
+    return { key: local, lead: null };
+  }
+
+  const lead = await outbound.leads.get(identifier.trim());
+  tally.requests += lead.meta.requests;
+
+  const [key] = keysOf(lead);
+
+  if (key === undefined) {
+    throw new OutboundError(
+      "NotFound",
+      `The lead ${identifier.trim()} has no email address or LinkedIn profile to link its records by`,
+      { provider: outbound.provider }
+    );
+  }
+
+  return { key, lead };
+};
+
 const lookup = async (
   outbound: OutboundApi,
   identifier: string,
   options: PersonOptions
 ): Promise<Person> => {
-  const key = toKey(identifier);
-
-  if (key === null) {
-    throw new OutboundError(
-      "Invalid",
-      "person() needs a person key, an email address or a LinkedIn profile URL"
-    );
-  }
-
   assertIdentifiersReadable(outbound);
 
+  const tally: Tally = { requests: 0 };
+  const { key, lead } = await start(outbound, identifier, tally);
   const keys = new Set([key]);
   const found = new Map<string, Lead>();
-  const tally: Tally = { requests: 0 };
 
   if (
     outbound.capabilities["leads.lookup"] &&
@@ -259,7 +307,19 @@ const lookup = async (
     await collect(outbound, options, keys, found, tally);
   }
 
+  // The lead a ref names is the person's record even when a lookup by its
+  // identifier does not return it.
   const records = [...found.values()];
+
+  if (
+    lead !== null &&
+    !records.some(
+      (record) =>
+        record.ref === lead.ref && record.campaignRef === lead.campaignRef
+    )
+  ) {
+    records.unshift(lead);
+  }
 
   const wantsTimeline =
     (options.timeline ?? true) && outbound.capabilities["leads.timeline"];
