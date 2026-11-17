@@ -32,8 +32,13 @@ Everything about one person across campaigns and channels: each campaign they ar
 
 | Input | Default | Range | What it is |
 | --- | --- | --- | --- |
-| `person` | required | at least 3 characters | An email address, a LinkedIn profile URL, or a lead ref as the other people insights return it. Anything else is `Invalid`. |
+| `lead_ref` | one of four | a lead ref | A lead ref exactly as another tool returned it (`provider:workspace:id`), for example a reply's `leadRef` or a lead's `ref`. |
+| `email` | one of four | an email address | The person's email address. |
+| `linkedin_url` | one of four | a LinkedIn profile URL | The person's LinkedIn profile URL. |
+| `person` | one of four | any of the three | An email address, a LinkedIn profile URL or a lead ref, told apart by their shape. |
 | `max_campaigns` | 20 | 1 to 50 | The most campaigns to report on. |
+
+Give exactly one of `lead_ref`, `email`, `linkedin_url` and `person`. Two of them, none, or a value of the wrong kind (an address in `lead_ref`, a ref in `email`) is `Invalid` before any request, and the message says which field takes it. A lead ref is checked against the tools the instance reads: a ref from another tool or workspace is `Invalid` too, and on a combined instance the ref's provider and workspace pick the tool it is read from. A ref whose id is already the person's address or profile, as an Instantly reply's `leadRef` and every HeyReach ref are, is read without a request; any other ref costs one read of the lead for its identifiers.
 
 `data` (`PersonSummary`):
 
@@ -44,8 +49,8 @@ Everything about one person across campaigns and channels: each campaign they ar
 
 A record the vendor labels out-of-office or bounced (the same rule as [`hotLeads`](#hotleads)) is `autoReplied: true`: its replies were automatic, so it counts 0 `replies`, is not `replied` and adds nothing to `campaignsReplied`. A reply in the thread flagged automatic (`isAuto: true`, by the vendor or a fixed rule) is not counted either, and a record whose every reply is flagged automatic is `autoReplied: true` too. When the vendor's status is `replied` only because of those automatic replies, `leadStatus` is where the lead is in the sequence instead (for example `completed`), so it agrees with `replied`; `vendorLeadStatus` keeps the vendor's status as it came.
 
-- **Needs:** `leads.lookup`, `leads.timeline`, and `leads.get` for a lead ref.
-- **Costs:** one lookup per identifier, one read of the lead for a lead ref, then up to 2 requests per campaign (the lead's timeline and the campaign).
+- **Needs:** `leads.lookup`, `leads.timeline`, and `leads.get` for a lead ref whose id is not an address or a profile.
+- **Costs:** one lookup per identifier, one read of the lead for a lead ref whose id is not an address or a profile, then up to 2 requests per campaign (the lead's timeline and the campaign).
 - **Notes it can add:** a thread held fewer sent messages than the lead's last step, so messages sent is counted from the last step; a record labelled out-of-office or bounced had replies that are not counted; a thread held replies flagged automatic that are not counted; redact masks one kind of identifier, so records found only under it were not linked.
 - **Does not:** match by name, or find a LinkedIn record from an email address unless some tool holds both for that person. `repliedSteps` is empty when the vendor ties a reply to no step.
 - **Refuses:** with `Unsupported`, before any read, while the [`redact` plugin](/docs/plugins/redact) masks the kind of identifier asked for, or masks any identifier when given a lead ref. Masked records could not be matched, so it does not report a known person as not found. While redact masks both `email` and `linkedin`, as `outbound mcp` does by default, it is not offered as a tool.

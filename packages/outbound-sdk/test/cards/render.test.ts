@@ -41,11 +41,18 @@ const VALUES = new Map([
 
 /** The smallest input a tool accepts: a value for each field it requires. */
 const inputFor = (offered: OutboundTool, campaign: string) => {
-  const { required } = offered.parameters as { required?: string[] };
+  const { properties, required } = offered.parameters as {
+    properties?: Record<string, unknown>;
+    required?: string[];
+  };
 
-  return Object.fromEntries(
-    (required ?? []).map((key) => [key, VALUES.get(key) ?? campaign])
-  );
+  // A person is named by exactly one of several fields, none required alone.
+  const person = properties !== undefined && "lead_ref" in properties;
+
+  return Object.fromEntries([
+    ...(required ?? []).map((key) => [key, VALUES.get(key) ?? campaign]),
+    ...(person ? [["person", VALUES.get("person")]] : []),
+  ]);
 };
 
 const failed = (code: string, message: string): ToolResult => ({

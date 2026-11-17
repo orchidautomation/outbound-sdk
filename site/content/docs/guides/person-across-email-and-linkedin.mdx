@@ -10,7 +10,7 @@ related:
   - /docs/guides/account-brief
 ---
 
-Before you answer a reply, you want to know what else this person was sent: which campaigns, on which channel, and whether they already replied somewhere else. `personSummary` takes an email address or a LinkedIn profile URL and returns one entry per campaign the person is in, on every tool behind the instance, with messages sent, replies, the steps replied to, the vendor's interest label and totals by channel.
+Before you answer a reply, you want to know what else this person was sent: which campaigns, on which channel, and whether they already replied somewhere else. `personSummary` takes an email address, a LinkedIn profile URL or a lead ref another read returned, and returns one entry per campaign the person is in, on every tool behind the instance, with messages sent, replies, the steps replied to, the vendor's interest label and totals by channel.
 
 It links records by exact identifier only: the same lowercased email address, or the same LinkedIn profile. It never matches on a name or a company. So an email address reaches a LinkedIn record only when some tool holds both the address and the profile for that person. When no record holds both, you get the email side only, and nothing tells you a LinkedIn side exists.
 

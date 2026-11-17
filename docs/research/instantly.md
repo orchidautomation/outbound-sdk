@@ -716,3 +716,13 @@ The docs name the field but not how the link is built. Read-only, live, on 2026-
 `https://app.instantly.ai/app/unibox?thread_search=thread:<thread_id>&selected_wks=<organization_id>`
 
 and for all 4, `GET /api/v2/emails/{payload.email_id}` returned the same `thread_id` and `organization_id`. The 4 deliveries named one email, so they cover one thread and one workspace. The `thread:` search is the same documented search value the thread read already uses. 100 live thread ids held only letters, digits, `-` and `_`, so they need no escaping. The adapter builds the link from those two fields on every message and reply; without either the url is null. How it was verified: the link matches Instantly's own `unibox_url` on 4 of 4 live reply deliveries, and that match is what makes it vendor-verified here. It was not opened in a browser, and no page load was observed. The link needs a signed-in session in that workspace.
+
+## A lead ref given where a person is asked for (2026-11-17, for OUT-138)
+
+Fetched 2026-11-17: https://api.instantly.ai/openapi/api_v2.json (`info.version` 2.0.0, 203 paths).
+
+- `POST /api/v2/leads/list`: `contacts` is `type: array`, items `type: string, format: email` ("Array of emails the leads needs to have"). Unchanged from 2026-11-16.
+- `GET /api/v2/leads/{id}`: `id` is `format: uuid` ("The ID of the requested item").
+- `components.schemas.Email`: `lead` is "The email address of the lead that the email is associated with"; `lead_id` is "The lead id (if any)", `format: uuid`. `GET /api/v2/emails` filters by `lead`, "The email of the lead to filter emails by."
+
+Seen live on 2026-11-17 (read-only): `replies --by person` returned `leadRef` as `instantly:<workspace>:<address>`, as this adapter builds it (OUT-87). Passing that ref to `person_summary` failed with `instantly responded 400: body/contacts/0 must match format "email"`: the insight's address check allowed colons before the `@`, so the whole ref was sent in `contacts`. What changed (in the shared person input, not in this adapter): a lead ref is recognised before an address, a ref whose id is an address is looked up by that address with no read of the lead, and any other ref is read once with `GET /leads/{id}` for its address.

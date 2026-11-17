@@ -1,4 +1,4 @@
-a name: Invalid - Give an email address, a LinkedIn profile URL or a lead ref
+a name: Invalid - person_summary: person "Dana Whitfield" is not an email address, a LinkedIn profile URL or a lead ref as another tool returned it (provider:workspace:id)
 nobody: false 0
 capped: 1 false [ 'Stopped at 1 record of the person (max_campaigns); more exist.' ]
 no lookup: Unsupported - person_summary is not available: the memory adapter does not support leads.lookup

@@ -28,7 +28,7 @@ $ outbound person
   "data": null,
   "error": {
     "code": "Invalid",
-    "message": "Missing an email address or a LinkedIn URL"
+    "message": "Missing an email address, a LinkedIn URL or a lead ref"
   },
   "meta": {
     "complete": false,
@@ -39,6 +39,6 @@ $ outbound person
   },
   "ok": false
 }
-Invalid: Missing an email address or a LinkedIn URL
+Invalid: Missing an email address, a LinkedIn URL or a lead ref
 (exit code 1)
 

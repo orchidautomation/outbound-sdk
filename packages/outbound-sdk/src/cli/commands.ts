@@ -381,7 +381,7 @@ const COMMAND_TABLE = {
   },
   person: {
     flags: ["card", "limit", "slack"],
-    help: "person <email or LinkedIn URL> [--limit N] [--card | --slack]  one person's campaigns across every tool",
+    help: "person <email, LinkedIn URL or lead ref> [--limit N] [--card | --slack]  one person's campaigns across every tool; a lead ref is taken as another command printed it",
     // The person_summary insight, with its input taken from the arguments.
     run: (outbound, input) =>
       runInsight(outbound, {
@@ -390,7 +390,11 @@ const COMMAND_TABLE = {
           ...input.flags,
           input: JSON.stringify({
             max_campaigns: count(input, "limit", 20),
-            person: required(input, 0, "an email address or a LinkedIn URL"),
+            person: required(
+              input,
+              0,
+              "an email address, a LinkedIn URL or a lead ref"
+            ),
           }),
         },
         positionals: ["person_summary"],

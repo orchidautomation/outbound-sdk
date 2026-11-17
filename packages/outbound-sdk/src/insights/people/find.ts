@@ -4,46 +4,10 @@
 import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Lead } from "../../internal/entities.ts";
 import { OutboundError } from "../../internal/errors.ts";
-import { parseRef } from "../../internal/ref.ts";
+import { assertRefReadable, parsePerson } from "../../internal/person.ts";
 import { profileSlug } from "../../internal/url.ts";
 import { maskingOf } from "../define.ts";
 import type { InsightContext } from "../define.ts";
-
-// One `@`, something before it, and a dot in the domain: the shape every
-// vendor checks before it searches. Anything else is refused here, not by them.
-const EMAIL = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/u;
-
-// `acme.com` or `@acme.com`: a company, not a person.
-const DOMAIN = /^@?[^\s@/:]+(?:\.[^\s@/:.]+)+$/u;
-
-/** The text without outer spaces or a leading `mailto:`, as copied from a link. */
-const bare = (identifier: string): string =>
-  identifier.trim().replace(/^mailto:/iu, "");
-
-/** `email:<address>` or `linkedin:<slug>`, or `null` when the text is neither. */
-export const personKey = (identifier: string): string | null => {
-  const value = bare(identifier);
-  const slug = profileSlug(value);
-
-  if (slug !== null) {
-    return `linkedin:${slug}`;
-  }
-
-  return EMAIL.test(value) ? `email:${value.toLowerCase()}` : null;
-};
-
-/** Why `identifier` names no person, for one that is not a lead ref either. */
-const notAPerson = (identifier: string): string => {
-  const value = bare(identifier);
-
-  if (DOMAIN.test(value)) {
-    return `"${value}" is a company domain, not a person. Use account_summary for a company domain`;
-  }
-
-  return value.includes("@")
-    ? `"${value}" is not a valid email address`
-    : "Give an email address, a LinkedIn profile URL or a lead ref";
-};
 
 /** Every exact identifier a lead carries. */
 export const keysOfLead = (lead: Lead): string[] => {
@@ -113,9 +77,19 @@ const refuse = (
     { provider: outbound.provider }
   );
 
-/** A lead ref, as the other people insights return, rather than an identifier. */
-export const isLeadRef = (identifier: string): boolean =>
-  personKey(identifier) === null && parseRef(identifier.trim()) !== null;
+/**
+ * A lead ref whose lead must be read (`leads.get`) for its identifiers. A
+ * ref whose vendor id is already an address or a profile URL needs no read.
+ */
+export const refNeedsRead = (identifier: string): boolean => {
+  try {
+    const parsed = parsePerson(identifier, "");
+
+    return parsed.ref !== null && parsed.key === null;
+  } catch {
+    return false;
+  }
+};
 
 const PROFILE = "https://www.linkedin.com/in/";
 
@@ -153,7 +127,13 @@ const startFrom = async (
   { hash, masked }: Lookup
 ): Promise<Start> => {
   const { outbound } = context;
-  const key = personKey(identifier);
+  const { key, ref } = parsePerson(identifier, outbound.provider);
+
+  // A ref of a tool this instance does not read is refused before any
+  // request, rather than sent to the wrong vendor.
+  if (ref !== null) {
+    assertRefReadable(outbound, ref);
+  }
 
   if (key !== null) {
     if (!masked.includes(kindOf(key))) {
@@ -171,7 +151,7 @@ const startFrom = async (
       );
     }
 
-    const tokens = formsOf(key, identifier).map(hash);
+    const tokens = formsOf(key, ref?.sourceId ?? identifier).map(hash);
 
     return {
       hashed: {
@@ -181,12 +161,6 @@ const startFrom = async (
       keys: [key],
       records: [],
     };
-  }
-
-  if (!isLeadRef(identifier)) {
-    throw new OutboundError("Invalid", notAPerson(identifier), {
-      provider: outbound.provider,
-    });
   }
 
   const instead =
@@ -202,7 +176,7 @@ const startFrom = async (
     );
   }
 
-  const lead = context.one(await outbound.leads.get(identifier.trim()));
+  const lead = context.one(await outbound.leads.get(ref?.text ?? identifier));
 
   // A ref is looked up by the lead's address, or else its profile, whichever is not masked.
   const keys = keysOfLead(lead).filter(
