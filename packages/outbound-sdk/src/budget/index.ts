@@ -4,7 +4,9 @@
 //
 // The cap is enforced inside the engine, request by request: a call that
 // reaches it stops with `RateLimited`, `limit` "call" or "run", and
-// `permanent: true`, because retrying stops at the same place.
+// `permanent: true`, because retrying stops at the same place. Its message
+// says the cap is the caller's own, so it never reads as a vendor 429. An
+// insight stopped by it keeps what it read and returns `complete: false`.
 
 import { OutboundError } from "../internal/errors.ts";
 import type { OutboundPlugin } from "../internal/outbound/plugins.ts";
@@ -60,7 +62,7 @@ export const budget = (
   const spent = (provider: string): OutboundError =>
     new OutboundError(
       "RateLimited",
-      `The run used its budget of ${plural(options.maxRequests, "request")} to ${provider}. ${options.setting === undefined ? "Call requestBudget.reset() to start a new run, or raise budget()'s maxRequests." : `Raise ${options.setting}.`}`,
+      `The run used its budget of ${plural(options.maxRequests, "request")} to ${provider}. That budget is a cap you set, not the vendor's rate limit. ${options.setting === undefined ? "Call requestBudget.reset() to start a new run, or raise budget()'s maxRequests." : `Raise ${options.setting}.`}`,
       { limit: "run", provider }
     );
 

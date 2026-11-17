@@ -302,8 +302,8 @@ test("the machine-output check catches what it is meant to", () => {
 });
 
 test("a number reads the same in a sentence and on its card: one percent style, counts grouped", async () => {
-  // 10 bounces from 200 sends is exactly 5%; 2,100 block entries pass the
-  // default cap of 2,000.
+  // 10 bounces from 200 sends is exactly 5%; 2,100 block entries pass a
+  // cap of 2,000.
   const outbound = createOutbound({
     adapter: memory({
       data: {
@@ -337,7 +337,10 @@ test("a number reads the same in a sentence and on its card: one percent style, 
   assert.match(card, /\b5%/u);
   assert.doesNotMatch(`${over?.finding} ${card}`, /5\.0%/u);
 
-  const suppression = await outbound.insights.suppressionCheck({});
+  const suppression = await outbound.insights.suppressionCheck({
+    max_block_entries: 2000,
+  });
+
   const notes = suppression.meta.notes.join(" ");
 
   assert.match(notes, /2,000 block list entries/u);

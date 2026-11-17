@@ -16,6 +16,7 @@ import { readCampaignsIn, readCapped } from "../capped.ts";
 import type { Capped } from "../capped.ts";
 import type { InsightContext } from "../define.ts";
 import { statusesInput } from "../fields.ts";
+import { isCapStop } from "../run-cap.ts";
 
 /** Reads at most `max` records, and says so in a note naming `input` when more exist. */
 export const readCappedFlag = <Item>(
@@ -43,10 +44,21 @@ export const readByRef = async <Item>(
   }
 
   const found = await read(refs);
+  const capped = found.errors.filter(({ error }) => isCapStop(error));
+  const failed = found.errors.length - capped.length;
 
-  if (found.errors.length > 0) {
+  if (failed > 0) {
     context.note(
-      `${plural(found.errors.length, ...what)} could not be read, so ${noun(found.errors.length, "its", "their")} ${effect}.`
+      `${plural(failed, ...what)} could not be read, so ${noun(failed, "its", "their")} ${effect}.`
+    );
+  }
+
+  // A request cap the caller set stopped these reads: the answer covers part of the data.
+  const [stop] = capped;
+
+  if (stop !== undefined) {
+    context.partial(
+      `A request cap stopped the reads of ${plural(capped.length, ...what)}, so ${noun(capped.length, "its", "their")} ${effect}: ${stop.error.message}`
     );
   }
 

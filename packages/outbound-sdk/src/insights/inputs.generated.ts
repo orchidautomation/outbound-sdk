@@ -90,16 +90,16 @@ export interface InsightInputs {
     readonly include_past?: boolean | undefined;
 
     /**
-     * The most campaigns to read. Each costs one request per page of its leads.
+     * The most campaigns to read. Each costs one request per page of its leads. Defaults to the most allowed, so every campaign in the statuses is read.
      *
-     * A whole number from 1 to 200. Defaults to `20`.
+     * A whole number from 1 to 200. Defaults to `200`.
      */
     readonly max_campaigns?: number | undefined;
 
     /**
-     * The most leads to read from each campaign
+     * The most leads to read from each campaign. A campaign with more is read only in part, so totals.collisions is null.
      *
-     * A whole number from 1 to 20,000. Defaults to `500`.
+     * A whole number from 1 to 20,000. Defaults to `1000`.
      */
     readonly max_leads_per_campaign?: number | undefined;
 
@@ -133,23 +133,23 @@ export interface InsightInputs {
       | undefined;
 
     /**
-     * The most block list entries to read. A vendor request returns about 50 to 100.
+     * The most block list entries to read. A vendor request returns about 50 to 100. A lead on an entry past this cap is not found, so violations is null when entries are left unread.
      *
-     * A whole number from 1 to 100,000. Defaults to `2000`.
+     * A whole number from 1 to 100,000. Defaults to `10000`.
      */
     readonly max_block_entries?: number | undefined;
 
     /**
-     * The most campaigns to check. Each costs one request per page of its leads.
+     * The most campaigns to check. Each costs one request per page of its leads. Defaults to the most allowed, so every campaign in the statuses is checked.
      *
-     * A whole number from 1 to 200. Defaults to `20`.
+     * A whole number from 1 to 200. Defaults to `200`.
      */
     readonly max_campaigns?: number | undefined;
 
     /**
-     * The most leads to read from each campaign
+     * The most leads to read from each campaign. A campaign with more is checked only in part, so violations is null.
      *
-     * A whole number from 1 to 20,000. Defaults to `500`.
+     * A whole number from 1 to 20,000. Defaults to `1000`.
      */
     readonly max_leads_per_campaign?: number | undefined;
 

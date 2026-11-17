@@ -220,21 +220,19 @@ test("maxRequests must be a positive integer or Infinity", async () => {
 
 test("maxRequestsPerCall on the instance still caps each read under the default", async () => {
   // 25 leads at 10 a page is a listing of 3 requests; the instance allows 2.
-  const { outbound } = over(world(1, 25), { maxRequestsPerCall: 2 });
+  const { http, outbound } = over(world(1, 25), { maxRequestsPerCall: 2 });
 
-  const error = await rejection(
-    runInsightByName(
-      outbound,
-      "pipeline_forecast",
-      { campaign: CAMPAIGN },
-      {
-        now: NOW,
-      }
-    )
+  const result = await runInsightByName(
+    outbound,
+    "pipeline_forecast",
+    { campaign: CAMPAIGN },
+    { now: NOW }
   );
 
-  assert.equal(error.code, "RateLimited");
-  assert.match(error.message, /maxRequestsPerCall/u);
+  // The listing stopped at the cap, and the answer keeps what it read.
+  assert.equal(result.meta.complete, false);
+  assert.equal(result.meta.requests, http.requests.length);
+  assert.match(result.meta.notes.join(" "), /maxRequestsPerCall/u);
 });
 
 test("a run budget with too little left refuses the insight before any request", async () => {
@@ -263,19 +261,16 @@ test("a per-call budget still applies under the default and is not read as a run
     plugins: [budget({ maxRequests: 2, per: "call" })],
   });
 
-  const error = await rejection(
-    runInsightByName(
-      outbound,
-      "pipeline_forecast",
-      { campaign: CAMPAIGN },
-      {
-        now: NOW,
-      }
-    )
+  const result = await runInsightByName(
+    outbound,
+    "pipeline_forecast",
+    { campaign: CAMPAIGN },
+    { now: NOW }
   );
 
-  assert.equal(error.code, "RateLimited");
-  assert.match(error.message, /budget\(\)'s maxRequests/u);
+  assert.equal(result.meta.complete, false);
+  assert.match(result.meta.notes.join(" "), /budget\(\)'s maxRequests/u);
+  assert.doesNotMatch(result.meta.notes.join(" "), /left of the run's budget/u);
 });
 
 test("concurrent reads of one insight share its one cap", async () => {

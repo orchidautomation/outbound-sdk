@@ -118,7 +118,7 @@ Both reports, run on the in-memory adapter limited to what each vendor's adapter
 - `leadCollisions`: one request per page of campaigns, plus one per page of each campaign's leads.
 - `suppressionCheck`: one request per page of block list entries, plus one per page of each campaign's leads.
 
-The defaults read up to 20 campaigns (`max_campaigns`, at most 200), 500 leads from each (`max_leads_per_campaign`, at most 20,000) and 2,000 block list entries (`max_block_entries`, at most 100,000). A vendor request returns about 50 to 100 records. The two insights each read the leads, so running both reads them twice. `maxRequests` on the instance caps a call; past it the call fails with `RateLimited` instead of spending your vendor quota.
+The defaults read every campaign in the statuses (`max_campaigns`, 200, the most allowed), 1,000 leads from each (`max_leads_per_campaign`, at most 20,000) and 10,000 block list entries (`max_block_entries`, at most 100,000). A vendor request returns about 50 to 100 records. The two insights each read the leads, so running both reads them twice. When a cap or a request budget leaves part unread, the answer keeps what it read with `meta.complete: false`, `totals.violations` or `totals.collisions` is `null`, and the `finding` sentence names each cap to raise.
 
 ## When it cannot answer
 

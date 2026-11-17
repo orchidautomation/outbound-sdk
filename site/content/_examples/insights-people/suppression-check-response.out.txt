@@ -1,5 +1,6 @@
 {
   "data": {
+    "finding": "3 leads still being sent to are on the block list, in 2 campaigns of 3.",
     "byCampaign": [
       {
         "campaign": "mailtool:acme:agencies",
@@ -30,10 +31,13 @@
         "linkedin": 1
       },
       "campaignsRead": 3,
+      "campaignsWithMoreLeads": 0,
       "leadsRead": 11,
       "moreBlockEntriesExist": false,
+      "moreCampaignsExist": false,
       "moreLeadsExist": false,
-      "violations": 3
+      "violations": 3,
+      "violationsFound": 3
     },
     "violations": [
       {

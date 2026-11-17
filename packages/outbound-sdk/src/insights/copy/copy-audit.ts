@@ -6,7 +6,7 @@ import type { Lead, Sequence } from "../../internal/entities.ts";
 import { plural } from "../../internal/numbers.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
-import { leadsOf } from "../people/read.ts";
+import { capNote } from "../tracked-reads.ts";
 import {
   auditSamples,
   perLeadKeys,
@@ -159,6 +159,8 @@ interface Samples {
   readonly leads: readonly Lead[];
   /** Why no lead was sampled. `null` when some were, or none were needed. */
   readonly reason: string | null;
+  /** `true` when `max_leads` stopped the read with more leads left. */
+  readonly capped: boolean;
 }
 
 /** The sample leads for copy written per lead, or why there are none. */
@@ -168,27 +170,37 @@ const readSamples = async (
   sequence: Sequence
 ): Promise<Samples> => {
   if (!sequence.steps.some((step) => step.variants.some(writtenPerLead))) {
-    return { leads: [], reason: null };
+    return { capped: false, leads: [], reason: null };
   }
 
   if (args.samples === 0) {
-    return { leads: [], reason: "samples is 0" };
+    return { capped: false, leads: [], reason: "samples is 0" };
   }
 
   if (context.outbound.capabilities["leads.byCampaign"] === false) {
-    return { leads: [], reason: "this tool does not list a campaign's leads" };
+    return {
+      capped: false,
+      leads: [],
+      reason: "this tool does not list a campaign's leads",
+    };
   }
 
-  const leads = await leadsOf(
-    context,
-    args.campaign,
-    args.max_leads,
-    "max_leads"
-  );
+  // Read past `context.all`, which would mark the answer incomplete at the
+  // cap: the cap matters only when the leads read gave too few samples.
+  const walk = context.outbound
+    .campaign(args.campaign)
+    .leads.listAll({ max: args.max_leads });
+
+  const leads = await walk.toArray();
+
+  if (walk.meta !== undefined) {
+    context.one({ meta: walk.meta });
+  }
 
   return leads.length === 0
-    ? { leads: [], reason: "the campaign has no leads" }
+    ? { capped: false, leads: [], reason: "the campaign has no leads" }
     : {
+        capped: walk.truncated,
         leads: pickSamples(leads, perLeadKeys(sequence.steps), args.samples),
         reason: null,
       };
@@ -307,6 +319,17 @@ export const copyAudit = defineInsight({
     }
 
     noteSamples(context, perLead, samples, sampled);
+
+    // A cap that left leads unread matters only when the leads read gave
+    // fewer samples than asked for, or left a variant unaudited.
+    if (
+      samples.capped &&
+      (sampled.unaudited > 0 || sampled.leads.length < args.samples)
+    ) {
+      context.partial(
+        capNote({ input: "max_leads", max: args.max_leads, what: "leads" })
+      );
+    }
 
     const severity = (level: Severity): number =>
       findings.filter((finding) => finding.severity === level).length;

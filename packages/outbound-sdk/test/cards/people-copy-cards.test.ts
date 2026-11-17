@@ -150,6 +150,7 @@ test("account_summary with nobody found says whether the scan covered the worksp
 });
 
 const collisions = (found: number, leadsRead: number): LeadCollisions => ({
+  finding: `${found} people are active in two or more of the campaigns at once.`,
   collisions:
     found === 0
       ? []
@@ -168,10 +169,13 @@ const collisions = (found: number, leadsRead: number): LeadCollisions => ({
   totals: {
     acrossTools: 0,
     campaignsRead: 3,
+    campaignsWithMoreLeads: 0,
     collisions: found,
+    collisionsFound: found,
     concurrent: found,
     leadsRead,
     leadsWithoutIdentifier: 0,
+    moreCampaignsExist: false,
     pastOverlaps: 0,
     withinTool: found,
   },
@@ -196,6 +200,7 @@ test("lead_collisions counts people in two campaigns at once", () => {
 
 test("lead_collisions does not say at once when only past overlaps were asked for", () => {
   const past: LeadCollisions = {
+    finding: "1 person is in two or more of the campaigns.",
     collisions: [
       {
         campaignCount: 2,
@@ -212,10 +217,13 @@ test("lead_collisions does not say at once when only past overlaps were asked fo
     totals: {
       acrossTools: 0,
       campaignsRead: 3,
+      campaignsWithMoreLeads: 0,
       collisions: 1,
+      collisionsFound: 1,
       concurrent: 0,
       leadsRead: 80,
       leadsWithoutIdentifier: 0,
+      moreCampaignsExist: false,
       pastOverlaps: 1,
       withinTool: 1,
     },
@@ -232,16 +240,20 @@ test("lead_collisions does not say at once when only past overlaps were asked fo
 
 const check = (found: number): SuppressionCheck => ({
   byCampaign: [],
+  finding: `${found} leads still being sent to are on the block list.`,
   totals: {
     alreadyStopped: 3,
     blockEntriesNotChecked: 0,
     blockEntriesRead: 12,
     byMatch: { domain: found, email: 0, linkedin: 0 },
     campaignsRead: 2,
+    campaignsWithMoreLeads: 0,
     leadsRead: 300,
     moreBlockEntriesExist: false,
+    moreCampaignsExist: false,
     moreLeadsExist: false,
     violations: found,
+    violationsFound: found,
   },
   violations: Array.from({ length: found }, (_, index) => ({
     campaign: "c1",
@@ -256,6 +268,36 @@ const check = (found: number): SuppressionCheck => ({
     matchedBy: "domain" as const,
     sameTool: true,
   })),
+});
+
+const stoppedCheck = (found: number): SuppressionCheck => {
+  const base = check(found);
+
+  return {
+    ...base,
+    finding: "Not a clean result. The check is incomplete.",
+    totals: {
+      ...base.totals,
+      moreCampaignsExist: true,
+      violations: null,
+    },
+  };
+};
+
+test("a suppression_check card whose check a cap stopped is never clean (OUT-148)", () => {
+  const none = read(cardFor("suppression_check", insight(stoppedCheck(0))));
+
+  includes(
+    none,
+    "🟡 Not a clean result. The check is incomplete.",
+    "🟡 Stopped at 2 campaigns; more exist and were not checked.",
+    "Violations found: 0"
+  );
+  excludes(none, "No blocked lead is in a campaign.");
+  includes(
+    read(cardFor("suppression_check", insight(stoppedCheck(2)))),
+    "🔴 At least 2 blocked leads still in a campaign."
+  );
 });
 
 test("suppression_check lists blocked leads still in a campaign", () => {

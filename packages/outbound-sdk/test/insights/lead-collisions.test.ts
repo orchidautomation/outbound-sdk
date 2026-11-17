@@ -131,14 +131,21 @@ test("lead_collisions lists each person in two or more active campaigns, most ca
   assert.deepEqual(data.totals, {
     acrossTools: 0,
     campaignsRead: 3,
+    campaignsWithMoreLeads: 0,
     collisions: 2,
+    collisionsFound: 2,
     concurrent: 2,
     // 3 in c1, 4 in c2, 2 in c3.
     leadsRead: 9,
     leadsWithoutIdentifier: 2,
+    moreCampaignsExist: false,
     pastOverlaps: 0,
     withinTool: 2,
   });
+  assert.equal(
+    data.finding,
+    "2 people are active in two or more of the campaigns at once, among every lead of 3 campaigns."
+  );
   assert.equal(result.meta.complete, true);
 });
 
@@ -340,13 +347,18 @@ test("lead_collisions finds nothing with no campaigns, and nothing across tools 
 
   assert.deepEqual(empty.data, {
     collisions: [],
+    finding:
+      "Nobody is active in two or more of the campaigns at once: no campaign in those statuses was found to read.",
     totals: {
       acrossTools: 0,
       campaignsRead: 0,
+      campaignsWithMoreLeads: 0,
       collisions: 0,
+      collisionsFound: 0,
       concurrent: 0,
       leadsRead: 0,
       leadsWithoutIdentifier: 0,
+      moreCampaignsExist: false,
       pastOverlaps: 0,
       withinTool: 0,
     },
@@ -365,6 +377,13 @@ test("lead_collisions says the answer is partial when a cap stops a read", async
 
   // c1 and c2 only: person1 is in both but completed c2, person2 only in c1.
   assert.deepEqual(fewCampaigns.data.collisions, []);
+  // Part of the campaigns is not a clean result, so there is no total.
+  assert.equal(fewCampaigns.data.totals.collisions, null);
+  assert.equal(fewCampaigns.data.totals.collisionsFound, 0);
+  assert.equal(
+    fewCampaigns.data.finding,
+    "Not a clean result. No collision was found in what was read, but the check is incomplete: it read only 2 campaigns, with more in those statuses unread (max_campaigns). To check the rest, raise max_campaigns."
+  );
   assert.equal(fewCampaigns.data.totals.pastOverlaps, 1);
   assert.equal(fewCampaigns.meta.complete, false);
   assert.deepEqual(fewCampaigns.meta.notes, [
@@ -378,6 +397,12 @@ test("lead_collisions says the answer is partial when a cap stops a read", async
   // The first lead of c1, c2 and c3 is person1 each time.
   assert.equal(fewLeads.data.totals.leadsRead, 3);
   assert.equal(fewLeads.data.collisions[0]?.campaignCount, 3);
+  assert.equal(fewLeads.data.totals.collisions, null);
+  assert.equal(fewLeads.data.totals.collisionsFound, 1);
+  assert.equal(
+    fewLeads.data.finding,
+    "At least 1 person is active in two or more of the campaigns at once. The check is incomplete: it read only the first 1 lead of 3 campaigns that have more (max_leads_per_campaign). To check the rest, raise max_leads_per_campaign."
+  );
   assert.equal(fewLeads.meta.complete, false);
   assert.deepEqual(fewLeads.meta.notes, [
     "Stopped at 1 lead of a campaign (max_leads_per_campaign); more exist.",
