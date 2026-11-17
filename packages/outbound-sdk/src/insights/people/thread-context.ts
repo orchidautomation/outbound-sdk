@@ -63,9 +63,9 @@ export type FollowUpBasis =
 export interface FollowUpAssessment {
   /**
    * `true` when the latest message is inbound, not automatic and the vendor
-   * records no meeting; `false` when the latest message is outbound or the
-   * vendor records a meeting; `null` when the rules cannot tell. A vendor
-   * label alone never sets it.
+   * records no meeting; `false` when the vendor records a meeting booked,
+   * held or won, read or not, or the latest message is outbound; `null` when
+   * the rules cannot tell. A vendor label alone never sets it.
    */
   readonly needed: boolean | null;
   readonly basis: FollowUpBasis;
@@ -242,9 +242,9 @@ const READ_IT =
 
 const decide = (
   latest: LatestMessage,
-  meeting: MeetingStatus | null
+  booked: boolean
 ): Pick<FollowUpAssessment, "basis" | "needed"> => {
-  if (meeting !== null && meeting !== "no_show") {
+  if (booked) {
     return { basis: "meeting", needed: false };
   }
 
@@ -257,18 +257,26 @@ const decide = (
     : { basis: "inbound_unanswered", needed: true };
 };
 
+/** A meeting booked, held or won settles it, whatever the thread holds. */
+const meetingRecorded = (lead: Lead | null): boolean => {
+  const meeting = lead?.meeting ?? null;
+
+  return meeting !== null && meeting !== "no_show";
+};
+
 export const assessFollowUp = (
   facts: ThreadFacts,
   activity: ThreadActivity
 ): FollowUpAssessment => {
   const meeting = meetingFacts(facts);
   const tags = tagsUnchecked(facts.lead);
+  const booked = meetingRecorded(facts.lead);
 
   if (facts.messages === null) {
     return {
-      basis: "not_read",
+      basis: booked ? "meeting" : "not_read",
       evidence: meeting.evidence,
-      needed: null,
+      needed: booked ? false : null,
       unchecked: [
         `The conversation was not read${facts.notRead === undefined ? "" : ` (${facts.notRead})`}, so who wrote last is unknown; a vendor label alone does not show a reply is owed.`,
         ...meeting.unchecked,
@@ -281,9 +289,9 @@ export const assessFollowUp = (
 
   if (latest === null) {
     return {
-      basis: "no_messages",
+      basis: booked ? "meeting" : "no_messages",
       evidence: meeting.evidence,
-      needed: null,
+      needed: booked ? false : null,
       unchecked: [
         "Who wrote last: the conversation read holds no message with a time.",
         ...meeting.unchecked,
@@ -293,7 +301,7 @@ export const assessFollowUp = (
   }
 
   return {
-    ...decide(latest, facts.lead?.meeting ?? null),
+    ...decide(latest, booked),
     evidence: [
       latestSentence(latest, facts.now),
       ...labelSentence(facts.labelled, latest),

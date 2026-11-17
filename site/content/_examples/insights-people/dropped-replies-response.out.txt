@@ -36,6 +36,7 @@
             "stepIndex": null,
             "subject": "Re: Quick question, Ana",
             "threadId": "thread_ana",
+            "url": null,
             "variantKey": null,
             "direction": "in"
           },
@@ -95,6 +96,7 @@
             "stepIndex": null,
             "subject": null,
             "threadId": null,
+            "url": null,
             "variantKey": null,
             "direction": "in"
           },

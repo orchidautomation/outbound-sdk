@@ -1,0 +1,126 @@
+{
+  "items": [
+    {
+      "id": "01a1d77f-5e65-78a7-8eb0-0211a0000046",
+      "timestamp_created": "2026-11-13T15:20:00.000Z",
+      "timestamp_email": "2026-11-13T15:20:00.000Z",
+      "message_id": "<01a1d77f-5e65-78a7-8eb0-0211a0000046@mail.example.com>",
+      "subject": "Re: Your RFP",
+      "from_address_email": "person42@example.com",
+      "from_address_json": [],
+      "to_address_email_list": "sender41@example.com",
+      "to_address_json": [],
+      "body": {
+        "text": "Please disregard the RFP email you received from our address. It was fraudulent and did not come from us."
+      },
+      "content_preview": "Please disregard the RFP email you received from our address. It was fraudulent and did not come from us.",
+      "organization_id": "01a1d77f-5e65-78a7-8eb0-0212308950a6",
+      "campaign_id": "01a1d77f-5e65-78a7-8eb0-0213c3e7d6dc",
+      "eaccount": "sender41@example.com",
+      "lead": "person42@example.com",
+      "ue_type": 2,
+      "step": "0_0_0",
+      "is_focused": 1,
+      "is_unread": 1,
+      "thread_id": "01a1d77f-5e65-78a7-8eb0-021717740242"
+    },
+    {
+      "id": "01a1d77f-5e65-78a7-8eb0-0211a0000045",
+      "timestamp_created": "2026-11-10T11:00:00.000Z",
+      "timestamp_email": "2026-11-10T11:00:00.000Z",
+      "message_id": "<01a1d77f-5e65-78a7-8eb0-0211a0000045@mail.example.com>",
+      "subject": "Re: Your RFP",
+      "from_address_email": "person42@example.com",
+      "from_address_json": [],
+      "to_address_email_list": "sender41@example.com",
+      "to_address_json": [],
+      "body": {
+        "text": "Interested. Send the details over."
+      },
+      "content_preview": "Interested. Send the details over.",
+      "organization_id": "01a1d77f-5e65-78a7-8eb0-0212308950a6",
+      "campaign_id": "01a1d77f-5e65-78a7-8eb0-0213c3e7d6dc",
+      "eaccount": "sender41@example.com",
+      "lead": "person42@example.com",
+      "ue_type": 2,
+      "step": "0_0_0",
+      "i_status": 1,
+      "is_focused": 1,
+      "is_unread": 1,
+      "thread_id": "01a1d77f-5e65-78a7-8eb0-021717740242"
+    },
+    {
+      "id": "01a1d77f-5e65-78a7-8eb0-0211a0000044",
+      "timestamp_created": "2026-11-09T09:00:00.000Z",
+      "timestamp_email": "2026-11-09T09:00:00.000Z",
+      "message_id": "<01a1d77f-5e65-78a7-8eb0-0211a0000044@mail.example.com>",
+      "subject": "Your RFP",
+      "from_address_email": "sender41@example.com",
+      "from_address_json": [],
+      "to_address_email_list": "person42@example.com",
+      "to_address_json": [],
+      "body": {
+        "text": "Hi, following up on your RFP."
+      },
+      "content_preview": "Hi, following up on your RFP.",
+      "organization_id": "01a1d77f-5e65-78a7-8eb0-0212308950a6",
+      "campaign_id": "01a1d77f-5e65-78a7-8eb0-0213c3e7d6dc",
+      "eaccount": "sender41@example.com",
+      "lead": "person42@example.com",
+      "ue_type": 1,
+      "step": "0_0_0",
+      "is_focused": 1,
+      "is_unread": 0,
+      "thread_id": "01a1d77f-5e65-78a7-8eb0-021717740242"
+    },
+    {
+      "id": "01a1d77f-5e65-78a7-8eb0-0211a0000043",
+      "timestamp_created": "2026-11-11T14:30:00.000Z",
+      "timestamp_email": "2026-11-11T14:30:00.000Z",
+      "message_id": "<01a1d77f-5e65-78a7-8eb0-0211a0000043@mail.example.com>",
+      "subject": "Re: A quick question",
+      "from_address_email": "person41@example.com",
+      "from_address_json": [],
+      "to_address_email_list": "sender41@example.com",
+      "to_address_json": [],
+      "body": {
+        "text": "Booked a slot on your calendar for Thursday."
+      },
+      "content_preview": "Booked a slot on your calendar for Thursday.",
+      "organization_id": "01a1d77f-5e65-78a7-8eb0-0212308950a6",
+      "campaign_id": "01a1d77f-5e65-78a7-8eb0-0213c3e7d6dc",
+      "eaccount": "sender41@example.com",
+      "lead": "person41@example.com",
+      "ue_type": 2,
+      "step": "0_0_0",
+      "i_status": 2,
+      "is_focused": 1,
+      "is_unread": 1,
+      "thread_id": "01a1d77f-5e65-78a7-8eb0-021717740241"
+    },
+    {
+      "id": "01a1d77f-5e65-78a7-8eb0-0211a0000042",
+      "timestamp_created": "2026-11-10T09:00:00.000Z",
+      "timestamp_email": "2026-11-10T09:00:00.000Z",
+      "message_id": "<01a1d77f-5e65-78a7-8eb0-0211a0000042@mail.example.com>",
+      "subject": "A quick question",
+      "from_address_email": "sender41@example.com",
+      "from_address_json": [],
+      "to_address_email_list": "person41@example.com",
+      "to_address_json": [],
+      "body": {
+        "text": "Hi, is a short call worth it?"
+      },
+      "content_preview": "Hi, is a short call worth it?",
+      "organization_id": "01a1d77f-5e65-78a7-8eb0-0212308950a6",
+      "campaign_id": "01a1d77f-5e65-78a7-8eb0-0213c3e7d6dc",
+      "eaccount": "sender41@example.com",
+      "lead": "person41@example.com",
+      "ue_type": 1,
+      "step": "0_0_0",
+      "is_focused": 1,
+      "is_unread": 0,
+      "thread_id": "01a1d77f-5e65-78a7-8eb0-021717740241"
+    }
+  ]
+}

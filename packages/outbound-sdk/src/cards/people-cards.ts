@@ -301,14 +301,14 @@ const hotLeads: CardBuilder = (data) => {
   };
 };
 
-const FOLLOW_UP: Readonly<Record<string, string>> = {
-  answered: "Answered",
-  automatic: "Automatic reply last",
-  inbound_unanswered: "Reply owed",
-  meeting: "Meeting recorded",
-  no_messages: "No messages",
-  not_read: "Not read",
-};
+const FOLLOW_UP = new Map([
+  ["answered", "Answered"],
+  ["automatic", "Automatic reply last"],
+  ["inbound_unanswered", "Reply owed"],
+  ["meeting", "Meeting recorded"],
+  ["no_messages", "No messages"],
+  ["not_read", "Not read"],
+]);
 
 const threadContext: CardBuilder = (data) => {
   const coverage = child(data, "coverage");
@@ -359,7 +359,7 @@ const threadContext: CardBuilder = (data) => {
             ? DASH
             : `${str(latest, "direction") === "in" ? "Inbound" : "Outbound"}, ${day(str(latest, "sentAt"))}`,
           words(show(thread, "meeting")),
-          FOLLOW_UP[str(child(thread, "followUp"), "basis") ?? ""] ?? DASH,
+          FOLLOW_UP.get(str(child(thread, "followUp"), "basis") ?? "") ?? DASH,
         ];
       }),
     },

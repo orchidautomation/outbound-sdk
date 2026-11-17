@@ -161,14 +161,29 @@ const toMessage = (message: Message, bodies: boolean): ThreadMessage => ({
     : null,
 });
 
+/** Who the conversation is with, from the lead or else its messages. */
+const partyOf = (lead: Lead | undefined, messages: readonly Message[]) => ({
+  campaign:
+    lead?.campaignRef ??
+    messages.find((message) => message.campaignRef !== null)?.campaignRef ??
+    null,
+  email: lead?.email ?? null,
+  linkedinUrl: lead?.linkedinUrl ?? null,
+  threadIds: [
+    ...new Set(
+      messages.flatMap((message) =>
+        message.threadId === null ? [] : [message.threadId]
+      )
+    ),
+  ],
+});
+
 const recordOf = (
   context: InsightContext,
   read: Read,
   lead: Lead | undefined,
   values: Input
 ): ThreadRecord => {
-  const bodies = values.bodies === "snippet";
-
   const messages =
     read.messages === null
       ? null
@@ -176,7 +191,8 @@ const recordOf = (
           (left.sentAt ?? "").localeCompare(right.sentAt ?? "")
         );
 
-  const shown = messages?.slice(-values.max_messages) ?? [];
+  const all = messages ?? [];
+  const shown = all.slice(-values.max_messages);
 
   return {
     ...threadContext({
@@ -185,26 +201,15 @@ const recordOf = (
       messages,
       notRead: read.failed ?? undefined,
       now: context.now,
-      provider:
-        lead?.provider ?? messages?.[0]?.provider ?? context.outbound.provider,
+      provider: lead?.provider ?? all[0]?.provider ?? context.outbound.provider,
     }),
-    campaign:
-      lead?.campaignRef ??
-      messages?.find((message) => message.campaignRef !== null)?.campaignRef ??
-      null,
-    email: lead?.email ?? null,
+    ...partyOf(lead, all),
     lead: leadRefOf(read),
-    linkedinUrl: lead?.linkedinUrl ?? null,
-    messages: shown.map((message) => toMessage(message, bodies)),
-    messagesOmitted: (messages?.length ?? 0) - shown.length,
+    messages: shown.map((message) =>
+      toMessage(message, values.bodies === "snippet")
+    ),
+    messagesOmitted: all.length - shown.length,
     target: read.target,
-    threadIds: [
-      ...new Set(
-        (messages ?? []).flatMap((message) =>
-          message.threadId === null ? [] : [message.threadId]
-        )
-      ),
-    ],
   };
 };
 

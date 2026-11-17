@@ -706,6 +706,7 @@ Fetched 2026-11-17: https://api.instantly.ai/openapi/api_v2.json (`info.version`
 - No request reads messages for many threads or leads at once (`search` takes one thread, `lead` one address), so `thread_context` reads one conversation per request, in pages the caller sets.
 
 Not run live yet when written: whether a lead booked through a calendar integration gets `lt_interest_status` 2.
+
 ## Conversation links (OUT-140, 2026-11-17)
 
 Sources, read 2026-11-17: `https://developer.instantly.ai/guides/webhook-events.md` (`unibox_url`: "URL to view the conversation in Unibox (only for reply events)"), `https://developer.instantly.ai/api-reference/schemas/email.md` and the `GET /emails` reference (no link field on an email), and `https://help.instantly.ai/en/articles/6576561-how-to-manage-unibox-best-practices-for-replying-to-leads` (the Unibox, no URL scheme).

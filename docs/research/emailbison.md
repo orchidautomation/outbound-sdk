@@ -175,6 +175,7 @@ Fetched 2026-11-17: https://dedi.emailbison.com/api/reference.openapi (https://d
 - No meeting field on a lead, reply or campaign: "meeting" and "booked" appear nowhere in the spec. `fields.lead.meeting` is `false`.
 - Every workspace gets default tags, among them "Interested" and "Meeting Booked" (tags/overview.md). Tags are workspace-editable and nothing says what attaches them, and the lead read does not return tags (`fields.lead.tags` is `false`), so no tag is read as a meeting.
 - A reply's `interested` flag stays the reply category; `conversation-thread` returns `current_reply`, `older_messages` and `newer_messages`, direction only from `folder`, time `date_received`, no preview. No batched read by id.
+
 ## Conversation links (OUT-140, 2026-11-17)
 
 Sources, read 2026-11-17: `https://docs.emailbison.com/master-inbox/overview.md`, `https://docs.emailbison.com/master-inbox/fetching-replies.md`, `https://docs.emailbison.com/master-inbox/responding-to-messages.md`. No page documents a URL that opens one master inbox conversation, and a reply has no link field. Each customer also has their own host. No EmailBison key was available to check live. A message's and reply's `url` is null and the field coverage says `false`.

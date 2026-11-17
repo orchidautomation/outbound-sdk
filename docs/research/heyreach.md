@@ -416,6 +416,7 @@ Fetched 2026-11-17: https://docs.heyreach.io/openapi.json, https://docs.heyreach
 - The auto-tag (Interested, Not Interested, Generic) stays the lead's `interest`. Lead tags (`correspondentProfile.tags`, `POST /lead/GetTags`) are free text a workspace writes; they stay in `tags`, and the follow-up assessment lists them under `unchecked` ("were not interpreted") rather than reading one as a meeting.
 - A conversation's messages carry `createdAt` and `sender` ("ME" for the account), no per-message preview; `lastMessageText` is the conversation's only short text. GetConversationsV3 returns up to 100 conversations with their messages, but cannot filter by a list of conversation ids.
 - The help article says GetChatroom carries auto-tags; the spec's GetChatroom schema has no `autoTags`. They disagree.
+
 ## Conversation links (OUT-140, 2026-11-17)
 
 Sources, read 2026-11-17: `https://docs.heyreach.io/llms.txt`, `https://docs.heyreach.io/hey-reach-api/inbox/get-chatroom.md`, `https://docs.heyreach.io/hey-reach-api/inbox/get-conversations-v-3.md`, and `https://help.heyreach.io/en/articles/9877943-unibox-screen-overview`. None documents a URL that opens one Unibox conversation, and the webhook payload (section on webhooks above) carries `conversation_id` but no link.
