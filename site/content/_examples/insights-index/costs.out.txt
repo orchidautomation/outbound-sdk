@@ -1,8 +1,8 @@
 insight: default cap at default inputs (heyreach, instantly, smartlead)
 person_summary: 140, 153, 78
 account_summary: 34, 47, 35
-lead_collisions: 173, 305, 198
-suppression_check: 198, 332, 200
+lead_collisions: 2774, 5284, 3023
+suppression_check: 2899, 5410, 3035
 dropped_replies: 15072, 17598, 12647
 hot_leads: 123, 185, 187
 thread_context: 20, 20, 20

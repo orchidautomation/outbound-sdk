@@ -125,12 +125,16 @@ const OVER_CEILING: Readonly<Record<string, string>> = {
     "50 campaigns, each over the bounce rate with 10 senders to read, is 600 requests at most",
   client_report:
     "on Instantly each stats read also reads the campaign's tracking settings (OUT-89), so the default campaigns, each read four times and the active ones with their leads, can pass 500",
+  lead_collisions:
+    "every campaign in the statuses is read by default (OUT-148), up to 200 with up to 1,000 leads each; a workspace of 24 active campaigns reads a few hundred pages, and a call stopped at the ceiling leads with what it read",
   dropped_replies:
     "the whole window is read, up to 2,000 replies (OUT-115), and each could be its own conversation read in full and named; a window answered by hand on Instantly is a few requests",
   sender_capacity:
     "the default reads up to 50 active campaigns, and on Instantly each campaign's senders page through every mailbox of the workspace at 2 requests a page (OUT-112)",
   sender_load:
     "the default reads up to 50 active campaigns, and on Instantly each campaign's senders page through every mailbox of the workspace at 2 requests a page (OUT-112)",
+  suppression_check:
+    "every campaign in the statuses is checked by default (OUT-148), up to 200 with up to 1,000 leads each, against up to 10,000 block entries; a call stopped at the ceiling leads with what it checked",
 };
 
 test("every insight's default cap at its default inputs fits under the insight tools' ceiling, but the ones named", () => {

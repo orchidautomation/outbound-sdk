@@ -18,7 +18,7 @@ const BLOCKED: MemoryData = {
     value: `dnc${index}@example.org`,
   })),
   campaigns: [{ id: "c1", name: "Q4", status: "active" }],
-  // On the block list as entry 2,401, past the default cap of 2,000.
+  // On the block list as entry 2,401, past a cap of 2,000.
   leads: [{ campaignId: "c1", email: "dnc2400@example.org", id: "l1" }],
 };
 
@@ -35,9 +35,13 @@ const card = async (
 };
 
 test("suppression_check says in data that block list entries were left unread", async () => {
-  const capped = await single(BLOCKED).insights.suppressionCheck({});
+  const capped = await single(BLOCKED).insights.suppressionCheck({
+    max_block_entries: 2000,
+  });
 
-  assert.equal(capped.data.totals.violations, 0);
+  // Part of the block list is not a clean result, so there is no total.
+  assert.equal(capped.data.totals.violations, null);
+  assert.equal(capped.data.totals.violationsFound, 0);
   assert.equal(capped.data.totals.blockEntriesRead, 2000);
   assert.equal(capped.data.totals.moreBlockEntriesExist, true);
   // The unread entries were not checked, and their number is unknown: not 0.
@@ -55,11 +59,13 @@ test("suppression_check says in data that block list entries were left unread", 
 });
 
 test("the suppression_check card does not call a capped check clean", async () => {
-  const text = await card(BLOCKED, "suppression_check");
+  const text = await card(BLOCKED, "suppression_check", {
+    max_block_entries: 2000,
+  });
 
   includes(
     text,
-    "No blocked lead found in the entries read, but more entries exist.",
+    "🟡 Not a clean result. No violation was found in what was read, but the check is incomplete: it read only 2,000 block list entries, with more unread (max_block_entries).",
     "Stopped at 2,000 block list entries; more exist and were not checked."
   );
   assert.ok(!text.includes("🟢"), text);

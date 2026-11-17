@@ -79,13 +79,17 @@
         "stillActive": 2
       }
     ],
+    "finding": "2 people are active in two or more of the campaigns at once, among every lead of 3 campaigns.",
     "totals": {
       "acrossTools": 1,
       "campaignsRead": 3,
+      "campaignsWithMoreLeads": 0,
       "collisions": 2,
+      "collisionsFound": 2,
       "concurrent": 2,
       "leadsRead": 11,
       "leadsWithoutIdentifier": 0,
+      "moreCampaignsExist": false,
       "pastOverlaps": 0,
       "withinTool": 1
     }

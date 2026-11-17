@@ -197,7 +197,7 @@ test("copy_reuse counts the request of a read that answered when it leaves the c
   const result = await settle(outbound.insights.copyReuse({}, { now: NOW }));
 
   assert.equal(result.meta.complete, false);
-  // Every request but the one that failed: a failed read returns no meta to
-  // count from, while the other campaign's sequence read did answer.
-  assert.equal(result.meta.requests, http.requests.length - 1);
+  // Every request, the one that failed included: a failed read returns no
+  // meta, so the run's own count of what it sent is the total (OUT-151).
+  assert.equal(result.meta.requests, http.requests.length);
 });
