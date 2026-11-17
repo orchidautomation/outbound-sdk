@@ -1,6 +1,6 @@
 # outbound-desk: an eve agent on outbound-sdk
 
-An [eve](https://eve.dev) agent for an outbound agency. It lives in Slack and answers the questions an agency gets all day — how are Acme's campaigns doing, why did bounces jump, who replied and is still waiting, which variant is winning — from each client's Instantly, Smartlead or HeyReach account, through [outbound-sdk](https://outbound-sdk.dev). Every Monday it posts each client's weekly report in the channel the agency shares with that client, and every weekday morning it tells the team what needs a person today.
+An [eve](https://eve.dev) agent for an outbound agency. It lives in Slack and answers the questions an agency gets all day — how are Acme's campaigns doing, why did bounces jump, who replied and is still waiting, which variant is winning — from each client's Instantly, Smartlead, EmailBison or HeyReach account, through [outbound-sdk](https://outbound-sdk.dev). Every Monday it posts each client's weekly report in the channel the agency shares with that client, and every weekday morning it tells the team what needs a person today.
 
 It only reads. outbound-sdk has no method that sends, pauses, edits or deletes anything, so neither does the agent.
 
@@ -49,7 +49,7 @@ npm run demo
 
 ## Connect real accounts
 
-1. **List your clients** in `agent/lib/clients.ts`: an `id` (your label), the vendor, the name of the environment variable holding the key, and the Slack channel you share with that client.
+1. **List your clients** in `agent/lib/clients.ts`: an `id` (your label), the vendor (`instantly`, `smartlead`, `emailbison` or `heyreach`), the name of the environment variable holding the key, and the Slack channel you share with that client. An EmailBison client also sets `baseUrl`, the URL its account is at.
 2. **Set the keys** in `.env.local` (see `.env.example`). The SDK only reads, so use a read-only key where the vendor offers one.
 3. Run `npm run dev`.
 
@@ -155,6 +155,6 @@ Set the same environment variables on the deployment. On Vercel each schedule be
 ## Things to know
 
 - **A combined instance can only do what every member can.** With Instantly and HeyReach clients side by side, the agency-wide view gives up what HeyReach cannot read, such as reply categories. In a client's own channel the tools see that client's vendor in full.
-- **Smartlead is unverified.** Its adapter has never been run against a live account; the agent says so when it quotes Smartlead numbers. See [what is verified](https://outbound-sdk.dev/docs/status).
+- **Smartlead and EmailBison are unverified.** Neither adapter has been run against a live account; the agent says so when it quotes their numbers. See [what is verified](https://outbound-sdk.dev/docs/status).
 - **Prospect data goes to your model provider.** Tool results can include lead emails and, when asked for, reply text. To mask them, add `redact()` from `outbound-sdk/redact` to the plugins in `agent/lib/outbound.ts`; tools that need the masked fields are then left out or refuse.
 - **For the full answering rules,** copy the SDK's [`outbound-sdk-answering`](https://github.com/orchidautomation/outbound-sdk/tree/main/skills/outbound-sdk-answering) skill into `agent/skills/`. `instructions.md` carries the rules that matter on every turn.

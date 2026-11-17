@@ -44,6 +44,12 @@ const adapterFor = async (client: Client) => {
       return smartlead(options);
     }
 
+    case "emailbison": {
+      const { emailbison } = await import("outbound-sdk/emailbison");
+
+      return emailbison({ ...options, baseUrl: client.baseUrl });
+    }
+
     case "heyreach": {
       const { heyreach } = await import("outbound-sdk/heyreach");
 
