@@ -179,7 +179,7 @@ test("channel_mix says there is nothing to compare with one channel, with none, 
   assert.equal(one.data.comparison, null);
   assert.equal(
     one.data.finding,
-    "Only email campaigns were found, so there is nothing to compare."
+    "Only email campaigns are active, paused or completed, so there is nothing to compare; pass statuses to include campaigns in other states."
   );
 
   const none = await single({}).insights.channelMix({

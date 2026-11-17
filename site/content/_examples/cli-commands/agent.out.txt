@@ -104,60 +104,60 @@ $ outbound insight
 $ outbound insight channel_mix --input '{"max_campaigns":5}'
 {
   "data": {
-    "campaignsRead": 1,
+    "campaignsRead": 2,
     "moreCampaignsExist": false,
     "comparison": null,
-    "finding": "Only email campaigns were found, so there is nothing to compare.",
+    "finding": "Only email campaigns are active, paused or completed, so there is nothing to compare; pass statuses to include campaigns in other states.",
     "byProvider": [
       {
-        "bounced": 19,
-        "contacted": 630,
-        "positive": 19,
-        "replied": 32,
-        "sent": 943,
+        "bounced": 72,
+        "contacted": 1260,
+        "positive": 23,
+        "replied": 47,
+        "sent": 1993,
         "acceptance": null,
-        "campaigns": 1,
+        "campaigns": 2,
         "channel": "email",
         "positiveRate": {
-          "count": 19,
-          "high": 0.0466,
-          "low": 0.0194,
-          "of": 630,
-          "rate": 0.0302
+          "count": 23,
+          "high": 0.0272,
+          "low": 0.0122,
+          "of": 1260,
+          "rate": 0.0183
         },
         "replyRate": {
-          "count": 32,
-          "high": 0.0708,
-          "low": 0.0362,
-          "of": 630,
-          "rate": 0.0508
+          "count": 47,
+          "high": 0.0492,
+          "low": 0.0282,
+          "of": 1260,
+          "rate": 0.0373
         },
         "provider": "memory"
       }
     ],
     "channels": [
       {
-        "bounced": 19,
-        "contacted": 630,
-        "positive": 19,
-        "replied": 32,
-        "sent": 943,
+        "bounced": 72,
+        "contacted": 1260,
+        "positive": 23,
+        "replied": 47,
+        "sent": 1993,
         "acceptance": null,
-        "campaigns": 1,
+        "campaigns": 2,
         "channel": "email",
         "positiveRate": {
-          "count": 19,
-          "high": 0.0466,
-          "low": 0.0194,
-          "of": 630,
-          "rate": 0.0302
+          "count": 23,
+          "high": 0.0272,
+          "low": 0.0122,
+          "of": 1260,
+          "rate": 0.0183
         },
         "replyRate": {
-          "count": 32,
-          "high": 0.0708,
-          "low": 0.0362,
-          "of": 630,
-          "rate": 0.0508
+          "count": 47,
+          "high": 0.0492,
+          "low": 0.0282,
+          "of": 1260,
+          "rate": 0.0373
         }
       }
     ],

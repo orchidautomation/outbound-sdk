@@ -71,15 +71,25 @@ export const campaignTotalsCost = (
   );
 };
 
-export const listFields = (costPerCampaign: string) => ({
+interface ListDefaults {
+  readonly maxCampaigns: number;
+  readonly statuses: readonly [CampaignStatus, ...CampaignStatus[]];
+}
+
+const LIST_DEFAULTS: ListDefaults = { maxCampaigns: 50, statuses: ["active"] };
+
+export const listFields = (
+  costPerCampaign: string,
+  defaults = LIST_DEFAULTS
+) => ({
   max_campaigns: z
     .number()
     .int()
     .min(1)
     .max(200)
-    .default(50)
+    .default(defaults.maxCampaigns)
     .describe(`The most campaigns to read. Each costs ${costPerCampaign}.`),
-  statuses: statusesInput(["active"]),
+  statuses: statusesInput(defaults.statuses),
 });
 
 export interface CampaignLabel {

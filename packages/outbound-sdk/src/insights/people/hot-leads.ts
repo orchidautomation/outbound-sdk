@@ -51,7 +51,7 @@ const input = z.object({
     .int()
     .min(1)
     .max(20_000)
-    .default(500)
+    .default(2000)
     .describe(
       "The most leads a lead listing reads: the leads labelled positive where the tool filters by interest, and the lead list itself where it cannot or include_engagement_only is true. A vendor request returns about 50 to 100 leads. The leads behind replies within recency_days are read on top."
     ),
