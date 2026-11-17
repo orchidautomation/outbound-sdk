@@ -1,5 +1,15 @@
 # outbound-sdk
 
+## 0.10.0
+
+### Minor Changes
+
+- 22079e2: `lead_collisions` and `suppression_check` now run while the redact plugin masks email addresses with its default `mask` strategy, and `outbound mcp` offers them with redaction on. They match people on the keyed tokens redact writes. Those tokens are the same for one person across every record and block list entry in a run and can't be reversed without the plugin's key. LinkedIn profiles now match too, because a masked profile's token is written from its slug. `suppression_check` still can't match domain entries while addresses are masked, and says so in a note.
+
+### Patch Changes
+
+- 2e681e2: The redact plugin now puts the real value back for every token in a call's query, not only in its id, so a filter like a lead timeline's `leadId` no longer reaches the vendor as `redacted:…`. This fixes `dropped_replies` with redaction on over a combined instance. `dropped_replies` also counts a conversation whose read fails in `totals.unchecked`, with a note, instead of failing the whole report; a request cap still stops the run.
+
 ## 0.9.0
 
 ### Minor Changes
