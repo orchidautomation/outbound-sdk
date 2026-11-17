@@ -44,3 +44,5 @@
 
 - A lead list's size is leads_succeeded.
 
+- A message's or reply's url is null: EmailBison documents no link to one master inbox conversation, and no read returns one.
+

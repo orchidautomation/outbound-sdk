@@ -167,3 +167,7 @@ Fetched 2026-11-16: `https://dedi.emailbison.com/api/reference.openapi`. `GET /a
 ## A step wait below zero (2026-11-16, for OUT-110)
 
 Fetched 2026-11-16: `https://dedi.emailbison.com/api/reference.openapi`. On the sequence-step write body `wait_in_days` is an `integer`, "The days to wait.", with no minimum; the read's examples give it as a string (`"1"`). A negative value has not been seen from EmailBison; Instantly sent one on a live campaign (OUT-110). The normalized `delayDays` must be 0 or more, so the adapter maps a negative wait to `null` with a note in `meta.notes`, for example "Step 1's wait is negative in EmailBison (-2 days); left out.", instead of failing the whole sequence read.
+
+## Conversation links (OUT-140, 2026-11-17)
+
+Sources, read 2026-11-17: `https://docs.emailbison.com/master-inbox/overview.md`, `https://docs.emailbison.com/master-inbox/fetching-replies.md`, `https://docs.emailbison.com/master-inbox/responding-to-messages.md`. No page documents a URL that opens one master inbox conversation, and a reply has no link field. Each customer also has their own host. No EmailBison key was available to check live. A message's and reply's `url` is null and the field coverage says `false`.

@@ -77,6 +77,8 @@ const messageFields = (
       conversationId === "" || accountId === null
         ? null
         : `${accountId}:${conversationId}`,
+    // HeyReach documents no link to a conversation in its Unibox.
+    url: null,
     variantKey: null,
   };
 };

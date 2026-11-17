@@ -612,3 +612,7 @@ A possible later route, which needs a live key: list a campaign's leads with `em
 ## A step delay below zero (2026-11-16, for OUT-110)
 
 Fetched 2026-11-16: https://api.smartlead.ai/api-reference/campaigns/get-sequences.md. `seq_delay_details.delayInDays` is a `number`, "Number of days to wait before sending this sequence", with no stated minimum. A negative value has not been seen from Smartlead; Instantly sent one on a live campaign (OUT-110). The normalized `delayDays` must be 0 or more, so the adapter maps a negative delay to `null` with a note in `meta.notes`, for example "Step 2's delay is negative in Smartlead (-3 days); left out.", instead of failing the whole sequence read.
+
+## Conversation links (OUT-140, 2026-11-17)
+
+Sources, read 2026-11-17: `https://api.smartlead.ai/api-reference/inbox/get-by-id.md` (calls the item read "essential for deep linking" but gives no app URL), `https://api.smartlead.ai/api-reference/inbox/get-messages.md`, and the webhook pages `https://help.smartlead.ai/Email-Replied-aeebacc09db9456fbf23dcf5c6cbd0fd` and `https://help.smartlead.ai/Lead-Category-Updated-22cab06ce4a0499ca417916cececa62c`. `app_url` (and the deprecated `ui_master_inbox_link`) is documented only as the master inbox page, `https://app.smartlead.ai/app/master-inbox`, or `https://app.smartlead.ai/app`, never with a conversation in it. No Smartlead key was available to check live. A message's and reply's `url` is null and the field coverage says `false`.
