@@ -209,7 +209,7 @@ test("a combined instance with no campaign in the default state says it checked 
   const { data, meta } = await createOutbound({
     adapter: combine([heyreachLike()]),
     plugins: [insights()],
-  }).insights.channelMix(NOVEMBER);
+  }).insights.channelMix({ ...NOVEMBER, statuses: ["active"] });
 
   assert.equal(data.campaignsRead, 0);
   assert.equal(meta.complete, false);
@@ -219,6 +219,55 @@ test("a combined instance with no campaign in the default state says it checked 
     ),
     meta.notes.join(" | ")
   );
+});
+
+// The live shape of 2026-11-17 (OUT-121): no HeyReach campaign is active,
+// so an active-only read checks nothing there while Instantly answers.
+test("a tool with no campaign in the states read is named in a note, and channel_mix does not call email the only channel", async () => {
+  const { data, meta } = await pair().insights.channelMix({
+    ...NOVEMBER,
+    statuses: ["active"],
+  });
+
+  assert.deepEqual(
+    data.channels.map((group) => [group.channel, group.campaigns]),
+    [["email", 37]]
+  );
+  assert.equal(meta.complete, true);
+  assert.ok(
+    meta.notes.includes(
+      "heyreach:default has no campaign active, so it was not checked (18 campaigns: 8 completed, 10 draft). Pass statuses to check them."
+    ),
+    meta.notes.join(" | ")
+  );
+  assert.equal(
+    data.finding,
+    "Only email campaigns are active, so there is nothing to compare; pass statuses to include campaigns in other states."
+  );
+
+  const ranked = await pair().insights.campaignRanking(NOVEMBER);
+
+  assert.ok(
+    ranked.meta.notes.some((note) =>
+      note.startsWith("heyreach:default has no campaign active")
+    ),
+    ranked.meta.notes.join(" | ")
+  );
+});
+
+test("channel_mix by default compares every active, paused and completed campaign of both tools, complete", async () => {
+  const { data, meta } = await pair().insights.channelMix(NOVEMBER);
+
+  assert.deepEqual(
+    data.channels.map((group) => [group.channel, group.campaigns]),
+    [
+      ["email", 110],
+      ["linkedin", 8],
+    ]
+  );
+  assert.equal(data.moreCampaignsExist, false);
+  assert.equal(meta.complete, true, meta.notes.join(" | "));
+  assert.notEqual(data.comparison, null);
 });
 
 test("channel_mix never says a channel is absent when max_campaigns left campaigns unread", async () => {

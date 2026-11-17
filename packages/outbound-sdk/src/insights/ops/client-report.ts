@@ -3,6 +3,7 @@
 
 import { z } from "zod";
 
+import { plural } from "../../internal/numbers.ts";
 import { readCampaignsIn } from "../capped.ts";
 import type { CampaignsRead } from "../capped.ts";
 import { defineInsight } from "../define.ts";
@@ -232,6 +233,9 @@ const readAnomalies = async (
   ];
 };
 
+// The most campaigns a note names before it counts the rest.
+const NAMED = 10;
+
 const readRunways = async (
   context: InsightContext,
   campaigns: readonly CampaignPeriods[],
@@ -263,6 +267,19 @@ const readRunways = async (
     }),
     "active campaigns' leads"
   );
+
+  const uncounted = forecasts.flatMap(({ campaign, forecast }) =>
+    forecast.complete ? [] : [campaign.name]
+  );
+
+  if (uncounted.length > 0) {
+    const named = uncounted.slice(0, NAMED);
+    const rest = uncounted.length - named.length;
+
+    context.note(
+      `The leads left were not fully counted for ${plural(uncounted.length, "active campaign")}, so runningOutOfLeads leaves ${uncounted.length === 1 ? "it" : "them"} out: ${named.join(", ")}${rest > 0 ? ` and ${rest} more` : ""}. Raise max_leads_per_campaign to count them.`
+    );
+  }
 
   const runways: LeadRunway[] = forecasts.flatMap(({ campaign, forecast }) =>
     forecast.complete &&

@@ -245,7 +245,7 @@ Who to call first: leads ranked by a score built from what the vendor reports.
 | --- | --- | --- | --- |
 | `campaign` | `null` | a campaign ref | Rank one campaign's leads. An unknown campaign is `NotFound`. `null` ranks every lead the adapter lists. |
 | `limit` | 20 | 1 to 500 | How many leads to return. |
-| `max_leads` | 500 | 1 to 20,000 | The most leads a lead listing reads: the leads labelled positive where the adapter filters by interest, and the lead list where it cannot or `include_engagement_only` is set. |
+| `max_leads` | 2,000 | 1 to 20,000 | The most leads a lead listing reads: the leads labelled positive where the adapter filters by interest, and the lead list where it cannot or `include_engagement_only` is set. |
 | `max_replies` | 1,000 | 1 to 20,000 | The most replies within `recency_days` to read. A safety ceiling, not a sample. |
 | `max_age_days` | 90 | 1 or more | A positive label keeps its points while the last reply is within `recency_days` and fades evenly to none at this many days. A lead whose last reply is older ranks after every fresher one. |
 | `include_engagement_only` | `false` | `true` or `false` | Also walk the lead list up to `max_leads`, for leads whose only signal is opens or clicks. |

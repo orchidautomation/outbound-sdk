@@ -73,24 +73,22 @@ const settledPage = async <Item>(
   }
 };
 
-const either = (words: readonly string[]): string =>
+/** `active`, `active or paused`, `active, paused or completed`. */
+export const either = (words: readonly string[]): string =>
   words.length < 2
     ? words.join("")
     : `${words.slice(0, -1).join(", ")} or ${words.at(-1)}`;
 
 /**
- * When no campaign is in the states asked for but the workspace has others,
- * the answer covers nothing, so it is marked incomplete with a note counting
- * them, instead of reading as a clean run with nothing found.
+ * The campaigns in other states, counted for a note: `the first 8 campaigns:
+ * 3 completed, 5 paused`. `undefined` when there are none.
  */
-const noneMatched = (
-  context: InsightContext,
-  wanted: readonly CampaignStatus[],
+const othersCounted = (
   others: readonly Campaign[],
   more: boolean
-): void => {
+): string | undefined => {
   if (others.length === 0) {
-    return;
+    return undefined;
   }
 
   const counts = new Map<string, number>();
@@ -104,11 +102,27 @@ const noneMatched = (
     .map(([status, count]) => `${count} ${status}`)
     .join(", ");
 
-  const total = `${more ? "the first " : ""}${others.length} campaign${others.length === 1 ? "" : "s"}`;
+  return `${more ? "the first " : ""}${others.length} campaign${others.length === 1 ? "" : "s"}: ${byStatus}`;
+};
 
-  context.partial(
-    `No campaign is ${either(wanted)}, so nothing was checked (${total}: ${byStatus}). Pass statuses to check the others.`
-  );
+/**
+ * When no campaign is in the states asked for but the workspace has others,
+ * the answer covers nothing, so it is marked incomplete with a note counting
+ * them, instead of reading as a clean run with nothing found.
+ */
+const noneMatched = (
+  context: InsightContext,
+  wanted: readonly CampaignStatus[],
+  others: readonly Campaign[],
+  more: boolean
+): void => {
+  const counted = othersCounted(others, more);
+
+  if (counted !== undefined) {
+    context.partial(
+      `No campaign is ${either(wanted)}, so nothing was checked (${counted}). Pass statuses to check the others.`
+    );
+  }
 };
 
 /**
@@ -146,6 +160,38 @@ const countOthers = async (
   }
 
   noneMatched(context, wanted, context.page(page), page.cursor !== undefined);
+};
+
+/**
+ * The note for one tool of a combined instance that has no campaign in the
+ * states asked for while another tool has some: the answer stands for the
+ * tools that have them, so the run stays complete, but it must not read as
+ * if that tool had nothing at all.
+ */
+const toolNoneMatched = async (
+  context: InsightContext,
+  label: string,
+  wanted: readonly CampaignStatus[],
+  every: readonly Campaign[] | undefined
+): Promise<string> => {
+  const none = `${label} has no campaign ${either(wanted)}, so it was not checked`;
+  let counted: string | undefined;
+
+  if (every === undefined) {
+    const page = await settledPage(context.outbound.campaigns.list());
+
+    if (page === null) {
+      return `${none}; a request cap stopped the count of its others.`;
+    }
+
+    counted = othersCounted(context.page(page), page.cursor !== undefined);
+  } else {
+    counted = othersCounted(every, false);
+  }
+
+  return counted === undefined
+    ? `${none}: it has no campaigns.`
+    : `${none} (${counted}). Pass statuses to check them.`;
 };
 
 /**
@@ -248,6 +294,26 @@ const readShared = async (
       };
     })
   );
+
+  if (read.some((each) => each.read.items.length > 0)) {
+    const notes = await Promise.all(
+      read
+        .filter((each) => each.read.items.length === 0 && !each.read.capped)
+        .map(
+          async (each) =>
+            await toolNoneMatched(
+              { ...context, outbound: outbound.workspace(each.label) },
+              each.label,
+              wanted,
+              each.read.every
+            )
+        )
+    );
+
+    for (const note of notes) {
+      context.note(note);
+    }
+  }
 
   const shares = fairShares(
     read.map((each) => each.read.items.length),

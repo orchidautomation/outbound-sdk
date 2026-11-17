@@ -221,7 +221,7 @@ export interface InsightInputs {
     /**
      * The most leads a lead listing reads: the leads labelled positive where the tool filters by interest, and the lead list itself where it cannot or include_engagement_only is true. A vendor request returns about 50 to 100 leads. The leads behind replies within recency_days are read on top.
      *
-     * A whole number from 1 to 20,000. Defaults to `500`.
+     * A whole number from 1 to 20,000. Defaults to `2000`.
      */
     readonly max_leads?: number | undefined;
 
@@ -1063,14 +1063,14 @@ export interface InsightInputs {
     /**
      * The most campaigns to read. Each costs one stats request.
      *
-     * A whole number from 1 to 200. Defaults to `50`.
+     * A whole number from 1 to 200. Defaults to `150`.
      */
     readonly max_campaigns?: number | undefined;
 
     /**
      * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
      *
-     * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active"]`.
+     * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active","paused","completed"]`.
      */
     readonly statuses?:
       | ("active" | "archived" | "completed" | "draft" | "paused" | "unknown")[]

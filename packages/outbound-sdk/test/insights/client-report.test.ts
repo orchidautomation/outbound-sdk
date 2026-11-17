@@ -488,6 +488,12 @@ test("client_report is empty without campaigns, and says when a cap cut what it 
     ["Bouncy", "Middling"]
   );
   assert.equal(fewLeads.meta.complete, false);
+  assert.ok(
+    fewLeads.meta.notes.includes(
+      "The leads left were not fully counted for 1 active campaign, so runningOutOfLeads leaves it out: Winner. Raise max_leads_per_campaign to count them."
+    ),
+    fewLeads.meta.notes.join(" | ")
+  );
 });
 
 test("client_report covers the campaigns of two tools in one report", async () => {

@@ -24,8 +24,10 @@ Five of them (`periodComparison`, `campaignRanking`, `channelMix`, `tagRollup` a
 
 | Input | Default | Range | What it is |
 | --- | --- | --- | --- |
-| `statuses` | `["active"]` | at least one campaign status | Only campaigns in one of these states are read. Up to 0.7 the default also read paused and completed campaigns; pass `["active", "paused", "completed"]` to keep that. |
-| `max_campaigns` | 50 | 1 to 200 | The most campaigns to read. |
+| `statuses` | `["active"]` | at least one campaign status | Only campaigns in one of these states are read. Up to 0.7 the default also read paused and completed campaigns; pass `["active", "paused", "completed"]` to keep that. `channelMix` reads all three by default. |
+| `max_campaigns` | 50 | 1 to 200 | The most campaigns to read. `channelMix` reads up to 150 by default. |
+
+On an instance over several tools, a tool with no campaign in the states read gets a note that names it and counts its campaigns in other states, such as `heyreach:default has no campaign active, so it was not checked (8 campaigns: 8 completed). Pass statuses to check them.`
 
 Their `data` says how many campaigns were read in `campaignsRead`, and `moreCampaignsExist` is `true` when `max_campaigns` stopped the listing with campaigns left. Those campaigns are in no part of the answer: a campaign past the cap can be the best one, or the one with the bounce problem.
 
@@ -297,7 +299,9 @@ Email against LinkedIn, from campaign totals added up per channel.
 | Input | Default | Range | What it is |
 | --- | --- | --- | --- |
 | `alpha` | 0.05 | above 0, under 1 | The p-value under which a difference counts as more than chance. |
-| `from`, `to`, `statuses`, `max_campaigns` | see above |  |  |
+| `statuses` | `["active", "paused", "completed"]` | at least one campaign status | Only campaigns in one of these states are read. A channel's finished campaigns hold most of its evidence, so the comparison reads them too. |
+| `max_campaigns` | 150 | 1 to 200 | The most campaigns to read. |
+| `from`, `to` | see above |  |  |
 
 `data` (`ChannelMix`):
 
@@ -309,7 +313,7 @@ Email against LinkedIn, from campaign totals added up per channel.
 
 - **Needs:** `stats.campaign`.
 - **Costs:** one listing per status, plus one stats request per campaign (one for all of them on a vendor that reports every campaign in one call with every count).
-- **Notes it can add:** a channel's rate leaves out campaigns that do not report one side of it; a cap was reached.
+- **Notes it can add:** a channel's rate leaves out campaigns that do not report one side of it; a tool has no campaign in the states read; a cap was reached.
 - **Does not:** make the two channels comparable. A rate counts only the campaigns that report both its count and what it is divided by, so its `count` and `of` can be smaller than the channel's totals beside it. A LinkedIn reply and an email reply are counted the same way, but the audiences usually differ. With one channel present it returns that channel and says there is nothing to compare.
 
 <include meta='title="channel-mix.ts"'>
@@ -401,7 +405,7 @@ One report for one client or workspace over the last `days` complete days, compo
 - **Needs:** `stats.campaign`. Unusual days also need `stats.byDay` and workspace stats. Leads left also needs `leads.byCampaign` and `stats.byDay`.
 - **Costs:** two stats requests per campaign, one for the workspace, and for each active campaign two more plus its pages of leads.
 - **Notes it can add:** one per section left out, starting "Left out."; a rate of `totals` leaves out campaigns that do not report one side of it; a cap was reached.
-- **Does not:** filter by tag or by campaign. It reports on everything the instance holds, or the one workspace it is scoped to. A campaign whose leads were cut off at `max_leads_per_campaign` is never flagged as running out, because its count is a minimum. It writes no email and sends nothing.
+- **Does not:** filter by tag or by campaign. It reports on everything the instance holds, or the one workspace it is scoped to. A campaign whose leads were cut off at `max_leads_per_campaign` is never flagged as running out, because its count is a minimum; a note names those campaigns. It writes no email and sends nothing.
 
 <include meta='title="client-report.ts"'>
   ../../_examples/insights-operations/client-report.ts
