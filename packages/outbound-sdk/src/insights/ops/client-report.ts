@@ -75,8 +75,10 @@ const input = z.object({
     .int()
     .min(1)
     .max(50_000)
-    .default(500)
-    .describe("The most leads to read per active campaign, for leads left"),
+    .default(5000)
+    .describe(
+      "The most leads to read per active campaign, for leads left. Where the tool lists active leads alone (leads.byStatus), only those are read."
+    ),
   min_baseline_points: z
     .number()
     .int()
@@ -259,6 +261,7 @@ const readRunways = async (
     async (campaign) => ({
       campaign,
       forecast: await runwayOf(context, campaign, {
+        activeOnly: true,
         days: options.days,
         leadsInput: "max_leads_per_campaign",
         leadsWhat: "leads of a campaign",
@@ -362,7 +365,7 @@ const actionsOf = (report: Sections): ActionItem[] => {
 
 export const clientReport = defineInsight({
   description:
-    "One report for one client or workspace over the last `days` complete days: totals and the change from the period before, the best and worst campaigns by the low end of the interval of the reply rate, campaigns with a bounce problem, unusual days, active campaigns running out of leads, and a short list of action items in plain language, each naming the campaign and the number behind it. Reply rates divide by messages sent (`replyRateBasis`), since a period's replies also answer leads contacted before it, and by leads contacted for both periods only when a period does not report messages sent. Use it for a weekly client update. A section the adapter cannot serve is null and named in `leftOut`, and a null count is one the vendor does not report. Costs two stats requests per campaign, one for the workspace, and for each active campaign one more plus its pages of leads. On Instantly a stats read is 2 requests, since it also reads the campaign's tracking settings, so each active campaign costs about 7.",
+    "One report for one client or workspace over the last `days` complete days: totals and the change from the period before, the best and worst campaigns by the low end of the interval of the reply rate, campaigns with a bounce problem, unusual days, active campaigns running out of leads, and a short list of action items in plain language, each naming the campaign and the number behind it. Reply rates divide by messages sent (`replyRateBasis`), since a period's replies also answer leads contacted before it, and by leads contacted for both periods only when a period does not report messages sent. Use it for a weekly client update. A section the adapter cannot serve is null and named in `leftOut`, and a null count is one the vendor does not report. Costs two stats requests per campaign, one for the workspace, and for each active campaign one more plus its pages of leads, its active leads only where the tool lists them alone (leads.byStatus). On Instantly a stats read is 2 requests, since it also reads the campaign's tracking settings, so each active campaign costs about 7.",
   inputSchema: input,
   key: "clientReport",
   cost: (values, price) => {

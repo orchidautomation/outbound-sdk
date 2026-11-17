@@ -53,6 +53,9 @@ export const capabilities: CapabilityDeclaration = {
   // The `filter` field of POST /leads/list, one positive interest status
   // (FILTER_LEAD_INTERESTED and the rest) after another.
   "leads.byInterest": true,
+  // The `filter` FILTER_VAL_ACTIVE of POST /leads/list; the adapter keeps
+  // only the leads it maps to active, so the answer is exact either way.
+  "leads.byStatus": true,
   "leads.engagement": true,
   "leads.get": true,
   "leads.list": true,

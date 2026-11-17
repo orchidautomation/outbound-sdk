@@ -184,7 +184,19 @@ export interface ForecastOptions {
   readonly leadsInput: string;
   /** What `maxLeads` counts, for that note: `leads`, or `leads of a campaign`. */
   readonly leadsWhat: string;
+  /**
+   * Read only the active leads where the campaign's tool can list them
+   * (`leads.byStatus`), since only they decide the runway. `byStatus` then
+   * counts the active leads alone.
+   */
+  readonly activeOnly?: boolean | undefined;
 }
+
+/** The instance that owns a campaign: its own tool on a combined instance. */
+const ownerOf = (context: InsightContext, campaign: Campaign) =>
+  context.outbound.provider === "combined"
+    ? context.outbound.workspace(`${campaign.provider}:${campaign.workspaceId}`)
+    : context.outbound;
 
 /** Reads one campaign's leads, totals and recent pace, and projects what is left. */
 /** How long a campaign's leads last: its leads by status and the recent pace of new leads started. */
@@ -193,9 +205,16 @@ export const runwayOf = async (
   campaign: Campaign,
   options: ForecastOptions
 ) => {
+  const owner = ownerOf(context, campaign);
+
+  const status =
+    options.activeOnly === true && owner.capabilities["leads.byStatus"]
+      ? ("active" as const)
+      : undefined;
+
   const { capped, items: leads } = await readCapped(
     context,
-    (max) => context.outbound.campaign(campaign.ref).leads.listAll({ max }),
+    (max) => owner.campaign(campaign.ref).leads.listAll({ max, status }),
     {
       input: options.leadsInput,
       max: options.maxLeads,

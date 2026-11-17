@@ -277,6 +277,10 @@ const leadListBody = (query: LeadQuery): JsonObject => {
     body.search = query.domain;
   }
 
+  if (query.status === "active") {
+    body.filter = "FILTER_VAL_ACTIVE";
+  }
+
   if (query.interest === "positive") {
     const { after, at } = interestAt(query.next);
 
@@ -343,7 +347,8 @@ const chosen = (query: LeadQuery, leads: readonly Lead[]): Lead[] => {
         (lead.email !== null && wanted.has(lead.email))) &&
       (query.domain === undefined ||
         lead.email?.split("@").at(-1) === query.domain) &&
-      (query.interest === undefined || lead.interestCategory === "positive")
+      (query.interest === undefined || lead.interestCategory === "positive") &&
+      (query.status === undefined || lead.status === query.status)
   );
 };
 

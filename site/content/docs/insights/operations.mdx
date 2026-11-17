@@ -384,7 +384,7 @@ One report for one client or workspace over the last `days` complete days, compo
 | `min_sent` | 50 | 0 or more, whole | Campaigns under this many sends in the period are not judged. |
 | `max_bounce_rate` | 0.03 | 0 to 1 | A campaign bounce rate over this is a bounce problem. |
 | `runway_days` | 7 | 0 or more | A campaign with this many days of leads left or fewer is flagged. |
-| `max_leads_per_campaign` | 500 | 1 to 50,000 | The most leads to read per active campaign, for leads left. |
+| `max_leads_per_campaign` | 5,000 | 1 to 50,000 | The most leads to read per active campaign, for leads left. Where the adapter lists active leads alone (`leads.byStatus`), only those are read, so a campaign with thousands of finished leads costs a request or two. |
 | `anomaly_threshold` | 2.5 | above 0 | Standard deviations from the baseline that make a day unusual. |
 | `baseline_days` | 14 | 5 to 60 | Days before the period that form the anomaly baseline. |
 | `min_baseline_points` | 5 | 2 or more, whole | The fewest baseline days with data a day needs to be tested. |
@@ -403,7 +403,7 @@ One report for one client or workspace over the last `days` complete days, compo
 - `leftOut`: the sections left out because the adapter cannot serve them.
 
 - **Needs:** `stats.campaign`. Unusual days also need `stats.byDay` and workspace stats. Leads left also needs `leads.byCampaign` and `stats.byDay`.
-- **Costs:** two stats requests per campaign, one for the workspace, and for each active campaign two more plus its pages of leads.
+- **Costs:** two stats requests per campaign, one for the workspace, and for each active campaign one more plus its pages of leads: its active leads only where the adapter lists them alone (`leads.byStatus`), otherwise every lead up to `max_leads_per_campaign`.
 - **Notes it can add:** one per section left out, starting "Left out."; a rate of `totals` leaves out campaigns that do not report one side of it; a cap was reached.
 - **Does not:** filter by tag or by campaign. It reports on everything the instance holds, or the one workspace it is scoped to. A campaign whose leads were cut off at `max_leads_per_campaign` is never flagged as running out, because its count is a minimum; a note names those campaigns. It writes no email and sends nothing.
 

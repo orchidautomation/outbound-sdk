@@ -159,6 +159,8 @@ export interface LeadFilters extends TimeRange {
   readonly emails?: readonly string[] | undefined;
   /** `positive`: only the leads the vendor labels positive (`interestCategory` `positive`). Needs `leads.byInterest`. */
   readonly interest?: "positive" | undefined;
+  /** `active`: only the leads still in the sequence (`status` `active`). Needs `leads.byStatus`. Not together with `interest`. */
+  readonly status?: "active" | undefined;
 }
 
 export interface WebhookFilters {

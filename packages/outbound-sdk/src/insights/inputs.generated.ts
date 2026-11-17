@@ -1183,9 +1183,9 @@ export interface InsightInputs {
     readonly max_bounce_rate?: number | undefined;
 
     /**
-     * The most leads to read per active campaign, for leads left
+     * The most leads to read per active campaign, for leads left. Where the tool lists active leads alone (leads.byStatus), only those are read.
      *
-     * A whole number from 1 to 50,000. Defaults to `500`.
+     * A whole number from 1 to 50,000. Defaults to `5000`.
      */
     readonly max_leads_per_campaign?: number | undefined;
 

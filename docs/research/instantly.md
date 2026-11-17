@@ -392,6 +392,14 @@ Fetched 2026-11-16 from `https://api.instantly.ai/openapi/api_v2.json` (`info.ve
 - Unconfirmed until a live run: that the domain part of an address (`stukent.com` in `jane@stukent.com`) counts as a whole word for `search` when no campaign is given. The OUT-98 acceptance check (a known company's leads come back in one or two requests) needs a live key. If it fails, set `leads.byDomain` to `false` and `accountSummary` falls back to its scan, which states in `finding` when the scan did not cover the workspace.
 - `GET /api/v2/campaigns/search-by-contact` takes one address and returns campaigns, so it cannot find the people at a domain.
 
+### Active leads only (`leads.byStatus`, OUT-131)
+
+Fetched 2026-11-17 from `https://developer.instantly.ai/api-reference/lead/list-leads`, which embeds the `POST /api/v2/leads/list` schema of `https://api.instantly.ai/openapi/api_v2.json`. The `filter` field is a string with one value at a time, and its enum descriptions include `FILTER_VAL_ACTIVE`: "Filter for active leads". The documentation does not say which lead `status` values that covers.
+
+- The adapter sends `{ "campaign": "<id>", "filter": "FILTER_VAL_ACTIVE", "limit": 100 }` and follows `starting_after` as on any listing. It keeps only the leads it maps to `active` (`status` 1, no reply, not bounced, not unsubscribed), so the answer is exact whatever the filter also returns.
+- `filter` takes one value, so this filter cannot be combined with the interest filters. The core refuses `status` together with `interest`.
+- **Live-verified 2026-11-17, read-only**, on 24 active campaigns of one workspace. On the 9 campaigns small enough to read whole (146 to 556 leads), the filtered listing gave the same count of active leads as reading every lead and counting: 0, 0, 0, 0, 2, 4, 13, 14 and 20. Across the 24 campaigns, the filtered listing returned 0 to 2,673 active leads, in 1 to 28 requests each.
+
 ### Not available from the API
 
 - `leads.since` stays `client`: `POST /api/v2/leads/list` has no creation-date filter. Its `queries[]` filter only on how many days ago an activity happened.
