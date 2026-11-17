@@ -28,6 +28,13 @@ const conversations = (
   } as Conversations;
 };
 
+// Answers the conversation listing only, so the campaigns it walks come from
+// the fixtures.
+const onConversations = (body: Conversations) => (request: { url: string }) =>
+  new URL(request.url).pathname === "/api/public/inbox/GetConversationsV3"
+    ? Response.json(body)
+    : undefined;
+
 const tagged = (name: string, creationTime: string) => ({
   campaignId: 274_079,
   creationTime,
@@ -39,8 +46,9 @@ test("heyreach: a reply takes the meaning of its lead's newest auto-tag and says
     fixture("heyreach", "getConversations.json") as Conversations
   ).items[0]?.correspondentProfile as Record<string, unknown>;
 
-  const { outbound, settle } = harness(suite, () =>
-    Response.json(
+  const { outbound, settle } = harness(
+    suite,
+    onConversations(
       conversations((index) => ({
         correspondentProfile: {
           ...profile,
@@ -77,8 +85,9 @@ test("heyreach: Generic is neutral and an untagged lead's reply stays unknown", 
     fixture("heyreach", "getConversations.json") as Conversations
   ).items[0]?.correspondentProfile as Record<string, unknown>;
 
-  const { outbound, settle } = harness(suite, () =>
-    Response.json(
+  const { outbound, settle } = harness(
+    suite,
+    onConversations(
       conversations((index) => ({
         correspondentProfile: {
           ...profile,
@@ -139,11 +148,13 @@ test("heyreach: unread replies are asked for with seen, the other way round", as
   await settle(outbound.replies.list());
 
   assert.deepEqual(
-    requests.map(
-      (request) =>
-        (JSON.parse(request.body ?? "{}") as { filters: { seen?: boolean } })
-          .filters.seen
-    ),
+    requests
+      .filter((request) => request.url.endsWith("/inbox/GetConversationsV3"))
+      .map(
+        (request) =>
+          (JSON.parse(request.body ?? "{}") as { filters: { seen?: boolean } })
+            .filters.seen
+      ),
     [false, true, undefined],
     "seen is true for read conversations"
   );
@@ -154,8 +165,9 @@ test("heyreach: replies can be filtered by the category their lead's auto-tag me
     fixture("heyreach", "getConversations.json") as Conversations
   ).items[0]?.correspondentProfile as Record<string, unknown>;
 
-  const { outbound, settle } = harness(suite, () =>
-    Response.json(
+  const { outbound, settle } = harness(
+    suite,
+    onConversations(
       conversations((index) => ({
         correspondentProfile: {
           ...profile,

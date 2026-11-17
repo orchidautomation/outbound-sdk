@@ -442,6 +442,49 @@ test("a capped reply listing keeps exactly the newest, even past one tool's firs
   assert.deepEqual(seen, seen.toSorted().toReversed());
 });
 
+test("a tool whose page is not in time order still moves on to its next page", async () => {
+  // Seen live on 2026-11-17: replies --provider all with no --since re-read
+  // one Instantly page for over 15 minutes, because the page held a reply
+  // older than its last one. HeyReach's pages are never in time order: a
+  // page of conversations lists each one's messages oldest first.
+  const hours = [10, 5, 8, 4, 2, 3];
+
+  const shuffled: MemoryMessage[] = hours.map((hour, index) => ({
+    campaignId: uuid(1),
+    direction: "in",
+    id: `s${index + 1}`,
+    sentAt: new Date(Date.UTC(2026, 10, 16, hour)).toISOString(),
+  }));
+
+  const outbound = createOutbound({
+    adapter: combine([
+      memory({
+        data: { campaigns: EMAIL_CAMPAIGNS, messages: shuffled },
+        name: "instantly",
+        pageSize: 3,
+        workspaceId: "default",
+      }),
+      heyreachLike(),
+    ]),
+  });
+
+  const seen: string[] = [];
+  let cursor: string | undefined;
+  let pages = 0;
+
+  do {
+    // oxlint-disable-next-line no-await-in-loop -- each page needs the previous page's cursor.
+    const page = await outbound.replies.list({ cursor });
+    seen.push(...page.items.map((reply) => reply.ref));
+    ({ cursor } = page);
+    pages += 1;
+  } while (cursor !== undefined && pages < 20);
+
+  assert.equal(cursor, undefined, "the walk ends");
+  assert.equal(seen.length, 8, "six email replies and two LinkedIn ones");
+  assert.equal(new Set(seen).size, 8, "each once");
+});
+
 test("a campaign name is not looked up when no tool can serve the insight", async () => {
   // Neither tool reports by step. The name matches nothing, so a lookup would
   // end in NotFound; the refusal comes first.

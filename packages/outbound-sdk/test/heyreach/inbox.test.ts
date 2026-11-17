@@ -2,9 +2,20 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { harness } from "../helpers/adapter-suite.ts";
+import type { RecordedRequest } from "../helpers/http.ts";
 import { CAMPAIGN, suite, THREAD } from "./suite.ts";
 
 const LEAD = "https://www.linkedin.com/in/example-person-1";
+
+const CONVERSATIONS = "/api/public/inbox/GetConversationsV3";
+
+/** The bodies of the conversation listings, in the order they were sent. */
+const listings = (requests: readonly RecordedRequest[]) =>
+  requests.flatMap((request) =>
+    new URL(request.url).pathname === CONVERSATIONS
+      ? [JSON.parse(request.body ?? "{}")]
+      : []
+  );
 
 test("heyreach: messages are read from conversations, with direction from the sender value", async () => {
   const { outbound, requests, settle } = harness(suite);
@@ -15,13 +26,14 @@ test("heyreach: messages are read from conversations, with direction from the se
 
   assert.equal(
     new URL(requests[0]?.url ?? "").pathname,
-    "/api/public/inbox/GetConversationsV3"
+    "/api/public/campaign/GetAll",
+    "the campaigns come first: a conversation names none of its own"
   );
-  assert.equal(requests[0]?.method, "POST");
-  assert.deepEqual(JSON.parse(requests[0]?.body ?? "{}"), {
-    filters: {},
-    limit: 100,
-  });
+  assert.equal(new URL(requests.at(-1)?.url ?? "").pathname, CONVERSATIONS);
+  assert.equal(requests.at(-1)?.method, "POST");
+  assert.deepEqual(listings(requests), [
+    { filters: { campaignIds: [Number(CAMPAIGN)] }, limit: 100 },
+  ]);
   assert.deepEqual(
     page.items.map((message) => [
       message.direction,
@@ -119,20 +131,38 @@ test("heyreach: a campaign's messages send the campaign filter and carry its ref
   assert.equal(page.items[0]?.campaignRef, `heyreach:client-a:${CAMPAIGN}`);
 });
 
-test("heyreach: a lead's timeline filters conversations by profile URL and walks every page", async () => {
+test("heyreach: a lead's timeline walks only that lead's campaigns, filtered by profile URL, and every page", async () => {
   const { outbound, requests, settle } = harness(suite);
   const timeline = await settle(outbound.lead(LEAD).timeline());
-  assert.equal(timeline.items.length, 6);
+  assert.equal(timeline.items.length, 6, "no conversation comes twice");
   assert.deepEqual(
-    requests.map((request) => JSON.parse(request.body ?? "{}")),
+    requests
+      .filter((request) => request.url.endsWith("/GetCampaignsForLead"))
+      .map((request) => JSON.parse(request.body ?? "{}").profileUrl),
+    [LEAD, LEAD],
+    "the lead's campaigns, two pages of them, not the workspace's"
+  );
+  assert.equal(
+    requests.some((request) => request.url.endsWith("/campaign/GetAll")),
+    false
+  );
+
+  const sent = listings(requests);
+  assert.ok(sent.every((body) => body.filters.leadProfileUrl === LEAD));
+  assert.deepEqual(
+    sent.slice(0, 4).map((body) => [body.filters.campaignIds, body.cursor]),
     [
-      { filters: { leadProfileUrl: LEAD }, limit: 100 },
-      {
-        cursor: "ExampleCursorPage2",
-        filters: { leadProfileUrl: LEAD },
-        limit: 100,
-      },
-    ]
+      [[274_079], undefined],
+      [[274_079], "ExampleCursorPage2"],
+      [[274_080], undefined],
+      [[274_081], undefined],
+    ],
+    "one campaign after the other, each page by page"
+  );
+  assert.deepEqual(
+    sent[4],
+    { filters: { leadProfileUrl: LEAD }, limit: 100 },
+    "then the lead's conversations in no campaign"
   );
   const times = timeline.items.map((message) => message.sentAt ?? "");
   assert.deepEqual(times, times.toSorted(), "oldest first");
@@ -146,7 +176,7 @@ test("heyreach: a since filter bounds the conversations at HeyReach and drops th
   );
 
   assert.equal(
-    JSON.parse(requests[0]?.body ?? "{}").from,
+    listings(requests)[0]?.from,
     "2026-10-07T11:00:00.000Z",
     "the lower bound on a conversation's newest message"
   );
@@ -173,9 +203,11 @@ test("heyreach: an until filter is not sent, because a later conversation still 
     outbound.messages.list({ until: "2026-10-06T00:00:00Z" })
   );
 
-  const body = JSON.parse(requests[0]?.body ?? "{}");
-  assert.equal(body.from, undefined);
-  assert.equal(body.to, undefined);
+  for (const body of listings(requests)) {
+    assert.equal(body.from, undefined);
+    assert.equal(body.to, undefined);
+  }
+
   assert.deepEqual(
     page.items.map((message) => message.sentAt),
     ["2026-10-05T14:00:00.000Z"]

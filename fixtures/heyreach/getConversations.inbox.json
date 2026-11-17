@@ -40,12 +40,18 @@
       "linkedInAccountId": 4101,
       "messages": [
         {
+          "audioDurationMs": null,
           "body": "We help agencies like yours book more calls.",
           "createdAt": "2026-10-09T16:00:00.000Z",
           "isInMail": false,
+          "isVoiceNote": false,
+          "messageId": "2-ExampleInboxMessage1==",
           "postLink": "",
           "sender": "CORRESPONDENT",
-          "subject": null
+          "subject": null,
+          "transcript": null,
+          "transcriptStatus": null,
+          "type": "text"
         }
       ],
       "read": false,
@@ -90,12 +96,18 @@
       "linkedInAccountId": 4101,
       "messages": [
         {
+          "audioDurationMs": null,
           "body": "Are you open to a new role at Example Co?",
           "createdAt": "2026-10-08T10:00:00.000Z",
           "isInMail": false,
+          "isVoiceNote": false,
+          "messageId": "2-ExampleInboxMessage2==",
           "postLink": "",
           "sender": "CORRESPONDENT",
-          "subject": null
+          "subject": null,
+          "transcript": null,
+          "transcriptStatus": null,
+          "type": "text"
         }
       ],
       "read": false,
@@ -104,7 +116,6 @@
     {
       "blockedByMe": false,
       "blockedByParticipant": false,
-      "campaignId": 274079,
       "correspondentProfile": {
         "about": "Example bio",
         "autoTags": [],
@@ -141,20 +152,32 @@
       "linkedInAccountId": 4101,
       "messages": [
         {
+          "audioDurationMs": null,
           "body": "Hi Alex, thanks for connecting.",
           "createdAt": "2026-10-05T14:00:00.000Z",
           "isInMail": false,
+          "isVoiceNote": false,
+          "messageId": "2-ExampleInboxMessage3==",
           "postLink": "",
           "sender": "ME",
-          "subject": null
+          "subject": null,
+          "transcript": null,
+          "transcriptStatus": null,
+          "type": "text"
         },
         {
+          "audioDurationMs": null,
           "body": "Happy to chat. Send me details.",
           "createdAt": "2026-10-06T09:30:00.000Z",
           "isInMail": false,
+          "isVoiceNote": false,
+          "messageId": "2-ExampleInboxMessage4==",
           "postLink": "",
           "sender": "CORRESPONDENT",
-          "subject": null
+          "subject": null,
+          "transcript": null,
+          "transcriptStatus": null,
+          "type": "text"
         }
       ],
       "read": false,
