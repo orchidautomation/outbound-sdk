@@ -18,8 +18,18 @@ const paged = (name: string) => (request: RouteRequest) => {
 };
 
 // Conversations page by cursor; a request that carries one gets the last page.
+// Every documented conversation is in CAMPAIGN, so a filter to other
+// campaigns finds none.
 const conversations = (request: RouteRequest): string => {
-  const body = request.body as { cursor?: string } | undefined;
+  const body = request.body as
+    | { cursor?: string; filters?: { campaignIds?: number[] } }
+    | undefined;
+
+  const campaigns = body?.filters?.campaignIds;
+
+  if (campaigns !== undefined && !campaigns.includes(Number(CAMPAIGN))) {
+    return "getConversations.empty.json";
+  }
 
   return body?.cursor === undefined
     ? "getConversations.json"

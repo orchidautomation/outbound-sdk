@@ -89,8 +89,10 @@ const resumeAt = (items: readonly Dated[], spot: Spot): number => {
 
 /**
  * One page of messages or replies across every member, newest first. Each
+ * member's page is put in that order first: a vendor that lists by another
+ * time, or by conversation, can hand out a page whose records are not. Each
  * member lists newest first, so a member with more pages has nothing newer
- * left than the last record of its page. A record is given out only once no
+ * left than the oldest record of its page. A record is given out only once no
  * member with more pages can still hold a newer one; the rest wait, and the
  * cursor reads their page again and resumes after the last record given out.
  * A cap on the walk therefore keeps exactly the newest records of all.
@@ -108,11 +110,18 @@ export const pageNewestFirst = async <Item extends Dated>(
       return member === undefined
         ? []
         : [
-            readPage(member, ctx.forAdapter(member), spot.at).then((page) => ({
-              left: page.items.slice(resumeAt(page.items, spot)),
-              page,
-              spot,
-            })),
+            readPage(member, ctx.forAdapter(member), spot.at).then((page) => {
+              // Stable, so records at one time keep the member's own order.
+              const sorted = page.items.toSorted(
+                (a, b) => timeOf(b) - timeOf(a)
+              );
+
+              return {
+                left: sorted.slice(resumeAt(sorted, spot)),
+                page: { ...page, items: sorted },
+                spot,
+              };
+            }),
           ];
     })
   );

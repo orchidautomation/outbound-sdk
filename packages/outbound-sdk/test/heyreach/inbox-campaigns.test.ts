@@ -14,11 +14,40 @@ import type { RecordedRequest } from "../helpers/http.ts";
 import { CAMPAIGN, suite } from "./suite.ts";
 
 // The live shape behind OUT-124: GetConversationsV3 lists the sender's whole
-// LinkedIn inbox. One conversation belongs to a campaign and names it in
-// campaignId; a recruiter's message and an inbound pitch belong to none and
-// leave the key out. All three end on the other person's message.
+// LinkedIn inbox. One conversation belongs to a campaign; a recruiter's
+// message and an inbound pitch belong to none. All three end on the other
+// person's message. As seen live on 2026-11-17, none of them names its
+// campaign: HeyReach knows it, and filters by it, but leaves campaignId out.
 const INBOX = fixture("heyreach", "getConversations.inbox.json") as {
-  items: { id: string; campaignId?: number }[];
+  items: { id: string; lastMessageAt: string }[];
+};
+
+/** What HeyReach knows and does not say: the campaign of each conversation. */
+const CAMPAIGN_OF = new Map([["2-ExampleInboxCampaign1==", Number(CAMPAIGN)]]);
+
+interface Listing {
+  readonly filters?: { readonly campaignIds?: readonly number[] };
+  readonly from?: string;
+  readonly to?: string;
+}
+
+const within = (time: string, listing: Listing): boolean =>
+  (listing.from === undefined ||
+    Date.parse(time) >= Date.parse(listing.from)) &&
+  (listing.to === undefined || Date.parse(time) <= Date.parse(listing.to));
+
+/** The listing as HeyReach answers it: filtered by campaign and by time. */
+const listed = (listing: Listing) => {
+  const campaigns = listing.filters?.campaignIds;
+
+  const items = INBOX.items.filter(
+    (item) =>
+      within(item.lastMessageAt, listing) &&
+      (campaigns === undefined ||
+        campaigns.includes(CAMPAIGN_OF.get(item.id) ?? -1))
+  );
+
+  return { ...INBOX, items, totalCount: items.length };
 };
 
 const NOW = Date.parse("2026-11-16T12:00:00.000Z");
@@ -33,7 +62,7 @@ const inboxFetch = () => {
     const { pathname } = new URL(request.url);
 
     if (pathname === "/api/public/inbox/GetConversationsV3") {
-      return json(INBOX);
+      return json(listed(JSON.parse(request.body ?? "{}") as Listing));
     }
 
     const chatroom =
@@ -70,6 +99,10 @@ test("heyreach: replies are campaign replies by default and name their campaign;
   const { clock, outbound } = instance();
 
   assert.equal(outbound.capabilities["replies.inbox"], true);
+  assert.ok(
+    INBOX.items.every((item) => !("campaignId" in item)),
+    "no conversation names its campaign"
+  );
 
   const campaign = await clock.settle(outbound.replies.listAll().toArray());
 
@@ -90,8 +123,8 @@ test("heyreach: replies are campaign replies by default and name their campaign;
 
   assert.deepEqual(
     everything.map((reply) => reply.campaignRef),
-    [null, null, IN_CAMPAIGN],
-    "the inbox's own conversations come back with no campaign"
+    [IN_CAMPAIGN, null, null],
+    "the campaigns' conversations, then the inbox's own with no campaign"
   );
 
   const messages = await clock.settle(outbound.messages.listAll().toArray());
@@ -99,7 +132,7 @@ test("heyreach: replies are campaign replies by default and name their campaign;
   assert.equal(messages.length, 4, "messages.list keeps every conversation");
   assert.deepEqual(
     messages.map((message) => message.campaignRef),
-    [null, null, IN_CAMPAIGN, IN_CAMPAIGN]
+    [IN_CAMPAIGN, IN_CAMPAIGN, null, null]
   );
 });
 
@@ -308,6 +341,6 @@ test("heyreach: outbound replies lists campaign replies, and --include-inbox lis
     (await cliReplies("replies", "--include-inbox")).map(
       (reply) => reply.campaignRef
     ),
-    [null, null, IN_CAMPAIGN]
+    [IN_CAMPAIGN, null, null]
   );
 });

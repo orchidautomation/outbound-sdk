@@ -9,51 +9,41 @@
 // account's side and "CORRESPONDENT" for the lead's, messages come oldest
 // first, each conversation carried its whole thread (`messages.length`
 // matched `totalMessages` in all 257 conversations; the longest had 40), and
-// a conversation's `lastMessageAt` was the time of its newest message.
+// a conversation's `lastMessageAt` was the time of its newest message. Which
+// campaign a conversation belongs to comes from how it was listed: see
+// conversations.ts.
 
 import type {
   Adapter,
   AdapterContext,
-  MessageQuery,
-  ReplyQuery,
   TimeRange,
 } from "../internal/adapter.ts";
 import type { Message, Reply } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
-import {
-  field,
-  flag,
-  isString,
-  objects,
-  text,
-  timestamp,
-} from "../internal/json.ts";
-import type { Json, JsonObject } from "../internal/json.ts";
+import { field, flag, objects, text, timestamp } from "../internal/json.ts";
+import type { JsonObject } from "../internal/json.ts";
 import { recordBase, refTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
 import { stableId } from "../internal/sha256.ts";
 import { normalizeBody } from "../internal/text.ts";
-import { PAGE_SIZE } from "./capabilities.ts";
 import type { HeyReachClient } from "./client.ts";
+import { campaignConversations, everyConversation } from "./conversations.ts";
+import type {
+  ConversationPage,
+  ConversationQuery,
+  Listed,
+} from "./conversations.ts";
 import { interestCategory } from "./map.ts";
-
-export const CONVERSATIONS_PATH = "/inbox/GetConversationsV3";
 
 /** The lead's side of a thread. The account's own side is "ME". */
 const FROM_LEAD = "CORRESPONDENT";
 
 interface Scope {
   readonly identity: Identity;
-  /** The campaign the listing was filtered to, if any. */
-  readonly campaignId: string | undefined;
+  /** The campaign the conversation was listed under; null for none. */
+  readonly campaignId: string | null;
   readonly includeBody: boolean;
 }
-
-// GetConversationsV3 names a conversation's campaign in `campaignId` and
-// leaves the key out when the conversation belongs to no campaign: the
-// account's own LinkedIn messages. A chatroom read carries no campaign.
-const campaignOf = (conversation: JsonObject): string | null =>
-  text(conversation.campaignId);
 
 const messageFields = (
   scope: Scope,
@@ -70,10 +60,7 @@ const messageFields = (
   return {
     ...recordBase(scope.identity, id, raw),
     ...normalizeBody(text(raw.body), scope.includeBody),
-    campaignRef: refTo(
-      scope.identity,
-      campaignOf(conversation) ?? scope.campaignId
-    ),
+    campaignRef: refTo(scope.identity, scope.campaignId),
     channel: "linkedin" as const,
     // A lead's id is its LinkedIn profile URL, as in leads.get.
     leadRef: refTo(
@@ -127,66 +114,6 @@ const toReply = (
   };
 };
 
-interface ConversationPage {
-  readonly conversations: JsonObject[];
-  readonly next: Json | undefined;
-}
-
-const numeric = (id: string): number | null =>
-  /^\d+$/u.test(id) ? Number(id) : null;
-
-// The listing bounds conversations by the time of their newest message. Every
-// message at or after `since` sits in a conversation whose newest message is
-// too, so `since` is sent as `from`. `until` cannot be sent: a conversation
-// that went on past it still holds the earlier messages.
-const readConversations = async (
-  client: HeyReachClient,
-  ctx: AdapterContext,
-  query: MessageQuery | ReplyQuery
-): Promise<ConversationPage> => {
-  const filters: JsonObject = {};
-
-  const campaign =
-    query.campaignId === undefined ? null : numeric(query.campaignId);
-
-  if (campaign !== null) {
-    filters.campaignIds = [campaign];
-  }
-
-  if ("unread" in query && query.unread !== undefined) {
-    // `seen` is true for read conversations and false for unread ones.
-    filters.seen = !query.unread;
-  }
-
-  if ("leadId" in query && query.leadId !== undefined) {
-    // A looked-up lead's id also names its campaign; the filter takes the URL.
-    filters.leadProfileUrl = query.leadId;
-  }
-
-  const request: JsonObject = {
-    filters,
-    limit: Math.min(query.limit ?? PAGE_SIZE, PAGE_SIZE),
-  };
-
-  // The page marker is the `nextCursor` of the page before.
-  if (isString(query.next) && query.next !== "") {
-    request.cursor = query.next;
-  }
-
-  if (query.since !== undefined) {
-    request.from = query.since;
-  }
-
-  const body = await client.post(ctx, CONVERSATIONS_PATH, request);
-  const next = text(field(body, "nextCursor"));
-
-  return {
-    conversations: client.items(body, CONVERSATIONS_PATH),
-    next:
-      field(body, "hasNextPage") === true && next !== null ? next : undefined,
-  };
-};
-
 // A conversation is returned whole, so the messages outside the range asked
 // for are dropped here. A message with no time is outside every range.
 const inRange = (sentAt: string | null, range: TimeRange): boolean => {
@@ -231,6 +158,31 @@ const readThread = async (
 
 type InboxReaders = Pick<Adapter, "listMessages" | "listReplies">;
 
+// A campaign filter is applied by HeyReach. Without one every campaign is
+// walked, and the conversations in no campaign follow when `inbox` is set.
+const conversationsFor = (
+  client: HeyReachClient,
+  ctx: AdapterContext,
+  query: ConversationQuery,
+  inbox: boolean
+): Promise<ConversationPage> => {
+  const { campaignId } = query;
+
+  return campaignId === undefined
+    ? everyConversation(client, ctx, query, inbox)
+    : campaignConversations(client, ctx, { ...query, campaignId });
+};
+
+const scopeOf = (
+  client: HeyReachClient,
+  listed: Listed,
+  includeBody: boolean
+): Scope => ({
+  campaignId: listed.campaignId,
+  identity: client.identity,
+  includeBody,
+});
+
 /** Messages and replies, read from one page of conversations at a time. */
 export const inboxReaders = (client: HeyReachClient): InboxReaders => ({
   listMessages: async (query, ctx) => {
@@ -238,11 +190,11 @@ export const inboxReaders = (client: HeyReachClient): InboxReaders => ({
       const conversation = await readThread(client, ctx, query.threadId);
 
       // A chatroom does not say which campaign it belongs to.
-      const scope = {
-        campaignId: undefined,
-        identity: client.identity,
-        includeBody: query.includeBody,
-      };
+      const scope = scopeOf(
+        client,
+        { campaignId: null, conversation },
+        query.includeBody
+      );
 
       return {
         items: objects(conversation.messages)
@@ -251,51 +203,41 @@ export const inboxReaders = (client: HeyReachClient): InboxReaders => ({
       };
     }
 
-    const page = await readConversations(client, ctx, query);
-
-    const scope = {
-      campaignId: query.campaignId,
-      identity: client.identity,
-      includeBody: query.includeBody,
-    };
+    // Every message is kept, whichever campaign its conversation is in.
+    const page = await conversationsFor(client, ctx, query, true);
 
     return {
-      items: page.conversations
-        .flatMap((conversation) =>
-          objects(conversation.messages).map((raw) =>
-            toMessage(scope, conversation, raw)
-          )
-        )
+      items: page.items
+        .flatMap((listed) => {
+          const scope = scopeOf(client, listed, query.includeBody);
+
+          return objects(listed.conversation.messages).map((raw) =>
+            toMessage(scope, listed.conversation, raw)
+          );
+        })
         .filter((message) => inRange(message.sentAt, query)),
       next: page.next,
     };
   },
   listReplies: async (query, ctx) => {
-    const page = await readConversations(client, ctx, query);
-
-    const scope = {
-      campaignId: query.campaignId,
-      identity: client.identity,
-      includeBody: query.includeBody,
-    };
-
-    // A campaign filter is applied by HeyReach. Without one the inbox comes
-    // whole, and a conversation that belongs to no campaign is not a reply to
-    // outreach unless the caller asks for the inbox.
-    const wanted =
-      query.includeInbox === true || query.campaignId !== undefined
-        ? page.conversations
-        : page.conversations.filter(
-            (conversation) => campaignOf(conversation) !== null
-          );
+    // A conversation that belongs to no campaign is not a reply to outreach
+    // unless the caller asks for the inbox.
+    const page = await conversationsFor(
+      client,
+      ctx,
+      query,
+      query.includeInbox === true
+    );
 
     return {
-      items: wanted
-        .flatMap((conversation) =>
-          objects(conversation.messages).flatMap((raw) =>
-            isFromLead(raw) ? [toReply(scope, conversation, raw)] : []
-          )
-        )
+      items: page.items
+        .flatMap((listed) => {
+          const scope = scopeOf(client, listed, query.includeBody);
+
+          return objects(listed.conversation.messages).flatMap((raw) =>
+            isFromLead(raw) ? [toReply(scope, listed.conversation, raw)] : []
+          );
+        })
         .filter(
           (reply) =>
             inRange(reply.sentAt, query) &&

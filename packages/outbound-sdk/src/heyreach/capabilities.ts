@@ -68,8 +68,8 @@ export const capabilities: CapabilityDeclaration = {
   "replies.category": "vendor",
   // GetConversationsV3 takes `seen`.
   "replies.unread": "server",
-  // GetConversationsV3 lists the sender's whole LinkedIn inbox and leaves
-  // `campaignId` out of a conversation that belongs to no campaign.
+  // GetConversationsV3 lists the sender's whole LinkedIn inbox, and a
+  // conversation names no campaign: only the `campaignIds` filter tells.
   "replies.inbox": true,
   "replies.list": true,
   "replies.since": "server",
@@ -215,9 +215,22 @@ export const costs = {
   // eight at most; a later page is two again.
   "leads.lookup": { pageSize: PAGE_SIZE, perPage: 2, perWalk: 6 },
   "lists.list": { pageSize: PAGE_SIZE, perPage: 1 },
-  // One conversation by thread id is a single request.
-  "messages.list": { pageSize: PAGE_SIZE, perPage: 1 },
-  "replies.list": { pageSize: PAGE_SIZE, perPage: 1 },
+  // One conversation by thread id is a single request. Without a campaign
+  // the listing walks every campaign, a request each even when it has no
+  // conversation, after one per page of campaigns; a page of the inbox's own
+  // conversations costs one more, to set the campaigns' apart.
+  "messages.list": {
+    pageSize: PAGE_SIZE,
+    perPage: 1,
+    perPageAtMost: 2,
+    perWalk: 1,
+  },
+  "replies.list": {
+    pageSize: PAGE_SIZE,
+    perPage: 1,
+    perPageAtMost: 2,
+    perWalk: 1,
+  },
   "senders.get": { perPage: 1 },
   "senders.health": { perPage: 1 },
   // A campaign's senders cost one more request, once, to read the campaign.
@@ -263,7 +276,7 @@ export const caveats: readonly string[] = [
   "Conversations are listed with GetConversationsV3, which pages by cursor and bounds a conversation by the time of its newest message. A since filter is sent as that lower bound and the older messages inside each conversation are then dropped, so a page can hold fewer messages than its conversations do. An until filter cannot be sent, because a conversation that continued past it still holds earlier messages; it is applied after fetching. A page marker saved from before the move to V3 (a number) is not valid and starts from the first page.",
   "A message's id is built from the conversation, the time, the side and the text, so an edited message gets a new id. The live API now returns a messageId the API reference does not list; it stays in raw so that existing ids do not change.",
   "A message's threadId is the LinkedIn account id and the conversation id joined by a colon, because one conversation can only be read back with both. A thread read returns the whole conversation in one page and does not know its campaign, so campaignRef is null.",
-  "GetConversationsV3 lists the sender's whole LinkedIn inbox: personal messages, recruiters and inbound pitches as well as campaign conversations. A message's campaignRef is the conversation's campaignId, which HeyReach leaves out when the conversation belongs to no campaign, so such messages have a null campaignRef. replies.list returns only replies in campaign conversations unless asked for includeInbox (--include-inbox); messages.list returns every conversation. A page is a page of conversations, so it can hold more messages than the limit asked for, and fewer replies once the inbox's own conversations are left out.",
+  "GetConversationsV3 lists the sender's whole LinkedIn inbox: personal messages, recruiters and inbound pitches as well as campaign conversations. The reference says a conversation names its campaign in campaignId, but seen live on 2026-11-17 none does, filtered by campaign or not; only the campaignIds filter tells which campaign a conversation is in. So a listing without a campaign walks every campaign of the workspace (a lead's own campaigns, for a lead's timeline) one after the other, a request each even when it has no conversation, and a message's campaignRef is the campaign it was listed under. replies.list stops there unless asked for includeInbox (--include-inbox); messages.list then lists the conversations in no campaign, with a null campaignRef, each page with one more request to set apart the campaigns' conversations of the same times. A conversation of a campaign deleted since counts as the inbox's. Listed this way, a page is one campaign's conversations, not the newest across campaigns. A page is a page of conversations, so it can hold more messages than the limit asked for.",
   "A reply's category is its lead's: HeyReach's auto-tag is made from a lead's first campaign reply and stored on the lead, with no link to a message, so every reply of a conversation takes the lead's newest one (categorySource: lead). Interested is positive, Not Interested negative and Generic neutral, matched without case; any other name is unknown. Filtering replies by category is done after fetching, so a page can come back short. unread is the conversation's read flag, the same on each of its replies.",
   "The blacklist is two lists read one after the other, leads then companies. An entry's id is prefixed lead- or company- because the two are numbered separately. A blacklisted lead's value is its profile URL, else its email, else its name (kind other); a company's is its name, else its LinkedIn page. matchingStatus and resolutionStage stay in raw.",
   "A webhook subscription lists one event type. Filtering webhooks by campaign is done after fetching and keeps webhooks that cover every campaign. Custom headers are never requested, because they can hold a secret; a request for one webhook by id (native webhookById, or raw) is always sent with includeCustomHeaders=false. HeyReach gives a webhook no creation time.",
