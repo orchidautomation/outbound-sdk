@@ -11,8 +11,8 @@
 // by a token. An address or a profile is how records are counted and joined,
 // so it never becomes one shared `[redacted]`, which would merge everyone
 // into one person (OUT-122). Under `mask` the token is a keyed hash, under a
-// key made for this plugin and never shown, and the `email` and `linkedinUrl`
-// fields get the same token as the id: two people keep two refs and a reply
+// key made for this plugin, or the caller's `key`, and never shown, and the
+// `email` and `linkedinUrl` fields get the same token as the id: two people keep two refs and a reply
 // still joins its lead while the plugin lives, and the token cannot be traced
 // back to the address or profile. Under `hash` the same value always gives
 // the same token, so a record keeps its ref from one run to the next. What
@@ -32,8 +32,12 @@ import type {
 } from "../internal/outbound/operations.ts";
 import type { OutboundPlugin } from "../internal/outbound/plugins.ts";
 import { makeRef, parseRef } from "../internal/ref.ts";
-import { hmacSha256Hex, stableId } from "../internal/sha256.ts";
+import { stableId } from "../internal/sha256.ts";
 import { profileSlug } from "../internal/url.ts";
+import { checkedKey, keyedToken, knownTokens, TOKEN } from "./tokens.ts";
+import type { Identifier, Known } from "./tokens.ts";
+
+export { KNOWN_TOKENS, MIN_KEY_LENGTH } from "./tokens.ts";
 
 export type RedactField =
   | "body"
@@ -55,6 +59,16 @@ export interface RedactOptions {
    * so the same person gets the same token from one run to the next.
    */
   readonly strategy?: "hash" | "mask" | undefined;
+  /**
+   * A secret, at least `MIN_KEY_LENGTH` (32) characters, that keys the
+   * tokens `mask` writes for addresses and profiles. With it the same person
+   * gets the same token in every instance and process given the same key, so
+   * redacted data can be joined across runs. Without it each plugin makes a
+   * random key of its own. Anyone holding the key can test a guessed address
+   * against a token, and a new key gives every person a new token. Only for
+   * `mask`; `hash` needs no key.
+   */
+  readonly key?: string | undefined;
 }
 
 export const ALL_FIELDS: readonly RedactField[] = [
@@ -117,67 +131,6 @@ const replacer =
       : `redacted:${stableId(value).slice(0, 16)}`;
   };
 
-// A key for this plugin alone, so a token names one person to the records it
-// came with and to nothing outside them.
-const keyedToken = (): ((value: string) => string) => {
-  const key = crypto.getRandomValues(new Uint8Array(32));
-
-  return (value) => `redacted:${hmacSha256Hex(key, value).slice(0, 16)}`;
-};
-
-type Identifier = "email" | "linkedin";
-
-/** The most tokens one redact remembers the value of; the oldest go first. */
-export const KNOWN_TOKENS = 10_000;
-
-const TOKEN = /redacted:[0-9a-f]{16}/gu;
-
-/**
- * The values behind the tokens this redact wrote for addresses and profiles,
- * held in memory for its lifetime and never written out.
- */
-interface Known {
-  readonly remember: (token: string, kind: Identifier, value: string) => string;
-  readonly kindOf: (token: string) => Identifier | null;
-  /** Puts each known token's value back, for a call on its way to the vendor. */
-  readonly unmask: (text: string) => string;
-  /** Puts the tokens back where a value from `unmask` appears. */
-  readonly remask: (text: string) => string;
-}
-
-const knownTokens = (): Known => {
-  const values = new Map<string, { kind: Identifier; value: string }>();
-
-  return {
-    kindOf: (token) => values.get(token)?.kind ?? null,
-    remask: (text) => {
-      let result = text;
-
-      for (const [token, { value }] of values) {
-        result = result.replaceAll(value, token);
-      }
-
-      return result;
-    },
-    remember: (token, kind, value) => {
-      values.delete(token);
-      values.set(token, { kind, value });
-
-      if (values.size > KNOWN_TOKENS) {
-        const [oldest] = values.keys();
-
-        if (oldest !== undefined) {
-          values.delete(oldest);
-        }
-      }
-
-      return token;
-    },
-    unmask: (text) =>
-      text.replaceAll(TOKEN, (token) => values.get(token)?.value ?? token),
-  };
-};
-
 interface Masks {
   readonly has: (field: RedactField) => boolean;
   readonly replace: Replace;
@@ -203,7 +156,8 @@ const maskIdentifier = (
 
 const masksFor = (
   fields: ReadonlySet<RedactField>,
-  strategy: "hash" | "mask"
+  strategy: "hash" | "mask",
+  secret: string | undefined
 ): Masks => {
   const replace = replacer(strategy);
   const has = (field: RedactField): boolean => fields.has(field);
@@ -223,7 +177,7 @@ const masksFor = (
     };
   }
 
-  const keyed = keyedToken();
+  const keyed = keyedToken(secret);
 
   const token = (kind: Identifier, value: string, original = value): string =>
     known.remember(keyed(value), kind, original);
@@ -536,7 +490,7 @@ export const redact = (
   const fields = new Set(options.fields ?? ALL_FIELDS);
   const strategy = options.strategy ?? "mask";
 
-  const masks = masksFor(fields, strategy);
+  const masks = masksFor(fields, strategy, checkedKey(options.key, strategy));
 
   return {
     // Asking for bodies while they are being removed is a contradiction, so
