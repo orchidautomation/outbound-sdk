@@ -126,13 +126,15 @@ People who are in two or more campaigns at once, so they get overlapping outreac
 | --- | --- | --- | --- |
 | `statuses` | `["active"]` | at least one of `active`, `paused`, `draft`, `completed`, `archived`, `unknown` | Campaign statuses to consider. |
 | `include_past` | `false` | `true` or `false` | Also report people in two or more campaigns who are active in fewer than two, such as one who completed a campaign and is now in another. |
-| `max_campaigns` | 20 | 1 to 200 | The most campaigns to read. |
-| `max_leads_per_campaign` | 500 | 1 to 20,000 | The most leads to read from each campaign. |
+| `max_campaigns` | 200 | 1 to 200 | The most campaigns to read. The default reads every campaign in `statuses`. |
+| `max_leads_per_campaign` | 1,000 | 1 to 20,000 | The most leads to read from each campaign. |
 
 `data` (`LeadCollisions`):
 
+- `finding`: the answer in one sentence, coverage first. When a cap left campaigns or leads unread it says so and names each cap to raise, and never says nobody overlaps.
+
 - `collisions`: one entry per person, with `identifiers`, `campaignCount`, `stillActive` (campaigns in which the lead's own status is still `active`), `scope` (`across_tools` or `within_tool`), `providers`, `channels`, `campaigns` and a `finding` sentence. The sentence says "at once" only when `stillActive` is 2 or more; otherwise it names each stopped campaign with the lead's status there. Most active campaigns first, then most campaigns.
-- `totals`: `collisions`, `concurrent` (collisions returned with `stillActive` 2 or more), `pastOverlaps` (people in two or more campaigns but active in fewer than two, returned only with `include_past`), `acrossTools`, `withinTool`, `campaignsRead`, `leadsRead` and `leadsWithoutIdentifier`.
+- `totals`: `collisions` (`null` when a cap left campaigns or leads unread, because part of the campaigns is not a clean result), `collisionsFound` (what was found in what was read; raising a cap never lowers it), `moreCampaignsExist`, `campaignsWithMoreLeads`, `concurrent` (collisions returned with `stillActive` 2 or more), `pastOverlaps` (people in two or more campaigns but active in fewer than two, returned only with `include_past`), `acrossTools`, `withinTool`, `campaignsRead`, `leadsRead` and `leadsWithoutIdentifier`.
 
 - **Needs:** `leads.byCampaign`.
 - **Costs:** one request per page of campaigns, plus one per page of each campaign's leads.
@@ -166,15 +168,17 @@ Leads sitting in campaigns although they are on the block list.
 | --- | --- | --- | --- |
 | `statuses` | `["active"]` | at least one campaign status | Campaign statuses to check. |
 | `lead_statuses` | `["active", "paused", "unknown"]` | at least one of `active`, `paused`, `unknown`, `completed`, `skipped`, `replied`, `bounced`, `unsubscribed` | Lead statuses that count as a violation: by default the leads still being sent to, or yet to start. |
-| `max_block_entries` | 2,000 | 1 to 100,000 | The most block list entries to read. |
-| `max_campaigns` | 20 | 1 to 200 | The most campaigns to check. |
-| `max_leads_per_campaign` | 500 | 1 to 20,000 | The most leads to read from each campaign. |
+| `max_block_entries` | 10,000 | 1 to 100,000 | The most block list entries to read. |
+| `max_campaigns` | 200 | 1 to 200 | The most campaigns to check. The default checks every campaign in `statuses`. |
+| `max_leads_per_campaign` | 1,000 | 1 to 20,000 | The most leads to read from each campaign. |
 
 `data` (`SuppressionCheck`):
 
+- `finding`: the answer in one sentence, coverage first. When a cap left campaigns, leads or block entries unread it begins "Not a clean result" (or "At least" when some were found) and names each cap to raise, and never reports 0 violations.
+
 - `violations`: one entry per lead whose status is in `lead_statuses`, with `lead`, `email`, `linkedinUrl`, `leadStatus`, `campaign`, `campaignName`, `entry`, `entryValue`, `matchedBy` (`email`, `domain` or `linkedin`), `sameTool` and a `finding` sentence. Leads still `active` first.
 - `byCampaign`: every campaign checked with `leadsRead` and `violations`, most violations first.
-- `totals`: `violations`, `alreadyStopped` (leads on the block list whose status is not in `lead_statuses`, most often because they unsubscribed, which is how many tools put them on the list), `byMatch` (of the violations), `campaignsRead`, `leadsRead`, `blockEntriesRead`, `blockEntriesNotChecked`, `moreBlockEntriesExist` (`true` when `max_block_entries` left entries unread; a lead on one of those was not found, and `blockEntriesNotChecked` is then `null`) and `moreLeadsExist` (`true` when `max_leads_per_campaign` left a campaign's leads unread).
+- `totals`: `violations` (`null` when a cap left campaigns, leads or block entries unread), `violationsFound` (what was found in what was read; raising a cap never lowers it), `moreCampaignsExist`, `campaignsWithMoreLeads`, `alreadyStopped` (leads on the block list whose status is not in `lead_statuses`, most often because they unsubscribed, which is how many tools put them on the list), `byMatch` (of the violations), `campaignsRead`, `leadsRead`, `blockEntriesRead`, `blockEntriesNotChecked`, `moreBlockEntriesExist` (`true` when `max_block_entries` left entries unread; a lead on one of those was not found, and `blockEntriesNotChecked` is then `null`) and `moreLeadsExist` (`true` when `max_leads_per_campaign` left a campaign's leads unread).
 
 - **Needs:** `blocklist`, `leads.byCampaign`.
 - **Costs:** one request per page of block entries, plus one per page of each campaign's leads.

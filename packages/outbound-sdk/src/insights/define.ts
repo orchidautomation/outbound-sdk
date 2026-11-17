@@ -133,7 +133,7 @@ export interface InsightContext {
   readonly rows: (stats: StatsResult) => readonly MetricRow[];
   /**
    * Reads each item, a few side by side, and returns the results in order.
-   * In an insight with `partialOnCap`, an item whose read a request cap
+   * Unless the insight sets `partialOnCap: false`, an item whose read a request cap
    * stopped is left out, and the answer is marked incomplete with a note
    * such as `Read 18 of 24 campaigns`; `what` names the items in the plural.
    * Any other failure, and every failure elsewhere, is thrown.
@@ -227,10 +227,12 @@ export interface InsightSpec<Key extends string, Input, Data, Given = Input> {
   /** The input that makes a run cheaper when lowered, such as `max_campaigns`. */
   readonly scales?: (keyof Input & string) | undefined;
   /**
-   * `true` when the answer still means something over part of the data: a
-   * request cap that stops `context.all` or `context.each` part way then
-   * keeps what they read, and the answer comes back with `complete: false`
-   * and a note naming the cap, instead of failing with `RateLimited`.
+   * `false` for an insight whose answer means nothing over part of the
+   * data. By default a request cap that stops `context.all` or
+   * `context.each` part way keeps what they read, and the answer comes back
+   * with `complete: false` and a note naming the cap, instead of throwing
+   * away the requests already spent; with `false` the run fails with
+   * `RateLimited` instead.
    */
   readonly partialOnCap?: boolean | undefined;
   readonly run: (context: InsightContext, input: Input) => Promise<Data>;
@@ -364,12 +366,13 @@ const track = (cap: RunCap, now: number, partialOnCap: boolean): Tracker => {
         return stats.rows;
       },
     },
-    // A read the cap stopped part way recorded no cost, so the cap's own count is the total.
+    // A read that failed, or that a cap stopped part way, recorded no cost,
+    // so the run's own count of what it sent is the total.
     meta: () => ({
       complete,
       evidence,
       notes: [...notes],
-      requests: absorbed ? Math.max(requests, cap.used()) : requests,
+      requests: Math.max(requests, cap.used()),
     }),
   };
 };
@@ -519,7 +522,7 @@ const execute = async <Key extends string, Input, Data, Given>(
 
   const cap = runCap(target, priced(target, spec, checked), checked, options);
   const now = options.now ?? Date.now();
-  const tracker = track(cap, now, spec.partialOnCap === true);
+  const tracker = track(cap, now, spec.partialOnCap !== false);
 
   // A campaign given by name is looked up first, counted like any other read.
   // A name found among part of the campaigns could be another's, so the

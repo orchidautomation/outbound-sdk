@@ -6,16 +6,16 @@ import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { BlockEntry } from "../../internal/entities-account.ts";
 import { leadStatusSchema } from "../../internal/entities.ts";
 import type { Campaign, Lead, LeadStatus } from "../../internal/entities.ts";
+import { plural } from "../../internal/numbers.ts";
 import { profileSlug } from "../../internal/url.ts";
+import { readCampaignsIn } from "../capped.ts";
 import { defineInsight, maskingOf } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { tally } from "../stats.ts";
-import {
-  campaignsIn,
-  domainOf,
-  readCappedFlag,
-  statusesField,
-} from "./read.ts";
+import { wasCutShort } from "../tracked-reads.ts";
+import { campaignGaps, gapsSentence } from "./coverage.ts";
+import type { CampaignsChecked, Gap } from "./coverage.ts";
+import { domainOf, readCappedFlag, statusesField } from "./read.ts";
 
 /** The lead statuses still being sent to, or yet to start, by default. */
 const SENDABLE: readonly [LeadStatus, ...LeadStatus[]] = [
@@ -37,26 +37,28 @@ const input = z.object({
     .int()
     .min(1)
     .max(100_000)
-    .default(2000)
+    .default(10_000)
     .describe(
-      "The most block list entries to read. A vendor request returns about 50 to 100."
+      "The most block list entries to read. A vendor request returns about 50 to 100. A lead on an entry past this cap is not found, so violations is null when entries are left unread."
     ),
   max_campaigns: z
     .number()
     .int()
     .min(1)
     .max(200)
-    .default(20)
+    .default(200)
     .describe(
-      "The most campaigns to check. Each costs one request per page of its leads."
+      "The most campaigns to check. Each costs one request per page of its leads. Defaults to the most allowed, so every campaign in the statuses is checked."
     ),
   max_leads_per_campaign: z
     .number()
     .int()
     .min(1)
     .max(20_000)
-    .default(500)
-    .describe("The most leads to read from each campaign"),
+    .default(1000)
+    .describe(
+      "The most leads to read from each campaign. A campaign with more is checked only in part, so violations is null."
+    ),
   statuses: statusesField,
 });
 
@@ -88,12 +90,25 @@ export interface SuppressionCampaign {
 }
 
 export interface SuppressionCheck {
+  /**
+   * The answer in one sentence, coverage first: how many violations in how
+   * many campaigns, or what the caps left unread when the check is
+   * incomplete. Never "none" from part of the data.
+   */
+  readonly finding: string;
   /** Leads still `active` first, then by campaign and lead. */
   readonly violations: readonly SuppressionViolation[];
   /** Every campaign checked, most violations first. */
   readonly byCampaign: readonly SuppressionCampaign[];
   readonly totals: {
-    readonly violations: number;
+    /**
+     * Violations in every campaign and against every entry, or `null` when
+     * a cap left campaigns, leads or block entries unread: the check is
+     * incomplete and `violationsFound` is only a lower bound.
+     */
+    readonly violations: number | null;
+    /** Violations in what was read. Raising a cap never lowers it. */
+    readonly violationsFound: number;
     /**
      * Leads on the block list whose status is not in `lead_statuses`, so not
      * counted as violations: most often they unsubscribed (which is why they
@@ -119,6 +134,10 @@ export interface SuppressionCheck {
     readonly moreBlockEntriesExist: boolean;
     /** `true` when `max_leads_per_campaign` stopped a campaign's read with more leads left. */
     readonly moreLeadsExist: boolean;
+    /** Campaigns whose leads were read only in part. */
+    readonly campaignsWithMoreLeads: number;
+    /** `true` when `max_campaigns` or a request cap left campaigns in the statuses unread. */
+    readonly moreCampaignsExist: boolean;
   };
 }
 
@@ -258,9 +277,51 @@ const activeFirst = (
   left.campaign.localeCompare(right.campaign) ||
   left.lead.localeCompare(right.lead);
 
+/** What the caps left unread: campaigns, leads, and block entries when `entries` stopped short. */
+const gapsOf = (
+  checked: CampaignsChecked,
+  entries: { readonly read: number; readonly cut: boolean } | null
+): Gap[] => [
+  ...campaignGaps(checked),
+  ...(entries === null
+    ? []
+    : [
+        {
+          input: entries.cut ? null : "max_block_entries",
+          read: `${plural(entries.read, "block list entry", "block list entries")}, with more unread`,
+        },
+      ]),
+];
+
+/** The answer in one sentence, what the check covered first. */
+const findingOf = (
+  violations: readonly SuppressionViolation[],
+  campaigns: number,
+  gaps: readonly Gap[]
+): string => {
+  const incomplete = gapsSentence(gaps);
+  const inCampaigns = new Set(violations.map((each) => each.campaign)).size;
+
+  const found = `${plural(violations.length, "lead still being sent to is", "leads still being sent to are")} on the block list, in ${plural(inCampaigns, "campaign")}`;
+
+  if (incomplete === null) {
+    if (campaigns === 0) {
+      return "No lead still being sent to is on the block list: no campaign in those statuses was found to check.";
+    }
+
+    return violations.length === 0
+      ? `No lead still being sent to is on the block list: every lead of ${plural(campaigns, "campaign")} was checked against every entry.`
+      : `${found} of ${campaigns}.`;
+  }
+
+  return violations.length === 0
+    ? `Not a clean result. No violation was found in what was read, but ${incomplete.charAt(0).toLowerCase()}${incomplete.slice(1)}`
+    : `At least ${found}. ${incomplete}`;
+};
+
 export const suppressionCheck = defineInsight({
   description:
-    "Leads sitting in campaigns although they are on the block list. Reads the block list, then the leads of each campaign in the given statuses (active by default), and matches a lead by exact email address, by email domain against domain entries, and by LinkedIn profile against profile entries. A match is a violation only when the lead's own status is in lead_statuses (active, paused or unknown by default, the leads still being sent to); a lead that already unsubscribed, bounced, replied or completed is counted in totals.alreadyStopped instead. Returns each violation with the lead, the campaign, the entry and how it matched, counts per campaign, and how many block entries were read; totals.moreBlockEntriesExist is true when max_block_entries left entries unread, which were not checked. On several tools an entry on one tool's list is also matched against the other tools' leads and marked sameTool false. Costs one request per page of block entries plus one per page of each campaign's leads.",
+    "Leads sitting in campaigns although they are on the block list. Reads the block list, then the leads of each campaign in the given statuses (active by default), and matches a lead by exact email address, by email domain against domain entries, and by LinkedIn profile against profile entries. A match is a violation only when the lead's own status is in lead_statuses (active, paused or unknown by default, the leads still being sent to); a lead that already unsubscribed, bounced, replied or completed is counted in totals.alreadyStopped instead. Returns a finding sentence that leads with what was checked, each violation with the lead, the campaign, the entry and how it matched, and counts per campaign. Every campaign in the statuses is checked by default; when a cap leaves campaigns, leads or block entries unread, totals.violations is null, totals.violationsFound counts what was found, and the finding names each cap to raise, never a bare 0. On several tools an entry on one tool's list is also matched against the other tools' leads and marked sameTool false. Costs one request per page of block entries plus one per page of each campaign's leads.",
   inputSchema: input,
   key: "suppressionCheck",
   cost: (values, price) =>
@@ -290,11 +351,13 @@ export const suppressionCheck = defineInsight({
       context.partial(unmatched);
     }
 
-    const campaigns = await campaignsIn(
+    const listedCampaigns = await readCampaignsIn(
       context,
       values.statuses,
       values.max_campaigns
     );
+
+    const campaigns = listedCampaigns.items;
 
     const sendable = new Set<string>(values.lead_statuses);
     const violations: SuppressionViolation[] = [];
@@ -341,7 +404,22 @@ export const suppressionCheck = defineInsight({
       );
     }
 
+    const campaignsWithMoreLeads = read.filter((each) => each.capped).length;
+
+    const gaps = gapsOf(
+      {
+        campaigns: campaigns.length,
+        campaignsCut: wasCutShort(campaigns),
+        campaignsWithMoreLeads,
+        leadsCut: read.filter((each) => wasCutShort(each.items)).length,
+        maxLeads: values.max_leads_per_campaign,
+        moreCampaignsExist: listedCampaigns.capped,
+      },
+      listed.capped ? { cut: wasCutShort(entries), read: entries.length } : null
+    );
+
     const answer: SuppressionCheck = {
+      finding: findingOf(violations, campaigns.length, gaps),
       byCampaign: byCampaign.toSorted(
         (left, right) =>
           right.violations - left.violations ||
@@ -357,10 +435,13 @@ export const suppressionCheck = defineInsight({
           linkedin: matches.get("linkedin") ?? 0,
         },
         campaignsRead: campaigns.length,
+        campaignsWithMoreLeads,
         leadsRead: byCampaign.reduce((sum, each) => sum + each.leadsRead, 0),
         moreBlockEntriesExist: listed.capped,
-        moreLeadsExist: read.some((each) => each.capped),
-        violations: violations.length,
+        moreCampaignsExist: listedCampaigns.capped,
+        moreLeadsExist: campaignsWithMoreLeads > 0,
+        violations: gaps.length === 0 ? violations.length : null,
+        violationsFound: violations.length,
       },
       violations: violations.toSorted(activeFirst),
     };

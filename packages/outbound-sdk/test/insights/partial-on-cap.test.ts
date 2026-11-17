@@ -186,7 +186,7 @@ test("a budget() with a setting names it, and never requestBudget.reset()", asyn
   assert.ok("rejected" in spent && OutboundError.is(spent.rejected));
   assert.match(
     spent.rejected.message,
-    /^The run used its budget of 1 request to \S+\. Raise --max-requests\.$/u
+    /^The run used its budget of 1 request to \S+\. That budget is a cap you set, not the vendor's rate limit\. Raise --max-requests\.$/u
   );
 });
 

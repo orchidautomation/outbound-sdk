@@ -138,11 +138,18 @@ test("suppression_check reports each lead still being sent to on the block list,
     blockEntriesRead: 7,
     byMatch: { domain: 1, email: 0, linkedin: 2 },
     campaignsRead: 3,
+    campaignsWithMoreLeads: 0,
     leadsRead: 8,
     moreBlockEntriesExist: false,
+    moreCampaignsExist: false,
     moreLeadsExist: false,
     violations: 3,
+    violationsFound: 3,
   });
+  assert.equal(
+    data.finding,
+    "3 leads still being sent to are on the block list, in 2 campaigns of 3."
+  );
   // Entries it could not check leave the answer incomplete (OUT-127).
   assert.equal(result.meta.complete, false);
   assert.deepEqual(result.meta.notes, [
@@ -290,16 +297,21 @@ test("suppression_check finds nothing with an empty block list, no campaigns or 
 
   assert.deepEqual(empty.data, {
     byCampaign: [],
+    finding:
+      "No lead still being sent to is on the block list: no campaign in those statuses was found to check.",
     totals: {
       alreadyStopped: 0,
       blockEntriesNotChecked: 0,
       blockEntriesRead: 0,
       byMatch: { domain: 0, email: 0, linkedin: 0 },
       campaignsRead: 0,
+      campaignsWithMoreLeads: 0,
       leadsRead: 0,
       moreBlockEntriesExist: false,
+      moreCampaignsExist: false,
       moreLeadsExist: false,
       violations: 0,
+      violationsFound: 0,
     },
     violations: [],
   });
@@ -313,6 +325,11 @@ test("suppression_check says the answer is partial when a cap stops a read", asy
 
   // Only the address entry was read, and the lead it matches completed.
   assert.deepEqual(fewEntries.data.violations, []);
+  assert.equal(fewEntries.data.totals.violations, null);
+  assert.equal(
+    fewEntries.data.finding,
+    "Not a clean result. No violation was found in what was read, but the check is incomplete: it read only 1 block list entry, with more unread (max_block_entries). To check the rest, raise max_block_entries."
+  );
   assert.equal(fewEntries.data.totals.alreadyStopped, 1);
   assert.equal(fewEntries.data.totals.blockEntriesRead, 1);
   // The entries left unread were not checked, and how many there are is unknown.
@@ -327,7 +344,10 @@ test("suppression_check says the answer is partial when a cap stops a read", asy
     max_campaigns: 1,
   });
 
-  assert.equal(fewCampaigns.data.totals.violations, 2);
+  // Part of the campaigns gives no total, only what was found in them.
+  assert.equal(fewCampaigns.data.totals.violations, null);
+  assert.equal(fewCampaigns.data.totals.violationsFound, 2);
+  assert.equal(fewCampaigns.data.totals.moreCampaignsExist, true);
   assert.equal(fewCampaigns.meta.complete, false);
 
   const fewLeads = await single(MAIL).insights.suppressionCheck({
@@ -335,7 +355,10 @@ test("suppression_check says the answer is partial when a cap stops a read", asy
   });
 
   // l2 in c1 and l5 in c2; l1 completed.
-  assert.equal(fewLeads.data.totals.violations, 2);
+  assert.equal(fewLeads.data.totals.violations, null);
+  assert.equal(fewLeads.data.totals.violationsFound, 2);
+  // Only c1 has more than 2 leads.
+  assert.equal(fewLeads.data.totals.campaignsWithMoreLeads, 1);
   assert.equal(fewLeads.data.totals.alreadyStopped, 1);
   assert.equal(fewLeads.data.totals.leadsRead, 6);
   assert.equal(fewLeads.data.totals.moreLeadsExist, true);
