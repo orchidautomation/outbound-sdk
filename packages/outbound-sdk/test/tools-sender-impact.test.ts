@@ -11,6 +11,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import type { Outbound } from "../src/index.ts";
+import { createOutbound } from "../src/index.ts";
+import { memory } from "../src/memory/index.ts";
 import { createTools } from "../src/tools/index.ts";
 import { harness } from "./helpers/adapter-suite.ts";
 import { fixture } from "./helpers/fixtures.ts";
@@ -153,6 +155,10 @@ const sentEarlier = (email: string) => [
   { date: dayAgo(5), email_account: email, sent: 0 },
   { date: dayAgo(9), email_account: email, sent: 30 },
   { date: dayAgo(10), email_account: email, sent: 25 },
+];
+
+const quiet = (email: string) => [
+  { date: dayAgo(2), email_account: email, sent: 0 },
 ];
 
 const call = async (
@@ -368,4 +374,90 @@ test("on HeyReach a disconnected LinkedIn seat is checked one at a time and its 
   assert.equal(seat.impact.last_authenticated_at, null);
   assert.ok(seat.impact.unknown.last_authenticated_at);
   assert.ok(Array.isArray(seat.impact.active_campaigns));
+});
+
+test("impact says why it read nothing where the adapter cannot list a sender's campaigns or stats, and stops at 10 failing senders", async () => {
+  const outbound = createOutbound({
+    adapter: memory({
+      capabilities: { "campaigns.bySender": false, "stats.bySender": false },
+      data: {
+        senders: Array.from({ length: 12 }, (_, index) => ({
+          address: `seat${index + 1}@example.com`,
+          id: `s${index + 1}`,
+          status: "disconnected" as const,
+        })),
+      },
+    }),
+  });
+
+  const result = await call(outbound, "sender_health");
+  const data = result.data as unknown as { failing: number; senders: Row[] };
+
+  assert.equal(data.failing, 12);
+  assert.equal(data.senders.filter((row) => row.impact).length, 10);
+  assert.equal(result.meta.complete, false);
+  assert.ok(
+    result.meta.notes.some((note) => note.includes("2 more have none")),
+    result.meta.notes.join(" ")
+  );
+
+  const [first] = data.senders;
+  assert.equal(first?.impact?.active_campaigns, null);
+  assert.equal(first?.impact?.active_campaign_count, null);
+  assert.equal(first?.impact?.recent_sends, null);
+  assert.match(
+    first?.impact?.unknown.active_campaigns ?? "",
+    /cannot list a sender's campaigns/u
+  );
+  assert.match(
+    first?.impact?.unknown.recent_sends ?? "",
+    /no daily stats for a sender/u
+  );
+});
+
+test("impact keeps the call alive when a read fails or the request cap is reached, and says a quiet sender sent nothing in the window", async () => {
+  const failingReads = (request: RecordedRequest) =>
+    new URL(request.url).pathname.startsWith(
+      "/api/v2/account-campaign-mappings/"
+    )
+      ? json({ message: "Server error" }, 500)
+      : workspace(quiet)(request);
+
+  const { outbound, settle } = harness(suite, failingReads);
+  const result = await settle(call(outbound, "sender_health"));
+  const [first] = (result.data as unknown as { senders: Row[] }).senders;
+
+  assert.equal(first?.impact?.active_campaigns, null);
+  assert.match(
+    first?.impact?.unknown.active_campaigns ?? "",
+    /^Not read: listing its campaigns failed/u
+  );
+  assert.equal(first?.impact?.recent_sends?.sent, 0);
+  assert.equal(first?.impact?.last_sent_on, null);
+  assert.match(
+    first?.impact?.unknown.last_sent_on ?? "",
+    /^Nothing sent from/u
+  );
+
+  const capped = harness(suite, workspace(sentEarlier));
+
+  const tool = createTools(capped.outbound, { maxRequestsPerToolCall: 6 }).find(
+    (candidate) => candidate.name === "sender_health"
+  );
+
+  const stopped = await capped.settle(
+    tool?.call({}) ?? Promise.reject(new Error("no tool"))
+  );
+
+  assert.ok(stopped.ok, JSON.stringify(stopped));
+
+  const rows = (stopped.data as unknown as { senders: Row[] }).senders;
+  assert.ok(
+    rows.some((row) =>
+      Object.values(row.impact?.unknown ?? {}).some((reason) =>
+        reason.includes("request cap of this call was reached")
+      )
+    ),
+    JSON.stringify(rows.slice(0, 2))
+  );
 });
