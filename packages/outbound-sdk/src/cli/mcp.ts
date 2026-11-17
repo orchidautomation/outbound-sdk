@@ -78,21 +78,35 @@ const describeLeftOut = (
   outbound: OutboundApi,
   leftOut: Readonly<Record<string, string>> | undefined
 ): string => {
-  const names = Object.keys(leftOut ?? {});
+  const reasons = Object.entries(leftOut ?? {});
+  const redactOn = outbound.plugins.some((plugin) => plugin.name === "redact");
+
+  // What the instance itself cannot do is said as `<name> is not available`
+  // (see `catalog`). Under redact anything else is redact's, named apart
+  // with how to turn it on.
+  const isRedacts = ([name, why]: readonly [string, string]): boolean =>
+    redactOn && !why.startsWith(`${name} is not available`);
+
+  const names = reasons.filter(isRedacts).map(([name]) => name);
+
+  const others = reasons
+    .filter((entry) => !isRedacts(entry))
+    .map(([name]) => name);
+
+  const elsewhere =
+    others.length === 0
+      ? ""
+      : ` Left out of this server: ${others.join(", ")}. A call to one returns the reason.`;
 
   if (names.length === 0) {
-    return "";
-  }
-
-  if (!outbound.plugins.some((plugin) => plugin.name === "redact")) {
-    return ` Left out of this server: ${names.join(", ")}. A call to one returns the reason.`;
+    return elsewhere;
   }
 
   const native = names.includes("vendor_read")
     ? " (vendor_read returns unmasked vendor payloads)"
     : "";
 
-  return ` Left out while redact is on: ${names.join(", ")}. They match people by email or LinkedIn profile, which redact masks${native}. Start the server with --no-redact to offer them; personal fields are then not masked.`;
+  return `${elsewhere} Left out while redact is on: ${names.join(", ")}. They match people by email or LinkedIn profile, which redact masks${native}. Start the server with --no-redact to offer them; personal fields are then not masked.`;
 };
 
 interface WithRequestBudget {

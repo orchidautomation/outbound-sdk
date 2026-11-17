@@ -8,7 +8,7 @@ import type { OutboundApi } from "../internal/outbound/api.ts";
 import { plural } from "../internal/plural.ts";
 import { requestCounter, withGuard } from "../internal/request-cap.ts";
 import { audienceLists, campaignSetup, vendorRead } from "./account-tools.ts";
-import { withCampaign } from "./by-name.ts";
+import { routedByCampaign, withCampaign } from "./by-name.ts";
 import {
   campaignOverview,
   campaignTrend,
@@ -143,7 +143,24 @@ const bind = <Input>(
       // and its requests are counted with the tool's own.
       const resolved = await withCampaign(guarded, parsed.data);
       const lookup = counter.used();
-      const result = await definition.run(guarded, resolved);
+      // On a combined instance a campaign's own tool answers for it, so what
+      // that tool supports applies, and a tool that cannot is refused here.
+      const target = routedByCampaign(guarded, resolved);
+      const unmet = definition.needs.filter((need) => !metOn(target)(need));
+
+      if (unmet.length > 0) {
+        return failure(
+          new OutboundError(
+            "Unsupported",
+            `${definition.name} is not available for this campaign: the ${target.provider} adapter does not support ${unmet.join(", ")}`,
+            { provider: target.provider }
+          ),
+          lookup,
+          "Call it again with a campaign of a tool on this instance that supports it, or pick another of the listed tools."
+        );
+      }
+
+      const result = await definition.run(target, resolved);
 
       return result.ok
         ? {
@@ -200,6 +217,13 @@ export interface ToolsOptions {
    * instance and `budget()` still apply under it.
    */
   readonly maxRequestsPerToolCall?: number | undefined;
+  /**
+   * On a combined instance, each of its tools as its own instance
+   * (`membersOf` in `outbound-sdk/insights`). With them a tool that takes a
+   * campaign is offered when one of them supports it, and answers for that
+   * tool's campaigns.
+   */
+  readonly members?: readonly OutboundApi[] | undefined;
 }
 
 interface Redacted {
@@ -267,7 +291,13 @@ const metOn = (outbound: OutboundApi): ((need: string) => boolean) => {
     added.get(need) ?? (isCapability(need) && capabilities[need] !== false);
 };
 
-const NEEDS: ReadonlyMap<string, readonly string[]> = new Map(
+interface Needs {
+  readonly needs: readonly string[];
+  /** Whether the tool takes a campaign, so a combined instance can route it to the campaign's tool. */
+  readonly byCampaign: boolean;
+}
+
+const NEEDS: ReadonlyMap<string, Needs> = new Map(
   [
     campaignOverview,
     campaignTrend,
@@ -281,8 +311,25 @@ const NEEDS: ReadonlyMap<string, readonly string[]> = new Map(
     deliverabilityCheck,
     audienceLists,
     vendorRead,
-  ].map((definition) => [definition.name, definition.needs])
+  ].map((definition) => [
+    definition.name,
+    {
+      byCampaign: Object.hasOwn(definition.inputSchema.shape, "campaign"),
+      needs: definition.needs,
+    },
+  ])
 );
+
+/** Whether the instance, or for a tool that takes a campaign one of its tools, meets every need. */
+const servedBy = (
+  outbound: OutboundApi,
+  members: readonly OutboundApi[],
+  name: string,
+  needs: readonly string[]
+): boolean =>
+  needs.every(metOn(outbound)) ||
+  (NEEDS.get(name)?.byCampaign === true &&
+    members.some((member) => needs.every(metOn(member))));
 
 /**
  * Why `createTools` leaves a built-in tool out of this instance's set, in
@@ -291,12 +338,14 @@ const NEEDS: ReadonlyMap<string, readonly string[]> = new Map(
  */
 export const leftOutReason = (
   outbound: OutboundApi,
-  name: string
+  name: string,
+  members: readonly OutboundApi[] = []
 ): string | undefined => {
+  const needs = NEEDS.get(name)?.needs ?? [];
   const met = metOn(outbound);
-  const unmet = (NEEDS.get(name) ?? []).filter((need) => !met(need));
+  const unmet = needs.filter((need) => !met(need));
 
-  if (unmet.length === 0) {
+  if (unmet.length === 0 || servedBy(outbound, members, name, needs)) {
     return undefined;
   }
 
@@ -344,12 +393,13 @@ export const createTools = (
   const wanted =
     options.only === undefined ? undefined : new Set<string>(options.only);
 
-  const met = metOn(outbound);
+  const members = options.members ?? [];
 
   const offered = [
     ...all.filter(
       (tool) =>
-        (wanted === undefined || wanted.has(tool.name)) && tool.needs.every(met)
+        (wanted === undefined || wanted.has(tool.name)) &&
+        servedBy(outbound, members, tool.name, tool.needs)
     ),
     ...(options.extra ?? []),
   ];

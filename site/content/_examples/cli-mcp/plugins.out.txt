@@ -1,7 +1,7 @@
 $ outbound mcp
   plugins:      Plugins on: redact, identity. redact masks personal fields such as emails and names, and reply text is not available.
-  left out:     cross_channel_lead, person_summary, account_summary. They match people by email or LinkedIn profile, which redact masks. Start the server with --no-redact to offer them; personal fields are then not masked.
-  tools:        35
+  left out:     cross_channel_lead, account_summary. They match people by email or LinkedIn profile, which redact masks. Start the server with --no-redact to offer them; personal fields are then not masked.
+  tools:        36
   reply text:   refused (Reading reply bodies is not available: the redact plugin turned it off (messages.body))
 
 $ outbound mcp --no-redact
@@ -12,7 +12,7 @@ $ outbound mcp --no-redact
 
 $ outbound mcp --config outbound.config.ts --cache 300 --max-requests 50
   plugins:      Plugins on: redact, clients, cache, budget, identity. redact masks personal fields such as emails and names, and reply text is not available.
-  left out:     cross_channel_lead, person_summary, account_summary. They match people by email or LinkedIn profile, which redact masks. Start the server with --no-redact to offer them; personal fields are then not masked.
-  tools:        36
+  left out:     cross_channel_lead, account_summary. They match people by email or LinkedIn profile, which redact masks. Start the server with --no-redact to offer them; personal fields are then not masked.
+  tools:        37
   reply text:   refused (Reading reply bodies is not available: the redact plugin turned it off (messages.body))
 

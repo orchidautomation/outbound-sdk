@@ -52,7 +52,7 @@ The rest of this page runs on in-memory members limited to what Instantly and He
 
 The combined instance's capabilities are the weakest value of each key across its members. Put HeyReach beside Instantly and the instance gives up everything HeyReach cannot do: the `given up` line above. A call that needs one of those is refused as `Unsupported` on the combined instance, even for a record that lives in the member that could serve it. Scope to that member to get it back (see [below](#scope-to-one-client)).
 
-An insight given one `campaign` is the exception: it runs on the member that campaign belongs to, so that member's capabilities apply. `step_funnel` on an Instantly campaign works beside HeyReach, and on a HeyReach campaign it is refused naming `heyreach`.
+An insight or a built-in tool given one `campaign` is the exception: it runs on the member that campaign belongs to, so that member's capabilities apply. `step_funnel` on an Instantly campaign works beside HeyReach, and on a HeyReach campaign it is refused naming `heyreach`, before any request. So that a model is offered them, `insightTools` and `createTools` take `members`, each member as its own instance (`membersOf(outbound)` from `outbound-sdk/insights`): with it a tool that takes a `campaign` is offered when one member can serve it, and an insight that reads every campaign, such as `settings_audit`, is offered when exactly one member can, and answers for that member with `meta.complete: false` and a note naming the others. The CLI and `outbound mcp` pass it.
 
 Three keys do not follow the weakest member:
 
@@ -60,7 +60,7 @@ Three keys do not follow the weakest member:
 | --- | --- | --- |
 | `workspaces` | always `yes` | Its workspaces are its members. Listing them makes no request. |
 | `native` | always `no` | A native read belongs to one vendor. |
-| `messages.byThread` | always `no` | A thread id is the vendor's own and names no member, so `outbound.thread(id)` cannot be routed. |
+| `messages.byThread` | `yes` when any member reads threads | A thread id is the vendor's own and names no member, so `outbound.thread(id)` asks each member that reads threads, side by side. A member that cannot take the id, such as HeyReach given an Instantly thread id, holds no such thread. |
 
 ### Listings read every member at once
 
@@ -100,7 +100,7 @@ Where a tool, an insight or the CLI takes a `campaign`, a name or a bare id is l
 </include>
 
 - **A label one member carries scopes to that member.** The result behaves like an instance built on that adapter alone: its own capabilities, bare ids, `native` and `raw`.
-- **A label several members carry scopes to all of them.** A client on two tools keeps one label on both adapters, and its scope is those members, still combined. Lookups there still need refs, and `native`, `raw` and `thread` are still unavailable.
+- **A label several members carry scopes to all of them.** A client on two tools keeps one label on both adapters, and its scope is those members, still combined. Lookups there still need refs, `native` and `raw` are still unavailable, and `thread` asks each member that reads threads.
 - **An unknown label throws `NotFound`.**
 
 <Callout type="warning" title="native and raw on a shared label">

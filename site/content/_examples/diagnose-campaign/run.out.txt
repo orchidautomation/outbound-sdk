@@ -1,17 +1,17 @@
 Ecommerce ops (active): 8 findings. Most serious: Bounce rate is 4.1% (117 of 2836 sends), over the 3% limit.
 
 [high] high_bounce_rate: Bounce rate is 4.1% (117 of 2836 sends), over the 3% limit.
-    next: Use bounce_watch to find the senders behind it, and verify the lead list.
+    next: Verify the lead list. Use bounce_watch to find the senders behind it.
 [high] inactive_sender: 1 of 2 senders is not active: dan@example.com (paused).
     next: Reconnect or replace them; warmup_readiness shows which mailboxes are fit to send.
 [high] low_reply_rate: Reply rate is 0.2% (2 of 945), under the 1% floor. The 95% interval is 0.1% to 0.8%, so it is below the floor beyond chance.
-    next: Use step_funnel and copy_audit to see where replies are lost.
+    next: Use step_funnel to see which step loses replies. Use copy_audit to check the copy.
 [medium] falling_sends: Sends fell from 628 to 316 over the last 7 days against the 7 before, a drop of 49.7%.
-    next: Use pipeline_forecast to check the leads left, and sender_capacity for the mailboxes.
+    next: Use pipeline_forecast to check the leads left. Use sender_capacity for the mailboxes.
 [medium] few_positive_replies: Only 0 of 2 replies (0%) are positive, under the 20% expected. With 2 replies the 95% interval is 0% to 65.8%.
     next: Read the replies: the offer or the audience may be off.
 [medium] short_sequence: The sequence has 2 steps; follow-ups usually bring a large share of the replies.
-    next: Add follow-up steps; step_funnel shows what each step earns.
+    next: Add follow-up steps. step_funnel shows what each step earns.
 [low] schedule_limits_volume: The sending windows are open 15 hours a week, under 20.
     next: Use settings_audit to review the schedule and the limits.
 [low] tracking_off: Open tracking is off, so the missing open count is expected and not a fault.

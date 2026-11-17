@@ -45,6 +45,12 @@ interface Lookup {
   readonly masked: readonly Identifier[];
   /** The token redact writes for a value under `hash`; `undefined` when a masked value cannot be matched. */
   readonly hash: ((value: string) => string) | undefined;
+  /**
+   * Whether an identifier is a token redact wrote here under `mask`. It puts
+   * the value back on the way to the vendor and the same token on the
+   * records that come back, so a token is asked for and matched as it is.
+   */
+  readonly known: (key: string) => boolean;
 }
 
 const lookupOf = (outbound: Outbound): Lookup => {
@@ -52,6 +58,9 @@ const lookupOf = (outbound: Outbound): Lookup => {
 
   return {
     hash: masking?.strategy === "hash" ? masking.hash : undefined,
+    known: (key) =>
+      masking?.strategy === "mask" &&
+      (masking.resolves?.(key.slice(key.indexOf(":") + 1)) ?? null) !== null,
     masked: (masking?.fields ?? []).flatMap((field) =>
       field === "email" || field === "linkedin" ? [field] : []
     ),
@@ -124,8 +133,9 @@ interface Start {
 const startFrom = async (
   context: InsightContext,
   identifier: string,
-  { hash, masked }: Lookup
+  lookup: Lookup
 ): Promise<Start> => {
+  const { hash, masked } = lookup;
   const { outbound } = context;
   const { key, ref } = parsePerson(identifier, outbound.provider);
 
@@ -147,7 +157,7 @@ const startFrom = async (
       throw refuse(
         outbound,
         masked,
-        "the records could not be matched to the identifier"
+        "the records come back masked and cannot be matched to the identifier, so give the lead ref another tool returned instead"
       );
     }
 
@@ -168,20 +178,24 @@ const startFrom = async (
       ? null
       : "a lead's identifiers are hashed on its record, so give the email address or LinkedIn profile URL instead";
 
-  if (masked.length === 2) {
-    throw refuse(
-      outbound,
-      masked,
-      instead ?? "a lead ref has no identifier left to look the person up by"
-    );
+  // Under a hashing redact a lead's identifiers cannot be put back; under a
+  // masking one the lead is read, and its tokens are asked for as they are.
+  if (masked.length === 2 && instead !== null) {
+    throw refuse(outbound, masked, instead);
   }
 
   const lead = context.one(await outbound.leads.get(ref?.text ?? identifier));
 
-  // A ref is looked up by the lead's address, or else its profile, whichever is not masked.
-  const keys = keysOfLead(lead).filter(
+  // A ref is looked up by the lead's address, or else its profile, whichever
+  // is not masked; with both masked, by the tokens redact can put back.
+  const open = keysOfLead(lead).filter(
     (each) => !masked.includes(kindOf(each))
   );
+
+  const keys =
+    open.length > 0
+      ? open
+      : keysOfLead(lead).filter((each) => lookup.known(each));
 
   if (keys.length === 0 && masked.length > 0) {
     const other = (["email", "linkedin"] as const).find(
@@ -209,6 +223,10 @@ const carries = (lead: Lead, key: string, start: Start): boolean => {
 
   return keysOfLead(lead).includes(key);
 };
+
+/** Whether a key a record carries is looked up too: its kind is not masked, or the person is looked up by redact's tokens and it is one. */
+const followed = (key: string, lookup: Lookup, byToken: boolean): boolean =>
+  !lookup.masked.includes(kindOf(key)) || (byToken && lookup.known(key));
 
 /**
  * An adapter whose leads hold no LinkedIn profile answers a profile lookup
@@ -256,6 +274,8 @@ export const findPerson = async (
 
   const keys = new Set(start.keys);
   const asked = new Set<string>();
+  // Looked up by redact's tokens, as a ref with nothing unmasked is.
+  const byToken = start.keys.some((key) => masked.includes(kindOf(key)));
 
   const records = new Map<string, Lead>(
     start.records.map((lead) => [`${lead.ref} ${lead.campaignRef ?? ""}`, lead])
@@ -295,9 +315,10 @@ export const findPerson = async (
           // One record per campaign: a vendor can use one lead id in all of them.
           records.set(`${lead.ref} ${lead.campaignRef ?? ""}`, lead);
 
-          // A masked identifier cannot be asked for or matched.
+          // A masked identifier cannot be asked for or matched, unless the
+          // person is looked up by the tokens redact can put back.
           for (const key of leadKeys) {
-            if (!masked.includes(kindOf(key))) {
+            if (followed(key, lookup, byToken)) {
               keys.add(key);
             }
           }

@@ -12,7 +12,6 @@ import type { OutboundApi } from "../internal/outbound/api.ts";
 import { providers } from "../providers/index.ts";
 import { resolveCampaign } from "../tools/by-name.ts";
 import type { ToolResult } from "../tools/index.ts";
-import { leftOutReason } from "../tools/registry.ts";
 import {
   campaignOption,
   confirmScope,
@@ -24,7 +23,14 @@ import { Answer, coverageOf, sections } from "./envelope.ts";
 import type { Printed } from "./envelope.ts";
 import { listedReplies, listing, WINDOW_LIMIT } from "./listing.ts";
 import { readNative } from "./native.ts";
-import { describeTool, offeredTools, requiresInput } from "./offered.ts";
+import {
+  describeTool,
+  listedInsights,
+  listedWith,
+  offeredTools,
+  refuseLeftOut,
+  requiresInput,
+} from "./offered.ts";
 import { didYouMean } from "./suggest.ts";
 
 export interface CommandInput {
@@ -142,17 +148,24 @@ const drawn = async (
   );
 };
 
-/** Lists the insights, or runs the one the first argument names. */
+/** The catalog's left-out reasons, as notes on a list of what is offered. */
+/**
+ * Lists the insights this instance offers, from the catalog every surface
+ * reads, or runs the one the first argument names.
+ */
 const runInsight: Command = async (outbound, input) => {
   // Loaded on demand, so the other commands do not pay for the insights.
-  const { insightTools, listInsights, runInsightByName } =
-    await import("../insights/index.ts");
+  const { insightTools } = await import("../insights/index.ts");
+  const { runPlaced } = await import("../insights/tools.ts");
 
+  const offered = await offeredTools(outbound, input.flags);
   const [name] = input.positionals;
 
   if (name === undefined) {
-    return asJson(listInsights());
+    return await listedInsights(offered);
   }
+
+  refuseLeftOut(outbound, offered, name);
 
   const insightInput = parseInput(text(input, "input"));
 
@@ -160,16 +173,18 @@ const runInsight: Command = async (outbound, input) => {
   const [asTool] = wantsCard(input)
     ? insightTools(outbound, {
         ...insightToolCaps(input.flags, false),
+        members: offered.members,
         only: [name],
       })
     : [];
 
   return asTool === undefined
     ? asJson(
-        await runInsightByName(
+        await runPlaced(
           outbound,
           name,
           insightInput,
+          offered.members,
           insightCaps(input.flags, false)
         )
       )
@@ -497,22 +512,14 @@ const COMMAND_TABLE = {
     run: async (outbound, input) => {
       const name = required(input, 0, "a tool name");
 
-      const offered = await offeredTools(outbound, input.flags);
+      const catalogued = await offeredTools(outbound, input.flags);
+      const offered = catalogued.tools;
       const tool = offered.find((candidate) => candidate.name === name);
 
       if (tool === undefined) {
-        const { insightLeftOutReason } = await import("../insights/tools.ts");
-
         // A tool this instance cannot serve is refused with the reason, as
         // running the insight would be, not called unknown.
-        const why =
-          leftOutReason(outbound, name) ?? insightLeftOutReason(outbound, name);
-
-        if (why !== undefined) {
-          throw new OutboundError("Unsupported", why, {
-            provider: outbound.provider,
-          });
-        }
+        refuseLeftOut(outbound, catalogued, name);
 
         throw new OutboundError(
           "Invalid",
@@ -547,9 +554,12 @@ const COMMAND_TABLE = {
     flags: [],
     help: "tools",
     run: async (outbound, input) => {
-      const offered = await offeredTools(outbound, input.flags);
+      const { leftOut, tools: offered } = await offeredTools(
+        outbound,
+        input.flags
+      );
 
-      return offered.map(describeTool);
+      return listedWith(asJson(offered.map(describeTool)), leftOut);
     },
   },
   webhooks: {

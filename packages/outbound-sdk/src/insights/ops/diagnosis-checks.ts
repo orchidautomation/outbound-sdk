@@ -123,7 +123,7 @@ const bounces: Check = (facts, limits) => {
         {
           code: "high_bounce_rate",
           finding: `Bounce rate is ${percent(rate)} (${count} of ${of} sends), over the ${percent(limits.maxBounceRate)} limit.`,
-          next: "Use bounce_watch to find the senders behind it, and verify the lead list.",
+          next: "Verify the lead list. Use bounce_watch to find the senders behind it.",
           numbers: {
             bounced: count,
             high,
@@ -154,7 +154,7 @@ const replies: Check = (facts, limits) => {
           ? "so it is below the floor beyond chance"
           : "which still reaches the floor, so more sends are needed to be sure"
       }.`,
-      next: "Use step_funnel and copy_audit to see where replies are lost.",
+      next: "Use step_funnel to see which step loses replies. Use copy_audit to check the copy.",
       numbers: {
         floor: limits.minReplyRate,
         high,
@@ -248,7 +248,7 @@ const outOfLeads = (
   return {
     code: "out_of_leads",
     finding: `${fell} because the campaign is running out of leads: ${left}.${finishing} This is lead runout, not a sending fault.`,
-    next: "Add leads to keep the campaign sending; pipeline_forecast shows what the leads left should produce.",
+    next: "Add leads to keep the campaign sending. pipeline_forecast shows what the leads left should produce.",
     numbers: {
       activeLeads: leads.active,
       before: recent.before,
@@ -280,7 +280,7 @@ const recentSends: Check = (facts, limits) => {
           {
             code: "no_recent_sends",
             finding: `The campaign is active but the vendor reports no sends in the last ${recent.days} days.`,
-            next: "Check its senders and schedule, and whether leads remain (pipeline_forecast).",
+            next: "Check its senders, its schedule and whether leads remain. pipeline_forecast shows the leads left.",
             numbers: { days: recent.days, sent: recent.sent },
             severity: "high",
           },
@@ -294,7 +294,7 @@ const recentSends: Check = (facts, limits) => {
     {
       code: "falling_sends",
       finding: `Sends fell from ${recent.before} to ${recent.sent} over the last ${recent.days} days against the ${recent.days} before, a drop of ${percent(drop)}.`,
-      next: "Use pipeline_forecast to check the leads left, and sender_capacity for the mailboxes.",
+      next: "Use pipeline_forecast to check the leads left. Use sender_capacity for the mailboxes.",
       numbers: { before: recent.before, drop, sent: recent.sent },
       severity: "medium",
     },
@@ -308,7 +308,7 @@ const sequence: Check = ({ steps }) =>
         {
           code: "short_sequence",
           finding: `The sequence has ${steps} ${steps === 1 ? "step" : "steps"}; follow-ups usually bring a large share of the replies.`,
-          next: "Add follow-up steps; step_funnel shows what each step earns.",
+          next: "Add follow-up steps. step_funnel shows what each step earns.",
           numbers: { steps },
           severity: "medium",
         },

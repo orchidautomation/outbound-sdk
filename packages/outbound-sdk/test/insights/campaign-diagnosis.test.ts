@@ -123,7 +123,7 @@ test("campaign_diagnosis lists what is wrong with a campaign, most serious first
     {
       code: "high_bounce_rate",
       finding: "Bounce rate is 4% (80 of 2000 sends), over the 3% limit.",
-      next: "Use bounce_watch to find the senders behind it, and verify the lead list.",
+      next: "Verify the lead list. Use bounce_watch to find the senders behind it.",
       numbers: {
         bounced: 80,
         high: 0.0495,
@@ -146,7 +146,7 @@ test("campaign_diagnosis lists what is wrong with a campaign, most serious first
       // 10 of 2,000 is 0.5%; the top of its interval, 0.92%, is still under 1%.
       finding:
         "Reply rate is 0.5% (10 of 2000), under the 1% floor. The 95% interval is 0.3% to 0.9%, so it is below the floor beyond chance.",
-      next: "Use step_funnel and copy_audit to see where replies are lost.",
+      next: "Use step_funnel to see which step loses replies. Use copy_audit to check the copy.",
       numbers: {
         floor: 0.01,
         high: 0.0092,
@@ -162,7 +162,7 @@ test("campaign_diagnosis lists what is wrong with a campaign, most serious first
       // 50 + 48 = 98 against 300 + 300 = 600: a drop of 1 - 98/600 = 83.67%.
       finding:
         "Sends fell from 600 to 98 over the last 7 days against the 7 before, a drop of 83.7%.",
-      next: "Use pipeline_forecast to check the leads left, and sender_capacity for the mailboxes.",
+      next: "Use pipeline_forecast to check the leads left. Use sender_capacity for the mailboxes.",
       numbers: { before: 600, drop: 0.8367, sent: 98 },
       severity: "medium",
     },
@@ -185,7 +185,7 @@ test("campaign_diagnosis lists what is wrong with a campaign, most serious first
       code: "short_sequence",
       finding:
         "The sequence has 1 step; follow-ups usually bring a large share of the replies.",
-      next: "Add follow-up steps; step_funnel shows what each step earns.",
+      next: "Add follow-up steps. step_funnel shows what each step earns.",
       numbers: { steps: 1 },
       severity: "medium",
     },
@@ -350,7 +350,7 @@ test("campaign_diagnosis words each finding from its own numbers", async () => {
       code: "no_recent_sends",
       finding:
         "The campaign is active but the vendor reports no sends in the last 3 days.",
-      next: "Check its senders and schedule, and whether leads remain (pipeline_forecast).",
+      next: "Check its senders, its schedule and whether leads remain. pipeline_forecast shows the leads left.",
       numbers: { days: 3, sent: null },
       severity: "high",
     }
@@ -575,7 +575,7 @@ test("campaign_diagnosis explains falling sends as lead runout when under a day 
       code: "out_of_leads",
       finding:
         "Sends fell from 900 to 280 over the last 7 days against the 7 before because the campaign is running out of leads: only 28 leads are left to start, under a day at the recent pace of 40 new leads a day. 12 leads are still finishing the sequence. This is lead runout, not a sending fault.",
-      next: "Add leads to keep the campaign sending; pipeline_forecast shows what the leads left should produce.",
+      next: "Add leads to keep the campaign sending. pipeline_forecast shows what the leads left should produce.",
       numbers: {
         activeLeads: 40,
         before: 900,

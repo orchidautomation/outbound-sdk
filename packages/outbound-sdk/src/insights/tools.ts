@@ -4,14 +4,15 @@
 import { z } from "zod";
 
 import { OutboundError } from "../internal/errors.ts";
-import { jsonInput } from "../internal/json.ts";
+import { isJsonObject, isString, jsonInput } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
 import type { OutboundTool } from "../tools/index.ts";
 import { capNext, failure } from "../tools/shared.ts";
 import { capStopOf } from "./cost.ts";
 import { maskedOutBy } from "./define.ts";
-import type { InsightEntry } from "./define.ts";
+import type { InsightEntry, InsightResult, RunOptions } from "./define.ts";
+import { runInsightByName } from "./plugin.ts";
 import { ENTRIES } from "./registry.ts";
 
 export interface InsightToolsOptions {
@@ -31,6 +32,15 @@ export interface InsightToolsOptions {
    * its own, as `outbound mcp` names `--max-requests`.
    */
   readonly capSetting?: string | undefined;
+  /**
+   * On a combined instance, each of its tools as its own instance, as
+   * `outbound.workspace("provider:workspace")` gives them (`membersOf`).
+   * With them an insight that only some tools can serve is offered too: one
+   * that takes a campaign answers for the campaigns of the tools that serve
+   * it and refuses the others' before any request, and one that reads every
+   * campaign answers for the one tool that serves it, marked incomplete.
+   */
+  readonly members?: readonly OutboundApi[] | undefined;
 }
 
 /** The most an insight tool call may send when no cap is set, whatever its input. */
@@ -43,6 +53,102 @@ const NEXT_FALLBACK = "Pick another of the listed tools to go further.";
 // every other tool reports it.
 const ANSWER_NOTE =
   "The answer is in data, in camelCase like every insight's answer. meta.complete: false means it covers part of the data, and meta.notes says why.";
+
+const COMBINED = "combined";
+
+/** Each tool of a combined instance as its own instance; none for any other instance. */
+export const membersOf = async (
+  outbound: OutboundApi
+): Promise<OutboundApi[]> => {
+  if (outbound.provider !== COMBINED) {
+    return [];
+  }
+
+  // A combined instance's workspaces are its tools, listed with no request.
+  const { items } = await outbound.workspaces.list();
+
+  return items.map((tool) =>
+    outbound.workspace(`${tool.provider}:${tool.workspaceId}`)
+  );
+};
+
+const labelOf = (outbound: OutboundApi): string =>
+  `${outbound.provider}:${outbound.workspaceId}`;
+
+const servesOn = (outbound: OutboundApi, definition: InsightEntry): boolean =>
+  definition.needs.every((key) => outbound.capabilities[key] !== false) &&
+  (definition.lacks?.(outbound) ?? null) === null &&
+  maskedOutBy(outbound, definition) === null;
+
+const takesCampaign = (definition: InsightEntry): boolean =>
+  Object.hasOwn(definition.inputSchema.shape, "campaign");
+
+/** Where an insight runs on this instance, and the tools of a combined one that can serve it. */
+interface Placement {
+  /** The instance the insight runs on: this one, or the one tool that serves it. */
+  readonly target: OutboundApi;
+  /** On a combined instance the insight cannot serve as a whole, the tools that can. */
+  readonly servers: readonly OutboundApi[];
+}
+
+/**
+ * Where the insight can run, or `undefined` when nowhere on this instance.
+ * On a combined instance whose tools do not all serve it, one that takes a
+ * campaign runs here and is routed by its campaign; one that reads every
+ * campaign runs on the one tool that serves it.
+ */
+const placementOf = (
+  outbound: OutboundApi,
+  definition: InsightEntry,
+  members: readonly OutboundApi[]
+): Placement | undefined => {
+  if (servesOn(outbound, definition)) {
+    return { servers: [], target: outbound };
+  }
+
+  const servers = members.filter((member) => servesOn(member, definition));
+  const [only] = servers;
+
+  if (only === undefined) {
+    return undefined;
+  }
+
+  if (takesCampaign(definition)) {
+    return { servers, target: outbound };
+  }
+
+  return servers.length === 1 ? { servers, target: only } : undefined;
+};
+
+/** The insight entry by its tool name, and where it runs here; `undefined` when it is no insight or cannot run. */
+export const insightPlacement = (
+  outbound: OutboundApi,
+  name: string,
+  members: readonly OutboundApi[]
+): (Placement & { readonly note: string | null }) | undefined => {
+  const definition = ENTRIES.find((entry) => entry.name === name);
+
+  const placed =
+    definition === undefined
+      ? undefined
+      : placementOf(outbound, definition, members);
+
+  if (placed === undefined || placed.target === outbound) {
+    return placed === undefined ? undefined : { ...placed, note: null };
+  }
+
+  const others = members.flatMap((member) => {
+    const why =
+      member === placed.target ? undefined : insightLeftOutReason(member, name);
+
+    return why === undefined ? [] : [why];
+  });
+
+  return {
+    ...placed,
+    note: `Covers ${labelOf(placed.target)} only, the one tool on this instance that serves ${name}. ${others.join(". ")}.`,
+  };
+};
 
 /**
  * The insight's hint without the sentences that name an insight not on
@@ -60,10 +166,52 @@ const hintFor = (next: string, offered: ReadonlySet<string>): string => {
   return kept.length === 0 ? NEXT_FALLBACK : kept.join(" ");
 };
 
+/** The answer with every `next` inside it, such as a finding's, cleaned like the tool's own. */
+const withOfferedNext = (value: Json, offered: ReadonlySet<string>): Json => {
+  if (Array.isArray(value)) {
+    return value.map((item) => withOfferedNext(item, offered));
+  }
+
+  if (!isJsonObject(value)) {
+    return value;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, item]) => [
+      key,
+      key === "next" && isString(item)
+        ? hintFor(item, offered)
+        : withOfferedNext(item, offered),
+    ])
+  );
+};
+
+// The part of a refusal that says what to change, such as `pass bodies: none`.
+const REMEDY =
+  /(?:[:;.]|,\s*so)\s+(?<remedy>(?:pass|give|use|start|run|name|ask)\s[^;]*?)\.?$/iu;
+
+/** What `next` says when the insight refused this call as unsupported. */
+const unsupportedNext = (
+  name: string,
+  message: string,
+  servers: readonly OutboundApi[]
+): string => {
+  if (servers.length > 0) {
+    return `On this instance only ${servers.map(labelOf).join(" and ")} can serve ${name}: call it again with a campaign of ${servers.length === 1 ? "that tool" : "one of them"}, by its ref or name.`;
+  }
+
+  const remedy = REMEDY.exec(message)?.groups?.remedy;
+
+  return remedy === undefined
+    ? "This insight cannot answer here, and the message says why. Pick another of the listed tools."
+    : `Call ${name} again and ${remedy}.`;
+};
+
 const toTool = (
   outbound: OutboundApi,
   definition: InsightEntry,
-  next: string,
+  placement: Placement,
+  offered: ReadonlySet<string>,
   options: InsightToolsOptions
 ): OutboundTool => ({
   call: async (given, callOptions) => {
@@ -80,8 +228,16 @@ const toTool = (
         );
       }
 
+      const { target } = placement;
+
+      const note =
+        target === outbound
+          ? null
+          : (insightPlacement(outbound, definition.name, options.members ?? [])
+              ?.note ?? null);
+
       const result = await definition.execute(
-        outbound,
+        target,
         input,
         set === undefined
           ? { capCeiling: INSIGHT_TOOL_CEILING, capSetting }
@@ -89,16 +245,19 @@ const toTool = (
       );
 
       return {
-        data: result.data,
+        data: withOfferedNext(result.data, offered),
         meta: {
-          complete: result.meta.complete,
+          complete: result.meta.complete && note === null,
           computedAt: result.meta.computedAt,
           evidence: result.meta.evidence,
-          notes: [...result.meta.notes],
+          notes:
+            note === null
+              ? [...result.meta.notes]
+              : [note, ...result.meta.notes],
           provider: result.meta.provider,
           requests: result.meta.requests,
         },
-        next,
+        next: hintFor(definition.next, offered),
         ok: true,
       };
     } catch (error) {
@@ -116,7 +275,7 @@ const toTool = (
         error,
         undefined,
         OutboundError.is(error) && error.code === "Unsupported"
-          ? "This insight cannot answer here; the message says why. Try another tool."
+          ? unsupportedNext(definition.name, error.message, placement.servers)
           : undefined
       );
     }
@@ -136,12 +295,22 @@ const toTool = (
  */
 export const insightLeftOutReason = (
   outbound: OutboundApi,
-  name: string
+  name: string,
+  members: readonly OutboundApi[] = []
 ): string | undefined => {
   const definition = ENTRIES.find((entry) => entry.name === name);
 
-  if (definition === undefined) {
+  if (
+    definition === undefined ||
+    placementOf(outbound, definition, members) !== undefined
+  ) {
     return undefined;
+  }
+
+  const servers = members.filter((member) => servesOn(member, definition));
+
+  if (servers.length > 1) {
+    return `${name} is not available on a combined instance: it reads every campaign, and only ${servers.map(labelOf).join(" and ")} can serve it. Ask one of them`;
   }
 
   const lacked = definition.lacks?.(outbound) ?? null;
@@ -154,16 +323,24 @@ export const insightLeftOutReason = (
     return `${name} is not available: the ${outbound.provider} adapter does not report ${lacked}`;
   }
 
-  return absent.length > 0
-    ? `${name} is not available: the ${outbound.provider} adapter does not support ${absent.join(", ")}`
-    : (maskedOutBy(outbound, definition) ?? undefined);
+  if (absent.length > 0) {
+    return `${name} is not available: the ${outbound.provider} adapter does not support ${absent.join(", ")}`;
+  }
+
+  const masked = maskedOutBy(outbound, definition);
+
+  return masked === null
+    ? undefined
+    : `${name} is not available while the redact plugin masks ${masked}`;
 };
 
 /**
  * The insights this instance can serve, as tools. An insight whose adapter
  * lacks a capability or a field it needs, or that cannot match records while the redact
  * plugin masks what it matches on, is left out, so a model is never offered a
- * tool that cannot work. A `next` hint naming a left-out insight is dropped.
+ * tool that cannot work; on a combined instance, `members` brings back what
+ * one of its tools can serve. A `next` hint naming a left-out insight is
+ * dropped, in the tool's `next` and in every `next` its answer holds.
  *
  * ```ts
  * openaiTools(outbound, { extra: insightTools(outbound) });
@@ -174,18 +351,53 @@ export const insightTools = (
   options: InsightToolsOptions = {}
 ): OutboundTool[] => {
   const wanted = options.only === undefined ? undefined : new Set(options.only);
+  const members = options.members ?? [];
 
-  const offered = ENTRIES.filter(
-    (definition) =>
-      (wanted === undefined || wanted.has(definition.name)) &&
-      definition.needs.every((key) => outbound.capabilities[key] !== false) &&
-      (definition.lacks?.(outbound) ?? null) === null &&
-      maskedOutBy(outbound, definition) === null
+  const offered = ENTRIES.flatMap((definition) => {
+    const placement =
+      wanted === undefined || wanted.has(definition.name)
+        ? placementOf(outbound, definition, members)
+        : undefined;
+
+    return placement === undefined ? [] : [{ definition, placement }];
+  });
+
+  const names = new Set(offered.map(({ definition }) => definition.name));
+
+  return offered.map(({ definition, placement }) =>
+    toTool(outbound, definition, placement, names, options)
+  );
+};
+
+/**
+ * Runs the insight where it runs here: on a combined instance, one that only
+ * one of its tools serves runs on that tool, its answer marked incomplete
+ * with a note naming the others.
+ */
+export const runPlaced = async (
+  outbound: OutboundApi,
+  name: string,
+  input: Json | undefined,
+  members: readonly OutboundApi[],
+  options?: RunOptions
+): Promise<InsightResult<Json>> => {
+  const placed = insightPlacement(outbound, name, members);
+
+  const result = await runInsightByName(
+    placed?.target ?? outbound,
+    name,
+    input,
+    options
   );
 
-  const names = new Set(offered.map((definition) => definition.name));
-
-  return offered.map((definition) =>
-    toTool(outbound, definition, hintFor(definition.next, names), options)
-  );
+  return placed?.note === null || placed?.note === undefined
+    ? result
+    : {
+        ...result,
+        meta: {
+          ...result.meta,
+          complete: false,
+          notes: [placed.note, ...result.meta.notes],
+        },
+      };
 };
