@@ -7,7 +7,7 @@
         "category": "positive",
         "channel": "email",
         "checkedBy": "timeline",
-        "finding": "A positive reply has waited 7 days with nothing sent after it.",
+        "finding": "A positive reply has waited 7 days with nothing sent after it. The latest message is inbound and unanswered for 2 days (received 2026-11-12 12:00 UTC). Read it before following up.",
         "hoursWaiting": 170,
         "email": "ana@northwind.example.com",
         "lead": "mailtool:acme:ana_founders",
@@ -17,7 +17,49 @@
         "receivedAt": "2026-11-07T10:00:00.000Z",
         "reply": "mailtool:acme:m3",
         "subject": "Re: Quick question, Ana",
-        "unansweredReplies": 2
+        "unansweredReplies": 2,
+        "activity": {
+          "lastInboundAt": "2026-11-12T12:00:00.000Z",
+          "lastOutboundAt": "2026-11-06T09:00:00.000Z",
+          "latest": {
+            "provider": "mailtool",
+            "raw": null,
+            "ref": "mailtool:acme:m4",
+            "schemaVersion": 1,
+            "sourceId": "m4",
+            "workspaceId": "acme",
+            "campaignRef": "mailtool:acme:founders",
+            "channel": "email",
+            "leadRef": "mailtool:acme:ana_founders",
+            "senderRef": null,
+            "sentAt": "2026-11-12T12:00:00.000Z",
+            "stepIndex": null,
+            "subject": "Re: Quick question, Ana",
+            "threadId": "thread_ana",
+            "url": null,
+            "variantKey": null,
+            "direction": "in"
+          },
+          "messagesRead": 4
+        },
+        "followUp": {
+          "basis": "inbound_unanswered",
+          "needed": true,
+          "evidence": [
+            "The latest message is inbound and unanswered for 2 days (received 2026-11-12 12:00 UTC).",
+            "The vendor's positive label is on an earlier reply (2026-11-07 10:00 UTC), 5 days before the latest message, so it may not describe the conversation now.",
+            "mailtool records no meeting for the lead."
+          ],
+          "unchecked": [
+            "What the messages say: the rules read who wrote last and when, never the words, so read the latest message before acting."
+          ]
+        },
+        "meeting": null,
+        "vendorSentiment": {
+          "leadCategory": null,
+          "leadLabel": "Interested",
+          "replyCategory": "positive"
+        }
       },
       {
         "campaign": "linkedintool:acme:li_founders",
@@ -35,7 +77,48 @@
         "receivedAt": "2026-11-11T12:00:00.000Z",
         "reply": "linkedintool:acme:d5",
         "subject": null,
-        "unansweredReplies": 1
+        "unansweredReplies": 1,
+        "activity": {
+          "lastInboundAt": "2026-11-11T12:00:00.000Z",
+          "lastOutboundAt": "2026-11-10T12:00:00.000Z",
+          "latest": {
+            "provider": "linkedintool",
+            "raw": null,
+            "ref": "linkedintool:acme:d5",
+            "schemaVersion": 1,
+            "sourceId": "d5",
+            "workspaceId": "acme",
+            "campaignRef": "linkedintool:acme:li_founders",
+            "channel": "linkedin",
+            "leadRef": "linkedintool:acme:hal_linkedin",
+            "senderRef": null,
+            "sentAt": "2026-11-11T12:00:00.000Z",
+            "stepIndex": null,
+            "subject": null,
+            "threadId": null,
+            "url": null,
+            "variantKey": null,
+            "direction": "in"
+          },
+          "messagesRead": 2
+        },
+        "followUp": {
+          "basis": "inbound_unanswered",
+          "needed": true,
+          "evidence": [
+            "The latest message is inbound and unanswered for 3 days (received 2026-11-11 12:00 UTC).",
+            "linkedintool records no meeting for the lead."
+          ],
+          "unchecked": [
+            "What the messages say: the rules read who wrote last and when, never the words, so read the latest message before acting."
+          ]
+        },
+        "meeting": null,
+        "vendorSentiment": {
+          "leadCategory": null,
+          "leadLabel": null,
+          "replyCategory": "unknown"
+        }
       }
     ],
     "olderThanHours": 24,

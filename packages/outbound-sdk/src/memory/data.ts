@@ -14,6 +14,7 @@ import type {
   MailProvider,
   Message,
   MetricRow,
+  MeetingStatus,
   RecipientMailProvider,
   Reply,
   ReplyCategory,
@@ -108,6 +109,7 @@ export interface MemoryLead {
   readonly companyLinkedinUrl?: string;
   readonly recipientMailProvider?: RecipientMailProvider;
   readonly location?: string;
+  readonly meeting?: MeetingStatus;
   readonly phone?: string;
   readonly website?: string;
   readonly tags?: readonly string[];
@@ -289,6 +291,7 @@ export const toLead = (identity: Identity, seed: MemoryLead): Lead => ({
   lastName: seed.lastName ?? null,
   linkedinUrl: seed.linkedinUrl ?? null,
   location: seed.location ?? null,
+  meeting: seed.meeting ?? null,
   phone: seed.phone ?? null,
   recipientMailProvider: seed.recipientMailProvider ?? null,
   title: seed.title ?? null,

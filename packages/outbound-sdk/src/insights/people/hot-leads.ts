@@ -16,6 +16,8 @@ import {
   noteEngagement,
   positiveLabelsField,
 } from "./read.ts";
+import type { ThreadContext } from "./thread-context.ts";
+import { leadContexts } from "./thread-read.ts";
 
 const DAY = 86_400_000;
 
@@ -78,6 +80,12 @@ const input = z.object({
       "Also walk the lead list up to max_leads, to rank leads whose only signal is opens or clicks. Where the tool cannot filter leads by interest the list is walked anyway."
     ),
   positive_labels: positiveLabelsField,
+  read_threads: z
+    .boolean()
+    .default(false)
+    .describe(
+      "Set to true to read each returned lead's conversation (one walk of messages each, up to limit) for who wrote last and a follow-up assessment. false leaves followUp.needed null with basis not_read; thread_context reads them later."
+    ),
   recency_days: z
     .number()
     .min(1)
@@ -109,7 +117,13 @@ export interface HotLeadParts {
   readonly recency: number | null;
 }
 
-export interface HotLead {
+/**
+ * The thread's context fields (`activity`, `meeting`, `vendorSentiment`,
+ * `followUp`) are always set by hot_leads; optional so a value built by hand
+ * stays valid. A score ranks interest; `followUp` says from the thread
+ * whether a reply is owed.
+ */
+export interface HotLead extends Partial<ThreadContext> {
   readonly lead: string;
   readonly email: string | null;
   readonly linkedinUrl: string | null;
@@ -386,7 +400,7 @@ const staleOf = (
 export const hotLeads = defineInsight({
   partialOnCap: true,
   description:
-    "Who to call first: leads ranked by a score built from a positive interest label, replies, clicks, opens and how recent the last reply is. Every score comes with its parts, and the weights are inputs. Candidates come from the signal: every reply within recency_days (up to max_replies, a safety ceiling, so complete means complete for the window) and, where the tool filters leads by interest (leads.byInterest), the leads it labels positive, up to max_leads. Leads behind those replies that no listing read are then looked up, many addresses in one request where the tool can (leads.lookupMany), otherwise one request each for the newest limit of them; one that cannot be read is counted in totals.unreadable. Where the tool cannot filter by interest, positive_labels names a label beyond Interested, Meeting Booked, Meeting Completed and Won, or include_engagement_only is true, the lead list is walked too, up to max_leads, for leads whose only signal is opens or clicks; totals.moreLeadsExist says that cap left leads unread. A reply read in the window fills a lead's reply count and last reply time when its record reports less. A positive label keeps its points while the last reply is within recency_days and fades to nothing at max_age_days, and a lead whose last reply is older than that is listed after every fresher one (totals.stale). A lead with no label and no engagement data is left out and counted in totals.withoutData, never scored 0; unsubscribed and bounced leads are left out too. Give a campaign ref to rank one campaign (an unknown one is refused with NotFound), or none to rank every lead. A lead the vendor labels out-of-office or bounced earns no reply or recency points, and so does a lead whose every reply in the window is flagged automatic (isAuto, from the vendor or a fixed rule); both are counted in totals.autoReplied. A lead labelled negative (not interested, wrong person, unsubscribed, do not contact) earns no points at all and is listed after every lead with a score above 0 while limit leaves room; its reason names the label. While the redact plugin masks email addresses, which a reply can name its lead by, the lead behind a reply is read through the plugin, which puts the address back on the call and masks the answer; a token it no longer remembers is not looked up, which a note says, and the answer is marked incomplete. A part that is null means the vendor does not report that signal.",
+    "Who to call first: leads ranked by a score built from a positive interest label, replies, clicks, opens and how recent the last reply is. Every score comes with its parts, and the weights are inputs. Candidates come from the signal: every reply within recency_days (up to max_replies, a safety ceiling, so complete means complete for the window) and, where the tool filters leads by interest (leads.byInterest), the leads it labels positive, up to max_leads. Leads behind those replies that no listing read are then looked up, many addresses in one request where the tool can (leads.lookupMany), otherwise one request each for the newest limit of them; one that cannot be read is counted in totals.unreadable. Where the tool cannot filter by interest, positive_labels names a label beyond Interested, Meeting Booked, Meeting Completed and Won, or include_engagement_only is true, the lead list is walked too, up to max_leads, for leads whose only signal is opens or clicks; totals.moreLeadsExist says that cap left leads unread. A reply read in the window fills a lead's reply count and last reply time when its record reports less. A positive label keeps its points while the last reply is within recency_days and fades to nothing at max_age_days, and a lead whose last reply is older than that is listed after every fresher one (totals.stale). A lead with no label and no engagement data is left out and counted in totals.withoutData, never scored 0; unsubscribed and bounced leads are left out too. Give a campaign ref to rank one campaign (an unknown one is refused with NotFound), or none to rank every lead. A lead the vendor labels out-of-office or bounced earns no reply or recency points, and so does a lead whose every reply in the window is flagged automatic (isAuto, from the vendor or a fixed rule); both are counted in totals.autoReplied. A lead labelled negative (not interested, wrong person, unsubscribed, do not contact) earns no points at all and is listed after every lead with a score above 0 while limit leaves room; its reason names the label. While the redact plugin masks email addresses, which a reply can name its lead by, the lead behind a reply is read through the plugin, which puts the address back on the call and masks the answer; a token it no longer remembers is not looked up, which a note says, and the answer is marked incomplete. A part that is null means the vendor does not report that signal. The score ranks the vendor's signals and is not a verdict that a reply is owed. Each lead carries meeting (what the vendor records on the lead, Instantly only) and vendorSentiment (the vendor's labels, kept apart); with read_threads each returned lead's conversation is also read, one walk of messages each, and the lead carries activity (the latest message, who sent it and when), meeting (what the vendor records on the lead, Instantly only), vendorSentiment (the vendor's labels, kept apart) and followUp, a fixed-rule assessment whose needed is true only when the latest message is inbound, not automatic and no meeting is recorded, with its evidence and what it could not check. No rule reads what a message says.",
   inputSchema: input,
   key: "hotLeads",
   cost: (values, price) => {
@@ -409,6 +423,9 @@ export const hotLeads = defineInsight({
         : 0) +
       (replies && capabilities["leads.get"] !== false
         ? price.upTo(values.limit) * price.one("leads.get")
+        : 0) +
+      (values.read_threads && capabilities["leads.timeline"]
+        ? price.upTo(values.limit) * price.walk("messages.list")
         : 0)
     );
   },
@@ -473,8 +490,23 @@ export const hotLeads = defineInsight({
       .filter((lead) => lead.score <= 0 && refused.has(lead.lead))
       .toSorted(hottestFirst);
 
+    const ranked = [...hot, ...after].slice(0, values.limit);
+    const byRef = new Map(open.map((lead) => [lead.ref, lead]));
+
+    const contexts = await leadContexts(
+      context,
+      ranked.flatMap((each) => {
+        const lead = byRef.get(each.lead);
+
+        return lead === undefined ? [] : [lead];
+      }),
+      values.read_threads
+        ? null
+        : "read_threads is false; pass the lead refs to thread_context"
+    );
+
     const answer: HotLeads = {
-      leads: [...hot, ...after].slice(0, values.limit),
+      leads: ranked.map((each) => ({ ...each, ...contexts.get(each.lead) })),
       totals: {
         autoReplied: open.filter(
           (lead) => scoring.automatic(lead) && repliesOf(lead) > 0

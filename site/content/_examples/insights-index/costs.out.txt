@@ -5,6 +5,7 @@ lead_collisions: 173, 305, 198
 suppression_check: 198, 332, 200
 dropped_replies: 15072, 17598, 12647
 hot_leads: 123, 185, 187
+thread_context: 20, 20, 20
 personalization_gaps: 29, 35, 30
 step_funnel: -, 24, 24
 variant_test: -, 23, 23

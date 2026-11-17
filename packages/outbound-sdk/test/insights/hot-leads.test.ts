@@ -113,25 +113,43 @@ test("hot_leads ranks leads by a score whose parts are returned, and leaves out 
     // h4 is marked Not Interested: it earns nothing and comes last.
     ["h4", 0],
   ]);
-  assert.deepEqual(data.leads[0], {
-    campaign: "memory:agency:c1",
-    clicks: 1,
-    company: "Acme",
-    email: "person1@example.com",
-    interest: "Meeting Booked",
-    lastRepliedAt: "2026-11-07T12:00:00.000Z",
-    lead: "memory:agency:h1",
-    linkedinUrl: null,
-    name: "Ann Example",
-    opens: 3,
-    parts: { clicks: 5, interest: 50, opens: 3, recency: 10, replies: 20 },
-    reason:
-      "marked Meeting Booked, replied 2 times, last reply 7 days ago, 1 click, 3 opens.",
-    replies: 2,
-    score: 88,
-    status: "replied",
-    title: "CEO",
+  const [first] = data.leads;
+
+  assert.deepEqual(
+    first === undefined
+      ? undefined
+      : (({ activity, followUp, meeting, vendorSentiment, ...rest }) => rest)(
+          first
+        ),
+    {
+      campaign: "memory:agency:c1",
+      clicks: 1,
+      company: "Acme",
+      email: "person1@example.com",
+      interest: "Meeting Booked",
+      lastRepliedAt: "2026-11-07T12:00:00.000Z",
+      lead: "memory:agency:h1",
+      linkedinUrl: null,
+      name: "Ann Example",
+      opens: 3,
+      parts: { clicks: 5, interest: 50, opens: 3, recency: 10, replies: 20 },
+      reason:
+        "marked Meeting Booked, replied 2 times, last reply 7 days ago, 1 click, 3 opens.",
+      replies: 2,
+      score: 88,
+      status: "replied",
+      title: "CEO",
+    }
+  );
+  // A label is the vendor's sentiment, never a follow-up verdict: the thread was not read.
+  assert.deepEqual(first?.vendorSentiment, {
+    leadCategory: null,
+    leadLabel: "Meeting Booked",
+    replyCategory: null,
   });
+  assert.equal(first?.followUp?.needed, null);
+  assert.equal(first?.followUp?.basis, "not_read");
+  assert.equal(first?.activity?.messagesRead, 0);
   // A signal the vendor does not report is null, not 0.
   assert.deepEqual(data.leads[1]?.parts, {
     clicks: null,

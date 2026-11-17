@@ -46,6 +46,7 @@ The test suite checks this page against the SDK. Every tool and insight appears 
 | Which replies has nobody answered? | `dropped_replies` |
 | How fast do people reply, and on which days and hours? | `reply_timing` |
 | Who should I call first? | `hot_leads` |
+| Before following up: who wrote last in these conversations, is a meeting booked, and what does the latest message say? Takes lead refs or thread ids | `thread_context` |
 | What has happened with this one person? Takes an email, a profile or a lead ref (not offered while `redact` masks both emails and LinkedIn) | `person_summary` |
 | Every record and message for one person, across tools (needs the `identity` plugin, which the CLI and `outbound mcp` always add; not offered while `redact` masks emails or LinkedIn) | `cross_channel_lead` |
 | Who at this company have we contacted? (not offered while `redact` masks emails) | `account_summary` |

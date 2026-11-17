@@ -117,6 +117,7 @@ export const fields: FieldDeclaration = {
     // LinkedIn has no bounce and no unsubscribe.
     bounced: false,
     engagement: false,
+    meeting: false,
     phone: false,
     recipientMailProvider: false,
     unsubscribed: false,

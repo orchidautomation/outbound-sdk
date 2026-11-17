@@ -1,0 +1,35 @@
+ana@northwind.example.com: latest in at 2026-11-12T12:00:00.000Z, meeting none recorded
+vendorSentiment: { leadCategory: null, leadLabel: 'Interested', replyCategory: null }
+followUp: {
+  basis: 'inbound_unanswered',
+  needed: true,
+  evidence: [
+    'The latest message is inbound and unanswered for 2 days (received 2026-11-12 12:00 UTC).',
+    'mailtool records no meeting for the lead.'
+  ],
+  unchecked: [
+    'What the messages say: the rules read who wrote last and when, never the words, so read the latest message before acting.'
+  ]
+}
+  in 2026-11-07T10:00:00.000Z: 
+  in 2026-11-12T12:00:00.000Z: Thursday at 10 works. Can you send an invite?
+mailtool:acme:nobody: latest none at -, meeting none recorded
+vendorSentiment: { leadCategory: null, leadLabel: null, replyCategory: null }
+followUp: {
+  basis: 'no_messages',
+  evidence: [],
+  needed: null,
+  unchecked: [
+    'Who wrote last: the conversation read holds no message with a time.',
+    'Whether a meeting was booked: the lead was not read.'
+  ]
+}
+coverage: {
+  checked: 2,
+  found: 1,
+  nextCursor: null,
+  notFound: [ { reason: 'read, with no messages', target: [Object] } ],
+  remaining: 0,
+  requested: 2,
+  unchecked: []
+}

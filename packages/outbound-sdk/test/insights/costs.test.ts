@@ -30,6 +30,10 @@ const INPUTS: Readonly<Record<string, Record<string, Json>>> = {
   personalization_gaps: { campaign: CAMPAIGN },
   pipeline_forecast: { campaign: CAMPAIGN },
   step_funnel: { campaign: CAMPAIGN },
+  thread_context: {
+    leads: ["memory:agency:c1-l1", "memory:agency:c1-l2"],
+    threads: ["c1-t0"],
+  },
   variant_test: { campaign: CAMPAIGN },
 };
 

@@ -192,6 +192,7 @@ const profileFields = (
   tags: tagNames(field(profile, "tags")),
   linkedinUrl: text(field(profile, "profileUrl")),
   location: text(field(profile, "location")),
+  meeting: null,
   // HeyReach profiles carry no phone number and no company website.
   phone: null,
   recipientMailProvider: null,

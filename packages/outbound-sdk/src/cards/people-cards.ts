@@ -301,6 +301,72 @@ const hotLeads: CardBuilder = (data) => {
   };
 };
 
+const FOLLOW_UP = new Map([
+  ["answered", "Answered"],
+  ["automatic", "Automatic reply last"],
+  ["inbound_unanswered", "Reply owed"],
+  ["meeting", "Meeting recorded"],
+  ["no_messages", "No messages"],
+  ["not_read", "Not read"],
+]);
+
+const threadContext: CardBuilder = (data) => {
+  const coverage = child(data, "coverage");
+  const threads = rows(data, "threads");
+  const unchecked = rows(coverage, "unchecked").length;
+  const remaining = num(coverage, "remaining") ?? 0;
+
+  const owed = threads.filter(
+    (thread) => bool(child(thread, "followUp"), "needed") === true
+  ).length;
+
+  return {
+    bullets: [
+      ...(unchecked > 0
+        ? [`🟡 Could not read ${plural(unchecked, "conversation")}.`]
+        : []),
+      ...(remaining > 0
+        ? [`🟡 ${plural(remaining, "conversation")} left for the next page.`]
+        : []),
+      "Rules read who wrote last and when, never the words: read the latest message before acting.",
+    ],
+    finding: verdict(
+      num(coverage, "checked"),
+      owed === 0
+        ? null
+        : `🔴 The latest message is inbound and unanswered in ${plural(owed, "conversation")}.`,
+      "No conversation read ends with an unanswered inbound message."
+    ),
+    stats: [
+      ["Requested", int(num(coverage, "requested"))],
+      ["Read", int(num(coverage, "checked"))],
+      ["Found", int(num(coverage, "found"))],
+      ["Could not read", int(unchecked)],
+    ],
+    table: {
+      align: [LEFT, LEFT, LEFT, LEFT],
+      cards: { subtitle: [1, 2], title: 0 },
+      headers: ["Lead or thread", "Latest message", "Meeting", "Follow-up"],
+      rows: threads.map((thread) => {
+        const latest = child(child(thread, "activity"), "latest");
+
+        return [
+          str(thread, "email") ??
+            str(thread, "linkedinUrl") ??
+            str(thread, "lead") ??
+            show(child(thread, "target"), "id"),
+          str(latest, "sentAt") === null
+            ? DASH
+            : `${str(latest, "direction") === "in" ? "Inbound" : "Outbound"}, ${day(str(latest, "sentAt"))}`,
+          words(show(thread, "meeting")),
+          FOLLOW_UP.get(str(child(thread, "followUp"), "basis") ?? "") ?? DASH,
+        ];
+      }),
+    },
+    title: "Conversations",
+  };
+};
+
 const personalizationGaps: CardBuilder = (data) => {
   const totals = child(data, "totals");
   const affected = num(totals, "leadsAffected") ?? 0;
@@ -350,4 +416,5 @@ export const PEOPLE_CARDS: ReadonlyMap<string, CardBuilder> = new Map([
   ["person_summary", personSummary],
   ["personalization_gaps", personalizationGaps],
   ["suppression_check", suppressionCheck],
+  ["thread_context", threadContext],
 ]);

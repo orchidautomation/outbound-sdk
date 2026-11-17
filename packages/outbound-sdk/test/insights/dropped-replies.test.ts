@@ -157,46 +157,77 @@ test("dropped_replies reports unanswered replies longest waiting first, and coun
   const { data } = result;
 
   assert.equal(result.insight, "dropped_replies");
-  assert.deepEqual(data.dropped, [
-    {
-      campaign: "memory:agency:c1",
-      campaignName: "Agency owners",
-      category: "positive",
-      channel: "email",
-      checkedBy: "thread",
-      finding: "A positive reply has waited 4 days with nothing sent after it.",
-      // 2026-11-10T08:00 to 2026-11-14T12:00 is 4 days and 4 hours.
-      email: "person1@example.com",
-      hoursWaiting: 100,
-      lead: "memory:agency:l1",
-      linkedinUrl: null,
-      name: "Jon Example",
-      provider: "memory",
-      receivedAt: "2026-11-10T08:00:00.000Z",
-      reply: "memory:agency:m2",
-      subject: "Re: hello",
-      unansweredReplies: 2,
-    },
-    {
-      campaign: "memory:agency:c2",
-      campaignName: "LinkedIn founders",
-      category: "positive",
-      channel: "linkedin",
-      checkedBy: "timeline",
-      finding:
-        "A positive reply has waited 30 hours with nothing sent after it.",
-      email: null,
-      hoursWaiting: 30.5,
-      lead: "memory:agency:l4",
-      linkedinUrl: "https://www.linkedin.com/in/example-person",
-      name: null,
-      provider: "memory",
-      receivedAt: "2026-11-13T05:30:00.000Z",
-      reply: "memory:agency:m6",
-      subject: null,
-      unansweredReplies: 1,
-    },
-  ]);
+  assert.deepEqual(
+    data.dropped.map(
+      ({ activity, followUp, meeting, vendorSentiment, ...each }) => each
+    ),
+    [
+      {
+        campaign: "memory:agency:c1",
+        campaignName: "Agency owners",
+        category: "positive",
+        channel: "email",
+        checkedBy: "thread",
+        // The thread's latest message is m3, a later reply with no label.
+        finding:
+          "A positive reply has waited 4 days with nothing sent after it. The latest message is inbound and unanswered for 2 days (received 2026-11-12 08:00 UTC). Read it before following up.",
+        // 2026-11-10T08:00 to 2026-11-14T12:00 is 4 days and 4 hours.
+        email: "person1@example.com",
+        hoursWaiting: 100,
+        lead: "memory:agency:l1",
+        linkedinUrl: null,
+        name: "Jon Example",
+        provider: "memory",
+        receivedAt: "2026-11-10T08:00:00.000Z",
+        reply: "memory:agency:m2",
+        subject: "Re: hello",
+        unansweredReplies: 2,
+      },
+      {
+        campaign: "memory:agency:c2",
+        campaignName: "LinkedIn founders",
+        category: "positive",
+        channel: "linkedin",
+        checkedBy: "timeline",
+        finding:
+          "A positive reply has waited 30 hours with nothing sent after it.",
+        email: null,
+        hoursWaiting: 30.5,
+        lead: "memory:agency:l4",
+        linkedinUrl: "https://www.linkedin.com/in/example-person",
+        name: null,
+        provider: "memory",
+        receivedAt: "2026-11-13T05:30:00.000Z",
+        reply: "memory:agency:m6",
+        subject: null,
+        unansweredReplies: 1,
+      },
+    ]
+  );
+  const [first, second] = data.dropped;
+
+  assert.equal(first?.activity?.latest?.ref, "memory:agency:m3");
+  assert.equal(first?.activity?.lastOutboundAt, "2026-11-09T08:00:00.000Z");
+  assert.deepEqual(first?.vendorSentiment, {
+    leadCategory: null,
+    leadLabel: null,
+    replyCategory: "positive",
+  });
+  assert.deepEqual(first?.followUp, {
+    basis: "inbound_unanswered",
+    evidence: [
+      "The latest message is inbound and unanswered for 2 days (received 2026-11-12 08:00 UTC).",
+      "The vendor's positive label is on an earlier reply (2026-11-10 08:00 UTC), 2 days before the latest message, so it may not describe the conversation now.",
+      "memory records no meeting for the lead.",
+    ],
+    needed: true,
+    unchecked: [
+      "What the messages say: the rules read who wrote last and when, never the words, so read the latest message before acting.",
+    ],
+  });
+  // The labelled reply is the latest message, so no label sentence.
+  assert.equal(second?.activity?.latest?.ref, "memory:agency:m6");
+  assert.equal(second?.followUp?.evidence.length, 2);
   assert.deepEqual(data.totals, {
     answered: 1,
     // t1, t2, the timeline of l4, t3 and the reply with nothing to read.
