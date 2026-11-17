@@ -1,0 +1,3 @@
+reply rate per campaign:
+  {"campaign":"memory:acme:cmp_agencies","sent":210,"replied":3,"reply_rate":0.0143}
+  {"campaign":"memory:acme:cmp_founders","sent":320,"replied":9,"reply_rate":0.0281}

@@ -1,0 +1,7 @@
+exported 5 leads and 3 replies
+replies by campaign:
+  {"campaign":"memory:acme:cmp_agencies","replies":1,"positive":1}
+  {"campaign":"memory:acme:cmp_founders","replies":2,"positive":1}
+leads that replied positively:
+  {"email":"ana@example.com","replied_on":"2026-11-11"}
+  {"email":"dev@example.com","replied_on":"2026-11-13"}

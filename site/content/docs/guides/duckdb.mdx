@@ -1,0 +1,73 @@
+---
+title: Load campaigns, leads, replies and daily stats into DuckDB
+description: A one-off bulk load through JSON Lines, a scheduled incremental load that keeps its checkpoints in the same DuckDB file, and a daily stats table, with the SQL that answers reply rate and positive replies per campaign.
+sidebar:
+  label: Load into DuckDB
+related:
+  - /docs/plugins/exporter
+  - /docs/plugins/sync
+  - /docs/guides/sync-to-database
+  - /docs/guides/export-leads
+---
+
+Analysts want outbound data next to everything else, in SQL. [DuckDB](https://duckdb.org) runs in-process and reads JSON Lines directly, so it needs no server. This guide loads the SDK's records into it three ways: a bulk load for a first copy or a one-off question, an incremental load you run on a schedule, and a daily stats table, which a sync does not copy.
+
+<include>../../_snippets/status.mdx</include>
+
+## Before you start
+
+- Node 22 or later, and `npm install @duckdb/node-api`. The samples are run with `@duckdb/node-api` 2.0.0-r.1 on Node 24. outbound-sdk itself does not depend on DuckDB.
+- The code below runs on the in-memory adapter, so it needs no vendor key. Each sample on this page is a file in the repository that the test suite runs, and the output shown is what it printed.
+- For real data: an Instantly, Smartlead or HeyReach API key. A read-only key is enough. No method of the SDK writes to a vendor.
+
+## Bulk load: export to JSON Lines, then read the files
+
+The `exporter` plugin streams a listing to a `.jsonl` file as it reads, so the export never sits in memory. `read_json_auto` then reads that file into a table and works out the column types. Pass `columns` to choose the columns, which also keeps personal fields you do not need out of the file.
+
+<include meta='title="bulk.ts"'>../../_examples/duckdb/bulk.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/duckdb/bulk.out.txt
+</include>
+
+This is the fastest way to get a full copy, but every run reads everything again. For a copy you keep current, use the incremental load below.
+
+## The warehouse
+
+One table per collection, keyed on `ref` (`provider:workspace:id`), which is unique across vendors and clients. The sync checkpoints live in the same database, so the records and the point a run got to cannot drift apart.
+
+<include meta='title="warehouse.ts"'>
+  ../../_examples/duckdb/warehouse.ts
+</include>
+
+Every write is `INSERT OR REPLACE` on the primary key, inside one transaction per page. The sync plugin delivers a page again after a crash, and the overlap between runs delivers some records twice, so a plain `INSERT` would fail on a duplicate key.
+
+## Incremental load on a schedule
+
+<include meta='title="sync.ts"'>../../_examples/duckdb/sync.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/duckdb/sync.out.txt
+</include>
+
+The second run asks for leads and replies only from five minutes before the first run started, and gets the one new lead and the one new reply. Campaigns cannot be filtered by date, so they are listed in full every run. A sync does not notice a record deleted at the vendor; see [deleted records](/docs/guides/sync-to-database#deleted-records-are-not-detected) for the `reconcile` check that does.
+
+## Daily stats
+
+Stats are totals the vendor computes, not records with a `ref`, and a vendor can revise a day after the fact. Read the days you keep on each run and replace them by campaign and day.
+
+<include meta='title="stats.ts"'>../../_examples/duckdb/stats.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/duckdb/stats.out.txt
+</include>
+
+A count the vendor does not report is `null`, never `0`, and lands as `NULL`. `sum` skips `NULL`, so a rate over campaigns that report only some counts can read higher than it is. Filter to the rows that report both sides when that matters.
+
+## Seed
+
+<include meta='title="seed.ts"'>../../_examples/duckdb/seed.ts</include>
+
+## Point it at your vendor
+
+Swap the adapter for `instantly()`, `smartlead()`, `heyreach()` or `combine([...])`, and pass `openWarehouse("outbound.duckdb")` to keep the database in a file. The tables, the upserts and the checkpoint store do not change. A complete pipeline that loads several clients, copies the database to [MotherDuck](https://motherduck.com) and writes an HTML report from SQL is in the repository: [motherduck-data-dive](https://github.com/orchidautomation/outbound-sdk/tree/main/examples/motherduck-data-dive). It installs the package from npm and is not run by this site's tests.
