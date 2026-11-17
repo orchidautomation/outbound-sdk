@@ -51,6 +51,7 @@ interface Bounds {
   readonly campaignIds?: readonly number[] | undefined;
   readonly cursor?: string | undefined;
   readonly from?: string | undefined;
+  readonly limit?: number | undefined;
   readonly to?: string | undefined;
 }
 
@@ -85,7 +86,7 @@ const readPage = async (
 
   const request: JsonObject = {
     filters,
-    limit: Math.min(query.limit ?? PAGE_SIZE, PAGE_SIZE),
+    limit: Math.min(bounds.limit ?? query.limit ?? PAGE_SIZE, PAGE_SIZE),
   };
 
   // The page marker is the `nextCursor` of the page before.
@@ -218,6 +219,8 @@ const inCampaigns = async (
       campaignIds,
       cursor,
       from: bounded ? known[0] : undefined,
+      // The caller's page size is for the records it gets, not this check.
+      limit: PAGE_SIZE,
       to: bounded ? known.at(-1) : undefined,
     });
 
