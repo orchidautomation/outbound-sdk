@@ -25,7 +25,9 @@ export type {
   AccountSummary,
 } from "./account-summary.ts";
 
-export type { DroppedReplies, DroppedReply } from "./dropped-replies.ts";
+export type { DroppedReply } from "./dropped-replies-check.ts";
+
+export type { DroppedReplies } from "./dropped-replies.ts";
 
 export type { HotLead, HotLeadParts, HotLeads } from "./hot-leads.ts";
 

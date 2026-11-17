@@ -483,15 +483,50 @@ const remasked = (known: Known, error: OutboundError): OutboundError =>
     timedOut: error.timedOut,
   });
 
-/** The call with the value of a token this redact wrote in place of it, in an id. */
-const unmasked = (known: Known, operation: Operation): Operation => {
-  if (!("id" in operation)) {
-    return operation;
+/**
+ * A query with the value of each token this redact wrote, in every string
+ * and list of strings: a lead's id in `leadId`, a thread id, addresses.
+ * `undefined` when it held none.
+ */
+type OperationQuery = Extract<Operation, { readonly query: unknown }>["query"];
+
+const unmaskedQuery = (
+  known: Known,
+  query: OperationQuery
+): Fields | undefined => {
+  if (JSON.stringify(query).match(TOKEN) === null) {
+    return undefined;
   }
 
-  const id = known.unmask(operation.id);
+  // SAFETY: a query holds strings, numbers, booleans, lists of strings and a cursor.
+  const fields = query as Fields;
 
-  return id === operation.id ? operation : { ...operation, id };
+  return Object.fromEntries(
+    Object.entries(fields).map(([key, value]) => [
+      key,
+      maskEach(value, (text) => known.unmask(text)),
+    ])
+  );
+};
+
+/**
+ * The call with the value of each token this redact wrote in place of it,
+ * in its id or anywhere in its query, so a filter such as a lead timeline's
+ * `leadId` reaches the vendor as the real value.
+ */
+const unmasked = (known: Known, operation: Operation): Operation => {
+  if ("id" in operation) {
+    const id = known.unmask(operation.id);
+
+    return id === operation.id ? operation : { ...operation, id };
+  }
+
+  const query = unmaskedQuery(known, operation.query);
+
+  // SAFETY: only strings were replaced, each by a string, so the query keeps its type.
+  return query === undefined
+    ? operation
+    : ({ ...operation, query } as Operation);
 };
 
 /** Masks emails, names, companies, LinkedIn URLs, custom fields and message text. */
