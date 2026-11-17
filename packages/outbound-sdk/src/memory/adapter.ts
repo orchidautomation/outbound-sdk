@@ -8,6 +8,7 @@ import type {
   TimeRange,
 } from "../internal/adapter.ts";
 import type { CapabilityDeclaration } from "../internal/capabilities.ts";
+import type { Lead } from "../internal/entities.ts";
 import { makeErrorMapper } from "../internal/errors.ts";
 import type { FieldDeclaration } from "../internal/fields.ts";
 import { recordBase } from "../internal/record.ts";
@@ -58,6 +59,7 @@ const FULL_CAPABILITIES: CapabilityDeclaration = {
   "campaigns.status": "server",
   "leads.byCampaign": true,
   "leads.byDomain": true,
+  "leads.byStatus": true,
   "leads.engagement": true,
   "leads.get": true,
   "leads.list": true,
@@ -143,6 +145,14 @@ const selectLeads = (store: Store, query: LeadQuery): MemoryLead[] =>
       (!filtersByTime(store, "leads.since") || within(lead.createdAt, query))
   );
 
+/** The leads that meet the query, `status` included, which is known only once a seed is read as a lead. */
+const selectedLeads = (store: Store, query: LeadQuery): Lead[] =>
+  selectLeads(store, query)
+    .map((seed) => toLead(store.identity, seed))
+    .filter(
+      (lead) => query.status === undefined || lead.status === query.status
+    );
+
 type Getters = Pick<
   Adapter,
   "getCampaign" | "getLead" | "getSender" | "getSequence"
@@ -223,17 +233,8 @@ const listers = (store: Store): Listers => {
           pageSize
         )
       ),
-    listLeads: (query) => {
-      const seeds = selectLeads(store, query);
-
-      return Promise.resolve(
-        paginate(
-          seeds.map((seed) => toLead(identity, seed)),
-          query,
-          pageSize
-        )
-      );
-    },
+    listLeads: (query) =>
+      Promise.resolve(paginate(selectedLeads(store, query), query, pageSize)),
     listMessages: (query) =>
       Promise.resolve(
         paginate(

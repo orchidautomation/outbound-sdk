@@ -181,6 +181,36 @@ const checkInterest = (core: Core, interest: string | undefined): void => {
   }
 };
 
+/** The `status` filter, which takes `active` only. Needs `leads.byStatus`. */
+const checkStatus = (
+  core: Core,
+  filters: Pick<LeadFilters, "interest" | "status">
+): void => {
+  if (filters.status === undefined) {
+    return;
+  }
+
+  requireCapability(
+    core.gate,
+    "leads.byStatus",
+    "Listing only the active leads"
+  );
+
+  if (filters.status !== "active") {
+    throw new OutboundError(
+      "Invalid",
+      `status takes "active", not "${String(filters.status)}"`
+    );
+  }
+
+  if (filters.interest !== undefined) {
+    throw new OutboundError(
+      "Invalid",
+      "Leads can be listed by interest or by status, not both at once"
+    );
+  }
+};
+
 export const leadList = (core: Core): ListSpec<Lead, LeadFilters> => ({
   action: "leads.list",
   takes: {
@@ -192,6 +222,7 @@ export const leadList = (core: Core): ListSpec<Lead, LeadFilters> => ({
     linkedinUrl: true,
     listId: true,
     since: true,
+    status: true,
     until: true,
   },
   // A lookup returns one record per campaign the person is in. On a vendor
@@ -226,6 +257,7 @@ export const leadList = (core: Core): ListSpec<Lead, LeadFilters> => ({
     const emails = manyAddresses(core, filters.emails);
 
     checkInterest(core, filters.interest);
+    checkStatus(core, filters);
 
     const domain = filters.domain?.trim().toLowerCase();
 
@@ -270,6 +302,7 @@ export const leadList = (core: Core): ListSpec<Lead, LeadFilters> => ({
       interest: filters.interest,
       linkedinUrl: filters.linkedinUrl?.trim(),
       listId: filters.listId,
+      status: filters.status,
       ...normalizeRange(filters),
     };
   },

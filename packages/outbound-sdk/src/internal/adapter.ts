@@ -110,6 +110,8 @@ export interface LeadQuery extends PageQuery, TimeRange {
   readonly emails?: readonly string[] | undefined;
   /** `positive`: only the leads the vendor labels positive, whose `interestCategory` is `positive`. */
   readonly interest?: "positive" | undefined;
+  /** `active`: only the leads whose `status` is `active`. Never set together with `interest`. */
+  readonly status?: "active" | undefined;
 }
 
 export interface MessageQuery extends PageQuery, TimeRange {

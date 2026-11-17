@@ -336,13 +336,13 @@ test("a list option the collection does not take is refused before any request",
   const outbound = createOutbound({ adapter: spy.adapter });
 
   const status = await failure(() =>
-    outbound.leads.list(loose({ status: "replied" }))
+    outbound.leads.list(loose({ state: "replied" }))
   );
 
   assert.equal(status.code, "Invalid");
   assert.equal(
     status.message,
-    'leads.list: "status" is not an option. It takes: campaignId, cursor, deadline, domain, email, emails, interest, limit, linkedinUrl, listId, maxRequests, retries, signal, since, timeout, until'
+    'leads.list: "state" is not an option. It takes: campaignId, cursor, deadline, domain, email, emails, interest, limit, linkedinUrl, listId, maxRequests, retries, signal, since, status, timeout, until'
   );
 
   for (const action of [
