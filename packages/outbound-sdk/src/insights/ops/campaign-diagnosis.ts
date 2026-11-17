@@ -8,7 +8,7 @@ import type { Campaign, Sender } from "../../internal/entities.ts";
 import {
   leadsToStart,
   newLeadsPerDay,
-  runwayDays,
+  runwayOf,
   splitActive,
 } from "../../internal/runway.ts";
 import { SCREENED_AT_MOST } from "../../internal/sender-screen.ts";
@@ -190,9 +190,12 @@ const readLeadsLeft = async (
   const split = splitActive(leads);
   const unknown = leads.filter((lead) => lead.status === "unknown").length;
 
+  const runway = runwayOf(split, { unknown }, true, recent.startedPerDay);
+
+  // A campaign that stopped because none is left to start has run out now, whether or not it started any lately.
   return {
     active: split.active,
-    daysLeft: runwayDays(split, { unknown }, true, recent.startedPerDay),
+    daysLeft: runway.state === "out_of_leads" ? 0 : runway.daysLeft,
     inSequence: split.inSequence,
     toStart: leadsToStart(split),
   };

@@ -128,11 +128,13 @@ test("runway: both tools divide the leads not started by new leads started per d
     active_leads: 30,
     campaign: "memory:acme:c1",
     contacted_per_day: 2,
-    counted_leads: 31,
+    // Only the active leads are read, as client_report reads them: the completed one is not.
+    counted_leads: 30,
     in_sequence: 12,
     not_started: 18,
     // 18 not started at 2 a day; the 12 in sequence need no new contact.
     runway_days: 9,
+    state: "draining",
   });
   assert.equal(
     forecast.remaining,

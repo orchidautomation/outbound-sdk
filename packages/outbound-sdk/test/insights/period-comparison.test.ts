@@ -211,7 +211,14 @@ test("period_comparison sets the last days against the days before, per campaign
       [85, 1000],
     ]
   );
-  assert.deepEqual(result.meta.notes, [BOUNCE_NOTE]);
+  // The two reply figures differ by the archived campaign, and the answer says why (OUT-158).
+  assert.equal(result.data.totalBasis?.covers, "campaigns");
+  assert.equal(result.data.workspaceBasis?.covers, "workspace");
+  assert.equal(result.data.totalBasis?.replies, "people");
+  assert.deepEqual(result.meta.notes, [
+    BOUNCE_NOTE,
+    "This period has 85 replied across the 3 campaigns read (active, paused or completed) and 93 in the workspace totals, which count every campaign whatever its state. Both count leads who replied, not reply messages.",
+  ]);
 });
 
 test("period_comparison follows days, min_sent, alpha and the statuses", async () => {

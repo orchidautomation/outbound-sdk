@@ -135,7 +135,8 @@ The leads one campaign has left, and what they should produce. It is an estimate
 - `remaining`: leads still `active` in the campaign. A `skipped` lead, one the vendor decided never to send to, is not remaining and is not of unknown status.
 - `notStarted`, `inSequence`: the active leads split by whether their sequence has started, from the lead's last step sent or last contact time. Both are `null` when no lead read reports either, and then every active lead counts as not started.
 - `dailyContactRate`: new leads started per day over the last `days`, from the daily `contacted` count. It is never emails sent: most sends are follow-ups to leads already in sequence. `null` when the vendor reports no daily contacted count.
-- `daysLeft`: `notStarted` (or `remaining` when that is `null`) divided by `dailyContactRate`, and `0` when every lead was read and none is left to start, whatever the pace; the `finding` then says to add leads. `daysLeft` is `null` only when the leads left are unknown (`max_leads` stopped the read, or a lead's status is `unknown`), or when some are left and there is no pace to divide by. The `lead_runway` tool returns the same figure as `runway_days`.
+- `runwayState`: `draining` (leads left to start and a pace), `stalled` (leads left to start but none started over `days`, or no daily contacted count), `out_of_leads` (every lead was read and none is left to start; the `finding` then says to add leads) or `unknown` (the leads left were not all counted and none was found). `lead_runway` and `clientReport` give the same state.
+- `daysLeft`: `notStarted` (or `remaining` when that is `null`) divided by `dailyContactRate`, so `0` for a campaign out of leads that still started some in the window. `null` when the pace is `null` or 0, since no days divide out of it, and when the leads left are unknown (`max_leads` stopped the read, or a lead's status is `unknown`). The `lead_runway` tool returns the same figure as `runway_days`.
 - `replyRate`, `positiveRate`: the campaign's rates so far, over its whole history.
 - `expectedReplies`, `expectedPositive`: `expected`, `low` and `high`, from the rate and the ends of its interval.
 - `assumptions`: what the estimate assumes, as sentences.
@@ -227,10 +228,12 @@ The last `days` complete days against the `days` before, per campaign and in tot
 - `tooFewSends`: campaigns under `min_sent` in either period, with `currentSent` and `previousSent`.
 - `total`: the same comparison for every campaign read, added together. Each rate counts only the campaigns that report both its count and what it is divided by, so the bounces of the campaigns that report them are never divided by every campaign's sends. `rates` holds the `count` and `of` each rate was divided from, which can be less than the totals beside it.
 - `workspace`: the same for the vendor's own workspace totals, or `null` when the adapter has none. On a combined instance the tools' rows are added up by the same rule.
+- `totalBasis`, `workspaceBasis`: what `total` and `workspace` count. `covers` is `campaigns` (only the campaigns read, in `statuses`) or `workspace` (every campaign, whatever its state); `replies` is `people` (`replied` and `positive` count leads, not reply messages) and `autoReplies` is `excluded`; `description` says it in a sentence.
+- `toolsLeftOut`: on a combined instance, each tool with no campaign in `statuses`, so `total` leaves it out, with `tool`, `reason` and its own workspace `counts` for this period (`null` when it has no workspace stats).
 
 - **Needs:** `stats.campaign`.
-- **Costs:** two stats requests per campaign, plus two for the workspace.
-- **Notes it can add:** workspace totals were left out because the adapter has no workspace stats; a rate of `total` or `workspace` leaves out campaigns (or tools) that do not report one side of it, naming the rate and how many are counted; a cap was reached.
+- **Costs:** two stats requests per campaign, plus two for the workspace and one for each tool in `toolsLeftOut`.
+- **Notes it can add:** workspace totals were left out because the adapter has no workspace stats; `total` and `workspace` count different replies for the period, and why; a tool left out had sends or replies in the period; a rate of `total` or `workspace` leaves out campaigns (or tools) that do not report one side of it, naming the rate and how many are counted; a cap was reached.
 - **Does not:** test anything but the reply rate. The other changes are plain differences. `verdict` is `unknown` when a period has no reply or send counts, or neither period has a reply. A campaign whose vendor reports no sends has no reply rate for the period; it is never divided by leads contacted instead.
 
 <include meta='title="period-comparison.ts"'>
@@ -268,6 +271,7 @@ Which campaigns are best, ranked so a small sample cannot win on luck.
 - `tooFewSends`: campaigns under `min_sent`, with the `reason`.
 - `unknown`: campaigns whose count for this metric the vendor does not report, with the `reason`.
 - `gap`: `top` (the rate of the campaign ranked first), `median` and `difference`.
+- `toolsLeftOut`: on a combined instance, each tool with no campaign in `statuses`, with its own workspace `counts` for `period`, as in `periodComparison`.
 
 - **Needs:** `stats.campaign`.
 - **Costs:** one listing per status, plus one stats request per campaign (one for all of them on a vendor that reports every campaign in one call with every count).
@@ -390,6 +394,8 @@ One report for one client or workspace over the last `days` complete days, compo
 | `anomaly_threshold` | 2.5 | above 0 | Standard deviations from the baseline that make a day unusual. |
 | `baseline_days` | 14 | 5 to 60 | Days before the period that form the anomaly baseline. |
 | `min_baseline_points` | 5 | 2 or more, whole | The fewest baseline days with data a day needs to be tested. |
+| `provider` | none | a provider or `provider:workspace` | Read only that tool of a combined instance. A name no tool has is refused as `Invalid` before any request. |
+| `tag` | none | a campaign tag | Read only the campaigns with this tag, for example one client's. Unusual days are then left out, since they are workspace-wide. Refused as `Unsupported` where the adapter reports no campaign tags. |
 | `statuses`, `max_campaigns` | see above |  |  |
 
 `data` (`ClientReport`):
@@ -400,14 +406,17 @@ One report for one client or workspace over the last `days` complete days, compo
 - `top`, `bottom`: the best and worst campaigns by the low end of the interval of the reply rate, over `replyRateBasis`. `bottom` never repeats a campaign in `top`.
 - `bounceProblems`: campaigns over `max_bounce_rate`, worst first, with the rate as `count`, `of`, `rate`, `low` and `high`, and `bounced` and `sent`, the same counts under their older names.
 - `anomalies`: unusual days in the period, workspace-wide. `null` when the adapter cannot serve them.
-- `runningOutOfLeads`: active campaigns with `runway_days` of leads or fewer, with `remaining`, `dailyContactRate` and `daysLeft`, soonest first. A campaign with no leads left has `daysLeft` 0, so it comes first and gets an `add_leads` action. `null` when the adapter cannot serve them.
-- `actions`: what to do, most pressing first. Each has a `kind` (`fix_bounces`, `add_leads`, `reply_rate_fell`, `review_campaign` or `check_anomaly`), the `campaign` and `campaignName` it is about, an `action` sentence and the `number` behind it.
+- `totalsBasis`: what `totals` counts, as `totalBasis` in `periodComparison`.
+- `toolsLeftOut`: on a combined instance, each tool with no campaign in `statuses`, with its own workspace `counts` for the period.
+- `runningOutOfLeads`: active campaigns with no lead left to start (`state` `out_of_leads`), first, then those whose leads left to start last `runway_days` or fewer at the recent pace (`state` `draining`), soonest first. Each has `remaining` (leads not yet started), `inSequence` (leads partway through the sequence), `dailyContactRate` and `daysLeft` (`null` when the pace is 0 or unknown). `null` when the adapter cannot serve them.
+- `stalled`: active campaigns with leads left to start but no new lead started in the period, or no daily contacted count, with the same fields and `state` `stalled`. They need a look, not more leads.
+- `actions`: what to do, most pressing first, with the runway last. Each has a `kind` (`fix_bounces`, `reply_rate_fell`, `review_campaign`, `check_anomaly`, `add_leads` or `check_stalled`), the `campaign` and `campaignName` it is about (`null` for an item about several), an `action` sentence and the `number` behind it. Every campaign in `runningOutOfLeads` is in one `add_leads` item and every one in `stalled` in one `check_stalled` item, whose `number` is how many campaigns they name.
 - `leftOut`: the sections left out because the adapter cannot serve them.
 
 - **Needs:** `stats.campaign`. Unusual days also need `stats.byDay` and workspace stats. Leads left also needs `leads.byCampaign` and `stats.byDay`.
 - **Costs:** two stats requests per campaign, one for the workspace, and for each active campaign one more plus its pages of leads: its active leads only where the adapter lists them alone (`leads.byStatus`), otherwise every lead up to `max_leads_per_campaign`.
 - **Notes it can add:** one per section left out, starting "Left out."; a rate of `totals` leaves out campaigns that do not report one side of it; a cap was reached.
-- **Does not:** filter by tag or by campaign. It reports on everything the instance holds, or the one workspace it is scoped to. A campaign whose leads were cut off at `max_leads_per_campaign` is never flagged as running out, because its count is a minimum; a note names those campaigns. It writes no email and sends nothing.
+- **Does not:** filter by campaign. Without `provider` or `tag` it reports on everything the instance holds, or the one workspace it is scoped to. `tag` filters the campaigns read, so raise `max_campaigns` when the workspace has more than it reads. A campaign whose leads were cut off at `max_leads_per_campaign` is never flagged as running out, because its count is a minimum; a note names those campaigns. It writes no email and sends nothing.
 
 <include meta='title="client-report.ts"'>
   ../../_examples/insights-operations/client-report.ts

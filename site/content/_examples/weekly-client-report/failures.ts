@@ -12,8 +12,8 @@ const outbound = createOutbound({
 // 1. An input the insight does not take is refused. It is never dropped,
 //    which would quietly report on every campaign.
 try {
-  // @ts-expect-error -- `tag` is not an input of clientReport
-  await outbound.insights.clientReport({ tag: "acme" });
+  // @ts-expect-error -- `client` is not an input of clientReport
+  await outbound.insights.clientReport({ client: "acme" });
 } catch (error) {
   if (OutboundError.is(error)) {
     console.log("unknown input:", error.code, "-", error.message);

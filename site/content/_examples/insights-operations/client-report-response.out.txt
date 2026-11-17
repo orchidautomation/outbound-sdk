@@ -77,9 +77,12 @@
         "status": "active",
         "dailyContactRate": 50,
         "daysLeft": 2,
-        "remaining": 100
+        "inSequence": null,
+        "remaining": 100,
+        "state": "draining"
       }
     ],
+    "stalled": [],
     "totals": {
       "change": {
         "bounceRate": 0.0066,
@@ -179,13 +182,6 @@
         "number": 0.0464
       },
       {
-        "action": "Add leads to SaaS founders: 100 leads remain, about 2 days of sending.",
-        "campaign": "memory:acme:founders",
-        "campaignName": "SaaS founders",
-        "kind": "add_leads",
-        "number": 2
-      },
-      {
         "action": "Review the copy and the audience of Agency owners: it has the fewest replies per message sent, 1% (7 of 700).",
         "campaign": "memory:acme:agencies",
         "campaignName": "Agency owners",
@@ -212,6 +208,13 @@
         "campaignName": null,
         "kind": "check_anomaly",
         "number": 7
+      },
+      {
+        "action": "Add leads to SaaS founders: 100 leads are left to start, about 2 days at its recent pace.",
+        "campaign": "memory:acme:founders",
+        "campaignName": "SaaS founders",
+        "kind": "add_leads",
+        "number": 1
       }
     ],
     "campaigns": 4,
@@ -226,6 +229,7 @@
       "to": "2026-11-06"
     },
     "replyRateBasis": "sent",
+    "toolsLeftOut": [],
     "top": [
       {
         "campaign": "memory:acme:linkedin",
@@ -272,7 +276,13 @@
         "sent": 560,
         "rank": 3
       }
-    ]
+    ],
+    "totalsBasis": {
+      "autoReplies": "excluded",
+      "covers": "campaigns",
+      "description": "The 4 campaigns read (active) added together. replied and positive count leads who replied, not reply messages, with automatic replies left out of replied.",
+      "replies": "people"
+    }
   },
   "insight": "client_report",
   "meta": {
