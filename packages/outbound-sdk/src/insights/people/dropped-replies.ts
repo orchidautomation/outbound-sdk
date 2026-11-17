@@ -298,7 +298,6 @@ export const droppedReplies = defineInsight({
           price.one("campaigns.get"))
     );
   },
-  partialOnCap: true,
   scales: "max_replies",
   name: "dropped_replies",
   needs: ["replies.list"],
