@@ -6,6 +6,7 @@ import type {
   Lead,
   LeadEngagement,
   LeadProgress,
+  MeetingStatus,
   Message,
   RecipientMailProvider,
   Reply,
@@ -38,6 +39,15 @@ const INTEREST = new Map<number, readonly [string, ReplyCategory]>([
   [2, ["Meeting Booked", "positive"]],
   [3, ["Meeting Completed", "positive"]],
   [4, ["Won", "positive"]],
+]);
+
+// The built-in interest statuses that record a meeting. A custom label's
+// number never does: its wording is the workspace's own.
+const MEETING = new Map<number, MeetingStatus>([
+  [-4, "no_show"],
+  [2, "booked"],
+  [3, "completed"],
+  [4, "won"],
 ]);
 
 /** A workspace's custom lead labels, by the interest status each one owns. */
@@ -200,6 +210,7 @@ export const toLead = (
   lastName: text(raw.last_name),
   linkedinUrl: null,
   location: null,
+  meeting: MEETING.get(count(raw.lt_interest_status) ?? Number.NaN) ?? null,
   phone: text(raw.phone),
   recipientMailProvider:
     RECIPIENT_PROVIDER.get(count(raw.esp_code) ?? Number.NaN) ?? null,

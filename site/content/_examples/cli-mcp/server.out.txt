@@ -19,7 +19,7 @@ initialize
   }
 }
 
-tools/list: 34 tools
+tools/list: 35 tools
 campaign_overview
 campaign_trend
 winning_steps
@@ -33,6 +33,7 @@ lead_collisions
 suppression_check
 dropped_replies
 hot_leads
+thread_context
 personalization_gaps
 step_funnel
 variant_test

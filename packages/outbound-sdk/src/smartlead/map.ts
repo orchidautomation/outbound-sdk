@@ -299,6 +299,7 @@ const leadRecord = (
   lastName: text(lead.last_name),
   linkedinUrl: text(lead.linkedin_profile),
   location: text(lead.location),
+  meeting: null,
   phone: text(lead.phone_number),
   recipientMailProvider: null,
   tags: [...place.tags],

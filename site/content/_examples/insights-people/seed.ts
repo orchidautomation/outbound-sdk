@@ -152,6 +152,7 @@ export const MAIL: MemoryData = {
       campaignId: "founders",
       category: "positive",
       direction: "in",
+      body: "Thursday at 10 works. Can you send an invite?",
       id: "m4",
       leadId: "ana_founders",
       sentAt: "2026-11-12T12:00:00.000Z",

@@ -50,12 +50,14 @@ Added on 2026-11-16 for OUT-92, by hand: `listEmails.autoReplies.json`, one camp
 - listEmails.json
 - listEmails.page2.json
 - listEmails.autoReplies.json
+- listEmails.followUp.json
 - listLeadLabels.json
 - listLeadLists.json
 - listLeadLists.page2.json
 - listLeads.json
 - listLeads.page2.json
 - listLeads.autoReplies.json
+- listLeads.followUp.json
 - listLeadsByEmail.json
 - listLeadsByEmail.page2.json
 - listLeadsByEmail.repliers.json

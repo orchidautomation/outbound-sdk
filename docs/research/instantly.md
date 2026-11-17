@@ -695,6 +695,18 @@ Fetched 2026-11-16: https://api.instantly.ai/openapi/api_v2.json (`info.version`
 
 Not run against a live workspace yet: whether `filter` combines with `campaign`, and how many addresses `contacts` takes in one request.
 
+## Meeting status and thread context (2026-11-17, for OUT-139)
+
+Fetched 2026-11-17: https://api.instantly.ai/openapi/api_v2.json (`info.version` 2.0.0), https://developer.instantly.ai/api-reference/openapi.json, https://developer.instantly.ai/guides/webhook-events.md.
+
+- The lead's `lt_interest_status` is the only meeting record: 2 Meeting Booked, 3 Meeting Completed, 4 Won, -4 No Show, unchanged. The adapter maps those four built-in numbers to a lead's `meeting` (`booked`, `completed`, `won`, `no_show`) and every other value, a custom label's number included, to `null`: a custom label's wording is never read as a meeting.
+- `timestamp_last_interest_change` ("Timestamp of the last interest status change") moves on any interest change, so it is the booking time only while the status is 2. Not read.
+- Webhooks `lead_meeting_booked` and `lead_meeting_completed` exist; the SDK stores nothing, so they are not used for a read.
+- A thread is still read with `GET /api/v2/emails?search=thread:<id>`, one id per request; direction is `ue_type`, the time `timestamp_email`. `content_preview` ("A short preview of the email content") is separate from `body`; `thread_context` reads bodies and cuts them to 280 characters instead, so a snippet means the same on every vendor. `latest_of_thread` exists only in the api.instantly.ai spec, not in the developer.instantly.ai one.
+- No request reads messages for many threads or leads at once (`search` takes one thread, `lead` one address), so `thread_context` reads one conversation per request, in pages the caller sets.
+
+Not run live yet when written: whether a lead booked through a calendar integration gets `lt_interest_status` 2.
+
 ## Conversation links (OUT-140, 2026-11-17)
 
 Sources, read 2026-11-17: `https://developer.instantly.ai/guides/webhook-events.md` (`unibox_url`: "URL to view the conversation in Unibox (only for reply events)"), `https://developer.instantly.ai/api-reference/schemas/email.md` and the `GET /emails` reference (no link field on an email), and `https://help.instantly.ai/en/articles/6576561-how-to-manage-unibox-best-practices-for-replying-to-leads` (the Unibox, no URL scheme).

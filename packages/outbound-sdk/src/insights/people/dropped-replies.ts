@@ -9,8 +9,14 @@ import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { inboxOf } from "../inbox.ts";
 import { check, HOUR, sentByHand } from "./dropped-replies-check.ts";
-import type { Conversation, DroppedReply } from "./dropped-replies-check.ts";
+import type {
+  Conversation,
+  DroppedReply,
+  FoundDropped,
+} from "./dropped-replies-check.ts";
 import { nameOf, readByRef, readCappedFlag } from "./read.ts";
+import { recordsMeetings, threadContext } from "./thread-context.ts";
+import type { ThreadContext } from "./thread-context.ts";
 
 const DAY = 24 * HOUR;
 
@@ -143,13 +149,33 @@ const refsOf = (refs: readonly (string | null)[]): string[] => [
   ...new Set(refs.flatMap((ref) => (ref === null ? [] : [ref]))),
 ];
 
+/** The finding, with what the latest message is and any meeting the vendor records. */
+const findingOf = (
+  finding: string,
+  reply: string,
+  found: ThreadContext
+): string => {
+  const [latest] = found.followUp.evidence;
+  const latestIsReply = found.activity.latest?.ref === reply;
+
+  const meeting =
+    found.followUp.basis === "meeting"
+      ? ` ${found.followUp.evidence.at(-1) ?? ""} Check it before following up.`
+      : "";
+
+  return latestIsReply || latest === undefined
+    ? `${finding}${meeting}`
+    : `${finding} ${latest} Read it before following up.${meeting}`;
+};
+
 /**
- * Fills in who is waiting and which campaign they are in. Reads only the
- * leads and campaigns of the dropped replies: one request each.
+ * Fills in who is waiting and which campaign they are in, and the thread's
+ * context: who wrote last, the meeting the vendor records and the follow-up
+ * assessment. Reads only the leads and campaigns of the dropped replies.
  */
 const named = async (
   context: InsightContext,
-  dropped: readonly DroppedReply[]
+  dropped: readonly FoundDropped[]
 ): Promise<DroppedReply[]> => {
   const { outbound } = context;
   const readLeads = outbound.capabilities["leads.get"];
@@ -186,16 +212,27 @@ const named = async (
     ),
   ]);
 
-  return dropped.map((each) => {
+  return dropped.map(({ labelled, messages, ...each }) => {
     const lead = each.lead === null ? undefined : leads.get(each.lead);
 
     const campaign =
       each.campaign === null ? undefined : campaigns.get(each.campaign);
 
+    const found = threadContext({
+      labelled,
+      lead: lead ?? null,
+      meetingsRecorded: recordsMeetings(outbound),
+      messages,
+      now: context.now,
+      provider: each.provider,
+    });
+
     return {
       ...each,
+      ...found,
       campaignName: campaign?.name ?? null,
       email: lead?.email ?? null,
+      finding: findingOf(each.finding, each.reply, found),
       linkedinUrl: lead?.linkedinUrl ?? null,
       name: lead === undefined ? null : nameOf(lead),
     };
@@ -237,7 +274,7 @@ const readReplies = (
 
 export const droppedReplies = defineInsight({
   description:
-    "Replies from prospects that nobody answered. Reads every reply since a date (14 days before now by default, up to 2,000 or max_replies), keeps the categories that need an answer, and reports a conversation as dropped when nothing was sent after the reply and it has waited longer than older_than_hours. Where the tool lists the messages sent by hand (messages.byHand), one listing of those in the window settles every answered conversation; a conversation is read in full, by its thread or the lead's timeline, only when it may be dropped, or when that listing stopped at its max and did not answer it. Replies in conversations that belong to no campaign, such as a LinkedIn account's own messages on HeyReach, are set aside and counted in totals.notInCampaign unless include_inbox is true. Returns the dropped replies longest waiting first with hours waiting, category, the campaign and its name, and the lead with their name, email and LinkedIn profile. A reply that could not be checked, including one whose conversation could not be read, is counted in totals.unchecked with a note, never reported as dropped. Costs one request per page of replies and of messages sent by hand, one per conversation read in full, and one per lead and per campaign among the dropped replies to name them. totals.moreRepliesExist is true when the read stopped with replies left unread.",
+    "Replies from prospects that nobody answered. Reads every reply since a date (14 days before now by default, up to 2,000 or max_replies), keeps the categories that need an answer, and reports a conversation as dropped when nothing was sent after the reply and it has waited longer than older_than_hours. Where the tool lists the messages sent by hand (messages.byHand), one listing of those in the window settles every answered conversation; a conversation is read in full, by its thread or the lead's timeline, only when it may be dropped, or when that listing stopped at its max and did not answer it. Replies in conversations that belong to no campaign, such as a LinkedIn account's own messages on HeyReach, are set aside and counted in totals.notInCampaign unless include_inbox is true. Returns the dropped replies longest waiting first with hours waiting, category, the campaign and its name, and the lead with their name, email and LinkedIn profile. A reply that could not be checked, including one whose conversation could not be read, is counted in totals.unchecked with a note, never reported as dropped. Costs one request per page of replies and of messages sent by hand, one per conversation read in full, and one per lead and per campaign among the dropped replies to name them. totals.moreRepliesExist is true when the read stopped with replies left unread. Dropped means only that nothing was sent after the reply: each one also carries the conversation's activity (its latest message, which can be a later message than the labelled reply), meeting (what the vendor records on the lead, Instantly only, so a prospect who booked through a calendar link shows as booked), vendorSentiment (the vendor's labels, kept apart) and followUp, a fixed-rule assessment with its evidence and what it could not check. No rule reads what a message says, so read the latest message with thread_context before following up.",
   inputSchema: input,
   key: "droppedReplies",
   cost: (values, price) => {
@@ -259,7 +296,7 @@ export const droppedReplies = defineInsight({
   scales: "max_replies",
   name: "dropped_replies",
   needs: ["replies.list"],
-  next: "Use person_summary with the lead's ref or email address to read what was sent before answering. Use hot_leads to see who else to contact first.",
+  next: "Use thread_context with the dropped replies' lead refs to read the latest messages before answering. Use hot_leads to see who else to contact first.",
   run: async (context, values) => {
     const since = new Date(
       values.since === null
