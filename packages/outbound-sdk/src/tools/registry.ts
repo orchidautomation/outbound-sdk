@@ -150,6 +150,7 @@ const bind = <Input>(
             ...result,
             meta: {
               ...result.meta,
+              computedAt: result.meta.computedAt ?? new Date().toISOString(),
               requests: result.meta.requests + lookup,
               today: new Date().toISOString().slice(0, 10),
             },

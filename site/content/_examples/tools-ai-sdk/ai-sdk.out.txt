@@ -1,5 +1,5 @@
 [ 'campaign_overview', 'sender_health' ]
-How every campaign is doing right now: sends, replies, positive replies, bounces and reply rate for each campaign with the given status, or for the one campaign given. One vendor request per campaign. Rates are computed from counts; a null means the vendor does not report that count. meta.complete: false means limit cut the list, and meta.notes says so.
+How every campaign is doing: sends, replies, positive replies, bounces and reply rate for each campaign with the given status, or for the one campaign given, over period (the whole history when from and to are left out). One vendor request per campaign. Rates are computed from the counts beside them, and reply_rate_basis names the count replies were divided by. A null means the vendor does not report that count, never 0; metrics is null for a campaign the vendor reported no stats for. meta.complete: false means limit cut the list or a stats read was partial, and meta.notes says so, including the vendor's own notes on the counts.
 {
   "data": {
     "campaigns": [
@@ -23,7 +23,11 @@ How every campaign is doing right now: sends, replies, positive replies, bounces
         },
         "status": "paused"
       }
-    ]
+    ],
+    "period": {
+      "from": null,
+      "to": null
+    }
   },
   "meta": {
     "complete": true,
@@ -31,6 +35,7 @@ How every campaign is doing right now: sends, replies, positive replies, bounces
     "notes": [],
     "provider": "memory",
     "requests": 0,
+    "computedAt": "2026-11-14T12:00:00.000Z",
     "today": "2026-11-14"
   },
   "next": "Pick another of the listed tools to go further.",

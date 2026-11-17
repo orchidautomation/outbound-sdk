@@ -33,7 +33,9 @@ This is the part that matters most. A wrong number stated confidently is worse t
 
 **Cards already do this.** `cardFor` from `outbound-sdk/cards` draws a missing count as `—`. Keep that dash when you quote a card or copy its table.
 
-**Say what a rate was divided by.** `reply_rate_basis` names the count under the reply rate, for example `contacted` (people) as opposed to `sent` (emails). A reply rate on people and one on emails are different numbers.
+**Say what a rate was divided by.** `reply_rate_basis` names the count under the reply rate, for example `contacted` (people) as opposed to `sent` (emails). A reply rate on people and one on emails are different numbers. An insight names it `replyRateBasis`, and a rate there is `{ count, of, rate }`: quote `count` of `of`, not the totals beside it, which can hold campaigns the rate leaves out.
+
+**Unchecked is not zero either.** `meta.complete: false` means part of the data was not read or not checked, such as conversations in `totals.unchecked`. Say "0 found among the N checked", never a bare 0. `meta.computedAt` is when the numbers are as of.
 
 **Report the evidence level.** `meta.evidence` says how the answer was obtained:
 

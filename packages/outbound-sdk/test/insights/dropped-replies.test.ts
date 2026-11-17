@@ -244,8 +244,11 @@ test("dropped_replies reports unanswered replies longest waiting first, and coun
   });
   assert.equal(data.since, "2026-10-31T12:00:00.000Z");
   assert.equal(data.olderThanHours, 24);
-  assert.equal(result.meta.complete, true);
-  assert.deepEqual(result.meta.notes, []);
+  // The reply with nothing to read is unchecked, so the answer is partial, not a clean 2.
+  assert.equal(result.meta.complete, false);
+  assert.deepEqual(result.meta.notes, [
+    "1 conversation of 5 could not be checked, so dropped counts only the 4 that were. totals.unchecked counts the rest, as neither dropped nor answered.",
+  ]);
 });
 
 test("dropped_replies on Instantly reads each waiting person's lead and campaign, and counts every request", async () => {
@@ -339,6 +342,7 @@ test("dropped_replies leaves the names null, with a note, when the tool cannot r
   );
   assert.deepEqual(unnamed.meta.notes, [
     "This tool cannot read one lead (leads.get), so name, email and linkedinUrl are null.",
+    "1 conversation of 5 could not be checked, so dropped counts only the 4 that were. totals.unchecked counts the rest, as neither dropped nor answered.",
   ]);
 });
 
@@ -492,8 +496,10 @@ test("dropped_replies falls back to the timeline without threads, and checks not
   // Nine replies less two by category and one automatic leaves six, none of them readable.
   assert.equal(blind.data.totals.unchecked, 6);
   assert.equal(blind.data.totals.conversations, 6);
+  assert.equal(blind.meta.complete, false);
   assert.deepEqual(blind.meta.notes, [
     "This tool can read neither a conversation nor a lead's timeline, so no reply could be checked.",
+    "None of the 6 conversations could be checked, so dropped counts none of them. totals.unchecked counts them, as neither dropped nor answered.",
   ]);
 
   const noMessages = await single(DATA, {
@@ -514,6 +520,7 @@ test("dropped_replies filters by date itself when the tool cannot", async () => 
   assert.equal(result.data.totals.conversations, 5);
   assert.deepEqual(result.meta.notes, [
     "This tool cannot filter replies by date, so the newest replies were read and filtered here.",
+    "1 conversation of 5 could not be checked, so dropped counts only the 4 that were. totals.unchecked counts the rest, as neither dropped nor answered.",
   ]);
 });
 

@@ -3,6 +3,7 @@ person_summary account_summary lead_collisions suppression_check dropped_replies
 [ 'campaign_overview', 'hot_leads', 'client_report' ]
 {
   complete: true,
+  computedAt: '2026-11-14T12:00:00.000Z',
   evidence: 'exact',
   notes: [],
   provider: 'memory',

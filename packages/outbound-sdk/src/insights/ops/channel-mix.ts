@@ -11,16 +11,23 @@ import { rangeFields } from "../fields.ts";
 import { compareRates, percent, pText, round } from "../stats.ts";
 import type { ProportionTest } from "../stats.ts";
 import {
+  baseIn,
   campaignTotalsCost,
   listFields,
   measureAcross,
   partialNote,
   partialRate,
-  perLeadBase,
   readCampaignTotals,
+  replyBasisAcross,
   totalsOf,
 } from "./shared.ts";
-import type { CampaignTotals, Measured, OpenRange, Totals } from "./shared.ts";
+import type {
+  CampaignTotals,
+  Measured,
+  OpenRange,
+  ReplyBasis,
+  Totals,
+} from "./shared.ts";
 
 const input = z.object({
   ...rangeFields,
@@ -68,6 +75,13 @@ export interface ChannelMix extends CampaignsRead {
   readonly finding: string;
   /** The same numbers for each tool and channel. */
   readonly byProvider: readonly ProviderGroup[];
+  /**
+   * What every reply and positive reply rate divides by: leads contacted, or
+   * messages sent when a campaign has replies in the range but contacted no
+   * new lead in it.
+   * Always set by the insight; optional so a value built by hand stays valid.
+   */
+  readonly replyRateBasis?: ReplyBasis;
 }
 
 interface Grouped {
@@ -78,11 +92,13 @@ interface Grouped {
 
 const groupOf = (
   channel: Channel,
-  entries: readonly CampaignTotals[]
+  entries: readonly CampaignTotals[],
+  basis: ReplyBasis
 ): Grouped => {
   const counts = entries.map((entry) => entry.counts);
-  const reply = measureAcross(counts, (row) => row.replied, perLeadBase);
-  const positive = measureAcross(counts, (row) => row.positive, perLeadBase);
+  const base = baseIn(basis);
+  const reply = measureAcross(counts, (row) => row.replied, base);
+  const positive = measureAcross(counts, (row) => row.positive, base);
 
   const acceptance = measureAcross(
     counts,
@@ -111,13 +127,16 @@ const groupOf = (
 
 const CHANNELS = ["email", "linkedin"] as const;
 
-const byChannel = (entries: readonly CampaignTotals[]): Grouped[] =>
+const byChannel = (
+  entries: readonly CampaignTotals[],
+  basis: ReplyBasis
+): Grouped[] =>
   CHANNELS.flatMap((channel) => {
     const members = entries.filter(
       (entry) => entry.campaign.channel === channel
     );
 
-    return members.length === 0 ? [] : [groupOf(channel, members)];
+    return members.length === 0 ? [] : [groupOf(channel, members, basis)];
   });
 
 interface ProviderGrouped {
@@ -125,12 +144,16 @@ interface ProviderGrouped {
   readonly partial: readonly string[];
 }
 
-const byProvider = (entries: readonly CampaignTotals[]): ProviderGrouped[] =>
+const byProvider = (
+  entries: readonly CampaignTotals[],
+  basis: ReplyBasis
+): ProviderGrouped[] =>
   [...new Set(entries.map((entry) => entry.campaign.provider))]
     .toSorted()
     .flatMap((provider) =>
       byChannel(
-        entries.filter((entry) => entry.campaign.provider === provider)
+        entries.filter((entry) => entry.campaign.provider === provider),
+        basis
       ).map(({ group, partial }) => ({
         group: { ...group, provider },
         partial,
@@ -197,7 +220,7 @@ const compare = (
 
 export const channelMix = defineInsight({
   description:
-    "Email against LinkedIn: campaign totals added up per channel, with campaigns, leads contacted, messages sent, replies, positive replies, the reply rate with its 95% interval and, for LinkedIn, the connection acceptance rate; whether the difference in reply rate is more than chance (a two-proportion test); and the same numbers per tool. Use it to decide where to put volume. It reads active, paused and completed campaigns by default, since a channel's finished campaigns hold most of its evidence. With one channel present it returns that channel and says there is nothing to compare; on several tools, a note names a tool with no campaign in the states read. A null count is one the vendor does not report; a rate counts only the campaigns that report both its count and what it divides by, and a note names a group whose rate leaves campaigns out. Costs one listing per status plus one stats request per campaign (one for all of them on a vendor that reports every campaign in one call with every count).",
+    "Email against LinkedIn: campaign totals added up per channel, with campaigns, leads contacted, messages sent, replies, positive replies, the reply rate with its 95% interval and, for LinkedIn, the connection acceptance rate; whether the difference in reply rate is more than chance (a two-proportion test); and the same numbers per tool. Use it to decide where to put volume. It reads active, paused and completed campaigns by default, since a channel's finished campaigns hold most of its evidence. With one channel present it returns that channel and says there is nothing to compare; on several tools, a note names a tool with no campaign in the states read. replyRateBasis names what every reply rate divides by, the same for every campaign: leads contacted, or messages sent when a campaign has replies in the range but contacted no new lead in it. A null count is one the vendor does not report; a rate counts only the campaigns that report both its count and what it divides by, and a note names a group whose rate leaves campaigns out. Costs one listing per status plus one stats request per campaign (one for all of them on a vendor that reports every campaign in one call with every count).",
   inputSchema: input,
   key: "channelMix",
   cost: campaignTotalsCost,
@@ -207,8 +230,9 @@ export const channelMix = defineInsight({
   next: "Use campaign_ranking to see which campaigns carry the better channel.",
   run: async (context, options) => {
     const { entries, read } = await readCampaignTotals(context, options);
-    const channels = byChannel(entries);
-    const providers = byProvider(entries);
+    const basis = replyBasisAcross(entries.map((entry) => entry.counts));
+    const channels = byChannel(entries, basis);
+    const providers = byProvider(entries, basis);
 
     for (const { group, partial } of channels) {
       if (partial.length > 0) {
@@ -235,6 +259,7 @@ export const channelMix = defineInsight({
       byProvider: providers.map((each) => each.group),
       channels: channels.map((each) => each.group),
       period: { from: options.from, to: options.to },
+      replyRateBasis: basis,
     };
 
     return mix;

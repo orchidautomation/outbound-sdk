@@ -40,6 +40,54 @@
           "positiveRate": 0.01,
           "replyRate": 0.04
         },
+        "rates": {
+          "current": {
+            "bounceRate": {
+              "count": 7,
+              "high": 0.0205,
+              "low": 0.0049,
+              "of": 700,
+              "rate": 0.01
+            },
+            "positiveRate": {
+              "count": 0,
+              "high": 0.0055,
+              "low": 0,
+              "of": 700,
+              "rate": 0
+            },
+            "replyRate": {
+              "count": 7,
+              "high": 0.0205,
+              "low": 0.0049,
+              "of": 700,
+              "rate": 0.01
+            }
+          },
+          "previous": {
+            "bounceRate": {
+              "count": 7,
+              "high": 0.0205,
+              "low": 0.0049,
+              "of": 700,
+              "rate": 0.01
+            },
+            "positiveRate": {
+              "count": 7,
+              "high": 0.0205,
+              "low": 0.0049,
+              "of": 700,
+              "rate": 0.01
+            },
+            "replyRate": {
+              "count": 28,
+              "high": 0.0572,
+              "low": 0.0278,
+              "of": 700,
+              "rate": 0.04
+            }
+          }
+        },
         "replyRateBasis": "sent",
         "replyRateTest": {
           "pValue": 0.0003,
@@ -84,6 +132,54 @@
           "bounceRate": 0.0232,
           "positiveRate": 0,
           "replyRate": 0.0125
+        },
+        "rates": {
+          "current": {
+            "bounceRate": {
+              "count": 26,
+              "high": 0.0672,
+              "low": 0.0319,
+              "of": 560,
+              "rate": 0.0464
+            },
+            "positiveRate": {
+              "count": 0,
+              "high": 0.0068,
+              "low": 0,
+              "of": 560,
+              "rate": 0
+            },
+            "replyRate": {
+              "count": 7,
+              "high": 0.0256,
+              "low": 0.0061,
+              "of": 560,
+              "rate": 0.0125
+            }
+          },
+          "previous": {
+            "bounceRate": {
+              "count": 13,
+              "high": 0.0393,
+              "low": 0.0136,
+              "of": 560,
+              "rate": 0.0232
+            },
+            "positiveRate": {
+              "count": 0,
+              "high": 0.0068,
+              "low": 0,
+              "of": 560,
+              "rate": 0
+            },
+            "replyRate": {
+              "count": 7,
+              "high": 0.0256,
+              "low": 0.0061,
+              "of": 560,
+              "rate": 0.0125
+            }
+          }
         },
         "replyRateBasis": "sent",
         "replyRateTest": {
@@ -130,6 +226,54 @@
           "positiveRate": 0.0333,
           "replyRate": 0.0667
         },
+        "rates": {
+          "current": {
+            "bounceRate": {
+              "count": null,
+              "high": null,
+              "low": null,
+              "of": 210,
+              "rate": null
+            },
+            "positiveRate": {
+              "count": 7,
+              "high": 0.0672,
+              "low": 0.0162,
+              "of": 210,
+              "rate": 0.0333
+            },
+            "replyRate": {
+              "count": 14,
+              "high": 0.1088,
+              "low": 0.0401,
+              "of": 210,
+              "rate": 0.0667
+            }
+          },
+          "previous": {
+            "bounceRate": {
+              "count": null,
+              "high": null,
+              "low": null,
+              "of": 210,
+              "rate": null
+            },
+            "positiveRate": {
+              "count": 7,
+              "high": 0.0672,
+              "low": 0.0162,
+              "of": 210,
+              "rate": 0.0333
+            },
+            "replyRate": {
+              "count": 14,
+              "high": 0.1088,
+              "low": 0.0401,
+              "of": 210,
+              "rate": 0.0667
+            }
+          }
+        },
         "replyRateBasis": "sent",
         "replyRateTest": {
           "pValue": 1,
@@ -174,6 +318,54 @@
           "bounceRate": 0.01,
           "positiveRate": 0.01,
           "replyRate": 0.03
+        },
+        "rates": {
+          "current": {
+            "bounceRate": {
+              "count": 7,
+              "high": 0.0205,
+              "low": 0.0049,
+              "of": 700,
+              "rate": 0.01
+            },
+            "positiveRate": {
+              "count": 7,
+              "high": 0.0205,
+              "low": 0.0049,
+              "of": 700,
+              "rate": 0.01
+            },
+            "replyRate": {
+              "count": 21,
+              "high": 0.0454,
+              "low": 0.0197,
+              "of": 700,
+              "rate": 0.03
+            }
+          },
+          "previous": {
+            "bounceRate": {
+              "count": 7,
+              "high": 0.0205,
+              "low": 0.0049,
+              "of": 700,
+              "rate": 0.01
+            },
+            "positiveRate": {
+              "count": 7,
+              "high": 0.0205,
+              "low": 0.0049,
+              "of": 700,
+              "rate": 0.01
+            },
+            "replyRate": {
+              "count": 21,
+              "high": 0.0454,
+              "low": 0.0197,
+              "of": 700,
+              "rate": 0.03
+            }
+          }
         },
         "replyRateBasis": "sent",
         "replyRateTest": {
@@ -226,6 +418,54 @@
         "positiveRate": 0.0097,
         "replyRate": 0.0323
       },
+      "rates": {
+        "current": {
+          "bounceRate": {
+            "count": 40,
+            "high": 0.0277,
+            "low": 0.015,
+            "of": 1960,
+            "rate": 0.0204
+          },
+          "positiveRate": {
+            "count": 14,
+            "high": 0.0108,
+            "low": 0.0038,
+            "of": 2170,
+            "rate": 0.0065
+          },
+          "replyRate": {
+            "count": 49,
+            "high": 0.0297,
+            "low": 0.0171,
+            "of": 2170,
+            "rate": 0.0226
+          }
+        },
+        "previous": {
+          "bounceRate": {
+            "count": 27,
+            "high": 0.02,
+            "low": 0.0095,
+            "of": 1960,
+            "rate": 0.0138
+          },
+          "positiveRate": {
+            "count": 21,
+            "high": 0.0147,
+            "low": 0.0063,
+            "of": 2170,
+            "rate": 0.0097
+          },
+          "replyRate": {
+            "count": 70,
+            "high": 0.0406,
+            "low": 0.0256,
+            "of": 2170,
+            "rate": 0.0323
+          }
+        }
+      },
       "replyRateBasis": "sent",
       "replyRateTest": {
         "pValue": 0.0509,
@@ -265,6 +505,54 @@
         "bounceRate": 0.0124,
         "positiveRate": 0.0097,
         "replyRate": 0.0323
+      },
+      "rates": {
+        "current": {
+          "bounceRate": {
+            "count": 40,
+            "high": 0.025,
+            "low": 0.0136,
+            "of": 2170,
+            "rate": 0.0184
+          },
+          "positiveRate": {
+            "count": 14,
+            "high": 0.0108,
+            "low": 0.0038,
+            "of": 2170,
+            "rate": 0.0065
+          },
+          "replyRate": {
+            "count": 49,
+            "high": 0.0297,
+            "low": 0.0171,
+            "of": 2170,
+            "rate": 0.0226
+          }
+        },
+        "previous": {
+          "bounceRate": {
+            "count": 27,
+            "high": 0.018,
+            "low": 0.0086,
+            "of": 2170,
+            "rate": 0.0124
+          },
+          "positiveRate": {
+            "count": 21,
+            "high": 0.0147,
+            "low": 0.0063,
+            "of": 2170,
+            "rate": 0.0097
+          },
+          "replyRate": {
+            "count": 70,
+            "high": 0.0406,
+            "low": 0.0256,
+            "of": 2170,
+            "rate": 0.0323
+          }
+        }
       },
       "replyRateBasis": "sent",
       "replyRateTest": {

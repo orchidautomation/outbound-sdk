@@ -217,7 +217,9 @@ const rowOf = (
       connected: health.connected,
       dns: { ...health.dns },
       domain: health.domain,
+      warmup_inbox: health.warmup?.inbox ?? null,
       warmup_score: health.warmup?.score ?? null,
+      warmup_spam: health.warmup?.spam ?? null,
       warmup_spam_rate: spamRate(health),
     },
   };
@@ -259,7 +261,7 @@ const coverageNotes = (
 ];
 
 export const deliverabilityCheck: ToolDefinition<z.infer<typeof checkInput>> = {
-  description: `Whether each sender can deliver: its DNS records (SPF, DKIM, DMARC, MX), whether the vendor can still sign in, block list status and how much warmup mail landed in spam. Every sender (up to ${SCREENED_AT_MOST}) is screened from the sender list, then checked in full: all of them where the vendor reads health a page at a time, otherwise up to max_checked, problems first. coverage counts the senders checked and not checked, and why (cap, unsupported, error); each listed row says whether it was checked. A disconnected or failing sender carries impact: the active campaigns it sends for, what it sent in the last 14 days, the day it last sent and its last successful sign-in, each null with a reason in impact.unknown where the vendor does not report it. senders lists up to limit senders: problems first, then those not checked, then healthy ones; healthy counts every checked sender with no problem. meta.complete: false means a sender was not checked, or limit left out a sender with a problem or not checked, and meta.notes says which. Use it when bounces rise or replies drop. A null means the vendor does not report that check, never that it passed.`,
+  description: `Whether each sender can deliver: its DNS records (SPF, DKIM, DMARC, MX), whether the vendor can still sign in, block list status and how much warmup mail landed in spam (warmup_spam_rate is warmup_spam of warmup_spam plus warmup_inbox, and checked_at is when the vendor last checked). Every sender (up to ${SCREENED_AT_MOST}) is screened from the sender list, then checked in full: all of them where the vendor reads health a page at a time, otherwise up to max_checked, problems first. coverage counts the senders checked and not checked, and why (cap, unsupported, error); each listed row says whether it was checked. A disconnected or failing sender carries impact: the active campaigns it sends for, what it sent in the last 14 days, the day it last sent and its last successful sign-in, each null with a reason in impact.unknown where the vendor does not report it. senders lists up to limit senders: problems first, then those not checked, then healthy ones; healthy counts every checked sender with no problem. meta.complete: false means a sender was not checked, or limit left out a sender with a problem or not checked, and meta.notes says which. Use it when bounces rise or replies drop. A null means the vendor does not report that check, never that it passed.`,
   inputSchema: checkInput,
   name: "deliverability_check",
   needs: ["senders.health"],

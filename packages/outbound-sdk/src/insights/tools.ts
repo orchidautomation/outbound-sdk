@@ -92,6 +92,7 @@ const toTool = (
         data: result.data,
         meta: {
           complete: result.meta.complete,
+          computedAt: result.meta.computedAt,
           evidence: result.meta.evidence,
           notes: [...result.meta.notes],
           provider: result.meta.provider,

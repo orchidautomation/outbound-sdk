@@ -15,7 +15,7 @@ related:
 Every tool:
 
 - **Takes one JSON object** and describes it as JSON Schema, so any model API can call it.
-- **Returns compact JSON** with `data`, `meta` and `next`. `meta.evidence` says how far to trust the numbers (`exact`, `sampled` or `derived`), `meta.requests` how many vendor requests the call made, `meta.today` is today's date in UTC (a model does not know it, and otherwise guesses the date range it asks for), `meta.complete` is `false` when the answer covers part of what was asked, with `meta.notes` saying why, and `next` suggests what to ask after this. Every tool, built-in or insight, reports coverage in `meta.complete` and `meta.notes` and nowhere else. `outbound tool` prints the result in [the CLI's envelope](/docs/cli#the-envelope).
+- **Returns compact JSON** with `data`, `meta` and `next`. `meta.evidence` says how far to trust the numbers (`exact`, `sampled` or `derived`), `meta.requests` how many vendor requests the call made, `meta.today` is today's date in UTC (a model does not know it, and otherwise guesses the date range it asks for), `meta.computedAt` is the time the numbers are as of, `meta.complete` is `false` when the answer covers part of what was asked, with `meta.notes` saying why, and `next` suggests what to ask after this. Every tool, built-in or insight, reports coverage in `meta.complete` and `meta.notes` and nowhere else. `outbound tool` prints the result in [the CLI's envelope](/docs/cli#the-envelope).
 - **Never throws.** Bad input, a missing record and a read the adapter cannot serve all come back as `{ ok: false, error, next }`, which a model can read and recover from.
 - **Only reads.** No tool sends, pauses or edits anything.
 

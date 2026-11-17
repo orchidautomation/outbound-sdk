@@ -4,6 +4,7 @@
   notes: [],
   provider: 'instantly',
   requests: 0,
+  computedAt: '2026-11-14T12:00:00.000Z',
   today: '2026-11-14'
 } Call vendor_read again with one of these names and its params.
 {
@@ -24,6 +25,7 @@
     "notes": [],
     "provider": "instantly",
     "requests": 1,
+    "computedAt": "2026-11-14T12:00:00.000Z",
     "today": "2026-11-14"
   },
   "next": "Use the normalized tools for anything they cover: their numbers are comparable across vendors.",

@@ -4,7 +4,7 @@ outbound sdk [ 'mcp__outbound__campaign_overview', 'mcp__outbound__sender_health
 {
   "content": [
     {
-      "text": "{\"data\":{\"campaigns\":[{\"campaign\":\"memory:acme:cmp_agencies\",\"channel\":\"email\",\"name\":\"Agency owners\",\"metrics\":{\"bounce_rate\":0.0505,\"bounced\":53,\"connections_accepted\":null,\"connections_sent\":null,\"contacted\":630,\"opened\":378,\"positive\":4,\"positive_reply_rate\":0.0063,\"replied\":15,\"reply_rate\":0.0238,\"reply_rate_basis\":\"contacted\",\"sent\":1050},\"status\":\"paused\"}]},\"meta\":{\"complete\":true,\"evidence\":\"exact\",\"notes\":[],\"provider\":\"memory\",\"requests\":0,\"today\":\"2026-11-14\"},\"next\":\"Use campaign_trend for one campaign over time, or winning_steps to see which step drives replies.\",\"ok\":true}",
+      "text": "{\"data\":{\"campaigns\":[{\"campaign\":\"memory:acme:cmp_agencies\",\"channel\":\"email\",\"name\":\"Agency owners\",\"metrics\":{\"bounce_rate\":0.0505,\"bounced\":53,\"connections_accepted\":null,\"connections_sent\":null,\"contacted\":630,\"opened\":378,\"positive\":4,\"positive_reply_rate\":0.0063,\"replied\":15,\"reply_rate\":0.0238,\"reply_rate_basis\":\"contacted\",\"sent\":1050},\"status\":\"paused\"}],\"period\":{\"from\":null,\"to\":null}},\"meta\":{\"complete\":true,\"evidence\":\"exact\",\"notes\":[],\"provider\":\"memory\",\"requests\":0,\"computedAt\":\"2026-11-14T12:00:00.000Z\",\"today\":\"2026-11-14\"},\"next\":\"Use campaign_trend for one campaign over time, or winning_steps to see which step drives replies.\",\"ok\":true}",
       "type": "text"
     }
   ],

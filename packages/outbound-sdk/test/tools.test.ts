@@ -459,7 +459,11 @@ test("campaign_overview and reply_samples say when more exist than they return",
     coverage(await call(busy, "campaign_overview", { limit: 1 })),
     {
       complete: false,
-      notes: ["Stopped at 1 campaign (limit); more active campaigns exist."],
+      notes: [
+        "Stopped at 1 campaign (limit); more active campaigns exist.",
+        // The memory campaigns have no stats: metrics is null, and the note says why.
+        "The vendor reported no stats for 1 campaign in this range, so metrics is null there: unknown, not zero.",
+      ],
     }
   );
 });

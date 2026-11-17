@@ -129,7 +129,8 @@
     "period": {
       "from": null,
       "to": null
-    }
+    },
+    "replyRateBasis": "contacted"
   },
   "insight": "channel_mix",
   "meta": {

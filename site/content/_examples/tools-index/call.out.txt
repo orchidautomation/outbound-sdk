@@ -21,7 +21,11 @@
         },
         "status": "active"
       }
-    ]
+    ],
+    "period": {
+      "from": null,
+      "to": null
+    }
   },
   "meta": {
     "complete": true,
@@ -29,6 +33,7 @@
     "notes": [],
     "provider": "memory",
     "requests": 0,
+    "computedAt": "2026-11-14T12:00:00.000Z",
     "today": "2026-11-14"
   },
   "next": "Use campaign_trend for one campaign over time, or winning_steps to see which step drives replies.",
@@ -114,6 +119,7 @@
     "notes": [],
     "provider": "memory",
     "requests": 0,
+    "computedAt": "2026-11-14T12:00:00.000Z",
     "today": "2026-11-14"
   },
   "next": "Use winning_steps to see which step or variant explains a change.",

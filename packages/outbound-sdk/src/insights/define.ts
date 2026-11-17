@@ -35,7 +35,7 @@ export interface InsightMeta {
   readonly evidence: Evidence;
   /** Vendor requests the insight made. */
   readonly requests: number;
-  /** `false` when a cap stopped a read early, so the answer covers part of the data. */
+  /** `false` when the answer covers part of the data: a cap stopped a read early, or a record could not be checked. */
   readonly complete: boolean;
   /** What the reader should know before trusting the numbers. */
   readonly notes: readonly string[];
