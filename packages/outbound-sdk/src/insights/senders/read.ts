@@ -76,6 +76,39 @@ export const readHealth = async (
   }
 };
 
+/**
+ * Every sender's health from `senderHealth`, a page at a time, matched to
+ * the senders read. A sender the listing did not return is left out, with
+ * one note counting them, and the answer is marked incomplete.
+ */
+export const readHealthInPages = async (
+  context: InsightContext,
+  senders: readonly Sender[],
+  max: number
+): Promise<
+  { readonly health: SenderHealth | null; readonly sender: Sender }[]
+> => {
+  const { items } = await readUpTo(
+    context,
+    (cap) => context.outbound.senderHealth.listAll({ max: cap }),
+    { input: "max_senders", max, what: "senders' health" }
+  );
+
+  const byRef = new Map(items.map((health) => [health.senderRef, health]));
+  const missing = senders.filter((sender) => !byRef.has(sender.ref)).length;
+
+  if (missing > 0) {
+    context.partial(
+      `Left out ${missing} of ${senders.length} senders: the vendor returned no health for them.`
+    );
+  }
+
+  return senders.map((sender) => ({
+    health: byRef.get(sender.ref) ?? null,
+    sender,
+  }));
+};
+
 /** The part after the `@`, lowercased. `null` for a LinkedIn seat. */
 export const domainOf = (address: string | null): string | null => {
   const domain = address?.split("@")[1]?.trim().toLowerCase() ?? "";

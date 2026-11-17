@@ -7,21 +7,17 @@ import type {
   CampaignQuery,
   LeadQuery,
   Page,
-  SenderQuery,
 } from "../internal/adapter.ts";
-import type { Campaign, Lead, Sender } from "../internal/entities.ts";
+import type { Campaign, Lead } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
 import {
   emailAddress,
   isJsonObject,
   isNumber,
   isString,
-  list,
-  objects,
   text,
 } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
-import { mapPage } from "../internal/page.ts";
 import { accountReaders } from "./adapter-account.ts";
 import { mailReaders } from "./adapter-mail.ts";
 import { TAG_PAGES } from "./capabilities.ts";
@@ -37,6 +33,7 @@ import {
   toWorkspace,
 } from "./map.ts";
 import { listPage, pageSize, readLabels, readLookup } from "./pages.ts";
+import { senderReaders } from "./senders.ts";
 import { readStats } from "./stats.ts";
 
 type Readers = Pick<
@@ -47,7 +44,6 @@ type Readers = Pick<
   | "getSequence"
   | "listCampaigns"
   | "listLeads"
-  | "listSenders"
   | "listWorkspaces"
   | "stats"
 >;
@@ -177,53 +173,6 @@ const listCampaigns = async (
       query.status === undefined
         ? campaigns
         : campaigns.filter((campaign) => campaign.status === query.status),
-    next: page.next,
-  };
-};
-
-/**
- * A campaign names its mailboxes by address (`email_list`) and by tag
- * (`email_tag_list`). The accounts list is read and matched against both;
- * when only tags are named, Instantly filters by them itself.
- */
-const campaignSenders = async (
-  client: InstantlyClient,
-  ctx: AdapterContext,
-  query: SenderQuery & { readonly campaignId: string }
-): Promise<Page<Sender>> => {
-  const campaign = await client.getObject(
-    ctx,
-    `/campaigns/${encodeURIComponent(query.campaignId)}`
-  );
-
-  const addresses = new Set(
-    list(campaign.email_list).flatMap((value) => emailAddress(value) ?? [])
-  );
-
-  const tagIds = new Set(
-    list(campaign.email_tag_list).flatMap((value) => text(value) ?? [])
-  );
-
-  if (addresses.size === 0 && tagIds.size === 0) {
-    return { items: [] };
-  }
-
-  const byTagOnly = addresses.size === 0;
-
-  const page = await listPage(client, ctx, "/accounts", query, {
-    include_tags: byTagOnly || tagIds.size === 0 ? undefined : true,
-    tag_ids: byTagOnly ? [...tagIds].join(",") : undefined,
-  });
-
-  const attached = (account: JsonObject): boolean =>
-    byTagOnly ||
-    addresses.has(emailAddress(account.email) ?? "") ||
-    texts(objects(account.tags), "id").some((id) => tagIds.has(id));
-
-  return {
-    items: page.items
-      .filter((account) => attached(account))
-      .map((account) => toSender(client.identity, account, ctx.note)),
     next: page.next,
   };
 };
@@ -416,13 +365,15 @@ export const readers = (
   client: InstantlyClient
 ): Readers &
   ReturnType<typeof accountReaders> &
-  ReturnType<typeof mailReaders> => {
+  ReturnType<typeof mailReaders> &
+  ReturnType<typeof senderReaders> => {
   const { identity } = client;
 
   return {
     ...accountReaders(client),
     ...leadReaders(client),
     ...mailReaders(client),
+    ...senderReaders(client),
     getCampaign: async (id, ctx) => {
       const campaign = await client.getObject(
         ctx,
@@ -447,20 +398,6 @@ export const readers = (
       ),
     listCampaigns: async (query, ctx) =>
       await listCampaigns(client, ctx, query),
-    listSenders: async (query, ctx) => {
-      if (query.campaignId !== undefined) {
-        return await campaignSenders(client, ctx, {
-          ...query,
-          campaignId: query.campaignId,
-        });
-      }
-
-      const page = await listPage(client, ctx, "/accounts", query, {
-        include_tags: true,
-      });
-
-      return mapPage(page, (item) => toSender(identity, item, ctx.note));
-    },
     listWorkspaces: async (_query, ctx) => {
       const workspace = await client.get(ctx, "/workspaces/current");
 

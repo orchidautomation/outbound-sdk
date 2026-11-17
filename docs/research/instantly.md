@@ -694,3 +694,14 @@ Fetched 2026-11-16: https://api.instantly.ai/openapi/api_v2.json (`info.version`
 - `limit` is 1 to 100. Instantly sends `next_starting_after` on a last page too (seen live, 2026-11-14), so both listings stop at the first page that is not full.
 
 Not run against a live workspace yet: whether `filter` combines with `campaign`, and how many addresses `contacts` takes in one request.
+
+## Sender health in batches and a failing sender's impact (OUT-142)
+
+Fetched 2026-11-17 from `https://api.instantly.ai/openapi/api_v2.json` (`info.version` 2.0.0, 203 paths), then checked read-only against one live workspace (303 mailboxes, 137 domains) the same day.
+
+- `POST /api/v2/accounts/test/vitals`: body `{ accounts: string[] }`, no documented `maxItems`. Live: one call naming one mailbox of each of 137 domains answered 200 in about 2 seconds, with 134 entries in `success_list` and 3 in `failure_list`, one per domain. The adapter sends one mailbox per domain of a page of 100 accounts, and gives each mailbox its own domain's entry only.
+- `POST /api/v2/accounts/warmup-analytics`: body `{ emails: string[] }`, `minItems` 1, `maxItems` 100 ("The emails should be attached to accounts in your workspace"). Live: 100 emails answered 200 in about 0.3 seconds with `aggregate_data` keyed by address (99 of 100 present; one mailbox had no warmup data).
+- `GET /api/v2/accounts` items are whole `Account` objects: `status`, `warmup_status`, `status_message` and `stat_warmup_score` come with the list, so a page needs no `GET /accounts/{email}` per mailbox. Live: 4 of 303 accounts carried a `status_message`.
+- `GET /api/v2/accounts/analytics/daily`: `emails` "is required and accepts at most 200 unique accounts", range at most 31 days. Live: 200 emails over 14 days answered one array of 994 rows. The SDK still reads it per sender through `sender(id).stats()`.
+- **No last sign-in or last send time.** The `Account` schema has `timestamp_created`, `timestamp_updated` ("when the account was last updated"), `timestamp_warmup_start` and `autofix_failed` ("Whether automatic reconnection attempts have failed. null = in progress, true = failed, false = succeeded"), and no time of the last successful sign-in or the last send. The tools leave `last_authenticated_at` null with that reason, and take `last_sent_on` from the daily analytics of the last 14 days.
+- `GET /api/v2/account-campaign-mappings/{email}` (`AccountCampaignMapping`: `campaign_id`, `campaign_name`, `timestamp_created`, `status`) is how a failing mailbox's campaigns are found.

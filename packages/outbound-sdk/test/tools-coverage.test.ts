@@ -133,12 +133,12 @@ test("sender_health says when limit cut the list though every sender was checked
 });
 
 test("deliverability_check says in meta, not in next, when not every sender was checked in full", async () => {
-  const cut = await call("deliverability_check", { limit: 1 });
+  const cut = await call("deliverability_check", { max_checked: 1 });
 
   assert.equal(cut.meta.complete, false);
   assert.match(
     cut.meta.notes[0] ?? "",
-    /^Only 1 of 2 senders were checked in full/u
+    /^Checked 1 of 2 senders in full \(1 not checked: cap\)/u
   );
   assert.match(cut.next, /^Use sender_health/u);
 

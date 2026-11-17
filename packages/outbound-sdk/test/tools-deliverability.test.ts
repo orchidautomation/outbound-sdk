@@ -1,5 +1,5 @@
 // deliverability_check screens every sender of a campaign before it checks
-// `limit` of them in full, and says how much it covered (OUT-93).
+// them in full, and says how much it covered (OUT-93, OUT-142).
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -16,7 +16,11 @@ import { CAMPAIGN, suite } from "./instantly/suite.ts";
 interface Result {
   readonly checked: number;
   readonly screened: number;
-  readonly senders: readonly { address: string; problems: string[] }[];
+  readonly senders: readonly {
+    address: string;
+    checked: boolean;
+    problems: string[];
+  }[];
   readonly total: number | null;
   readonly with_problems: number;
 }
@@ -116,9 +120,12 @@ test("deliverability_check finds a disconnected sender past limit in a campaign 
   );
   assert.equal(data.total, 30);
   assert.equal(data.screened, 30);
-  assert.equal(data.checked, 10);
-  assert.equal(complete, false);
-  assert.equal(data.senders.length, 10);
+  assert.equal(
+    data.checked,
+    30,
+    "Instantly checks every mailbox a page at a time"
+  );
+  assert.equal(data.senders.length, 25, "limit lists 25, problems first");
   assert.ok(data.with_problems >= 1);
 
   const [first] = data.senders;
@@ -131,7 +138,10 @@ test("deliverability_check finds a disconnected sender past limit in a campaign 
   assert.ok(
     first?.problems.includes("the vendor cannot sign in to this sender")
   );
-  assert.match(notes, /Only 10 of 30 senders were checked in full/u);
+  assert.doesNotMatch(notes, /in full/u, "every sender was checked");
+  // The recorded DNS test fails example.com, so every mailbox has a problem.
+  assert.match(notes, /Listed 25 of 30 senders with a problem/u);
+  assert.equal(complete, false);
 });
 
 test("deliverability_check counts problems on senders it screened but did not check in full", async () => {
@@ -149,7 +159,7 @@ test("deliverability_check counts problems on senders it screened but did not ch
     })
   );
 
-  const { complete, data, notes } = await check(outbound, { limit: 2 });
+  const { complete, data, notes } = await check(outbound, { max_checked: 2 });
 
   assert.equal(
     data.with_problems,
@@ -160,20 +170,25 @@ test("deliverability_check counts problems on senders it screened but did not ch
   assert.equal(data.total, 30);
   assert.equal(complete, false);
   assert.ok(
-    data.senders.every((sender) => sender.problems.length > 0),
+    data.senders
+      .filter((sender) => sender.checked)
+      .every((sender) => sender.problems.length > 0),
     "the senders checked in full are ones with a problem"
   );
-  assert.match(notes, /Only 2 of 30/u);
+  assert.match(
+    notes,
+    /Checked 2 of 30 senders in full \(28 not checked: cap\)/u
+  );
 });
 
 test("deliverability_check never reports no problems on a partial check without saying so", async () => {
   const { complete, data, notes } = await check(onMemory(mailboxes(12)), {
-    limit: 3,
+    max_checked: 3,
   });
 
   assert.equal(data.with_problems, 0);
   assert.equal(complete, false);
-  assert.match(notes, /Only 3 of 12 senders were checked in full/u);
+  assert.match(notes, /Checked 3 of 12 senders in full/u);
 });
 
 test("deliverability_check says all were checked, with no note, when limit covers every sender", async () => {
@@ -203,9 +218,9 @@ test("deliverability_check leaves total null and says so when there are more sen
 test("deliverability_check keeps its coverage note in meta when a tool its usual hint names is not on offer", async () => {
   const { complete, notes } = await check(
     onMemory(mailboxes(12), { "campaigns.settings": false }),
-    { limit: 3 }
+    { max_checked: 3 }
   );
 
   assert.equal(complete, false);
-  assert.match(notes, /Only 3 of 12 senders were checked in full/u);
+  assert.match(notes, /Checked 3 of 12 senders in full/u);
 });

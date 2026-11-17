@@ -50,17 +50,20 @@ $ outbound tool sender_health --input '{"limit":1}'
 {
   "data": {
     "checked": 2,
+    "failing": 0,
     "senders": [
       {
         "address": "outreach1@example.com",
         "daily_limit": 40,
         "kind": "mailbox",
+        "name": "Outreach One",
         "sender": "memory:default:mbx_1",
         "status": "active",
         "warmup_enabled": true,
         "warmup_score": 96
       }
     ],
+    "total": 2,
     "unhealthy": 0
   },
   "meta": {

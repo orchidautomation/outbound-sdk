@@ -16,7 +16,6 @@ import {
   int,
   num,
   pct,
-  noun,
   people,
   plural,
   rows,
@@ -27,7 +26,7 @@ import {
   words,
   yesNo,
 } from "./format.ts";
-import { verdict } from "./parts.ts";
+import { deliverabilityCheck, senderHealth } from "./sender-tool-cards.ts";
 
 export type CardBuilder = (data: Json) => CardContent;
 
@@ -163,57 +162,6 @@ const winningSteps: CardBuilder = (data) => {
       }),
     },
     title: "Winning steps",
-  };
-};
-
-const warmup = (sender: JsonObject): string => {
-  const score = num(sender, "warmup_score");
-
-  if (score !== null) {
-    return int(score);
-  }
-
-  const enabled = bool(sender, "warmup_enabled");
-
-  if (enabled === null) {
-    return DASH;
-  }
-
-  return enabled ? "On" : "Off";
-};
-
-const senderHealth: CardBuilder = (data) => {
-  const senders = rows(data, "senders");
-  const unhealthy = num(data, "unhealthy") ?? 0;
-  // A result from before `checked` counted only the senders it listed.
-  const checked = num(data, "checked") ?? senders.length;
-
-  return {
-    finding: verdict(
-      checked,
-      unhealthy === 0
-        ? null
-        : `🔴 ${int(unhealthy)} of ${plural(checked, "sender")} ${unhealthy === 1 ? "needs" : "need"} attention.`,
-      `No sender needs attention (${int(checked)} checked).`
-    ),
-    stats: [
-      ["Senders checked", int(checked)],
-      ["Not active", int(unhealthy)],
-    ],
-    table: {
-      align: [LEFT, LEFT, LEFT, RIGHT, RIGHT],
-      headers: ["Sender", "Kind", "Status", "Daily limit", "Warmup"],
-      rows: senders.map((sender) => [
-        str(sender, "address") ?? show(sender, "sender"),
-        show(sender, "kind"),
-        show(sender, "status"),
-        int(num(sender, "daily_limit")),
-        warmup(sender),
-      ]),
-      // The more count covers every sender checked, not only those in the answer.
-      total: checked,
-    },
-    title: "Sender health",
   };
 };
 
@@ -373,61 +321,6 @@ const campaignSetup: CardBuilder = (data) => ({
   subtitle: show(data, "campaign"),
   title: "Campaign setup",
 });
-
-const dns = (sender: JsonObject, record: string): string => {
-  const passes = bool(child(sender, "dns"), record);
-
-  if (passes === null) {
-    return DASH;
-  }
-
-  return passes ? "✓" : "✗";
-};
-
-const deliverabilityCheck: CardBuilder = (data) => {
-  const senders = rows(data, "senders");
-  const broken = num(data, "with_problems") ?? 0;
-  const screened = num(data, "screened") ?? senders.length;
-
-  return {
-    bullets: senders.flatMap((sender) => {
-      const problems = strings(sender, "problems");
-
-      return problems.length === 0
-        ? []
-        : [`🔴 **${show(sender, "address")}**: ${problems.join("; ")}`];
-    }),
-    finding: verdict(
-      screened,
-      broken === 0
-        ? null
-        : `🔴 ${int(broken)} of ${plural(screened, "sender")} ${noun(broken, "has", "have")} a problem.`,
-      `No problem found on ${plural(screened, "sender")}.`
-    ),
-    table: {
-      align: [LEFT, "center", "center", "center", "center", LEFT, RIGHT],
-      headers: [
-        "Sender",
-        "SPF",
-        "DKIM",
-        "DMARC",
-        "MX",
-        "Signed in",
-        "Spam rate",
-      ],
-      rows: senders.map((sender) => [
-        show(sender, "address"),
-        dns(sender, "spf"),
-        dns(sender, "dkim"),
-        dns(sender, "dmarc"),
-        dns(sender, "mx"),
-        yesNo(bool(sender, "connected")),
-        pct(num(sender, "warmup_spam_rate")),
-      ]),
-    },
-    title: "Deliverability check",
-  };
-};
 
 const audienceLists: CardBuilder = (data) => {
   const lists = rows(data, "lists");

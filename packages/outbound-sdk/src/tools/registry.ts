@@ -7,26 +7,22 @@ import type { Json } from "../internal/json.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
 import { plural } from "../internal/plural.ts";
 import { requestCounter, withGuard } from "../internal/request-cap.ts";
-import {
-  audienceLists,
-  campaignSetup,
-  deliverabilityCheck,
-  vendorRead,
-} from "./account-tools.ts";
+import { audienceLists, campaignSetup, vendorRead } from "./account-tools.ts";
 import { withCampaign } from "./by-name.ts";
 import {
   campaignOverview,
   campaignTrend,
   replySamples,
-  senderHealth,
   winningSteps,
 } from "./campaign-tools.ts";
+import { deliverabilityCheck } from "./deliverability-check.ts";
 import { inputProblem } from "./input-problem.ts";
 import {
   compareClients,
   crossChannelLead,
   leadRunway,
 } from "./people-tools.ts";
+import { senderHealth } from "./sender-health.ts";
 import { capNext, DEFAULT_TOOL_REQUESTS, failure } from "./shared.ts";
 import type { ToolResult } from "./shared.ts";
 

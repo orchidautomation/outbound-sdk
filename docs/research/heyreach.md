@@ -407,3 +407,11 @@ Live through the CLI built from the fix: `replies` 67 from 5 campaigns (20 reque
 ## Combined listings and pages out of time order (2026-11-17)
 
 Not a vendor fact, recorded here because HeyReach triggers it. `replies --by person --limit 2000 --provider all` with no `--since` ran for over 15 minutes. A request log showed HeyReach done after 3 requests and then Instantly's `GET /api/v2/emails` re-read with the same `starting_after` every 6 seconds. The combined instance gives out a member's records newest first and held back those older than the last record of a page with more to come; a page holding an older record before that last one was re-read forever. HeyReach's pages are never in time order, because a conversation lists its messages oldest first. Each member's page is now put in time order first, so the walk always moves on. The same read now ends in 68 s and 60 requests, at the 2,000 cap.
+
+## A failing LinkedIn account's impact (OUT-142)
+
+Fetched 2026-11-17 from `https://docs.heyreach.io/hey-reach-api/linked-in-accounts/get-all.md`, `https://docs.heyreach.io/hey-reach-api/linked-in-accounts/get-by-id.md`, `https://docs.heyreach.io/hey-reach-api/linked-in-accounts/get-account-status.md` and `https://docs.heyreach.io/llms.txt`.
+
+- `POST /li_account/GetAll` and `GET /li_account/GetById` return `id`, `emailAddress`, `firstName`, `lastName`, `isActive`, `activeCampaigns` (a count), `authIsValid`, `isValidNavigator`, `isValidRecruiter`, `profileUrl`, the four cooldown flags and `accountLimits`. None is a time.
+- `GET /li_account/GetAccountStatus/{accountId}` returns `accountId`, `status`, `failureReason`, `profile`, `salesNavigator.authenticated` and `recruiter.authenticated`, "Cached for 10 seconds". No time of the last successful sign-in.
+- So a failing account's `last_authenticated_at` is null with a reason, its active campaigns come from `campaigns.bySender` (`POST /campaign/GetAll` with `accountIds`), and its recent sends from the per-account daily stats. HeyReach has no batched health read: health stays one `GetAccountStatus` per account, so `senders.healthList` is false.

@@ -32,6 +32,8 @@
 
 - Sender health is three reads: the account, POST /accounts/test/vitals (a live DNS test, which Instantly may throttle) and POST /accounts/warmup-analytics. The warmup window is not documented. blacklisted and checkedAt are not reported. A DNS record Instantly could not resolve is null, not false.
 
+- Every mailbox's health (senderHealth) is read a page of 100 accounts at a time: the page, one POST /accounts/test/vitals naming one mailbox of each domain on it, and one POST /accounts/warmup-analytics naming every mailbox on it. The DNS test answers per domain, so each mailbox gets its domain's answer. Seen live on 2026-11-17: one test of 137 domains answered in about 2 seconds.
+
 - connected is true for an Active account and false for a Connection Error; every other account status is null.
 
 - A lead's engagement.stepIndex is the last step sent, read from its status summary; lastOpenedAt is null when open tracking is off. A lead has no tags in Instantly, and the lead object was seen without a job title.

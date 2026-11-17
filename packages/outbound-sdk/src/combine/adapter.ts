@@ -74,7 +74,7 @@ type Lists = Pick<Adapter, "listCampaigns" | "listLeads" | "listWorkspaces">;
 
 type MessageLists = Pick<
   Adapter,
-  "listMessages" | "listReplies" | "listSenders"
+  "listMessages" | "listReplies" | "listSenderHealth" | "listSenders"
 >;
 
 const scopedOrAcross = <
@@ -218,6 +218,20 @@ const messageLists = (members: readonly Adapter[]): MessageLists => ({
         return member.listReplies(scoped, memberCtx);
       },
       pageNewestFirst
+    ),
+  listSenderHealth: (query, ctx) =>
+    scopedOrAcross(
+      members,
+      ctx,
+      query,
+      (member, memberCtx, scoped) => {
+        if (member.listSenderHealth === undefined) {
+          throw missing(member, "listSenderHealth");
+        }
+
+        return member.listSenderHealth(scoped, memberCtx);
+      },
+      takeInTurn
     ),
   listSenders: (query, ctx) =>
     scopedOrAcross(

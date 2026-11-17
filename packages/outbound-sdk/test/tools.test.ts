@@ -397,11 +397,13 @@ test("sender_health finds senders that need attention past the limit, and says w
   );
   assert.ok(payload.senders.slice(0, 10).every((s) => s.status !== "active"));
 
-  // 150 senders: the first 100 are read, and the answer says the rest were not.
+  // 600 senders: the first 500 are read, and the answer says the rest were
+  // not. Before OUT-142 only the first 100 were, so a failing sender past
+  // them was never counted.
   const many = createOutbound({
     adapter: memory({
       data: {
-        senders: Array.from({ length: 150 }, (_, index) => ({
+        senders: Array.from({ length: 600 }, (_, index) => ({
           id: `s${index}`,
         })),
       },
@@ -410,11 +412,11 @@ test("sender_health finds senders that need attention past the limit, and says w
 
   const partial = await call(many, "sender_health", { limit: 5 });
 
-  assert.equal(data(partial).checked, 100);
+  assert.equal(data(partial).checked, 500);
   assert.deepEqual(coverage(partial), {
     complete: false,
     notes: [
-      "More senders exist than the 100 checked; unhealthy counts only those.",
+      "More senders exist than the 500 checked; unhealthy and failing count only those.",
       "Listed 5 senders (limit); more were checked.",
     ],
   });

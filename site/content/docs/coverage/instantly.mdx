@@ -16,14 +16,14 @@ Of the 268 endpoints, 22 are used by normalized reads, 105 are in the native cat
 | Method | Path | Reads | Coverage | Through |
 | --- | --- | --- | --- | --- |
 | `GET` | `/account-campaign-mappings/{email}` | Get campaigns associated with an email | native | `senderCampaigns` |
-| `GET` | `/accounts` | List mailboxes | normalized | `senders.list`, `senders.byCampaign` |
+| `GET` | `/accounts` | List mailboxes | normalized | `senders.list`, `senders.byCampaign`, `senders.healthList` |
 | `POST` | `/accounts` | Create account | write |  |
 | `GET` | `/accounts/analytics/daily` | Get daily account analytics | normalized | `stats.bySender` |
 | `GET` | `/accounts/ctd/status` | Get custom tracking domain status | native | `trackingDomainStatus` |
 | `POST` | `/accounts/move` | Move accounts between workspaces | write |  |
 | `POST` | `/accounts/pause` | Pause multiple accounts | write |  |
-| `POST` | `/accounts/test/vitals` | Test account vitals | normalized | `senders.health` |
-| `POST` | `/accounts/warmup-analytics` | Get warmup analytics | normalized | `senders.health`, `senders.warmup` |
+| `POST` | `/accounts/test/vitals` | Test account vitals | normalized | `senders.health`, `senders.healthList` |
+| `POST` | `/accounts/warmup-analytics` | Get warmup analytics | normalized | `senders.health`, `senders.healthList`, `senders.warmup` |
 | `POST` | `/accounts/warmup/disable` | Disable warmup for accounts | write |  |
 | `POST` | `/accounts/warmup/enable` | Enable warmup for accounts | write |  |
 | `DELETE` | `/accounts/{email}` | Delete account | write |  |

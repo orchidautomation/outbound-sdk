@@ -167,7 +167,7 @@ test("tools lists each tool's inputs, and a tool that needs input fails with the
 
   assert.deepEqual(
     Object.keys(deliverability?.parameters.properties ?? {}).toSorted(),
-    ["campaign", "limit"]
+    ["campaign", "limit", "max_checked"]
   );
 
   // lead_runway requires `campaign`: with no --input it fails with what it

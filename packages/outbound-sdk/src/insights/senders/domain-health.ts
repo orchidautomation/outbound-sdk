@@ -2,11 +2,13 @@
 
 import { z } from "zod";
 
+import type { Capabilities } from "../../internal/capabilities.ts";
 import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { SenderHealth } from "../../internal/entities-account.ts";
 import type { Sender } from "../../internal/entities.ts";
 import { plural } from "../../internal/numbers.ts";
 import { noun } from "../../internal/plural.ts";
+import { SCREENED_AT_MOST } from "../../internal/sender-screen.ts";
 import { defineInsight } from "../define.ts";
 import { measure } from "../ops/shared.ts";
 import type { Measured } from "../ops/shared.ts";
@@ -16,11 +18,24 @@ import {
   domainOf,
   failingDns,
   readHealth,
+  readHealthInPages,
   readSenders,
   unknownDns,
   warmupSpam,
 } from "./read.ts";
 import type { DnsRecord } from "./read.ts";
+
+/** The default `max_senders` where each sender's health is its own read. */
+const CHECKED_ONE_BY_ONE = 50;
+
+const inPages = (capabilities: Capabilities): boolean =>
+  capabilities["senders.healthList"];
+
+const sendersToCheck = (
+  capabilities: Capabilities,
+  max: number | undefined
+): number =>
+  max ?? (inPages(capabilities) ? SCREENED_AT_MOST : CHECKED_ONE_BY_ONE);
 
 const input = z.object({
   max_senders: z
@@ -28,8 +43,10 @@ const input = z.object({
     .int()
     .min(1)
     .max(500)
-    .default(50)
-    .describe("The most senders to check. Each costs 1 request."),
+    .optional()
+    .describe(
+      `The most senders to check. Leave out for ${SCREENED_AT_MOST} where the vendor reads health a page at a time (a few requests per 100 senders), or ${CHECKED_ONE_BY_ONE} where each sender costs 1 to 3 requests.`
+    ),
   max_spam_rate: z
     .number()
     .min(0)
@@ -251,12 +268,19 @@ const seatRank = (seat: LinkedinSeat): number => {
 
 export const domainHealth = defineInsight({
   description:
-    "Deliverability per sending domain: for each domain its mailboxes, which DNS records (SPF, DKIM, DMARC, MX) fail, how many mailboxes are disconnected or on a block list, the share of warmup emails landing in spam pooled over its mailboxes, and a risk level with the reasons, worst domain first. LinkedIn seats are listed apart with their connection state. Use it before scaling volume or when replies drop. Costs one listing of senders plus 1 request per sender. A null count or rate means the vendor does not report it; a domain with no DNS record reported has the risk `unknown`, not `low`.",
+    "Deliverability per sending domain: for each domain its mailboxes, which DNS records (SPF, DKIM, DMARC, MX) fail, how many mailboxes are disconnected or on a block list, the share of warmup emails landing in spam pooled over its mailboxes, and a risk level with the reasons, worst domain first. LinkedIn seats are listed apart with their connection state. Use it before scaling volume or when replies drop. Every sender is checked where the vendor reads health a page at a time (Instantly: about 3 requests per 100 senders); otherwise up to 50 by default, at 1 to 3 requests each. A null count or rate means the vendor does not report it; a domain with no DNS record reported has the risk `unknown`, not `low`.",
   inputSchema: input,
   key: "domainHealth",
-  cost: (values, price) =>
-    price.list("senders.list", values.max_senders) +
-    price.upTo(values.max_senders) * price.one("senders.health"),
+  cost: (values, price) => {
+    const max = sendersToCheck(price.capabilities, values.max_senders);
+
+    return (
+      price.list("senders.list", max) +
+      (inPages(price.capabilities)
+        ? price.list("senders.healthList", max)
+        : price.upTo(max) * price.one("senders.health"))
+    );
+  },
   scales: "max_senders",
   name: "domain_health",
   needs: ["senders.list", "senders.health"],
@@ -265,16 +289,19 @@ export const domainHealth = defineInsight({
     context,
     { max_senders: maxSenders, max_spam_rate: threshold }
   ) => {
-    const { items: senders } = await readSenders(context, maxSenders);
+    const max = sendersToCheck(context.outbound.capabilities, maxSenders);
+    const { items: senders } = await readSenders(context, max);
 
     const byDomain = new Map<string, Checked[]>();
     const linkedinSeats: LinkedinSeat[] = [];
     const mailboxesWithoutDomain: string[] = [];
 
-    const read = await mapConcurrent(senders, async (sender) => ({
-      health: await readHealth(context, sender),
-      sender,
-    }));
+    const read = inPages(context.outbound.capabilities)
+      ? await readHealthInPages(context, senders, max)
+      : await mapConcurrent(senders, async (sender) => ({
+          health: await readHealth(context, sender),
+          sender,
+        }));
 
     // A sender the vendor no longer finds is left out, with a note.
     const checks = read.flatMap(({ health, sender }) =>

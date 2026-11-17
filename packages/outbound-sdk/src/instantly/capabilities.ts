@@ -91,6 +91,7 @@ export const capabilities: CapabilityDeclaration = {
   "senders.byCampaign": true,
   "senders.get": true,
   "senders.health": true,
+  "senders.healthList": true,
   "senders.list": true,
   "senders.warmup": true,
   sequence: true,
@@ -196,6 +197,10 @@ export const costs = {
   "senders.get": { perPage: 1 },
   // The account, its DNS test, then its warmup analytics.
   "senders.health": { perPage: 3 },
+  // Every mailbox's health: a page of accounts, one DNS test for the page's
+  // domains and one warmup report for its mailboxes. A campaign's page reads
+  // the campaign again first.
+  "senders.healthList": { pageSize: PAGE_SIZE, perPage: 3, perPageAtMost: 4 },
   // A campaign's senders: the campaign again with each page of every mailbox,
   // kept when the campaign names it (see the caveats). Pages follow the
   // workspace's mailboxes, not the senders kept.
@@ -230,6 +235,7 @@ export const caveats: readonly string[] = [
   "A campaign's settings, sequence and senders each read the whole campaign object. A sending window's days are assumed to be numbered 0 for Sunday to 6 for Saturday; the documentation only shows the keys 0 to 6.",
   "A campaign's senders are found by reading every mailbox and keeping those named in the campaign's email_list or carrying a tag in its email_tag_list, at two requests per page of mailboxes. A campaign that names tags only is filtered by Instantly.",
   "Sender health is three reads: the account, POST /accounts/test/vitals (a live DNS test, which Instantly may throttle) and POST /accounts/warmup-analytics. The warmup window is not documented. blacklisted and checkedAt are not reported. A DNS record Instantly could not resolve is null, not false.",
+  "Every mailbox's health (senderHealth) is read a page of 100 accounts at a time: the page, one POST /accounts/test/vitals naming one mailbox of each domain on it, and one POST /accounts/warmup-analytics naming every mailbox on it. The DNS test answers per domain, so each mailbox gets its domain's answer. Seen live on 2026-11-17: one test of 137 domains answered in about 2 seconds.",
   "connected is true for an Active account and false for a Connection Error; every other account status is null.",
   "A lead's engagement.stepIndex is the last step sent, read from its status summary; lastOpenedAt is null when open tracking is off. A lead has no tags in Instantly, and the lead object was seen without a job title.",
   "A lead is found by email with the contacts filter of POST /leads/list, documented only as the emails a lead needs to have. Whether it compares whole addresses and ignores case is not documented and was not run live, so the adapter keeps only the records whose address equals the one asked for, and a page can hold fewer records than Instantly returned. One record comes back per campaign or list the address is in. A lead has no LinkedIn profile: a lookup by profile returns nothing and sends no request.",

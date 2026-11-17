@@ -1,5 +1,5 @@
 combined combined
-given up: campaigns.settings, leads.byDomain, leads.byInterest, leads.byStatus, leads.engagement, leads.lookupMany, messages.byHand, messages.byThread, native, placementTests.list, senders.warmup, sequence.subsequences, stats.byStep, tags
+given up: campaigns.settings, leads.byDomain, leads.byInterest, leads.byStatus, leads.engagement, leads.lookupMany, messages.byHand, messages.byThread, native, placementTests.list, senders.healthList, senders.warmup, sequence.subsequences, stats.byStep, tags
 instantly:acme:cmp_1 - Acme founders
 heyreach:acme:cmp_1 - Acme LinkedIn
 instantly:globex:cmp_1 - Globex CFOs
