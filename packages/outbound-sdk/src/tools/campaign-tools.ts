@@ -65,7 +65,7 @@ const readOverview = async (outbound: OutboundApi, input: OverviewInput) => {
 
 export const campaignOverview: ToolDefinition<OverviewInput> = {
   description:
-    "How every campaign is doing right now: sends, replies, positive replies, bounces and reply rate for each campaign with the given status, or for the one campaign given. One vendor request per campaign. Rates are computed from counts; a null means the vendor does not report that count. meta.complete: false means limit cut the list, and meta.notes says so.",
+    "How every campaign is doing: sends, replies, positive replies, bounces and reply rate for each campaign with the given status, or for the one campaign given, over period (the whole history when from and to are left out). One vendor request per campaign. Rates are computed from the counts beside them, and reply_rate_basis names the count replies were divided by. A null means the vendor does not report that count, never 0; metrics is null for a campaign the vendor reported no stats for. meta.complete: false means limit cut the list or a stats read was partial, and meta.notes says so, including the vendor's own notes on the counts.",
   inputSchema: overviewInput,
   name: "campaign_overview",
   needs: ["campaigns.status", "stats.campaign"],
@@ -78,6 +78,9 @@ export const campaignOverview: ToolDefinition<OverviewInput> = {
 
     const rows: Json[] = [];
     const evidence: Evidence[] = [];
+    const notes = new Set<string>();
+    let complete = !truncated;
+    let unreported = 0;
     let requests = listed;
 
     const read = await mapConcurrent(campaigns, async (campaign) => ({
@@ -91,6 +94,13 @@ export const campaignOverview: ToolDefinition<OverviewInput> = {
       const [total] = stats.rows;
       evidence.push(stats.meta.evidence);
       requests += stats.meta.requests;
+      complete &&= stats.meta.complete;
+      unreported += total === undefined ? 1 : 0;
+
+      for (const text of stats.meta.notes) {
+        notes.add(text);
+      }
+
       rows.push({
         campaign: campaign.ref,
         channel: campaign.channel,
@@ -102,15 +112,26 @@ export const campaignOverview: ToolDefinition<OverviewInput> = {
     }
 
     return {
-      data: { campaigns: rows },
+      data: {
+        campaigns: rows,
+        period: { from: input.from ?? null, to: input.to ?? null },
+      },
       meta: {
-        complete: !truncated,
+        complete,
         evidence: weakest(evidence),
-        notes: truncated
-          ? [
-              `Stopped at ${plural(rows.length, "campaign")} (limit); more ${input.status} campaigns exist.`,
-            ]
-          : [],
+        notes: [
+          ...(truncated
+            ? [
+                `Stopped at ${plural(rows.length, "campaign")} (limit); more ${input.status} campaigns exist.`,
+              ]
+            : []),
+          ...(unreported > 0
+            ? [
+                `The vendor reported no stats for ${plural(unreported, "campaign")} in this range, so metrics is null there: unknown, not zero.`,
+              ]
+            : []),
+          ...notes,
+        ],
         provider: outbound.provider,
         requests,
       },

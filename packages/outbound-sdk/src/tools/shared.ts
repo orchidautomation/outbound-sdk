@@ -27,6 +27,11 @@ export interface ToolSuccess {
      */
     readonly today?: string | undefined;
     /**
+     * When the answer was computed, ISO 8601 UTC: the time the numbers are
+     * as of. Set on every result a tool from `createTools` returns.
+     */
+    readonly computedAt?: string | undefined;
+    /**
      * `false` when the answer covers part of what was asked, for example
      * when `limit` cut a list or a cap stopped a read; `notes` says why.
      */

@@ -6,7 +6,7 @@ only: campaign_overview, reply_samples
 
 every insight as a tool: 28
 
-campaign_overview: How every campaign is doing right now: sends, replies, positive replies, bounces and reply rate for each campaign with the given status, or for the one campaign given. One vendor request per campaign. Rates are computed from counts; a null means the vendor does not report that count. meta.complete: false means limit cut the list, and meta.notes says so.
+campaign_overview: How every campaign is doing: sends, replies, positive replies, bounces and reply rate for each campaign with the given status, or for the one campaign given, over period (the whole history when from and to are left out). One vendor request per campaign. Rates are computed from the counts beside them, and reply_rate_basis names the count replies were divided by. A null means the vendor does not report that count, never 0; metrics is null for a campaign the vendor reported no stats for. meta.complete: false means limit cut the list or a stats read was partial, and meta.notes says so, including the vendor's own notes on the counts.
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",

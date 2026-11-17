@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import type { Measured } from "../../src/insights/index.ts";
 import type { MemoryData } from "../../src/memory/index.ts";
 import { NOW, single } from "./helpers.ts";
 import { pair, row, unsupported } from "./ops-helpers.ts";
@@ -42,6 +43,9 @@ const DATA: MemoryData = {
 const BOUNCE_NOTE =
   "Every campaign added together: this period's bounce rate (1 of 3), the earlier period's bounce rate (1 of 2) count only the campaigns that report both the count and what it is divided by. The others are left out of the rate, not counted as 0.";
 
+/** A rate's count and what it was divided by. */
+const sides = (measured: Measured) => [measured.count, measured.of];
+
 const CURRENT = { from: "2026-11-07", to: "2026-11-13" };
 const PREVIOUS = { from: "2026-10-31", to: "2026-11-06" };
 
@@ -62,8 +66,26 @@ test("period_comparison sets the last days against the days before, per campaign
   );
 
   const [rising, flat] = result.data.campaigns;
+  assert.ok(rising);
+  const { rates: risingRates, ...risingNumbers } = rising;
+  assert.ok(risingRates);
 
-  assert.deepEqual(rising, {
+  // Each rate carries the count and the denominator behind it.
+  assert.deepEqual(
+    [
+      sides(risingRates.current.replyRate),
+      sides(risingRates.current.bounceRate),
+      sides(risingRates.current.positiveRate),
+      sides(risingRates.previous.replyRate),
+    ],
+    [
+      [60, 500],
+      [5, 500],
+      [null, 500],
+      [30, 500],
+    ]
+  );
+  assert.deepEqual(risingNumbers, {
     campaign: "memory:agency:c1",
     // 500 sends both periods; 60 replies against 30; 5 bounces against 10.
     change: {
@@ -173,6 +195,21 @@ test("period_comparison sets the last days against the days before, per campaign
       result.data.total.change.bounceRate,
     ],
     [5, 0.01, 10, 0.02, -0.01]
+  );
+  // The total's 1,000 sends are not what the bounce rate divides by; its rates say so.
+  const totalRates = result.data.total.rates;
+  assert.ok(totalRates);
+  assert.deepEqual(
+    [
+      sides(totalRates.current.bounceRate),
+      sides(totalRates.previous.bounceRate),
+      sides(totalRates.current.replyRate),
+    ],
+    [
+      [5, 500],
+      [10, 500],
+      [85, 1000],
+    ]
   );
   assert.deepEqual(result.meta.notes, [BOUNCE_NOTE]);
 });

@@ -167,6 +167,21 @@ export const perLeadBasis = (counts: Totals): ReplyBasis =>
 export const perLeadBase: Base = (counts) => counts[perLeadBasis(counts)];
 
 /**
+ * What a rate over several rows divides replies by, the same for every row:
+ * leads contacted, unless a row has replies and messages sent but no lead
+ * contacted (its leads were first contacted before the range, so only
+ * follow-ups went out), when it is messages sent. A row that does not
+ * report the basis is left out of the rate, never divided by another count.
+ */
+export const replyBasisAcross = (rows: readonly Totals[]): ReplyBasis =>
+  rows.some(
+    (row) =>
+      (row.contacted ?? 0) === 0 && (row.replied ?? 0) > 0 && row.sent !== null
+  )
+    ? "sent"
+    : "contacted";
+
+/**
  * What two periods divide replies by, the same for both: messages sent when
  * both report them, since replies in a week answer messages sent that week
  * to leads first contacted weeks before, so a week's leads contacted can be
@@ -241,6 +256,8 @@ export const measureAcross = <Row>(
 
 export interface RatesAcross {
   readonly rates: Rates;
+  /** What the reply and positive reply rates divide by, the same for every row. */
+  readonly replyRateBasis: ReplyBasis;
   /** The rates that leave rows out, in words: `bounce rate (1 of 2)`. Empty when every row is in every rate. */
   readonly partial: readonly string[];
 }
@@ -254,10 +271,10 @@ export const partialRate = (name: string, across: RateCoverage): string[] =>
 /** The three rates over several rows of counts, each over the rows that report it. */
 export const ratesAcross = (
   rows: readonly Totals[],
-  base: Base = perLeadBase
+  basis: ReplyBasis = replyBasisAcross(rows)
 ): RatesAcross => {
-  const reply = measureAcross(rows, (row) => row.replied, base);
-  const positive = measureAcross(rows, (row) => row.positive, base);
+  const reply = measureAcross(rows, (row) => row.replied, baseIn(basis));
+  const positive = measureAcross(rows, (row) => row.positive, baseIn(basis));
 
   const bounce = measureAcross(
     rows,
@@ -276,6 +293,7 @@ export const ratesAcross = (
       positiveRate: positive.measured,
       replyRate: reply.measured,
     },
+    replyRateBasis: basis,
   };
 };
 

@@ -1,7 +1,7 @@
 [
   {
     "call_id": "call_1",
-    "output": "{\"data\":{\"checked\":2,\"failing\":0,\"senders\":[{\"address\":\"outreach1@example.com\",\"daily_limit\":40,\"kind\":\"mailbox\",\"name\":\"Outreach One\",\"sender\":\"memory:acme:mbx_1\",\"status\":\"active\",\"warmup_enabled\":true,\"warmup_score\":96}],\"total\":2,\"unhealthy\":0},\"meta\":{\"complete\":false,\"evidence\":\"exact\",\"notes\":[\"Listed 1 sender (limit); more were checked.\"],\"provider\":\"memory\",\"requests\":0,\"today\":\"2026-11-14\"},\"next\":\"Use deliverability_check for each sender's DNS, sign-in and block list status.\",\"ok\":true}",
+    "output": "{\"data\":{\"checked\":2,\"failing\":0,\"senders\":[{\"address\":\"outreach1@example.com\",\"daily_limit\":40,\"kind\":\"mailbox\",\"name\":\"Outreach One\",\"sender\":\"memory:acme:mbx_1\",\"status\":\"active\",\"warmup_enabled\":true,\"warmup_score\":96}],\"total\":2,\"unhealthy\":0},\"meta\":{\"complete\":false,\"evidence\":\"exact\",\"notes\":[\"Listed 1 sender (limit); more were checked.\"],\"provider\":\"memory\",\"requests\":0,\"computedAt\":\"2026-11-14T12:00:00.000Z\",\"today\":\"2026-11-14\"},\"next\":\"Use deliverability_check for each sender's DNS, sign-in and block list status.\",\"ok\":true}",
     "type": "function_call_output"
   }
 ]

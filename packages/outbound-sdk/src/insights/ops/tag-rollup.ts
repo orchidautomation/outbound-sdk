@@ -13,10 +13,17 @@ import {
   partialNote,
   ratesAcross,
   readCampaignTotals,
+  replyBasisAcross,
   totalsOf,
   volumeOf,
 } from "./shared.ts";
-import type { CampaignTotals, OpenRange, Rates, Totals } from "./shared.ts";
+import type {
+  CampaignTotals,
+  OpenRange,
+  Rates,
+  ReplyBasis,
+  Totals,
+} from "./shared.ts";
 
 const input = z.object({
   ...rangeFields,
@@ -47,6 +54,13 @@ export interface TagRollup extends CampaignsRead {
   /** Best first, by the low end of the reply rate interval. */
   readonly tags: readonly TagGroup[];
   readonly tooFewSends: readonly TagGroup[];
+  /**
+   * What every reply and positive reply rate divides by: leads contacted, or
+   * messages sent when a campaign has replies in the range but contacted no
+   * new lead in it.
+   * Always set by the insight; optional so a value built by hand stays valid.
+   */
+  readonly replyRateBasis?: ReplyBasis;
 }
 
 interface Grouped {
@@ -57,10 +71,11 @@ interface Grouped {
 
 const groupOf = (
   tag: string | null,
-  entries: readonly CampaignTotals[]
+  entries: readonly CampaignTotals[],
+  basis: ReplyBasis
 ): Grouped => {
   const counts = entries.map((entry) => entry.counts);
-  const { partial, rates } = ratesAcross(counts);
+  const { partial, rates } = ratesAcross(counts, basis);
 
   return {
     group: {
@@ -77,7 +92,7 @@ const named = (group: TagGroup): string => group.tag ?? "";
 
 export const tagRollup = defineInsight({
   description:
-    "Results by campaign tag (for example one tag per client, offer or audience): for each tag the campaigns, messages sent, leads contacted, replies, positive replies and bounces, with reply, positive reply and bounce rates and their 95% intervals, sorted by the low end of the reply rate interval. A campaign with two tags counts in both; campaigns with none are grouped under a null tag. Tags under min_sent sends are listed apart. A null count is one the vendor does not report; a rate counts only the campaigns that report both its count and what it divides by, and a note names a tag whose rate leaves campaigns out. Costs one listing per status plus one stats request per campaign (one for all of them on a vendor that reports every campaign in one call with every count).",
+    "Results by campaign tag (for example one tag per client, offer or audience): for each tag the campaigns, messages sent, leads contacted, replies, positive replies and bounces, with reply, positive reply and bounce rates and their 95% intervals, sorted by the low end of the reply rate interval. A campaign with two tags counts in both; campaigns with none are grouped under a null tag. Tags under min_sent sends are listed apart. replyRateBasis names what every reply rate divides by, the same for every campaign: leads contacted, or messages sent when a campaign has replies in the range but contacted no new lead in it. A null count is one the vendor does not report; a rate counts only the campaigns that report both its count and what it divides by, and a note names a tag whose rate leaves campaigns out. Costs one listing per status plus one stats request per campaign (one for all of them on a vendor that reports every campaign in one call with every count).",
   inputSchema: input,
   key: "tagRollup",
   // A tool whose campaigns carry no tags would put every campaign under one
@@ -103,7 +118,11 @@ export const tagRollup = defineInsight({
       }
     }
 
-    const grouped = [...members].map(([tag, group]) => groupOf(tag, group));
+    const basis = replyBasisAcross(entries.map((entry) => entry.counts));
+
+    const grouped = [...members].map(([tag, group]) =>
+      groupOf(tag, group, basis)
+    );
 
     for (const { group, partial } of grouped) {
       if (partial.length > 0) {
@@ -131,6 +150,7 @@ export const tagRollup = defineInsight({
       ...read,
       campaigns: entries.length,
       period: { from: options.from, to: options.to },
+      replyRateBasis: basis,
       tags: groups.filter(enough),
       tooFewSends: groups.filter((group) => !enough(group)),
     };

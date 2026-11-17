@@ -97,7 +97,10 @@ test("campaign_overview reports a cut list in meta.complete and meta.notes", asy
 
   const whole = await call("campaign_overview", { limit: 10 });
   assert.equal(whole.meta.complete, true);
-  assert.deepEqual(whole.meta.notes, []);
+  // Two campaigns have no stats: their metrics are null, never zero.
+  assert.deepEqual(whole.meta.notes, [
+    "The vendor reported no stats for 2 campaigns in this range, so metrics is null there: unknown, not zero.",
+  ]);
 });
 
 const campaignNames = (result: ToolSuccess) =>

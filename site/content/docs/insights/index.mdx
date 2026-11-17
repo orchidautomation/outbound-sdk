@@ -119,6 +119,19 @@ Costs are read from the adapter's declared costs, which state the usual case. A 
 
 A count a vendor does not report is `null`, never `0`, and so is every rate built on it. An insight sets such a record apart and says why. It does not rank it last or count it as clean.
 
+### What every number carries
+
+Every insight and every [tool](/docs/tools) holds its numbers to one contract, so an agent cannot read a gap as a zero:
+
+- **Zero is a count the vendor reported as 0.** It is never a stand-in for a missing count, a record that was not read or a rate with nothing to divide by.
+- **Missing is `null`, with a reason.** The reason is in `meta.notes`, or beside the value where a record carries its own (`reason`, `unknown`, `not_checked`). The [adapter pages](/docs/adapters) say which fields a vendor never reports.
+- **Unchecked is counted on its own.** A record that could not be checked, such as a conversation `droppedReplies` could not read or a sender `deliverability_check` did not check, is counted apart (`totals.unchecked`, `coverage.not_checked`), never as clean or as 0, and the answer has `meta.complete: false`.
+- **Stale is told by a time.** Nothing is stored between calls, so a number carries the time it is as of: `meta.computedAt` on every answer, and the vendor's own time where it reports one (`checkedAt` on a sender's health, `lastRepliedAt` on a lead). An insight that judges age says so in its answer, as `hotLeads` counts `totals.stale`.
+- **The source is named.** Every answer has `meta.provider` and `meta.evidence`, and every record its `provider` and `ref`.
+- **Coverage is stated.** `meta.complete: false` means the answer covers part of the data, a cap or a record left unchecked, and a note says which part. A rate over several campaigns counts only those that report both of its sides, and a note names it when it leaves some out.
+- **The window is in the answer**: `period`, `current` and `previous`, or `since`. A tool that takes `from` and `to` gives back the `period` it read, `null` for an open end.
+- **A rate carries its denominator.** It is `{ count, of, rate, low, high }`, and `replyRateBasis` says whether `of` counts leads contacted or messages sent. It is the same for every campaign in one answer, so leads and sends are never added into one `of`. A tool row puts a rate next to the counts it divides, such as `bounce_rate` beside `bounced` and `sent`.
+
 <include meta='title="nulls.ts"'>
   ../../_examples/insights-index/nulls.ts
 </include>
@@ -173,7 +186,7 @@ The same word means the same thing in every insight.
 - **`max_<metric>_rate` and `min_<metric>_rate` are cutoffs**, such as `max_bounce_rate`. `anomalies`' `threshold` is a z-score, not a rate, and keeps its name, as do `recency_days` (how fast `hotLeads` lets a reply fade) and `baseline_days`.
 - **`campaign` in an answer is always the campaign's ref**, even when you passed its bare vendor id, and a campaign row carries `campaignName` beside it.
 - **A step is `stepIndex` and `stepNumber`.** `stepIndex` counts from 0, as vendors and the records' `stepIndex` do: the first email is 0. `stepNumber` counts from 1, as a person does: the first email is step 1. Every sentence and card says the step number, as "step 2 (of 4)" when the sequence's length is known. A field that names one step does the same with a suffix (`topStepIndex` and `topStepNumber`), and a list of steps is `…StepIndexes` and `…StepNumbers`. The [built-in tools](/docs/tools) say `step_index` and `step_number`.
-- **A rate is `{ count, of, rate, low, high }`**: the count, what it is divided by, the rate and the ends of its 95% Wilson interval. A few figures stay plain numbers because no single count is behind them: `PeriodNumbers`' rates, `personSummary`'s `campaignReplyRate` and `personalizationGaps`' `affectedRate`.
+- **A rate is `{ count, of, rate, low, high }`**: the count, what it is divided by, the rate and the ends of its 95% Wilson interval. A few figures stay plain numbers: `PeriodNumbers`' rates, whose count and denominator are in the comparison's `rates`, and `personSummary`'s `campaignReplyRate` and `personalizationGaps`' `affectedRate`, which no single count is behind.
 
 Names that broke this rule before 0.4.0 were renamed in 0.4.0 and the old names were removed in 0.6.0. An old input name is now `Invalid`, and the message lists the inputs the insight takes.
 

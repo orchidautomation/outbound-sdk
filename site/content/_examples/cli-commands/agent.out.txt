@@ -74,6 +74,7 @@ $ outbound tool sender_health --input '{"limit":1}'
     ],
     "provider": "memory",
     "requests": 0,
+    "computedAt": "2026-11-14T12:00:00.000Z",
     "today": "2026-11-14",
     "throttledMs": 0
   },
@@ -167,7 +168,8 @@ $ outbound insight channel_mix --input '{"max_campaigns":5}'
     "period": {
       "from": null,
       "to": null
-    }
+    },
+    "replyRateBasis": "contacted"
   },
   "meta": {
     "complete": true,

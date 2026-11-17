@@ -61,7 +61,8 @@ const input = z.object({
 
 /**
  * Counts and rates for one period, or the change between two. `null` is
- * unknown. The reply and positive reply rates are over `replyRateBasis`.
+ * unknown. The reply and positive reply rates are over `replyRateBasis`,
+ * and `Comparison.rates` has the count and the denominator behind each.
  */
 export interface PeriodNumbers extends Totals {
   readonly replyRate: number | null;
@@ -80,6 +81,13 @@ export interface Comparison {
   readonly replyRateBasis: ReplyBasis;
   /** `current` minus `previous`, field by field. Rates change in points: 0.02 is two points. */
   readonly change: PeriodNumbers;
+  /**
+   * Each period's rates with the counts behind them. Over several campaigns
+   * a rate counts only those that report both sides, so its `count` and
+   * `of` can be less than the totals in `current` and `previous`.
+   * Always set by the insight; optional so a value built by hand stays valid.
+   */
+  readonly rates?: { readonly current: Rates; readonly previous: Rates };
   /** The two-proportion test on the reply rate. `null` when it cannot be run. */
   readonly replyRateTest: ProportionTest | null;
   /** Whether the reply rate moved by more than chance. */
@@ -175,6 +183,7 @@ const compare = (
               : "within what chance would give"
           } (${pText(test.pValue)}).`,
     previous: earlier,
+    rates: { current: current.rates, previous: previous.rates },
     replyRateBasis: basis,
     replyRateTest: test,
     verdict: verdictOf(test),
@@ -215,8 +224,8 @@ export const compareAcross = (
 ): ComparedAcross => {
   const counts = [sumMeasured(current), sumMeasured(previous)] as const;
   const basis = periodBasis(...counts);
-  const now = ratesAcross(current, baseIn(basis));
-  const before = ratesAcross(previous, baseIn(basis));
+  const now = ratesAcross(current, basis);
+  const before = ratesAcross(previous, basis);
 
   return {
     comparison: compare(
