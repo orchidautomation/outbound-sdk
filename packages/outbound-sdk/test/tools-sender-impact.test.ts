@@ -6,6 +6,9 @@
 // so, and each failing mailbox carries the active campaigns it sends for,
 // its recent sends and when it last sent. A value the vendor does not
 // report is null with a reason, never 0.
+//
+// OUT-143: the recent sends of every failing mailbox come in one daily read,
+// so impact is no longer cut off at 10 failing senders on Instantly.
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -50,30 +53,35 @@ const {
 const address = (index: number) =>
   `person${index + 1}@d${index % DOMAINS}.example.com`;
 
-const mailboxes = Array.from({ length: MAILBOXES }, (_, index) => ({
-  ...template,
-  email: address(index),
-  status: FAILING.get(index) ?? 1,
-  status_message: null,
-}));
+type Mailbox = Record<string, unknown> & { readonly email: string };
+
+const mailboxesWith = (failing: ReadonlyMap<number, number>): Mailbox[] =>
+  Array.from({ length: MAILBOXES }, (_, index) => ({
+    ...template,
+    email: address(index),
+    status: failing.get(index) ?? 1,
+    status_message: null,
+  }));
+
+const mailboxes = mailboxesWith(FAILING);
 
 const failingAddresses = new Set([...FAILING.keys()].map(address));
 
-const page = (url: URL) => {
+const page = (url: URL, boxes: readonly Mailbox[]) => {
   const limit = Number(url.searchParams.get("limit") ?? 100);
   const after = url.searchParams.get("starting_after");
 
   const start =
     after === null
       ? 0
-      : mailboxes.findIndex((mailbox) => mailbox.email === after) + 1;
+      : boxes.findIndex((mailbox) => mailbox.email === after) + 1;
 
-  const slice = mailboxes.slice(start, start + limit);
+  const slice = boxes.slice(start, start + limit);
 
   return json({
     items: slice,
     next_starting_after:
-      start + limit < mailboxes.length ? slice.at(-1)?.email : undefined,
+      start + limit < boxes.length ? slice.at(-1)?.email : undefined,
   });
 };
 
@@ -84,13 +92,16 @@ const bodyOf = (request: RecordedRequest) =>
   };
 
 const workspace =
-  (dailyRows: (email: string) => Record<string, unknown>[]) =>
+  (
+    dailyRows: (email: string) => Record<string, unknown>[],
+    boxes: readonly Mailbox[] = mailboxes
+  ) =>
   (request: RecordedRequest): Response | undefined => {
     const url = new URL(request.url);
     const path = decodeURIComponent(url.pathname);
 
     if (request.method === "GET" && path === "/api/v2/accounts") {
-      return page(url);
+      return page(url, boxes);
     }
 
     if (path === "/api/v2/accounts/test/vitals") {
@@ -145,7 +156,7 @@ const workspace =
     }
 
     if (path === "/api/v2/accounts/analytics/daily") {
-      return json(dailyRows(url.searchParams.get("emails") ?? ""));
+      return json(url.searchParams.getAll("emails").flatMap(dailyRows));
     }
 
     return undefined;
@@ -226,7 +237,19 @@ test("deliverability_check checks every Instantly mailbox by default and ties ea
   );
   assert.equal(count("/api/v2/accounts/test/vitals"), 4);
   assert.equal(count("/api/v2/accounts/warmup-analytics"), 4);
-  assert.ok(result.meta.requests < 100, String(result.meta.requests));
+  // Impact: every failing mailbox's days in one read, and the workspace's
+  // tracking once, where each mailbox used to read both for itself.
+  assert.equal(count("/api/v2/accounts/analytics/daily"), 1);
+  assert.equal(count("/api/v2/campaigns/analytics"), 1);
+  assert.equal(
+    paths.filter((path) =>
+      path.startsWith("/api/v2/account-campaign-mappings/")
+    ).length,
+    7
+  );
+  // What is left per failing mailbox is its campaigns: the mapping and, on
+  // this fixture, the two reads of their tags. It used to be six or more.
+  assert.ok(result.meta.requests < 50, String(result.meta.requests));
 
   const failing = data.senders.filter(
     (row) => row.address !== null && failingAddresses.has(row.address)
@@ -285,6 +308,42 @@ test("sender_health counts failing mailboxes past the first 200 and leaves unrep
       /^Unknown: the vendor returned no daily sends/u
     );
   }
+});
+
+test("sender_health ties all 20 failing mailboxes to their sends in one daily read, past the old cap of 10", async () => {
+  const twenty = new Map(
+    Array.from({ length: 20 }, (_, index) => [index * 15, -1] as const)
+  );
+
+  const { outbound, requests, settle } = harness(
+    suite,
+    workspace(sentEarlier, mailboxesWith(twenty))
+  );
+
+  const result = await settle(call(outbound, "sender_health"));
+  const data = result.data as unknown as { failing: number; senders: Row[] };
+
+  assert.equal(data.failing, 20);
+  assert.ok(
+    result.meta.notes.every((note) => !note.includes("more have none")),
+    result.meta.notes.join(" ")
+  );
+
+  const tied = data.senders.filter((row) => row.impact);
+  assert.equal(tied.length, 20);
+  assert.ok(tied.every((row) => row.impact?.recent_sends?.sent === 55));
+  assert.ok(tied.every((row) => row.impact?.active_campaign_count === 1));
+
+  const daily = requests.filter(
+    (request) =>
+      new URL(request.url).pathname === "/api/v2/accounts/analytics/daily"
+  );
+
+  assert.equal(daily.length, 1);
+  assert.equal(
+    new URL(daily[0]?.url ?? "").searchParams.getAll("emails").length,
+    20
+  );
 });
 
 test("deliverability_check names the senders it did not check and why when a cap stops it", async () => {
