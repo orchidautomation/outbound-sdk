@@ -11,9 +11,11 @@ const CONVERSATIONS = "/api/public/inbox/GetConversationsV3";
 
 /** The bodies of the conversation listings, in the order they were sent. */
 const listings = (requests: readonly RecordedRequest[]) =>
-  requests
-    .filter((request) => new URL(request.url).pathname === CONVERSATIONS)
-    .map((request) => JSON.parse(request.body ?? "{}"));
+  requests.flatMap((request) =>
+    new URL(request.url).pathname === CONVERSATIONS
+      ? [JSON.parse(request.body ?? "{}")]
+      : []
+  );
 
 test("heyreach: messages are read from conversations, with direction from the sender value", async () => {
   const { outbound, requests, settle } = harness(suite);
