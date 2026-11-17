@@ -3,7 +3,7 @@
 
 import { assertRoster } from "./roster";
 
-export type Provider = "heyreach" | "instantly" | "smartlead";
+export type Provider = "emailbison" | "heyreach" | "instantly" | "smartlead";
 
 export interface Client {
   /** Your label for the client. It becomes the client's `workspaceId`. */
@@ -12,6 +12,13 @@ export interface Client {
   readonly provider: Provider;
   /** The environment variable that holds this client's API key. */
   readonly apiKeyEnv: string;
+  /**
+   * EmailBison only: the URL the client logs in to, such as
+   * `https://send.example.com`. Each EmailBison account has its own. Left
+   * out, the adapter reads `EMAILBISON_BASE_URL`, then uses
+   * `https://dedi.emailbison.com`.
+   */
+  readonly baseUrl?: string;
   /**
    * The Slack channel the agency shares with this client. In that channel the
    * agent sees this client's data and nothing else, and the Monday report is
@@ -38,6 +45,15 @@ export const CLIENTS: readonly Client[] = assertRoster([
     provider: "heyreach",
     slackChannelId: "C0GLOBEX000",
   },
+  // An EmailBison client also names the URL its account lives at:
+  // {
+  //   apiKeyEnv: "INITECH_EMAILBISON_API_KEY",
+  //   baseUrl: "https://send.example.com",
+  //   id: "initech",
+  //   name: "Initech",
+  //   provider: "emailbison",
+  //   slackChannelId: "C0INITECH00",
+  // },
 ]);
 
 const idList = (value: string | undefined): string[] =>
