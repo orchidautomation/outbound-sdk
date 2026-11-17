@@ -44,6 +44,7 @@ What the forecast holds, and what it assumes:
 - **`notStarted` and `inSequence` split `remaining`** by whether the lead's sequence has started (a step sent or a contact time). A lead partway through the sequence needs no new lead slot, so the runway leaves it out. When no lead read reports a step or a contact, both are `null` and every active lead counts as not started.
 - **`dailyContactRate` is new leads started over the last `days` complete days (default 7, ending yesterday), divided by `days`.** It is the daily `contacted` count, never emails sent, which are mostly follow-ups. A day with no report counts as none started, so a campaign that paused for half the week has half the pace.
 - **`daysLeft` is `notStarted` (or `remaining`) divided by that pace.** It is `null` when the vendor reports no daily contacted count or the pace is 0. It is calendar days at last week's pace, weekends included. The `lead_runway` tool gives the same figure.
+- **`runwayState` says which case it is:** `draining` (a pace and leads left to start), `stalled` (leads left to start but no pace), `out_of_leads` (none left to start) or `unknown` (not every lead was counted). A stalled campaign needs a look, not more leads, so it is never reported as running out.
 - **`expectedReplies` is `remaining` times the campaign's reply rate over its whole history**, with `low` and `high` from the 95% Wilson interval of that rate. `expectedPositive` does the same for positive replies.
 - **`assumptions` says what this takes for granted:** every remaining lead is contacted; remaining leads reply at the rate so far, though leads already partway through the sequence may reply less; and the pace stays what it was.
 
@@ -75,7 +76,7 @@ Three ways to spend less:
 
 - Lower `maxLeads`. A campaign with more leads than the cap reports "at least" that many remaining, which is enough to know it is not about to run out.
 - Lower `maxCampaigns`, or run the loop for the campaigns you are worried about.
-- Use `clientReport`, which runs this same forecast for every active campaign inside one call, reads at most 500 leads per campaign by default, and lists the campaigns under `runway_days`. See the [weekly client report](/docs/guides/weekly-client-report).
+- Use `clientReport`, which runs this same forecast for every active campaign inside one call, reads at most 5,000 leads per campaign by default (only the active ones where the adapter lists them alone), and lists the campaigns out of leads or under `runway_days`, with stalled ones apart. See the [weekly client report](/docs/guides/weekly-client-report).
 
 ## Point it at your vendor
 

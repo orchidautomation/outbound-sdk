@@ -193,8 +193,10 @@ test("client_report composes totals, best and worst campaigns, bounce problems, 
       dailyContactRate: 10,
       daysLeft: 0.5,
       campaignName: "Bouncy",
+      inSequence: null,
       provider: "memory",
       remaining: 5,
+      state: "draining",
       status: "active",
     },
     {
@@ -203,11 +205,14 @@ test("client_report composes totals, best and worst campaigns, bounce problems, 
       dailyContactRate: 20,
       daysLeft: 2,
       campaignName: "Middling",
+      inSequence: null,
       provider: "memory",
       remaining: 40,
+      state: "draining",
       status: "active",
     },
   ]);
+  assert.deepEqual(result.data.stalled, []);
   assert.deepEqual(result.data.actions, [
     {
       action:
@@ -216,21 +221,6 @@ test("client_report composes totals, best and worst campaigns, bounce problems, 
       campaignName: "Bouncy",
       kind: "fix_bounces",
       number: 0.1,
-    },
-    {
-      action: "Add leads to Bouncy: 5 leads remain, about 0.5 days of sending.",
-      campaign: "memory:agency:c",
-      campaignName: "Bouncy",
-      kind: "add_leads",
-      number: 0.5,
-    },
-    {
-      action:
-        "Add leads to Middling: 40 leads remain, about 2 days of sending.",
-      campaign: "memory:agency:b",
-      campaignName: "Middling",
-      kind: "add_leads",
-      number: 2,
     },
     {
       action:
@@ -246,6 +236,15 @@ test("client_report composes totals, best and worst campaigns, bounce problems, 
       campaign: null,
       campaignName: null,
       kind: "check_anomaly",
+      number: 2,
+    },
+    // The runway comes last, in one item, so it cannot crowd out the rest.
+    {
+      action:
+        "Add leads to 2 campaigns: 2 run out within 7 days at the recent pace (Bouncy in about 0.5 days, Middling in about 2 days).",
+      campaign: null,
+      campaignName: null,
+      kind: "add_leads",
       number: 2,
     },
   ]);
@@ -490,7 +489,7 @@ test("client_report is empty without campaigns, and says when a cap cut what it 
   assert.equal(fewLeads.meta.complete, false);
   assert.ok(
     fewLeads.meta.notes.includes(
-      "The leads left were not fully counted for 1 active campaign, so runningOutOfLeads leaves it out: Winner. Raise max_leads_per_campaign to count them."
+      "The leads left were not fully counted for 1 active campaign, so runningOutOfLeads and stalled leave it out: Winner. Raise max_leads_per_campaign to count them."
     ),
     fewLeads.meta.notes.join(" | ")
   );

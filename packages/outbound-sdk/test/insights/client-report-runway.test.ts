@@ -11,6 +11,7 @@ import { createOutbound } from "../../src/index.ts";
 import { insights } from "../../src/insights/index.ts";
 import { memory } from "../../src/memory/index.ts";
 import type { MemoryData, MemoryLead } from "../../src/memory/index.ts";
+import { createTools } from "../../src/tools/index.ts";
 import { NOW, single } from "./helpers.ts";
 import { row } from "./ops-helpers.ts";
 
@@ -64,14 +65,14 @@ test("without leads.byStatus the runway walks every lead, and the note names the
   assert.deepEqual(result.data.runningOutOfLeads, []);
   assert.ok(
     result.meta.notes.includes(
-      "The leads left were not fully counted for 1 active campaign, so runningOutOfLeads leaves it out: Big campaign. Raise max_leads_per_campaign to count them."
+      "The leads left were not fully counted for 1 active campaign, so runningOutOfLeads and stalled leave it out: Big campaign. Raise max_leads_per_campaign to count them."
     ),
     result.meta.notes.join(" | ")
   );
 });
 
-test("on a combined instance the runway uses the filter of the tool that owns the campaign", async () => {
-  const result = await createOutbound({
+const combined = () =>
+  createOutbound({
     adapter: combine([
       memory({ data: BIG, name: "mailtool", workspaceId: "agency" }),
       memory({
@@ -82,7 +83,10 @@ test("on a combined instance the runway uses the filter of the tool that owns th
       }),
     ]),
     plugins: [insights()],
-  }).insights.clientReport({}, { now: NOW });
+  });
+
+test("on a combined instance the runway uses the filter of the tool that owns the campaign", async () => {
+  const result = await combined().insights.clientReport({}, { now: NOW });
 
   assert.equal(result.meta.complete, true, result.meta.notes.join(" | "));
   assert.deepEqual(
@@ -95,4 +99,35 @@ test("on a combined instance the runway uses the filter of the tool that owns th
       ["mailtool:agency:big", 20],
     ]
   );
+});
+
+// The 2026-11-17 live check: on Instantly with HeyReach, lead_runway asked the
+// combined instance for active leads, which only some tools can list, and was
+// refused as Unsupported. It reads through the owning tool, as client_report does.
+test("on a combined instance lead_runway reads through the owning tool and agrees with client_report", async () => {
+  const outbound = combined();
+
+  const tool = createTools(outbound).find(
+    (candidate) => candidate.name === "lead_runway"
+  );
+
+  assert.ok(tool);
+
+  const result = await tool.call({
+    campaign: "mailtool:agency:big",
+    max_leads: 500,
+  } as never);
+
+  assert.equal(result.ok, true, JSON.stringify(result));
+
+  const { data } = result as { data: Record<string, unknown> };
+  const report = await outbound.insights.clientReport({}, { now: NOW });
+
+  const big = report.data.runningOutOfLeads?.find(
+    (each) => each.campaign === "mailtool:agency:big"
+  );
+
+  assert.equal(data.counted_leads, 20, "only the active leads, under the cap");
+  assert.equal(data.state, big?.state);
+  assert.equal(data.active_leads, big?.remaining);
 });

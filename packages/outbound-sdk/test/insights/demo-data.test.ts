@@ -86,6 +86,6 @@ test("a runway shorter than a day reads as less than a day, not 0 days", async (
 
   // One lead left in "Q4 SaaS founders" at about 30 contacted a day.
   assert.ok(runway, "the demo campaign close to running dry gets an action");
-  assert.match(runway.action, /less than a day of sending\.$/u);
+  assert.match(runway.action, /less than a day at its recent pace\.$/u);
   assert.doesNotMatch(runway.action, /about 0 days/u);
 });

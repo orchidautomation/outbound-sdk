@@ -9,9 +9,11 @@ import { noun } from "../../internal/plural.ts";
 import {
   newLeadsPerDay,
   paceWindow,
-  runwayDays,
+  runwayOf,
+  runwayStatus,
   splitActive,
 } from "../../internal/runway.ts";
+import type { Runway, RunwayState } from "../../internal/runway.ts";
 import { readCapped } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
@@ -66,11 +68,17 @@ export interface PipelineForecast extends CampaignLabel {
    */
   readonly dailyContactRate: number | null;
   /**
+   * `draining`, `stalled` (leads left to start but no pace), `out_of_leads`
+   * (none left to start) or `unknown` (the leads left were not all counted).
+   * `lead_runway` returns the same state. Always set by the insight;
+   * optional so a value built by hand stays valid.
+   */
+  readonly runwayState?: RunwayState;
+  /**
    * `notStarted` (or `remaining` when that is `null`) divided by
-   * `dailyContactRate`, and `0` when every lead was read and none is left to
-   * start. `null` when the leads left are unknown (the cap stopped the read,
-   * or a lead's status is unknown) or some are left with no pace to divide by.
-   * `lead_runway` returns the same figure as `runway_days`.
+   * `dailyContactRate`. `null` when the pace is `null` or 0, or the leads
+   * left are unknown (the cap stopped the read, or a lead's status is
+   * unknown). `lead_runway` returns the same figure as `runway_days`.
    */
   readonly daysLeft: number | null;
   /** The campaign's reply rate so far, over its whole history. */
@@ -144,19 +152,18 @@ const ASSUMPTIONS = [
 
 interface Left {
   readonly remaining: number;
-  readonly inSequence: number | null;
   readonly complete: boolean;
-  readonly daysLeft: number | null;
+  readonly runway: Runway;
 }
 
 const describe = (
-  { complete, daysLeft, inSequence, remaining }: Left,
+  { complete, remaining, runway }: Left,
   forecast: Estimate
 ): string => {
-  if (daysLeft === 0) {
+  if (runway.state === "out_of_leads") {
     return remaining === 0
       ? "No leads are left to contact; add leads to keep the campaign sending."
-      : `No new leads are left to start; ${plural(inSequence ?? remaining, "lead")} ${noun(inSequence ?? remaining, "is", "are")} finishing the sequence. Add leads to keep the campaign starting new ones.`;
+      : `No new leads are left to start; ${plural(runway.inSequence ?? remaining, "lead")} ${noun(runway.inSequence ?? remaining, "is", "are")} finishing the sequence. Add leads to keep the campaign starting new ones.`;
   }
 
   const leads = `${complete ? "" : "At least "}${plural(remaining, "lead")} ${noun(remaining, "remains", "remain")}`;
@@ -198,9 +205,8 @@ const ownerOf = (context: InsightContext, campaign: Campaign) =>
     ? context.outbound.workspace(`${campaign.provider}:${campaign.workspaceId}`)
     : context.outbound;
 
-/** Reads one campaign's leads, totals and recent pace, and projects what is left. */
 /** How long a campaign's leads last: its leads by status and the recent pace of new leads started. */
-export const runwayOf = async (
+export const readRunway = async (
   context: InsightContext,
   campaign: Campaign,
   options: ForecastOptions
@@ -208,9 +214,7 @@ export const runwayOf = async (
   const owner = ownerOf(context, campaign);
 
   const status =
-    options.activeOnly === true && owner.capabilities["leads.byStatus"]
-      ? ("active" as const)
-      : undefined;
+    options.activeOnly === true ? runwayStatus(owner.capabilities) : undefined;
 
   const { capped, items: leads } = await readCapped(
     context,
@@ -228,12 +232,11 @@ export const runwayOf = async (
   const pace = await paceOf(context, campaign.ref, options.days);
 
   return {
+    active: byStatus.active,
     byStatus,
     complete,
-    daysLeft: runwayDays(split, byStatus, complete, pace),
     leadsRead: leads.length,
-    pace,
-    remaining: byStatus.active,
+    runway: runwayOf(split, byStatus, complete, pace),
     split,
   };
 };
@@ -243,8 +246,14 @@ export const forecastCampaign = async (
   campaign: Campaign,
   options: ForecastOptions
 ): Promise<PipelineForecast> => {
-  const { byStatus, complete, daysLeft, leadsRead, pace, remaining, split } =
-    await runwayOf(context, campaign, options);
+  const {
+    active: remaining,
+    byStatus,
+    complete,
+    leadsRead,
+    runway,
+    split,
+  } = await readRunway(context, campaign, options);
 
   const rates = ratesOf(
     await readTotals(context, campaign.ref, { from: null, to: null })
@@ -259,15 +268,12 @@ export const forecastCampaign = async (
       `The reply rate so far is ${percent(rates.replyRate.rate)}, from ${rates.replyRate.count === null ? "an unknown number of replies" : plural(rates.replyRate.count, "reply", "replies")} over ${rates.replyRate.of ?? "unknown"}.`,
     ],
     byStatus,
-    dailyContactRate: pace,
-    daysLeft,
+    dailyContactRate: runway.pace,
+    daysLeft: runway.daysLeft,
     estimate: true,
     expectedPositive: project(remaining, rates.positiveRate),
     expectedReplies,
-    finding: describe(
-      { complete, daysLeft, inSequence: split.inSequence, remaining },
-      expectedReplies
-    ),
+    finding: describe({ complete, remaining, runway }, expectedReplies),
     inSequence: split.inSequence,
     leadsComplete: complete,
     leadsRead,
@@ -275,6 +281,7 @@ export const forecastCampaign = async (
     positiveRate: rates.positiveRate,
     remaining,
     replyRate: rates.replyRate,
+    runwayState: runway.state,
   };
 };
 

@@ -151,10 +151,27 @@ test("deliverability_check says in meta, not in next, when not every sender was 
 });
 
 test("lead_runway and audience_lists say when their cap stopped the count", async () => {
-  const runway = await call("lead_runway", {
-    campaign: "cmp_founders",
+  // lead_runway reads only the active leads, so the campaign needs two of them for a cap of 1 to stop it.
+  const runwayTool = createTools(
+    createOutbound({
+      adapter: memory({
+        data: {
+          campaigns: [{ id: "c1" }],
+          leads: [
+            { campaignId: "c1", id: "a1" },
+            { campaignId: "c1", id: "a2" },
+          ],
+        },
+      }),
+    })
+  ).find((tool) => tool.name === "lead_runway");
+
+  assert.ok(runwayTool);
+
+  const runway = (await runwayTool.call({
+    campaign: "c1",
     max_leads: 1,
-  });
+  } as never)) as ToolSuccess;
 
   assert.equal(runway.meta.complete, false);
   assert.match(

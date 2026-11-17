@@ -386,6 +386,7 @@
       "to": "2026-11-06"
     },
     "tooFewSends": [],
+    "toolsLeftOut": [],
     "total": {
       "change": {
         "bounceRate": 0.0066,
@@ -474,6 +475,12 @@
       },
       "verdict": "no_real_change"
     },
+    "totalBasis": {
+      "autoReplies": "excluded",
+      "covers": "campaigns",
+      "description": "The 4 campaigns read (active) added together. replied and positive count leads who replied, not reply messages, with automatic replies left out of replied.",
+      "replies": "people"
+    },
     "workspace": {
       "change": {
         "bounceRate": 0.006,
@@ -561,6 +568,12 @@
         "z": -1.952
       },
       "verdict": "no_real_change"
+    },
+    "workspaceBasis": {
+      "autoReplies": "excluded",
+      "covers": "workspace",
+      "description": "The vendor's own workspace totals: every campaign, whatever its state. replied and positive count leads who replied, not reply messages, with automatic replies left out of replied.",
+      "replies": "people"
     }
   },
   "insight": "period_comparison",

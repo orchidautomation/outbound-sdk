@@ -53,7 +53,8 @@
       "low": 0.0472,
       "of": 1050,
       "rate": 0.06
-    }
+    },
+    "runwayState": "draining"
   },
   "insight": "pipeline_forecast",
   "meta": {
