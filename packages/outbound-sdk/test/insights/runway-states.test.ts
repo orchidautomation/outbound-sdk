@@ -10,10 +10,13 @@ import { test } from "node:test";
 import { createOutbound } from "../../src/index.ts";
 import { insights } from "../../src/insights/index.ts";
 import { instantly } from "../../src/instantly/index.ts";
+import type { MemoryData } from "../../src/memory/index.ts";
 import { createTools } from "../../src/tools/index.ts";
 import type { ToolResult } from "../../src/tools/index.ts";
 import { createFetch } from "../helpers/http.ts";
 import { KEY } from "../instantly/suite.ts";
+import { NOW as MEMORY_NOW, single } from "./helpers.ts";
+import { row } from "./ops-helpers.ts";
 
 const DAY_MS = 86_400_000;
 const NOW = Date.now();
@@ -275,4 +278,33 @@ test("runway: lead_runway and client_report give the same state, days and comple
     assert.equal(toolData.in_sequence, entry?.inSequence, live.name);
     assert.equal(tool.ok && tool.meta.complete, meta.complete, live.name);
   }
+});
+
+// campaign_diagnosis calls the same runway. A campaign that stopped sending
+// because no lead is left to start has no pace, so no days left, and is still
+// diagnosed as lead runout rather than a sending fault.
+test("runway: campaign_diagnosis still names lead runout for a campaign out of leads with no pace", async () => {
+  const data: MemoryData = {
+    campaigns: [{ id: "dry", name: "Dry" }],
+    leads: [
+      ...Array.from({ length: 40 }, (_, index) => ({
+        campaignId: "dry",
+        engagement: { stepIndex: 3 },
+        id: `done-${index}`,
+        status: "completed" as const,
+      })),
+      { campaignId: "dry", engagement: { stepIndex: 1 }, id: "last" },
+    ],
+    stats: [row("dry", "2026-11-02", { contacted: 40, sent: 120 })],
+  };
+
+  const result = await single(data).insights.campaignDiagnosis(
+    { campaign: "memory:agency:dry" },
+    { now: MEMORY_NOW }
+  );
+
+  assert.deepEqual(
+    result.data.findings.map((finding) => finding.code),
+    ["out_of_leads"]
+  );
 });

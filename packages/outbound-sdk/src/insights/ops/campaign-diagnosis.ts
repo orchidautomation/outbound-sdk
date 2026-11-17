@@ -190,9 +190,12 @@ const readLeadsLeft = async (
   const split = splitActive(leads);
   const unknown = leads.filter((lead) => lead.status === "unknown").length;
 
+  const runway = runwayOf(split, { unknown }, true, recent.startedPerDay);
+
+  // A campaign that stopped because none is left to start has run out now, whether or not it started any lately.
   return {
     active: split.active,
-    daysLeft: runwayOf(split, { unknown }, true, recent.startedPerDay).daysLeft,
+    daysLeft: runway.state === "out_of_leads" ? 0 : runway.daysLeft,
     inSequence: split.inSequence,
     toStart: leadsToStart(split),
   };
