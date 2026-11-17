@@ -18,6 +18,7 @@ export default defineMeta({
     "agent-tools",
     "reply-text-for-llm",
     "sync-to-database",
+    "duckdb",
     "export-leads",
     "webhooks-and-reconcile",
     "run-many-clients",
