@@ -247,7 +247,14 @@ const stats = async (
   }
 
   const rows = await adapter.stats(
-    { ...query, scopeId: optionalId(adapter, query.scopeId) },
+    {
+      ...query,
+      scopeId: optionalId(adapter, query.scopeId),
+      scopeIds:
+        query.scopeIds === undefined
+          ? undefined
+          : [...new Set(query.scopeIds.map((id) => idFor(adapter, id)))],
+    },
     ctx
   );
 

@@ -12,5 +12,6 @@ replies.inbox: off when combined, on for heyreach
 senders.healthList: off when combined, on for instantly
 senders.warmup: off when combined, on for instantly
 sequence.subsequences: off when combined, on for instantly
+stats.bySenders: off when combined, on for instantly
 stats.byStep: off when combined, on for instantly
 tags: off when combined, on for instantly

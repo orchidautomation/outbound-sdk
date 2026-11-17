@@ -46,6 +46,59 @@ const senderStats = async (
   );
 };
 
+/** The most mailboxes one `GET /accounts/analytics/daily` names. */
+const EMAILS_AT_MOST = 200;
+
+/**
+ * Several mailboxes: one daily read for each 200, and the workspace's
+ * tracking once for them all, since it is the same for every mailbox.
+ */
+const sendersStats = async (
+  client: InstantlyClient,
+  ctx: AdapterContext,
+  query: StatsQuery,
+  scopeIds: readonly string[]
+): Promise<MetricRow[]> => {
+  const chunks = Array.from(
+    { length: Math.ceil(scopeIds.length / EMAILS_AT_MOST) },
+    (_, index) =>
+      scopeIds.slice(index * EMAILS_AT_MOST, (index + 1) * EMAILS_AT_MOST)
+  );
+
+  const batches = await Promise.all(
+    chunks.map((emails) =>
+      client.getRows(ctx, "/accounts/analytics/daily", {
+        query: { ...range(query), emails },
+      })
+    )
+  );
+
+  const days = batches.flat();
+
+  // Rows name the mailbox in Instantly's casing; the scope keeps the caller's.
+  const byEmail = new Map(scopeIds.map((id) => [id.toLowerCase(), id]));
+
+  const rows = scopeIds.flatMap((scopeId) => {
+    const own = days.filter(
+      (day) =>
+        byEmail.get(text(day.email_account)?.toLowerCase() ?? "") === scopeId
+    );
+
+    const scope: RowScope = { ...client.identity, scope: "sender", scopeId };
+
+    if (query.by === "day") {
+      return own.map((day) => dailyRow(scope, day));
+    }
+
+    return own.length === 0 ? [] : [summedRow(scope, own)];
+  });
+
+  return applyTracking(
+    rows,
+    await workspaceTracking(client, ctx, range(query))
+  );
+};
+
 /** One campaign's rows, judged on that campaign's settings. */
 const ownRows = async (
   client: InstantlyClient,
@@ -85,6 +138,10 @@ export const readStats = async (
     scope: query.scope,
     scopeId: query.scopeId ?? identity.workspaceId,
   };
+
+  if (query.scope === "sender" && query.scopeIds !== undefined) {
+    return await sendersStats(client, ctx, query, query.scopeIds);
+  }
 
   if (query.scope === "sender") {
     return await senderStats(client, ctx, scope, query);

@@ -6,7 +6,7 @@ import { OutboundError } from "../errors.ts";
 import type { StatsResult, TopLevelStatsOptions } from "./api.ts";
 import { checked, infoFor, metaFor, perform } from "./core.ts";
 import type { Core } from "./core.ts";
-import { assertDay } from "./validate.ts";
+import { assertDay, assertId } from "./validate.ts";
 
 const SCOPE_CAPABILITY = {
   campaign: "stats.campaign",
@@ -14,6 +14,28 @@ const SCOPE_CAPABILITY = {
   step: "stats.byStep",
   workspace: "stats.workspace",
 } as const satisfies Record<MetricScope, CapabilityKey>;
+
+/** The senders of a read of several, checked. */
+const sendersOf = (
+  options: TopLevelStatsOptions
+): readonly string[] | undefined => {
+  if (options.scopeIds === undefined) {
+    return undefined;
+  }
+
+  if (options.scope !== "sender" || options.scopeId !== undefined) {
+    throw new OutboundError(
+      "Invalid",
+      "scopeIds is for the sender scope, in place of scopeId"
+    );
+  }
+
+  if (options.scopeIds.length === 0) {
+    throw new OutboundError("Invalid", "scopeIds needs at least one sender");
+  }
+
+  return options.scopeIds.map((id) => assertId(id, "Sender"));
+};
 
 /**
  * Counts for a scope, as totals or one row per day. Async, so a refused
@@ -32,12 +54,15 @@ export const readStats = async (
     throw new OutboundError("Invalid", "from must not be after to");
   }
 
+  const scopeIds = sendersOf(options);
+
   // The campaign scope with no campaign named is a row per campaign.
   const everyCampaign = scope === "campaign" && options.scopeId === undefined;
 
   if (
     scope !== "workspace" &&
     options.scopeId === undefined &&
+    scopeIds === undefined &&
     !everyCampaign
   ) {
     throw new OutboundError(
@@ -54,6 +79,14 @@ export const readStats = async (
       : `Reading stats for the ${scope} scope`
   );
 
+  if (scopeIds !== undefined) {
+    requireCapability(
+      core.gate,
+      "stats.bySenders",
+      "Reading stats for several senders in one call"
+    );
+  }
+
   if (by === "day") {
     requireCapability(core.gate, "stats.byDay", "Reading stats by day");
   }
@@ -62,7 +95,7 @@ export const readStats = async (
     const output = await core.run(
       {
         kind: "stats",
-        query: { by, from, scope, scopeId: options.scopeId, to },
+        query: { by, from, scope, scopeId: options.scopeId, scopeIds, to },
       },
       infoFor(core, state)
     );

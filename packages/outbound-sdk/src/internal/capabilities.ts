@@ -91,6 +91,12 @@ export interface Capabilities {
   "stats.byDay": StatGrade;
   "stats.byStep": StatGrade;
   "stats.bySender": StatGrade;
+  /**
+   * Several senders in one read: `stats({ scope: "sender", scopeIds })`,
+   * a row per sender (and day) in a few requests instead of a few per sender.
+   * Graded like `stats.bySender`.
+   */
+  "stats.bySenders": StatGrade;
   workspaces: boolean;
   /** The addresses, domains and profiles the account never contacts. */
   blocklist: boolean;
@@ -162,6 +168,7 @@ export const NO_CAPABILITIES: Capabilities = {
   "sequence.subsequences": false,
   "stats.byDay": false,
   "stats.bySender": false,
+  "stats.bySenders": false,
   "stats.byStep": false,
   "stats.allCampaigns": false,
   "stats.campaign": false,

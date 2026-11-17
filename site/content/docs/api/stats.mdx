@@ -35,6 +35,7 @@ All three return a `StatsResult`: `rows`, an array of [`MetricRow`](#the-counts)
 | --- | --- | --- | --- |
 | `scope` | `"workspace"`, `"campaign"`, `"step"`, `"sender"` | `"workspace"` | What the counts are for. On `campaign(id).stats` only `"campaign"` (the default) and `"step"`. Not an option on `sender(id).stats`. |
 | `scopeId` | `string` | none | The campaign for the `campaign` and `step` scopes, the sender for `sender`. Only on `outbound.stats`: the handles fill it in. |
+| `scopeIds` | `string[]` | none | Several senders for the `sender` scope, in place of `scopeId`. Only on `outbound.stats`. |
 | `from` | `YYYY-MM-DD` | none | First day, inclusive. |
 | `to` | `YYYY-MM-DD` | none | Last day, inclusive. |
 | `by` | `"total"` or `"day"` | `"total"` | One row over the range, or one row per day. |
@@ -45,20 +46,22 @@ Plus the per-call options every read takes: see [retries](/docs/retries).
 - `scope: "campaign"` without a `scopeId` returns one row per campaign from a single vendor request, each with the campaign's `scopeRef`. Instantly and Smartlead serve it as totals only; `by: "day"` there is `Unsupported`.
 - With no `from` or `to`, the SDK passes no range and the adapter decides what the vendor is asked for. Pass both when the number matters.
 - `scope: "step"` returns one row per step, each with its `stepIndex`.
+- `scope: "sender"` with `scopeIds` returns each sender's rows from one read where the vendor allows it, each with that sender's `scopeRef`. Instantly reads up to 200 mailboxes a request. `scopeIds` on another scope, beside `scopeId`, or empty is `Invalid`.
 - A scope with nothing to report returns no rows. An empty `rows` is not a row of zeros.
 
 ## Scopes and capabilities
 
 Each scope needs a capability, and `by: "day"` needs one more. A scope the adapter cannot serve is refused with `Unsupported` before any request.
 
-| Request                           | Needs                 |
-| --------------------------------- | --------------------- |
-| `scope: "workspace"`              | `stats.workspace`     |
-| `scope: "campaign"`               | `stats.campaign`      |
-| `scope: "campaign"`, no `scopeId` | `stats.allCampaigns`  |
-| `scope: "step"`                   | `stats.byStep`        |
-| `scope: "sender"`                 | `stats.bySender`      |
-| `by: "day"`, on any scope         | `stats.byDay` as well |
+| Request                           | Needs                     |
+| --------------------------------- | ------------------------- |
+| `scope: "workspace"`              | `stats.workspace`         |
+| `scope: "campaign"`               | `stats.campaign`          |
+| `scope: "campaign"`, no `scopeId` | `stats.allCampaigns`      |
+| `scope: "step"`                   | `stats.byStep`            |
+| `scope: "sender"`                 | `stats.bySender`          |
+| `scope: "sender"`, `scopeIds`     | `stats.bySenders` as well |
+| `by: "day"`, on any scope         | `stats.byDay` as well     |
 
 ### Grades
 
