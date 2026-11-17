@@ -2,8 +2,9 @@
 
 import { z } from "zod";
 
-import type { Channel } from "../../internal/entities.ts";
+import type { CampaignStatus, Channel } from "../../internal/entities.ts";
 import { sumMeasured } from "../../internal/metrics.ts";
+import { either } from "../capped.ts";
 import type { CampaignsRead } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import { rangeFields } from "../fields.ts";
@@ -23,7 +24,10 @@ import type { CampaignTotals, Measured, OpenRange, Totals } from "./shared.ts";
 
 const input = z.object({
   ...rangeFields,
-  ...listFields("one stats request"),
+  ...listFields("one stats request", {
+    maxCampaigns: 150,
+    statuses: ["active", "paused", "completed"],
+  }),
   alpha: z
     .number()
     .gt(0)
@@ -138,7 +142,8 @@ const NAMES = { email: "email", linkedin: "LinkedIn" } as const;
 const compare = (
   groups: readonly ChannelGroup[],
   alpha: number,
-  read: CampaignsRead
+  read: CampaignsRead,
+  statuses: readonly CampaignStatus[]
 ): Pick<ChannelMix, "comparison" | "finding"> => {
   const [first, second] = groups;
 
@@ -155,7 +160,7 @@ const compare = (
       comparison: null,
       finding: read.moreCampaignsExist
         ? `Only ${NAMES[first.channel]} campaigns were read before max_campaigns stopped the read; campaigns left unread may be on the other channel, so raise max_campaigns to compare.`
-        : `Only ${NAMES[first.channel]} campaigns were found, so there is nothing to compare.`,
+        : `Only ${NAMES[first.channel]} campaigns are ${either([...new Set(statuses)])}, so there is nothing to compare; pass statuses to include campaigns in other states.`,
     };
   }
 
@@ -192,7 +197,7 @@ const compare = (
 
 export const channelMix = defineInsight({
   description:
-    "Email against LinkedIn: campaign totals added up per channel, with campaigns, leads contacted, messages sent, replies, positive replies, the reply rate with its 95% interval and, for LinkedIn, the connection acceptance rate; whether the difference in reply rate is more than chance (a two-proportion test); and the same numbers per tool. Use it to decide where to put volume. With one channel present it returns that channel and says there is nothing to compare. A null count is one the vendor does not report; a rate counts only the campaigns that report both its count and what it divides by, and a note names a group whose rate leaves campaigns out. Costs one listing per status plus one stats request per campaign (one for all of them on a vendor that reports every campaign in one call with every count).",
+    "Email against LinkedIn: campaign totals added up per channel, with campaigns, leads contacted, messages sent, replies, positive replies, the reply rate with its 95% interval and, for LinkedIn, the connection acceptance rate; whether the difference in reply rate is more than chance (a two-proportion test); and the same numbers per tool. Use it to decide where to put volume. It reads active, paused and completed campaigns by default, since a channel's finished campaigns hold most of its evidence. With one channel present it returns that channel and says there is nothing to compare; on several tools, a note names a tool with no campaign in the states read. A null count is one the vendor does not report; a rate counts only the campaigns that report both its count and what it divides by, and a note names a group whose rate leaves campaigns out. Costs one listing per status plus one stats request per campaign (one for all of them on a vendor that reports every campaign in one call with every count).",
   inputSchema: input,
   key: "channelMix",
   cost: campaignTotalsCost,
@@ -224,7 +229,8 @@ export const channelMix = defineInsight({
       ...compare(
         channels.map((each) => each.group),
         options.alpha,
-        read
+        read,
+        options.statuses
       ),
       byProvider: providers.map((each) => each.group),
       channels: channels.map((each) => each.group),

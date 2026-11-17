@@ -69,7 +69,7 @@ const CAPPED: MemoryData = {
 
 test("hot_leads finds the leads that replied past the max_leads cap", async () => {
   const result = await single(CAPPED).insights.hotLeads(
-    { limit: 5 },
+    { limit: 5, max_leads: 500 },
     { now: NOW }
   );
 
@@ -86,7 +86,7 @@ test("hot_leads finds the leads that replied past the max_leads cap", async () =
 test("hot_leads says in its data that leads went unscored when it cannot look past the cap", async () => {
   const result = await single(CAPPED, {
     "replies.list": false,
-  }).insights.hotLeads({ limit: 5 }, { now: NOW });
+  }).insights.hotLeads({ limit: 5, max_leads: 500 }, { now: NOW });
 
   assert.deepEqual(result.data.leads, []);
   assert.equal(result.data.totals.moreLeadsExist, true);
@@ -96,6 +96,23 @@ test("hot_leads says in its data that leads went unscored when it cannot look pa
       "This tool cannot list replies, so leads were ranked from the lead records alone."
     )
   );
+});
+
+// The live shape of 2026-11-17 (OUT-109): 505 leads labelled positive,
+// more than the old default of 500.
+test("hot_leads on its default input reads 505 leads labelled positive in full", async () => {
+  const result = await single({
+    campaigns: [{ id: "c1", name: "Agency owners" }],
+    leads: Array.from({ length: 505 }, (_, index) => ({
+      ...engaged(index % ENGAGED),
+      email: `positive${index}@example.com`,
+      id: `positive${index}`,
+    })),
+  }).insights.hotLeads({}, { now: NOW });
+
+  assert.equal(result.data.totals.moreLeadsExist, false);
+  assert.equal(result.data.totals.hot, 505);
+  assert.equal(result.meta.complete, true, result.meta.notes.join(" | "));
 });
 
 test("hot_leads reads no replies when the listing was not cut short", async () => {

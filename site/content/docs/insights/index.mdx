@@ -56,10 +56,11 @@ Every read an insight makes has a cap you can set. The defaults keep one call to
 | --- | --- | --- |
 | `max_campaigns` | 20 | The [people](/docs/insights/people) insights and `copyReuse` |
 | `max_campaigns` | 25 | `settingsAudit` |
-| `max_campaigns` | 50 | `bounceWatch`, `senderCapacity`, `senderLoad` and the [operations](/docs/insights/operations) insights that list campaigns |
-| `max_leads` | 500 | `hotLeads`, `personalizationGaps` |
+| `max_campaigns` | 50 | `bounceWatch`, `senderCapacity`, `senderLoad` and the [operations](/docs/insights/operations) insights that list campaigns, apart from `channelMix` |
+| `max_campaigns` | 150 | `channelMix` |
+| `max_leads` | 500 | `personalizationGaps` |
 | `max_leads` | 1,000 | `accountSummary` |
-| `max_leads` | 2,000 | `pipelineForecast`, `campaignDiagnosis` |
+| `max_leads` | 2,000 | `hotLeads`, `pipelineForecast`, `campaignDiagnosis` |
 | `max_leads_per_campaign` | 500 | `leadCollisions`, `suppressionCheck`, `clientReport` |
 | `max_block_entries` | 2,000 | `suppressionCheck` |
 | `max_replies` | `null`: the whole window, up to 2,000 | `droppedReplies` |
