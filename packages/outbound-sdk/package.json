@@ -1,6 +1,6 @@
 {
   "name": "outbound-sdk",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "description": "One small, typed, read-only API over outbound sending tools.",
   "keywords": [
     "cold-email",
