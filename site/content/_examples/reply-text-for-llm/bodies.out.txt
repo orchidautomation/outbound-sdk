@@ -10,7 +10,8 @@
       "is_auto": null,
       "lead": "memory:acme:lead_dana",
       "received_at": "2026-11-12T09:30:00.000Z",
-      "reply": "memory:acme:msg_dana"
+      "reply": "memory:acme:msg_dana",
+      "url": null
     }
   ]
 }
@@ -30,7 +31,8 @@
       "is_auto": null,
       "lead": "memory:acme:lead_dana",
       "received_at": "2026-11-12T09:30:00.000Z",
-      "reply": "memory:acme:msg_dana"
+      "reply": "memory:acme:msg_dana",
+      "url": null
     },
     {
       "body": {
@@ -44,7 +46,8 @@
       "is_auto": null,
       "lead": "memory:acme:lead_sam",
       "received_at": "2026-11-13T15:05:00.000Z",
-      "reply": "memory:acme:msg_sam"
+      "reply": "memory:acme:msg_sam",
+      "url": null
     },
     {
       "body": {
@@ -58,7 +61,8 @@
       "is_auto": null,
       "lead": "memory:acme:lead_lee",
       "received_at": "2026-11-13T18:20:00.000Z",
-      "reply": "memory:acme:msg_lee"
+      "reply": "memory:acme:msg_lee",
+      "url": null
     }
   ]
 }

@@ -127,6 +127,8 @@ export const fields: FieldDeclaration = {
     isAuto: false,
     isAutoSource: false,
     stepIndex: false,
+    // HeyReach documents no link to a Unibox conversation.
+    url: false,
     variantKey: false,
   },
   metricRow: {
@@ -161,6 +163,7 @@ export const fields: FieldDeclaration = {
     isAutoSource: false,
     leftCompany: false,
     stepIndex: false,
+    url: false,
     variantKey: false,
   },
   sender: {
@@ -285,4 +288,5 @@ export const caveats: readonly string[] = [
   "The workspace's tags cannot be listed: the API creates tags and reads one lead's tags, nothing more. A tag has a name and a colour and no id.",
   "Only the voice_note_received webhook payload is documented. Other events are assumed to share its skeleton, and the lowercase event_type names are inferred from two examples.",
   "Webhooks are not signed; correlation_id is the only identifier and is assumed to be stable across redelivery.",
+  "A message's or reply's url is null: HeyReach documents no link to a Unibox conversation, and no read returns one (checked live on 2026-11-17: a conversation's only URLs are LinkedIn profile, image and company links).",
 ];

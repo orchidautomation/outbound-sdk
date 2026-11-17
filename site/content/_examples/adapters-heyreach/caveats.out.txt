@@ -86,3 +86,5 @@
 
 - Webhooks are not signed; correlation_id is the only identifier and is assumed to be stable across redelivery.
 
+- A message's or reply's url is null: HeyReach documents no link to a Unibox conversation, and no read returns one (checked live on 2026-11-17: a conversation's only URLs are LinkedIn profile, image and company links).
+

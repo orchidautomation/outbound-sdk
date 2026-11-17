@@ -120,6 +120,8 @@ const messageFields = (
   stepIndex: place.stepIndex ?? null,
   subject: parts.subject,
   threadId: place.threadId ?? null,
+  // Smartlead documents no link to one master inbox conversation.
+  url: null,
   variantKey: null,
 });
 

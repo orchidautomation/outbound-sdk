@@ -131,8 +131,9 @@ export const fields: FieldDeclaration = {
     tags: false,
   },
   // No email carried is_auto_reply live: a fixed rule decides, and in a
-  // timeline the step comes from the send a reply answers.
-  message: { isAuto: "derived", isAutoSource: "derived" },
+  // timeline the step comes from the send a reply answers. The Unibox link is
+  // built from the thread and workspace, as Instantly's own unibox_url is.
+  message: { isAuto: "derived", isAutoSource: "derived", url: "derived" },
   metricRow: {
     connectionsAccepted: false,
     connectionsSent: false,
@@ -143,7 +144,12 @@ export const fields: FieldDeclaration = {
   },
   // A test has a creation time and a next run, and no start or end date.
   placementTest: { endsAt: false, startsAt: false },
-  reply: { isAuto: "derived", isAutoSource: "derived", leftCompany: "derived" },
+  reply: {
+    isAuto: "derived",
+    isAutoSource: "derived",
+    leftCompany: "derived",
+    url: "derived",
+  },
   sender: { linkedinUrl: false },
   senderHealth: { blacklisted: false, checkedAt: false },
 };
@@ -248,4 +254,5 @@ export const caveats: readonly string[] = [
   "A truncated message body costs one more read of that email (GET /emails/{id}) when bodies are asked for. That read is assumed to share the 20-per-minute limit of the email list.",
   "Messages of a thread are found with the documented search value thread:<id>.",
   "Instantly's email list does not hold every email a campaign sent (seen live: a lead on its sixth step had one sent email and two replies). A timeline or a thread can therefore be shorter than the sequence; a lead's engagement.stepIndex says how far it got. A received email carries the step it replies to.",
+  "A message's or reply's url opens its thread in the Unibox: https://app.instantly.ai/app/unibox?thread_search=thread:<thread_id>&selected_wks=<organization_id>. Instantly documents unibox_url on reply webhooks (\"URL to view the conversation in Unibox\") but not how it is built; on 2026-11-17 the unibox_url of four live reply_received deliveries, all naming one email, was exactly this, from that email's thread_id and organization_id. The link needs a signed-in Instantly session, and was not opened in a browser. An email without a thread_id or organization_id has a null url.",
 ];
