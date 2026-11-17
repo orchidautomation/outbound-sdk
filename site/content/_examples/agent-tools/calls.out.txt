@@ -115,7 +115,8 @@ campaign_ranking {"metric":"reply_rate"}
     "period": {
       "from": null,
       "to": null
-    }
+    },
+    "toolsLeftOut": []
   },
   "meta": {
     "complete": true,

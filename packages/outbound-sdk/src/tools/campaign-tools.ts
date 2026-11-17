@@ -125,6 +125,11 @@ export const campaignOverview: ToolDefinition<OverviewInput> = {
                 `Stopped at ${plural(rows.length, "campaign")} (limit); more ${input.status} campaigns exist.`,
               ]
             : []),
+          ...(rows.length === 0 && input.campaign === undefined
+            ? [
+                `No campaign is ${input.status}, so the list is empty; pass status (paused, completed, draft, archived) to read the others.`,
+              ]
+            : []),
           ...(unreported > 0
             ? [
                 `The vendor reported no stats for ${plural(unreported, "campaign")} in this range, so metrics is null there: unknown, not zero.`,

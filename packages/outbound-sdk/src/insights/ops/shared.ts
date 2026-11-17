@@ -7,8 +7,8 @@ import { z } from "zod";
 import type { Campaign, CampaignStatus } from "../../internal/entities.ts";
 import { sumMeasured } from "../../internal/metrics.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
-import { campaignsReadOf, readCampaignsIn } from "../capped.ts";
-import type { CampaignsRead } from "../capped.ts";
+import { campaignsReadOf, either, readCampaignsIn } from "../capped.ts";
+import type { CampaignsRead, SkippedTool } from "../capped.ts";
 import type { Price } from "../cost.ts";
 import type { InsightContext } from "../define.ts";
 import { statusesInput } from "../fields.ts";
@@ -343,6 +343,8 @@ export interface CampaignTotals {
 export interface EveryCampaignTotals {
   readonly entries: CampaignTotals[];
   readonly read: CampaignsRead;
+  /** The tools of a combined instance none of whose campaigns was read. */
+  readonly skipped: readonly SkippedTool[];
 }
 
 export interface ListInput extends OpenRange {
@@ -416,7 +418,96 @@ export const readCampaignTotals = async (
     "campaigns"
   );
 
-  return { entries, read: campaignsReadOf(listed) };
+  return { entries, read: campaignsReadOf(listed), skipped: listed.skipped };
+};
+
+/**
+ * A tool of a combined instance left out of the answer because none of its
+ * campaigns is in the states asked for, with its own workspace totals for
+ * the period, so activity it had there is named rather than lost.
+ */
+export interface ToolLeftOut extends SkippedTool {
+  /** The tool's workspace totals for the period. `null` when it has no workspace stats. */
+  readonly counts: Totals | null;
+}
+
+/**
+ * The tools left out, each with its workspace totals for the range: one
+ * stats request each. A note names those that sent or got replies in it.
+ */
+export const toolsLeftOut = async (
+  context: InsightContext,
+  skipped: readonly SkippedTool[],
+  range: OpenRange
+): Promise<ToolLeftOut[]> => {
+  const left = await Promise.all(
+    skipped.map(async (tool): Promise<ToolLeftOut> => {
+      const outbound = context.outbound.workspace(tool.tool);
+
+      if (outbound.capabilities["stats.workspace"] === false) {
+        return { ...tool, counts: null };
+      }
+
+      const rows = context.rows(
+        await outbound.stats({
+          from: range.from ?? undefined,
+          to: range.to ?? undefined,
+        })
+      );
+
+      return { ...tool, counts: totalsOf(sumMeasured(rows)) };
+    })
+  );
+
+  const active = left.filter(
+    ({ counts }) => (counts?.sent ?? 0) > 0 || (counts?.replied ?? 0) > 0
+  );
+
+  if (active.length > 0) {
+    context.note(
+      `Left out of the totals: ${active.map(({ counts, tool }) => `${tool} (${counts?.sent ?? "unknown"} sent, ${counts?.replied ?? "unknown"} replied)`).join(", ")}, which had activity in the period but no campaign in the states asked for. Their counts are in toolsLeftOut; pass statuses to read their campaigns.`
+    );
+  }
+
+  return left;
+};
+
+/**
+ * What a set of counts covers, so two reply figures that differ can be told
+ * apart. `replied` and `positive` count leads, not reply messages, with
+ * automatic replies left out of `replied`.
+ */
+export interface CountsBasis {
+  /**
+   * `campaigns`: the campaigns read, added together, so only those in the
+   * states asked for. `workspace`: the vendor's own workspace totals, which
+   * count every campaign whatever its state.
+   */
+  readonly covers: "campaigns" | "workspace";
+  /** `people`: `replied` and `positive` count leads, not reply messages. */
+  readonly replies: "people";
+  /** Automatic replies are left out of `replied`. */
+  readonly autoReplies: "excluded";
+  /** The same, in a sentence. */
+  readonly description: string;
+}
+
+export const campaignsBasis = (
+  campaigns: number,
+  statuses: readonly string[]
+): CountsBasis => ({
+  autoReplies: "excluded",
+  covers: "campaigns",
+  description: `The ${campaigns} ${campaigns === 1 ? "campaign" : "campaigns"} read (${either(statuses)}) added together. replied and positive count leads who replied, not reply messages, with automatic replies left out of replied.`,
+  replies: "people",
+});
+
+export const WORKSPACE_BASIS: CountsBasis = {
+  autoReplies: "excluded",
+  covers: "workspace",
+  description:
+    "The vendor's own workspace totals: every campaign, whatever its state. replied and positive count leads who replied, not reply messages, with automatic replies left out of replied.",
+  replies: "people",
 };
 
 export interface DayCounts {

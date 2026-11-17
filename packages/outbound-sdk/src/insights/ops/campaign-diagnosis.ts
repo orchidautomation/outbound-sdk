@@ -8,7 +8,7 @@ import type { Campaign, Sender } from "../../internal/entities.ts";
 import {
   leadsToStart,
   newLeadsPerDay,
-  runwayDays,
+  runwayOf,
   splitActive,
 } from "../../internal/runway.ts";
 import { SCREENED_AT_MOST } from "../../internal/sender-screen.ts";
@@ -192,7 +192,7 @@ const readLeadsLeft = async (
 
   return {
     active: split.active,
-    daysLeft: runwayDays(split, { unknown }, true, recent.startedPerDay),
+    daysLeft: runwayOf(split, { unknown }, true, recent.startedPerDay).daysLeft,
     inSequence: split.inSequence,
     toStart: leadsToStart(split),
   };

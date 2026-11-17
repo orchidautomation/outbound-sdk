@@ -76,7 +76,8 @@
     "period": {
       "from": null,
       "to": null
-    }
+    },
+    "toolsLeftOut": []
   },
   "insight": "campaign_ranking",
   "meta": {

@@ -143,5 +143,8 @@ test("instantly: a status code the reference does not list stays unknown and lea
   assert.equal(data.byStatus.skipped, 0);
   assert.equal(data.byStatus.unknown, 1);
   assert.equal(data.daysLeft, null, "an unknown lead may still be waiting");
-  assert.equal((await runway(outbound)).runway_days, null);
+  assert.equal(data.runwayState, "unknown");
+  // lead_runway reads only the active leads, as client_report does (OUT-147),
+  // so a lead of unknown status is not in its count.
+  assert.equal((await runway(outbound)).state, "out_of_leads");
 });
