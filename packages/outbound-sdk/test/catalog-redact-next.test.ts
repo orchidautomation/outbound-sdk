@@ -62,6 +62,28 @@ test("under redact person_summary is offered, answers a lead ref another read re
   assert.doesNotMatch(JSON.stringify(result), /@example\.com/u);
 });
 
+test("under redact person_summary still refuses a lead ref with nothing left to look it up by", async () => {
+  // Only LinkedIn is masked, and the lead has no address and no profile.
+  const outbound = createOutbound({
+    adapter: memory({
+      data: {
+        campaigns: [{ id: "c1" }],
+        leads: [{ campaignId: "c1", id: "l1" }],
+      },
+    }),
+    plugins: [redact({ fields: ["linkedin"] }), insights()],
+  });
+
+  await assert.rejects(
+    outbound.insights.personSummary({ person: "memory:default:l1" }),
+    {
+      code: "Unsupported",
+      message:
+        /masks LinkedIn profiles: the lead has no email address to look it up by$/u,
+    }
+  );
+});
+
 const tool = (outbound: Parameters<typeof insightTools>[0], name: string) => {
   const found = insightTools(outbound).find((each) => each.name === name);
 
