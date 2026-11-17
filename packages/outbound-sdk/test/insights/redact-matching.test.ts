@@ -100,15 +100,13 @@ test("without redact the email-matching insights find the people and the violati
   assert.equal(collisions.data.totals.pastOverlaps, 1);
 });
 
-test("with redact masking emails they refuse before any read, naming the redact plugin", async () => {
+test("with redact masking emails the insights that need the address itself refuse before any read, naming the redact plugin", async () => {
   const { outbound, seen } = build({});
 
   await assert.rejects(
     outbound.insights.accountSummary({ domain: "example.com" }),
     refusedByRedact
   );
-  await assert.rejects(outbound.insights.suppressionCheck({}), refusedByRedact);
-  await assert.rejects(outbound.insights.leadCollisions({}), refusedByRedact);
   await assert.rejects(
     outbound.insights.personSummary({ person: "person1@example.com" }),
     (error) =>
@@ -136,14 +134,15 @@ test("insightTools leaves out what redact keeps from working, and no hint names 
     names().filter((name) => people.includes(name)),
     people
   );
+  // A masked address is a token keyed for the run, which tells people apart.
   assert.deepEqual(
     names({}).filter((name) => people.includes(name)),
-    []
+    ["lead_collisions", "suppression_check"]
   );
   // With only emails masked a person is still looked up by LinkedIn profile.
   assert.deepEqual(
     names({ fields: ["email"] }).filter((name) => people.includes(name)),
-    ["person_summary"]
+    ["person_summary", "lead_collisions", "suppression_check"]
   );
   // A hash still matches an exact address; a domain is gone.
   assert.deepEqual(
@@ -199,6 +198,110 @@ test("a hashing redact keeps exact matching working, and says what it cannot mat
   await assert.rejects(
     outbound.insights.accountSummary({ domain: "example.com" }),
     refusedByRedact
+  );
+});
+
+test("a masking redact matches people on its keyed tokens, and says a domain entry cannot be matched", async () => {
+  const { outbound } = build({});
+
+  const collisions = await outbound.insights.leadCollisions({
+    include_past: true,
+  });
+
+  assert.equal(collisions.data.totals.collisions, 1);
+  assert.equal(collisions.data.totals.pastOverlaps, 1);
+  assert.match(
+    collisions.data.collisions[0]?.identifiers[0] ?? "",
+    /^email:redacted:[0-9a-f]{16}$/u
+  );
+  assert.equal(collisions.meta.complete, true);
+  assert.doesNotMatch(JSON.stringify(collisions), /person1@example\.com/u);
+
+  // The block list holds a domain, which a masked address no longer shows.
+  const suppression = await outbound.insights.suppressionCheck({});
+
+  assert.equal(suppression.data.totals.violations, 0);
+  assert.equal(suppression.meta.complete, false);
+  assert.match(
+    suppression.meta.notes.join(" "),
+    /^The redact plugin masks email addresses, so domain entries could not be matched to leads\.$/mu
+  );
+});
+
+const PROFILE = "https://www.linkedin.com/in/example-person/";
+
+// One address and one profile, each written two ways.
+const PEOPLE: MemoryData = {
+  blocklist: [
+    { id: "b1", value: "Person1@Example.com" },
+    { id: "b2", kind: "linkedin", value: "example-person" },
+  ],
+  campaigns: [
+    { id: "c1", name: "Email Q4", status: "active" },
+    { id: "c2", channel: "linkedin", name: "LinkedIn Q4", status: "active" },
+  ],
+  leads: [
+    {
+      campaignId: "c1",
+      email: "person1@example.com",
+      id: "l1",
+      status: "active",
+    },
+    { campaignId: "c1", id: "l2", linkedinUrl: PROFILE, status: "active" },
+    {
+      campaignId: "c2",
+      email: "PERSON1@example.com",
+      id: "l3",
+      status: "active",
+    },
+    {
+      campaignId: "c2",
+      id: "l4",
+      linkedinUrl: "https://linkedin.com/in/example-person",
+      status: "active",
+    },
+  ],
+};
+
+test("a masking redact matches addresses and profiles, written either way, to each other and to the block list", async () => {
+  const outbound = createOutbound({
+    adapter: memory({ data: PEOPLE }),
+    plugins: [redact({}), insights()],
+  });
+
+  const collisions = await outbound.insights.leadCollisions({});
+
+  assert.deepEqual(
+    collisions.data.collisions.map((each) => [
+      each.identifiers.map((key) => key.replace(/[0-9a-f]{16}$/u, "…")),
+      each.stillActive,
+    ]),
+    [
+      [["email:redacted:…"], 2],
+      [["linkedin:redacted:…"], 2],
+    ]
+  );
+  assert.equal(collisions.meta.complete, true);
+
+  const suppression = await outbound.insights.suppressionCheck({});
+
+  assert.deepEqual(
+    suppression.data.violations.map((each) => [each.lead, each.matchedBy]),
+    [
+      ["memory:default:l1", "email"],
+      ["memory:default:l2", "linkedin"],
+      ["memory:default:l3", "email"],
+      ["memory:default:l4", "linkedin"],
+    ]
+  );
+  assert.ok(
+    suppression.data.violations.every((each) =>
+      /^redacted:[0-9a-f]{16}$/u.test(each.entryValue)
+    )
+  );
+  assert.doesNotMatch(
+    JSON.stringify([collisions, suppression]),
+    /person1@example|example-person/iu
   );
 });
 

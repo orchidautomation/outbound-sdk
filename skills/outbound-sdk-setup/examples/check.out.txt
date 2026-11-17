@@ -1,6 +1,6 @@
 {"id":1,"jsonrpc":"2.0","result":{}}
-2: 32 tools, 32 marked read-only
+2: 34 tools, 34 marked read-only
 {"id":3,"jsonrpc":"2.0","result":{"content":[{"text":"{\"error\":{\"code\":\"Unsupported\",\"message\":\"Reading reply bodies is not available: the redact plugin turned it off (messages.body)\",\"retryable\":false},\"next\":\"This tool is not available with the current adapter or plugins. Try another tool.\",\"ok\":false}","type":"text"}],"isError":true,"structuredContent":{"error":{"code":"Unsupported","message":"Reading reply bodies is not available: the redact plugin turned it off (messages.body)","retryable":false},"next":"This tool is not available with the current adapter or plugins. Try another tool.","ok":false}}}
 
 config plugins: clients
-4: Plugins on: redact, clients, identity. redact masks personal fields such as emails and names, and reply text is not available. Left out while redact is on: cross_channel_lead, person_summary, account_summary, lead_collisions, suppression_check. They match people by email or LinkedIn profile, which redact masks. Start the server with --no-redact to offer them; personal fields are then not masked.
+4: Plugins on: redact, clients, identity. redact masks personal fields such as emails and names, and reply text is not available. Left out while redact is on: cross_channel_lead, person_summary, account_summary. They match people by email or LinkedIn profile, which redact masks. Start the server with --no-redact to offer them; personal fields are then not masked.

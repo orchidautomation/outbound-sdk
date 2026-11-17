@@ -133,14 +133,12 @@ test("outbound mcp leaves out the insights redact keeps from matching, and no hi
   const session = await outbound(["mcp"], [initialize, list, hotLeads]);
   const names = toolNames(session);
 
-  const left = [
-    "person_summary",
-    "account_summary",
-    "lead_collisions",
-    "suppression_check",
-  ];
+  const left = ["person_summary", "account_summary"];
 
   assert.ok(names.includes("hot_leads"), names.join(", "));
+  // They match people on redact's keyed tokens.
+  assert.ok(names.includes("lead_collisions"), names.join(", "));
+  assert.ok(names.includes("suppression_check"), names.join(", "));
   assert.deepEqual(
     names.filter((name) => left.includes(name)),
     []
@@ -217,10 +215,12 @@ test("outbound mcp names the tools redact left out in its instructions, and --no
     "person_summary",
     "account_summary",
     "cross_channel_lead",
-    "lead_collisions",
-    "suppression_check",
   ]) {
     assert.ok(masked.includes(name), name);
+  }
+
+  for (const name of ["lead_collisions", "suppression_check"]) {
+    assert.ok(!masked.includes(name), name);
   }
 
   // The memory adapter has no native reads, so vendor_read is not named.
