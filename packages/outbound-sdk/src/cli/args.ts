@@ -22,6 +22,7 @@ const GLOBAL_HELP = [
   "  --max-requests <n>       the most vendor requests one command, or one MCP tool call, may make",
   "",
   "Each adapter reads its own key from the environment, for example INSTANTLY_API_KEY.",
+  "OUTBOUND_REDACT_KEY, a secret of at least 32 characters, gives redact the same tokens in every run.",
 ];
 
 /** Every command with its options, then the options every command takes. */

@@ -6,6 +6,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import type { RateLimitStore } from "../internal/engine/rate-store.ts";
+import { readEnv } from "../internal/env.ts";
 import { OutboundError } from "../internal/errors.ts";
 import type { OutboundPlugin } from "../internal/outbound/plugins.ts";
 
@@ -152,6 +153,9 @@ const wantsRedact = (
   return !fromConfig && (flags.redact === true || mcp);
 };
 
+/** The secret that keys redact's tokens across runs, when set. Never printed. */
+export const REDACT_KEY_ENV = "OUTBOUND_REDACT_KEY";
+
 /** What a cap message tells a CLI user to raise. */
 export const capSetting = (mcp: boolean): string =>
   mcp ? "--max-requests on outbound mcp" : "--max-requests";
@@ -217,10 +221,16 @@ export const setupFor = async (
   const fromConfig = configured.some((plugin) => plugin.name === "redact");
   const plugins: OutboundPlugin[] = [];
 
+  const key = readEnv(REDACT_KEY_ENV);
+
   // Each plugin is loaded only when asked for, so other commands do not pay for it.
   if (wantsRedact(flags, fromConfig, mcp)) {
     const { redact } = await import("../redact/index.ts");
-    plugins.push(redact());
+    plugins.push(redact({ key }));
+  } else if (fromConfig && key !== undefined) {
+    note(
+      `${REDACT_KEY_ENV} is set, but the config file's redact() takes its own options, so it is not used. Pass it there as redact({ key: process.env.${REDACT_KEY_ENV} }).`
+    );
   }
 
   plugins.push(...configured);

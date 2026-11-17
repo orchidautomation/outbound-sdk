@@ -25,8 +25,9 @@ related:
 | --- | --- | --- | --- |
 | `fields` | `RedactField[]` | all eight | What to mask: `"email"`, `"name"`, `"phone"`, `"company"`, `"linkedin"`, `"custom"`, `"subject"`, `"body"`. |
 | `strategy` | `"mask" \| "hash"` | `"mask"` | `mask` replaces a value with `[redacted]`, and an email address or a LinkedIn profile with a token keyed for this plugin (see [Ids and refs](#ids-and-refs)). `hash` replaces every value with `redacted:` and 16 hex characters derived from the value, so the same value always gives the same token, from one run to the next. Under both, people can still be counted and joined. |
+| `key` | `string` | none: a random key per plugin | A secret of at least 32 characters (`MIN_KEY_LENGTH`) that keys the tokens `mask` writes for addresses and profiles, so the same person gets the same token in every instance and process given the same key. See [A fixed key](#a-fixed-key). Only with `mask`. |
 
-A `null` value stays `null` under both strategies. The subpath also exports `ALL_FIELDS` and `MASK` (the string `[redacted]`).
+A `null` value stays `null` under both strategies. The subpath also exports `ALL_FIELDS`, `MASK` (the string `[redacted]`) and `MIN_KEY_LENGTH` (32).
 
 <include meta='title="hash.ts"'>../../_examples/plugins-redact/hash.ts</include>
 
@@ -56,7 +57,7 @@ Some vendors use personal data as an id. Instantly addresses a mailbox by its em
 
 `redact` masks that part of `ref`, `sourceId` and every `*Ref` field, on records and on webhook events, when the matching field (`email` or `linkedin`) is being masked:
 
-- With `mask`, the address or the URL becomes `redacted:` and 16 hex characters of an HMAC-SHA-256 under a random key the plugin makes and never gives out. One person gets one token, so two people keep two refs and every count and join by ref holds; the `email`, `address` and `linkedinUrl` fields get the same token, so an Instantly reply's `leadRef` still names its lead. The key lives as long as the plugin: tokens hold within one instance, one CLI command or one `outbound mcp` session, and differ in the next, so they cannot be looked up from an address.
+- With `mask`, the address or the URL becomes `redacted:` and 16 hex characters of an HMAC-SHA-256 under a random key the plugin makes and never gives out, or under the `key` you give it. One person gets one token, so two people keep two refs and every count and join by ref holds; the `email`, `address` and `linkedinUrl` fields get the same token, so an Instantly reply's `leadRef` still names its lead. The random key lives as long as the plugin: tokens hold within one instance, one CLI command or one `outbound mcp` session, and differ in the next, so they cannot be looked up from an address. With a `key` they hold wherever that key is used.
 - A call that names a token this plugin wrote, in a ref or a field, reaches the vendor with the value in its place, and its answer comes back masked; a vendor error quotes the token, not the value. That is how an insight reads the lead behind a reply. The values live only in this plugin's memory, at most the newest 10,000 of them, and are never written out or returned.
 - With `hash`, it becomes the same token every time, so a record keeps its `ref` from one run to the next and a `senderRef` still equals the sender's `ref`. An address gives the token its `email` or `address` field gets.
 
@@ -65,6 +66,24 @@ Either way, a masked ref never becomes one shared `[redacted]`, which would merg
 A masked ref cannot be passed back to `outbound.sender(ref)` or `outbound.lead(ref)`: it no longer holds the vendor's id.
 
 What stays: an id that is not an address or a profile URL is not personal data and is left as it is. A bare profile slug with no URL around it cannot be told from such an id, and stays too.
+
+### A fixed key
+
+Pass `key` when redacted data has to join across runs: a warehouse loaded every night, notes kept from one `outbound mcp` session to the next, or two machines comparing answers. The token for an address or a profile is then the same in every instance and process that holds the key, and a different key gives different tokens. The CLI and `outbound mcp` read it from `OUTBOUND_REDACT_KEY`.
+
+<include meta='title="key.ts"'>../../_examples/plugins-redact/key.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/plugins-redact/key.out.txt
+</include>
+
+The key is a secret, and should be handled like a vendor API key:
+
+- **Anyone who holds it can test guesses.** With the key and a list of candidate addresses, they can compute each token and see who is in your data. Without it, a token cannot be traced back to anyone. Keep it in a secret store or an environment variable, never in a repository, a config file you share or a prompt.
+- **A new key gives every person a new token.** After you rotate it, records loaded under the old key no longer join with new ones. Re-load what you keep, or keep the old key for the old data.
+- **Generate it, do not invent it.** `openssl rand -hex 32` gives 64 random characters. `redact` refuses a key shorter than 32 characters, and a key given with `strategy: "hash"`, with `Invalid` when the plugin is built, before any request.
+
+`redact` keeps the key in memory only. It is never written to a record, an answer, a note, `meta`, a card or an error message. A `redact()` in a CLI config file takes its own options, so pass the key there as `redact({ key: process.env.OUTBOUND_REDACT_KEY })`.
 
 ## What it turns off
 
@@ -122,5 +141,6 @@ List `redact` first. It masks what the layers inside it return, so `cache`, `fai
 | `outbound.person()` while `email` or `linkedin` is masked, or `person_summary` with an identifier of a kind masked with `mask` | `Unsupported`, before any read | Look the person up on an instance without `redact`, use `strategy: "hash"`, or leave both fields out of `fields`. |
 | `person_summary` with a lead ref whose email address and LinkedIn profile are both masked, or hashed | `Unsupported` | Give the person's email address or profile URL, which `hash` can match. |
 | `account_summary` while `email` is masked | `Unsupported`, before any read. The message names the plugin. | Run it on an instance without `redact`. |
+| A `key` shorter than 32 characters, or a `key` with `strategy: "hash"` | `Invalid`, when the plugin is built. The message never holds the key. | Generate one with `openssl rand -hex 32`, or drop `key` under `hash`. |
 | `redact` listed twice | `Invalid`, when the instance is built | List it once. |
 | A layer inside returns something that is not an SDK record | `Unsupported`. Nothing is returned. | Fix the plugin that produced it. |

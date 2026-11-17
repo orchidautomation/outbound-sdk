@@ -67,6 +67,8 @@ A key in a client's configuration file is stored in plain text on your disk by t
 | `--config <file>` | Loads plugins from a file. See below. |
 | `--tools <names>` | Offers only the tools named, separated by commas, such as `--tools campaign_overview,bounce_watch`. Every tool's description and inputs cost the client's context before any call, about 60 KB for all of them on a real adapter. A name the server cannot offer is refused before it starts. |
 
+Set `OUTBOUND_REDACT_KEY` in the server's `env` to keep each person's token from one session to the next, for example to compare answers across days. It is a secret of at least 32 characters; see [redact's fixed key](/docs/plugins/redact#a-fixed-key) for how to treat it. Without it, tokens change each time the server starts.
+
 The sample runs the real `outbound mcp` three times on the demo data: as it starts by default, with `--no-redact`, and with a config file and both flags. Each time it sends `initialize`, `tools/list` and a call that asks for reply text.
 
 <include meta='title="plugins.ts"'>../../_examples/cli-mcp/plugins.ts</include>
