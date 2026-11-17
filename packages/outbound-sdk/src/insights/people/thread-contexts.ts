@@ -7,6 +7,7 @@ import { z } from "zod";
 import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Lead, Message } from "../../internal/entities.ts";
 import { OutboundError } from "../../internal/errors.ts";
+import { assertRefReadable, leadRefParts } from "../../internal/person.ts";
 import { untrusted } from "../../tools/shared.ts";
 import { defineInsight, maskingOf } from "../define.ts";
 import type { InsightContext } from "../define.ts";
@@ -279,6 +280,22 @@ export const threadContexts = defineInsight({
         "Unsupported",
         "thread_context: the redact plugin masks message bodies, so snippets cannot be returned; pass bodies: none"
       );
+    }
+
+    for (const target of targets) {
+      const parts = target.kind === "lead" ? leadRefParts(target.id) : null;
+
+      if (target.kind === "lead" && parts === null) {
+        throw new OutboundError(
+          "Invalid",
+          `thread_context: "${target.id}" is not a lead ref (provider:workspace:id); pass the lead ref another tool returned`,
+          { provider: context.outbound.provider }
+        );
+      }
+
+      if (parts !== null) {
+        assertRefReadable(context.outbound, { ...parts, text: target.id });
+      }
     }
 
     const start = startOf(values.cursor, targets.length);

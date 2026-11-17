@@ -212,6 +212,17 @@ test("thread_context refuses a cursor from other inputs, and an unsupported read
     outbound.insights.threadContext({ cursor: "1/5", leads: [BOOKED] }),
     { code: "Invalid" }
   );
+  // An address is not a lead ref, and a ref of another tool cannot be read here.
+  await assert.rejects(
+    outbound.insights.threadContext({ leads: ["person41@example.com"] }),
+    { code: "Invalid", message: /is not a lead ref/u }
+  );
+  await assert.rejects(
+    outbound.insights.threadContext({
+      leads: ["smartlead:other:123"],
+    }),
+    { code: "Invalid", message: /lead ref from smartlead workspace other/u }
+  );
   assert.equal(http.requests.length, 0);
 
   // A tool that cannot read a thread by its id, as a combined instance cannot.
