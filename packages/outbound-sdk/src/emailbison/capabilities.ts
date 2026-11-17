@@ -104,6 +104,7 @@ export const fields: FieldDeclaration = {
     interestCategory: "derived",
     linkedinUrl: false,
     location: false,
+    meeting: false,
     phone: false,
     recipientMailProvider: false,
     tags: false,

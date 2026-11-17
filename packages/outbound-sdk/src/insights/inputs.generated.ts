@@ -254,6 +254,13 @@ export interface InsightInputs {
     readonly positive_labels?: string[] | undefined;
 
     /**
+     * Set to true to read each returned lead's conversation (one walk of messages each, up to limit) for who wrote last and a follow-up assessment. false leaves followUp.needed null with basis not_read; thread_context reads them later.
+     *
+     * Defaults to `false`.
+     */
+    readonly read_threads?: boolean | undefined;
+
+    /**
      * A reply today earns the full recency points, fading evenly to none after this many days
      *
      * A number, 1 or more. Defaults to `14`.
@@ -294,6 +301,50 @@ export interface InsightInputs {
      * A number, 0 or more. Defaults to `10`.
      */
     readonly weight_reply?: number | undefined;
+  };
+  /** The input of `threadContext` (the `thread_context` tool). */
+  readonly threadContext: {
+    /**
+     * snippet returns the first 280 characters of each message, wrapped as untrusted content; none returns no text
+     *
+     * Defaults to `"snippet"`.
+     */
+    readonly bodies?: "none" | "snippet" | undefined;
+
+    /**
+     * coverage.nextCursor from the previous call with the same leads and threads, to read the next page of conversations
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly cursor?: string | null | undefined;
+
+    /**
+     * Lead refs (provider:workspace:id), as dropped_replies, hot_leads and person_summary return them. Each lead's conversation in its campaign is read.
+     *
+     * Defaults to `[]`.
+     */
+    readonly leads?: string[] | undefined;
+
+    /**
+     * The newest messages returned per conversation. Every message is still read, so the latest is always found.
+     *
+     * A whole number from 1 to 100. Defaults to `10`.
+     */
+    readonly max_messages?: number | undefined;
+
+    /**
+     * Conversations read per call. Each costs one walk of its messages.
+     *
+     * A whole number from 1 to 50. Defaults to `20`.
+     */
+    readonly page_size?: number | undefined;
+
+    /**
+     * Thread ids, from a message's or reply's threadId
+     *
+     * Defaults to `[]`.
+     */
+    readonly threads?: string[] | undefined;
   };
   /** The input of `personalizationGaps` (the `personalization_gaps` tool). */
   readonly personalizationGaps: {

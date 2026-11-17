@@ -118,6 +118,7 @@ export const fields: FieldDeclaration = {
   lead: {
     companyLinkedinUrl: false,
     engagement: false,
+    meeting: false,
     recipientMailProvider: false,
     title: false,
   },

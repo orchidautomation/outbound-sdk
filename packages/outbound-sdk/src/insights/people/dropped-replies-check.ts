@@ -9,16 +9,17 @@ import { noun } from "../../internal/plural.ts";
 import type { InsightContext } from "../define.ts";
 import { isCapStop } from "../run-cap.ts";
 import { round } from "../stats.ts";
+import { waited } from "./thread-context.ts";
+import type { LabelledReply, ThreadContext } from "./thread-context.ts";
 
 export const HOUR = 3_600_000;
 
-/** A wait as a person says it: in hours under two days, in whole days after. */
-const waited = (hours: number): string =>
-  hours >= 48
-    ? plural(Math.floor(hours / 24), "day")
-    : plural(Math.floor(hours), "hour");
-
-export interface DroppedReply {
+/**
+ * The thread's context fields (`activity`, `meeting`, `vendorSentiment`,
+ * `followUp`) are always set by dropped_replies; optional so a value built
+ * by hand stays valid.
+ */
+export interface DroppedReply extends Partial<ThreadContext> {
   /** The oldest reply in the conversation that got no answer. */
   readonly reply: string;
   readonly lead: string | null;
@@ -39,8 +40,15 @@ export interface DroppedReply {
   readonly unansweredReplies: number;
   /** Whether the conversation was read by its thread or by the lead's timeline. */
   readonly checkedBy: "thread" | "timeline";
+  /** What was found, with the latest message and any meeting the vendor records. */
   readonly finding: string;
 }
+
+/** A dropped reply before its lead is read, with the conversation it was found in. */
+export type FoundDropped = Omit<DroppedReply, keyof ThreadContext> & {
+  readonly labelled: LabelledReply;
+  readonly messages: readonly Message[];
+};
 
 export interface Conversation {
   readonly by: "thread" | "timeline" | null;
@@ -74,8 +82,9 @@ const unanswered = (
 const toDropped = (
   open: readonly Reply[],
   by: "thread" | "timeline",
-  now: number
-): DroppedReply[] => {
+  now: number,
+  messages: readonly Message[]
+): FoundDropped[] => {
   const [first] = open;
 
   if (first === undefined || first.sentAt === null) {
@@ -94,8 +103,14 @@ const toDropped = (
       finding: `${/^[aeiou]/u.test(first.category) ? "An" : "A"} ${first.category} reply has waited ${waited(hoursWaiting)} with nothing sent after it.`,
       hoursWaiting,
       email: null,
+      labelled: {
+        category: first.category,
+        ref: first.ref,
+        sentAt: first.sentAt,
+      },
       lead: first.leadRef,
       linkedinUrl: null,
+      messages,
       name: null,
       provider: first.provider,
       receivedAt: first.sentAt,
@@ -166,7 +181,7 @@ export interface Checkable extends Conversation {
 
 interface Checked {
   answered: number;
-  readonly dropped: DroppedReply[];
+  readonly dropped: FoundDropped[];
   tooRecent: number;
   /** Conversations whose read failed. */
   unread: number;
@@ -195,15 +210,16 @@ export const check = async (
   const openIn = (
     conversation: Checkable,
     messages: readonly Message[]
-  ): DroppedReply[] =>
+  ): FoundDropped[] =>
     toDropped(
       unanswered(conversation.replies, messages),
       conversation.by,
-      context.now
+      context.now,
+      messages
     );
 
   // `false` when only a full read can say whether it is dropped.
-  const settle = (found: readonly DroppedReply[], whole: boolean): boolean => {
+  const settle = (found: readonly FoundDropped[], whole: boolean): boolean => {
     if (found.length === 0) {
       checked.answered += 1;
     } else if (found.every((each) => each.hoursWaiting < olderThanHours)) {

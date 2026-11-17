@@ -8,6 +8,46 @@
         "lastStep": 1,
         "messagesSent": 2,
         "replies": 2,
+        "activity": {
+          "lastInboundAt": "2026-11-12T12:00:00.000Z",
+          "lastOutboundAt": "2026-11-06T09:00:00.000Z",
+          "latest": {
+            "provider": "mailtool",
+            "raw": null,
+            "ref": "mailtool:acme:m4",
+            "schemaVersion": 1,
+            "sourceId": "m4",
+            "workspaceId": "acme",
+            "campaignRef": "mailtool:acme:founders",
+            "channel": "email",
+            "leadRef": "mailtool:acme:ana_founders",
+            "senderRef": null,
+            "sentAt": "2026-11-12T12:00:00.000Z",
+            "stepIndex": null,
+            "subject": "Re: Quick question, Ana",
+            "threadId": "thread_ana",
+            "variantKey": null,
+            "direction": "in"
+          },
+          "messagesRead": 4
+        },
+        "followUp": {
+          "basis": "inbound_unanswered",
+          "needed": true,
+          "evidence": [
+            "The latest message is inbound and unanswered for 2 days (received 2026-11-12 12:00 UTC).",
+            "mailtool records no meeting for the lead."
+          ],
+          "unchecked": [
+            "What the messages say: the rules read who wrote last and when, never the words, so read the latest message before acting."
+          ]
+        },
+        "meeting": null,
+        "vendorSentiment": {
+          "leadCategory": null,
+          "leadLabel": "Interested",
+          "replyCategory": null
+        },
         "campaign": "mailtool:acme:founders",
         "campaignName": "SaaS founders",
         "campaignStatus": "active",
@@ -38,6 +78,46 @@
         "lastStep": 0,
         "messagesSent": 1,
         "replies": 0,
+        "activity": {
+          "lastInboundAt": null,
+          "lastOutboundAt": "2026-11-10T09:00:00.000Z",
+          "latest": {
+            "provider": "mailtool",
+            "raw": null,
+            "ref": "mailtool:acme:m5",
+            "schemaVersion": 1,
+            "sourceId": "m5",
+            "workspaceId": "acme",
+            "campaignRef": "mailtool:acme:agencies",
+            "channel": "email",
+            "leadRef": "mailtool:acme:ana_agencies",
+            "senderRef": null,
+            "sentAt": "2026-11-10T09:00:00.000Z",
+            "stepIndex": 0,
+            "subject": null,
+            "threadId": null,
+            "variantKey": null,
+            "direction": "out"
+          },
+          "messagesRead": 1
+        },
+        "followUp": {
+          "basis": "answered",
+          "needed": false,
+          "evidence": [
+            "The latest message is outbound, sent 4 days ago (2026-11-10 09:00 UTC).",
+            "mailtool records no meeting for the lead."
+          ],
+          "unchecked": [
+            "What the messages say: the rules read who wrote last and when, never the words, so read the latest message before acting."
+          ]
+        },
+        "meeting": null,
+        "vendorSentiment": {
+          "leadCategory": null,
+          "leadLabel": null,
+          "replyCategory": null
+        },
         "campaign": "mailtool:acme:agencies",
         "campaignName": "Agency owners",
         "campaignStatus": "active",
@@ -62,6 +142,46 @@
         "lastStep": null,
         "messagesSent": 2,
         "replies": 1,
+        "activity": {
+          "lastInboundAt": "2026-11-05T09:00:00.000Z",
+          "lastOutboundAt": "2026-11-05T15:00:00.000Z",
+          "latest": {
+            "provider": "linkedintool",
+            "raw": null,
+            "ref": "linkedintool:acme:d3",
+            "schemaVersion": 1,
+            "sourceId": "d3",
+            "workspaceId": "acme",
+            "campaignRef": "linkedintool:acme:li_founders",
+            "channel": "linkedin",
+            "leadRef": "linkedintool:acme:ana_linkedin",
+            "senderRef": null,
+            "sentAt": "2026-11-05T15:00:00.000Z",
+            "stepIndex": null,
+            "subject": null,
+            "threadId": null,
+            "variantKey": null,
+            "direction": "out"
+          },
+          "messagesRead": 3
+        },
+        "followUp": {
+          "basis": "answered",
+          "needed": false,
+          "evidence": [
+            "The latest message is outbound, sent 8 days ago (2026-11-05 15:00 UTC).",
+            "linkedintool records no meeting for the lead."
+          ],
+          "unchecked": [
+            "What the messages say: the rules read who wrote last and when, never the words, so read the latest message before acting."
+          ]
+        },
+        "meeting": null,
+        "vendorSentiment": {
+          "leadCategory": null,
+          "leadLabel": null,
+          "replyCategory": null
+        },
         "campaign": "linkedintool:acme:li_founders",
         "campaignName": "LinkedIn founders",
         "campaignStatus": "active",

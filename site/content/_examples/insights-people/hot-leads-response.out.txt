@@ -23,7 +23,29 @@
         "replies": 2,
         "score": 97.1429,
         "status": "replied",
-        "title": "CEO"
+        "title": "CEO",
+        "activity": {
+          "lastInboundAt": null,
+          "lastOutboundAt": null,
+          "latest": null,
+          "messagesRead": 0
+        },
+        "followUp": {
+          "basis": "not_read",
+          "evidence": [
+            "mailtool records no meeting for the lead."
+          ],
+          "needed": null,
+          "unchecked": [
+            "The conversation was not read (read_threads is false; pass the lead refs to thread_context), so who wrote last is unknown; a vendor label alone does not show a reply is owed."
+          ]
+        },
+        "meeting": null,
+        "vendorSentiment": {
+          "leadCategory": null,
+          "leadLabel": "Interested",
+          "replyCategory": null
+        }
       },
       {
         "campaign": "mailtool:acme:agencies",
@@ -47,7 +69,29 @@
         "replies": 1,
         "score": 84,
         "status": "replied",
-        "title": null
+        "title": null,
+        "activity": {
+          "lastInboundAt": null,
+          "lastOutboundAt": null,
+          "latest": null,
+          "messagesRead": 0
+        },
+        "followUp": {
+          "basis": "not_read",
+          "evidence": [
+            "mailtool records no meeting for the lead."
+          ],
+          "needed": null,
+          "unchecked": [
+            "The conversation was not read (read_threads is false; pass the lead refs to thread_context), so who wrote last is unknown; a vendor label alone does not show a reply is owed."
+          ]
+        },
+        "meeting": null,
+        "vendorSentiment": {
+          "leadCategory": null,
+          "leadLabel": "Meeting Booked",
+          "replyCategory": null
+        }
       },
       {
         "campaign": "mailtool:acme:agencies",
@@ -71,7 +115,29 @@
         "replies": 1,
         "score": 29.0476,
         "status": "active",
-        "title": null
+        "title": null,
+        "activity": {
+          "lastInboundAt": null,
+          "lastOutboundAt": null,
+          "latest": null,
+          "messagesRead": 0
+        },
+        "followUp": {
+          "basis": "not_read",
+          "evidence": [
+            "mailtool records no meeting for the lead."
+          ],
+          "needed": null,
+          "unchecked": [
+            "The conversation was not read (read_threads is false; pass the lead refs to thread_context), so who wrote last is unknown; a vendor label alone does not show a reply is owed."
+          ]
+        },
+        "meeting": null,
+        "vendorSentiment": {
+          "leadCategory": null,
+          "leadLabel": null,
+          "replyCategory": null
+        }
       }
     ],
     "totals": {

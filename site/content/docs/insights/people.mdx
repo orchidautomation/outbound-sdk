@@ -39,7 +39,7 @@ Everything about one person across campaigns and channels: each campaign they ar
 
 - `found`: `false` when no record matched.
 - `identifiers`: every exact identifier the records carry, as `email:` and `linkedin:` keys.
-- `campaigns`: one entry per campaign, with `campaignName`, `campaignStatus`, `channel`, `provider`, `lead`, `leadStatus`, `vendorLeadStatus`, `interest` (the vendor's own label), `messagesSent`, `replies`, `replied`, `autoReplied`, `repliedStepIndexes` (counted from 0) and `repliedStepNumbers` (counted from 1), `lastStepIndex` and `lastStepNumber`, `firstContactedAt`, `lastContactedAt` and `lastRepliedAt`.
+- `campaigns`: one entry per campaign, with `campaignName`, `campaignStatus`, `channel`, `provider`, `lead`, `leadStatus`, `vendorLeadStatus`, `interest` (the vendor's own label), `messagesSent`, `replies`, `replied`, `autoReplied`, `repliedStepIndexes` (counted from 0) and `repliedStepNumbers` (counted from 1), `lastStepIndex` and `lastStepNumber`, `firstContactedAt`, `lastContactedAt`, `lastRepliedAt`, and the [thread context](#the-thread-context) of its conversation.
 - `totals`: `campaigns`, `campaignsReplied`, `campaignReplyRate` (campaigns they replied in, divided by campaigns that sent them at least one message), `messagesSent`, `replies` and `byChannel`.
 
 A record the vendor labels out-of-office or bounced (the same rule as [`hotLeads`](#hotleads)) is `autoReplied: true`: its replies were automatic, so it counts 0 `replies`, is not `replied` and adds nothing to `campaignsReplied`. A reply in the thread flagged automatic (`isAuto: true`, by the vendor or a fixed rule) is not counted either, and a record whose every reply is flagged automatic is `autoReplied: true` too. When the vendor's status is `replied` only because of those automatic replies, `leadStatus` is where the lead is in the sequence instead (for example `completed`), so it agrees with `replied`; `vendorLeadStatus` keeps the vendor's status as it came.
@@ -210,7 +210,7 @@ Replies from prospects that nobody answered, longest waiting first.
 
 `data` (`DroppedReplies`):
 
-- `dropped`: one entry per conversation, with `reply` (the oldest unanswered reply), `lead` and the person's `name`, `email` and `linkedinUrl`, `campaign` and its `campaignName`, `channel`, `provider`, `category`, `subject`, `receivedAt`, `hoursWaiting`, `unansweredReplies`, `checkedBy` (`thread` or `timeline`) and a `finding` sentence.
+- `dropped`: one entry per conversation, with `reply` (the oldest unanswered reply), `lead` and the person's `name`, `email` and `linkedinUrl`, `campaign` and its `campaignName`, `channel`, `provider`, `category`, `subject`, `receivedAt`, `hoursWaiting`, `unansweredReplies`, `checkedBy` (`thread` or `timeline`), a `finding` sentence that names a later latest message and a recorded meeting, and the [thread context](#the-thread-context) of its conversation.
 - `totals`: `repliesRead`, `skippedByCategory`, `skippedAuto`, `notInCampaign` (replies set aside because their conversation belongs to no campaign; `0` with `include_inbox`, `null` on a vendor whose replies are all campaign replies), `conversations`, `answered`, `dropped`, `tooRecent`, `unchecked` and `moreRepliesExist` (`true` when `max_replies`, or the 2,000 one window reads, left replies unread, so dropped ones may be missing).
 - `since` and `olderThanHours`: what was used.
 
@@ -257,10 +257,11 @@ Who to call first: leads ranked by a score built from what the vendor reports.
 | `weight_recency` | 20 | 0 or more | Points for a reply received right now. |
 | `recency_days` | 14 | 1 or more | The recency points fade evenly to none over this many days. |
 | `count_cap` | 5 | 1 or more, whole | The most replies, clicks or opens that earn points, so 40 opens do not outrank a reply. |
+| `read_threads` | `false` | `true` or `false` | Read each returned lead's conversation for the follow-up assessment. |
 
 `data` (`HotLeads`):
 
-- `leads`: highest score first: the leads that scored above 0, then, while `limit` leaves room, the leads labelled negative, which score 0. Each has `lead`, `email`, `linkedinUrl`, `name`, `title`, `company`, `campaign`, `status`, `interest`, `score`, `parts` (the points per signal: `interest`, `replies`, `clicks`, `opens`, `recency`), the raw `replies`, `clicks` and `opens`, `lastRepliedAt` and a `reason` sentence.
+- `leads`: highest score first: the leads that scored above 0, then, while `limit` leaves room, the leads labelled negative, which score 0. Each has `lead`, `email`, `linkedinUrl`, `name`, `title`, `company`, `campaign`, `status`, `interest`, `score`, `parts` (the points per signal: `interest`, `replies`, `clicks`, `opens`, `recency`), the raw `replies`, `clicks` and `opens`, `lastRepliedAt`, a `reason` sentence and the [thread context](#the-thread-context). With `read_threads: true` each returned lead's conversation is read, one walk of messages each; by default it is not, so `followUp.needed` is `null` with `basis: "not_read"`: a score ranks the vendor's signals and does not say a reply is owed.
 - `totals`: `leadsRead`, `scored`, `hot`, `withoutData`, `excluded`, `moreLeadsExist` (`true` when `max_leads` stopped a lead listing with leads left unread), `repliesRead` (replies within `recency_days`), `fromReplies` (leads no listing read, read because they replied), `unreadable` (leads that replied and could not be read, probably deleted), `stale` (leads with a score whose last reply is older than `max_age_days`), `autoReplied` (leads labelled out-of-office or bounced, or whose every reply read was flagged automatic, whose replies earned nothing) and `negative` (leads labelled negative, which earned no points at all).
 
 Hot leads are the people who replied or were labelled interested, a small set bounded by time, so `hotLeads` starts from that signal instead of walking the lead list in the vendor's order. It reads every reply within `recency_days`, and, where the adapter filters by interest (`leads.byInterest`), the leads it labels positive. It then reads the leads behind those replies that no listing returned: many addresses in one request where the adapter can (`leads.lookupMany`), otherwise one request each for the newest `limit`. A reply in the window also fills in a lead's reply count and last reply time when its record reports less, so a vendor whose leads carry no counts still gets recency. Where the vendor keeps an interest class on the lead rather than the reply (HeyReach's auto-tag, `categorySource: "lead"`) and the record has no label, that class counts: a positive one earns the interest points while `positive_labels` holds Interested, the label it stands for. A reply counts for a lead's record only when it names that person and, where both say, the same campaign: a person is one record per campaign, so a reply in one campaign does not freshen an old label in another. Where the adapter cannot filter by interest, `positive_labels` names a label beyond Interested, Meeting Booked, Meeting Completed and Won, or `include_engagement_only` is set, the lead list is walked as well, up to `max_leads`.
@@ -300,6 +301,50 @@ A lead is also discounted as automatic when every one of its replies read is fla
 </CodeGroup>
 
 Ana's 6 opens earn 5 points, the cap. Her reply two days ago earns 20 x (1 - 2/14) = 17.1429 recency points.
+
+## `threadContext`
+
+The conversations behind given leads or threads, read in pages, so an agent can read the threads before it recommends a follow-up. It never reads every reply of a campaign.
+
+| Input | Default | Range | What it is |
+| --- | --- | --- | --- |
+| `leads` | `[]` | up to 100 lead refs | Each lead's conversation in its own campaign is read from its timeline. |
+| `threads` | `[]` | up to 100 thread ids | Each thread is read by its id, from a message's or reply's `threadId`. |
+| `bodies` | `"snippet"` | `"snippet"` or `"none"` | `snippet` returns each message's first 280 characters, wrapped as [untrusted content](/docs/tools/untrusted-content). |
+| `max_messages` | 10 | 1 to 100 | The newest messages returned per conversation. Every message is still read, so the latest is always found. |
+| `page_size` | 20 | 1 to 50 | Conversations read per call. |
+| `cursor` | `null` | a `nextCursor` | Reads the next page of the same leads and threads. A cursor from other inputs is `Invalid`. |
+
+`data` (`ThreadContexts`):
+
+- `threads`: one record per conversation, in the order asked, with `target` (`kind` and `id`), `lead`, `email`, `linkedinUrl`, `campaign`, `threadIds`, `messages` (oldest first, each without its body and with a `snippet`), `messagesOmitted`, and the thread context below.
+- `coverage`: `requested` (distinct leads and threads, over every page), `checked` (read on this page), `found` (read, with at least one message), `notFound` and `unchecked` (each a `target` and a `reason`, such as `the read failed with NotFound`), `remaining` and `nextCursor`.
+
+### The thread context
+
+`threadContext` records, and each entry of `droppedReplies`, `hotLeads` and `personSummary`, carry the same four fields:
+
+- `activity`: `messagesRead`, `latest` (the newest message, without its body: `direction`, `sentAt`, `ref`, `subject`, `isAuto` and the rest of the message record), `lastInboundAt` and `lastOutboundAt`.
+- `meeting`: `booked`, `completed`, `no_show` or `won`, as the vendor records it on the lead, or `null`. Only Instantly records one (`lt_interest_status` 2, 3, -4 and 4); a custom label's wording is never read as a meeting. Where `fields.lead.meeting` is `false`, `null` says nothing.
+- `vendorSentiment`: the vendor's own words, kept apart: `replyCategory` (on the reply the entry is about), `leadLabel` and `leadCategory`.
+- `followUp`: an assessment from fixed rules, never a model. `needed` is `false` when the vendor records a meeting booked, held or won (`basis: "meeting"`) or the latest message is outbound (`answered`); `true` when the latest message is inbound and not automatic (`inbound_unanswered`); `null` when the latest message is automatic, the conversation holds no timed message, or it was not read (`not_read`). `evidence` gives the facts used as sentences, such as "The latest message is inbound and unanswered for 3 days", and `unchecked` says what the rules could not check: the words of the messages, a meeting the vendor does not record, the lead's tags.
+
+A label alone never sets `needed`: a positive reply with no thread read is `null`. When the reply an entry is about is not the latest message, the evidence says the vendor's label is on an earlier reply, so a later message, such as a warning that the first email was fraudulent, is named and dated for the agent to read. No rule tries to tell what that message means.
+
+- **Needs:** `messages.list`, with `leads.timeline` for `leads` and `messages.byThread` for `threads`; without one, the call is `Unsupported` before any request. A combined instance cannot read a thread by its id. `leads.get` reads the meeting and the labels.
+- **Costs:** one walk of messages per conversation on the page, and up to one lead read per conversation.
+- **Refuses:** `bodies: "snippet"` while the [redact plugin](/docs/plugins/redact) masks bodies; pass `bodies: "none"`.
+- **Does not:** read what a message says, detect anything in it, or store anything.
+
+<include meta='title="thread-context.ts"'>
+  ../../_examples/insights-people/thread-context.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/insights-people/thread-context.out.txt
+</include>
+
+Ana's latest message is inbound and nobody answered, so `needed` is `true`, and the snippet is there to read before answering. The lead that does not exist is read and empty, so it is in `coverage.notFound`.
 
 ## `personalizationGaps`
 

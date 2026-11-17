@@ -122,6 +122,20 @@ export const recipientMailProviderSchema = z.enum([
 
 export type RecipientMailProvider = z.infer<typeof recipientMailProviderSchema>;
 
+/**
+ * Where a lead's meeting stands, as the vendor records it on the lead:
+ * `booked`, `completed`, `no_show` (booked and missed) or `won` (the deal
+ * closed, so the meeting happened).
+ */
+export const meetingStatusSchema = z.enum([
+  "booked",
+  "completed",
+  "no_show",
+  "won",
+]);
+
+export type MeetingStatus = z.infer<typeof meetingStatusSchema>;
+
 export const senderSchema = z.object({
   ...base,
   /** Lowercased mailbox address. `null` for a LinkedIn seat. */
@@ -216,6 +230,14 @@ export const leadSchema = z.object({
   interestCategory: replyCategorySchema.nullable(),
   lastName: z.string().nullable(),
   linkedinUrl: z.string().nullable(),
+  /**
+   * The meeting the vendor records for the lead, from its own status field,
+   * never from a label's wording. `null` when it records none. Where
+   * `fields.lead.meeting` is `false` the vendor records no meetings at all,
+   * so `null` says nothing. Optional, so a lead built or stored before the
+   * field existed still matches the schema.
+   */
+  meeting: meetingStatusSchema.nullable().optional(),
   /** Where the lead is, in the vendor's own words. */
   location: z.string().nullable(),
   phone: z.string().nullable(),

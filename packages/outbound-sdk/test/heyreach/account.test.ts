@@ -87,6 +87,8 @@ test("heyreach: a list's leads carry tags, custom fields, the newest auto-tag an
     lastName: "Listed",
     linkedinUrl: "https://www.linkedin.com/in/example-person-11",
     location: "Example City 11",
+    // HeyReach records no meeting on a lead.
+    meeting: null,
     phone: null,
     progress: "unknown",
     recipientMailProvider: null,

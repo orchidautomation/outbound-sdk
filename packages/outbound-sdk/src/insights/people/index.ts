@@ -8,6 +8,7 @@ import { leadCollisions } from "./lead-collisions.ts";
 import { personSummary } from "./person-summary.ts";
 import { personalizationGaps } from "./personalization-gaps.ts";
 import { suppressionCheck } from "./suppression-check.ts";
+import { threadContexts } from "./thread-contexts.ts";
 
 export const PEOPLE_INSIGHTS = [
   personSummary,
@@ -16,6 +17,7 @@ export const PEOPLE_INSIGHTS = [
   suppressionCheck,
   droppedReplies,
   hotLeads,
+  threadContexts,
   personalizationGaps,
 ] as const;
 
@@ -45,6 +47,22 @@ export type {
   PersonalizationGaps,
   VariableUse,
 } from "./personalization-gaps.ts";
+
+export type {
+  FollowUpAssessment,
+  FollowUpBasis,
+  LatestMessage,
+  ThreadActivity,
+  ThreadContext,
+  VendorSentiment,
+} from "./thread-context.ts";
+
+export type {
+  ThreadContexts,
+  ThreadMessage,
+  ThreadRecord,
+  Uncovered,
+} from "./thread-contexts.ts";
 
 export type {
   SuppressionCampaign,

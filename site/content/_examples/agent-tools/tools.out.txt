@@ -4,7 +4,7 @@ with identity and three insights: campaign_overview, campaign_trend, winning_ste
 
 only: campaign_overview, reply_samples
 
-every insight as a tool: 27
+every insight as a tool: 28
 
 campaign_overview: How every campaign is doing right now: sends, replies, positive replies, bounces and reply rate for each campaign with the given status, or for the one campaign given. One vendor request per campaign. Rates are computed from counts; a null means the vendor does not report that count. meta.complete: false means limit cut the list, and meta.notes says so.
 {

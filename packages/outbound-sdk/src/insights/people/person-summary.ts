@@ -9,6 +9,8 @@ import type { InsightContext } from "../define.ts";
 import { rate } from "../stats.ts";
 import { findPerson, isLeadRef } from "./find.ts";
 import { isAutoReplied } from "./read.ts";
+import { recordsMeetings, threadContext } from "./thread-context.ts";
+import type { ThreadContext } from "./thread-context.ts";
 
 const input = z.object({
   max_campaigns: z
@@ -26,7 +28,12 @@ const input = z.object({
     ),
 });
 
-export interface PersonCampaign {
+/**
+ * The thread's context fields (`activity`, `meeting`, `vendorSentiment`,
+ * `followUp`) are always set by person_summary; optional so a value built
+ * by hand stays valid.
+ */
+export interface PersonCampaign extends Partial<ThreadContext> {
   readonly campaign: string | null;
   readonly campaignName: string | null;
   readonly campaignStatus: string | null;
@@ -256,6 +263,13 @@ const summarize = async (
 
   return {
     ...activity,
+    ...threadContext({
+      lead,
+      meetingsRecorded: recordsMeetings(outbound),
+      messages,
+      now: context.now,
+      provider: lead.provider,
+    }),
     campaign: lead.campaignRef,
     campaignName: campaign?.name ?? null,
     campaignStatus: campaign?.status ?? null,
@@ -298,7 +312,7 @@ const byChannel = (campaigns: readonly PersonCampaign[]) => {
 
 export const personSummary = defineInsight({
   description:
-    "Everything about one person across campaigns and channels, from their email address, LinkedIn profile or a lead ref: each campaign they are in, how many messages they were sent, whether and how often they replied, which steps they replied to, their interest label, and totals by channel. Records are linked by exact identifier only, so an email finds a LinkedIn record only when a tool holds both for that person. A record the vendor labels out-of-office or bounced counts no replies, since they were automatic, and a reply in the thread flagged automatic (isAuto, from the vendor or a fixed rule) is not counted either. Costs one lookup per identifier, one request to read a lead ref, then up to 2 requests per campaign.",
+    "Everything about one person across campaigns and channels, from their email address, LinkedIn profile or a lead ref: each campaign they are in, how many messages they were sent, whether and how often they replied, which steps they replied to, their interest label, and totals by channel. Records are linked by exact identifier only, so an email finds a LinkedIn record only when a tool holds both for that person. A record the vendor labels out-of-office or bounced counts no replies, since they were automatic, and a reply in the thread flagged automatic (isAuto, from the vendor or a fixed rule) is not counted either. Costs one lookup per identifier, one request to read a lead ref, then up to 2 requests per campaign. Each campaign also carries its conversation's context: activity (the latest message, who sent it and when), meeting (what the vendor records on the lead, Instantly only), vendorSentiment (the vendor's labels, kept apart) and followUp, a fixed-rule assessment whose needed is true only when the latest message is inbound, not automatic and no meeting is recorded, with its evidence and what it could not check.",
   inputSchema: input,
   key: "personSummary",
   cost: (values, price) =>

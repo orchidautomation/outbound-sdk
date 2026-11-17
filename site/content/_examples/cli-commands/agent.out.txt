@@ -1,5 +1,5 @@
 $ outbound tools
-[data.items: 37 tools, each with name, description and parameters (its inputs as JSON Schema): campaign_overview, campaign_trend, winning_steps, sender_health, reply_samples, lead_runway, cross_channel_lead, campaign_setup, deliverability_check, audience_lists, person_summary, account_summary, lead_collisions, suppression_check, dropped_replies, hot_leads, personalization_gaps, step_funnel, variant_test, copy_audit, copy_preview, copy_reuse, reply_timing, domain_health, sender_capacity, bounce_watch, warmup_readiness, sender_load, settings_audit, campaign_diagnosis, pipeline_forecast, anomalies, period_comparison, campaign_ranking, channel_mix, tag_rollup, client_report]
+[data.items: 38 tools, each with name, description and parameters (its inputs as JSON Schema): campaign_overview, campaign_trend, winning_steps, sender_health, reply_samples, lead_runway, cross_channel_lead, campaign_setup, deliverability_check, audience_lists, person_summary, account_summary, lead_collisions, suppression_check, dropped_replies, hot_leads, thread_context, personalization_gaps, step_funnel, variant_test, copy_audit, copy_preview, copy_reuse, reply_timing, domain_health, sender_capacity, bounce_watch, warmup_readiness, sender_load, settings_audit, campaign_diagnosis, pipeline_forecast, anomalies, period_comparison, campaign_ranking, channel_mix, tag_rollup, client_report]
 
 $ outbound tool winning_steps
 {
@@ -99,7 +99,7 @@ $ outbound tool campaign_trend --input '{"campaign":"cmp_founders","from":"last 
 (exit code 1)
 
 $ outbound insight
-[data.items: 27 insights, each with name, key, description, needs and parameters: person_summary, account_summary, lead_collisions, suppression_check, dropped_replies, hot_leads, personalization_gaps, step_funnel, variant_test, copy_audit, copy_preview, copy_reuse, reply_timing, domain_health, sender_capacity, bounce_watch, warmup_readiness, sender_load, settings_audit, campaign_diagnosis, pipeline_forecast, anomalies, period_comparison, campaign_ranking, channel_mix, tag_rollup, client_report]
+[data.items: 28 insights, each with name, key, description, needs and parameters: person_summary, account_summary, lead_collisions, suppression_check, dropped_replies, hot_leads, thread_context, personalization_gaps, step_funnel, variant_test, copy_audit, copy_preview, copy_reuse, reply_timing, domain_health, sender_capacity, bounce_watch, warmup_readiness, sender_load, settings_audit, campaign_diagnosis, pipeline_forecast, anomalies, period_comparison, campaign_ranking, channel_mix, tag_rollup, client_report]
 
 $ outbound insight channel_mix --input '{"max_campaigns":5}'
 {

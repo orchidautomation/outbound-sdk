@@ -612,3 +612,11 @@ A possible later route, which needs a live key: list a campaign's leads with `em
 ## A step delay below zero (2026-11-16, for OUT-110)
 
 Fetched 2026-11-16: https://api.smartlead.ai/api-reference/campaigns/get-sequences.md. `seq_delay_details.delayInDays` is a `number`, "Number of days to wait before sending this sequence", with no stated minimum. A negative value has not been seen from Smartlead; Instantly sent one on a live campaign (OUT-110). The normalized `delayDays` must be 0 or more, so the adapter maps a negative delay to `null` with a note in `meta.notes`, for example "Step 2's delay is negative in Smartlead (-3 days); left out.", instead of failing the whole sequence read.
+
+## Meeting status and thread context (2026-11-17, for OUT-139)
+
+Fetched 2026-11-17: https://api.smartlead.ai/llms-full.txt, https://api.smartlead.ai/api-reference/leads/categories, https://api.smartlead.ai/api-reference/inbox/update-category, https://api.smartlead.ai/api-reference/campaigns/get-lead-history, https://api.smartlead.ai/api-reference/campaigns/get-leads-history-bulk.
+
+- No meeting field, status or time exists on a lead or a message. The only signal is the lead category, which a workspace names. The `fetch-categories` example shows id 3 "Meeting Booked" (positive), while `update-category` lists id 2 "Meeting Request" and id 3 "Not Interested", so the global list is not settled. A category's wording is not read as a meeting, so `fields.lead.meeting` is `false` and `meeting` is always `null`; the category stays in `interest` and `vendorSentiment`.
+- A lead's history (`GET /campaigns/{c}/leads/{l}/message-history`) gives each message a `direction` (outbound or inbound) and `sent_at` or `received_at`; no preview field. Every example is illustrative.
+- `POST /campaigns/{c}/message-history-for-leads/...` takes `lead_ids[]` for one campaign. Not used yet: its row shape is unverified, so `thread_context` reads one timeline per lead.

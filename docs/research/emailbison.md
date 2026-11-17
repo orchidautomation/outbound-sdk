@@ -167,3 +167,11 @@ Fetched 2026-11-16: `https://dedi.emailbison.com/api/reference.openapi`. `GET /a
 ## A step wait below zero (2026-11-16, for OUT-110)
 
 Fetched 2026-11-16: `https://dedi.emailbison.com/api/reference.openapi`. On the sequence-step write body `wait_in_days` is an `integer`, "The days to wait.", with no minimum; the read's examples give it as a string (`"1"`). A negative value has not been seen from EmailBison; Instantly sent one on a live campaign (OUT-110). The normalized `delayDays` must be 0 or more, so the adapter maps a negative wait to `null` with a note in `meta.notes`, for example "Step 1's wait is negative in EmailBison (-2 days); left out.", instead of failing the whole sequence read.
+
+## Meeting status and thread context (2026-11-17, for OUT-139)
+
+Fetched 2026-11-17: https://dedi.emailbison.com/api/reference.openapi (https://docs.emailbison.com/api-reference/openapi.json returned 404 that day), https://docs.emailbison.com/tags/overview.md, https://docs.emailbison.com/get-started/pagination.md.
+
+- No meeting field on a lead, reply or campaign: "meeting" and "booked" appear nowhere in the spec. `fields.lead.meeting` is `false`.
+- Every workspace gets default tags, among them "Interested" and "Meeting Booked" (tags/overview.md). Tags are workspace-editable and nothing says what attaches them, and the lead read does not return tags (`fields.lead.tags` is `false`), so no tag is read as a meeting.
+- A reply's `interested` flag stays the reply category; `conversation-thread` returns `current_reply`, `older_messages` and `newer_messages`, direction only from `folder`, time `date_received`, no preview. No batched read by id.

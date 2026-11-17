@@ -407,3 +407,12 @@ Live through the CLI built from the fix: `replies` 67 from 5 campaigns (20 reque
 ## Combined listings and pages out of time order (2026-11-17)
 
 Not a vendor fact, recorded here because HeyReach triggers it. `replies --by person --limit 2000 --provider all` with no `--since` ran for over 15 minutes. A request log showed HeyReach done after 3 requests and then Instantly's `GET /api/v2/emails` re-read with the same `starting_after` every 6 seconds. The combined instance gives out a member's records newest first and held back those older than the last record of a page with more to come; a page holding an older record before that last one was re-read forever. HeyReach's pages are never in time order, because a conversation lists its messages oldest first. Each member's page is now put in time order first, so the walk always moves on. The same read now ends in 68 s and 60 requests, at the 2,000 cap.
+
+## Meeting status and thread context (2026-11-17, for OUT-139)
+
+Fetched 2026-11-17: https://docs.heyreach.io/openapi.json, https://docs.heyreach.io/hey-reach-api/inbox/get-conversations-v-3.md, https://help.heyreach.io/en/articles/14957953-auto-tag-automatic-lead-classification-in-heyreach.
+
+- No meeting or booking field anywhere in the spec. `fields.lead.meeting` is `false`.
+- The auto-tag (Interested, Not Interested, Generic) stays the lead's `interest`. Lead tags (`correspondentProfile.tags`, `POST /lead/GetTags`) are free text a workspace writes; they stay in `tags`, and the follow-up assessment lists them under `unchecked` ("were not interpreted") rather than reading one as a meeting.
+- A conversation's messages carry `createdAt` and `sender` ("ME" for the account), no per-message preview; `lastMessageText` is the conversation's only short text. GetConversationsV3 returns up to 100 conversations with their messages, but cannot filter by a list of conversation ids.
+- The help article says GetChatroom carries auto-tags; the spec's GetChatroom schema has no `autoTags`. They disagree.
