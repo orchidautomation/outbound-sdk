@@ -29,9 +29,18 @@ test("an insight refuses a value of the wrong type", async () => {
 
 test("an insight refuses a missing required input, naming it", async () => {
   await assert.rejects(
-    // @ts-expect-error -- `person` is required
+    // @ts-expect-error -- `domain` is required
+    async () => await outbound.insights.accountSummary({}),
+    invalid(/^account_summary: `domain` is required$/u)
+  );
+});
+
+test("person_summary without a person names every field that takes one (OUT-138)", async () => {
+  await assert.rejects(
     async () => await outbound.insights.personSummary({}),
-    invalid(/^person_summary: `person` is required$/u)
+    invalid(
+      /^person_summary: input needs exactly one of lead_ref, email, linkedin_url or person \(an email address, a LinkedIn profile URL or a lead ref/u
+    )
   );
 });
 

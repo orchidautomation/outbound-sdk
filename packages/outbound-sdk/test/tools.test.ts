@@ -810,10 +810,10 @@ test("every built-in tool names a required input it was not given", async () => 
     })
   );
 
+  // cross_channel_lead takes one of several person fields, none required alone (OUT-138).
   assert.deepEqual([...required.keys()].toSorted(), [
     "campaign_setup",
     "campaign_trend",
-    "cross_channel_lead",
     "lead_runway",
     "winning_steps",
   ]);
