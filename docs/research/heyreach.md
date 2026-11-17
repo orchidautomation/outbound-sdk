@@ -408,6 +408,12 @@ Live through the CLI built from the fix: `replies` 67 from 5 campaigns (20 reque
 
 Not a vendor fact, recorded here because HeyReach triggers it. `replies --by person --limit 2000 --provider all` with no `--since` ran for over 15 minutes. A request log showed HeyReach done after 3 requests and then Instantly's `GET /api/v2/emails` re-read with the same `starting_after` every 6 seconds. The combined instance gives out a member's records newest first and held back those older than the last record of a page with more to come; a page holding an older record before that last one was re-read forever. HeyReach's pages are never in time order, because a conversation lists its messages oldest first. Each member's page is now put in time order first, so the walk always moves on. The same read now ends in 68 s and 60 requests, at the 2,000 cap.
 
+## Conversation links (OUT-140, 2026-11-17)
+
+Sources, read 2026-11-17: `https://docs.heyreach.io/llms.txt`, `https://docs.heyreach.io/hey-reach-api/inbox/get-chatroom.md`, `https://docs.heyreach.io/hey-reach-api/inbox/get-conversations-v-3.md`, and `https://help.heyreach.io/en/articles/9877943-unibox-screen-overview`. None documents a URL that opens one Unibox conversation, and the webhook payload (section on webhooks above) carries `conversation_id` but no link.
+
+Read-only, live, on 2026-11-17: the string values of `POST /inbox/GetConversationsV2` items that are URLs were only `correspondentProfile.profileUrl`, `correspondentProfile.imageUrl`, `correspondentProfile.companyUrl` and `linkedInAccount.profileUrl`. The scheme could not be checked in a browser (computer use was off on the Mac), so a message's and reply's `url` is null and the field coverage says `false`.
+
 ## A lead ref given where a person is asked for (2026-11-17, for OUT-138)
 
 Fetched 2026-11-17: https://docs.heyreach.io/openapi.json (`info.version` 1.0.0, 105 paths). `POST /api/public/lead/GetLead` still takes `{ profileUrl }` (`type: string, format: uri`, required) and nothing else, so a lead is named by its profile URL and this adapter's lead and message refs are `heyreach:<workspace>:<profile URL>`.

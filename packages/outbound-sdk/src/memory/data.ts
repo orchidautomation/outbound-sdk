@@ -312,6 +312,7 @@ const messageFields = (
   stepIndex: seed.stepIndex ?? null,
   subject: seed.subject ?? null,
   threadId: seed.threadId ?? null,
+  url: null,
   variantKey: seed.variantKey ?? null,
 });
 
