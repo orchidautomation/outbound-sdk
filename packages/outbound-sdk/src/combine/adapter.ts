@@ -301,6 +301,34 @@ const lookups = (members: readonly Adapter[]): Lookups => ({
       );
     }
 
+    if (query.scopeIds !== undefined) {
+      const routes = query.scopeIds.map((id) =>
+        routeRef(members, ctx, id, "Stats scope")
+      );
+
+      const asked = members.flatMap((member) => {
+        const own = routes.filter((routed) => routed.member === member);
+        const [first] = own;
+
+        return first === undefined ? [] : [{ first, own }];
+      });
+
+      const perSenders = await Promise.all(
+        asked.map(({ first, own }) => {
+          if (first.member.stats === undefined) {
+            throw missing(first.member, "stats");
+          }
+
+          return first.member.stats(
+            { ...query, scopeIds: own.map((routed) => routed.id) },
+            first.ctx
+          );
+        })
+      );
+
+      return perSenders.flat();
+    }
+
     // Workspace scope: each member answers for itself. Rows are returned side
     // by side, never added together, because they are different workspaces.
     const perMember = await Promise.all(

@@ -14,8 +14,17 @@ import { brokenStatus } from "../internal/sender-screen.ts";
 /** The days of sends read for each failing sender, today included. */
 export const IMPACT_DAYS = 14;
 
-/** Failing senders past this many get no impact, with a note. */
+/**
+ * Failing senders past this many get no impact, with a note, where each
+ * sender's days cost a read of their own.
+ */
 export const IMPACT_AT_MOST = 10;
+
+/**
+ * The same where one call reads many senders' days: each sender then costs
+ * only the listing of its campaigns.
+ */
+export const IMPACT_BATCHED_AT_MOST = 200;
 
 /** Active campaigns named per sender; the count covers them all. */
 const CAMPAIGNS_NAMED = 20;
@@ -118,67 +127,143 @@ const sentOn = (row: MetricRow): number | null =>
     ? null
     : (row.sent ?? 0) + (row.connectionsSent ?? 0);
 
+/** What a sender sent from `from` to `to`, from its daily rows. */
+const sendsIn = (
+  rows: readonly MetricRow[],
+  from: string,
+  to: string
+): Omit<Read<RecentSends>, "requests"> => {
+  const days = rows.flatMap((row) => {
+    const sent = sentOn(row);
+
+    return row.date === null ||
+      row.date < from ||
+      row.date > to ||
+      sent === null
+      ? []
+      : [{ date: row.date, sent }];
+  });
+
+  const total =
+    days.length === 0 ? null : days.reduce((sum, day) => sum + day.sent, 0);
+
+  const lastSent = days
+    .flatMap((day) => (day.sent > 0 ? [day.date] : []))
+    .toSorted()
+    .at(-1);
+
+  let reason: string | undefined;
+
+  if (total === null) {
+    reason = `Unknown: the vendor returned no daily sends for this sender from ${from} to ${to}, so it sent nothing then or does not report it.`;
+  } else if (lastSent === undefined) {
+    reason = `Nothing sent from ${from} to ${to}; an earlier send is not read.`;
+  }
+
+  return {
+    reason,
+    value: { from, last_sent_on: lastSent ?? null, sent: total, to },
+  };
+};
+
+const NO_DAILY_STATS: Read<never> = {
+  reason: "Not read: this adapter has no daily stats for a sender.",
+  requests: 0,
+  value: null,
+};
+
+const hasDailySends = (outbound: OutboundApi): boolean =>
+  outbound.capabilities["stats.bySender"] !== false &&
+  outbound.capabilities["stats.byDay"] !== false;
+
+/** The adapter reads many senders' days in one call. */
+const isBatched = (outbound: OutboundApi): boolean =>
+  hasDailySends(outbound) && outbound.capabilities["stats.bySenders"] !== false;
+
+interface Days {
+  readonly from: string;
+  readonly to: string;
+}
+
+/** The last `IMPACT_DAYS` days, today included. */
+const rangeOf = (now: number): Days => ({
+  from: dayOf(now - (IMPACT_DAYS - 1) * DAY_MS),
+  to: dayOf(now),
+});
+
 const recentSends = async (
   outbound: OutboundApi,
   sender: Sender,
   now: number
 ): Promise<Read<RecentSends>> => {
-  const { capabilities } = outbound;
-
-  if (
-    capabilities["stats.bySender"] === false ||
-    capabilities["stats.byDay"] === false
-  ) {
-    return {
-      reason: "Not read: this adapter has no daily stats for a sender.",
-      requests: 0,
-      value: null,
-    };
+  if (!hasDailySends(outbound)) {
+    return NO_DAILY_STATS;
   }
 
-  const from = dayOf(now - (IMPACT_DAYS - 1) * DAY_MS);
-  const to = dayOf(now);
+  const { from, to } = rangeOf(now);
 
   try {
     const result = await outbound
       .sender(sender.ref)
       .stats({ by: "day", from, to });
 
-    const days = result.rows.flatMap((row) => {
-      const sent = sentOn(row);
-
-      return row.date === null ||
-        row.date < from ||
-        row.date > to ||
-        sent === null
-        ? []
-        : [{ date: row.date, sent }];
-    });
-
-    const total =
-      days.length === 0 ? null : days.reduce((sum, day) => sum + day.sent, 0);
-
-    const lastSent = days
-      .filter((day) => day.sent > 0)
-      .map((day) => day.date)
-      .toSorted()
-      .at(-1);
-
-    let reason: string | undefined;
-
-    if (total === null) {
-      reason = `Unknown: the vendor returned no daily sends for this sender from ${from} to ${to}, so it sent nothing then or does not report it.`;
-    } else if (lastSent === undefined) {
-      reason = `Nothing sent from ${from} to ${to}; an earlier send is not read.`;
-    }
-
     return {
-      reason,
+      ...sendsIn(result.rows, from, to),
       requests: result.meta.requests,
-      value: { from, last_sent_on: lastSent ?? null, sent: total, to },
     };
   } catch (error) {
     return failed(error, "reading its daily sends");
+  }
+};
+
+interface BatchedSends {
+  /** By sender ref. */
+  readonly bySender: ReadonlyMap<string, Read<RecentSends>>;
+  readonly requests: number;
+}
+
+/** Every sender's days in one read, where the adapter reads many at once. */
+const batchedSends = async (
+  outbound: OutboundApi,
+  senders: readonly Sender[],
+  now: number
+): Promise<BatchedSends> => {
+  const { from, to } = rangeOf(now);
+
+  try {
+    const result = await outbound.stats({
+      by: "day",
+      from,
+      scope: "sender",
+      scopeIds: senders.map((sender) => sender.ref),
+      to,
+    });
+
+    const rowsOf = new Map<string, MetricRow[]>();
+
+    for (const row of result.rows) {
+      rowsOf.set(row.scopeRef, [...(rowsOf.get(row.scopeRef) ?? []), row]);
+    }
+
+    return {
+      bySender: new Map(
+        senders.map((sender) => [
+          sender.ref,
+          {
+            ...sendsIn(rowsOf.get(sender.ref) ?? [], from, to),
+            requests: 0,
+          },
+        ])
+      ),
+      requests: result.meta.requests,
+    };
+  } catch (error) {
+    const read = failed(error, "reading the daily sends");
+
+    return {
+      bySender: new Map(senders.map((sender) => [sender.ref, read])),
+      requests: 0,
+    };
   }
 };
 
@@ -194,11 +279,12 @@ export interface Impact {
 const impactOf = async (
   outbound: OutboundApi,
   sender: Sender,
-  now: number
+  now: number,
+  batched: Read<RecentSends> | undefined
 ): Promise<Impact> => {
   const [campaigns, sends] = await Promise.all([
     activeCampaigns(outbound, sender),
-    recentSends(outbound, sender, now),
+    batched ?? recentSends(outbound, sender, now),
   ]);
 
   const sendsKey =
@@ -246,17 +332,28 @@ export interface Impacts {
   readonly skipped: number;
 }
 
-/** The impact of the first `IMPACT_AT_MOST` failing senders, in the order given. */
+/**
+ * The impact of the first failing senders, in the order given:
+ * `IMPACT_BATCHED_AT_MOST` where the adapter reads many senders' days in one
+ * call, `IMPACT_AT_MOST` where each sender's days cost a read of their own.
+ */
 export const readImpacts = async (
   outbound: OutboundApi,
   failing: readonly Sender[],
   now = Date.now()
 ): Promise<Impacts> => {
-  const chosen = failing.slice(0, IMPACT_AT_MOST);
+  const batched = isBatched(outbound);
+  const atMost = batched ? IMPACT_BATCHED_AT_MOST : IMPACT_AT_MOST;
+  const chosen = failing.slice(0, atMost);
+
+  const sends =
+    batched && chosen.length > 0
+      ? await batchedSends(outbound, chosen, now)
+      : undefined;
 
   const read = await mapConcurrent(chosen, async (sender) => ({
     ref: sender.ref,
-    ...(await impactOf(outbound, sender, now)),
+    ...(await impactOf(outbound, sender, now, sends?.bySender.get(sender.ref))),
   }));
 
   const skipped = failing.length - chosen.length;
@@ -266,10 +363,13 @@ export const readImpacts = async (
     notes:
       skipped > 0
         ? [
-            `Impact (active campaigns, recent sends) was read for the first ${plural(IMPACT_AT_MOST, "failing sender")}; ${skipped} more ${skipped === 1 ? "has" : "have"} none.`,
+            `Impact (active campaigns, recent sends) was read for the first ${plural(atMost, "failing sender")}; ${skipped} more ${skipped === 1 ? "has" : "have"} none.`,
           ]
         : [],
-    requests: read.reduce((sum, entry) => sum + entry.requests, 0),
+    requests: read.reduce(
+      (sum, entry) => sum + entry.requests,
+      sends?.requests ?? 0
+    ),
     skipped,
   };
 };

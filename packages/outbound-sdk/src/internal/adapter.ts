@@ -153,6 +153,11 @@ export interface StatsQuery {
    * campaign scope without one asks for a row per campaign.
    */
   readonly scopeId?: string | undefined;
+  /**
+   * Several senders, for the sender scope in place of `scopeId`, where the
+   * adapter declares `stats.bySenders`. Each row's `scopeRef` is its sender.
+   */
+  readonly scopeIds?: readonly string[] | undefined;
   /** Inclusive `YYYY-MM-DD`. */
   readonly from?: string | undefined;
   /** Inclusive `YYYY-MM-DD`. */

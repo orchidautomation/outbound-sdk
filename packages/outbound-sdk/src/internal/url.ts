@@ -1,4 +1,11 @@
-export type QueryValue = string | number | boolean | null | undefined;
+/** A list is sent as the key repeated, once per item. */
+export type QueryValue =
+  | string
+  | number
+  | boolean
+  | readonly string[]
+  | null
+  | undefined;
 
 /** Joins a base URL and a path and appends the defined query values. */
 export const buildUrl = (
@@ -11,7 +18,11 @@ export const buildUrl = (
   );
 
   for (const [key, value] of Object.entries(query)) {
-    if (value !== undefined && value !== null) {
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        url.searchParams.append(key, item);
+      }
+    } else if (value !== undefined && value !== null) {
       url.searchParams.set(key, String(value));
     }
   }

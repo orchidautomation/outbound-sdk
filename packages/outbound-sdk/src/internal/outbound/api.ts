@@ -207,6 +207,12 @@ export interface TopLevelStatsOptions extends StatsOptions {
    * The `campaign` scope without one returns a row per campaign, in one call.
    */
   readonly scopeId?: string | undefined;
+  /**
+   * Several senders in one read, for the `sender` scope in place of
+   * `scopeId`. Each row's `scopeRef` says which sender it is; a sender the
+   * vendor has no rows for has none. Needs `stats.bySenders`.
+   */
+  readonly scopeIds?: readonly string[] | undefined;
 }
 
 export interface StatsResult {

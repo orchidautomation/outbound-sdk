@@ -99,6 +99,8 @@ export const capabilities: CapabilityDeclaration = {
   "stats.byDay": "exact",
   // Per-mailbox numbers exist by day only; a total is summed by the adapter.
   "stats.bySender": "derived",
+  // GET /accounts/analytics/daily names up to 200 mailboxes in one read.
+  "stats.bySenders": "derived",
   "stats.byStep": "exact",
   // GET /campaigns/analytics with no id: a row per campaign, totals only.
   // Partial: it has no count of interested leads and no total of opens.

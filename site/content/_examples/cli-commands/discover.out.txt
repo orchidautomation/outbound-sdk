@@ -153,6 +153,7 @@ $ outbound capabilities
       "sequence.subsequences": true,
       "stats.byDay": "exact",
       "stats.bySender": "exact",
+      "stats.bySenders": false,
       "stats.byStep": "exact",
       "stats.allCampaigns": "full",
       "stats.campaign": "exact",

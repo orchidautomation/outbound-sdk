@@ -18,7 +18,7 @@ Of the 268 endpoints, 22 are used by normalized reads, 105 are in the native cat
 | `GET` | `/account-campaign-mappings/{email}` | Get campaigns associated with an email | native | `senderCampaigns` |
 | `GET` | `/accounts` | List mailboxes | normalized | `senders.list`, `senders.byCampaign`, `senders.healthList` |
 | `POST` | `/accounts` | Create account | write |  |
-| `GET` | `/accounts/analytics/daily` | Get daily account analytics | normalized | `stats.bySender` |
+| `GET` | `/accounts/analytics/daily` | Get daily account analytics | normalized | `stats.bySender`, `stats.bySenders` |
 | `GET` | `/accounts/ctd/status` | Get custom tracking domain status | native | `trackingDomainStatus` |
 | `POST` | `/accounts/move` | Move accounts between workspaces | write |  |
 | `POST` | `/accounts/pause` | Pause multiple accounts | write |  |
