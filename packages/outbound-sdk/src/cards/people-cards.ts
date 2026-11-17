@@ -1,5 +1,6 @@
 // Cards for the people and account insights.
 
+import { field } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
 import type { Stat } from "./content.ts";
 import {
@@ -125,26 +126,40 @@ const accountSummary: CardBuilder = (data) => {
 const findings = (items: readonly JsonObject[], dot: string): string[] =>
   items.map((item) => `${dot} ${show(item, "finding")}`);
 
+// A total of `null` beside a count found is a check a cap stopped part way:
+// what was found is a lower bound, and none found is not a clean result.
+const incompleteCheck = (totals: Json | undefined, total: string): boolean =>
+  field(totals, total) === null;
+
+// None found by a check that stopped part way: the answer's own finding, never clean.
+const unclean = (data: Json | undefined, incomplete: boolean): string | null =>
+  incomplete ? `🟡 ${show(data, "finding")}` : null;
+
 const leadCollisions: CardBuilder = (data) => {
   const totals = child(data, "totals");
-  const found = num(totals, "collisions") ?? 0;
+
+  const found =
+    num(totals, "collisionsFound") ?? num(totals, "collisions") ?? 0;
+
+  const incomplete = incompleteCheck(totals, "collisions");
   // Older answers have no `concurrent`: every collision was then reported as concurrent.
   const concurrent = num(totals, "concurrent") ?? found;
+  const least = incomplete ? "At least " : "";
 
   const problem =
     concurrent > 0
-      ? `🟡 ${plural(concurrent, "person", "people")} in two or more campaigns at once.`
-      : `🟡 ${plural(found, "person", "people")} in two or more campaigns, none active in two now.`;
+      ? `🟡 ${least}${plural(concurrent, "person", "people")} in two or more campaigns at once.`
+      : `🟡 ${least}${plural(found, "person", "people")} in two or more campaigns, none active in two now.`;
 
   return {
     bullets: findings(rows(data, "collisions"), "🟡"),
     finding: verdict(
       num(totals, "leadsRead"),
-      found === 0 ? null : problem,
+      found > 0 ? problem : unclean(data, incomplete),
       "Nobody is in two campaigns at once."
     ),
     stats: [
-      ["Collisions", int(found)],
+      [incomplete ? "Collisions found" : "Collisions", int(found)],
       ["Across tools", int(num(totals, "acrossTools"))],
       ["Within one tool", int(num(totals, "withinTool"))],
       ["Leads read", int(num(totals, "leadsRead"))],
@@ -155,11 +170,20 @@ const leadCollisions: CardBuilder = (data) => {
 
 const suppressionCheck: CardBuilder = (data) => {
   const totals = child(data, "totals");
-  const found = num(totals, "violations") ?? 0;
+
+  const found =
+    num(totals, "violationsFound") ?? num(totals, "violations") ?? 0;
+
+  const incomplete = incompleteCheck(totals, "violations");
   const byMatch = child(totals, "byMatch");
   const moreEntries = bool(totals, "moreBlockEntriesExist") === true;
 
   const capped = [
+    ...(bool(totals, "moreCampaignsExist") === true
+      ? [
+          `🟡 Stopped at ${plural(num(totals, "campaignsRead") ?? 0, "campaign")}; more exist and were not checked.`,
+        ]
+      : []),
     ...(moreEntries
       ? [
           `🟡 Stopped at ${plural(num(totals, "blockEntriesRead") ?? 0, "block list entry", "block list entries")}; more exist and were not checked.`,
@@ -173,20 +197,21 @@ const suppressionCheck: CardBuilder = (data) => {
   const problem =
     found === 0
       ? null
-      : `🔴 ${plural(found, "blocked lead")} still in a campaign.`;
+      : `🔴 ${incomplete ? "At least " : ""}${plural(found, "blocked lead")} still in a campaign.`;
 
   return {
     bullets: [...capped, ...findings(rows(data, "violations"), "🔴")],
     finding: verdict(
       num(totals, "leadsRead"),
       problem ??
+        unclean(data, incomplete) ??
         (moreEntries
           ? "🟡 No blocked lead found in the entries read, but more entries exist."
           : null),
       "No blocked lead is in a campaign."
     ),
     stats: [
-      ["Violations", int(found)],
+      [incomplete ? "Violations found" : "Violations", int(found)],
       ["Already stopped, not counted", int(num(totals, "alreadyStopped"))],
       ["By email", int(num(byMatch, "email"))],
       ["By domain", int(num(byMatch, "domain"))],
