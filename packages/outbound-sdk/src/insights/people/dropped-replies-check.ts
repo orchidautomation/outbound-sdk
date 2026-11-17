@@ -1,7 +1,6 @@
 // dropped_replies' checks: whether anything was sent after each conversation's
 // replies, from the messages sent by hand or a full read of the conversation.
 
-import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Message, Reply } from "../../internal/entities.ts";
 import { OutboundError } from "../../internal/errors.ts";
 import { plural } from "../../internal/numbers.ts";
@@ -9,7 +8,7 @@ import { noun } from "../../internal/plural.ts";
 import type { InsightContext } from "../define.ts";
 import { isCapStop } from "../run-cap.ts";
 import { round } from "../stats.ts";
-import { waited } from "./thread-context.ts";
+import { activityOf, waited } from "./thread-context.ts";
 import type { LabelledReply, ThreadContext } from "./thread-context.ts";
 
 export const HOUR = 3_600_000;
@@ -148,8 +147,18 @@ export const sentByHand = async (
   }
 
   // Its cost is counted, but a stop at `max` does not make the answer partial.
+  // A request cap that stops it leaves every conversation to be read in full.
   const walk = messages.listAll({ byHand: true, max, since });
-  const found = await walk.toArray();
+
+  const [found] = await context.each(
+    [walk],
+    async (each) => await each.toArray(),
+    "listings of the messages sent by hand"
+  );
+
+  if (found === undefined) {
+    return null;
+  }
 
   if (walk.meta !== undefined) {
     context.one({ meta: walk.meta });
@@ -181,11 +190,47 @@ export interface Checkable extends Conversation {
 
 interface Checked {
   answered: number;
+  /** Conversations whose latest message, read in full, is an automatic reply. */
+  automatic: number;
+  /** The listed replies of those conversations. */
+  automaticReplies: number;
   readonly dropped: FoundDropped[];
   tooRecent: number;
   /** Conversations whose read failed. */
   unread: number;
 }
+
+/**
+ * Reads each conversation in full. A failed read leaves it unchecked, with
+ * why; a request cap leaves out the conversations it stopped.
+ */
+const readFully = async (
+  context: InsightContext,
+  conversations: readonly Checkable[]
+) =>
+  await context.each(
+    conversations,
+    async (conversation) => {
+      try {
+        const read = await (conversation.by === "thread"
+          ? context.outbound.thread(conversation.id).messages()
+          : context.outbound.lead(conversation.id).timeline());
+
+        return { conversation, failed: null, messages: context.page(read) };
+      } catch (error) {
+        if (isCapStop(error)) {
+          throw error;
+        }
+
+        return {
+          conversation,
+          failed: OutboundError.is(error) ? error.code : "an unexpected error",
+          messages: [],
+        };
+      }
+    },
+    "conversations"
+  );
 
 /**
  * Settles each conversation as answered, too recent or dropped. An answer
@@ -198,10 +243,13 @@ export const check = async (
   context: InsightContext,
   checkable: readonly Checkable[],
   sent: SentByHand | null,
-  olderThanHours: number
+  olderThanHours: number,
+  includeAuto: boolean
 ): Promise<Checked> => {
   const checked: Checked = {
     answered: 0,
+    automatic: 0,
+    automaticReplies: 0,
     dropped: [],
     tooRecent: 0,
     unread: 0,
@@ -219,11 +267,19 @@ export const check = async (
     );
 
   // `false` when only a full read can say whether it is dropped.
-  const settle = (found: readonly FoundDropped[], whole: boolean): boolean => {
+  // `automaticReplies` is set when a full read ends in an automatic reply.
+  const settle = (
+    found: readonly FoundDropped[],
+    whole: boolean,
+    automaticReplies = 0
+  ): boolean => {
     if (found.length === 0) {
       checked.answered += 1;
     } else if (found.every((each) => each.hoursWaiting < olderThanHours)) {
       checked.tooRecent += 1;
+    } else if (automaticReplies > 0) {
+      checked.automatic += 1;
+      checked.automaticReplies += automaticReplies;
     } else if (whole) {
       checked.dropped.push(...found);
     } else {
@@ -246,36 +302,38 @@ export const check = async (
           return !((found.length === 0 || sent.whole) && settle(found, false));
         });
 
-  // A failed read leaves its conversation unchecked; a request cap still stops the run.
-  const threads = await mapConcurrent(toRead, async (conversation) => {
-    try {
-      const read = await (conversation.by === "thread"
-        ? context.outbound.thread(conversation.id).messages()
-        : context.outbound.lead(conversation.id).timeline());
+  const threads = await readFully(context, toRead);
+  const stopped = toRead.length - threads.length;
 
-      return { conversation, failed: null, messages: context.page(read) };
-    } catch (error) {
-      if (isCapStop(error)) {
-        throw error;
-      }
+  const reasons = new Set<string>(
+    stopped > 0 ? ["the request cap stopped the read"] : []
+  );
 
-      return {
-        conversation,
-        failed: OutboundError.is(error) ? error.code : "an unexpected error",
-        messages: [],
-      };
-    }
-  });
-
-  const reasons = new Set<string>();
+  checked.unread += stopped;
 
   for (const { conversation, failed, messages } of threads) {
     if (failed === null) {
-      settle(openIn(conversation, messages), true);
+      // The full read applies every auto-reply rule, timing included, which a reply listing cannot.
+      const { latest } = activityOf(messages);
+
+      const endsAutomatic =
+        !includeAuto && latest?.direction === "in" && latest.isAuto === true;
+
+      settle(
+        openIn(conversation, messages),
+        true,
+        endsAutomatic ? conversation.replies.length : 0
+      );
     } else {
       checked.unread += 1;
       reasons.add(failed);
     }
+  }
+
+  if (checked.automatic > 0) {
+    context.note(
+      `${plural(checked.automatic, "conversation")} ended in an automatic reply once read in full (such as one within a minute of the email it answers), so ${noun(checked.automatic, "its", "their")} ${plural(checked.automaticReplies, "reply", "replies")} ${noun(checked.automaticReplies, "is", "are")} counted in totals.skippedAuto, not as dropped. Pass include_auto: true to list them.`
+    );
   }
 
   if (checked.unread > 0) {

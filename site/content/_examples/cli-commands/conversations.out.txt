@@ -47,6 +47,7 @@ $ outbound replies --by person
   "data": {
     "items": [
       {
+        "automatic": 0,
         "categories": [
           "positive"
         ],

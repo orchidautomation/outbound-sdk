@@ -1,4 +1,5 @@
 {
+  "automatic": null,
   "unique_people": 1,
   "unique_threads": null,
   "replies": [
@@ -16,6 +17,7 @@
   ]
 }
 {
+  "automatic": null,
   "unique_people": 3,
   "unique_threads": null,
   "replies": [

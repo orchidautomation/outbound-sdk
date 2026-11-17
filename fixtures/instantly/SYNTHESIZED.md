@@ -51,6 +51,7 @@ Added on 2026-11-16 for OUT-92, by hand: `listEmails.autoReplies.json`, one camp
 - listEmails.page2.json
 - listEmails.autoReplies.json
 - listEmails.followUp.json
+- listEmails.timedAuto.json
 - listLeadLabels.json
 - listLeadLists.json
 - listLeadLists.page2.json
@@ -58,6 +59,7 @@ Added on 2026-11-16 for OUT-92, by hand: `listEmails.autoReplies.json`, one camp
 - listLeads.page2.json
 - listLeads.autoReplies.json
 - listLeads.followUp.json
+- listLeads.timedAuto.json
 - listLeadsByEmail.json
 - listLeadsByEmail.page2.json
 - listLeadsByEmail.repliers.json
@@ -101,3 +103,8 @@ Added on 2026-11-16 for OUT-92, by hand: `listEmails.autoReplies.json`, one camp
 ## Added 2026-11-17 for OUT-140
 
 - `getWebhookEvent.replyReceived.json` (`GET /webhook-events/{id}`): written by hand with the keys of a live `reply_received` delivery read on 2026-11-17, the event's and its payload's. Every value is made up. Its `unibox_url` has the form Instantly sent on that delivery, with a thread id shaped like the live ones (letters, digits and `-`) and the organization id of `listReplies.sameLead.json`.
+
+## Added 2026-11-17 for OUT-146
+
+- `listEmails.timedAuto.json` (`GET /emails`, both directions): written by hand in the shape of `listEmails.followUp.json`. Two threads in one campaign, each a step-1 send and an `i_status` 1 (positive) reply from a person's address with a plain body. The first reply arrives 31 seconds after its send, the shape of the live replies the agent and SDR manager runs counted as dropped (2026-11-17): no address, subject or phrase rule matches it, so only the one-minute timing rule, which needs the send, marks it automatic. The second arrives a day later. Every value is made up.
+- `listLeads.timedAuto.json` (`POST /leads/list`): the two leads of those threads, trimmed to the fields under test.

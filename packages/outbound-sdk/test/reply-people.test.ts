@@ -107,6 +107,7 @@ test("replies --by person: one row per person, with their message count", async 
   assert.equal(code, 0);
   assert.deepEqual(json, [
     {
+      automatic: 0,
       categories: ["positive"],
       firstAt: "2026-11-10T09:00:00.000Z",
       lastAt: "2026-11-11T10:00:00.000Z",
@@ -202,8 +203,10 @@ test("reply_samples by person: one row per person", async () => {
   assert.ok(result.ok);
 
   assert.deepEqual(result.data, {
+    automatic: 0,
     people: [
       {
+        automatic: 0,
         categories: ["positive"],
         first_at: "2026-11-10T09:00:00.000Z",
         last_at: "2026-11-11T10:00:00.000Z",
@@ -232,6 +235,63 @@ test("reply_samples: unique_people is null, not a guess, when a reply has no lea
 
   assert.equal(data.unique_people, null);
   assert.equal(data.unique_threads, 3);
+});
+
+// OUT-146: Instantly labelled four automatic replies positive. A positive
+// count must be able to leave them out, so both surfaces count them apart.
+const POSITIVE_AND_AUTOMATIC = [
+  ...ONE_PERSON_TWICE.slice(0, 2),
+  {
+    ...reply("msg_4", "lead_3", "thr_3", "2026-11-12T11:00:00.000Z"),
+    isAuto: true,
+  },
+];
+
+test("replies: a positive count says how many of its replies are automatic", async () => {
+  const messages = await cli(POSITIVE_AND_AUTOMATIC, "--category", "positive");
+
+  assert.deepEqual(messages.err, [
+    "3 messages from 2 people in 2 threads, 1 of them automatic.",
+  ]);
+
+  const people = await cli(
+    POSITIVE_AND_AUTOMATIC,
+    "--category",
+    "positive",
+    "--by",
+    "person"
+  );
+
+  assert.deepEqual(
+    (people.json as { automatic: number; leadRef: string }[]).map(
+      ({ automatic, leadRef }) => ({ automatic, leadRef })
+    ),
+    [
+      { automatic: 0, leadRef: "memory:acme:lead_1" },
+      { automatic: 1, leadRef: "memory:acme:lead_3" },
+    ]
+  );
+});
+
+test("reply_samples: automatic counts the automatic replies a category holds, and is null when unknown", async () => {
+  const known = await replySamples(POSITIVE_AND_AUTOMATIC).call({
+    category: "positive",
+  });
+
+  assert.ok(known.ok);
+  assert.equal((known.data as { automatic: unknown }).automatic, 1);
+
+  const { isAuto: _flagged, ...unflagged } = reply(
+    "msg_5",
+    "lead_4",
+    "thr_4",
+    "2026-11-13T09:00:00.000Z"
+  );
+
+  const unknown = await replySamples([...ONE_PERSON_TWICE, unflagged]).call({});
+
+  assert.ok(unknown.ok);
+  assert.equal((unknown.data as { automatic: unknown }).automatic, null);
 });
 
 test("reply_samples: an unknown by is refused", async () => {
