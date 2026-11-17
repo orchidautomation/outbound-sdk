@@ -3,6 +3,7 @@
 // companies, so two records are linked only when a vendor gave both the same
 // address or the same profile.
 
+import { personKey } from "../internal/person.ts";
 import { profileSlug } from "../internal/url.ts";
 
 export const emailKey = (email: string | null): string | null => {
@@ -26,14 +27,13 @@ export const keysOf = (record: {
     (key) => key !== null
   );
 
-/** Accepts a person key, an email address or a LinkedIn URL. */
+/** Accepts a person key, an email address or a LinkedIn URL. A lead ref is not one. */
 export const toKey = (identifier: string): string | null => {
-  const value = identifier.trim();
-  const lower = value.toLowerCase();
+  const lower = identifier.trim().toLowerCase();
 
-  if (lower.startsWith("email:") || lower.startsWith("linkedin:")) {
+  if (/^(?:email|linkedin):[^:]+$/u.test(lower)) {
     return lower;
   }
 
-  return linkedinKey(value) ?? emailKey(value);
+  return personKey(identifier);
 };

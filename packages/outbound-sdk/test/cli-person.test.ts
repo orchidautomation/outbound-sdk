@@ -83,6 +83,46 @@ test("person finds one person in every tool, from an email or a LinkedIn URL", a
   assert.equal(missing, 1);
 });
 
+test("person takes a lead ref another command printed, and refuses one no tool reads (OUT-138)", async () => {
+  const lead = await cliOn(twoTools(), "person", "mailtool:agency:l1");
+  const summary = lead.json() as { found: boolean; identifiers: string[] };
+
+  assert.equal(lead.code, 0);
+  assert.equal(summary.found, true);
+  assert.ok(summary.identifiers.includes("email:person1@example.com"));
+
+  const typed = await cliOn(
+    twoTools(),
+    "insight",
+    "person_summary",
+    "--input",
+    '{"lead_ref":"mailtool:agency:l1"}'
+  );
+
+  assert.equal(typed.code, 0);
+
+  const out: string[] = [];
+
+  const elsewhere = await run(["person", "mailtool:other:l1", "--compact"], {
+    adapter: twoTools(),
+    stderr: () => {},
+    stdout: (text) => {
+      out.push(text);
+    },
+  });
+
+  const { error } = JSON.parse(out.join("")) as {
+    error: { code: string; message: string };
+  };
+
+  assert.equal(elsewhere, 1);
+  assert.equal(error.code, "Invalid");
+  assert.match(
+    error.message,
+    /is a lead ref from mailtool workspace other, but no tool on this combined instance is that one/u
+  );
+});
+
 test("tools offers the person tools, as outbound mcp does", async () => {
   const names = new Set(
     ((await cliOn(twoTools(), "tools")).json() as { name: string }[]).map(

@@ -1,3 +1,3 @@
-a name: Invalid - person() needs a person key, an email address or a LinkedIn profile URL
+a name: Invalid - person() needs a person key, or an email address, a LinkedIn profile URL or a lead ref as another tool returned it (provider:workspace:id)
 wrong campaign: false
 no timeline: 1 0

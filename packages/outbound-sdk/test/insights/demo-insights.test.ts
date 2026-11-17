@@ -51,6 +51,12 @@ const hasContent = (value: unknown): boolean => {
   );
 };
 
+const takesPerson = (parameters: unknown): boolean =>
+  typeof parameters === "object" &&
+  parameters !== null &&
+  "lead_ref" in
+    ((parameters as { readonly properties?: object }).properties ?? {});
+
 const requiredOf = (parameters: unknown): readonly string[] => {
   const required =
     typeof parameters === "object" && parameters !== null
@@ -75,6 +81,11 @@ for (const now of MOMENTS) {
           return [key, value];
         })
       );
+
+      // A person is named by exactly one of several fields, none required alone.
+      if (takesPerson(listed.parameters)) {
+        input.person = "person1@example.com";
+      }
 
       const answer = await runInsightByName(outbound, listed.name, input, {
         now,
