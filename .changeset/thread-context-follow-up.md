@@ -1,5 +1,0 @@
----
-"outbound-sdk": minor
----
-
-Reply and follow-up results now carry the thread's latest activity, so an agent reads the conversation before it calls a reply overdue (OUT-139). `dropped_replies`, `hot_leads` and `person_summary` entries gain `activity` (the latest message, who sent it and when), `meeting` (what the vendor records on the lead), `vendorSentiment` (the vendor's labels, kept apart) and `followUp`, an assessment from fixed rules with its `evidence` and what it left `unchecked`; a label alone never sets `followUp.needed`. A `dropped_replies` finding now names a later latest message and a recorded meeting. The new `thread_context` insight reads the conversations behind given lead refs or thread ids in pages, with 280-character untrusted snippets and coverage (requested, found, not found, unchecked and why, next cursor), without reading every reply of a campaign. Leads gain an optional `meeting` field (`booked`, `completed`, `no_show`, `won`), filled from Instantly's `lt_interest_status`; the other adapters record none. `hot_leads` takes `read_threads` to read each returned lead's conversation.
