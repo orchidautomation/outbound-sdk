@@ -9,7 +9,9 @@ import type { OutboundApi } from "../internal/outbound/api.ts";
 import {
   newLeadsPerDay,
   paceWindow,
-  runwayDays,
+  RUNWAY_MAX_LEADS,
+  runwayOf,
+  runwayStatus,
   splitActive,
 } from "../internal/runway.ts";
 import { checkPerson, personFields, personOf } from "./person-input.ts";
@@ -29,20 +31,38 @@ const runwayInput = z.object({
     .number()
     .int()
     .min(1)
-    .max(20_000)
-    .default(2000)
-    .describe("Stop counting leads here"),
+    .max(50_000)
+    .default(RUNWAY_MAX_LEADS)
+    .describe(
+      "Stop counting leads here. Where the tool lists active leads alone (leads.byStatus), only those are read, as client_report does."
+    ),
 });
 
 export const leadRunway: ToolDefinition<z.infer<typeof runwayInput>> = {
   description:
-    "How many days until a campaign has no new leads left to start. It counts the campaign's active leads, splits them into those not yet started and those partway through the sequence, and divides the ones not yet started by the new leads started per day over the lookback window (complete days ending yesterday). The pace is leads started, never emails sent: follow-ups to leads already in sequence do not count. pipeline_forecast gives the same figure as daysLeft. It is an estimate: it counts leads by listing them (up to max_leads; meta.complete: false means counting stopped there), and when the vendor reports no lead's step or last contact, every active lead counts as not started.",
+    "How many days until a campaign has no new leads left to start. It counts the campaign's active leads (only those where the tool lists them alone), splits them into those not yet started and those partway through the sequence, and divides the ones not yet started by the new leads started per day over the lookback window (complete days ending yesterday). The pace is leads started, never emails sent: follow-ups to leads already in sequence do not count. state is draining (leads left to start and a pace), stalled (leads left to start but none started in the window, or no count of leads started), out_of_leads (none left to start) or unknown (counting stopped before any lead left to start was found). runway_days is null when the pace is null or 0. client_report and pipeline_forecast give the same state and days. It is an estimate: it counts leads by listing them (up to max_leads; meta.complete: false means counting stopped there), and when the vendor reports no lead's step or last contact, every active lead counts as not started.",
   inputSchema: runwayInput,
   name: "lead_runway",
   needs: ["leads.byCampaign", "stats.campaign", "stats.byDay"],
   run: async (outbound, input) => {
-    const campaign = outbound.campaign(input.campaign);
-    const walk = campaign.leads.listAll({ max: input.max_leads });
+    // On a combined instance the campaign is read through the tool that owns it, with that tool's filter, as in client_report.
+    const found =
+      outbound.provider === "combined"
+        ? await outbound.campaign(input.campaign).get()
+        : undefined;
+
+    const owner =
+      found === undefined
+        ? outbound
+        : outbound.workspace(`${found.provider}:${found.workspaceId}`);
+
+    const campaign = owner.campaign(found?.ref ?? input.campaign);
+
+    const walk = campaign.leads.listAll({
+      max: input.max_leads,
+      status: runwayStatus(owner.capabilities),
+    });
+
     const leads = await walk.toArray();
     const split = splitActive(leads);
     const unknown = leads.filter((lead) => lead.status === "unknown").length;
@@ -53,17 +73,23 @@ export const leadRunway: ToolDefinition<z.infer<typeof runwayInput>> = {
       ...paceWindow(Date.now(), input.lookback_days),
     });
 
-    const pace = newLeadsPerDay(stats.rows, input.lookback_days);
+    const runway = runwayOf(
+      split,
+      { unknown },
+      complete,
+      newLeadsPerDay(stats.rows, input.lookback_days)
+    );
 
     return {
       data: {
         active_leads: split.active,
         campaign: input.campaign,
-        contacted_per_day: pace,
+        contacted_per_day: runway.pace,
         counted_leads: leads.length,
-        in_sequence: split.inSequence,
+        in_sequence: runway.inSequence,
         not_started: split.notStarted,
-        runway_days: runwayDays(split, { unknown }, complete, pace),
+        runway_days: runway.daysLeft,
+        state: runway.state,
       },
       meta: {
         complete: complete && stats.meta.complete,
@@ -74,9 +100,12 @@ export const leadRunway: ToolDefinition<z.infer<typeof runwayInput>> = {
               `Counting stopped at ${plural(leads.length, "lead")} (max_leads); more exist, so the counts and the runway cover only those.`,
             ],
         provider: outbound.provider,
-        requests: (walk.meta?.requests ?? 0) + stats.meta.requests,
+        requests:
+          (found?.meta.requests ?? 0) +
+          (walk.meta?.requests ?? 0) +
+          stats.meta.requests,
       },
-      next: "contacted_per_day is new leads started per day. A runway of 0 means no lead is left to start. A null runway means the vendor reports no daily count of leads started, or none was started in the window, so no pace can be measured. A null not_started means the vendor does not say which leads have started, so every active lead was counted.",
+      next: "contacted_per_day is new leads started per day. A null runway_days means no pace: none was started in the window (state stalled), the vendor reports no daily count of leads started, or none is left to start at a pace of 0. A null not_started means the vendor does not say which leads have started, so every active lead was counted as not started.",
       ok: true,
     };
   },

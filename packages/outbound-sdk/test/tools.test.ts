@@ -568,11 +568,13 @@ test("lead_runway divides active leads by the pace of new contacts", async () =>
     active_leads: 30,
     campaign: "c1",
     contacted_per_day: 10,
-    counted_leads: 31,
+    // Only the active leads are read, as client_report reads them.
+    counted_leads: 30,
     // No lead reports a step or a contact, so every active lead counts.
     in_sequence: null,
     not_started: null,
     runway_days: 3,
+    state: "draining",
   });
   assert.ok(result.ok && result.meta.evidence === "derived");
   assert.deepEqual(coverage(result), { complete: true, notes: [] });
@@ -588,7 +590,9 @@ test("lead_runway divides active leads by the pace of new contacts", async () =>
   );
 
   assert.equal(drained.active_leads, 0);
-  assert.equal(drained.runway_days, 0, "no leads left is zero days");
+  // With no pace in the window there are no days to divide out (OUT-147).
+  assert.equal(drained.state, "out_of_leads");
+  assert.equal(drained.runway_days, null);
 });
 
 test("compare_clients and cross_channel_lead work once their plugins are on the instance", async () => {

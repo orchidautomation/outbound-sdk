@@ -16,6 +16,7 @@ import {
   perLeadBasis,
   ratesOf,
   readCampaignTotals,
+  toolsLeftOut,
   volumeOf,
 } from "./shared.ts";
 import type {
@@ -24,6 +25,7 @@ import type {
   Measured,
   OpenRange,
   ReplyBasis,
+  ToolLeftOut,
   Totals,
 } from "./shared.ts";
 
@@ -85,6 +87,13 @@ export interface CampaignRanking extends Ranking, CampaignsRead {
   readonly metric: RankingMetric;
   readonly better: "higher" | "lower";
   readonly period: OpenRange;
+  /**
+   * Tools of a combined instance none of whose campaigns is in `statuses`,
+   * so none of theirs is ranked, each with its own workspace totals for
+   * `period`. Always set by the insight; optional so a value built by hand
+   * stays valid.
+   */
+  readonly toolsLeftOut?: readonly ToolLeftOut[];
 }
 
 const measured = (
@@ -177,7 +186,7 @@ export const rankCampaigns = (
 
 export const campaignRanking = defineInsight({
   description:
-    "Which campaigns are best, ranked fairly: by the low end of the 95% Wilson interval of the reply rate (or positive reply rate; for bounce rate, by the high end, lowest first), so 2 replies from 10 sends cannot outrank 150 from 1,000. Use it to pick winners and losers across a workspace. Returns each campaign with its count, rate, interval and rank, the campaigns left out for too few sends, those whose count the vendor does not report (a null rate is unknown, not zero), and the gap between the top and the median. Costs one listing per status plus one stats request per campaign (one for all of them on a vendor that reports every campaign in one call with every count).",
+    "Which campaigns are best, ranked fairly: by the low end of the 95% Wilson interval of the reply rate (or positive reply rate; for bounce rate, by the high end, lowest first), so 2 replies from 10 sends cannot outrank 150 from 1,000. Use it to pick winners and losers across a workspace. Returns each campaign with its count, rate, interval and rank, the campaigns left out for too few sends, those whose count the vendor does not report (a null rate is unknown, not zero), and the gap between the top and the median. On a combined instance a tool with no campaign in statuses is named in toolsLeftOut with its own totals for the period, one stats request each. Costs one listing per status plus one stats request per campaign (one for all of them on a vendor that reports every campaign in one call with every count).",
   inputSchema: input,
   key: "campaignRanking",
   cost: campaignTotalsCost,
@@ -187,14 +196,20 @@ export const campaignRanking = defineInsight({
   partialOnCap: true,
   next: "Use campaign_diagnosis on the campaign ranked last to see why it is behind.",
   run: async (context, options) => {
-    const { entries, read } = await readCampaignTotals(context, options);
+    const { entries, read, skipped } = await readCampaignTotals(
+      context,
+      options
+    );
+
+    const period = { from: options.from, to: options.to };
 
     const ranking: CampaignRanking = {
       ...rankCampaigns(entries, options.metric, options.min_sent),
       ...read,
       better: options.metric === "bounce_rate" ? "lower" : "higher",
       metric: options.metric,
-      period: { from: options.from, to: options.to },
+      period,
+      toolsLeftOut: await toolsLeftOut(context, skipped, period),
     };
 
     return ranking;

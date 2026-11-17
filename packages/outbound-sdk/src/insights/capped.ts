@@ -125,12 +125,28 @@ const noneMatched = (
   }
 };
 
+/** A tool of a combined instance none of whose campaigns was read, because none is in the states asked for. */
+export interface SkippedTool {
+  /** The tool's `provider:workspaceId`. */
+  readonly tool: string;
+  readonly provider: string;
+  readonly workspaceId: string;
+  /** Why none of its campaigns was read. */
+  readonly reason: string;
+}
+
+/** The campaigns read, and the tools of a combined instance left out because none of theirs is in the states asked for. */
+export interface CampaignsListed extends Capped<Campaign> {
+  readonly skipped: readonly SkippedTool[];
+}
+
 /**
  * Campaigns in the states asked for, and every campaign when the read had
  * to list them all to filter by state.
  */
 interface CampaignsIn extends Capped<Campaign> {
   readonly every?: readonly Campaign[];
+  readonly skipped?: readonly SkippedTool[];
 }
 
 /**
@@ -286,6 +302,8 @@ const readShared = async (
 
       return {
         label,
+        provider: tool.provider,
+        workspaceId: tool.workspaceId,
         read: await readOne(
           { ...context, outbound: outbound.workspace(label) },
           wanted,
@@ -335,9 +353,23 @@ const readShared = async (
     );
   }
 
+  const skipped = read.flatMap((each) =>
+    each.read.items.length === 0 && !each.read.capped
+      ? [
+          {
+            provider: each.provider,
+            reason: `It has no campaign ${either(wanted)}.`,
+            tool: each.label,
+            workspaceId: each.workspaceId,
+          },
+        ]
+      : []
+  );
+
   return {
     capped: dropped || read.some((each) => each.read.capped),
     items,
+    skipped,
   };
 };
 
@@ -350,7 +382,7 @@ export const readCampaignsIn = async (
   statuses: readonly CampaignStatus[],
   max: number,
   input = "max_campaigns"
-): Promise<Capped<Campaign>> => {
+): Promise<CampaignsListed> => {
   const wanted = [...new Set(statuses)];
   const cap: Cap = { input, max, what: "campaigns" };
 
@@ -365,5 +397,9 @@ export const readCampaignsIn = async (
     await countOthers(context, wanted, read.every);
   }
 
-  return { capped: read.capped, items: read.items };
+  return {
+    capped: read.capped,
+    items: read.items,
+    skipped: read.skipped ?? [],
+  };
 };

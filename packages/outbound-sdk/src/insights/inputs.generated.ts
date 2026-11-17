@@ -1276,10 +1276,24 @@ export interface InsightInputs {
     readonly min_sent?: number | undefined;
 
     /**
+     * Read only one tool of a combined instance: its provider (instantly) or provider:workspace. Leave out for every tool.
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly provider?: string | undefined;
+
+    /**
      * A campaign with this many days of leads left or fewer is flagged
      *
      * A number, 0 or more. Defaults to `7`.
      */
     readonly runway_days?: number | undefined;
+
+    /**
+     * Read only the campaigns with this tag, for example one client's. Unusual days are then left out, since they are workspace-wide.
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly tag?: string | undefined;
   };
 }

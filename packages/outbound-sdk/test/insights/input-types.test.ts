@@ -70,10 +70,10 @@ test("every insight names a missing required input the same way", async () => {
 
 test("an insight refuses an input it does not take, and lists what it takes", async () => {
   await assert.rejects(
-    // @ts-expect-error -- `tag` is not an input of clientReport
-    async () => await outbound.insights.clientReport({ tag: "acme" }),
+    // @ts-expect-error -- `client` is not an input of clientReport
+    async () => await outbound.insights.clientReport({ client: "acme" }),
     invalid(
-      /client_report: "tag" is not an input\. It takes: alpha, .*statuses/u
+      /client_report: "client" is not an input\. It takes: alpha, .*statuses/u
     )
   );
 });
