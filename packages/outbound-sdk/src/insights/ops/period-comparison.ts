@@ -5,13 +5,14 @@ import { z } from "zod";
 import type { Campaign } from "../../internal/entities.ts";
 import { sumMeasured } from "../../internal/metrics.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
-import { campaignsReadOf, readCampaignsIn } from "../capped.ts";
+import { campaignsReadOf, either, readCampaignsIn } from "../capped.ts";
 import type { CampaignsRead, Capped } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { compareRates, percent, pText, round } from "../stats.ts";
 import type { ProportionTest } from "../stats.ts";
 import {
+  campaignsBasis,
   descending,
   labelOf,
   lastDays,
@@ -23,14 +24,18 @@ import {
   ratesAcross,
   ratesOf,
   readTotals,
+  toolsLeftOut,
   totalsOf,
   volumeOf,
+  WORKSPACE_BASIS,
 } from "./shared.ts";
 import type {
   CampaignLabel,
+  CountsBasis,
   DayRange,
   Rates,
   ReplyBasis,
+  ToolLeftOut,
   Totals,
 } from "./shared.ts";
 
@@ -111,9 +116,46 @@ export interface PeriodComparison extends CampaignsRead {
   readonly tooFewSends: readonly ThinCampaign[];
   /** Every campaign read, added together. */
   readonly total: Comparison;
+  /**
+   * What `total` counts: the campaigns read, in the states asked for.
+   * Always set by the insight, like `workspaceBasis` and `toolsLeftOut`;
+   * optional so a value built by hand stays valid.
+   */
+  readonly totalBasis?: CountsBasis;
   /** The vendor's own workspace totals. `null` when the adapter has none. */
   readonly workspace: Comparison | null;
+  /** What `workspace` counts: every campaign, whatever its state. `null` with `workspace`. */
+  readonly workspaceBasis?: CountsBasis | null;
+  /**
+   * Tools of a combined instance none of whose campaigns is in `statuses`,
+   * so `total` leaves them out, each with its own workspace totals for this
+   * period.
+   */
+  readonly toolsLeftOut?: readonly ToolLeftOut[];
 }
+
+/**
+ * Says why the campaigns' total and the workspace totals give different
+ * reply counts for the period, so neither reads as the wrong one.
+ */
+export const noteRepliesApart = (
+  context: InsightContext,
+  campaigns: Totals,
+  workspace: Totals,
+  read: { readonly campaigns: number; readonly statuses: readonly string[] }
+): void => {
+  if (
+    campaigns.replied === null ||
+    workspace.replied === null ||
+    campaigns.replied === workspace.replied
+  ) {
+    return;
+  }
+
+  context.note(
+    `This period has ${campaigns.replied} replied across the ${read.campaigns === 1 ? "campaign" : `${read.campaigns} campaigns`} read (${either(read.statuses)}) and ${workspace.replied} in the workspace totals, which count every campaign whatever its state. Both count leads who replied, not reply messages.`
+  );
+};
 
 const numbersOf = (counts: Totals, rates: Rates): PeriodNumbers => ({
   ...totalsOf(counts),
@@ -354,7 +396,7 @@ const workspaceOf = (
 
 export const periodComparison = defineInsight({
   description:
-    "This period against the last: for each campaign, counts and rates for the last `days` complete days and for the `days` before, the change in each, and whether the change in the reply rate is more than chance (a two-proportion test), with the campaigns sorted by the size of that change. Also the same for every campaign added together and, where the adapter has them, for the vendor's workspace totals. Reply and positive reply rates divide by messages sent (`replyRateBasis`), since a period's replies also answer leads contacted before it, and by leads contacted for both periods only when a period does not report messages sent. Use it for a weekly review. Campaigns under min_sent sends in either period are listed apart; a null is a count the vendor does not report, and a rate of a total counts only the campaigns that report both its count and what it divides by (a note says when some are left out). Costs two stats requests per campaign plus two for the workspace.",
+    "This period against the last: for each campaign, counts and rates for the last `days` complete days and for the `days` before, the change in each, and whether the change in the reply rate is more than chance (a two-proportion test), with the campaigns sorted by the size of that change. Also the same for every campaign added together and, where the adapter has them, for the vendor's workspace totals. Reply and positive reply rates divide by messages sent (`replyRateBasis`), since a period's replies also answer leads contacted before it, and by leads contacted for both periods only when a period does not report messages sent. Use it for a weekly review. Campaigns under min_sent sends in either period are listed apart; a null is a count the vendor does not report, and a rate of a total counts only the campaigns that report both its count and what it divides by (a note says when some are left out). totalBasis and workspaceBasis say what each counts: the total adds up only the campaigns read, the workspace totals every campaign, and both count leads who replied, not reply messages. On a combined instance a tool with no campaign in statuses is named in toolsLeftOut with its own totals for the period. Costs two stats requests per campaign plus two for the workspace, and one for each tool left out.",
   inputSchema: input,
   key: "periodComparison",
   cost: (values, price) =>
@@ -378,6 +420,13 @@ export const periodComparison = defineInsight({
     // Read before the campaigns, so a request cap that stops them part way leaves the workspace's totals in the answer.
     const workspace = await readWorkspace(context, options.days);
     const periods = await readPeriods(context, listed, options.days);
+
+    const leftOut = await toolsLeftOut(
+      context,
+      listed.skipped,
+      periods.current
+    );
+
     const campaigns: CampaignComparison[] = [];
     const tooFewSends: ThinCampaign[] = [];
 
@@ -398,6 +447,21 @@ export const periodComparison = defineInsight({
       }
     }
 
+    const total = noted(
+      context,
+      "Every campaign added together",
+      totalOf(periods.campaigns, options.alpha)
+    );
+
+    const workspaceTotals = workspaceOf(context, workspace, options.alpha);
+
+    if (workspaceTotals !== null) {
+      noteRepliesApart(context, total.current, workspaceTotals.current, {
+        campaigns: periods.campaigns.length,
+        statuses: options.statuses,
+      });
+    }
+
     const comparison: PeriodComparison = {
       ...periods.read,
       campaigns: campaigns.toSorted(
@@ -415,12 +479,11 @@ export const periodComparison = defineInsight({
       days: options.days,
       previous: periods.previous,
       tooFewSends,
-      total: noted(
-        context,
-        "Every campaign added together",
-        totalOf(periods.campaigns, options.alpha)
-      ),
-      workspace: workspaceOf(context, workspace, options.alpha),
+      toolsLeftOut: leftOut,
+      total,
+      totalBasis: campaignsBasis(periods.campaigns.length, options.statuses),
+      workspace: workspaceTotals,
+      workspaceBasis: workspaceTotals === null ? null : WORKSPACE_BASIS,
     };
 
     return comparison;

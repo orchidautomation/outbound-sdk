@@ -120,7 +120,7 @@ The same function, run on the in-memory adapter limited to what each vendor's ad
 
 ## Limits
 
-- The report is per instance or per workspace. There is no filter by campaign tag on `clientReport`; use `tagRollup` to group results by tag.
+- The report is per instance or per workspace. Pass `tag` for one client's campaigns, or `provider` for one tool of a combined instance; use `tagRollup` to compare every tag side by side.
 - Anomalies need at least five days of history before the period (`min_baseline_points`).
 - "Leads left" reads up to `max_leads_per_campaign` leads per active campaign. Past that, the report says it is incomplete.
 - The numbers are only as good as the vendor's. On an `unverified` adapter, check a report against the vendor's own dashboard before sending it to a client.

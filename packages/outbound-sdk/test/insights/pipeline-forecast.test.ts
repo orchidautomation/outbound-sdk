@@ -95,6 +95,7 @@ test("pipeline_forecast counts the leads left and projects replies from the repl
     provider: "memory",
     remaining: 40,
     replyRate: { count: 20, high: 0.1494, low: 0.0657, of: 200, rate: 0.1 },
+    runwayState: "draining",
     status: "active",
   });
   assert.equal(assumptions.length, 4);
@@ -272,7 +273,9 @@ const FINISHED: MemoryData = {
   ],
 };
 
-test("pipeline_forecast gives a campaign with no leads left 0 days, even with no contact rate", async () => {
+// OUT-147: a pace of 0 divides out no days, so a campaign out of leads reads
+// as out of leads, not as "0 days" that a report words as less than a day.
+test("pipeline_forecast says a campaign with no leads left is out of leads, with no days at a pace of 0", async () => {
   const outbound = single(FINISHED);
 
   const done = await outbound.insights.pipelineForecast(
@@ -282,7 +285,8 @@ test("pipeline_forecast gives a campaign with no leads left 0 days, even with no
 
   assert.equal(done.data.remaining, 0);
   assert.equal(done.data.dailyContactRate, 0);
-  assert.equal(done.data.daysLeft, 0);
+  assert.equal(done.data.runwayState, "out_of_leads");
+  assert.equal(done.data.daysLeft, null);
   assert.equal(
     done.data.finding,
     "No leads are left to contact; add leads to keep the campaign sending."
@@ -296,6 +300,7 @@ test("pipeline_forecast gives a campaign with no leads left 0 days, even with no
 
   assert.equal(capped.data.remaining, 0);
   assert.equal(capped.data.daysLeft, null);
+  assert.equal(capped.data.runwayState, "unknown");
 
   // Leads whose status the vendor does not say may still be waiting.
   const unknown = await single({
@@ -309,7 +314,7 @@ test("pipeline_forecast gives a campaign with no leads left 0 days, even with no
   assert.equal(unknown.data.daysLeft, null);
 });
 
-test("client_report lists a campaign with no leads left first, with the action to add leads", async () => {
+test("client_report lists a campaign with no leads left to start first, as out of leads, in one action with the rest", async () => {
   const report = await single(FINISHED).insights.clientReport(
     { min_sent: 1 },
     { now: NOW }
@@ -321,23 +326,29 @@ test("client_report lists a campaign with no leads left first, with the action t
       each.daysLeft,
     ]),
     [
-      ["Founders", 0],
+      ["Founders", null],
       ["Agencies", 6],
     ]
   );
+  assert.deepEqual(
+    report.data.runningOutOfLeads?.map((each) => each.state),
+    ["out_of_leads", "draining"]
+  );
 
-  const first = report.data.actions.find(
+  const runway = report.data.actions.filter(
     (action) => action.kind === "add_leads"
   );
 
-  assert.deepEqual(first, {
-    action:
-      "Add leads to Founders: no leads are left to contact, so it is not sending.",
-    campaign: "memory:agency:done",
-    campaignName: "Founders",
-    kind: "add_leads",
-    number: 0,
-  });
+  assert.deepEqual(runway, [
+    {
+      action:
+        "Add leads to 2 campaigns: 1 has no lead left to start (Founders); 1 runs out within 7 days at the recent pace (Agencies in about 6 days).",
+      campaign: null,
+      campaignName: null,
+      kind: "add_leads",
+      number: 2,
+    },
+  ]);
 });
 
 test("pipeline_forecast writes one lead in the singular and leaves out a range whose ends read the same", async () => {

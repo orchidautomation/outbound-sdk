@@ -45,12 +45,9 @@ export type {
   ProviderGroup,
 } from "./channel-mix.ts";
 
-export type {
-  ActionItem,
-  BounceProblem,
-  ClientReport,
-  LeadRunway,
-} from "./client-report.ts";
+export type { BounceProblem, ClientReport } from "./client-report.ts";
+
+export type { ActionItem, LeadRunway } from "./client-runway.ts";
 
 export type { DiagnosisCode, DiagnosisFinding } from "./diagnosis-checks.ts";
 
