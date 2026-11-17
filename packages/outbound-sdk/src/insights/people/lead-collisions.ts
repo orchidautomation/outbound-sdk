@@ -7,6 +7,7 @@ import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Campaign, Lead } from "../../internal/entities.ts";
 import { shownKey } from "../../internal/plural.ts";
 import { defineInsight, maskingOf } from "../define.ts";
+import type { Masking } from "../define.ts";
 import { keysOfLead } from "./find.ts";
 import { campaignsIn, leadsOf, statusesField } from "./read.ts";
 
@@ -85,6 +86,21 @@ interface Entry {
   readonly campaign: Campaign;
 }
 
+type KeysOf = (lead: Lead) => string[];
+
+/**
+ * A lead's exact identifiers. Under redact's mask a profile is a token keyed
+ * for this run from the profile's slug, which tells people apart as the
+ * profile does, so it is matched as it is.
+ */
+const keysFor = (masking: Masking | null): KeysOf =>
+  masking?.strategy === "mask" && masking.fields.includes("linkedin")
+    ? (lead) => [
+        ...(lead.email === null ? [] : [`email:${lead.email}`]),
+        ...(lead.linkedinUrl === null ? [] : [`linkedin:${lead.linkedinUrl}`]),
+      ]
+    : keysOfLead;
+
 interface Group {
   readonly keys: Set<string>;
   readonly entries: Entry[];
@@ -94,11 +110,11 @@ interface Group {
  * Groups records that share an exact identifier. A record that carries both
  * an email address and a profile joins the group of each, merging them.
  */
-const groupPeople = (entries: readonly Entry[]): Group[] => {
+const groupPeople = (entries: readonly Entry[], keysOf: KeysOf): Group[] => {
   const byKey = new Map<string, Group>();
 
   for (const entry of entries) {
-    const keys = keysOfLead(entry.lead);
+    const keys = keysOf(entry.lead);
     const found = new Set(keys.flatMap((key) => byKey.get(key) ?? []));
     const group: Group = { entries: [entry], keys: new Set(keys) };
 
@@ -216,13 +232,6 @@ export const leadCollisions = defineInsight({
     "People who are in two or more campaigns at once, so they get overlapping outreach. Reads the campaigns in the given statuses (active by default) and their leads, matches people by exact email address or LinkedIn profile, and returns each person with their campaigns, channel and tool, most active campaigns first. By default a person counts only when their own status is active in two or more of the campaigns; include_past also reports people who finished, replied to or left one campaign and are in another, counted in totals.pastOverlaps either way. A collision across tools (for example email in one and LinkedIn in another) is marked across_tools; one inside a tool is within_tool. Costs one request per page of campaigns plus one per page of each campaign's leads; the caps make the answer incomplete rather than slow.",
   inputSchema: input,
   key: "leadCollisions",
-  // Under mask an address is a token keyed for the plugin. Whether people
-  // tools match by it is OUT-107's decision, so it stays refused until then.
-  // A hashed one tells people apart.
-  maskedOut: ({ fields, strategy }) =>
-    fields.includes("email") && strategy === "mask"
-      ? "email addresses, which it matches people by"
-      : null,
   cost: (values, price) =>
     price.campaignsIn(new Set(values.statuses).size, values.max_campaigns) +
     price.campaigns(values.max_campaigns) *
@@ -232,7 +241,11 @@ export const leadCollisions = defineInsight({
   needs: ["leads.byCampaign"],
   next: "Use person_summary with one of the identifiers or lead refs to see what that person was sent and whether they replied.",
   run: async (context, values) => {
-    if (maskingOf(context.outbound)?.fields.includes("linkedin") === true) {
+    const masking = maskingOf(context.outbound);
+    const keysOf = keysFor(masking);
+
+    // A hashed profile is the whole URL's, so one profile written two ways is two people.
+    if (masking?.strategy === "hash" && masking.fields.includes("linkedin")) {
       context.partial(
         "The redact plugin masks LinkedIn profiles, so people were matched by email address only."
       );
@@ -257,7 +270,7 @@ export const leadCollisions = defineInsight({
 
     const entries = perCampaign.flat();
 
-    const overlaps = groupPeople(entries).flatMap(toCollision);
+    const overlaps = groupPeople(entries, keysOf).flatMap(toCollision);
     const pastOverlaps = overlaps.filter((each) => each.stillActive < 2).length;
 
     const collisions = overlaps
@@ -277,7 +290,7 @@ export const leadCollisions = defineInsight({
         concurrent: collisions.filter((each) => each.stillActive >= 2).length,
         leadsRead: entries.length,
         leadsWithoutIdentifier: entries.filter(
-          (entry) => keysOfLead(entry.lead).length === 0
+          (entry) => keysOf(entry.lead).length === 0
         ).length,
         pastOverlaps,
         withinTool: collisions.length - acrossTools,

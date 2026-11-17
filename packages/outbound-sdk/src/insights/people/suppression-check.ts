@@ -137,7 +137,20 @@ const slugOfEntry = (value: string): string =>
     .replaceAll(/^\/+|\/+$/gu, "")
     .toLowerCase();
 
-const indexEntries = (entries: readonly BlockEntry[]): Blocked => {
+/**
+ * `true` when redact masks profiles with its keyed token, written from the
+ * slug for a lead's profile and a profile entry alike, so the tokens match.
+ */
+const profileTokens = (outbound: InsightContext["outbound"]): boolean => {
+  const masking = maskingOf(outbound);
+
+  return masking?.strategy === "mask" && masking.fields.includes("linkedin");
+};
+
+const indexEntries = (
+  entries: readonly BlockEntry[],
+  tokens: boolean
+): Blocked => {
   const blocked: Blocked = {
     domain: new Map(),
     email: new Map(),
@@ -156,7 +169,10 @@ const indexEntries = (entries: readonly BlockEntry[]): Blocked => {
         entry
       );
     } else if (entry.kind === "linkedin") {
-      blocked.linkedin.set(slugOfEntry(entry.value), entry);
+      blocked.linkedin.set(
+        tokens ? entry.value : slugOfEntry(entry.value),
+        entry
+      );
     }
   }
 
@@ -169,8 +185,12 @@ interface Hit {
 }
 
 /** The most specific match: the exact address, then the profile, then the domain. */
-const matchLead = (lead: Lead, blocked: Blocked): Hit | null => {
-  const slug = profileSlug(lead.linkedinUrl);
+const matchLead = (
+  lead: Lead,
+  blocked: Blocked,
+  tokens: boolean
+): Hit | null => {
+  const slug = tokens ? lead.linkedinUrl : profileSlug(lead.linkedinUrl);
 
   const candidates: [SuppressionMatch, BlockEntry | undefined][] = [
     ["email", blocked.email.get(lead.email ?? "")],
@@ -205,14 +225,14 @@ const toViolation = (
 });
 
 /**
- * What the redact plugin leaves unmatched when the check can still run. A
- * hashed address matches the same hashed entry, but its domain is gone; a
- * masked or hashed profile URL no longer holds a slug to match.
+ * What the redact plugin leaves unmatched. A masked or hashed address matches
+ * the same entry, but its domain is gone. A masked profile matches by its
+ * keyed token; a hashed one is the whole URL's, with no slug left to match.
  */
 const maskNote = (outbound: InsightContext["outbound"]): string | null => {
   const fields = maskingOf(outbound)?.fields ?? [];
   const email = fields.includes("email");
-  const linkedin = fields.includes("linkedin");
+  const linkedin = fields.includes("linkedin") && !profileTokens(outbound);
 
   const masked = [
     ...(email ? ["email addresses"] : []),
@@ -243,13 +263,6 @@ export const suppressionCheck = defineInsight({
     "Leads sitting in campaigns although they are on the block list. Reads the block list, then the leads of each campaign in the given statuses (active by default), and matches a lead by exact email address, by email domain against domain entries, and by LinkedIn profile against profile entries. A match is a violation only when the lead's own status is in lead_statuses (active, paused or unknown by default, the leads still being sent to); a lead that already unsubscribed, bounced, replied or completed is counted in totals.alreadyStopped instead. Returns each violation with the lead, the campaign, the entry and how it matched, counts per campaign, and how many block entries were read; totals.moreBlockEntriesExist is true when max_block_entries left entries unread, which were not checked. On several tools an entry on one tool's list is also matched against the other tools' leads and marked sameTool false. Costs one request per page of block entries plus one per page of each campaign's leads.",
   inputSchema: input,
   key: "suppressionCheck",
-  // Under mask an address is a token keyed for the plugin. Whether people
-  // tools match by it is OUT-107's decision, so it stays refused until then.
-  // A hashed one still matches the same address on the list.
-  maskedOut: ({ fields, strategy }) =>
-    fields.includes("email") && strategy === "mask"
-      ? "email addresses, which it matches leads to the block list by"
-      : null,
   cost: (values, price) =>
     price.list("blocklist.list", values.max_block_entries) +
     price.campaignsIn(new Set(values.statuses).size, values.max_campaigns) +
@@ -269,7 +282,8 @@ export const suppressionCheck = defineInsight({
     );
 
     const entries = listed.items;
-    const blocked = indexEntries(entries);
+    const tokens = profileTokens(context.outbound);
+    const blocked = indexEntries(entries, tokens);
     const unmatched = maskNote(context.outbound);
 
     if (unmatched !== null) {
@@ -301,7 +315,7 @@ export const suppressionCheck = defineInsight({
 
     for (const { campaign, items: leads } of read) {
       const matched = leads.flatMap((lead) => {
-        const hit = matchLead(lead, blocked);
+        const hit = matchLead(lead, blocked, tokens);
 
         return hit === null ? [] : [toViolation(lead, campaign, hit)];
       });

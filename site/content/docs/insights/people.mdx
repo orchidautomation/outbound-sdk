@@ -133,7 +133,7 @@ People who are in two or more campaigns at once, so they get overlapping outreac
 - **Costs:** one request per page of campaigns, plus one per page of each campaign's leads.
 - **Notes it can add:** a cap was reached.
 - **Does not:** count the same person twice in one campaign as a collision, or look at campaigns outside `statuses`. A lead with neither an email address nor a profile cannot be matched and is counted in `leadsWithoutIdentifier`.
-- **Refuses:** with `Unsupported`, before any read, while the [`redact` plugin](/docs/plugins/redact) masks `email` with its default `mask` strategy, since every address would read the same. It is then not offered as a tool. Under `strategy: "hash"` it matches by the hashed address, and notes that LinkedIn profiles could not be matched when those are masked too.
+- **Under redact:** while the [`redact` plugin](/docs/plugins/redact) masks `email` or `linkedin`, it matches people by the tokens the plugin wrote, and names them by token. Under the default `mask` strategy an address and a profile each get one token per person for the run, so the answer is the same as without redact. Under `strategy: "hash"` it matches by the hashed address, and notes that LinkedIn profiles could not be matched when those are masked too.
 
 <include meta='title="lead-collisions.ts"'>
   ../../_examples/insights-people/lead-collisions.ts
@@ -175,7 +175,7 @@ Leads sitting in campaigns although they are on the block list.
 - **Costs:** one request per page of block entries, plus one per page of each campaign's leads.
 - **Notes it can add:** a cap was reached.
 - **Does not:** match a company name or an entry of the vendor's kind `other`. Those are counted in `blockEntriesNotChecked`, and while any are, `meta.complete` is `false` with a note saying how many were not checked. It reports a lead once, by its most specific match: the address, then the profile, then the domain. It removes nobody from a campaign.
-- **Refuses:** with `Unsupported`, before any read, while the [`redact` plugin](/docs/plugins/redact) masks `email` with its default `mask` strategy. It is then not offered as a tool. Under `strategy: "hash"` it still matches an exact address, and says the domain entries (and, when profiles are masked, the profile entries) could not be matched.
+- **Under redact:** while the [`redact` plugin](/docs/plugins/redact) masks `email`, it still matches an exact address, by the token the plugin wrote for the lead and the entry alike, and says the domain entries could not be matched. Under the default `mask` strategy a masked profile matches a profile entry the same way; under `strategy: "hash"` it does not, and the note says so.
 
 <include meta='title="suppression-check.ts"'>
   ../../_examples/insights-people/suppression-check.ts
