@@ -104,7 +104,7 @@ export interface InsightInputs {
     readonly max_leads_per_campaign?: number | undefined;
 
     /**
-     * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
+     * Only campaigns in these states are read
      *
      * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active"]`.
      */
@@ -154,7 +154,7 @@ export interface InsightInputs {
     readonly max_leads_per_campaign?: number | undefined;
 
     /**
-     * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
+     * Only campaigns in these states are read
      *
      * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active"]`.
      */
@@ -576,7 +576,7 @@ export interface InsightInputs {
     readonly min_sent?: number | undefined;
 
     /**
-     * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
+     * Only campaigns in these states are read
      *
      * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active","paused","completed"]`.
      */
@@ -726,7 +726,7 @@ export interface InsightInputs {
     readonly min_sent?: number | undefined;
 
     /**
-     * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
+     * Only campaigns in these states are read
      *
      * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active"]`.
      */
@@ -788,7 +788,7 @@ export interface InsightInputs {
     readonly max_senders?: number | undefined;
 
     /**
-     * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
+     * Only campaigns in these states are read
      *
      * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active"]`.
      */
@@ -841,7 +841,7 @@ export interface InsightInputs {
     readonly min_window_hours?: number | undefined;
 
     /**
-     * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
+     * Only campaigns in these states are read
      *
      * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active"]`.
      */
@@ -1051,7 +1051,7 @@ export interface InsightInputs {
     readonly max_campaigns?: number | undefined;
 
     /**
-     * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
+     * Only campaigns in these states are read
      *
      * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active"]`.
      */
@@ -1104,7 +1104,7 @@ export interface InsightInputs {
     readonly max_campaigns?: number | undefined;
 
     /**
-     * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
+     * Only campaigns in these states are read
      *
      * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active"]`.
      */
@@ -1154,7 +1154,7 @@ export interface InsightInputs {
     readonly max_campaigns?: number | undefined;
 
     /**
-     * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
+     * Only campaigns in these states are read
      *
      * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active","paused","completed"]`.
      */
@@ -1193,7 +1193,7 @@ export interface InsightInputs {
     readonly max_campaigns?: number | undefined;
 
     /**
-     * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
+     * Only campaigns in these states are read
      *
      * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active"]`.
      */
@@ -1218,7 +1218,7 @@ export interface InsightInputs {
     readonly max_campaigns?: number | undefined;
 
     /**
-     * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
+     * Only campaigns in these states are read
      *
      * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active"]`.
      */

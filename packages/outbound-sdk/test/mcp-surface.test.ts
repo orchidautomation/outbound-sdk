@@ -157,7 +157,7 @@ test("tools/list stays under its byte ceiling, every tool short, with a scope an
   );
   assert.match(instructions, /use the CLI's --jsonl output or the SDK/u);
   // An old or CLI insight name is named once, so calling it is not a guess.
-  assert.match(instructions, /still answer until 0\.16\.0/u);
+  assert.match(instructions, /still answer until 0\.17\.0/u);
 
   for (const name of [
     "dropped_replies",
@@ -225,7 +225,7 @@ test("every old name still answers as it did, with a note naming what replaced i
 
     assert.ok(
       said?.includes(
-        `${name} is an old name kept until 0.16.0: call ${RENAMED_TOOLS[name]} instead.`
+        `${name} is an old name kept until 0.17.0: call ${RENAMED_TOOLS[name]} instead.`
       ),
       `${name}: ${said ?? ""}`
     );
@@ -404,7 +404,7 @@ test("person is listed under redact, and a view that needs identifiers answers w
 
   assert.equal(old.ok, true, JSON.stringify(old));
   assert.deepEqual(old.meta?.notes.slice(0, 2), [
-    `cross_channel_lead is an old name kept until 0.16.0: call ${RENAMED_TOOLS["cross_channel_lead"]} instead.`,
+    `cross_channel_lead is an old name kept until 0.17.0: call ${RENAMED_TOOLS["cross_channel_lead"]} instead.`,
     answer.meta?.notes[0],
   ]);
 });
