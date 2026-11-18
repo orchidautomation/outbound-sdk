@@ -444,7 +444,7 @@ test("a lead without recipientMailProvider, stored before the field existed, sti
   );
 });
 
-test("instantly: a campaign's progress is its lead count and its finished leads, and nothing else", async () => {
+test("instantly: a campaign's progress is its lead count, its finished leads and its skipped leads, and nothing else", async () => {
   const { outbound, requests, settle } = harness(suite);
   const id = "01a1d77f-5e23-7a9a-9112-a6f7089f329f";
   const progress = await settle(outbound.campaign(id).progress());
@@ -454,6 +454,11 @@ test("instantly: a campaign's progress is its lead count and its finished leads,
   assert.equal(url.searchParams.get("id"), id);
   assert.equal(progress.leads, 101, "leads_count");
   assert.equal(progress.completed, 119, "completed_count");
+  assert.equal(
+    progress.skipped,
+    3,
+    "the status -3 leads among those not contacted, not the active one waiting"
+  );
   assert.deepEqual(
     [
       progress.notStarted,
@@ -461,11 +466,11 @@ test("instantly: a campaign's progress is its lead count and its finished leads,
       progress.stopped,
       progress.failed,
       progress.blocked,
-      progress.skipped,
     ],
-    [null, null, null, null, null, null],
+    [null, null, null, null, null],
     "the report does not split the rest"
   );
+  assert.equal(requests.length, 2, "the report, then one short page of leads");
 
   const none = harness(suite, () => Response.json([]));
   await assert.rejects(

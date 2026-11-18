@@ -1,4 +1,4 @@
-unknown input: Invalid - client_report: "client" is not an input. It takes: alpha, anomaly_threshold, baseline_days, days, limit, max_bounce_rate, max_campaigns, max_leads_per_campaign, min_baseline_points, min_sent, provider, runway_days, statuses, tag
+unknown input: Invalid - client_report: "client" is not an input. It takes: alpha, anomaly_threshold, baseline_days, days, limit, max_bounce_rate, max_campaigns, max_leads_per_campaign, max_skipped_share, min_baseline_points, min_sent, min_skipped, provider, runway_days, statuses, tag
 capped: false [
   'Stopped at 2 campaigns (max_campaigns); more exist.',
   "meetingsBooked is null: no campaign read reports a count of meetings booked, and the tool's fields.metricRow.meetingsBooked says whether it records one at all. Opportunities and positive replies are not meetings, so neither stands in for it."

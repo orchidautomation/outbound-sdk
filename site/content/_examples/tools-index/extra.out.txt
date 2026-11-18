@@ -11,13 +11,14 @@ person_summary account_summary lead_collisions suppression_check dropped_replies
   provider: 'memory',
   requests: 0
 } [
-  'anomalies',      'bottom',
-  'bounceProblems', 'runningOutOfLeads',
-  'stalled',        'totals',
-  'campaignsRead',  'moreCampaignsExist',
-  'actions',        'campaigns',
-  'days',           'leftOut',
-  'period',         'previousPeriod',
-  'replyRateBasis', 'toolsLeftOut',
-  'top',            'totalsBasis'
+  'anomalies',          'bottom',
+  'bounceProblems',     'manySkippedLeads',
+  'runningOutOfLeads',  'stalled',
+  'totals',             'campaignsRead',
+  'moreCampaignsExist', 'actions',
+  'campaigns',          'days',
+  'leftOut',            'period',
+  'previousPeriod',     'replyRateBasis',
+  'toolsLeftOut',       'top',
+  'totalsBasis'
 ]

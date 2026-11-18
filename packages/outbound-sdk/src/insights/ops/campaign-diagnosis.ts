@@ -37,6 +37,11 @@ import {
   totalsOf,
 } from "./shared.ts";
 import type { CampaignLabel, OpenRange, Rates, Totals } from "./shared.ts";
+import {
+  canCountSkipped,
+  skippedFields,
+  skippedLimits,
+} from "./skipped-leads.ts";
 
 const share = (fallback: number, text: string) =>
   z.number().min(0).max(1).default(fallback).describe(text);
@@ -58,6 +63,7 @@ const input = z.object({
     "Average daily sends at or over this share of the daily limit mean the limit holds volume back"
   ),
   max_bounce_rate: share(0.03, "A bounce rate over this is a finding"),
+  ...skippedFields,
   max_send_drop: share(
     0.3,
     "A fall in sends, recent days against the days before, over this share is a finding"
@@ -116,6 +122,7 @@ interface Extras {
   readonly senders: readonly Sender[] | null;
   readonly recent: RecentSends | null;
   readonly campaignLeads: number | null;
+  readonly skippedLeads: number | null;
   readonly notChecked: string[];
 }
 
@@ -245,12 +252,18 @@ const readExtras = async (
       })
     : null;
 
-  const campaignLeads = unless(
+  const progress = unless(
     !capabilities["campaigns.progress"],
     "Leads contacted against the campaign's leads: the adapter does not serve campaign progress."
   )
-    ? context.one(await handle.progress()).leads
+    ? context.one(await handle.progress())
     : null;
+
+  // A null count with progress read is the adapter's to explain, in its note.
+  unless(
+    progress !== null && !canCountSkipped(context),
+    "Skipped leads: the adapter does not report how many of a campaign's leads were skipped."
+  );
 
   const recent = unless(
     capabilities["stats.byDay"] === false,
@@ -260,11 +273,12 @@ const readExtras = async (
     : null;
 
   return {
-    campaignLeads,
+    campaignLeads: progress?.leads ?? null,
     notChecked,
     recent,
     senders: senders?.items ?? null,
     settings,
+    skippedLeads: progress?.skipped ?? null,
     steps,
   };
 };
@@ -290,7 +304,7 @@ const summarize = (findings: readonly DiagnosisFinding[]): string => {
 
 export const campaignDiagnosis = defineInsight({
   description:
-    "Why one campaign is underperforming: a list of findings, most serious first, each with a code, a plain-language finding, the numbers behind it and what to look at next. It checks for too little volume to judge, a low reply rate (with its 95% interval), a high bounce rate, few positive replies among replies, sends falling or stopped over the last days, told apart from the campaign running out of leads (under a day of new leads left to start at the recent pace, the pace lead_runway uses), a one or two step sequence, any of the campaign's own senders (up to 500) that is not active or has a warmup score of 0, open or click tracking being off, a schedule or daily limit that holds volume back, and a count of leads contacted more than twice the campaign's leads, which means the count is wrong. Also returns what could not be checked; an empty list means nothing was found, not that all is well. Costs up to 7 requests, plus one per page of the campaign's senders and, only when sends fell or stopped, one per page of its leads.",
+    "Why one campaign is underperforming: a list of findings, most serious first, each with a code, a plain-language finding, the numbers behind it and what to look at next. It checks for too little volume to judge, a low reply rate (with its 95% interval), a high bounce rate, few positive replies among replies, sends falling or stopped over the last days, told apart from the campaign running out of leads (under a day of new leads left to start at the recent pace, the pace lead_runway uses), a one or two step sequence, any of the campaign's own senders (up to 500) that is not active or has a warmup score of 0, open or click tracking being off, a schedule or daily limit that holds volume back, a count of leads contacted more than twice the campaign's leads, which means the count is wrong, and many skipped leads (loaded, then never sent to by the tool: over max_skipped_share of the campaign's leads, 5% by default, and at least min_skipped, 100), which usually means a block list or a duplicate rule keeps out leads meant to be sent to. Also returns what could not be checked; an empty list means nothing was found, not that all is well. Costs up to 7 requests, plus one per page of the leads not contacted where the tool counts skipped leads by listing them (Instantly, at most 50 pages), one per page of the campaign's senders and, only when sends fell or stopped, one per page of its leads.",
   inputSchema: input,
   key: "campaignDiagnosis",
   cost: (values, price) => {
@@ -348,6 +362,7 @@ export const campaignDiagnosis = defineInsight({
     };
 
     const findings = diagnose(facts, {
+      ...skippedLimits(options),
       dailyLimitShare: options.daily_limit_share,
       maxBounceRate: options.max_bounce_rate,
       maxSendDrop: options.max_send_drop,

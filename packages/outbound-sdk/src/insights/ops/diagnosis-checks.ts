@@ -13,6 +13,8 @@ import { warmupAtZero } from "../../internal/sender-screen.ts";
 import { percent, round, spoken } from "../stats.ts";
 import { measure, volumeOf } from "./shared.ts";
 import type { Rates, Totals } from "./shared.ts";
+import { manySkipped, SKIPPED_NEXT, skippedFinding } from "./skipped-leads.ts";
+import type { SkippedLimits } from "./skipped-leads.ts";
 
 export type DiagnosisCode =
   | "contacted_exceeds_leads"
@@ -21,6 +23,7 @@ export type DiagnosisCode =
   | "high_bounce_rate"
   | "inactive_sender"
   | "low_reply_rate"
+  | "many_skipped_leads"
   | "no_recent_sends"
   | "out_of_leads"
   | "schedule_limits_volume"
@@ -78,9 +81,11 @@ export interface Facts {
   readonly leads: LeadsLeft | null;
   /** Every lead in the campaign, from its progress. `null` when not read. */
   readonly campaignLeads: number | null;
+  /** Leads the vendor decided never to send to, from its progress. `null` when not read or not reported. */
+  readonly skippedLeads: number | null;
 }
 
-export interface Limits {
+export interface Limits extends SkippedLimits {
   readonly minReplyRate: number;
   readonly maxBounceRate: number;
   readonly minSent: number;
@@ -492,8 +497,36 @@ const contactedLeads: Check = ({
       ]
     : [];
 
+// Leads loaded and then skipped are leads paid for and never sent to; many of
+// them is usually a block list or a duplicate rule doing more than meant.
+const skippedLeads: Check = (
+  { campaignLeads: leads, skippedLeads: skipped },
+  limits
+) => {
+  const share = manySkipped({ leads, skipped }, limits);
+
+  return share === null || leads === null || skipped === null
+    ? []
+    : [
+        {
+          code: "many_skipped_leads",
+          finding: skippedFinding({ leads, skipped }, share, limits),
+          next: SKIPPED_NEXT,
+          numbers: {
+            leads,
+            limit: limits.maxSkippedShare,
+            minSkipped: limits.minSkipped,
+            share,
+            skipped,
+          },
+          severity: "medium",
+        },
+      ];
+};
+
 const CHECKS: readonly Check[] = [
   contactedLeads,
+  skippedLeads,
   bounces,
   recentSends,
   senders,

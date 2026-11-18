@@ -19,13 +19,13 @@ bounce_watch: 835, 1593, 1460
 warmup_readiness: 34, 34, 33
 sender_load: 724, 1357, 660
 settings_audit: -, 155, 85
-campaign_diagnosis: 60, 98, 64
+campaign_diagnosis: 60, 160, 64
 pipeline_forecast: 50, 80, 54
 anomalies: 22, 23, 23
 period_comparison: 150, 285, 278
 campaign_ranking: 87, 155, 148
 channel_mix: 215, 419, 400
 tag_rollup: 87, 155, 148
-client_report: 3399, 6720, 3650
+client_report: 3462, 9908, 3713
 
 RateLimited (call): client_report stopped after 3 requests, at the cap of 3 requests (maxRequests), before it finished; nothing it read is returned. Raise maxRequests.

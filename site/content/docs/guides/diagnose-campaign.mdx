@@ -42,6 +42,7 @@ The checks, with their defaults. Each bar is an input.
 | --- | --- | --- |
 | `high_bounce_rate` | high | Bounced divided by sent is over `max_bounce_rate` (0.03) |
 | `contacted_exceeds_leads` | high | Leads contacted are more than twice the leads in the campaign (from `campaigns.progress`), which means the contacted count is wrong. Leads removed after their sequence started keep `contacted` a little over the leads on correct data. |
+| `many_skipped_leads` | medium | Skipped leads (loaded, then never sent to by the tool) are over `max_skipped_share` (0.05) of the campaign's leads and at least `min_skipped` (100). Usually a block list or a duplicate rule; needs a `skipped` count from `campaigns.progress` |
 | `out_of_leads` | high | Sends fell or stopped and under a day of leads is left to start at the recent pace of new leads started per day. It replaces `falling_sends` or `no_recent_sends`, since the cause is lead runout, not a fault |
 | `no_recent_sends` | high | The campaign is active and nothing was sent in the last `days` (7) |
 | `inactive_sender` | high | A sender of the campaign has a status other than `active` or a warmup score of 0. Every sender of the campaign is screened, up to `max_senders` (500) |
