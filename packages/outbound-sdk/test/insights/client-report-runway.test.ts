@@ -113,10 +113,16 @@ test("on a combined instance lead_runway reads through the owning tool and agree
 
   assert.ok(tool);
 
-  const result = await tool.call({
-    campaign: "mailtool:agency:big",
-    max_leads: 500,
-  } as never);
+  // lead_runway takes no `now` and reads Date.now, so the test fixes it at
+  // NOW, the time client_report is given below. Workers has no mock timers.
+  const realNow = Date.now;
+  Date.now = () => NOW;
+
+  const result = await tool
+    .call({ campaign: "mailtool:agency:big", max_leads: 500 } as never)
+    .finally(() => {
+      Date.now = realNow;
+    });
 
   assert.equal(result.ok, true, JSON.stringify(result));
 
