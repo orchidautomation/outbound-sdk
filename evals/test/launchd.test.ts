@@ -32,7 +32,17 @@ const scratch = (branch: string) => {
 
   const calls = path.join(root, "launchctl.log");
   const launchctl = path.join(root, "launchctl");
-  writeFileSync(launchctl, `#!/bin/sh\necho "$*" >> "${calls}"\n`);
+  writeFileSync(
+    launchctl,
+    [
+      "#!/bin/sh",
+      `echo "$*" >> "${calls}"`,
+      'if [ "$1" = bootout ] && [ -n "$FAIL_BOOTOUT" ]; then exit 5; fi',
+      'if [ "$1" = print ] && [ -z "$STILL_LOADED" ]; then exit 113; fi',
+      "exit 0",
+      "",
+    ].join("\n")
+  );
   chmodSync(launchctl, 0o755);
 
   const env = {
@@ -47,10 +57,10 @@ const scratch = (branch: string) => {
     env,
     repo,
     root,
-    run: (script: string, ...args: string[]) =>
+    run: (script: string, args: string[] = [], extra: NodeJS.ProcessEnv = {}) =>
       spawnSync("/bin/sh", [path.join(LAUNCHD, script), ...args], {
         encoding: "utf-8",
-        env,
+        env: { ...env, ...extra },
       }),
     target: path.join(root, "LaunchAgents", PLIST),
   };
@@ -60,7 +70,7 @@ test("install writes the agent for this checkout and loads it; uninstall unloads
   const mac = scratch("main");
 
   try {
-    const installed = mac.run("install.sh", "--now");
+    const installed = mac.run("install.sh", ["--now"]);
     assert.equal(installed.status, 0, installed.stderr);
 
     const plist = readFileSync(mac.target, "utf-8");
@@ -105,6 +115,38 @@ test("install refuses a checkout off main, and an agent already installed", () =
     assert.equal(again.status, 1);
     assert.match(again.stderr, /already exists/u);
     assert.equal(mac.calls().split("\n").filter(Boolean).length, 1);
+  } finally {
+    rmSync(mac.root, { force: true, recursive: true });
+  }
+});
+
+test("uninstall keeps the plist and fails when the agent is still loaded after bootout fails", () => {
+  const mac = scratch("main");
+
+  try {
+    assert.equal(mac.run("install.sh").status, 0);
+
+    const stuck = mac.run("uninstall.sh", [], {
+      FAIL_BOOTOUT: "1",
+      STILL_LOADED: "1",
+    });
+
+    assert.equal(stuck.status, 1);
+    assert.match(stuck.stderr, /still loaded/u);
+    assert.equal(existsSync(mac.target), true);
+
+    const unloaded = mac.run("uninstall.sh", [], { FAIL_BOOTOUT: "1" });
+    assert.equal(unloaded.status, 0, unloaded.stderr);
+    assert.equal(existsSync(mac.target), false);
+
+    assert.equal(mac.run("install.sh").status, 0);
+
+    const missing = mac.run("uninstall.sh", [], {
+      LAUNCHCTL: "/nonexistent/launchctl",
+    });
+
+    assert.equal(missing.status, 1);
+    assert.equal(existsSync(mac.target), true);
   } finally {
     rmSync(mac.root, { force: true, recursive: true });
   }

@@ -13,8 +13,19 @@ if [ ! -e "$target" ]; then
   exit 0
 fi
 
-# Not loaded (for example after a failed bootstrap) is fine: the file still goes.
-"$launchctl" bootout "gui/$(id -u)/$label" 2>/dev/null || true
+if ! command -v "$launchctl" >/dev/null 2>&1; then
+  echo "$launchctl is not available, so $label cannot be unloaded; $target is kept." >&2
+  exit 1
+fi
+
+# Already unloaded (for example after a failed bootstrap) is fine; still
+# loaded after a failed bootout is not, so the plist stays for another try.
+if ! "$launchctl" bootout "gui/$(id -u)/$label" 2>/dev/null &&
+  "$launchctl" print "gui/$(id -u)/$label" >/dev/null 2>&1; then
+  echo "$label is still loaded and launchctl bootout failed; $target is kept." >&2
+  exit 1
+fi
+
 rm -f "$target"
 
 echo "Removed $label."
