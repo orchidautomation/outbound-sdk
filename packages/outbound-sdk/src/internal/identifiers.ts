@@ -15,8 +15,14 @@ const FIELD = { email: "email", linkedin: "linkedinUrl" } as const;
 export interface ToolIdentifiers {
   readonly provider: string;
   readonly workspaceId: string;
-  /** The identifier types the tool fills on its leads, from the vendor or a mapped custom field. */
+  /** The identifier types the tool fills on its leads, from the vendor or a custom field. */
   readonly identifiers: readonly IdentifierType[];
+  /**
+   * The identifier types the vendor itself fills, so it can be asked for a
+   * person by them. One read from a custom field (`derived`) is on the
+   * leads, but the vendor cannot search it.
+   */
+  readonly searchable: readonly IdentifierType[];
 }
 
 export interface IdentifierCoverage {
@@ -33,6 +39,9 @@ const ofTool = (outbound: OutboundApi): ToolIdentifiers => ({
     (type) => (outbound.fields.lead[FIELD[type]] ?? false) !== false
   ),
   provider: outbound.provider,
+  searchable: TYPES.filter(
+    (type) => outbound.fields.lead[FIELD[type]] === "exact"
+  ),
   workspaceId: outbound.workspaceId,
 });
 
@@ -71,9 +80,10 @@ export const typeOfKey = (key: string): IdentifierType | null =>
 
 /**
  * Whether one tool on the instance holds the person. `linked`: it has a
- * record for them. `absent`: it fills an identifier type the person has and
- * no record carries it. `undetermined`: it fills none of the person's
- * identifier types, so whether they are in it cannot be told.
+ * record for them. `absent`: it can be searched by an identifier type the
+ * person has and no record carries it. `undetermined`: it can be searched
+ * by none of the person's identifier types, so whether they are in it
+ * cannot be told.
  */
 export interface PersonLink extends ToolIdentifiers {
   readonly status: "absent" | "linked" | "undetermined";
@@ -100,7 +110,7 @@ export const linksOf = (
 
     return {
       ...tool,
-      status: tool.identifiers.some((type) => types.has(type))
+      status: tool.searchable.some((type) => types.has(type))
         ? "absent"
         : "undetermined",
     };
@@ -109,9 +119,13 @@ export const linksOf = (
 
 /** The sentence an answer gives for a tool whose link to the person cannot be told. */
 export const undeterminedNote = (link: ToolIdentifiers): string =>
-  `${link.provider} (${link.workspaceId}) fills ${link.identifiers.length === 0 ? "no identifier" : link.identifiers.join(" and ")} on its leads and the person has none of that, so whether they are in it cannot be told. Map a custom field with leadFields to link it.`;
+  `${link.provider} (${link.workspaceId}) can be searched by ${link.searchable.length === 0 ? "no identifier" : link.searchable.join(" and ")} and the person has none of that, so whether they are in it cannot be told.`;
 
-export interface ToolLeadIdentifiers extends ToolIdentifiers {
+export interface ToolLeadIdentifiers {
+  readonly provider: string;
+  readonly workspaceId: string;
+  /** The identifier types at least one of the tool's leads carries. */
+  readonly identifiers: readonly IdentifierType[];
   /** Leads read from the tool. */
   readonly leads: number;
   /** Of those, how many carry each identifier type. */

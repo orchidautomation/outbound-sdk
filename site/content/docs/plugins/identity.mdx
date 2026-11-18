@@ -61,7 +61,7 @@ A `Person` has:
 | `keys` | Every key found on the matching records, sorted. |
 | `found` | `false` when no record carries the key. The link is unknown, not proven absent. |
 | `records` | One lead record per tool or campaign the person is in. |
-| `links` | One entry per tool on the instance: `identifiers` (the identifier types it fills on its leads, `email` and `linkedin`) and `status`. `linked` means it holds a record for the person, `absent` means it fills one of the person's identifier types and no record carries it, and `undetermined` means it fills none of them, so whether the person is in it cannot be told. |
+| `links` | One entry per tool on the instance: `identifiers` (the identifier types it fills on its leads, `email` and `linkedin`), `searchable` (those the vendor itself fills, so it can be asked for a person by them) and `status`. `linked` means it holds a record for the person, `absent` means it can be searched by one of the person's identifier types and no record carries it, and `undetermined` means it can be searched by none of them, so whether the person is in it cannot be told. |
 | `timeline` | Every message to and from the person across those records, each once, oldest first. Automatic replies are kept and carry `isAuto`. Empty when `timeline` is `false` or the adapter does not declare `leads.timeline`. |
 | `requests` | Vendor requests the lookup made, every lookup and timeline read counted. |
 
@@ -81,7 +81,7 @@ The timeline is one `lead(ref).timeline()` read per distinct record ref, all sta
 
 ## What a tool can be linked by
 
-`outbound.identifiers()` says, with no request, which identifier types each tool on the instance fills on its leads, and `shared` lists the types two or more tools fill. With `shared` empty, no person can be linked across tools, so an overlap of 0 means the link cannot be told, not that nobody is in both. An Instantly lead has no LinkedIn profile field, so Instantly and HeyReach share only `email`, which HeyReach fills only for leads it has enriched. Map the custom field that holds the profile with the adapter's `leadFields` option, or `OUTBOUND_LEAD_FIELDS` and the CLI's config file, and Instantly fills `linkedin` too.
+`outbound.identifiers()` says, with no request, which identifier types each tool on the instance fills on its leads, and `shared` lists the types two or more tools fill. With `shared` empty, no person can be linked across tools, so an overlap of 0 means the link cannot be told, not that nobody is in both. Instantly has no LinkedIn profile field and can be searched by `email` only, which HeyReach fills only for leads it has enriched. Without any setting, a lead's custom field whose name is `linkedin`, `linkedin url`, `linkedin profile` or `linkedin profile url` (case, spaces, underscores and hyphens ignored, so `LinkedIn_URL` and `linkedin_profile` match) fills `linkedinUrl` when its value is a linkedin.com/in/ URL, graded `derived`. An explicit `leadFields.linkedinUrl` (in code, `OUTBOUND_LEAD_FIELDS` or the CLI's config file) replaces those names. A profile read from a custom field is on the lead, and links it to a LinkedIn tool once the person is found by email, but the vendor cannot be asked for it: it is in `identifiers`, not `searchable`.
 
 `leadIdentifierCoverage(leads)` counts the same from leads you already read: per tool, how many leads carry each type, and which types leads of two or more tools actually carry. A field a tool declares can still be empty on every lead.
 
@@ -114,7 +114,7 @@ With [`redact`](/docs/plugins/redact#with-other-plugins) on the same instance:
 | --- | --- | --- |
 | The identifier is a name or other text | `Invalid`, before any read | Pass an email address, a profile URL or a key. |
 | No record carries the key | `found: false`, empty `records` and `timeline` | Treat it as unknown. The person may exist under an identifier the vendor did not give you. |
-| A tool fills none of the person's identifier types | Its entry in `links` is `undetermined` | Read it as "can't tell", never as "not there". Map a custom field with `leadFields` to link it. |
+| A tool can be searched by none of the person's identifier types | Its entry in `links` is `undetermined` | Read it as "can't tell", never as "not there". Look the person up by an identifier that tool can be searched by, such as their email. |
 | `redact` on the instance masks `email` or `linkedin` | `Unsupported`, before any read. The message names the plugin. | Use an instance without `redact`, or leave both fields out of its `fields`. |
 | The adapter cannot read a lead's timeline | Records link, `timeline` is empty | Check `outbound.capabilities["leads.timeline"]` before relying on the timeline. |
 | A read fails part way | `person()` throws that error. No partial answer is returned. | Retry, or bound the lookup with `campaignIds`. |

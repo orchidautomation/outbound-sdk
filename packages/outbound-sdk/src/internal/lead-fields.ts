@@ -1,7 +1,9 @@
 // A vendor with no field for a job title, a LinkedIn profile or a phone
 // number often still holds one, in a custom field the account named itself.
-// The SDK never guesses which: the caller says, and the adapter then reads
-// the custom field wherever the vendor's own field is empty.
+// The caller says which, and the adapter then reads the custom field wherever
+// the vendor's own field is empty. Without a mapping for linkedinUrl, a
+// custom field named like a LinkedIn profile is read, and only a value that
+// is a linkedin.com/in/ URL is taken.
 
 import { z } from "zod";
 
@@ -36,8 +38,53 @@ export type LeadFieldMap = Readonly<
 const namesOf = (name: string | readonly string[] | undefined): string[] =>
   name === undefined ? [] : [name].flat();
 
-/** `lead` with each mapped field the vendor left empty read from `custom`. */
-export const fillFromCustom = (lead: Lead, map: LeadFieldMap): Lead => {
+/**
+ * Custom field names read as a LinkedIn profile when `leadFields` maps no
+ * linkedinUrl, compared with case, spaces, underscores and hyphens removed:
+ * `LinkedIn URL`, `linkedin_profile` and `linkedin-profile-url` all match.
+ */
+const LINKEDIN_NAMES: ReadonlySet<string> = new Set([
+  "linkedin",
+  "linkedinprofile",
+  "linkedinprofileurl",
+  "linkedinurl",
+]);
+
+const normalized = (name: string): string =>
+  name.toLowerCase().replaceAll(/[\s_-]/gu, "");
+
+/** Whether `value` is a linkedin.com/in/ profile URL, with or without its scheme. */
+const isProfileUrl = (value: string): boolean => {
+  if (!URL.canParse(value) && !URL.canParse(`https://${value}`)) {
+    return false;
+  }
+
+  const url = URL.canParse(value)
+    ? new URL(value)
+    : new URL(`https://${value}`);
+
+  const host = url.hostname.toLowerCase();
+
+  return (
+    (url.protocol === "https:" || url.protocol === "http:") &&
+    (host === "linkedin.com" || host.endsWith(".linkedin.com")) &&
+    /^\/in\/[^/]+/u.test(url.pathname)
+  );
+};
+
+/** The first custom field named like a profile whose value is a linkedin.com/in/ URL. */
+const profileFromCustom = (lead: Lead): string | undefined =>
+  Object.entries(lead.custom)
+    .filter(([name]) => LINKEDIN_NAMES.has(normalized(name)))
+    .map(([, value]) => value.trim())
+    .find(isProfileUrl);
+
+/**
+ * `lead` with each field the vendor left empty read from `custom`: a mapped
+ * field from the names `map` gives, and an unmapped linkedinUrl from a
+ * field named like a profile.
+ */
+export const fillFromCustom = (lead: Lead, map: LeadFieldMap = {}): Lead => {
   const filled: Partial<Record<Mappable, string>> = {};
 
   for (const field of MAPPABLE) {
@@ -50,7 +97,16 @@ export const fillFromCustom = (lead: Lead, map: LeadFieldMap): Lead => {
     }
   }
 
-  return { ...lead, ...filled };
+  const profile =
+    map.linkedinUrl === undefined && lead.linkedinUrl === null
+      ? profileFromCustom(lead)
+      : undefined;
+
+  return {
+    ...lead,
+    ...filled,
+    ...(profile !== undefined && { linkedinUrl: profile }),
+  };
 };
 
 const names = z.union([
@@ -97,15 +153,11 @@ export const leadFieldsInvalid = (
 
 type LeadReaders = Pick<Adapter, "getLead" | "listLeads">;
 
-/** The adapter's lead reads, with the mapped fields filled on every lead. */
+/** The adapter's lead reads, with the mapped fields, and a profile kept in a custom field, filled on every lead. */
 export const withLeadFields = <Readers extends LeadReaders>(
   readers: Readers,
   map: LeadFieldMap | undefined
 ): Readers => {
-  if (map === undefined || Object.keys(map).length === 0) {
-    return readers;
-  }
-
   const { getLead, listLeads } = readers;
 
   const wrapped: LeadReaders = {
@@ -128,22 +180,24 @@ export const withLeadFields = <Readers extends LeadReaders>(
 };
 
 /**
- * The adapter's field declaration once a map is given: a field it never
- * filled is now worked out from a custom field, so it is `derived`.
+ * The adapter's field declaration with custom fields read: a field it never
+ * filled is now worked out from a custom field, so it is `derived`. A
+ * linkedinUrl always is, from a mapping or a field named like a profile.
  */
 export const withMappedFields = (
   declared: FieldDeclaration,
-  map: LeadFieldMap | undefined
+  map: LeadFieldMap = {}
 ): FieldDeclaration => {
   const lead = declared.lead === false ? undefined : declared.lead;
 
-  if (map === undefined || lead === undefined) {
+  if (lead === undefined) {
     return declared;
   }
 
   const derived = Object.fromEntries(
     MAPPABLE.flatMap((field) =>
-      map[field] !== undefined && lead[field] === false
+      (field === "linkedinUrl" || map[field] !== undefined) &&
+      lead[field] === false
         ? [[field, "derived"] as const]
         : []
     )

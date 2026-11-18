@@ -265,6 +265,7 @@ export const crossChannelLead: ToolDefinition<z.infer<typeof personInput>> = {
         links: links.map((link) => ({
           identifiers: [...link.identifiers],
           provider: link.provider,
+          searchable: [...link.searchable],
           status: link.status,
           workspace: link.workspaceId,
         })),

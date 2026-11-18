@@ -108,7 +108,7 @@ Those lines are not run by the test suite; the CLI's own tests run `outbound per
 
 Whether an address reaches the LinkedIn side depends on what each tool stores. These come from the adapters' own notes, not from this guide's data:
 
-- **Instantly** leads carry no LinkedIn profile. A lookup by profile returns nothing from Instantly, and an Instantly record never links an address to a profile.
+- **Instantly** has no LinkedIn profile field. A lookup by profile returns nothing from Instantly. An Instantly record links an address to a profile only when the account keeps the profile in a custom field named like one (`LinkedIn URL`, `linkedin_profile`), which the SDK reads as `derived`.
 - **HeyReach** leads can carry an email address. Then the address finds the HeyReach record, and its profile finds the person's other HeyReach campaigns. HeyReach has no read that returns a profile for an address, so the adapter goes through a saved list the address is in: an address that is in no saved list is not found although HeyReach holds it.
 - **Smartlead** has no read that finds a lead by LinkedIn profile. A lookup by profile returns nothing and sends no request.
 

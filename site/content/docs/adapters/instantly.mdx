@@ -49,7 +49,7 @@ Instantly declares every capability in the [table](/docs/adapters#what-each-adap
 | `stats.bySender` | `derived` | Per-mailbox numbers exist by day only. A total is summed by the adapter. |
 | `events.verify` | `secret` | Instantly does not sign webhooks. |
 
-`leads.lookup` works by email only. A lead in Instantly has no LinkedIn profile, so a lookup by profile returns nothing and sends no request.
+`leads.lookup` works by email only. Instantly has no LinkedIn profile field, so a lookup by profile returns nothing and sends no request. A profile kept in a custom field named like one (`LinkedIn URL`, `linkedin_profile`) is read onto `linkedinUrl` as `derived`, but cannot be searched.
 
 `leads.lookupMany` sends every address in the same `contacts` field of `POST /leads/list`. `leads.byInterest` uses its `filter` field, one positive interest status after another: `FILTER_LEAD_INTERESTED`, `FILTER_LEAD_MEETING_BOOKED`, `FILTER_LEAD_MEETING_COMPLETED`, `FILTER_LEAD_CLOSED` (read as Won) and `FILTER_LEAD_CUSTOM_LABEL_POSITIVE`, so it costs at least five requests. Both follow Instantly's documentation and have not been run against a live workspace yet. `leads.byStatus` sends `filter: "FILTER_VAL_ACTIVE"`, and the adapter keeps only the leads it maps to `active`.
 

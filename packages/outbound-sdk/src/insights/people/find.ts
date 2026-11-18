@@ -229,15 +229,16 @@ const followed = (key: string, lookup: Lookup, byToken: boolean): boolean =>
   !lookup.masked.includes(kindOf(key)) || (byToken && lookup.known(key));
 
 /**
- * An adapter whose leads hold no LinkedIn profile answers a profile lookup
- * with nothing, which would read as "in no campaign": the answer says why.
+ * An adapter whose vendor holds no LinkedIn profile answers a profile lookup
+ * with nothing, which would read as "in no campaign": the answer says why. A
+ * profile read from a custom field (`derived`) cannot be searched either.
  */
 const noteNoProfiles = (
   context: InsightContext,
   keys: readonly string[]
 ): void => {
   if (
-    context.outbound.fields.lead?.linkedinUrl === false &&
+    context.outbound.fields.lead?.linkedinUrl !== "exact" &&
     keys.some((key) => kindOf(key) === "linkedin")
   ) {
     context.note(

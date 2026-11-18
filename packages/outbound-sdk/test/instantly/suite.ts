@@ -199,6 +199,10 @@ export const suite: AdapterSuite = {
   ],
   secret: KEY,
   unsampled: {
+    lead: {
+      linkedinUrl:
+        "Instantly has no profile field; it is read from a custom field named like one, which the documented examples do not carry. identity-links.test.ts reads it",
+    },
     message: {
       isAuto:
         "listEmails.json holds sent emails only; auto-replies.test.ts reads received ones",

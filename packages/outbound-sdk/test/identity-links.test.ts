@@ -21,6 +21,7 @@ import {
 import type { Adapter } from "../src/index.ts";
 import { insights } from "../src/insights/index.ts";
 import { instantly } from "../src/instantly/index.ts";
+import type { InstantlyOptions } from "../src/instantly/index.ts";
 import { fromEnv } from "../src/loader/index.ts";
 import { memory } from "../src/memory/index.ts";
 import { createTools } from "../src/tools/index.ts";
@@ -250,8 +251,18 @@ test("with no identifier type shared, a tool that cannot be searched is undeterm
   assert.deepEqual(await outbound.identifiers(), {
     shared: [],
     tools: [
-      { identifiers: ["email"], provider: "mailtool", workspaceId: "agency" },
-      { identifiers: ["linkedin"], provider: "lntool", workspaceId: "acme" },
+      {
+        identifiers: ["email"],
+        provider: "mailtool",
+        searchable: ["email"],
+        workspaceId: "agency",
+      },
+      {
+        identifiers: ["linkedin"],
+        provider: "lntool",
+        searchable: ["linkedin"],
+        workspaceId: "acme",
+      },
     ],
   });
 
@@ -285,7 +296,9 @@ test("with no identifier type shared, a tool that cannot be searched is undeterm
   assert.equal(answer.meta.complete, false);
   assert.ok(
     answer.meta.notes.some((note) =>
-      /^mailtool \(agency\) fills email .* cannot be told/u.test(note)
+      /^mailtool \(agency\) can be searched by email .* cannot be told/u.test(
+        note
+      )
     ),
     answer.meta.notes.join("\n")
   );
@@ -293,12 +306,14 @@ test("with no identifier type shared, a tool that cannot be searched is undeterm
     {
       identifiers: ["email"],
       provider: "mailtool",
+      searchable: ["email"],
       status: "undetermined",
       workspace: "agency",
     },
     {
       identifiers: ["linkedin"],
       provider: "lntool",
+      searchable: ["linkedin"],
       status: "linked",
       workspace: "acme",
     },
@@ -438,10 +453,14 @@ test("leadFields takes several candidate names, from OUTBOUND_LEAD_FIELDS (OUT-1
         PROFILES
       );
       assert.equal(outbound.fields.lead.linkedinUrl, "derived");
-      assert.deepEqual((await outbound.identifiers()).tools[0]?.identifiers, [
-        "email",
-        "linkedin",
-      ]);
+      const [tool] = (await outbound.identifiers()).tools;
+
+      assert.deepEqual(tool?.identifiers, ["email", "linkedin"]);
+      assert.deepEqual(
+        tool?.searchable,
+        ["email"],
+        "a profile read from a custom field is on the lead, but Instantly cannot be asked for it"
+      );
     }
   );
 });
@@ -505,4 +524,158 @@ test("a --config file's leadFields reaches the adapter the CLI builds", async ()
       PROFILES
     );
   });
+});
+
+// The five spellings a live Instantly account used for one LinkedIn field,
+// and values that are not a profile URL under a profile-like name.
+const LIVE_SPELLINGS = [
+  "linkedin_url",
+  "linkedin_profile",
+  "LinkedIn_URL",
+  "linkedin_URL",
+  "LinkedIn URL",
+];
+
+const leadsWithSpellings = (): Response => {
+  const [base] = (
+    fixture("instantly", "listLeads.json") as {
+      items: Record<string, unknown>[];
+    }
+  ).items;
+
+  return json({
+    items: [
+      ...LIVE_SPELLINGS.map((name, index) => ({
+        ...base,
+        email: `person5${index}@example.com`,
+        id: `lead-${index}`,
+        payload: {
+          [name]: `https://www.linkedin.com/in/example-person-5${index}`,
+        },
+      })),
+      {
+        ...base,
+        email: "person60@example.com",
+        id: "lead-no-scheme",
+        payload: {
+          "linkedin-profile-url": "linkedin.com/in/example-person-60",
+        },
+      },
+      {
+        ...base,
+        email: "person61@example.com",
+        id: "lead-not-a-profile",
+        payload: {
+          LinkedIn: "https://www.linkedin.com/company/example-co",
+          linkedin_url: "n/a",
+        },
+      },
+      {
+        ...base,
+        email: "person62@example.com",
+        id: "lead-other-name",
+        payload: { profile: "https://www.linkedin.com/in/example-person-62" },
+      },
+    ],
+  });
+};
+
+const instantlyOn = (
+  respond: () => Response,
+  leadFields?: InstantlyOptions["leadFields"]
+) => {
+  const http = createFetch(respond);
+
+  return {
+    http,
+    outbound: createOutbound({
+      adapter: instantly({
+        apiKey: KEY,
+        workspaceId: "client-a",
+        ...(leadFields !== undefined && { leadFields }),
+      }),
+      fetch: http.fetch,
+      plugins: [identity()],
+      rateLimitStore: new MemoryRateLimitStore(),
+    }),
+  };
+};
+
+test("with no leadFields, a profile is read from a custom field named like one, in any of the live spellings", async () => {
+  const { outbound } = instantlyOn(leadsWithSpellings);
+  const { items } = await outbound.leads.list();
+
+  assert.deepEqual(
+    items.map((lead) => lead.linkedinUrl),
+    [
+      ...LIVE_SPELLINGS.map(
+        (_, index) => `https://www.linkedin.com/in/example-person-5${index}`
+      ),
+      "linkedin.com/in/example-person-60",
+      null,
+      null,
+    ],
+    "only a linkedin.com/in/ URL under a profile-like name is taken"
+  );
+  assert.equal(outbound.fields.lead.linkedinUrl, "derived");
+  assert.deepEqual(
+    items
+      .slice(0, 2)
+      .map((lead) => (lead as { personKeys?: string[] }).personKeys),
+    [
+      ["email:person50@example.com", "linkedin:example-person-50"],
+      ["email:person51@example.com", "linkedin:example-person-51"],
+    ]
+  );
+});
+
+test("an explicit leadFields linkedinUrl replaces the built-in names", async () => {
+  const { outbound } = instantlyOn(leadsWithSpellings, {
+    linkedinUrl: "profile",
+  });
+
+  const { items } = await outbound.leads.list();
+
+  assert.deepEqual(
+    items.map((lead) => lead.linkedinUrl),
+    [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      "https://www.linkedin.com/in/example-person-62",
+    ]
+  );
+});
+
+test("a profile only a custom field holds is not searchable, so a profile lookup leaves Instantly undetermined", async () => {
+  const { http, outbound } = instantlyOn(leadsWithSpellings);
+
+  const person = await outbound.person(
+    "https://www.linkedin.com/in/example-person-50"
+  );
+
+  assert.equal(person.found, false);
+  assert.deepEqual(
+    person.links.map((link) => [link.provider, link.status]),
+    [["instantly", "undetermined"]],
+    "Instantly cannot be asked for a profile, so not finding one proves nothing"
+  );
+  assert.equal(http.requests.length, 0, "the lookup sends no request");
+
+  const byEmail = await outbound.person("person50@example.com", {
+    timeline: false,
+  });
+
+  assert.deepEqual(byEmail.keys, [
+    "email:person50@example.com",
+    "linkedin:example-person-50",
+  ]);
+  assert.deepEqual(
+    byEmail.links.map((link) => link.status),
+    ["linked"]
+  );
 });
