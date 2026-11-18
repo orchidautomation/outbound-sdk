@@ -44,6 +44,7 @@ When a change is done and its checks pass, commit it, push the branch and open a
 | `site/` | The public documentation site (Blume), deployed to outbound-sdk.dev. `docs/site.md` says how to change and publish it |
 | `site/content/_examples/` | Every code sample the site shows. `npm test` runs each one |
 | `skills/` | Agent skills for SDK users. `npm test` runs their samples and commands; `skills/README.md` says how |
+| `evals/` | The agent eval suite: invariant runner (`npm run eval`) and persona tasks; `evals/README.md` says how |
 | `examples/` | Standalone apps built on the published package, each with its own `package.json`. Not in the workspace and not run by `npm test` |
 
 The design authority is the Outbound SDK spec and the Linear document "Tech stack and engineering standards", both linked from the Linear project `Outbound SDK` (team `OUT`).

@@ -13,7 +13,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "architecture": "node scripts/check-architecture.mjs",
     "shape": "node scripts/check-repo-shape.mjs",
-    "test": "node --test \"scripts/*.test.mjs\" \"packages/*/test/**/*.test.ts\" \"site/test/*.test.ts\" \"skills/test/*.test.ts\"",
+    "test": "node --test \"scripts/*.test.mjs\" \"packages/*/test/**/*.test.ts\" \"site/test/*.test.ts\" \"skills/test/*.test.ts\" \"evals/test/*.test.ts\"",
     "test:docs": "node --test \"site/test/*-truth.test.ts\" \"packages/*/test/*-doc*.test.ts\"",
     "build": "node scripts/build.mjs && node scripts/smoke-dist.mjs",
     "check:static": "npm run typecheck && npm run architecture && npm run shape && npm run fixtures && git diff --check",
@@ -28,7 +28,9 @@
     "test:live": "node --test \"packages/*/test/live/*.live.ts\"",
     "site:dev": "npm --prefix site run dev",
     "site:build": "npm --prefix site run build",
-    "site:live": "EXAMPLES_LIVE=1 node --import ./scripts/examples-loader.mjs --test \"site/test/live/*.live.ts\""
+    "site:live": "EXAMPLES_LIVE=1 node --import ./scripts/examples-loader.mjs --test \"site/test/live/*.live.ts\"",
+    "eval": "node evals/run.ts",
+    "eval:agent": "node evals/agent/run.ts"
   },
   "devDependencies": {
     "@changesets/cli": "3.0.3",
