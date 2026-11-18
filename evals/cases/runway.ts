@@ -93,12 +93,17 @@ const reportRow = (row: unknown): RunwayRow => ({
   state: text(at(row, "state")),
 });
 
+// camelCase from 0.15.0 (OUT-166), snake case before, so either side of a
+// before-and-after run is read.
+const field = (structured: unknown, name: string, old: string): unknown =>
+  at(structured, "data", name) ?? at(structured, "data", old);
+
 const toolRow = (structured: unknown): RunwayRow => ({
-  daysLeft: num(at(structured, "data", "runway_days")),
-  pace: num(at(structured, "data", "contacted_per_day")),
+  daysLeft: num(field(structured, "runwayDays", "runway_days")),
+  pace: num(field(structured, "contactedPerDay", "contacted_per_day")),
   remaining:
-    num(at(structured, "data", "not_started")) ??
-    num(at(structured, "data", "active_leads")),
+    num(field(structured, "notStarted", "not_started")) ??
+    num(field(structured, "activeLeads", "active_leads")),
   state: text(at(structured, "data", "state")),
 });
 

@@ -156,6 +156,16 @@ test("tools/list stays under its byte ceiling, every tool short, with a scope an
     /This server reads instantly:client-a and heyreach:client-a together; scope\.provider reads one\./u
   );
   assert.match(instructions, /use the CLI's --jsonl output or the SDK/u);
+  // An old or CLI insight name is named once, so calling it is not a guess.
+  assert.match(instructions, /still answer until 0\.16\.0/u);
+
+  for (const name of [
+    "dropped_replies",
+    "warmup_readiness",
+    "campaign_ranking",
+  ]) {
+    assert.ok(instructions.includes(name), name);
+  }
 });
 
 test("the size check fails a list over the ceiling", () => {
@@ -368,6 +378,7 @@ test("person is listed under redact, and a view that needs identifiers answers w
     initialize(),
     LIST,
     call(2, "person", { lead_ref: "memory:acme:lead_1", view: "timeline" }),
+    call(3, "cross_channel_lead", { lead_ref: "memory:acme:lead_1" }),
   ]);
 
   const person = session
@@ -387,6 +398,15 @@ test("person is listed under redact, and a view that needs identifiers answers w
     answer.meta?.notes[0] ?? "",
     /^view timeline needs identifiers the redact plugin masks, so this is the masked summary view\./u
   );
+
+  // The old name of a covered view answers through it, not as an unknown tool.
+  const old = session.answer(3);
+
+  assert.equal(old.ok, true, JSON.stringify(old));
+  assert.deepEqual(old.meta?.notes.slice(0, 2), [
+    `cross_channel_lead is an old name kept until 0.16.0: call ${RENAMED_TOOLS["cross_channel_lead"]} instead.`,
+    answer.meta?.notes[0],
+  ]);
 });
 
 test("scope refuses a malformed scope, and passes provider and tag to a tool that takes them", async () => {

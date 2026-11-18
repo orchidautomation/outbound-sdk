@@ -503,13 +503,36 @@ export const sharpen = (
     return absorbed.has(tool.name) ? [] : [scopedTool(scoping, tool)];
   });
 
-  const aliases = new Map(
+  const aliases = new Map<string, Alias>(
     [...CALLS].flatMap(([name, becomes]) => {
       const tool = byName.get(name);
 
       return tool === undefined ? [] : [[name, { becomes, tool }] as const];
     })
   );
+
+  // A covered old name answers through the view that covers it, masked.
+  for (const group of GROUPS) {
+    const tool = merged.get(group.name);
+
+    for (const member of group.members) {
+      if (tool !== undefined && covered.has(member.tool)) {
+        aliases.set(member.tool, {
+          becomes: CALLS.get(member.tool) ?? group.name,
+          tool: {
+            ...tool,
+            call: (given, options) => {
+              const input = jsonInput(given ?? {});
+
+              return isJsonObject(input)
+                ? tool.call({ ...input, [group.by]: member.key }, options)
+                : tool.call(given, options);
+            },
+          },
+        });
+      }
+    }
+  }
 
   return { aliases, covered, tools };
 };

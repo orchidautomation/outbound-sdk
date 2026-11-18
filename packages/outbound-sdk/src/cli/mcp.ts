@@ -22,6 +22,7 @@ import { createTools } from "../tools/index.ts";
 import type { OutboundTool, ToolResult, ToolsOptions } from "../tools/index.ts";
 import {
   ANSWERS,
+  describeAliases,
   describeBound,
   membersFor,
   OUTPUT_SCHEMA,
@@ -366,7 +367,7 @@ const surfaceOf = (outbound: OutboundApi, options: McpServerOptions) => {
   );
 
   const instructionsFor = async (): Promise<string> =>
-    `${INSTRUCTIONS} ${describeBound(await members(), outbound)} ${ANSWERS} ${describePlugins(outbound)}${withNewNames(describeLeftOut(outbound, leftOut))}`;
+    `${INSTRUCTIONS} ${describeBound(await members(), outbound)} ${ANSWERS} ${describePlugins(outbound)}${describeAliases([...aliases.keys()])}${withNewNames(describeLeftOut(outbound, leftOut))}`;
 
   return { byName, instructionsFor, tools };
 };
