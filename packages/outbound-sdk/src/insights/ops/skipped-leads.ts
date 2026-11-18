@@ -141,13 +141,18 @@ export const readManySkipped = async (
     "campaigns' progress"
   );
 
-  const missing = counted.flatMap(({ campaign, progress }) =>
-    progress === null ? [campaign.name] : []
+  // No progress, or progress without a skipped count (such as one stopped
+  // at the adapter's cap): the campaign was not checked, so the answer is
+  // partial, not a clean "none has many skipped leads".
+  const unchecked = counted.flatMap(({ campaign, progress }) =>
+    progress === null || (progress.skipped ?? null) === null
+      ? [campaign.name]
+      : []
   );
 
-  if (missing.length > 0) {
-    context.note(
-      `Skipped leads were not checked for ${plural(missing.length, "campaign")} the tool reports no progress for: ${missing.slice(0, 10).join(", ")}${missing.length > 10 ? ` and ${missing.length - 10} more` : ""}.`
+  if (unchecked.length > 0) {
+    context.partial(
+      `Skipped leads were not counted for ${plural(unchecked.length, "campaign")}, so manySkippedLeads leaves ${unchecked.length === 1 ? "it" : "them"} out: ${unchecked.slice(0, 10).join(", ")}${unchecked.length > 10 ? ` and ${unchecked.length - 10} more` : ""}.`
     );
   }
 

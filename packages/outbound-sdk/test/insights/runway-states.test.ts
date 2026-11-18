@@ -108,10 +108,19 @@ const campaignOf = (index: number) => ({
 const indexOf = (campaign: string | null | undefined): number =>
   CAMPAIGNS.findIndex((_, index) => id(index) === campaign);
 
-const outbound = () => {
+const outbound = ({ progress = true } = {}) => {
   const http = createFetch((request) => {
     const url = new URL(request.url);
     const { pathname, searchParams } = url;
+
+    // One campaign's progress report. Without it, Instantly has no row.
+    if (pathname === "/api/v2/campaigns/analytics" && progress) {
+      const at = indexOf(searchParams.get("id"));
+
+      return Response.json(
+        at < 0 ? [] : [{ campaign_id: id(at), leads_count: leadsOf(at).length }]
+      );
+    }
 
     if (pathname === "/api/v2/campaigns") {
       return Response.json({
@@ -173,8 +182,8 @@ const leadRunway = async (index: number): Promise<ToolResult> => {
   return result;
 };
 
-const report = async () =>
-  await outbound().insights.clientReport({ min_sent: 1 }, { now: NOW });
+const report = async (options = {}) =>
+  await outbound(options).insights.clientReport({ min_sent: 1 }, { now: NOW });
 
 test("runway: a campaign whose leads have all started is out of leads, never less than a day of sending", async () => {
   const { data } = await report();
@@ -306,5 +315,30 @@ test("runway: campaign_diagnosis still names lead runout for a campaign out of l
   assert.deepEqual(
     result.data.findings.map((finding) => finding.code),
     ["out_of_leads"]
+  );
+});
+
+// OUT-175: client_report reads each campaign's progress for its skipped
+// leads. A campaign with no progress row was not checked, so the report is
+// partial and names it, while the rest of the report stands.
+test("client_report is partial, naming each campaign, when its skipped leads cannot be counted", async () => {
+  const counted = await report();
+
+  assert.deepEqual(counted.data.manySkippedLeads, []);
+
+  const { data, meta } = await report({ progress: false });
+
+  assert.deepEqual(data.manySkippedLeads, []);
+  assert.equal(meta.complete, false);
+  assert.ok(
+    meta.notes.includes(
+      "Skipped leads were not counted for 4 campaigns, so manySkippedLeads leaves them out: Finishing, No rows, Stalled, Draining."
+    ),
+    meta.notes.join(" | ")
+  );
+  assert.equal(
+    data.runningOutOfLeads?.length,
+    3,
+    "the runway is still reported"
   );
 });
