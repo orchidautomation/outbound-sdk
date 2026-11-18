@@ -28,7 +28,7 @@ export const GROUPS: readonly Group[] = [
     by: "view",
     default: ["list"],
     description:
-      "Campaign results. view list: sends, replies, positive replies, bounces and reply rate per campaign (or one campaign) over a date range. view ranking: campaigns ranked fairly by the low end of the 95% interval of a rate, so a small campaign cannot outrank a big one. view trend: one count day by day for one campaign. A null count is one the vendor does not report, never 0. For exports of every row use the CLI's --jsonl or the SDK.",
+      "Campaign results. view list: sends, replies, positive replies, bounces and reply rate per campaign (or one campaign) over a date range. view ranking: campaigns ranked fairly by the low end of the 95% interval of a rate, so a small campaign cannot outrank a big one. view trend: one count day by day for one campaign. A null count is one the vendor does not report, never 0. Campaigns running out of leads: client_report. For exports of every row use the CLI's --jsonl or the SDK.",
     members: [
       { key: "list", tool: "campaign_overview" },
       { key: "ranking", tool: "campaign_ranking" },
@@ -65,7 +65,7 @@ export const GROUPS: readonly Group[] = [
     by: "view",
     default: ["runway"],
     description:
-      "How long one campaign's leads last. view runway: days until no new lead is left to start, from the leads not yet started and the pace of new leads started per day (never emails sent). view forecast: the same runway with leads by status and the replies and positive replies to expect from the leads left, each with a 95% range. Both read the same runway computation.",
+      "How long one campaign's leads last; to find which campaigns run out, client_report lists every one in one call. view runway: days until no new lead is left to start, from the leads not yet started and the pace of new leads started per day (never emails sent). view forecast: the same runway with leads by status and the replies and positive replies to expect from the leads left, each with a 95% range. Both read the same runway computation.",
     members: [
       { key: "runway", tool: "lead_runway" },
       { key: "forecast", tool: "pipeline_forecast" },
