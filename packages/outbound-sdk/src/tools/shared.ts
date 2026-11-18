@@ -56,6 +56,14 @@ export interface ToolFailure {
      * result from this package; a tool of your own may leave it out.
      */
     readonly retryable?: boolean | undefined;
+    /**
+     * On `RateLimited`: what stopped the call. `vendor` is the vendor's own
+     * limit; `call` and `run` are caps of the caller's, such as
+     * `--max-requests` or a tool call's time budget.
+     */
+    readonly limit?: string | undefined;
+    /** On `RateLimited`: milliseconds after which the same call can work again, when that is known. */
+    readonly retryAfterMs?: number | undefined;
   };
   /** Set when the tool sent vendor requests before it failed. */
   readonly meta?:
@@ -196,6 +204,10 @@ const nextFor = (cause: unknown, code: string): string => {
   }
 
   if (OutboundError.is(cause) && code === "RateLimited") {
+    if (cause.retryAfterMs !== undefined && cause.limit === "call") {
+      return `The vendor's rate limit is used up for now. Call again with the same input in ${Math.ceil(cause.retryAfterMs / 1000)}s.`;
+    }
+
     return cause.permanent
       ? "A request cap the user set was reached; the message says which. Do not call again with the same input."
       : "The vendor's rate limit was reached. Wait a minute before calling again.";
@@ -213,6 +225,10 @@ const nextFor = (cause: unknown, code: string): string => {
   return "Check the input and try again.";
 };
 
+type WritableFailureError = {
+  -readonly [Key in keyof ToolFailure["error"]]: ToolFailure["error"][Key];
+};
+
 /** A thrown error as a tool result. `requests` is what the call sent before it. */
 export const failure = (
   cause: unknown,
@@ -222,12 +238,25 @@ export const failure = (
   const known = OutboundError.is(cause);
   const code = known ? cause.code : "Provider";
 
+  const error: WritableFailureError = {
+    code,
+    message: cause instanceof Error ? cause.message : String(cause),
+    retryable: known
+      ? !cause.permanent ||
+        (cause.limit === "call" && cause.retryAfterMs !== undefined)
+      : true,
+  };
+
+  if (known && cause.limit !== undefined) {
+    error.limit = cause.limit;
+  }
+
+  if (known && cause.retryAfterMs !== undefined) {
+    error.retryAfterMs = cause.retryAfterMs;
+  }
+
   const result: ToolFailure = {
-    error: {
-      code,
-      message: cause instanceof Error ? cause.message : String(cause),
-      retryable: known ? !cause.permanent : true,
-    },
+    error,
     next: next ?? nextFor(cause, code),
     ok: false,
   };

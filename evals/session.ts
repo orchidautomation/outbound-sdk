@@ -168,6 +168,9 @@ const channel = (transport: Transport) => {
   return { progress, request, state };
 };
 
+/** The longest a case waits for a rate window before calling a tool again. */
+const RETRY_WAIT_MAX_MS = 120_000;
+
 export const session = (transport: Transport, budget: Budget): Session => {
   const { progress, request, state } = channel(transport);
   const memo = new Map<string, Promise<CallOutcome>>();
@@ -208,36 +211,59 @@ export const session = (transport: Transport, budget: Budget): Session => {
     withProgress: boolean
   ): Promise<CallOutcome> => {
     await initialize();
-    budget.check();
-    const token = `p${state.nextId}`;
-    const started = transport.now();
     const params: JsonObject = { arguments: args, name };
 
-    const message = await request(
-      "tools/call",
-      withProgress ? { ...params, _meta: { progressToken: token } } : params
-    );
+    // One attempt, charged to the run and timed on its own.
+    const attempt = async () => {
+      budget.check();
+      const token = `p${state.nextId}`;
+      const started = transport.now();
 
-    const ms = transport.now() - started;
-    const first = progress.get(token);
+      const message = await request(
+        "tools/call",
+        withProgress ? { ...params, _meta: { progressToken: token } } : params
+      );
 
-    const outcome = outcomeOf(
-      name,
-      message,
-      ms,
-      first === undefined ? null : first - started
-    );
+      const ms = transport.now() - started;
+      const first = progress.get(token);
 
-    calls.push({
-      code: outcome.code,
-      complete: outcome.complete,
-      ms,
-      name,
-      requests: outcome.requests,
-    });
-    budget.spend(outcome.requests);
+      const outcome = outcomeOf(
+        name,
+        message,
+        ms,
+        first === undefined ? null : first - started
+      );
 
-    return outcome;
+      calls.push({
+        code: outcome.code,
+        complete: outcome.complete,
+        ms,
+        name,
+        requests: outcome.requests,
+      });
+      budget.spend(outcome.requests);
+
+      return { message, outcome };
+    };
+
+    const tried = await attempt();
+    const error = at(tried.message, "result", "structuredContent", "error");
+    const retryAfterMs = num(at(error, "retryAfterMs"));
+
+    // A retryable stop that says when it frees is waited out once, as a
+    // careful client would: the case is about the answer, not the rate
+    // window. The answer judged is the second attempt's, with its own timing.
+    if (
+      bool(at(error, "retryable")) !== true ||
+      retryAfterMs === null ||
+      retryAfterMs > RETRY_WAIT_MAX_MS
+    ) {
+      return tried.outcome;
+    }
+
+    await transport.sleep(retryAfterMs + 1000);
+
+    return (await attempt()).outcome;
   };
 
   return {

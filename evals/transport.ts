@@ -19,6 +19,8 @@ export interface Transport {
   /** Awaits a pending answer; offline it also fires the virtual clock's timers. */
   readonly settle: <Value>(promise: Promise<Value>) => Promise<Value>;
   readonly now: () => number;
+  /** Waits on the transport's clock: virtual offline, real live. */
+  readonly sleep: (ms: number) => Promise<void>;
 }
 
 interface LineQueue {
@@ -128,6 +130,16 @@ export const inProcess = (
       queue.push(JSON.stringify(message));
     },
     settle: io.settle,
+    sleep: (ms) =>
+      io.settle(
+        new Promise<void>((resolve) => {
+          if (io.runtime.timer === undefined) {
+            throw new Error("the offline runtime has no timer to wait on");
+          }
+
+          io.runtime.timer(ms, resolve);
+        })
+      ),
   };
 };
 
@@ -187,6 +199,10 @@ export const child = (command: readonly string[]): Transport => {
         proc.stdin.write(`${JSON.stringify(message)}\n`);
       }
     },
+    sleep: (ms) =>
+      new Promise<void>((resolve) => {
+        setTimeout(resolve, ms);
+      }),
     settle: async (promise) => {
       let timer: NodeJS.Timeout | undefined;
 

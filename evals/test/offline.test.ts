@@ -69,3 +69,94 @@ test("a server that exits before answering fails its pending request instead of 
   await assert.rejects(open.call("client_report"), /exited/u);
   await open.close();
 });
+
+test("a retryable stop is waited out on the transport's clock once, and each attempt is charged and timed on its own", async () => {
+  const listeners: ((line: string) => void)[] = [];
+  const slept: number[] = [];
+  const spent: (number | null)[] = [];
+  let checks = 0;
+  let clock = 0;
+  let calls = 0;
+
+  const answer = (id: unknown, result: Readonly<Record<string, unknown>>) => {
+    for (const listener of listeners) {
+      listener(JSON.stringify({ id, jsonrpc: "2.0", result }));
+    }
+  };
+
+  const open = session(
+    {
+      close: async () => {},
+      now: () => clock,
+      onExit: () => {},
+      onLine: (listener) => {
+        listeners.push(listener);
+      },
+      send: (message) => {
+        if (message.id === undefined) {
+          return;
+        }
+
+        if (message.method !== "tools/call") {
+          answer(message.id, {});
+
+          return;
+        }
+
+        calls += 1;
+        clock += calls === 1 ? 5 : 40;
+        answer(
+          message.id,
+          calls === 1
+            ? {
+                isError: true,
+                structuredContent: {
+                  error: {
+                    code: "RateLimited",
+                    retryAfterMs: 30_000,
+                    retryable: true,
+                  },
+                  meta: { requests: 3 },
+                  ok: false,
+                },
+              }
+            : {
+                structuredContent: {
+                  meta: { complete: true, requests: 7 },
+                  ok: true,
+                },
+              }
+        );
+      },
+      settle: (promise) => promise,
+      sleep: (ms) => {
+        slept.push(ms);
+        clock += ms;
+
+        return Promise.resolve();
+      },
+    },
+    {
+      check: () => {
+        checks += 1;
+      },
+      spend: (requests) => {
+        spent.push(requests);
+      },
+    }
+  );
+
+  const outcome = await open.call("reply_samples");
+
+  assert.deepEqual(
+    [outcome.code, outcome.ms, outcome.requests, slept, spent, checks],
+    [null, 40, 7, [31_000], [3, 7], 2]
+  );
+  assert.deepEqual(
+    open.calls.map((call) => [call.code, call.ms, call.requests]),
+    [
+      ["RateLimited", 5, 3],
+      [null, 40, 7],
+    ]
+  );
+});

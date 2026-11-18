@@ -43,6 +43,8 @@ interface ToolCall {
   readonly expired: () => boolean;
   /** Why a read of this call stopped, in words a model can act on. */
   readonly stopMessage: string;
+  /** Why it stopped when the vendor's rate window, not the work, would pass the budget. */
+  readonly waitMessage: (provider: string, waitMs: number) => string;
 }
 
 export interface ToolCallScope {
@@ -52,19 +54,34 @@ export interface ToolCallScope {
 }
 
 // A read the budget stopped fails as a cap of the caller's own, so an
-// insight keeps what it read instead of throwing it away.
+// insight keeps what it read instead of throwing it away. When the budget
+// had time left and only a full rate window stood in the way, the same call
+// succeeds once the window frees, so the error says when.
 const timeStop = (
   call: ToolCall,
   error: OutboundError,
   provider: string
-): OutboundError =>
-  new OutboundError("RateLimited", call.stopMessage, {
-    cause: error,
-    limit: "call",
-    partial: error.partial,
-    permanent: true,
-    provider,
-  });
+): OutboundError => {
+  const waitMs =
+    !call.expired() && error.limit === "deadline"
+      ? error.retryAfterMs
+      : undefined;
+
+  return new OutboundError(
+    "RateLimited",
+    waitMs === undefined
+      ? call.stopMessage
+      : call.waitMessage(provider, waitMs),
+    {
+      cause: error,
+      limit: "call",
+      partial: error.partial,
+      permanent: true,
+      provider,
+      retryAfterMs: waitMs,
+    }
+  );
+};
 
 // The budget ran out, or the engine saw a wait that would pass it. A
 // cancelled call keeps its own abort error.
@@ -274,6 +291,8 @@ export const toolCalls = (options: CallsOptions): Calls => {
         expired: () => expired,
         signal: controller.signal,
         stopMessage: `${name} stopped at its time budget of ${secondsOf(timeBudgetMs)}s: what it had not read would not have been read in time, so the answer leaves it out. Call it again with less to read, such as fewer campaigns or a shorter range, or raise ${timeBudgetSetting} and the client's tool timeout with it.`,
+        waitMessage: (provider, waitMs) =>
+          `${name} stopped because ${provider}'s rate limit is used up for the next ${Math.ceil(waitMs / 1000)}s, longer than its time budget of ${secondsOf(timeBudgetMs)}s left it, mostly by earlier calls. The input is fine: call it again in ${Math.ceil(waitMs / 1000)}s, or raise ${timeBudgetSetting} and the client's tool timeout with it.`,
       };
 
       const turn = Promise.race([

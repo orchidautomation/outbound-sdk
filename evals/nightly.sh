@@ -22,6 +22,14 @@ if [ "$invariants" -eq 75 ]; then
   exit 75
 fi
 
+# Anything but green (0) or red (1) means layer 1 died, for example killed,
+# and recorded no truth, so layer 2 would score nothing.
+if [ "$invariants" -ne 0 ] && [ "$invariants" -ne 1 ]; then
+  echo "layer 1 exited $invariants and recorded no truth, so layer 2 is skipped" >&2
+  rm -f "$marker"
+  exit "$invariants"
+fi
+
 node evals/agent/run.ts
 
 # This run's summaries, layer 1 first.

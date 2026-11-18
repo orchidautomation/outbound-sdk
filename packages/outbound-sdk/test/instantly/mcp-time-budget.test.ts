@@ -407,3 +407,40 @@ test("--time-budget takes a positive whole number of seconds", async () => {
     /--time-budget takes a positive whole number of seconds, not "0"/u
   );
 });
+
+test("a call that finds the email lane used up by the call before says when to call again, not to ask for less", async () => {
+  const replySamples = JSON.stringify({
+    id: 2,
+    jsonrpc: "2.0",
+    method: "tools/call",
+    params: { arguments: {}, name: "reply_samples" },
+  });
+
+  const ran = await mcp(["--time-budget", "50"], () =>
+    given(droppedReplies(1), replySamples)()
+  );
+
+  assert.equal(ran.code, 0, ran.err);
+
+  const content = answerTo(ran.lines, 2)?.message.result?.structuredContent as
+    | {
+        readonly ok: boolean;
+        readonly error?: {
+          readonly message: string;
+          readonly retryable: boolean;
+        };
+        readonly next?: string;
+      }
+    | undefined;
+
+  assert.equal(content?.ok, false, JSON.stringify(content));
+  assert.equal(content?.error?.retryable, true);
+  assert.match(
+    content?.error?.message ?? "",
+    /^reply_samples stopped because instantly's rate limit is used up for the next \d+s, longer than its time budget of 50s left it/u
+  );
+  assert.match(
+    content?.next ?? "",
+    /^The vendor's rate limit is used up for now\. Call again with the same input in \d+s\.$/u
+  );
+});
