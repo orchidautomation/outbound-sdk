@@ -44,17 +44,15 @@ LIVE_TESTS=1 npm run eval -- --checkout ../branch-worktree && npm run eval:agent
 
 ## Scheduling on Brandon's Mac (not installed)
 
-`evals/launchd/dev.outbound-sdk.evals.plist` runs `evals/nightly.sh` at 03:00 on the Mac's clock (America/New_York). `nightly.sh` runs under `zsh -i`, so it reads `INSTANTLY_API_KEY`, `HEYREACH_API_KEY` and `LINEAR_API_KEY` from `~/.zshrc` and never prints them. To install it, from this checkout:
+`evals/launchd/dev.outbound-sdk.evals.plist` runs `evals/nightly.sh` at 03:00 on the Mac's clock (America/New_York). `nightly.sh` runs under `zsh -i`, so it reads `INSTANTLY_API_KEY`, `HEYREACH_API_KEY` and `LINEAR_API_KEY` from `~/.zshrc` and never prints them. Install it from a checkout that stays on `main`, because the run evaluates whatever that checkout has; `install.sh` refuses any other branch:
 
 ```sh
-sed "s#REPO#$(pwd)#g" evals/launchd/dev.outbound-sdk.evals.plist > ~/Library/LaunchAgents/dev.outbound-sdk.evals.plist
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/dev.outbound-sdk.evals.plist
-launchctl kickstart gui/$(id -u)/dev.outbound-sdk.evals   # optional: run once now
+evals/launchd/install.sh         # write ~/Library/LaunchAgents/dev.outbound-sdk.evals.plist for this checkout and load it
+evals/launchd/install.sh --now   # the same, then run it once now
+evals/launchd/uninstall.sh       # unload it and delete the plist
 ```
 
-The run logs to `/tmp/outbound-evals.log`. To remove it: `launchctl bootout gui/$(id -u)/dev.outbound-sdk.evals`, then delete the plist. launchd runs a missed job when the Mac wakes, but not when it was off or offline at 03:00.
-
-Use a checkout that stays on `main` and is updated before each run (for example `git -C <checkout> pull --ff-only` at the top of a wrapper). A task branch would evaluate whatever it has checked out.
+`install.sh` refuses to overwrite an agent that is already installed; uninstall it first. The run logs to `/tmp/outbound-evals.log`. launchd runs a missed job when the Mac wakes, but not when it was off or offline at 03:00. Keep the checkout current (`git pull --ff-only`) so each night evaluates the latest `main`. `evals/test/launchd.test.ts` runs both scripts against a scratch folder with a stand-in for `launchctl`.
 
 ## Before each publish
 
