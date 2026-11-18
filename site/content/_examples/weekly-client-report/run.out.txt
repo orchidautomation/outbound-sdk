@@ -16,3 +16,6 @@ To do:
   - Check what happened on 2026-11-07: replied was 10 on 2026-11-07, against 7 on each of the 14 days with data before it (a flat baseline has no z-score: any other count is flagged).
   - Check what happened on 2026-11-07: bounced was 11 on 2026-11-07, against 3 on each of the 14 days with data before it (a flat baseline has no z-score: any other count is flagged).
   - Add leads to 2 campaigns: 1 has no lead left to start (Ecommerce ops); 1 runs out within 7 days at the recent pace (SaaS founders in about 2 days).
+
+Read this before relying on the numbers:
+  - meetingsBooked is null: no campaign read reports a count of meetings booked, and the tool's fields.metricRow.meetingsBooked says whether it records one at all. Opportunities and positive replies are not meetings, so neither stands in for it.

@@ -43,6 +43,10 @@ const DATA: MemoryData = {
 const BOUNCE_NOTE =
   "Every campaign added together: this period's bounce rate (1 of 3), the earlier period's bounce rate (1 of 2) count only the campaigns that report both the count and what it is divided by. The others are left out of the rate, not counted as 0.";
 
+// The memory data records no meetings, so the total says why it has none.
+const MEETINGS_NOTE =
+  "meetingsBooked is null: no campaign read reports a count of meetings booked, and the tool's fields.metricRow.meetingsBooked says whether it records one at all. Opportunities and positive replies are not meetings, so neither stands in for it.";
+
 /** A rate's count and what it was divided by. */
 const sides = (measured: Measured) => [measured.count, measured.of];
 
@@ -92,6 +96,7 @@ test("period_comparison sets the last days against the days before, per campaign
       bounceRate: -0.01,
       bounced: -5,
       contacted: 0,
+      meetingsBooked: null,
       positive: null,
       positiveRate: null,
       replied: 30,
@@ -103,6 +108,7 @@ test("period_comparison sets the last days against the days before, per campaign
       bounceRate: 0.01,
       bounced: 5,
       contacted: 500,
+      meetingsBooked: null,
       positive: null,
       positiveRate: null,
       replied: 60,
@@ -116,6 +122,7 @@ test("period_comparison sets the last days against the days before, per campaign
       bounceRate: 0.02,
       bounced: 10,
       contacted: 500,
+      meetingsBooked: null,
       positive: null,
       positiveRate: null,
       replied: 30,
@@ -217,6 +224,7 @@ test("period_comparison sets the last days against the days before, per campaign
   assert.equal(result.data.totalBasis?.replies, "people");
   assert.deepEqual(result.meta.notes, [
     BOUNCE_NOTE,
+    MEETINGS_NOTE,
     "This period has 85 replied across the 3 campaigns read (active, paused or completed) and 93 in the workspace totals, which count every campaign whatever its state. Both count leads who replied, not reply messages.",
   ]);
 });
@@ -355,6 +363,7 @@ test("period_comparison leaves workspace totals out when the adapter has none, a
   assert.equal(result.data.total.current.sent, 1000);
   assert.deepEqual(result.meta.notes, [
     BOUNCE_NOTE,
+    MEETINGS_NOTE,
     "Workspace totals were left out: the adapter has no workspace stats. `total` adds up the campaigns read.",
   ]);
 

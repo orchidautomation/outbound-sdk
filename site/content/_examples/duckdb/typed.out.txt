@@ -1,0 +1,9 @@
+exported 3 replies with 25 columns
+a few columns and their types:
+  {"column_name":"leftCompany","data_type":"BOOLEAN"}
+  {"column_name":"ref","data_type":"VARCHAR"}
+  {"column_name":"sentAt","data_type":"TIMESTAMP WITH TIME ZONE"}
+  {"column_name":"stepIndex","data_type":"BIGINT"}
+replies per campaign:
+  {"campaign":"memory:acme:cmp_agencies","replies":1,"left_company_known":0}
+  {"campaign":"memory:acme:cmp_founders","replies":2,"left_company_known":0}

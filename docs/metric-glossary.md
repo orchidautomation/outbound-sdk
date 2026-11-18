@@ -29,6 +29,7 @@ Campaign totals are `GET /campaigns/analytics/overview` (one campaign) and `GET 
 | `delivered` | not reported | not captured | — |
 | `inmailsSent` | not reported | not captured | — |
 | `leads` | `leads_count`, on the every-campaign report only (the overview has none) | Leads tab total | people |
+| `meetingsBooked` | `total_meeting_booked`, on the overview only (one campaign's total and the workspace total) | not captured | people (unverified) |
 | `opened` | `open_count_unique`; by day and step `unique_opened` | Open rate | people |
 | `openedTotal` | `open_count`, on the overview only; by day and step `opened` | not captured | events |
 | `opportunities` | `total_opportunities`, on totals only | Opportunities | people (unverified) |
@@ -59,6 +60,7 @@ Campaign totals are `GET /campaigns/{id}/analytics` (lifetime) and `GET /campaig
 | `delivered` | not reported | not captured | — |
 | `inmailsSent` | not reported | not captured | — |
 | `leads` | not reported | not captured | — |
+| `meetingsBooked` | not reported | not captured | — |
 | `opened` | `unique_open_count` | not captured | people |
 | `openedTotal` | `open_count`; workspace and by day `opened` | not captured | events |
 | `opportunities` | not reported | not captured | — |
@@ -87,6 +89,7 @@ Totals are `overallStats` of `POST /stats/GetOverallStats` and `POST /stats/GetO
 | `delivered` | not reported | not captured | — |
 | `inmailsSent` | `inmailMessagesSent` | not captured | messages |
 | `leads` | not reported | not captured | — |
+| `meetingsBooked` | not reported | not captured | — |
 | `opened` | not reported | not captured | — |
 | `openedTotal` | not reported | not captured | — |
 | `opportunities` | not reported | not captured | — |
@@ -115,6 +118,7 @@ Campaign and workspace totals are the summaries of `POST /api/campaigns/{id}/sta
 | `delivered` | not reported | not captured | — |
 | `inmailsSent` | not reported | not captured | — |
 | `leads` | not reported | not captured | — |
+| `meetingsBooked` | not reported | not captured | — |
 | `opened` | `unique_opens_per_contact`; sender `unique_opened_count`; per step `unique_opens` | not captured | people |
 | `openedTotal` | `opened`; sender `total_opened_count` | not captured | events (unverified) |
 | `opportunities` | not reported | not captured | — |

@@ -132,6 +132,8 @@ export const fields: FieldDeclaration = {
     delivered: false,
     inmailsSent: false,
     leads: false,
+    // No meetings count in the vendor's analytics.
+    meetingsBooked: false,
     opportunities: false,
     opportunityValue: false,
     repliedAutoTotal: false,

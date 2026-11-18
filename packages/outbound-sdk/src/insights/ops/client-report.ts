@@ -16,7 +16,12 @@ import { rankCampaigns } from "./campaign-ranking.ts";
 import type { RankedCampaign } from "./campaign-ranking.ts";
 import { readRunways, runwayActions } from "./client-runway.ts";
 import type { ActionItem, LeadRunway } from "./client-runway.ts";
-import { noted, readPeriods, totalOf } from "./period-comparison.ts";
+import {
+  noteMeetings,
+  noted,
+  readPeriods,
+  totalOf,
+} from "./period-comparison.ts";
 import type { CampaignPeriods, Comparison } from "./period-comparison.ts";
 import {
   campaignsBasis,
@@ -362,7 +367,7 @@ const scopedTo = async (
 
 export const clientReport = defineInsight({
   description:
-    "One report for one client or workspace over the last `days` complete days: totals and the change from the period before, the best and worst campaigns by the low end of the interval of the reply rate, campaigns with a bounce problem, unusual days, active campaigns running out of leads (none left to start, or running out within runway_days at the recent pace of new leads started) and, apart, stalled ones (leads left to start but none started in the period), and a short list of action items in plain language, each naming the campaign and the number behind it, with the campaigns that need leads in one item at the end. `remaining` counts leads not yet started; leads partway through the sequence are `inSequence`. Pass provider to read one tool of a combined instance, and tag for one client's campaigns. totalsBasis says what the totals count, and on a combined instance a tool with no campaign in statuses is named in toolsLeftOut with its own totals for the period, one stats request each. Reply rates divide by messages sent (`replyRateBasis`), since a period's replies also answer leads contacted before it, and by leads contacted for both periods only when a period does not report messages sent. Use it for a weekly client update. A section the adapter cannot serve is null and named in `leftOut`, and a null count is one the vendor does not report. Costs two stats requests per campaign, one for the workspace, and for each active campaign one more plus its pages of leads, its active leads only where the tool lists them alone (leads.byStatus). On Instantly a stats read is 2 requests, since it also reads the campaign's tracking settings, so each active campaign costs about 7.",
+    "One report for one client or workspace over the last `days` complete days: totals and the change from the period before, the best and worst campaigns by the low end of the interval of the reply rate, campaigns with a bounce problem, unusual days, active campaigns running out of leads (none left to start, or running out within runway_days at the recent pace of new leads started) and, apart, stalled ones (leads left to start but none started in the period), and a short list of action items in plain language, each naming the campaign and the number behind it, with the campaigns that need leads in one item at the end. `remaining` counts leads not yet started; leads partway through the sequence are `inSequence`. Pass provider to read one tool of a combined instance, and tag for one client's campaigns. totalsBasis says what the totals count, and on a combined instance a tool with no campaign in statuses is named in toolsLeftOut with its own totals for the period, one stats request each. Reply rates divide by messages sent (`replyRateBasis`), since a period's replies also answer leads contacted before it, and by leads contacted for both periods only when a period does not report messages sent. Use it for a weekly client update. A section the adapter cannot serve is null and named in `leftOut`, and a null count is one the vendor does not report: totals.current.meetingsBooked is null where the tool records no meetings, never opportunities or positive replies. Costs two stats requests per campaign, one for the workspace, and for each active campaign one more plus its pages of leads, its active leads only where the tool lists them alone (leads.byStatus). On Instantly a stats read is 2 requests, since it also reads the campaign's tracking settings, so each active campaign costs about 7.",
   inputSchema: input,
   key: "clientReport",
   cost: (values, price) => {
@@ -438,10 +443,10 @@ export const clientReport = defineInsight({
 
     const left = await toolsLeftOut(context, listed.skipped, periods.current);
 
-    const totals = noted(
+    const totals = noteMeetings(
       context,
-      "Totals",
-      totalOf(periods.campaigns, options.alpha)
+      periods.campaigns,
+      noted(context, "Totals", totalOf(periods.campaigns, options.alpha))
     );
 
     // Campaigns are ranked on the base the totals use.
