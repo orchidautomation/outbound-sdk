@@ -211,59 +211,59 @@ export const session = (transport: Transport, budget: Budget): Session => {
     withProgress: boolean
   ): Promise<CallOutcome> => {
     await initialize();
-    budget.check();
-    const token = `p${state.nextId}`;
-    const started = transport.now();
     const params: JsonObject = { arguments: args, name };
 
-    const send = () =>
-      request(
+    // One attempt, charged to the run and timed on its own.
+    const attempt = async () => {
+      budget.check();
+      const token = `p${state.nextId}`;
+      const started = transport.now();
+
+      const message = await request(
         "tools/call",
         withProgress ? { ...params, _meta: { progressToken: token } } : params
       );
 
-    let message = await send();
+      const ms = transport.now() - started;
+      const first = progress.get(token);
 
-    const retryAfterMs = num(
-      at(message, "result", "structuredContent", "error", "retryAfterMs")
-    );
+      const outcome = outcomeOf(
+        name,
+        message,
+        ms,
+        first === undefined ? null : first - started
+      );
+
+      calls.push({
+        code: outcome.code,
+        complete: outcome.complete,
+        ms,
+        name,
+        requests: outcome.requests,
+      });
+      budget.spend(outcome.requests);
+
+      return { message, outcome };
+    };
+
+    const tried = await attempt();
+    const error = at(tried.message, "result", "structuredContent", "error");
+    const retryAfterMs = num(at(error, "retryAfterMs"));
 
     // A retryable stop that says when it frees is waited out once, as a
-    // careful client would: the case is about the answer, not the rate window.
+    // careful client would: the case is about the answer, not the rate
+    // window. The answer judged is the second attempt's, with its own timing.
     if (
-      bool(at(message, "result", "structuredContent", "error", "retryable")) ===
-        true &&
-      retryAfterMs !== null &&
-      retryAfterMs <= RETRY_WAIT_MAX_MS
+      bool(at(error, "retryable")) !== true ||
+      retryAfterMs === null ||
+      retryAfterMs > RETRY_WAIT_MAX_MS
     ) {
-      await transport.settle(
-        new Promise((resolve) => {
-          setTimeout(resolve, retryAfterMs + 1000);
-        })
-      );
-      message = await send();
+      return tried.outcome;
     }
 
-    const ms = transport.now() - started;
-    const first = progress.get(token);
+    await transport.sleep(retryAfterMs + 1000);
 
-    const outcome = outcomeOf(
-      name,
-      message,
-      ms,
-      first === undefined ? null : first - started
-    );
-
-    calls.push({
-      code: outcome.code,
-      complete: outcome.complete,
-      ms,
-      name,
-      requests: outcome.requests,
-    });
-    budget.spend(outcome.requests);
-
-    return outcome;
+    return (await attempt()).outcome;
   };
 
   return {
