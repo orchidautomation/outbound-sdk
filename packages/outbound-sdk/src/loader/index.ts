@@ -7,44 +7,62 @@
 import type { Adapter } from "../internal/adapter.ts";
 import { readEnv } from "../internal/env.ts";
 import { OutboundError } from "../internal/errors.ts";
-import { PROVIDER_ENV, providers } from "../providers/index.ts";
+import {
+  leadFieldMapSchema,
+  leadFieldsInvalid,
+} from "../internal/lead-fields.ts";
+import type { LeadFieldMap } from "../internal/lead-fields.ts";
+import {
+  LEAD_FIELDS_ENV,
+  PROVIDER_ENV,
+  providers,
+} from "../providers/index.ts";
 
 export interface FromEnvOptions {
   /** Overrides `OUTBOUND_SDK_PROVIDER`. A provider id, or `all`, which is also the default. */
   readonly provider?: string | undefined;
+  /**
+   * Every adapter's `leadFields`: the custom fields to read a lead field
+   * from where the vendor's own is empty. Overrides `OUTBOUND_LEAD_FIELDS`.
+   */
+  readonly leadFields?: LeadFieldMap | undefined;
 }
 
-const LOADERS = new Map<string, () => Promise<Adapter>>([
+interface LoadOptions {
+  readonly leadFields: LeadFieldMap | undefined;
+}
+
+const LOADERS = new Map<string, (options: LoadOptions) => Promise<Adapter>>([
   [
     "instantly",
-    async () => {
+    async (options) => {
       const { instantly } = await import("../instantly/index.ts");
 
-      return instantly();
+      return instantly(options);
     },
   ],
   [
     "smartlead",
-    async () => {
+    async (options) => {
       const { smartlead } = await import("../smartlead/index.ts");
 
-      return smartlead();
+      return smartlead(options);
     },
   ],
   [
     "heyreach",
-    async () => {
+    async (options) => {
       const { heyreach } = await import("../heyreach/index.ts");
 
-      return heyreach();
+      return heyreach(options);
     },
   ],
   [
     "emailbison",
-    async () => {
+    async (options) => {
       const { emailbison } = await import("../emailbison/index.ts");
 
-      return emailbison();
+      return emailbison(options);
     },
   ],
   [
@@ -90,12 +108,44 @@ const keyNames = (): string[] =>
       .map((variable) => variable.name)
   );
 
-const loadEvery = async (named: boolean): Promise<Adapter> => {
+/** `OUTBOUND_LEAD_FIELDS`, parsed and checked; `undefined` when unset. */
+const envLeadFields = (): LeadFieldMap | undefined => {
+  const text = readEnv(LEAD_FIELDS_ENV);
+
+  if (text === undefined) {
+    return undefined;
+  }
+
+  let parsed: unknown;
+
+  try {
+    parsed = JSON.parse(text);
+  } catch (error) {
+    throw new OutboundError(
+      "Invalid",
+      `${LEAD_FIELDS_ENV} is not JSON. Set it like {"linkedinUrl":["linkedin_profile","linkedin_url"]}`,
+      { cause: error }
+    );
+  }
+
+  const checked = leadFieldMapSchema.safeParse(parsed);
+
+  if (!checked.success) {
+    throw leadFieldsInvalid(LEAD_FIELDS_ENV, checked.error);
+  }
+
+  return checked.data;
+};
+
+const loadEvery = async (
+  named: boolean,
+  options: LoadOptions
+): Promise<Adapter> => {
   const adapters = await Promise.all(
     configuredProviders().flatMap((id) => {
       const load = LOADERS.get(id);
 
-      return load === undefined ? [] : [load()];
+      return load === undefined ? [] : [load(options)];
     })
   );
 
@@ -129,19 +179,20 @@ export const fromEnv = async (
   options: FromEnvOptions = {}
 ): Promise<Adapter> => {
   const id = options.provider ?? readEnv(PROVIDER_ENV);
+  const load = { leadFields: options.leadFields ?? envLeadFields() };
 
   if (id === undefined || id === ALL_PROVIDERS) {
-    return await loadEvery(id !== undefined);
+    return await loadEvery(id !== undefined, load);
   }
 
-  const load = LOADERS.get(id);
+  const loader = LOADERS.get(id);
 
-  if (load === undefined) {
+  if (loader === undefined) {
     throw new OutboundError(
       "Invalid",
       `Unknown provider "${id}". Known providers: ${loadableProviders().join(", ")}, or ${ALL_PROVIDERS}`
     );
   }
 
-  return await load();
+  return await loader(load);
 };

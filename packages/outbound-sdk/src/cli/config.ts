@@ -7,6 +7,11 @@ import { pathToFileURL } from "node:url";
 
 import type { RateLimitStore } from "../internal/engine/rate-store.ts";
 import { OutboundError } from "../internal/errors.ts";
+import {
+  leadFieldMapSchema,
+  leadFieldsInvalid,
+} from "../internal/lead-fields.ts";
+import type { LeadFieldMap } from "../internal/lead-fields.ts";
 import type { OutboundPlugin } from "../internal/outbound/plugins.ts";
 
 /** What a file passed to `--config` exports as its default. */
@@ -20,6 +25,14 @@ export interface CliConfig {
    * such as `redisRateLimitStore()`. Defaults to this process alone.
    */
   readonly rateLimitStore?: RateLimitStore | undefined;
+  /**
+   * Custom fields to read a lead field from where the vendor's own is empty,
+   * for every tool, as each adapter's `leadFields` option takes them. An
+   * Instantly account that keeps LinkedIn profiles in a custom field links
+   * to HeyReach through `{ linkedinUrl: ["linkedin_profile", "linkedin_url"] }`.
+   * Overrides `OUTBOUND_LEAD_FIELDS`.
+   */
+  readonly leadFields?: LeadFieldMap | undefined;
 }
 
 /** Returns the config unchanged. It exists so an editor can check its shape. */
@@ -41,6 +54,7 @@ const isPlugin = (value: unknown): value is OutboundPlugin =>
 
 interface ConfigModule {
   readonly default: {
+    readonly leadFields?: unknown;
     readonly plugins?: unknown;
     readonly rateLimitStore?: unknown;
   };
@@ -67,6 +81,7 @@ const isStore = (value: unknown): value is RateLimitStore =>
   typeof value.usage === "function";
 
 interface LoadedConfig {
+  readonly leadFields: LeadFieldMap | undefined;
   readonly plugins: readonly OutboundPlugin[];
   readonly rateLimitStore: RateLimitStore | undefined;
 }
@@ -109,7 +124,19 @@ const loadConfig = async (file: string): Promise<LoadedConfig> => {
     );
   }
 
-  return { plugins, rateLimitStore };
+  const leadFields =
+    loaded.default.leadFields === undefined
+      ? undefined
+      : leadFieldMapSchema.safeParse(loaded.default.leadFields);
+
+  if (leadFields?.success === false) {
+    throw leadFieldsInvalid(
+      `The config file ${file}'s leadFields`,
+      leadFields.error
+    );
+  }
+
+  return { leadFields: leadFields?.data, plugins, rateLimitStore };
 };
 
 const positiveInteger = (flag: string, value: string): number => {
@@ -195,7 +222,7 @@ export const insightToolCaps = (
 /**
  * The plugins for one command, outermost first: redact, then the config
  * file's plugins, then cache, then budget, then identity, next to the
- * request engine, and the config file's rate limit store.
+ * request engine, and the config file's rate limit store and lead fields.
  * `mcp` turns redact on unless `--no-redact` is set. `note` gets a line for
  * stderr when a flag will not do what its name suggests.
  */
@@ -204,12 +231,13 @@ export const setupFor = async (
   mcp: boolean,
   note: (text: string) => void
 ): Promise<{
+  leadFields: LeadFieldMap | undefined;
   plugins: OutboundPlugin[];
   rateLimitStore: RateLimitStore | undefined;
 }> => {
   const loaded =
     flags.config === undefined
-      ? { plugins: [], rateLimitStore: undefined }
+      ? { leadFields: undefined, plugins: [], rateLimitStore: undefined }
       : await loadConfig(flags.config);
 
   const configured = loaded.plugins;
@@ -254,5 +282,9 @@ export const setupFor = async (
     plugins.push(identity());
   }
 
-  return { plugins, rateLimitStore: loaded.rateLimitStore };
+  return {
+    leadFields: loaded.leadFields,
+    plugins,
+    rateLimitStore: loaded.rateLimitStore,
+  };
 };

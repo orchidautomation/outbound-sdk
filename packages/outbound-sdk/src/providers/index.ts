@@ -149,3 +149,10 @@ export const findProvider = (id: string): ProviderInfo | undefined =>
 
 /** The variable `outbound-sdk/loader` reads to pick an adapter. */
 export const PROVIDER_ENV = "OUTBOUND_SDK_PROVIDER";
+
+/**
+ * The variable `outbound-sdk/loader` reads for every adapter's `leadFields`:
+ * JSON mapping a lead field to a custom field name or a list of them, for
+ * example `{"linkedinUrl":["linkedin_profile","linkedin_url"]}`.
+ */
+export const LEAD_FIELDS_ENV = "OUTBOUND_LEAD_FIELDS";

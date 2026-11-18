@@ -1,10 +1,15 @@
 // A vendor with no field for a job title, a LinkedIn profile or a phone
 // number often still holds one, in a custom field the account named itself.
-// The SDK never guesses which: the caller says, and the adapter then reads
-// the custom field wherever the vendor's own field is empty.
+// The caller says which, and the adapter then reads the custom field wherever
+// the vendor's own field is empty. Without a mapping for linkedinUrl, a
+// custom field named like a LinkedIn profile is read, and only a value that
+// is a linkedin.com/in/ URL is taken.
+
+import { z } from "zod";
 
 import type { Adapter } from "./adapter.ts";
 import type { Lead } from "./entities.ts";
+import { OutboundError } from "./errors.ts";
 import type { FieldDeclaration } from "./fields.ts";
 
 const MAPPABLE = [
@@ -21,37 +26,138 @@ type Mappable = (typeof MAPPABLE)[number];
 
 /**
  * A lead field and the name of the custom field that holds it, for example
- * `{ title: "job_title" }`. The name is matched exactly.
+ * `{ title: "job_title" }`, or several names to try in order, for example
+ * `{ linkedinUrl: ["linkedin_profile", "linkedin_url"] }` when an account
+ * named the same field differently in different lists. Names are matched
+ * exactly, and the first that holds a value is read.
  */
-export type LeadFieldMap = Readonly<Partial<Record<Mappable, string>>>;
+export type LeadFieldMap = Readonly<
+  Partial<Record<Mappable, string | readonly string[] | undefined>>
+>;
 
-/** `lead` with each mapped field the vendor left empty read from `custom`. */
-export const fillFromCustom = (lead: Lead, map: LeadFieldMap): Lead => {
+const namesOf = (name: string | readonly string[] | undefined): string[] =>
+  name === undefined ? [] : [name].flat();
+
+/**
+ * Custom field names read as a LinkedIn profile when `leadFields` maps no
+ * linkedinUrl, compared with case, spaces, underscores and hyphens removed:
+ * `LinkedIn URL`, `linkedin_profile` and `linkedin-profile-url` all match.
+ */
+const LINKEDIN_NAMES: ReadonlySet<string> = new Set([
+  "linkedin",
+  "linkedinprofile",
+  "linkedinprofileurl",
+  "linkedinurl",
+]);
+
+const normalized = (name: string): string =>
+  name.toLowerCase().replaceAll(/[\s_-]/gu, "");
+
+/** Whether `value` is a linkedin.com/in/ profile URL, with or without its scheme. */
+const isProfileUrl = (value: string): boolean => {
+  if (!URL.canParse(value) && !URL.canParse(`https://${value}`)) {
+    return false;
+  }
+
+  const url = URL.canParse(value)
+    ? new URL(value)
+    : new URL(`https://${value}`);
+
+  const host = url.hostname.toLowerCase();
+
+  return (
+    (url.protocol === "https:" || url.protocol === "http:") &&
+    (host === "linkedin.com" || host.endsWith(".linkedin.com")) &&
+    /^\/in\/[^/]+/u.test(url.pathname)
+  );
+};
+
+/** The first custom field named like a profile whose value is a linkedin.com/in/ URL. */
+const profileFromCustom = (lead: Lead): string | undefined =>
+  Object.entries(lead.custom)
+    .filter(([name]) => LINKEDIN_NAMES.has(normalized(name)))
+    .map(([, value]) => value.trim())
+    .find(isProfileUrl);
+
+/**
+ * `lead` with each field the vendor left empty read from `custom`: a mapped
+ * field from the names `map` gives, and an unmapped linkedinUrl from a
+ * field named like a profile.
+ */
+export const fillFromCustom = (lead: Lead, map: LeadFieldMap = {}): Lead => {
   const filled: Partial<Record<Mappable, string>> = {};
 
   for (const field of MAPPABLE) {
-    const name = map[field];
-    const value = name === undefined ? undefined : lead.custom[name]?.trim();
+    const value = namesOf(map[field])
+      .map((name) => lead.custom[name]?.trim())
+      .find((each) => each !== undefined && each !== "");
 
-    if (lead[field] === null && value !== undefined && value !== "") {
+    if (lead[field] === null && value !== undefined) {
       filled[field] = value;
     }
   }
 
-  return { ...lead, ...filled };
+  const profile =
+    map.linkedinUrl === undefined && lead.linkedinUrl === null
+      ? profileFromCustom(lead)
+      : undefined;
+
+  return {
+    ...lead,
+    ...filled,
+    ...(profile !== undefined && { linkedinUrl: profile }),
+  };
+};
+
+const names = z.union([
+  z.string().trim().min(1),
+  z.array(z.string().trim().min(1)).min(1),
+]);
+
+/**
+ * A lead field map as a config file or an environment variable gives it:
+ * each key a mappable field, each value a custom field name or a list of them.
+ */
+export const leadFieldMapSchema = z.strictObject({
+  company: names.optional(),
+  companyLinkedinUrl: names.optional(),
+  linkedinUrl: names.optional(),
+  location: names.optional(),
+  phone: names.optional(),
+  title: names.optional(),
+  website: names.optional(),
+});
+
+/** Why a lead field map from `source` failed `leadFieldMapSchema`, in one sentence. */
+export const leadFieldsInvalid = (
+  source: string,
+  error: z.ZodError
+): OutboundError => {
+  const [issue] = error.issues;
+  const [field] = issue?.path ?? [];
+
+  if (issue?.code === "unrecognized_keys") {
+    return new OutboundError(
+      "Invalid",
+      `${source} names "${issue.keys.join('", "')}", which is not a lead field it can fill. Use one of: ${MAPPABLE.join(", ")}`
+    );
+  }
+
+  return new OutboundError(
+    "Invalid",
+    field === undefined
+      ? `${source} must map lead fields to custom field names, such as { "linkedinUrl": ["linkedin_profile", "linkedin_url"] }`
+      : `${source} maps "${String(field)}" to something other than a custom field name or a list of them; give a custom field name or a list of them`
+  );
 };
 
 type LeadReaders = Pick<Adapter, "getLead" | "listLeads">;
 
-/** The adapter's lead reads, with the mapped fields filled on every lead. */
+/** The adapter's lead reads, with the mapped fields, and a profile kept in a custom field, filled on every lead. */
 export const withLeadFields = <Readers extends LeadReaders>(
   readers: Readers,
   map: LeadFieldMap | undefined
 ): Readers => {
-  if (map === undefined || Object.keys(map).length === 0) {
-    return readers;
-  }
-
   const { getLead, listLeads } = readers;
 
   const wrapped: LeadReaders = {
@@ -74,22 +180,24 @@ export const withLeadFields = <Readers extends LeadReaders>(
 };
 
 /**
- * The adapter's field declaration once a map is given: a field it never
- * filled is now worked out from a custom field, so it is `derived`.
+ * The adapter's field declaration with custom fields read: a field it never
+ * filled is now worked out from a custom field, so it is `derived`. A
+ * linkedinUrl always is, from a mapping or a field named like a profile.
  */
 export const withMappedFields = (
   declared: FieldDeclaration,
-  map: LeadFieldMap | undefined
+  map: LeadFieldMap = {}
 ): FieldDeclaration => {
   const lead = declared.lead === false ? undefined : declared.lead;
 
-  if (map === undefined || lead === undefined) {
+  if (lead === undefined) {
     return declared;
   }
 
   const derived = Object.fromEntries(
     MAPPABLE.flatMap((field) =>
-      map[field] !== undefined && lead[field] === false
+      (field === "linkedinUrl" || map[field] !== undefined) &&
+      lead[field] === false
         ? [[field, "derived"] as const]
         : []
     )
