@@ -306,13 +306,19 @@ const redactFields = (masks: Masks, record: OutboundRecord): OutboundRecord => {
   }
 
   if ("direction" in record) {
-    return {
+    const message = {
       ...record,
       bodyHtml: maskIf(masks, "body", record.bodyHtml),
       bodyText: maskIf(masks, "body", record.bodyText),
       raw: null,
       subject: maskIf(masks, "subject", record.subject),
     };
+
+    if (record.leadEmail !== undefined) {
+      message.leadEmail = maskIdentifier(masks, "email", record.leadEmail);
+    }
+
+    return message;
   }
 
   if ("custom" in record) {
@@ -483,6 +489,26 @@ const unmasked = (known: Known, operation: Operation): Operation => {
     : ({ ...operation, query } as Operation);
 };
 
+/** What to do about a token no process can put back but the one that wrote it. */
+export const UNKNOWN_TOKEN_REMEDY =
+  "Redact keeps what each token stands for in memory, only in the process that wrote it, so it is not sent to the vendor. Run the tool that returned it again in this session. The redact key (OUTBOUND_REDACT_KEY for the CLI and MCP server) keeps tokens the same across runs, so a token you kept matches its records again once they are read in the new session.";
+
+/**
+ * Refuses a call that still names a token once every known one is put back:
+ * a token from another session or process would reach the vendor as it is.
+ */
+const refuseUnknownTokens = (operation: Operation, provider: string): void => {
+  const [token] = JSON.stringify(operation).match(TOKEN) ?? [];
+
+  if (token !== undefined) {
+    throw new OutboundError(
+      "NotFound",
+      `"${token}" is a redacted token from another session or process. ${UNKNOWN_TOKEN_REMEDY}`,
+      { provider }
+    );
+  }
+};
+
 /** Masks emails, names, companies, LinkedIn URLs, custom fields and message text. */
 export const redact = (
   options: RedactOptions = {}
@@ -526,8 +552,11 @@ export const redact = (
       },
     }),
     name: "redact",
-    wrap: async (operation, next): Promise<OperationOutput> => {
+    wrap: async (operation, next, info): Promise<OperationOutput> => {
       const sent = unmasked(masks.known, operation);
+
+      refuseUnknownTokens(sent, info.provider);
+
       let output: OperationOutput;
 
       try {

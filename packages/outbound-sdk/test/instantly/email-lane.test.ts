@@ -135,7 +135,9 @@ test("replies past the lane's minute says on stderr what it waits for, and meta.
   assert.equal(ran.out.length, 1);
   const answer = JSON.parse(ran.out[0] ?? "") as Envelope;
   assert.equal(answer.data.items.length, 2000);
-  assert.equal(answer.meta.requests, 20);
+  // 20 pages on the emails lane, and each page's lookup of its leads' ids on
+  // the default lane (OUT-149).
+  assert.equal(answer.meta.requests, 40);
 
   // Half of Instantly's 20 a minute is 10: ten pages go at once, the eleventh
   // waits for the minute to pass. The live run took 62.6 s for 20 requests.
@@ -150,7 +152,8 @@ test("a read that never waits has throttledMs 0 in meta and prints nothing on st
   const ran = await outbound(["replies", "--limit", "200", "--compact"]);
   const answer = JSON.parse(ran.out[0] ?? "") as Envelope;
 
-  assert.equal(answer.meta.requests, 2);
+  // Two pages and their two lookups of the leads' ids (OUT-149).
+  assert.equal(answer.meta.requests, 4);
   assert.equal(answer.meta.throttledMs, 0);
   assert.deepEqual(
     ran.err.filter((line) => /rate limit/u.test(line)),
@@ -167,8 +170,10 @@ test("a failed command still carries throttledMs in its meta", async () => {
 });
 
 test("a 429 from another process on the workspace is reported as throttled by Instantly, then the read finishes", async () => {
+  // Request 2 is the second page of emails; request 1 is the first page's
+  // lookup of its leads' ids on the default lane (OUT-149).
   const ran = await outbound(["replies", "--limit", "300", "--compact"], {
-    refuse: 1,
+    refuse: 2,
   });
 
   assert.equal(ran.code, 0, ran.err.join("\n"));

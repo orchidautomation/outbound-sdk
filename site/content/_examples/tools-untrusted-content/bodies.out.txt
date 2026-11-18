@@ -15,6 +15,7 @@ reply_samples {}
       "category_source": "vendor",
       "is_auto": null,
       "lead": "memory:default:lead_riley",
+      "lead_email": null,
       "received_at": "2026-11-11T15:30:00.000Z",
       "reply": "memory:default:msg_in",
       "url": null
@@ -39,6 +40,7 @@ reply_samples { include_bodies: true }
       "category_source": "vendor",
       "is_auto": null,
       "lead": "memory:default:lead_riley",
+      "lead_email": null,
       "received_at": "2026-11-11T15:30:00.000Z",
       "reply": "memory:default:msg_in",
       "url": null

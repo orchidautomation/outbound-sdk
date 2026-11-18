@@ -225,16 +225,43 @@ export const SCHEDULED = 4;
 const RECEIVED = 2;
 const SENT_BY_HAND = 3;
 
-// An email names its lead by address in `lead`; `lead_id` is documented as
-// "if any" and was absent live. The address is the ref, so one person gives
-// one leadRef across every campaign. On a received email the sender is the
-// lead, so `from_address_email` stands in when `lead` is missing.
-const leadOf = (raw: JsonObject): string | null =>
+/**
+ * The address an email names its lead by, in `lead`. On a received email the
+ * sender is the lead, so `from_address_email` stands in when `lead` is
+ * missing.
+ */
+export const leadAddressOf = (raw: JsonObject): string | null =>
   emailAddress(raw.lead) ??
   (count(raw.ue_type) === RECEIVED
     ? emailAddress(raw.from_address_email)
-    : null) ??
-  text(raw.lead_id);
+    : null);
+
+/**
+ * Lead ids by address and campaign, from `leadIdKey`. An email documents
+ * `lead_id` only "(if any)" and none carried it live, so the adapter looks the
+ * leads up by address.
+ */
+export type LeadIds = ReadonlyMap<string, string>;
+
+/**
+ * One lead per address and campaign. `campaign` `null` stands for the
+ * address's only lead, for an email that names no campaign.
+ */
+export const leadIdKey = (address: string, campaign: string | null): string =>
+  `${address} ${campaign ?? ""}`;
+
+const NO_LEAD_IDS: LeadIds = new Map();
+
+const leadIdOf = (raw: JsonObject, leadIds: LeadIds): string | null => {
+  const address = leadAddressOf(raw);
+
+  return (
+    text(raw.lead_id) ??
+    (address === null
+      ? null
+      : (leadIds.get(leadIdKey(address, text(raw.campaign_id))) ?? null))
+  );
+};
 
 // The Unibox link Instantly itself sends as `unibox_url` on reply webhooks
 // ("URL to view the conversation in Unibox"). Read live on 2026-11-17: it is
@@ -251,7 +278,8 @@ const uniboxUrl = (raw: JsonObject): string | null => {
 const messageFields = (
   identity: Identity,
   raw: JsonObject,
-  includeBody: boolean
+  includeBody: boolean,
+  leadIds: LeadIds
 ) => {
   const body = field(raw.body, "html") ?? field(raw.body, "text");
 
@@ -260,7 +288,8 @@ const messageFields = (
     ...normalizeBody(text(body), includeBody),
     campaignRef: refTo(identity, text(raw.campaign_id)),
     channel: "email" as const,
-    leadRef: refTo(identity, leadOf(raw)),
+    leadEmail: leadAddressOf(raw),
+    leadRef: refTo(identity, leadIdOf(raw, leadIds)),
     senderRef: refTo(identity, emailAddress(raw.eaccount)),
     sentAt: timestamp(raw.timestamp_email) ?? timestamp(raw.timestamp_created),
     subject: text(raw.subject),
@@ -315,10 +344,14 @@ const autoOf = (raw: JsonObject, mapped: ReplyCategory | undefined) => {
 export const toMessage = (
   identity: Identity,
   raw: JsonObject,
-  includeBody: boolean
+  includeBody: boolean,
+  leadIds: LeadIds = NO_LEAD_IDS
 ): Message => {
   if (count(raw.ue_type) !== RECEIVED) {
-    return { ...messageFields(identity, raw, includeBody), direction: "out" };
+    return {
+      ...messageFields(identity, raw, includeBody, leadIds),
+      direction: "out",
+    };
   }
 
   const { isAuto, isAutoSource } = autoOf(
@@ -327,7 +360,7 @@ export const toMessage = (
   );
 
   return {
-    ...messageFields(identity, raw, includeBody),
+    ...messageFields(identity, raw, includeBody, leadIds),
     direction: "in",
     isAuto,
     isAutoSource,
@@ -338,12 +371,13 @@ export const toReply = (
   identity: Identity,
   raw: JsonObject,
   includeBody: boolean,
-  labels: Labels = NO_LABELS
+  labels: Labels = NO_LABELS,
+  leadIds: LeadIds = NO_LEAD_IDS
 ): Reply => {
   const mapped = category(raw.i_status, labels);
 
   return {
-    ...messageFields(identity, raw, includeBody),
+    ...messageFields(identity, raw, includeBody, leadIds),
     category: mapped ?? "unknown",
     categorySource: mapped === undefined ? null : "vendor",
     direction: "in",

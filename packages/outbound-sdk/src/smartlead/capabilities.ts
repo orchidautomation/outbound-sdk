@@ -126,6 +126,8 @@ export const fields: FieldDeclaration = {
   // inbox conversation is documented.
   message: {
     isAuto: false,
+    // Read only by the Instantly adapter, whose emails name their lead by address.
+    leadEmail: false,
     isAutoSource: false,
     url: false,
     variantKey: false,
@@ -148,6 +150,7 @@ export const fields: FieldDeclaration = {
   // SmartDelivery's list gives a test's schedule and nothing else about it.
   placementTest: { campaignRef: false, createdAt: false, nextRunAt: false },
   reply: {
+    leadEmail: false,
     // The lead's category, not a label on the message.
     category: "derived",
     categorySource: "derived",

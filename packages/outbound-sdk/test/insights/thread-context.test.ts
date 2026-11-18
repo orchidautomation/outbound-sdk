@@ -28,13 +28,13 @@ const EMAILS = (
 
 const LEADS = (
   fixture("instantly", "listLeads.followUp.json") as {
-    items: { email: string }[];
+    items: { email: string; id: string }[];
   }
 ).items;
 
 const NOW = Date.parse("2026-11-17T12:00:00.000Z");
-const BOOKED = "instantly:client-a:person41@example.com";
-const WARNED = "instantly:client-a:person42@example.com";
+const BOOKED = "instantly:client-a:01a1d77f-5e65-78a7-8eb0-021400000041";
+const WARNED = "instantly:client-a:01a1d77f-5e65-78a7-8eb0-021400000042";
 
 const setup = (plugins: readonly OutboundPlugin[] = []) => {
   const clock = createClock();
@@ -63,6 +63,14 @@ const setup = (plugins: readonly OutboundPlugin[] = []) => {
             (lead === null || item.lead === lead)
         ),
       });
+    }
+
+    const byId = LEADS.find(
+      (item) => url.pathname === `/api/v2/leads/${item.id}`
+    );
+
+    if (byId !== undefined) {
+      return json(byId);
     }
 
     if (url.pathname === "/api/v2/leads/list") {
@@ -352,7 +360,8 @@ test("thread_context reads redacted refs that dropped_replies returned in the sa
   );
 
   assert.equal(leads.length, 2);
-  assert.ok(leads.every((lead) => lead.includes("redacted:")));
+  // The refs are lead ids now, so no address shows in them (OUT-149).
+  assert.ok(leads.every((lead) => !lead.includes("@")));
 
   const { data, meta } = await clock.settle(
     outbound.insights.threadContext({ leads }, { now: NOW })

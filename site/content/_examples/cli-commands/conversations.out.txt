@@ -53,6 +53,7 @@ $ outbound replies --by person
         ],
         "firstAt": "2026-11-12T09:30:00.000Z",
         "lastAt": "2026-11-12T09:30:00.000Z",
+        "leadEmail": null,
         "leadRef": "memory:default:lead_1",
         "messages": 1,
         "threadIds": [

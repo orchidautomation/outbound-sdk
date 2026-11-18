@@ -126,7 +126,7 @@ export const refuseUnreadable = (
 
     throw new OutboundError(
       "NotFound",
-      `thread_context: ${named}${more} ${one ? "holds a redacted token" : "hold redacted tokens"} from another session. The redact plugin keeps what each token stands for in memory, only in the process that wrote it, so a token from an earlier MCP server or CLI run cannot be read here. Run the tool that returned ${one ? "it" : "them"} (such as dropped_replies) again in this session and pass the refs it returns.`,
+      `thread_context: ${named}${more} ${one ? "holds a redacted token" : "hold redacted tokens"} from another session or process, so ${one ? "it is" : "they are"} not sent to the vendor. The redact plugin keeps what each token stands for in memory, only in the process that wrote it. Run the tool that returned ${one ? "it" : "them"} (such as dropped_replies) again in this session and pass the refs it returns. The redact key (OUTBOUND_REDACT_KEY for the CLI and MCP server) keeps tokens the same across runs, so a ref you kept matches again once its records are read in the new session.`,
       { provider }
     );
   }

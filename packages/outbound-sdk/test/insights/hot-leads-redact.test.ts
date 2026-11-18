@@ -82,7 +82,7 @@ const build = (plugins: readonly OutboundPlugin[]) => {
     http.requests.flatMap((request) => {
       const body = request.body === undefined ? {} : JSON.parse(request.body);
 
-      return body.contacts ?? [];
+      return body.contacts === undefined ? [] : [body.contacts];
     });
 
   return { lookups, run, unrouted };
@@ -93,7 +93,11 @@ test("hot_leads without redact finds the lead that replied and the lead labelled
   const result = await run();
 
   assert.deepEqual(unrouted, []);
-  assert.deepEqual(lookups(), ["person16@example.com"]);
+  // The reply page's lookup for the lead's id (OUT-149), then hot_leads' own.
+  assert.deepEqual(lookups(), [
+    ["person16@example.com"],
+    ["person16@example.com"],
+  ]);
   assert.equal(result.data.totals.fromReplies, 1);
   assert.deepEqual(result.data.leads.map((lead) => lead.email).toSorted(), [
     "person16@example.com",
@@ -114,7 +118,7 @@ for (const [strategy, options] of [
     assert.deepEqual(unrouted, []);
     assert.deepEqual(
       lookups(),
-      ["person16@example.com"],
+      [["person16@example.com"], ["person16@example.com"]],
       "redact puts the address back on the call to the vendor"
     );
     assert.deepEqual(result.data.totals, plain.data.totals);

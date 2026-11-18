@@ -10,9 +10,16 @@ import { insights } from "../../src/insights/index.ts";
 import type { MemoryData, MemoryMessage } from "../../src/memory/index.ts";
 import { fixtureHandler } from "../helpers/adapter-suite.ts";
 import { createClock } from "../helpers/clock.ts";
+import { fixture } from "../helpers/fixtures.ts";
 import { createFetch, json } from "../helpers/http.ts";
 import { suite as instantly } from "../instantly/suite.ts";
 import { agency, NOW, single } from "./helpers.ts";
+
+const REPLIERS = (
+  fixture("instantly", "listLeadsByEmail.repliers.json") as {
+    items: { id: string }[];
+  }
+).items;
 
 // NOW is 2026-11-14T12:00:00Z.
 const DATA: MemoryData = {
@@ -257,8 +264,17 @@ test("dropped_replies on Instantly reads each waiting person's lead and campaign
   const fixtures = fixtureHandler([instantly], unrouted);
 
   // Every conversation comes back empty, so each reply has waited unanswered.
+  // GET /leads/{id} answers with the lead the reply page's lookup named.
   const http = createFetch((request, index) => {
     const url = new URL(request.url);
+
+    const byId = REPLIERS.find(
+      (lead) => url.pathname === `/api/v2/leads/${lead.id}`
+    );
+
+    if (byId !== undefined) {
+      return json(byId);
+    }
 
     return url.pathname === "/api/v2/emails" &&
       url.searchParams.get("email_type") !== "received"
@@ -287,8 +303,11 @@ test("dropped_replies on Instantly reads each waiting person's lead and campaign
 
   assert.deepEqual(unrouted, []);
   assert.equal(result.data.dropped.length, 3);
+  // One lookup per reply page for the leads' ids (OUT-149), then one read of
+  // each waiting lead by that id.
+  assert.equal(paths.filter((path) => path === "/api/v2/leads/list").length, 2);
   assert.equal(
-    paths.filter((path) => path.startsWith("/api/v2/leads/")).length,
+    paths.filter((path) => /^\/api\/v2\/leads\/[0-9a-f-]+$/u.test(path)).length,
     3
   );
   assert.equal(
@@ -297,22 +316,22 @@ test("dropped_replies on Instantly reads each waiting person's lead and campaign
   );
   assert.equal(result.meta.requests, http.requests.length);
 
-  // An Instantly reply names its lead by address, read with a lookup by email.
+  // An Instantly reply names its lead by the lead's own ref (OUT-149).
   assert.deepEqual(
     result.data.dropped.map((each) => [each.lead, each.name, each.email]),
     [
       [
-        "instantly:client-a:person6@example.com",
+        "instantly:client-a:01a1d77f-5e65-78a7-8eb0-0216d691e16c",
         "Sam Sample",
         "person6@example.com",
       ],
       [
-        "instantly:client-a:person16@example.com",
+        "instantly:client-a:01a1d77f-5e65-78a7-8eb0-0216d691e16d",
         "Robin Sample",
         "person16@example.com",
       ],
       [
-        "instantly:client-a:person26@example.com",
+        "instantly:client-a:01a1d77f-5e65-78a7-8eb0-0216d691e16e",
         "Kim Sample",
         "person26@example.com",
       ],

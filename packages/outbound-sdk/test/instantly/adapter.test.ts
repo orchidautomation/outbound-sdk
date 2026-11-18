@@ -229,8 +229,9 @@ test("instantly: emails use the 20-per-minute lane", async () => {
       window.used,
     ]),
     [
-      ["default", 100, 1000, 1],
-      ["default", 6000, 60_000, 1],
+      // The page's addresses are looked up on the default lane (OUT-149).
+      ["default", 100, 1000, 2],
+      ["default", 6000, 60_000, 2],
       ["emails", 20, 60_000, 1],
       // The lanes of three native reads, untouched by a normalized read.
       ["labelPrediction", 500, 2_592_000_000, 0],
@@ -290,9 +291,10 @@ test("instantly: a message maps direction, sender, lead and thread", async () =>
   assert.equal(message?.sentAt, "2026-11-14T00:40:11.109Z");
   assert.equal(
     message?.leadRef,
-    "instantly:client-a:person6@example.com",
-    "the lead's address: an email has no lead_id"
+    "instantly:client-a:01a1d77f-5e65-78a7-8eb0-0216d691e16c",
+    "the lead's own ref, found by its address and campaign"
   );
+  assert.equal(message?.leadEmail, "person6@example.com");
   assert.equal(message?.threadId, "01a1d77f-5e65-78a7-8eb0-021717740220");
   const [, second] = page.items;
   assert.equal(second?.bodyHtml, "This is a test email.<br/><br/>Second line.");
