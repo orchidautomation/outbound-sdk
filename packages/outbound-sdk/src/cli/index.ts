@@ -175,7 +175,8 @@ export const run = async (
   } catch (error) {
     const code = OutboundError.is(error) ? error.code : "Error";
     const message = error instanceof Error ? error.message : String(error);
-    const cursor = OutboundError.is(error) ? error.partial?.cursor : undefined;
+    const partial = OutboundError.is(error) ? error.partial : undefined;
+    const cursor = partial === undefined ? undefined : (partial.cursor ?? null);
 
     printFailure(
       io.stdout,

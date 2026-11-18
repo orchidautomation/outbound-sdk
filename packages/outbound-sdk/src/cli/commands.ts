@@ -255,7 +255,10 @@ const COMMAND_TABLE = {
             note: input.note,
             search,
             status: choice(input, "status", campaignStatusSchema.options),
-          }).then(asJson);
+          }).then(
+            (found) =>
+              new Answer(asJson(found), { complete: true, notes: [] }, true)
+          );
     },
   },
   capabilities: {

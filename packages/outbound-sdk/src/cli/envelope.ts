@@ -230,8 +230,8 @@ export const envelope = (printed: Printed, facts: RunFacts): JsonObject => {
 export interface Failure {
   readonly code: string;
   readonly message: string;
-  /** Where a list that failed part way resumes with `--cursor`. */
-  readonly cursor?: string | undefined;
+  /** Where a list that failed part way resumes with `--cursor`; `null` from the start. */
+  readonly cursor?: string | null | undefined;
 }
 
 /** A command that threw, in the envelope. stderr still gets the one-line reason. */

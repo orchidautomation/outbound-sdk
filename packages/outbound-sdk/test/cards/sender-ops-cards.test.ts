@@ -828,3 +828,26 @@ test("client_report shows every action, however many other bullets the card hold
   );
   excludes(text, "… and");
 });
+
+test("client_report keeps long actions whole, past one text block's limit", () => {
+  const name = "N".repeat(260);
+
+  const many = {
+    ...report(true),
+    actions: Array.from({ length: 12 }, (_, index) => ({
+      action: `Fix the bounces of ${name} ${index + 1}.`,
+      campaign: `c${index + 1}`,
+      campaignName: `${name} ${index + 1}`,
+      kind: "fix_bounces",
+      number: 0.1,
+    })),
+  };
+
+  const text = read(cardFor("client_report", insight(many)));
+
+  includes(
+    text,
+    `• 👉 Fix the bounces of ${name} 1.`,
+    `• 👉 Fix the bounces of ${name} 12.`
+  );
+});

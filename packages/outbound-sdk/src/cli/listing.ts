@@ -25,18 +25,23 @@ export interface ListingInput {
   readonly emit?: ((record: Json) => void) | undefined;
 }
 
-/** The failure, carrying where the walk can resume and what it had read. */
+/**
+ * The failure, carrying where the walk can resume and what it had read.
+ * `cursor` follows what reached stdout: past the streamed records, or where
+ * the walk began when its records were held back and never printed.
+ */
 const resumable = (
   error: OutboundError,
   walk: ListAll<unknown>,
-  items: readonly unknown[]
+  items: readonly unknown[],
+  cursor: string | undefined
 ): OutboundError =>
   new OutboundError(error.code, error.message, {
     aborted: error.aborted,
     cause: error,
     limit: error.limit,
     partial: {
-      cursor: walk.cursor,
+      cursor,
       items,
       requests: walk.meta?.requests ?? 0,
     },
@@ -70,6 +75,7 @@ const listed = async <Item>(
   // resuming from the cursor reads them again.
   let pending = 0;
   let { cursor } = walk;
+  const started = cursor;
 
   try {
     for await (const item of walk) {
@@ -88,7 +94,14 @@ const listed = async <Item>(
       }
     }
   } catch (error) {
-    throw OutboundError.is(error) ? resumable(error, walk, items) : error;
+    throw OutboundError.is(error)
+      ? resumable(
+          error,
+          walk,
+          items,
+          emit === undefined ? started : walk.cursor
+        )
+      : error;
   }
 
   const left = walk.meta?.notes ?? [];

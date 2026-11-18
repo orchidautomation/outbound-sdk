@@ -92,6 +92,31 @@ const bulletText = (
     ...more(Math.min(max, bullets.length), Math.max(total, bullets.length)),
   ].join("\n");
 
+/**
+ * Actions as bullets, in as many text nodes as their length needs, so the
+ * text limit of one node never cuts an action off.
+ */
+const actionNodes = (actions: readonly string[], max: number): CardNode[] => {
+  if (actions.length === 0) {
+    return [];
+  }
+
+  const lines = bulletText(actions, max).split("\n");
+  const chunks: string[][] = [];
+
+  for (const line of lines) {
+    const last = chunks.at(-1);
+
+    if (last !== undefined && [...last, line].join("\n").length <= MAX_TEXT) {
+      last.push(line);
+    } else {
+      chunks.push([line]);
+    }
+  }
+
+  return chunks.map((chunk) => textNode(chunk.join("\n"), "plain"));
+};
+
 const statNodes = (stats: readonly Stat[], max: number): CardNode[] => {
   const kept = stats.slice(0, max);
   const nodes: CardNode[] = [];
@@ -162,14 +187,7 @@ export const layout = (
   return [
     ...(content.finding ? [textNode(content.finding, "bold")] : []),
     ...statNodes(content.stats ?? [], MAX_STATS),
-    ...(content.actions?.length
-      ? [
-          textNode(
-            bulletText(content.actions, Math.max(max, MAX_ACTIONS)),
-            "plain"
-          ),
-        ]
-      : []),
+    ...actionNodes(content.actions ?? [], Math.max(max, MAX_ACTIONS)),
     ...(content.bullets?.length
       ? [textNode(bulletText(content.bullets, max), "plain")]
       : []),

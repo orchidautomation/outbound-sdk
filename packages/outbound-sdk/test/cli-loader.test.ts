@@ -233,6 +233,49 @@ test("a failure part way gives the cursor to resume from, on one line under --js
   assert.equal(last?.ok, false);
   assert.equal(last?.error?.code, "Unauthorized");
   assert.equal(typeof last?.meta?.cursor, "string", "where page 2 starts");
+
+  // Without --jsonl, page one was held back and never printed, so the
+  // cursor starts over rather than skip it.
+  const held = await clock.settle(
+    cli(["senders", "--limit", "10", "--compact"], {
+      adapter: instantly({ apiKey: "inst_key_for_client_a_0001" }),
+      fetch: http.fetch,
+      runtime: clock.runtime,
+    })
+  );
+
+  const failed = JSON.parse(held.out.join("\n")) as Line & { data: unknown };
+
+  assert.equal(held.code, 1);
+  assert.equal(failed.data, null);
+  assert.equal(
+    failed.meta?.cursor,
+    null,
+    "from the start: nothing was printed"
+  );
+});
+
+test("campaigns --search --jsonl prints the matches as lines", async () => {
+  const { code, out } = await cli(["campaigns", "--search", "c", "--jsonl"], {
+    adapter: memory({
+      data: {
+        campaigns: [
+          { id: "c1", name: "Alpha" },
+          { id: "c2", name: "Charlie" },
+        ],
+      },
+      workspaceId: "acme",
+    }),
+  });
+
+  const parsed = lines(out);
+
+  assert.equal(code, 0);
+  assert.deepEqual(
+    parsed.slice(0, -1).map((line) => line.ref),
+    ["memory:acme:c2"]
+  );
+  assert.equal(parsed.at(-1)?.meta?.records, 1);
 });
 
 test("stats --scope sender reads every sender in batches, a row per line with --jsonl", async () => {
