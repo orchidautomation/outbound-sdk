@@ -19,7 +19,7 @@ export type { InsightCost, Price } from "./cost.ts";
 
 export type { InsightInputs } from "./inputs.generated.ts";
 
-export { INSIGHT_TOOL_CEILING, insightTools } from "./tools.ts";
+export { INSIGHT_TOOL_CEILING, insightTools, membersOf } from "./tools.ts";
 
 export type { InsightToolsOptions } from "./tools.ts";
 

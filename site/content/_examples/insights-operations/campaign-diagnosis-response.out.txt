@@ -9,7 +9,7 @@
       {
         "code": "high_bounce_rate",
         "finding": "Bounce rate is 3.2% (54 of 1680 sends), over the 3% limit.",
-        "next": "Use bounce_watch to find the senders behind it, and verify the lead list.",
+        "next": "Verify the lead list. Use bounce_watch to find the senders behind it.",
         "numbers": {
           "bounced": 54,
           "high": 0.0417,
@@ -48,7 +48,7 @@
       {
         "code": "short_sequence",
         "finding": "The sequence has 2 steps; follow-ups usually bring a large share of the replies.",
-        "next": "Add follow-up steps; step_funnel shows what each step earns.",
+        "next": "Add follow-up steps. step_funnel shows what each step earns.",
         "numbers": {
           "steps": 2
         },

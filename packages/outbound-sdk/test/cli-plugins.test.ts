@@ -133,9 +133,11 @@ test("outbound mcp leaves out the insights redact keeps from matching, and no hi
   const session = await outbound(["mcp"], [initialize, list, hotLeads]);
   const names = toolNames(session);
 
-  const left = ["person_summary", "account_summary"];
+  const left = ["account_summary"];
 
   assert.ok(names.includes("hot_leads"), names.join(", "));
+  // It looks a lead ref up by the tokens redact can put back.
+  assert.ok(names.includes("person_summary"), names.join(", "));
   // They match people on redact's keyed tokens.
   assert.ok(names.includes("lead_collisions"), names.join(", "));
   assert.ok(names.includes("suppression_check"), names.join(", "));
@@ -168,7 +170,7 @@ test("outbound mcp answers a call to a tool redact left out by naming redact and
   const session = await outbound(
     ["mcp"],
     [
-      personCall(1, "person_summary"),
+      personCall(1, "account_summary"),
       personCall(2, "cross_channel_lead"),
       personCall(3, "no_such_tool"),
     ]
@@ -181,7 +183,7 @@ test("outbound mcp answers a call to a tool redact left out by naming redact and
   assert.equal(errors[0]?.code, -32_602);
   assert.equal(
     errors[0]?.message,
-    "person_summary is left out while the redact plugin is on: it needs what redact masks. Start the server with --no-redact to offer it; personal fields are then not masked."
+    "account_summary is left out while the redact plugin is on: it needs what redact masks. Start the server with --no-redact to offer it; personal fields are then not masked."
   );
   assert.match(
     errors[1]?.message ?? "",
@@ -211,15 +213,15 @@ test("outbound mcp names the tools redact left out in its instructions, and --no
     / Left out while redact is on: (?<names>[a-z_, ]+)\. They match people by email or LinkedIn profile, which redact masks\. Start the server with --no-redact to offer them; personal fields are then not masked\.$/u
   );
 
-  for (const name of [
-    "person_summary",
-    "account_summary",
-    "cross_channel_lead",
-  ]) {
+  for (const name of ["account_summary", "cross_channel_lead"]) {
     assert.ok(masked.includes(name), name);
   }
 
-  for (const name of ["lead_collisions", "suppression_check"]) {
+  for (const name of [
+    "person_summary",
+    "lead_collisions",
+    "suppression_check",
+  ]) {
     assert.ok(!masked.includes(name), name);
   }
 

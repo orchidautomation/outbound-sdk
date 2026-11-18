@@ -93,33 +93,16 @@ test("--tools refuses a name it cannot offer, with the closest one, before servi
   assert.equal(elsewhere, 1);
 });
 
-test("a tool --tools names that redact left out still answers with the reason", async () => {
+test("--tools refuses a tool the server leaves out with the reason, before serving", async () => {
   const session = await serve(
-    ["--tools", "campaign_overview,person_summary"],
-    [
-      LIST,
-      {
-        id: 2,
-        jsonrpc: "2.0",
-        method: "tools/call",
-        params: {
-          arguments: { person: "a@example.com" },
-          name: "person_summary",
-        },
-      },
-    ]
+    ["--tools", "campaign_overview,account_summary"],
+    [LIST]
   );
 
-  const [list = "", call = ""] = session.out;
-
-  assert.deepEqual(
-    (
-      JSON.parse(list) as { result: { tools: { name: string }[] } }
-    ).result.tools.map((tool) => tool.name),
-    ["campaign_overview"]
-  );
+  assert.equal(session.code, 1);
+  assert.deepEqual(session.out, []);
   assert.match(
-    (JSON.parse(call) as { error: { message: string } }).error.message,
-    /^person_summary is left out while the redact plugin is on/u
+    session.err,
+    /^Unsupported: --tools: account_summary is left out while the redact plugin is on: .* Start the server with --no-redact to offer it/u
   );
 });

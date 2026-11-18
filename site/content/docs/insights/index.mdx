@@ -368,7 +368,7 @@ The arithmetic is exported from `outbound-sdk/insights` as plain functions:
 - **Records are linked by exact identifier, never by name.** An email address finds a LinkedIn record only when a tool holds both for that person.
 - **Finding a person costs a different number of requests on each vendor:** 1 on Instantly, 2 by profile or about 4 by email on HeyReach, and 1 to 2 on Smartlead.
 - **A vendor's thread can be shorter than its sequence.** Instantly's email list does not hold every email a campaign sent, so `personSummary` counts messages sent from the lead's last step when the thread is shorter, and says so in a note.
-- **A combined instance cannot read a conversation by thread id**, because a thread id is one vendor's own. `droppedReplies` reads the lead's timeline there.
+- **A combined instance reads a conversation by thread id by asking each member that reads threads**, because a thread id is one vendor's own and names no member. A member that cannot take the id holds no such thread; one that can may spend a request finding it empty.
 - **`bounceWatch` judges a sender on everything it sent in the period**, not only in the offending campaign: no vendor reports one sender within one campaign.
 - **`variantTest` makes no correction for comparing three or more variants**, and its "sends still needed" assumes both rates stay as they are.
 - **`anomalies` judges a day against a flat baseline without a z-score.** If every earlier day had the same count, there is no standard deviation to measure against. A day with another count is flagged with `judgedBy: "flat_baseline"` and a `null` `zScore`, whatever `threshold` is.

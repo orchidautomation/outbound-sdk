@@ -244,7 +244,7 @@ Replies from prospects that nobody answered, longest waiting first.
   </include>
 </CodeGroup>
 
-Eight replies were read. One was an unsubscribe and one was automatic. Of the five conversations left, two were answered, one is 16 hours old and so too recent, and two are dropped. Both were checked by timeline because a [combined](/docs/adapters/combine) instance cannot read a thread by its id.
+Eight replies were read. One was an unsubscribe and one was automatic. Of the five conversations left, two were answered, one is 16 hours old and so too recent, and two are dropped. The email one was checked by its thread, which a [combined](/docs/adapters/combine) instance asks each member for, and the LinkedIn one, whose reply carries no thread id, by the lead's timeline.
 
 ## `hotLeads`
 
@@ -340,7 +340,7 @@ The conversations behind given leads or threads, read in pages, so an agent can 
 
 A label alone never sets `needed`: a positive reply with no thread read is `null`. When the reply an entry is about is not the latest message, the evidence says the vendor's label is on an earlier reply, so a later message, such as a warning that the first email was fraudulent, is named and dated for the agent to read. No rule tries to tell what that message means.
 
-- **Needs:** `messages.list`, with `leads.timeline` for `leads` and `messages.byThread` for `threads`; without one, the call is `Unsupported` before any request. A combined instance cannot read a thread by its id. `leads.get` reads the meeting and the labels.
+- **Needs:** `messages.list`, with `leads.timeline` for `leads` and `messages.byThread` for `threads`; without one, the call is `Unsupported` before any request. A combined instance asks each member that reads threads for a thread id. `leads.get` reads the meeting and the labels.
 - **Costs:** one walk of messages per conversation on the page, and up to one lead read per conversation.
 - **Refuses:** `bodies: "snippet"` while the [redact plugin](/docs/plugins/redact) masks bodies; pass `bodies: "none"`. A redacted ref this instance's redact plugin did not write, such as one from an earlier MCP server or CLI run, is `NotFound` before any request: the plugin keeps what each token stands for in memory, only in the process that wrote it. Run the tool that returned the ref again in the same session.
 - **Does not:** read what a message says, detect anything in it, or store anything.

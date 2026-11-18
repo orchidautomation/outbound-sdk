@@ -10,6 +10,7 @@ export {
   KNOWN_TOKENS,
   MASK,
   MIN_KEY_LENGTH,
+  REDACT_KEY_ENV,
   redact,
 } from "./plugin.ts";
 

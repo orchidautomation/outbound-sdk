@@ -10,12 +10,14 @@
 // of `ref`, `sourceId`, every `*Ref` field and every person key is replaced
 // by a token. An address or a profile is how records are counted and joined,
 // so it never becomes one shared `[redacted]`, which would merge everyone
-// into one person (OUT-122). Under `mask` the token is a keyed hash, under a
-// key made for this plugin, or the caller's `key`, and never shown, and the
-// `email` and `linkedinUrl` fields get the same token as the id: two people keep two refs and a reply
-// still joins its lead while the plugin lives, and the token cannot be traced
-// back to the address or profile. Under `hash` the same value always gives
-// the same token, so a record keeps its ref from one run to the next. What
+// into one person (OUT-122). The token is a keyed hash, under the caller's
+// `key` or `OUTBOUND_REDACT_KEY`, or under `mask` with neither a key made
+// for this plugin, and never shown. The `email` and `linkedinUrl` fields get
+// the same token as the id: two people keep two refs and a reply still joins
+// its lead, and the token cannot be traced back to the address or profile
+// without the key. Under `hash` every masked value becomes such a token, so a
+// record keeps its ref from one run to the next; with no key it is a plain
+// digest anyone can recompute, which is deprecated and says so. What
 // remains: an id the vendor made up (a number, a UUID) is not personal data
 // and stays, and so does a bare profile slug with no URL around it, which
 // cannot be told apart from one.
@@ -34,10 +36,17 @@ import type { OutboundPlugin } from "../internal/outbound/plugins.ts";
 import { makeRef, parseRef } from "../internal/ref.ts";
 import { stableId } from "../internal/sha256.ts";
 import { profileSlug } from "../internal/url.ts";
-import { checkedKey, keyedToken, knownTokens, TOKEN } from "./tokens.ts";
+import {
+  checkedKey,
+  KEYLESS_NOTES,
+  keyedToken,
+  knownTokens,
+  TOKEN,
+  warnUnkeyedHash,
+} from "./tokens.ts";
 import type { Identifier, Known } from "./tokens.ts";
 
-export { KNOWN_TOKENS, MIN_KEY_LENGTH } from "./tokens.ts";
+export { KNOWN_TOKENS, MIN_KEY_LENGTH, REDACT_KEY_ENV } from "./tokens.ts";
 
 export type RedactField =
   | "body"
@@ -54,19 +63,21 @@ export interface RedactOptions {
   readonly fields?: readonly RedactField[] | undefined;
   /**
    * `mask` replaces a value with `[redacted]`, and an address or a profile
-   * with a token keyed for this plugin, so people can still be counted and
-   * joined while it lives. `hash` replaces every value with a stable token,
-   * so the same person gets the same token from one run to the next.
+   * with a keyed token, so people can still be counted and joined. `hash`
+   * replaces every value with a token under the key. `hash` with no key is
+   * deprecated: its tokens can be computed from a guessed address, so it
+   * warns once on stderr and adds a note to every answer.
    */
   readonly strategy?: "hash" | "mask" | undefined;
   /**
    * A secret, at least `MIN_KEY_LENGTH` (32) characters, that keys the
-   * tokens `mask` writes for addresses and profiles. With it the same person
-   * gets the same token in every instance and process given the same key, so
-   * redacted data can be joined across runs. Without it each plugin makes a
-   * random key of its own. Anyone holding the key can test a guessed address
-   * against a token, and a new key gives every person a new token. Only for
-   * `mask`; `hash` needs no key.
+   * tokens. Defaults to `OUTBOUND_REDACT_KEY`, as in the CLI and
+   * `outbound mcp`. With it the same person gets the same token in every
+   * instance and process given the same key, under `mask` and `hash` alike,
+   * so redacted data can be joined across runs. Without it `mask` makes a
+   * random key for each plugin, and `hash` is unkeyed. Anyone holding the
+   * key can test a guessed address against a token, and a new key gives
+   * every person a new token.
    */
   readonly key?: string | undefined;
 }
@@ -91,7 +102,7 @@ export interface RedactExtension {
     readonly strategy: "hash" | "mask";
     /**
      * What this redact writes in place of `value` in a masked field: the
-     * stable token under `hash`, so a caller can find a known address among
+     * token under `hash`, so a caller can find a known address among
      * hashed records without the records holding it; `[redacted]` under
      * `mask`, whose tokens for addresses and profiles are keyed and never
      * given out.
@@ -119,17 +130,23 @@ export interface RedactExtension {
 
 type Replace = (value: string | null) => string | null;
 
-const replacer =
-  (strategy: "hash" | "mask"): Replace =>
-  (value) => {
+const replacer = (
+  strategy: "hash" | "mask",
+  secret: string | undefined
+): Replace => {
+  const hashed =
+    secret === undefined
+      ? (value: string) => `redacted:${stableId(value).slice(0, 16)}`
+      : keyedToken(secret);
+
+  return (value) => {
     if (value === null) {
       return null;
     }
 
-    return strategy === "mask"
-      ? MASK
-      : `redacted:${stableId(value).slice(0, 16)}`;
+    return strategy === "mask" ? MASK : hashed(value);
   };
+};
 
 interface Masks {
   readonly has: (field: RedactField) => boolean;
@@ -159,7 +176,7 @@ const masksFor = (
   strategy: "hash" | "mask",
   secret: string | undefined
 ): Masks => {
-  const replace = replacer(strategy);
+  const replace = replacer(strategy, secret);
   const has = (field: RedactField): boolean => fields.has(field);
   const known = knownTokens();
 
@@ -491,7 +508,7 @@ const unmasked = (known: Known, operation: Operation): Operation => {
 
 /** What to do about a token no process can put back but the one that wrote it. */
 export const UNKNOWN_TOKEN_REMEDY =
-  "Redact keeps what each token stands for in memory, only in the process that wrote it, so it is not sent to the vendor. Run the tool that returned it again in this session. The redact key (OUTBOUND_REDACT_KEY for the CLI and MCP server) keeps tokens the same across runs, so a token you kept matches its records again once they are read in the new session.";
+  "Redact keeps what each token stands for in memory, only in the process that wrote it, so it is not sent to the vendor. Run the tool that returned it again in this session. The redact key (redact's key option, or OUTBOUND_REDACT_KEY in the environment) keeps tokens the same across runs, so a token you kept matches its records again once they are read in the new session.";
 
 /**
  * Refuses a call that still names a token once every known one is put back:
@@ -516,7 +533,13 @@ export const redact = (
   const fields = new Set(options.fields ?? ALL_FIELDS);
   const strategy = options.strategy ?? "mask";
 
-  const masks = masksFor(fields, strategy, checkedKey(options.key, strategy));
+  const key = checkedKey(options.key);
+  const masks = masksFor(fields, strategy, key);
+  const note = key === undefined ? KEYLESS_NOTES[strategy] : undefined;
+
+  if (strategy === "hash" && key === undefined) {
+    warnUnkeyedHash();
+  }
 
   return {
     // Asking for bodies while they are being removed is a contradiction, so
@@ -567,10 +590,12 @@ export const redact = (
           : error;
       }
 
-      return {
-        ...output,
-        items: output.items.map((record) => redactRecord(masks, record)),
-      };
+      const items = output.items.map((record) => redactRecord(masks, record));
+
+      // Said only where a token was written, which is where it matters.
+      return note === undefined || JSON.stringify(items).match(TOKEN) === null
+        ? { ...output, items }
+        : { ...output, items, notes: [...(output.notes ?? []), note] };
     },
   };
 };

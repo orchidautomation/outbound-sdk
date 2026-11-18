@@ -1,11 +1,16 @@
-// The tokens redact writes for addresses and profiles under `mask`: the key
-// they are made with, and the values behind them, held in memory only.
+// The tokens redact writes for addresses and profiles: the key they are made
+// with, from the caller or OUTBOUND_REDACT_KEY, and the values behind them,
+// held in memory only.
 
+import { readEnv } from "../internal/env.ts";
 import { OutboundError } from "../internal/errors.ts";
 import { hmacSha256Hex } from "../internal/sha256.ts";
 
 /** The shortest `key` `redact` accepts. */
 export const MIN_KEY_LENGTH = 32;
+
+/** The environment variable `redact` reads its key from when none is given. */
+export const REDACT_KEY_ENV = "OUTBOUND_REDACT_KEY";
 
 // A key for this plugin alone, so a token names one person to the records it
 // came with and to nothing outside them; or the caller's, so it names them
@@ -21,30 +26,38 @@ export const keyedToken = (
   return (value) => `redacted:${hmacSha256Hex(key, value).slice(0, 16)}`;
 };
 
-// The key is never put in a message: only its length is checked.
-export const checkedKey = (
-  key: string | undefined,
-  strategy: "hash" | "mask"
-): string | undefined => {
-  if (key === undefined) {
-    return undefined;
+// The key is never put in a message: only its length is checked, and the
+// message names where it came from.
+export const checkedKey = (key: string | undefined): string | undefined => {
+  const given = key ?? readEnv(REDACT_KEY_ENV);
+
+  if (given === undefined || given.length >= MIN_KEY_LENGTH) {
+    return given;
   }
 
-  if (strategy !== "mask") {
-    throw new OutboundError(
-      "Invalid",
-      'redact takes a key only with strategy "mask": "hash" writes the same token without one'
-    );
-  }
+  const source = key === undefined ? ` in ${REDACT_KEY_ENV}` : "";
 
-  if (key.length < MIN_KEY_LENGTH) {
-    throw new OutboundError(
-      "Invalid",
-      `The redact key must be at least ${MIN_KEY_LENGTH} characters. It is a secret: make one with \`openssl rand -hex 32\``
-    );
-  }
+  throw new OutboundError(
+    "Invalid",
+    `The redact key${source} must be at least ${MIN_KEY_LENGTH} characters. It is a secret: make one with \`openssl rand -hex 32\``
+  );
+};
 
-  return key;
+/** On every answer that holds a token from a redact with no key, by strategy. */
+export const KEYLESS_NOTES = {
+  hash: `redact's hash strategy has no key, so anyone can compute a token from a guessed email address or profile. Unkeyed hash is deprecated: set ${REDACT_KEY_ENV} or pass redact({ key }) to key it.`,
+  mask: `redact has no key, so its tokens for addresses and profiles hold only within this instance or process and do not join across runs. Set ${REDACT_KEY_ENV} or pass redact({ key }) to keep them.`,
+} as const;
+
+let warnedUnkeyedHash = false;
+
+/** Warns once per process that a hash with no key can be recomputed. */
+export const warnUnkeyedHash = (): void => {
+  if (!warnedUnkeyedHash) {
+    warnedUnkeyedHash = true;
+    // oxlint-disable-next-line no-console -- a deprecation must reach the developer, and the SDK has no logger.
+    console.warn(`outbound-sdk: ${KEYLESS_NOTES.hash}`);
+  }
 };
 
 export type Identifier = "email" | "linkedin";

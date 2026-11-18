@@ -61,47 +61,56 @@ const refused = (options: RedactOptions, pattern: RegExp) =>
       !JSON.stringify(error).includes(options.key ?? "")
   );
 
-test("a key that is too short, or given with hash, is refused when the plugin is built, without the key in the message", () => {
+test("a key that is too short is refused when the plugin is built, without the key in the message, and hash takes a key", () => {
   const short = KEY.slice(0, MIN_KEY_LENGTH - 1);
 
   refused({ key: short }, /at least 32 characters/u);
-  refused({ key: KEY, strategy: "hash" }, /only with strategy "mask"/u);
+  refused({ key: short, strategy: "hash" }, /at least 32 characters/u);
   assert.doesNotThrow(() => redact({ key: KEY.slice(0, MIN_KEY_LENGTH) }));
+  assert.doesNotThrow(() => redact({ key: KEY, strategy: "hash" }));
 });
 
-test("the key never appears in records, answers, tool results or refusals", async () => {
-  const outbound = instance({ key: KEY });
+for (const strategy of ["mask", "hash"] as const) {
+  test(`the key never appears in records, answers, tool results or refusals under ${strategy}`, async () => {
+    const outbound = instance({ key: KEY, strategy });
 
-  const seen: unknown[] = [
-    await outbound.leads.listAll().toArray(),
-    await outbound.replies.listAll().toArray(),
-    await outbound.insights.leadCollisions({ include_past: true }),
-    await outbound.insights.droppedReplies({}),
-    await outbound.insights.hotLeads({}),
-  ];
+    const seen: unknown[] = [
+      await outbound.leads.listAll().toArray(),
+      await outbound.replies.listAll().toArray(),
+      await outbound.insights.leadCollisions({ include_past: true }),
+      await outbound.insights.droppedReplies({}),
+      await outbound.insights.hotLeads({}),
+    ];
 
-  for (const tool of insightTools(outbound)) {
-    // oxlint-disable-next-line no-await-in-loop -- one call at a time keeps the order of what was seen.
-    seen.push(await tool.call({}));
-  }
-
-  await assert.rejects(
-    outbound.insights.personSummary({ person: "person1@example.com" }),
-    (error) => {
-      seen.push(error, String(error), (error as Error).stack);
-
-      return OutboundError.is(error);
+    for (const tool of insightTools(outbound)) {
+      // oxlint-disable-next-line no-await-in-loop -- one call at a time keeps the order of what was seen.
+      seen.push(await tool.call({}));
     }
-  );
 
-  const text = JSON.stringify(seen, (_key, value: unknown) =>
-    value instanceof Error ? { ...value, message: value.message } : value
-  );
+    // Under mask a person is refused by address; under hash the address is hashed and found.
+    const person = outbound.insights.personSummary({
+      person: "person1@example.com",
+    });
 
-  assert.ok(text.includes("redacted:"));
-  assert.ok(!text.includes(KEY));
-  assert.ok(!text.includes(KEY.slice(0, 16)));
-});
+    if (strategy === "mask") {
+      await assert.rejects(person, (error) => {
+        seen.push(error, String(error), (error as Error).stack);
+
+        return OutboundError.is(error);
+      });
+    } else {
+      seen.push(await person);
+    }
+
+    const text = JSON.stringify(seen, (_key, value: unknown) =>
+      value instanceof Error ? { ...value, message: value.message } : value
+    );
+
+    assert.ok(text.includes("redacted:"));
+    assert.ok(!text.includes(KEY));
+    assert.ok(!text.includes(KEY.slice(0, 16)));
+  });
+}
 
 /** Runs one CLI command with OUTBOUND_REDACT_KEY set to `key`. */
 const cli = async (argv: readonly string[], key: string | undefined) => {
@@ -164,7 +173,7 @@ test("without --redact the CLI ignores OUTBOUND_REDACT_KEY, and a short one stop
   assert.doesNotMatch(plain.out, /redacted:/u);
 });
 
-test("a config file's redact() keeps its own options, and the CLI says the key in the environment is not used", async () => {
+test("a config file's redact() reads OUTBOUND_REDACT_KEY as --redact does, and the CLI has nothing to warn about", async () => {
   const directory = await mkdtemp(path.join(tmpdir(), "outbound-config-"));
   const file = path.join(directory, "outbound.config.mjs");
 
@@ -178,12 +187,12 @@ test("a config file's redact() keeps its own options, and the CLI says the key i
   );
 
   const result = await cli(["leads", "--config", file, "--compact"], KEY);
+  const flagged = await cli(["leads", "--redact", "--compact"], KEY);
 
   assert.equal(result.code, 0, result.err);
-  assert.match(
-    result.err,
-    /OUTBOUND_REDACT_KEY is set, but the config file's redact\(\) takes its own options/u
-  );
+  assert.match(result.out, /redacted:[0-9a-f]{16}/u);
+  assert.equal(result.out, flagged.out);
+  assert.doesNotMatch(result.err, /OUTBOUND_REDACT_KEY/u);
   assert.ok(!result.err.includes(KEY.slice(0, 20)));
   assert.ok(!result.out.includes(KEY.slice(0, 20)));
 });

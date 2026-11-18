@@ -68,7 +68,7 @@ Swap the adapter. Nothing else changes.
 
 ## Mask personal data
 
-List `redact` before `exporter`. It is then the outermost plugin, and every record is masked before the exporter sees it. With `strategy: "hash"` the same value always becomes the same token, so rows can still be counted and joined without the file holding an address.
+List `redact` before `exporter`. It is then the outermost plugin, and every record is masked before the exporter sees it. With `strategy: "hash"` and a [fixed key](/docs/plugins/redact#a-fixed-key) the same value always becomes the same token, so rows can still be counted and joined without the file holding an address. Without a key, `hash` is deprecated: anyone could compute its tokens from a guessed address.
 
 <include meta='title="redacted.ts"'>
   ../../_examples/export-leads/redacted.ts
