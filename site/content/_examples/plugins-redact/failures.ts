@@ -26,7 +26,7 @@ try {
 try {
   createOutbound({
     adapter: memory({ data: seed }),
-    plugins: [redact(), redact({ strategy: "hash" })],
+    plugins: [redact(), redact({ fields: ["email"] })],
   });
 } catch (error) {
   if (OutboundError.is(error)) {

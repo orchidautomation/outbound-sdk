@@ -1,7 +1,7 @@
 ref,campaignRef,email,firstName,lastName,company,status
-memory:acme:lead_1,memory:acme:cmp_founders,redacted:8e43ca37701228e7,redacted:dea210f058b407db,redacted:7c8c32faff7cede0,redacted:79e871f6196f16fe,active
-memory:acme:lead_2,memory:acme:cmp_founders,redacted:f871a76fb7b15231,redacted:030d756286e59f22,redacted:95d5798c5815192d,redacted:a041f470be21d010,replied
-memory:acme:lead_3,memory:acme:cmp_founders,redacted:1e91676e0a6d94ac,redacted:ccb05dc4bbe84de7,,,active
-memory:acme:lead_4,memory:acme:cmp_agencies,redacted:eb2b6c0d061bbd5c,redacted:9c24f45a7ea9e466,redacted:4b48c39df4ae16d3,redacted:95cb02fc236fa8e9,active
-memory:acme:lead_5,memory:acme:cmp_agencies,redacted:e245111f6151dbb3,redacted:8d6d4f52ee2db641,redacted:f4cdc96ba6078192,redacted:95cb02fc236fa8e9,bounced
+memory:acme:lead_1,memory:acme:cmp_founders,redacted:4370123c40f1a375,redacted:0f46144d4b8abde6,redacted:0376fc77331bef19,redacted:fc9d6514fa2137e4,active
+memory:acme:lead_2,memory:acme:cmp_founders,redacted:c0d489e691b1a771,redacted:d55d01287873e90e,redacted:da759cc5985f7d4c,redacted:ee477600285d59b0,replied
+memory:acme:lead_3,memory:acme:cmp_founders,redacted:05d7c7ee2ab82c62,redacted:dc9aa27d4d33bb0a,,,active
+memory:acme:lead_4,memory:acme:cmp_agencies,redacted:3977ce71ce4d3cb1,redacted:ee489f7698bd0f77,redacted:95aaba28ce856475,redacted:038456b6b0f98d33,active
+memory:acme:lead_5,memory:acme:cmp_agencies,redacted:27b2cee8a0da4d2c,redacted:643b35dae759e79f,redacted:da3a7e9fe212965a,redacted:038456b6b0f98d33,bounced
 

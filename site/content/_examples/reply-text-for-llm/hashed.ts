@@ -5,14 +5,19 @@ import { redact } from "outbound-sdk/redact";
 import { repliesForPrompt } from "./prompt.ts";
 import { seed } from "./seed.ts";
 
+// For this sample only: read yours from a secret store, for example
+// process.env.OUTBOUND_REDACT_KEY, which redact reads when no key is given.
+const key = "sample-only-key-0123456789abcdef0123";
+
 // Mask who the people are, keep what they wrote. Leaving "body" out of
-// `fields` keeps messages.body on. "hash" swaps each value for a stable
-// token, so the same person can still be counted and joined.
+// `fields` keeps messages.body on. "hash" swaps each value for a token under
+// the key, so the same person can still be counted and joined.
 const outbound = createOutbound({
   adapter: memory({ data: seed, workspaceId: "acme" }),
   plugins: [
     redact({
       fields: ["company", "custom", "email", "linkedin", "name"],
+      key,
       strategy: "hash",
     }),
   ],

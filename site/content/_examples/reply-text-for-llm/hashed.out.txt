@@ -1,8 +1,8 @@
 messages.body: full
 native: false
 {
-  email: 'redacted:07e2f1394b0ea80e',
-  firstName: 'redacted:09fb9ff32c5aa81b'
+  email: 'redacted:9a2adda6b40deb1d',
+  firstName: 'redacted:5728556997d7f987'
 }
 same token on a second read: true
 [

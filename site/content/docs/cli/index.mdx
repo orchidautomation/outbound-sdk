@@ -39,7 +39,7 @@ A command that reads data needs an adapter. The CLI builds one from the environm
 4. With neither `--provider` nor `OUTBOUND_SDK_PROVIDER` set, the CLI does the same as `all`. With no key set either, the command exits with code 1 and names the variables.
 5. Each adapter reads its own key from the environment. `outbound providers` lists the variables each one reads.
 
-With `--redact`, and in `outbound mcp`, the CLI keys redact's tokens with `OUTBOUND_REDACT_KEY` when it is set, so the same person gets the same token in every command. It is a secret of at least 32 characters, and a shorter one stops the command before any request; see [redact's fixed key](/docs/plugins/redact#a-fixed-key). It is never printed. A `redact()` in a config file takes its own options instead, and the CLI says so on stderr.
+With `--redact`, and in `outbound mcp`, the CLI keys redact's tokens with `OUTBOUND_REDACT_KEY` when it is set, so the same person gets the same token in every command. It is a secret of at least 32 characters, and a shorter one stops the command before any request; see [redact's fixed key](/docs/plugins/redact#a-fixed-key). It is never printed. A `redact()` in a config file reads it too, unless you give that `redact()` its own `key`.
 
 `memory` needs no key. It runs on a small built-in demo data set, the same one behind `demoData()` in `outbound-sdk/memory`: two campaigns, three leads, a few messages. Use it to try a command before pointing the CLI at a real account.
 

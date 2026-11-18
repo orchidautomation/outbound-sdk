@@ -68,7 +68,7 @@ What changed:
 
 ## Keep the text, mask the people: `fields` and `strategy: "hash"`
 
-To let a model read replies, leave `body` out of `fields`. `messages.body` then stays on. `strategy: "hash"` replaces each value with a stable token, `redacted:` and 16 hex characters, so the same address always gives the same token and people can still be counted and joined.
+To let a model read replies, leave `body` out of `fields`. `messages.body` then stays on. `strategy: "hash"` replaces each value with a token, `redacted:` and 16 hex characters keyed by `OUTBOUND_REDACT_KEY` or the `key` you pass, so the same address always gives the same token and people can still be counted and joined. Give it a key: without one, `hash` is deprecated, because anyone could compute its tokens from a guessed address ([A fixed key](/docs/plugins/redact#a-fixed-key)).
 
 The function below is for code that builds its own prompt without going through a tool. It marks text the way the tools do.
 

@@ -5,6 +5,7 @@
 // `hot_leads` none. Masked, the people counts must be the counts unmasked.
 
 import assert from "node:assert/strict";
+import process from "node:process";
 import { test } from "node:test";
 
 import { run } from "../src/cli/index.ts";
@@ -13,6 +14,9 @@ import type { AdapterSuite } from "./helpers/adapter-suite.ts";
 import { createFetch } from "./helpers/http.ts";
 import { suite as heyreach } from "./heyreach/suite.ts";
 import { suite as instantly } from "./instantly/suite.ts";
+
+// A test key only, with no meaning outside this file.
+const KEY = "test-key-0123456789abcdef0123456789abcdef";
 
 interface Answer {
   readonly data: {
@@ -69,7 +73,13 @@ for (const [suite, expected, personal] of [
   [heyreach, [3, 2, 1], /linkedin\.com|example-person/iu],
   [instantly, [3, 3, 3], /@example\.com/iu],
 ] as const) {
-  test(`${suite.provider}: redact gives the same people counts as no redact`, async () => {
+  // With a key, as a load meant to join is run, so the answers' notes match too.
+  test(`${suite.provider}: redact gives the same people counts as no redact`, async (context) => {
+    process.env.OUTBOUND_REDACT_KEY = KEY;
+    context.after(() => {
+      delete process.env.OUTBOUND_REDACT_KEY;
+    });
+
     const runs = await Promise.all(
       READS.map(async (argv) => [
         await cli(suite, argv),
