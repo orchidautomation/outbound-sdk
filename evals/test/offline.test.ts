@@ -10,7 +10,9 @@ import { test } from "node:test";
 
 import { createContext } from "../context.ts";
 import { summarize } from "../run.ts";
+import { session } from "../session.ts";
 import { CASES, runCases } from "../suite.ts";
+import { child } from "../transport.ts";
 
 const EXPECTED = path.join(import.meta.dirname, "../offline-expected.json");
 
@@ -55,4 +57,15 @@ test("every invariant case runs offline to its recorded verdict, and the summary
   }
 
   assert.deepEqual(verdicts, JSON.parse(readFileSync(EXPECTED, "utf-8")));
+});
+
+test("a server that exits before answering fails its pending request instead of hanging", async () => {
+  const open = session(child([process.execPath, "-e", "process.exit(2)"]), {
+    check: () => {},
+    spend: () => {},
+  });
+
+  await assert.rejects(open.initialize(), /exited with code 2/u);
+  await assert.rejects(open.call("client_report"), /exited/u);
+  await open.close();
 });

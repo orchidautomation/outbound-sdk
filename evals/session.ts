@@ -94,9 +94,28 @@ const outcomeOf = (
 
 /** One JSON-RPC request channel over a transport, with progress notifications kept by token. */
 const channel = (transport: Transport) => {
-  const answers = new Map<number, (message: unknown) => void>();
+  const answers = new Map<
+    number,
+    { resolve: (message: unknown) => void; reject: (error: Error) => void }
+  >();
+
   const progress = new Map<string, number>();
-  const state = { listBytes: 0, nextId: 1 };
+
+  const state: { listBytes: number; nextId: number; ended: string | null } = {
+    ended: null,
+    listBytes: 0,
+    nextId: 1,
+  };
+
+  transport.onExit((reason) => {
+    state.ended = reason;
+
+    for (const pending of answers.values()) {
+      pending.reject(new Error(reason));
+    }
+
+    answers.clear();
+  });
 
   transport.onLine((line) => {
     const message = parsed(line);
@@ -107,7 +126,7 @@ const channel = (transport: Transport) => {
         state.listBytes = line.length;
       }
 
-      answers.get(id)?.(message);
+      answers.get(id)?.resolve(message);
       answers.delete(id);
 
       return;
@@ -131,8 +150,12 @@ const channel = (transport: Transport) => {
     const id = state.nextId;
     state.nextId += 1;
 
-    const answer = new Promise<unknown>((resolve) => {
-      answers.set(id, resolve);
+    if (state.ended !== null) {
+      throw new Error(state.ended);
+    }
+
+    const answer = new Promise<unknown>((resolve, reject) => {
+      answers.set(id, { reject, resolve });
     });
 
     const message: JsonObject = { id, jsonrpc: "2.0", method };

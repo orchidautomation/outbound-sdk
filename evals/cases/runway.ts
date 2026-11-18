@@ -122,22 +122,30 @@ export const RUNWAY_CASES: readonly Case[] = [
       }
 
       const verdict = judgeRunway(runwayRows(report.structured).map(reportRow));
-      const running = itemsOf(report, "runningOutOfLeads");
+      const listed = at(report.structured, "data", "runningOutOfLeads");
+      const stalled = at(report.structured, "data", "stalled");
+
+      // null when the report cannot serve runway: unknown, not none.
+      const running = Array.isArray(listed)
+        ? itemsOf(report, "runningOutOfLeads")
+        : null;
 
       return {
         ...verdict,
         truth: {
-          outOfLeadsNow: running.filter(
-            (row) => text(at(row, "state")) === "out_of_leads"
-          ).length,
-          runningOut: running.length,
+          complete: report.complete,
+          outOfLeadsNow:
+            running?.filter((row) => text(at(row, "state")) === "out_of_leads")
+              .length ?? null,
+          runningOut: running?.length ?? null,
           // Already out of leads (whatever days it shows), or out within 7 days.
-          runningOutThisWeek: running.filter(
-            (row) =>
-              text(at(row, "state")) === "out_of_leads" ||
-              (num(at(row, "daysLeft")) ?? Number.POSITIVE_INFINITY) <= 7
-          ).length,
-          stalled: itemsOf(report, "stalled").length,
+          runningOutThisWeek:
+            running?.filter(
+              (row) =>
+                text(at(row, "state")) === "out_of_leads" ||
+                (num(at(row, "daysLeft")) ?? Number.POSITIVE_INFINITY) <= 7
+            ).length ?? null,
+          stalled: Array.isArray(stalled) ? stalled.length : null,
         },
       };
     },

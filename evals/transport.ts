@@ -13,6 +13,8 @@ export type JsonObject = Readonly<Record<string, unknown>>;
 export interface Transport {
   readonly send: (message: JsonObject) => void;
   readonly onLine: (listener: (line: string) => void) => void;
+  /** Called once when the server stops, with why, so pending requests can fail instead of hanging. */
+  readonly onExit: (listener: (reason: string) => void) => void;
   readonly close: () => Promise<void>;
   /** Awaits a pending answer; offline it also fires the virtual clock's timers. */
   readonly settle: <Value>(promise: Promise<Value>) => Promise<Value>;
@@ -78,6 +80,7 @@ export const inProcess = (
 ): Transport => {
   const queue = lineQueue();
   const listeners: ((line: string) => void)[] = [];
+  const exits: ((reason: string) => void)[] = [];
 
   const served = run(["mcp", ...argv], {
     fetch: io.fetch,
@@ -93,12 +96,31 @@ export const inProcess = (
     },
   });
 
+  const ended = async (): Promise<string> => {
+    try {
+      return `the MCP server exited with code ${String(await served)}`;
+    } catch (error) {
+      return `the MCP server threw: ${String(error)}`;
+    }
+  };
+
+  void ended().then((reason) => {
+    for (const exit of exits) {
+      exit(reason);
+    }
+
+    return reason;
+  });
+
   return {
     close: async () => {
       queue.end();
       await io.settle(served);
     },
     now: io.now,
+    onExit: (listener) => {
+      exits.push(listener);
+    },
     onLine: (listener) => {
       listeners.push(listener);
     },
@@ -110,6 +132,9 @@ export const inProcess = (
 };
 
 const KILL_AFTER_MS = 10_000;
+
+/** The longest a live answer may take: above any tool's time budget, so only a hung server reaches it. */
+export const ANSWER_TIMEOUT_MS = 300_000;
 
 /** Starts `command` (the server and its flags) as a child process, with this process's environment. */
 export const child = (command: readonly string[]): Transport => {
@@ -123,8 +148,22 @@ export const child = (command: readonly string[]): Transport => {
     }
   });
 
+  const exits: ((reason: string) => void)[] = [];
+
   const exited = new Promise<void>((resolve) => {
-    proc.on("exit", () => {
+    proc.on("exit", (code, signal) => {
+      for (const exit of exits) {
+        exit(`the MCP server exited with ${signal ?? `code ${String(code)}`}`);
+      }
+
+      resolve();
+    });
+
+    proc.on("error", (error) => {
+      for (const exit of exits) {
+        exit(`the MCP server could not start: ${error.message}`);
+      }
+
       resolve();
     });
   });
@@ -137,12 +176,35 @@ export const child = (command: readonly string[]): Transport => {
       clearTimeout(kill);
     },
     now: () => Date.now(),
+    onExit: (listener) => {
+      exits.push(listener);
+    },
     onLine: (listener) => {
       listeners.push(listener);
     },
     send: (message) => {
-      proc.stdin.write(`${JSON.stringify(message)}\n`);
+      if (proc.stdin.writable) {
+        proc.stdin.write(`${JSON.stringify(message)}\n`);
+      }
     },
-    settle: (promise) => promise,
+    settle: async (promise) => {
+      let timer: NodeJS.Timeout | undefined;
+
+      const timeout = new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => {
+          reject(
+            new Error(
+              `the MCP server gave no answer in ${ANSWER_TIMEOUT_MS / 1000} s`
+            )
+          );
+        }, ANSWER_TIMEOUT_MS);
+      });
+
+      try {
+        return await Promise.race([promise, timeout]);
+      } finally {
+        clearTimeout(timer);
+      }
+    },
   };
 };

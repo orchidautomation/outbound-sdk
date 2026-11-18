@@ -37,11 +37,16 @@ const PROXY = path.join(import.meta.dirname, "proxy.ts");
 const TOOL_TIMEOUT_MS = 600_000;
 
 /** Truth from the live invariant runs of the last day, newest first per case. */
-export const mergedTruth = (
+/**
+ * The truth of the newest live layer-1 run from the last 24 hours at
+ * `commit`, so a task is scored only against the code it ran on. A case
+ * that run has no truth for leaves its tasks unscored.
+ */
+export const truthFor = (
   dir: string,
-  now: number
+  now: number,
+  commit: string | null
 ): Record<string, Truth> => {
-  const merged: Record<string, Truth> = {};
   let names: string[] = [];
 
   try {
@@ -50,27 +55,26 @@ export const mergedTruth = (
       .toSorted()
       .toReversed();
   } catch {
-    return merged;
+    return {};
   }
 
   for (const name of names) {
     const run = parsed(readFileSync(path.join(dir, name), "utf-8"));
     const started = Date.parse(text(at(run, "startedAt")) ?? "");
+    const truth = at(run, "truth");
 
     if (
+      commit !== null &&
+      at(run, "commit") === commit &&
       at(run, "mode") === "live" &&
       now - started < 86_400_000 &&
-      isRecord(at(run, "truth"))
+      isRecord(truth)
     ) {
-      for (const [id, truth] of Object.entries(
-        at(run, "truth") as Record<string, Truth>
-      )) {
-        merged[id] ??= truth;
-      }
+      return truth as Record<string, Truth>;
     }
   }
 
-  return merged;
+  return {};
 };
 
 export interface TaskScore {
@@ -358,7 +362,7 @@ const main = async (): Promise<number> => {
   const work = mkdtempSync(path.join(tmpdir(), "outbound-evals-"));
 
   try {
-    const truth = mergedTruth(out, Date.now());
+    const truth = truthFor(out, Date.now(), commitOf(checkout));
     const bin = path.join(checkout, "packages/outbound-sdk/src/cli/bin.ts");
     const config = path.join(work, "mcp.json");
     writeFileSync(

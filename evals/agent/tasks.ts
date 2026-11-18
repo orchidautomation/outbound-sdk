@@ -66,12 +66,14 @@ export const TASKS: readonly Task[] = [
       '{"outOfLeads": <campaigns with no lead left to start>, "stalled": <campaigns that started no lead>, "complete": <true if the numbers cover everything>}',
     cases: [9, 13],
     correct: (answer, truth) =>
-      all(
-        same(answer, ["outOfLeads"], fact(truth, 9, "outOfLeadsNow")),
-        same(answer, ["stalled"], fact(truth, 9, "stalled"))
-      ),
+      fact(truth, 9, "complete") === true
+        ? all(
+            same(answer, ["outOfLeads"], fact(truth, 9, "outOfLeadsNow")),
+            same(answer, ["stalled"], fact(truth, 9, "stalled"))
+          )
+        : null,
     id: 2,
-    incomplete: () => false,
+    incomplete: (truth) => fact(truth, 9, "complete") === false,
     persona: "agency ops lead",
     prompt:
       "Prep me for a client call this afternoon: across every tool, which campaigns are out of leads, which have stalled, and is anything left out of the numbers?",
@@ -103,9 +105,11 @@ export const TASKS: readonly Task[] = [
       '{"campaigns": <campaigns that run out of leads to start within 7 days, including any already out>}',
     cases: [9, 10],
     correct: (answer, truth) =>
-      same(answer, ["campaigns"], fact(truth, 9, "runningOutThisWeek")),
+      fact(truth, 9, "complete") === true
+        ? same(answer, ["campaigns"], fact(truth, 9, "runningOutThisWeek"))
+        : null,
     id: 4,
-    incomplete: () => false,
+    incomplete: (truth) => fact(truth, 9, "complete") === false,
     persona: "SDR manager",
     prompt: "Which campaigns run out of leads this week?",
   },
@@ -114,22 +118,24 @@ export const TASKS: readonly Task[] = [
       '{"replies": {"thisWeek": <n>, "lastWeek": <n>}, "meetings": {"thisWeek": <n or null if not recorded>, "lastWeek": <n or null>}}',
     cases: [14, 29],
     correct: (answer, truth) =>
-      all(
-        same(
-          answer,
-          ["replies", "thisWeek"],
-          fact(truth, 14, "repliedCurrent")
-        ),
-        same(
-          answer,
-          ["replies", "lastWeek"],
-          fact(truth, 14, "repliedPrevious")
-        ),
-        at(answer, "meetings", "thisWeek") ===
-          fact(truth, 14, "meetingsCurrent"),
-        at(answer, "meetings", "lastWeek") ===
-          fact(truth, 14, "meetingsPrevious")
-      ),
+      fact(truth, 14, "workspaceKnown") === true
+        ? all(
+            same(
+              answer,
+              ["replies", "thisWeek"],
+              fact(truth, 14, "workspaceRepliedCurrent")
+            ),
+            same(
+              answer,
+              ["replies", "lastWeek"],
+              fact(truth, 14, "workspaceRepliedPrevious")
+            ),
+            at(answer, "meetings", "thisWeek") ===
+              fact(truth, 14, "workspaceMeetingsCurrent"),
+            at(answer, "meetings", "lastWeek") ===
+              fact(truth, 14, "workspaceMeetingsPrevious")
+          )
+        : null,
     id: 5,
     incomplete: () => false,
     persona: "SDR manager",
@@ -164,9 +170,9 @@ export const TASKS: readonly Task[] = [
         return null;
       }
 
-      return canLink === false
-        ? at(answer, "canLink") === false
-        : same(answer, ["people"], fact(truth, 22, "peopleReplied"));
+      // A verified link proves people can be matched, not how many are the
+      // same, so only the canLink claim is scored.
+      return at(answer, "canLink") === canLink;
     },
     id: 7,
     incomplete: () => false,
@@ -217,7 +223,11 @@ export const forbiddenClaim = (
     return "said complete while the source was incomplete";
   }
 
-  return COUNT_KEYS.some((key) => at(answer, key) === 0)
+  return COUNT_KEYS.some((key) => {
+    const given = at(answer, key);
+
+    return given === 0 || (Array.isArray(given) && given.length === 0);
+  })
     ? "gave 0 for something that was not fully checked"
     : null;
 };

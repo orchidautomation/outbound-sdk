@@ -20,6 +20,7 @@ import {
 import {
   judgeIdentity,
   judgePersonReconcile,
+  linkObserved,
   judgeRedactParity,
   judgeRepliedSources,
 } from "../cases/people.ts";
@@ -332,6 +333,10 @@ verdicts({
     judgeTruncation(3, {}),
     judgeTruncation(0, { meta: {} }),
   ],
+  "26 CLI truncation, a failed read": [
+    judgeTruncation(0, { meta: { truncated: true } }),
+    judgeTruncation(1, { error: { code: "AuthFailed" } }),
+  ],
   "27 daily stats": [
     judgeDailySums(
       "campaign",
@@ -406,6 +411,28 @@ test("a next hint names the tool it points to, not the input it mentions", () =>
 
 test("a follow-up rule with nothing marked needed is a skip, not a pass", () => {
   assert.equal(judgeFollowUpRule([auto]).status, "skip");
+});
+
+test("people can be linked only when a link was observed; a shared searchable type alone is unknown", () => {
+  const rows = [{ leadRef: "a" }];
+  assert.equal(judgeIdentity(rows, [], ["email"], true).truth?.canLink, true);
+  assert.equal(judgeIdentity(rows, [], ["email"], false).truth?.canLink, null);
+  assert.equal(
+    judgeIdentity(rows, ["cannot link"], [], true).truth?.canLink,
+    false
+  );
+  assert.equal(
+    linkObserved({
+      data: { records: [{ provider: "instantly" }, { provider: "heyreach" }] },
+    }),
+    true
+  );
+  assert.equal(
+    linkObserved({
+      data: { records: [{ provider: "instantly" }, { provider: "instantly" }] },
+    }),
+    false
+  );
 });
 
 test("a request cap that the call never reached is a skip", () => {

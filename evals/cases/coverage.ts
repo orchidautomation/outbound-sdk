@@ -291,6 +291,7 @@ export const COVERAGE_CASES: readonly Case[] = [
       const verdict = judgeHeadline(period.structured, sent);
       const current = at(period.structured, "data", "total", "current");
       const previous = at(period.structured, "data", "total", "previous");
+      const workspace = at(period.structured, "data", "workspace");
 
       return {
         ...verdict,
@@ -302,6 +303,16 @@ export const COVERAGE_CASES: readonly Case[] = [
           repliesBasis: text(
             at(period.structured, "data", "totalBasis", "replies")
           ),
+          // Every campaign whatever its state; unknown when a tool has no workspace totals.
+          workspaceKnown: typeof workspace === "object" && workspace !== null,
+          workspaceMeetingsCurrent: num(
+            at(workspace, "current", "meetingsBooked")
+          ),
+          workspaceMeetingsPrevious: num(
+            at(workspace, "previous", "meetingsBooked")
+          ),
+          workspaceRepliedCurrent: num(at(workspace, "current", "replied")),
+          workspaceRepliedPrevious: num(at(workspace, "previous", "replied")),
         },
       };
     },

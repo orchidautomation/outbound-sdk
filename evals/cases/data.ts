@@ -30,12 +30,20 @@ export const judgeSync = (
   );
 
 /** Case 26: a shell can tell a cut-off listing from a whole one. */
-export const judgeTruncation = (code: number, json: unknown): Verdict =>
-  code !== 0 || bool(at(json, "meta", "truncated")) === true
-    ? pass(`leads --limit 1 exits ${code}`)
-    : fail(
+export const judgeTruncation = (code: number, json: unknown): Verdict => {
+  if (
+    code === 3 ||
+    (code === 0 && bool(at(json, "meta", "truncated")) === true)
+  ) {
+    return pass(`leads --limit 1 exits ${code}`);
+  }
+
+  return code === 0
+    ? fail(
         "leads --limit 1 stopped with more leads and exits 0 with no truncated field"
-      );
+      )
+    : fail(`leads --limit 1 exited ${code}, so truncation was not exercised`);
+};
 
 export interface DayRow {
   readonly provider: string;

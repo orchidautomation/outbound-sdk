@@ -70,17 +70,37 @@ export const sharedIdentifiers = (timeline: unknown): string[] => {
   return first.filter((kind) => rest.every((set) => set.includes(kind)));
 };
 
-/** Case 22: people never outnumber lead refs, and "can't link" is said, not shown as 0 overlap. */
+/** Whether one person's records were actually found in two or more tools: a link observed, not declared. */
+export const linkObserved = (timeline: unknown): boolean =>
+  new Set(
+    list(at(timeline, "data", "records")).map((record) =>
+      text(at(record, "provider"))
+    )
+  ).size > 1;
+
+/**
+ * Case 22: people never outnumber lead refs, and "can't link" is said, not
+ * shown as 0 overlap. Its truth says people can be linked only when a link
+ * was observed; a shared searchable type alone leaves it unknown.
+ */
 export const judgeIdentity = (
   rows: readonly unknown[],
   notes: readonly string[],
-  shared: readonly string[] | null
+  shared: readonly string[] | null,
+  observed = false
 ): Verdict => {
   // A row with no lead ref (a reply outside every campaign) names nobody to count.
   const named = rows.filter((row) => typeof at(row, "leadRef") === "string");
   const refs = unique(named.map((row) => String(at(row, "leadRef"))));
 
   const linked = shared === null ? null : shared.length > 0;
+  let canLink: boolean | null = null;
+
+  if (linked === false) {
+    canLink = false;
+  } else if (observed) {
+    canLink = true;
+  }
 
   return firstFailure(
     [
@@ -91,8 +111,8 @@ export const judgeIdentity = (
         ? "the tools share no identifier type, but the per-person answer does not say it cannot link them"
         : null,
     ],
-    `${plural(rows.length, "person")} from ${plural(refs.length, "lead ref")}; can link ${String(linked)}`,
-    { canLink: linked, peopleReplied: rows.length }
+    `${plural(rows.length, "person")} from ${plural(refs.length, "lead ref")}; can link ${String(canLink)}`,
+    { canLink, peopleReplied: rows.length }
   );
 };
 
@@ -235,7 +255,10 @@ export const PEOPLE_CASES: readonly Case[] = [
       return judgeIdentity(
         list(at(byPerson.json, "data", "items")),
         list(at(byPerson.json, "meta", "notes")).map(String),
-        shared
+        shared,
+        found !== undefined &&
+          !found.timeline.isError &&
+          linkObserved(found.timeline.structured)
       );
     },
     title: "identity",

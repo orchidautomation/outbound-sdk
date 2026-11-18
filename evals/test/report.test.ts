@@ -7,7 +7,12 @@ import path from "node:path";
 import { test } from "node:test";
 
 import { callFacts } from "../agent/proxy.ts";
-import { keptAnswer, scoreTask, summarizeAgent } from "../agent/run.ts";
+import {
+  keptAnswer,
+  scoreTask,
+  summarizeAgent,
+  truthFor,
+} from "../agent/run.ts";
 import { answerBlock, forbiddenClaim, TASKS } from "../agent/tasks.ts";
 import { LockedError, takeLock } from "../lock.ts";
 import {
@@ -113,13 +118,111 @@ test("a listed answer counts as its length where a count was asked for", () => {
   const task = TASKS.find((one) => one.id === 4);
   assert.ok(task);
   assert.equal(
-    task.correct({ campaigns: ["a", "b"] }, { "9": { runningOutThisWeek: 2 } }),
+    task.correct(
+      { campaigns: ["a", "b"] },
+      { "9": { complete: true, runningOutThisWeek: 2 } }
+    ),
     true
   );
   assert.equal(
-    task.correct({ campaigns: 3 }, { "9": { runningOutThisWeek: 2 } }),
+    task.correct(
+      { campaigns: 3 },
+      { "9": { complete: true, runningOutThisWeek: 2 } }
+    ),
     false
   );
+});
+
+test("a count over a population that was not fully checked is not scored, and unknown runway is not none", () => {
+  const task = TASKS.find((one) => one.id === 4);
+  assert.ok(task);
+  const unchecked = { "9": { complete: false, runningOutThisWeek: 0 } };
+  assert.equal(task.correct({ campaigns: 0 }, unchecked), null);
+  assert.equal(task.incomplete(unchecked), true);
+  assert.equal(
+    task.correct(
+      { campaigns: 0 },
+      { "9": { complete: true, runningOutThisWeek: null } }
+    ),
+    null
+  );
+});
+
+test("task 5 is scored on the workspace totals, and left unscored without them", () => {
+  const task = TASKS.find((one) => one.id === 5);
+  assert.ok(task);
+
+  const answer = {
+    meetings: { lastWeek: null, thisWeek: null },
+    replies: { lastWeek: 24, thisWeek: 20 },
+  };
+
+  const truth = {
+    workspaceKnown: true,
+    workspaceMeetingsCurrent: null,
+    workspaceMeetingsPrevious: null,
+    workspaceRepliedCurrent: 20,
+    workspaceRepliedPrevious: 24,
+  };
+
+  assert.equal(task.correct(answer, { "14": truth }), true);
+  assert.equal(
+    task.correct(answer, { "14": { ...truth, workspaceRepliedPrevious: 21 } }),
+    false
+  );
+  assert.equal(task.correct(answer, { "14": { workspaceKnown: false } }), null);
+});
+
+test("task 7 scores the canLink claim only when a link was observed or ruled out", () => {
+  const task = TASKS.find((one) => one.id === 7);
+  assert.ok(task);
+  assert.equal(
+    task.correct({ canLink: true, people: 9 }, { "22": { canLink: true } }),
+    true
+  );
+  assert.equal(
+    task.correct({ canLink: true, people: 9 }, { "22": { canLink: false } }),
+    false
+  );
+  assert.equal(
+    task.correct({ canLink: true, people: 9 }, { "22": { canLink: null } }),
+    null
+  );
+});
+
+test("truth comes from the newest live run at the evaluated commit, never filled from another", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "evals-truth-"));
+  const now = Date.parse("2026-11-18T20:00:00Z");
+
+  const write = (
+    name: string,
+    commit: string,
+    truth: Readonly<Record<string, Readonly<Record<string, number>>>>
+  ) => {
+    writeFileSync(
+      path.join(dir, `${name}.invariants.json`),
+      JSON.stringify({
+        commit,
+        mode: "live",
+        startedAt: "2026-11-18T19:00:00Z",
+        truth,
+      })
+    );
+  };
+
+  try {
+    write("2026-11-18T1900", "aaa", { "1": { owed: 1 }, "9": { stalled: 2 } });
+    write("2026-11-18T1910", "bbb", { "1": { owed: 3 } });
+    assert.deepEqual(truthFor(dir, now, "bbb"), { "1": { owed: 3 } });
+    assert.deepEqual(truthFor(dir, now, "aaa"), {
+      "1": { owed: 1 },
+      "9": { stalled: 2 },
+    });
+    assert.deepEqual(truthFor(dir, now, "ccc"), {});
+    assert.deepEqual(truthFor(dir, now, null), {});
+  } finally {
+    rmSync(dir, { force: true, recursive: true });
+  }
 });
 
 test("a definite answer over an incomplete source is a forbidden claim; a hedged one is not", () => {
@@ -133,6 +236,11 @@ test("a definite answer over an incomplete source is a forbidden claim; a hedged
     /0/u
   );
   assert.equal(forbiddenClaim({ complete: false, violations: 2 }, true), null);
+  assert.match(
+    forbiddenClaim({ complete: false, opened: 0, owed: [] }, true) ?? "",
+    /0/u
+  );
+  assert.equal(forbiddenClaim({ complete: false, owed: ["a"] }, true), null);
 });
 
 test("a task scores correctness, forbidden claims and dead-end calls from the call log", () => {
