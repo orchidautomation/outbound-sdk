@@ -28,6 +28,7 @@ import type {
   LeadsLeft,
   RecentSends,
 } from "./diagnosis-checks.ts";
+import { readRunwayLeads } from "./pipeline-forecast.ts";
 import {
   labelOf,
   lastDays,
@@ -75,7 +76,7 @@ const input = z.object({
     .max(50_000)
     .default(2000)
     .describe(
-      "The most leads to read when sends fell or stopped, to tell lead runout from a fault. A page of leads is one request."
+      "The most leads to read when sends fell or stopped, to tell lead runout from a fault. Where the tool lists active leads alone (leads.byStatus), only those are read. A page of leads is one request."
     ),
   max_senders: z
     .number()
@@ -164,47 +165,68 @@ const readRecent = async (
   };
 };
 
+/** The leads left, or why lead runout was not checked. */
+interface LeadsRead {
+  readonly leads: LeadsLeft | null;
+  /** Set when lead runout could not be checked, for `notChecked`. */
+  readonly notChecked?: string;
+}
+
 /**
- * The leads left to start, read only to tell lead runout from a fault. `null`
- * when the adapter cannot list them, the cap stopped the read (the count would
- * be a minimum, so runout cannot be claimed) or the vendor lists none (a
- * campaign that sent has leads, so an empty listing says nothing).
+ * The leads left to start, read only to tell lead runout from a fault, and
+ * only the active leads where the tool lists them alone, the read
+ * client_report counts its runway from. `leads` is `null` when the adapter
+ * cannot list them, the cap stopped the read (the count would be a minimum,
+ * so runout cannot be claimed) or a listing of every status is empty (a
+ * campaign that sent has leads, so that says nothing; an empty listing of
+ * active leads means none is left).
  */
 const readLeadsLeft = async (
   context: InsightContext,
-  campaign: string,
+  campaign: Campaign,
   recent: RecentSends,
   maxLeads: number
-): Promise<LeadsLeft | null> => {
+): Promise<LeadsRead> => {
   if (!context.outbound.capabilities["leads.byCampaign"]) {
-    context.note(
-      "Lead runout: the adapter cannot list a campaign's leads, so a fall in sends was not checked against the leads left."
-    );
+    const why =
+      "Lead runout: the adapter cannot list a campaign's leads, so a fall in sends was not checked against the leads left.";
 
-    return null;
+    context.note(why);
+
+    return { leads: null, notChecked: why };
   }
 
-  const { capped, items: leads } = await readCapped(
-    context,
-    (max) => context.outbound.campaign(campaign).leads.listAll({ max }),
-    { input: "max_leads", max: maxLeads, what: "leads" }
-  );
+  const read = await readRunwayLeads(context, campaign, {
+    activeOnly: true,
+    leadsInput: "max_leads",
+    leadsWhat: "leads",
+    maxLeads,
+  });
 
-  if (capped || leads.length === 0) {
-    return null;
+  if (read.capped) {
+    return {
+      leads: null,
+      notChecked: `Lead runout: max_leads (${maxLeads}) stopped the read of the campaign's ${read.activeOnly ? "active " : ""}leads before all were counted, so a fall in sends was not checked against the leads left. Raise max_leads to check it.`,
+    };
   }
 
-  const split = splitActive(leads);
-  const unknown = leads.filter((lead) => lead.status === "unknown").length;
+  if (read.items.length === 0 && !read.activeOnly) {
+    return { leads: null };
+  }
+
+  const split = splitActive(read.items);
+  const unknown = read.items.filter((lead) => lead.status === "unknown").length;
 
   const runway = runwayOf(split, { unknown }, true, recent.startedPerDay);
 
   // A campaign that stopped because none is left to start has run out now, whether or not it started any lately.
   return {
-    active: split.active,
-    daysLeft: runway.state === "out_of_leads" ? 0 : runway.daysLeft,
-    inSequence: split.inSequence,
-    toStart: leadsToStart(split),
+    leads: {
+      active: split.active,
+      daysLeft: runway.state === "out_of_leads" ? 0 : runway.daysLeft,
+      inSequence: split.inSequence,
+      toStart: leadsToStart(split),
+    },
   };
 };
 
@@ -288,11 +310,11 @@ const leadsIfSendsFell = async (
   campaign: Campaign,
   recent: RecentSends | null,
   options: { readonly maxLeads: number; readonly maxSendDrop: number }
-): Promise<LeadsLeft | null> =>
+): Promise<LeadsRead> =>
   recent !== null &&
   sendsFellOrStopped(campaign, recent, { maxSendDrop: options.maxSendDrop })
-    ? await readLeadsLeft(context, campaign.ref, recent, options.maxLeads)
-    : null;
+    ? await readLeadsLeft(context, campaign, recent, options.maxLeads)
+    : { leads: null };
 
 const summarize = (findings: readonly DiagnosisFinding[]): string => {
   const [first] = findings;
@@ -304,7 +326,7 @@ const summarize = (findings: readonly DiagnosisFinding[]): string => {
 
 export const campaignDiagnosis = defineInsight({
   description:
-    "Why one campaign is underperforming: a list of findings, most serious first, each with a code, a plain-language finding, the numbers behind it and what to look at next. It checks for too little volume to judge, a low reply rate (with its 95% interval), a high bounce rate, few positive replies among replies, sends falling or stopped over the last days, told apart from the campaign running out of leads (under a day of new leads left to start at the recent pace, the pace lead_runway uses), a one or two step sequence, any of the campaign's own senders (up to 500) that is not active or has a warmup score of 0, open or click tracking being off, a schedule or daily limit that holds volume back, a count of leads contacted more than twice the campaign's leads, which means the count is wrong, and many skipped leads (loaded, then never sent to by the tool: over max_skipped_share of the campaign's leads, 5% by default, and at least min_skipped, 100), which usually means a block list or a duplicate rule keeps out leads meant to be sent to. Also returns what could not be checked; an empty list means nothing was found, not that all is well. Costs up to 7 requests, plus one per page of the leads not contacted where the tool counts skipped leads by listing them (Instantly, at most 50 pages), one per page of the campaign's senders and, only when sends fell or stopped, one per page of its leads.",
+    "Why one campaign is underperforming: a list of findings, most serious first, each with a code, a plain-language finding, the numbers behind it and what to look at next. It checks for too little volume to judge, a low reply rate (with its 95% interval), a high bounce rate, few positive replies among replies, sends falling or stopped over the last days, told apart from the campaign running out of leads (under a day of new leads left to start at the recent pace, the pace lead_runway uses), a one or two step sequence, any of the campaign's own senders (up to 500) that is not active or has a warmup score of 0, open or click tracking being off, a schedule or daily limit that holds volume back, a count of leads contacted more than twice the campaign's leads, which means the count is wrong, and many skipped leads (loaded, then never sent to by the tool: over max_skipped_share of the campaign's leads, 5% by default, and at least min_skipped, 100), which usually means a block list or a duplicate rule keeps out leads meant to be sent to. Also returns what could not be checked; an empty list means nothing was found, not that all is well. Costs up to 7 requests, plus one per page of the leads not contacted where the tool counts skipped leads by listing them (Instantly, at most 50 pages), one per page of the campaign's senders and, only when sends fell or stopped, one per page of its leads: its active leads only where the tool lists them alone (leads.byStatus), as client_report reads them. When max_leads stops that read, lead runout is not checked and notChecked says so.",
   inputSchema: input,
   key: "campaignDiagnosis",
   cost: (values, price) => {
@@ -347,10 +369,15 @@ export const campaignDiagnosis = defineInsight({
       recentDays: options.days,
     });
 
-    const leads = await leadsIfSendsFell(context, campaign, extras.recent, {
-      maxLeads: options.max_leads,
-      maxSendDrop: options.max_send_drop,
-    });
+    const { leads, notChecked: leadsNotChecked } = await leadsIfSendsFell(
+      context,
+      campaign,
+      extras.recent,
+      {
+        maxLeads: options.max_leads,
+        maxSendDrop: options.max_send_drop,
+      }
+    );
 
     const facts: Facts = {
       ...extras,
@@ -375,7 +402,11 @@ export const campaignDiagnosis = defineInsight({
     const diagnosis: CampaignDiagnosis = {
       ...labelOf(campaign),
       findings,
-      notChecked: [...extras.notChecked, ...unknownRates(facts)],
+      notChecked: [
+        ...extras.notChecked,
+        ...(leadsNotChecked === undefined ? [] : [leadsNotChecked]),
+        ...unknownRates(facts),
+      ],
       period: { from: options.from, to: options.to },
       rates: facts.rates,
       summary: summarize(findings),

@@ -915,7 +915,7 @@ export interface InsightInputs {
     readonly max_send_drop?: number | undefined;
 
     /**
-     * The most leads to read when sends fell or stopped, to tell lead runout from a fault. A page of leads is one request.
+     * The most leads to read when sends fell or stopped, to tell lead runout from a fault. Where the tool lists active leads alone (leads.byStatus), only those are read. A page of leads is one request.
      *
      * A whole number from 1 to 50,000. Defaults to `2000`.
      */

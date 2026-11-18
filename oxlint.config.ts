@@ -47,6 +47,25 @@ export default defineConfig({
       },
     },
     {
+      // The eval suite is a test client: it reads tool output it must not
+      // trust the shape of, and calls one tool at a time on purpose, so each
+      // call's cost and timing are its own (one run at a time, a request
+      // budget). The type-evidence rules are relaxed as for tests.
+      files: ["evals/**"],
+      rules: {
+        "anti-slop/no-chained-type-assertions": "off",
+        "anti-slop/no-known-value-widening": "off",
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unknown-parameters": "off",
+        "anti-slop/no-unknown-returns": "off",
+        "anti-slop/no-unsafe-dictionary-type": "off",
+        "anti-slop/require-safety-comment-for-type-assertion": "off",
+        "no-await-in-loop": "off",
+        "promise/avoid-new": "off",
+        "unicorn/no-await-expression-member": "off",
+      },
+    },
+    {
       // Test doubles are casts by nature, so the type-evidence rules are
       // relaxed for tests only. The behavioural rules stay on.
       files: [
