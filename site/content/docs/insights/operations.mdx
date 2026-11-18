@@ -224,16 +224,18 @@ The last `days` complete days against the `days` before, per campaign and in tot
 
 - `days`, `current`, `previous`: the two periods as `from` and `to`.
 - `campaignsRead`, `moreCampaignsExist`.
-- `campaigns`: one entry per campaign, with `current` and `previous` (counts and the three rates; replies and positive replies per message sent, or per lead contacted when a period does not report sends), `replyRateBasis` (`"sent"` or `"contacted"`, the same for both periods), `change` (current minus previous; rates change in points, so 0.02 is two points), `replyRateTest` (`z`, `pValue`, `significant`), `verdict` (`up`, `down`, `no_real_change` or `unknown`) and a `finding` sentence ("Replies per message sent went from 6% to 12%; ..."), and `rates`, each period's three rates as `{ count, of, rate, low, high }`. Largest change in reply rate first.
+- `campaigns`: one entry per campaign, with `current` and `previous` (counts, `meetingsBooked` and the three rates; replies and positive replies per message sent, or per lead contacted when a period does not report sends), `replyRateBasis` (`"sent"` or `"contacted"`, the same for both periods), `change` (current minus previous; rates change in points, so 0.02 is two points), `replyRateTest` (`z`, `pValue`, `significant`), `verdict` (`up`, `down`, `no_real_change` or `unknown`) and a `finding` sentence ("Replies per message sent went from 6% to 12%; ..."), and `rates`, each period's three rates as `{ count, of, rate, low, high }`. Largest change in reply rate first.
 - `tooFewSends`: campaigns under `min_sent` in either period, with `currentSent` and `previousSent`.
 - `total`: the same comparison for every campaign read, added together. Each rate counts only the campaigns that report both its count and what it is divided by, so the bounces of the campaigns that report them are never divided by every campaign's sends. `rates` holds the `count` and `of` each rate was divided from, which can be less than the totals beside it.
 - `workspace`: the same for the vendor's own workspace totals, or `null` when the adapter has none. On a combined instance the tools' rows are added up by the same rule.
 - `totalBasis`, `workspaceBasis`: what `total` and `workspace` count. `covers` is `campaigns` (only the campaigns read, in `statuses`) or `workspace` (every campaign, whatever its state); `replies` is `people` (`replied` and `positive` count leads, not reply messages) and `autoReplies` is `excluded`; `description` says it in a sentence.
 - `toolsLeftOut`: on a combined instance, each tool with no campaign in `statuses`, so `total` leaves it out, with `tool`, `reason` and its own workspace `counts` for this period (`null` when it has no workspace stats).
 
+`meetingsBooked` is the vendor's count of meetings booked in the period, where it records one (Instantly, on each campaign's total). It is `null` where the vendor records none, and is never filled from `opportunities` or `positive`: a week can have positive replies and no meeting booked.
+
 - **Needs:** `stats.campaign`.
 - **Costs:** two stats requests per campaign, plus two for the workspace and one for each tool in `toolsLeftOut`.
-- **Notes it can add:** workspace totals were left out because the adapter has no workspace stats; `total` and `workspace` count different replies for the period, and why; a tool left out had sends or replies in the period; a rate of `total` or `workspace` leaves out campaigns (or tools) that do not report one side of it, naming the rate and how many are counted; a cap was reached.
+- **Notes it can add:** `meetingsBooked` is `null` because no campaign read reports meetings, or counts only some campaigns; workspace totals were left out because the adapter has no workspace stats; `total` and `workspace` count different replies for the period, and why; a tool left out had sends or replies in the period; a rate of `total` or `workspace` leaves out campaigns (or tools) that do not report one side of it, naming the rate and how many are counted; a cap was reached.
 - **Does not:** test anything but the reply rate. The other changes are plain differences. `verdict` is `unknown` when a period has no reply or send counts, or neither period has a reply. A campaign whose vendor reports no sends has no reply rate for the period; it is never divided by leads contacted instead.
 
 <include meta='title="period-comparison.ts"'>
@@ -402,7 +404,7 @@ One report for one client or workspace over the last `days` complete days, compo
 
 - `days`, `period`, `previousPeriod`, `campaigns` (campaigns read), `campaignsRead` (the same number) and `moreCampaignsExist`.
 - `replyRateBasis`: `"sent"`, or `"contacted"` when a period does not report messages sent. `totals`, `top` and `bottom` divide replies by it, as `periodComparison` does.
-- `totals`: every campaign added together, as in `periodComparison`: `current`, `previous`, `change`, `replyRateBasis`, `replyRateTest`, `verdict` and `finding`. A rate counts only the campaigns that report both sides of it.
+- `totals`: every campaign added together, as in `periodComparison`: `current`, `previous`, `change`, `replyRateBasis`, `replyRateTest`, `verdict` and `finding`. A rate counts only the campaigns that report both sides of it. `meetingsBooked` is `null` where the vendor records no meetings, never opportunities or positive replies.
 - `top`, `bottom`: the best and worst campaigns by the low end of the interval of the reply rate, over `replyRateBasis`. `bottom` never repeats a campaign in `top`.
 - `bounceProblems`: campaigns over `max_bounce_rate`, worst first, with the rate as `count`, `of`, `rate`, `low` and `high`, and `bounced` and `sent`, the same counts under their older names.
 - `anomalies`: unusual days in the period, workspace-wide. `null` when the adapter cannot serve them.
@@ -415,7 +417,7 @@ One report for one client or workspace over the last `days` complete days, compo
 
 - **Needs:** `stats.campaign`. Unusual days also need `stats.byDay` and workspace stats. Leads left also needs `leads.byCampaign` and `stats.byDay`.
 - **Costs:** two stats requests per campaign, one for the workspace, and for each active campaign one more plus its pages of leads: its active leads only where the adapter lists them alone (`leads.byStatus`), otherwise every lead up to `max_leads_per_campaign`.
-- **Notes it can add:** one per section left out, starting "Left out."; a rate of `totals` leaves out campaigns that do not report one side of it; a cap was reached.
+- **Notes it can add:** one per section left out, starting "Left out."; `meetingsBooked` is `null` because no campaign read reports meetings, or counts only some campaigns; a rate of `totals` leaves out campaigns that do not report one side of it; a cap was reached.
 - **Does not:** filter by campaign. Without `provider` or `tag` it reports on everything the instance holds, or the one workspace it is scoped to. `tag` filters the campaigns read, so raise `max_campaigns` when the workspace has more than it reads. A campaign whose leads were cut off at `max_leads_per_campaign` is never flagged as running out, because its count is a minimum; a note names those campaigns. It writes no email and sends nothing.
 
 <include meta='title="client-report.ts"'>

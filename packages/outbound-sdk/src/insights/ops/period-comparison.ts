@@ -70,6 +70,12 @@ const input = z.object({
  * and `Comparison.rates` has the count and the denominator behind each.
  */
 export interface PeriodNumbers extends Totals {
+  /**
+   * Meetings booked, where the vendor records them. `null` where it does
+   * not, never opportunities or positive replies; a note says why.
+   * Always set by the insight; optional so a value built by hand stays valid.
+   */
+  readonly meetingsBooked?: number | null;
   readonly replyRate: number | null;
   readonly positiveRate: number | null;
   readonly bounceRate: number | null;
@@ -157,9 +163,13 @@ export const noteRepliesApart = (
   );
 };
 
-const numbersOf = (counts: Totals, rates: Rates): PeriodNumbers => ({
+/** A period's totals with the meetings the vendor records, when it does. */
+type PeriodCounts = Totals & Pick<MetricCounts, "meetingsBooked">;
+
+const numbersOf = (counts: PeriodCounts, rates: Rates): PeriodNumbers => ({
   ...totalsOf(counts),
   bounceRate: rates.bounceRate.rate,
+  meetingsBooked: counts.meetingsBooked ?? null,
   positiveRate: rates.positiveRate.rate,
   replyRate: rates.replyRate.rate,
 });
@@ -174,6 +184,10 @@ const changeOf = (
   bounceRate: minus(current.bounceRate, previous.bounceRate),
   bounced: minus(current.bounced, previous.bounced),
   contacted: minus(current.contacted, previous.contacted),
+  meetingsBooked: minus(
+    current.meetingsBooked ?? null,
+    previous.meetingsBooked ?? null
+  ),
   positive: minus(current.positive, previous.positive),
   positiveRate: minus(current.positiveRate, previous.positiveRate),
   replied: minus(current.replied, previous.replied),
@@ -194,8 +208,8 @@ const verdictOf = (test: ProportionTest | null): Comparison["verdict"] => {
 };
 
 const compare = (
-  current: { readonly counts: Totals; readonly rates: Rates },
-  previous: { readonly counts: Totals; readonly rates: Rates },
+  current: { readonly counts: PeriodCounts; readonly rates: Rates },
+  previous: { readonly counts: PeriodCounts; readonly rates: Rates },
   basis: ReplyBasis,
   alpha: number
 ): Comparison => {
@@ -234,8 +248,8 @@ const compare = (
 
 /** Compares two periods of counts: both sides, the change, and whether the reply rate really moved. */
 export const comparePeriods = (
-  current: Totals,
-  previous: Totals,
+  current: PeriodCounts,
+  previous: PeriodCounts,
   alpha: number
 ): Comparison => {
   const basis = periodBasis(current, previous);
@@ -335,6 +349,49 @@ export const totalOf = (
     alpha
   );
 
+const counted = (flags: readonly boolean[]): number =>
+  flags.filter(Boolean).length;
+
+/**
+ * Says why the total's meetingsBooked is null, or which campaigns it leaves
+ * out, so a missing meetings count is never read as no meetings and never
+ * replaced by opportunities or positive replies. When the two periods count
+ * different campaigns, the change is null: it would set unlike totals
+ * against each other. Returns the total.
+ */
+export const noteMeetings = (
+  context: InsightContext,
+  campaigns: readonly CampaignPeriods[],
+  total: Comparison
+): Comparison => {
+  const reports = (side: "current" | "previous") =>
+    campaigns.map((entry) => (entry[side].meetingsBooked ?? null) !== null);
+
+  const now = reports("current");
+  const before = reports("previous");
+  const same = now.every((flag, index) => flag === before[index]);
+
+  if (campaigns.length === 0 || (same && counted(now) === campaigns.length)) {
+    return total;
+  }
+
+  if (same) {
+    context.note(
+      counted(now) === 0
+        ? `meetingsBooked is null: no campaign read reports a count of meetings booked, and the tool's fields.metricRow.meetingsBooked says whether it records one at all. Opportunities and positive replies are not meetings, so neither stands in for it.`
+        : `meetingsBooked counts only the ${counted(now)} of ${campaigns.length} campaigns that report meetings booked; the others are left out, not counted as 0.`
+    );
+
+    return total;
+  }
+
+  context.note(
+    `meetingsBooked counts different campaigns in the two periods: ${counted(now)} of ${campaigns.length} this period and ${counted(before)} of ${campaigns.length} the period before, so change.meetingsBooked is null rather than a difference between unlike totals. Campaigns that do not report meetings are left out, not counted as 0.`
+  );
+
+  return { ...total, change: { ...total.change, meetingsBooked: null } };
+};
+
 /** Says in a note which rates of a total leave rows out. Returns the comparison. */
 export const noted = (
   context: InsightContext,
@@ -396,7 +453,7 @@ const workspaceOf = (
 
 export const periodComparison = defineInsight({
   description:
-    "This period against the last: for each campaign, counts and rates for the last `days` complete days and for the `days` before, the change in each, and whether the change in the reply rate is more than chance (a two-proportion test), with the campaigns sorted by the size of that change. Also the same for every campaign added together and, where the adapter has them, for the vendor's workspace totals. Reply and positive reply rates divide by messages sent (`replyRateBasis`), since a period's replies also answer leads contacted before it, and by leads contacted for both periods only when a period does not report messages sent. Use it for a weekly review. Campaigns under min_sent sends in either period are listed apart; a null is a count the vendor does not report, and a rate of a total counts only the campaigns that report both its count and what it divides by (a note says when some are left out). totalBasis and workspaceBasis say what each counts: the total adds up only the campaigns read, the workspace totals every campaign, and both count leads who replied, not reply messages. On a combined instance a tool with no campaign in statuses is named in toolsLeftOut with its own totals for the period. Costs two stats requests per campaign plus two for the workspace, and one for each tool left out.",
+    "This period against the last: for each campaign, counts and rates for the last `days` complete days and for the `days` before, the change in each, and whether the change in the reply rate is more than chance (a two-proportion test), with the campaigns sorted by the size of that change. Also the same for every campaign added together and, where the adapter has them, for the vendor's workspace totals. Reply and positive reply rates divide by messages sent (`replyRateBasis`), since a period's replies also answer leads contacted before it, and by leads contacted for both periods only when a period does not report messages sent. Use it for a weekly review. Campaigns under min_sent sends in either period are listed apart; a null is a count the vendor does not report, and a rate of a total counts only the campaigns that report both its count and what it divides by (a note says when some are left out). totalBasis and workspaceBasis say what each counts: the total adds up only the campaigns read, the workspace totals every campaign, and both count leads who replied, not reply messages. On a combined instance a tool with no campaign in statuses is named in toolsLeftOut with its own totals for the period. meetingsBooked is the vendor's count of meetings booked where it records one, and null where it does not, never opportunities or positive replies. Costs two stats requests per campaign plus two for the workspace, and one for each tool left out.",
   inputSchema: input,
   key: "periodComparison",
   cost: (values, price) =>
@@ -447,10 +504,14 @@ export const periodComparison = defineInsight({
       }
     }
 
-    const total = noted(
+    const total = noteMeetings(
       context,
-      "Every campaign added together",
-      totalOf(periods.campaigns, options.alpha)
+      periods.campaigns,
+      noted(
+        context,
+        "Every campaign added together",
+        totalOf(periods.campaigns, options.alpha)
+      )
     );
 
     const workspaceTotals = workspaceOf(context, workspace, options.alpha);

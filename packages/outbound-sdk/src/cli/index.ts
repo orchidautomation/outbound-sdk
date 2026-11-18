@@ -26,6 +26,10 @@ export type { McpServer, McpServerOptions } from "./mcp.ts";
 
 export { serveStdio } from "./stdio.ts";
 
+export { DEFAULT_TIME_BUDGET_MS, toolCallScope } from "./tool-call.ts";
+
+export type { ToolCallScope } from "./tool-call.ts";
+
 export { describeWait, throttleMonitor } from "./progress.ts";
 
 export type { ThrottleMonitor, ThrottleTotal } from "./progress.ts";
@@ -112,14 +116,14 @@ export const run = async (
     // `parse` refused an unknown command, so no command here is `mcp`.
     const command = name === undefined ? undefined : COMMANDS.get(name);
 
-    const adapter =
-      io.adapter ?? (await fromEnv({ provider: values.provider }));
-
-    const { plugins, rateLimitStore } = await setupFor(
+    const { leadFields, plugins, rateLimitStore } = await setupFor(
       values,
       command === undefined,
       io.stderr
     );
+
+    const adapter =
+      io.adapter ?? (await fromEnv({ leadFields, provider: values.provider }));
 
     // Innermost, so it counts each request the engine sends, cache hits not.
     if (command !== undefined) {
@@ -148,7 +152,7 @@ export const run = async (
 
       await serve(
         outbound,
-        { ...io, throttled: monitor.total },
+        { ...io, throttled: monitor.total, timeBudget: values["time-budget"] },
         unmasked,
         namedTools(values.tools),
         // A tool call may spend what --max-requests allows, which replaces an insight's default cap.

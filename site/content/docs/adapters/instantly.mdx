@@ -49,7 +49,7 @@ Instantly declares every capability in the [table](/docs/adapters#what-each-adap
 | `stats.bySender` | `derived` | Per-mailbox numbers exist by day only. A total is summed by the adapter. |
 | `events.verify` | `secret` | Instantly does not sign webhooks. |
 
-`leads.lookup` works by email only. A lead in Instantly has no LinkedIn profile, so a lookup by profile returns nothing and sends no request.
+`leads.lookup` works by email only. Instantly has no LinkedIn profile field, so a lookup by profile returns nothing and sends no request. A profile kept in a custom field named like one (`LinkedIn URL`, `linkedin_profile`) is read onto `linkedinUrl` as `derived`, but cannot be searched.
 
 `leads.lookupMany` sends every address in the same `contacts` field of `POST /leads/list`. `leads.byInterest` uses its `filter` field, one positive interest status after another: `FILTER_LEAD_INTERESTED`, `FILTER_LEAD_MEETING_BOOKED`, `FILTER_LEAD_MEETING_COMPLETED`, `FILTER_LEAD_CLOSED` (read as Won) and `FILTER_LEAD_CUSTOM_LABEL_POSITIVE`, so it costs at least five requests. Both follow Instantly's documentation and have not been run against a live workspace yet. `leads.byStatus` sends `filter: "FILTER_VAL_ACTIVE"`, and the adapter keeps only the leads it maps to `active`.
 
@@ -92,7 +92,8 @@ A page of campaigns reads at most 10 pages of 100 tag assignments. A page with m
 - **A listing ends one request late.** Instantly sends a next-page marker on the last page too, and the page after it is empty.
 - **Open counts come back even with open tracking off.** The analytics response does not say whether tracking was on.
 - **`isAuto` comes from a fixed rule.** No live email carried Instantly's documented `is_auto_reply`, and the email list cannot filter by it, so `isAutoSource` is `"rule"`: a machine sender address (`noreply`, `auto-responder`, `mailer-daemon`), an automatic subject (`OOO`, `Out of Office`, `Automatic reply`, "is no longer at"), a canned autoresponder phrase in the body, or, in a timeline or thread, a reply under a minute after the send it answers. `leftCompany` is `true` when a reply says the person left or the contact changed. A received email in a timeline or thread takes its `stepIndex` from the send it answers, since Instantly's own step lags on the last step.
-- **Daily stats rows have a `null` timezone.**
+- **Days are UTC.** Daily stats rows carry `timezone: "UTC"`. Instantly does not say so on the rows, but its range dates are documented as UTC midnight, and seen live on 2026-11-18 every day's replies over 14 days, for the workspace's campaigns and for 25 mailboxes, matched the received emails grouped by UTC day and not by a US timezone. A campaign's daily rows leave out a day with no activity, and a mailbox's list every day; [`fillDays`](/docs/api/stats#days-with-no-row) makes the first dense.
+- **Meetings booked are on the overview only.** `meetingsBooked` is `total_meeting_booked`: leads moved to Meeting Booked in the range. One campaign's total and the workspace total carry it; `stats({ scope: "campaign" })` rows, daily, step and mailbox rows have it `null`. It is not `opportunities`: seen live on 2026-11-18, a week with 2 opportunities and 2 interested leads had 0 meetings booked.
 - **A lead list's `size` is `null` on a listing.** The list object has no count. `outbound.lists.get(id)` reads the list's verification statistics as well, so one list by id has its size and costs two requests.
 - **Webhooks need Instantly's Hyper Growth plan or above**, by Instantly's documentation.
 

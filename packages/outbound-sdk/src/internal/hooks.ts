@@ -44,6 +44,11 @@ export interface ThrottleEvent {
     readonly requests: number;
     readonly perMs: number;
   }[];
+  /** The vendor's published windows for the lane, before `share` and any slowdown. */
+  readonly declared: readonly {
+    readonly requests: number;
+    readonly perMs: number;
+  }[];
 }
 
 export interface RequestEvent {

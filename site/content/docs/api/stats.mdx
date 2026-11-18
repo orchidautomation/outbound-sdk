@@ -102,12 +102,13 @@ Every count on a `MetricRow` is a non-negative number, or `null` when the vendor
 | `inmailsSent` | LinkedIn InMails sent. LinkedIn only. |
 | `leads` | Leads in the campaign now, whatever their progress. Optional. |
 | `completed` | Leads who reached the end of the sequence. Optional. |
+| `meetingsBooked` | Meetings booked: leads the vendor moved to its meeting-booked status in the range. Never opportunities or positive replies. Optional. |
 | `opportunities` | Opportunities the vendor counts for the leads. Optional. |
 | `opportunityValue` | What those opportunities are worth, in the vendor workspace's own currency. Optional. |
 
 `replied` counts people and `repliedTotal` counts messages, the way `opened` and `openedTotal` do. Instantly's dashboard shows "Unique replies", which is `replied`, and "Replies", which is `repliedTotal` plus `repliedAutoTotal`. A [`Reply`](/docs/api/records#reply) record is one message, so a list of replies can be longer than `replied`. Today only Instantly fills `repliedTotal` and `repliedAutoTotal`; every other adapter sets them to `null`.
 
-`leads`, `completed`, `opportunities` and `opportunityValue` are optional: a row may leave them out, and the adapters in this package set them to `null` where the vendor does not report them. Today only Instantly fills them, on campaign and workspace totals; `leads` is only on the rows of `stats({ scope: "campaign" })`. `contacted` can be a little over `leads`, because a lead removed after its sequence started is still counted as contacted.
+`leads`, `completed`, `meetingsBooked`, `opportunities` and `opportunityValue` are optional: a row may leave them out, and the adapters in this package set them to `null` where the vendor does not report them. Today only Instantly fills them, on campaign and workspace totals; `leads` is only on the rows of `stats({ scope: "campaign" })`, and `meetingsBooked` only on one campaign's total and the workspace total, which Instantly reads from its analytics overview. `outbound.fields.metricRow.meetingsBooked` is `false` on a tool that records no meetings, so a `null` there means the tool has none to give, not that nobody booked one. `contacted` can be a little over `leads`, because a lead removed after its sequence started is still counted as contacted.
 
 The other fields say what the row is:
 
@@ -116,7 +117,7 @@ The other fields say what the row is:
 | `scope` | `"workspace"`, `"campaign"`, `"step"`, `"sender"` |  |
 | `scopeRef` | `string` | The ref of the campaign or sender the row is for. |
 | `date` | `YYYY-MM-DD` or `null` | The day, for a daily row. `null` for a total. |
-| `timezone` | `string` or `null` | The vendor's timezone for a daily row. A vendor's "day" is not always UTC. |
+| `timezone` | `string` or `null` | The vendor's timezone for a daily row: `"UTC"` on Instantly and HeyReach, `null` where the vendor does not say. A vendor's "day" is not always UTC. |
 | `stepIndex` | integer or `null` | The step, for a per-step row. |
 | `variantKey` | `string` or `null` | The variant, for a per-variant row. |
 | `contentHash` | `string` or `null` | The hash of the copy the row is for, where known. |
@@ -174,6 +175,20 @@ What a vendor counts as an open or a reply differs in the details. Each adapter'
 `sumCounts(rows)` adds rows of counts together. A count stays `null` only when no row reports it. `emptyCounts()` is a row with every count `null`.
 
 Unique counts (`opened`, `contacted`) are summed as they are, which over-counts a person who appears in more than one row. A total from the vendor (`by: "total"`) is the better number when the vendor has one.
+
+## Days with no row
+
+A vendor can leave a day out of `by: "day"`: Instantly's and HeyReach's campaign days skip a day with no activity. A missing row is not a 0, so a chart or a warehouse table cannot tell it from a day the vendor never reported. `fillDays(rows, { from, to })` returns one row per scope for every day in the range, oldest first, keeping each row the vendor sent as it was. A day it adds has `evidence: "derived"`, its scope's `timezone`, and every count `null`. With `fill: "zero"`, a count the scope's other rows report is 0 on an added day instead, and a count they never report stays `null`, so a vendor that has no opens does not get 0 opens.
+
+<include meta='title="missing-days.ts"'>
+  ../../_examples/api-stats/missing-days.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/api-stats/missing-days.out.txt
+</include>
+
+Use `fill: "zero"` only for a vendor that leaves out days with no activity, as these two do. `fillDays` fills only the scopes that have a row in the range: a campaign with no row at all is not known to it. It refuses totals with `Invalid`.
 
 ## Related
 

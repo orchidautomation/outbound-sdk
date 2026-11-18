@@ -2,6 +2,8 @@ import { z } from "zod";
 
 import type { Lead, Message } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
+import { undeterminedNote } from "../internal/identifiers.ts";
+import type { PersonLink } from "../internal/identifiers.ts";
 import type { Json } from "../internal/json.ts";
 import type { MetricCounts } from "../internal/metrics.ts";
 import { plural } from "../internal/numbers.ts";
@@ -191,6 +193,7 @@ interface PersonResult {
   readonly key: string;
   readonly found: boolean;
   readonly keys: readonly string[];
+  readonly links?: readonly PersonLink[] | undefined;
   readonly records: readonly Lead[];
   readonly timeline: readonly Message[];
   readonly requests: number;
@@ -237,17 +240,35 @@ export const crossChannelLead: ToolDefinition<z.infer<typeof personInput>> = {
 
     const timeline: Json[] = person.timeline.map((message) => ({
       body: input.include_bodies ? untrusted(message.bodyText) : null,
+      campaign: message.campaignRef,
       channel: message.channel,
       direction: message.direction,
+      is_auto: message.isAuto ?? null,
       message: message.ref,
       provider: message.provider,
       sent_at: message.sentAt,
     }));
 
+    const links = person.links ?? [];
+
+    const undetermined = links.filter((link) => link.status === "undetermined");
+
+    const notes = [
+      "timeline holds every message to and from the person across their campaigns and tools, each once, automatic replies included (is_auto); person_summary counts per campaign record and leaves automatic replies out.",
+      ...undetermined.map(undeterminedNote),
+    ];
+
     return {
       data: {
         found: person.found,
         identifiers: [...person.keys],
+        links: links.map((link) => ({
+          identifiers: [...link.identifiers],
+          provider: link.provider,
+          searchable: [...link.searchable],
+          status: link.status,
+          workspace: link.workspaceId,
+        })),
         records: person.records.map((record) => ({
           campaign: record.campaignRef,
           lead: record.ref,
@@ -257,11 +278,13 @@ export const crossChannelLead: ToolDefinition<z.infer<typeof personInput>> = {
         })),
         timeline,
       },
-      // Every record that carries the identifier is read, with no cap.
+      // Every record that carries the identifier is read, with no cap; a
+      // tool that cannot be searched by the person's identifiers leaves the
+      // answer incomplete.
       meta: {
-        complete: true,
+        complete: undetermined.length === 0,
         evidence: "derived",
-        notes: [],
+        notes,
         provider: outbound.provider,
         requests: person.requests,
       },

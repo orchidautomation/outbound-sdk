@@ -3,6 +3,7 @@
 // rates are always recomputed from counts.
 
 import type { MetricRow, MetricScope } from "./entities.ts";
+import { OutboundError } from "./errors.ts";
 import type { Identity } from "./record.ts";
 import { makeRef } from "./ref.ts";
 import { SCHEMA_VERSION } from "./vocabulary.ts";
@@ -124,6 +125,7 @@ const COUNT_KEYS = [
   "delivered",
   "inmailsSent",
   "leads",
+  "meetingsBooked",
   "opened",
   "openedTotal",
   "opportunities",
@@ -151,6 +153,7 @@ export const emptyCounts = (): MetricCounts => ({
   delivered: null,
   inmailsSent: null,
   leads: null,
+  meetingsBooked: null,
   opened: null,
   openedTotal: null,
   opportunities: null,
@@ -212,6 +215,108 @@ export const sumMeasured = (rows: readonly MetricCounts[]): MetricCounts => {
   }
 
   return total;
+};
+
+export interface FillDaysOptions {
+  /** The first day, `YYYY-MM-DD`. */
+  readonly from: string;
+  /** The last day, `YYYY-MM-DD`, included. */
+  readonly to: string;
+  /**
+   * What a day with no row gets. `null` (the default): every count unknown,
+   * since the vendor did not report the day. `zero`: 0 for each count the
+   * scope's other rows report, for a vendor that leaves out days with no
+   * activity; a count those rows never report stays `null`.
+   */
+  readonly fill?: "null" | "zero" | undefined;
+}
+
+const DAY_MS = 86_400_000;
+
+const dayOf = (value: string, name: string): number => {
+  const time = /^\d{4}-\d{2}-\d{2}$/u.test(value)
+    ? Date.parse(`${value}T00:00:00Z`)
+    : Number.NaN;
+
+  // A day that does not exist, such as 2026-02-30, parses as a later one.
+  if (
+    Number.isNaN(time) ||
+    new Date(time).toISOString().slice(0, 10) !== value
+  ) {
+    throw new OutboundError("Invalid", `${name} must be a day, YYYY-MM-DD`);
+  }
+
+  return time;
+};
+
+const filledRow = (
+  rows: readonly MetricRow[],
+  date: string,
+  fill: "null" | "zero"
+): MetricRow => {
+  const counts = emptyCounts();
+
+  if (fill === "zero") {
+    for (const key of COUNT_KEYS) {
+      if (rows.some((row) => row[key] !== null && row[key] !== undefined)) {
+        counts[key] = 0;
+      }
+    }
+  }
+
+  // SAFETY: rows is a scope's rows, and a scope is only made from a row.
+  const [first] = rows as [MetricRow, ...MetricRow[]];
+
+  return { ...first, ...counts, contentHash: null, date, evidence: "derived" };
+};
+
+/**
+ * Daily rows made dense: one row per scope for every day from `from` to
+ * `to`, oldest first. A day the vendor returned no row for gets one with
+ * `evidence: "derived"`, its scope's `timezone` and `tracking`, and counts
+ * set by `fill`, so it is never mistaken for a day the vendor reported.
+ * Rows the vendor returned are kept as they are. Only scopes with at least
+ * one row are filled: a campaign with no row in the range is not known here.
+ */
+export const fillDays = (
+  rows: readonly MetricRow[],
+  options: FillDaysOptions
+): MetricRow[] => {
+  const from = dayOf(options.from, "from");
+  const to = dayOf(options.to, "to");
+
+  if (from > to) {
+    throw new OutboundError("Invalid", "from must not be after to");
+  }
+
+  const scopes = new Map<string, MetricRow[]>();
+
+  for (const row of rows) {
+    if (row.date === null) {
+      throw new OutboundError(
+        "Invalid",
+        'fillDays takes daily rows: read stats with by: "day"'
+      );
+    }
+
+    scopes.set(row.scopeRef, [...(scopes.get(row.scopeRef) ?? []), row]);
+  }
+
+  const days = Array.from({ length: (to - from) / DAY_MS + 1 }, (_, index) =>
+    new Date(from + index * DAY_MS).toISOString().slice(0, 10)
+  );
+
+  const dates = [...new Set([...days, ...rows.map((row) => row.date ?? "")])];
+
+  return dates.toSorted().flatMap((date) =>
+    [...scopes.values()].flatMap((own) => {
+      const reported = own.filter((row) => row.date === date);
+
+      return reported.length > 0 || !days.includes(date)
+        ? reported
+        : [filledRow(own, date, options.fill ?? "null")];
+    })
+  );
 };
 
 /** What a row of counts is for: a workspace, a campaign, a step or a sender. */

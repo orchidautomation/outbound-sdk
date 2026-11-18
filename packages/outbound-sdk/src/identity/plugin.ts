@@ -7,6 +7,11 @@
 import { mapConcurrent } from "../internal/concurrency.ts";
 import type { Lead, Message } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
+import { identifierCoverage, linksOf } from "../internal/identifiers.ts";
+import type {
+  IdentifierCoverage,
+  PersonLink,
+} from "../internal/identifiers.ts";
 import type { Include, OutboundApi } from "../internal/outbound/api.ts";
 import type { OutboundRecord } from "../internal/outbound/operations.ts";
 import type { OutboundPlugin } from "../internal/outbound/plugins.ts";
@@ -43,7 +48,12 @@ export interface Person {
   readonly found: boolean;
   /** One record per tool or campaign the person is in. Linked, not merged. */
   readonly records: readonly Lead[];
-  /** Every message to and from the person across tools, oldest first. */
+  /** Each tool on the instance, what it can be linked by, and whether it holds the person. */
+  readonly links: readonly PersonLink[];
+  /**
+   * Every message to and from the person across tools and campaigns, each
+   * once, oldest first. Automatic replies are kept and carry `isAuto`.
+   */
   readonly timeline: readonly Message[];
   /** Vendor requests the lookup made. */
   readonly requests: number;
@@ -59,6 +69,8 @@ export interface IdentityExtension {
     identifier: string,
     options?: PersonOptions
   ) => Promise<Person>;
+  /** Which identifier types each tool fills on its leads, and which two or more share. No request. */
+  readonly identifiers: () => Promise<IdentifierCoverage>;
 }
 
 const isLead = (record: OutboundRecord): record is Lead =>
@@ -324,30 +336,42 @@ const lookup = async (
   const wantsTimeline =
     (options.timeline ?? true) && outbound.capabilities["leads.timeline"];
 
+  // A vendor that uses one lead id in every campaign gives one timeline for
+  // all of them, so each ref is read once.
   const timelines = wantsTimeline
     ? await Promise.all(
-        records.map((record) =>
-          outbound.lead(record.ref).timeline({ include: options.include })
+        [...new Set(records.map((record) => record.ref))].map((ref) =>
+          outbound.lead(ref).timeline({ include: options.include })
         )
       )
     : [];
+
+  // Two records' timelines can hold the same message (a timeline read by
+  // address or by a shared id spans campaigns), so each is kept once.
+  const timeline = new Map(
+    timelines
+      .flatMap((page) => page.items)
+      .map((message) => [message.ref, message])
+  );
 
   return {
     found: records.length > 0,
     key,
     keys: [...keys].toSorted(),
+    links: linksOf(await identifierCoverage(outbound), keys, records),
     records,
     requests: timelines.reduce(
       (sum, page) => sum + page.meta.requests,
       tally.requests
     ),
-    timeline: timelines.flatMap((page) => page.items).toSorted(bySentAt),
+    timeline: [...timeline.values()].toSorted(bySentAt),
   };
 };
 
 /** Links the same person across tools by exact identifier. */
 export const identity = (): OutboundPlugin<IdentityExtension> => ({
   extend: (outbound) => ({
+    identifiers: () => identifierCoverage(outbound),
     person: (identifier, options = {}) => lookup(outbound, identifier, options),
   }),
   name: "identity",

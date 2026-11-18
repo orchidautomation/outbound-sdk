@@ -23,11 +23,15 @@ export const DEFAULT_TIMEOUT_MS = 30_000;
 export interface CallState {
   requests: number;
   throttledMs: number;
-  readonly signal: AbortSignal | undefined;
+  /** Aborts the call. A plugin may add a signal of its own to it. */
+  signal: AbortSignal | undefined;
   readonly timeoutMs: number;
   readonly retry: RetryPolicy;
-  /** An epoch in milliseconds: the total budget across retries and waits. */
-  readonly deadlineAt: number | undefined;
+  /**
+   * An epoch in milliseconds: the total budget across retries and waits. A
+   * plugin may bring it forward.
+   */
+  deadlineAt: number | undefined;
   /** Stop after this many vendor requests. A plugin may lower it. */
   maxRequests: number | undefined;
   /**
@@ -76,10 +80,13 @@ const readBody = async (response: Response): Promise<Json> => {
   return parseJson(raw) ?? raw;
 };
 
+// The response and its body. The timeout and the caller's signal stay
+// connected until the body is read, so a vendor that sends headers and
+// then stalls is stopped like one that never answers.
 const fetchOnce = async (
   spec: RequestSpec,
   environment: RequestEnvironment
-): Promise<Response> => {
+): Promise<{ readonly response: Response; readonly body: Json }> => {
   const { runtime, state } = environment;
   const controller = new AbortController();
 
@@ -97,7 +104,7 @@ const fetchOnce = async (
   state.signal?.addEventListener("abort", onCallerAbort, { once: true });
 
   try {
-    return await runtime.fetch(spec.url, {
+    const response = await runtime.fetch(spec.url, {
       headers: {
         accept: "application/json",
         ...(spec.body === undefined
@@ -111,6 +118,8 @@ const fetchOnce = async (
         ? undefined
         : { body: JSON.stringify(spec.body) }),
     });
+
+    return { body: await readBody(response), response };
   } catch (error) {
     throw timedOut ? TIMED_OUT : error;
   } finally {
@@ -207,9 +216,8 @@ const attempt = async (
   let status: number | null = null;
 
   try {
-    const response = await fetchOnce(spec, environment);
+    const { body, response } = await fetchOnce(spec, environment);
     ({ status } = response);
-    const body = await readBody(response);
     await noteHeaders(response, environment);
 
     if (response.ok) {
@@ -274,6 +282,18 @@ const assertRequestBudget = (environment: RequestEnvironment): void => {
   }
 };
 
+// Errors of calls that stopped retrying because the next try would pass the deadline.
+const PASSED_DEADLINE = new WeakSet<OutboundError>();
+
+/**
+ * `true` for an error of a call its deadline stopped: a wait for the rate
+ * budget, or a retry, that would have passed it.
+ */
+export const stoppedByDeadline = (error: unknown): error is OutboundError =>
+  OutboundError.is(error) &&
+  (PASSED_DEADLINE.has(error) ||
+    (error.code === "RateLimited" && error.limit === "deadline"));
+
 const exhausted = (error: OutboundError, timedOut: boolean): OutboundError =>
   timedOut
     ? new OutboundError(error.code, error.message, {
@@ -318,7 +338,10 @@ export const execute = async (
       state.deadlineAt !== undefined &&
       runtime.now() + delayMs > state.deadlineAt
     ) {
-      throw exhausted(result.error, true);
+      const stopped = exhausted(result.error, true);
+      PASSED_DEADLINE.add(stopped);
+
+      throw stopped;
     }
 
     fire(hooks.onRetry, {
@@ -335,6 +358,7 @@ export const execute = async (
       state.throttledMs += delayMs;
       fire(hooks.onThrottle, {
         cause: "vendor",
+        declared: environment.budget.declared(lane),
         lane,
         provider: adapter.name,
         waitMs: delayMs,

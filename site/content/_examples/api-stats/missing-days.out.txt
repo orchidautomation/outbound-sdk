@@ -1,0 +1,11 @@
+as the vendor sent them:
+  2026-11-09 sent 120 replied 3 opened null (exact)
+  2026-11-11 sent 80 replied 1 opened null (exact)
+every day, unknown when missing:
+  2026-11-09 sent 120 replied 3 opened null (exact)
+  2026-11-10 sent null replied null opened null (derived)
+  2026-11-11 sent 80 replied 1 opened null (exact)
+every day, 0 when missing:
+  2026-11-09 sent 120 replied 3 opened null (exact)
+  2026-11-10 sent 0 replied 0 opened null (derived)
+  2026-11-11 sent 80 replied 1 opened null (exact)

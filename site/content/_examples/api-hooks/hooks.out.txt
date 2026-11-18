@@ -19,6 +19,7 @@ onAction {
 -- a call that is throttled, fails once and is retried
 onThrottle {
   cause: 'budget',
+  declared: [ { perMs: 1000, requests: 100 }, { perMs: 60000, requests: 6000 } ],
   lane: 'default',
   provider: 'instantly',
   waitMs: 1000,
@@ -42,6 +43,7 @@ onRetry {
 }
 onThrottle {
   cause: 'budget',
+  declared: [ { perMs: 1000, requests: 100 }, { perMs: 60000, requests: 6000 } ],
   lane: 'default',
   provider: 'instantly',
   waitMs: 500,
@@ -67,6 +69,7 @@ onAction {
 -- a call that fails
 onThrottle {
   cause: 'budget',
+  declared: [ { perMs: 1000, requests: 100 }, { perMs: 60000, requests: 6000 } ],
   lane: 'default',
   provider: 'instantly',
   waitMs: 1000,

@@ -57,7 +57,11 @@ test("fields: an instance reports its adapter's coverage", () => {
     fetch: offline,
   });
 
-  assert.equal(email.fields.lead.linkedinUrl, false);
+  assert.equal(
+    email.fields.lead.linkedinUrl,
+    "derived",
+    "Instantly has no profile field; one is read from a custom field named like it"
+  );
   assert.equal(email.fields.lead.phone, "exact");
   assert.equal(email.fields.senderHealth.blacklisted, false);
 

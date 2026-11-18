@@ -413,6 +413,14 @@ export const metricRowSchema = z.object({
    */
   leads: count.optional(),
   /**
+   * Meetings booked: leads the vendor moved to its meeting-booked status in
+   * the range. Not opportunities and not positive replies. `null` where the
+   * vendor records no meetings (`fields.metricRow.meetingsBooked` is
+   * `false`) or this row's report does not carry them. Optional, like
+   * `completed`.
+   */
+  meetingsBooked: count.optional(),
+  /**
    * Unique opens. `null` when a campaign behind the row had open tracking
    * off and recorded no opens, including when tracking is `mixed`.
    */

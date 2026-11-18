@@ -13,7 +13,12 @@
 //
 // Leads, completed leads and opportunities are on the totals only. The
 // overview has no `leads_count`, so `leads` is read from the per-campaign
-// report alone.
+// report alone. Meetings booked (`total_meeting_booked`) are on the overview
+// alone, so every-campaign, daily, step and sender rows leave them null.
+//
+// Daily rows are cut at UTC midnight: the range parameters are documented as
+// UTC, and seen live (2026-11-18) every day's replies, per campaign and per
+// mailbox, matched received emails bucketed by UTC day and not by a US zone.
 
 import type { MetricRow } from "../internal/entities.ts";
 import { count, text } from "../internal/json.ts";
@@ -33,6 +38,7 @@ export const overviewRow = (scope: RowScope, raw: JsonObject): MetricRow =>
     clickedTotal: count(raw.link_click_count),
     completed: count(raw.completed_count),
     contacted: count(raw.new_leads_contacted_count),
+    meetingsBooked: count(raw.total_meeting_booked),
     opened: count(raw.open_count_unique),
     openedTotal: count(raw.open_count),
     opportunities: count(raw.total_opportunities),
@@ -96,7 +102,7 @@ const dailyCounts = (raw: JsonObject): MetricCounts =>
 
 /** `GET /campaigns/analytics/daily` and `GET /accounts/analytics/daily`. */
 export const dailyRow = (scope: RowScope, raw: JsonObject): MetricRow =>
-  metricRow(scope, dailyCounts(raw), { date: text(raw.date) });
+  metricRow(scope, dailyCounts(raw), { date: text(raw.date), timezone: "UTC" });
 
 /**
  * A total built by adding daily rows. Unique counts are summed across days,

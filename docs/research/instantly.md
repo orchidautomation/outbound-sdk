@@ -745,3 +745,21 @@ Fetched 2026-11-17 from `https://api.instantly.ai/openapi/api_v2.json` (OpenAPI 
 - `GET /api/v2/accounts/analytics/daily`: `emails` is a query parameter of `type: array`, `minItems` 1, `maxItems` 200, with no `style` or `explode`, so OpenAPI's default (`form`, exploded) applies: the key is repeated once per address. "Email accounts to include. This filter is required and accepts at most 200 unique accounts." `start_date` defaults to "a 30-day window ending at end_date. The maximum range is 31 days." The 200 response is an array of objects with `date` (`YYYY-MM-DD`), `email_account` ("The email account that sent the emails"), `sent` and the other daily counts, so each row names its mailbox. Responses 400, 401, 402, 404, 413 and 429 are declared.
 - The OUT-142 live check sent 200 repeated `emails` over 14 days and got one array of 994 rows, with a URL of about 7,300 characters.
 - What changed: `stats({ scope: "sender", scopeIds })` (`stats.bySenders`) names up to 200 mailboxes in one read and splits further ones into more reads of 200. Rows are matched to their mailbox by `email_account`, ignoring case. The tracking lookup (`/campaigns/analytics` and the campaign listing) does not depend on the mailbox, so it is read once for all of them. Sender impact reads every failing mailbox's 14 days this way, so a failing mailbox now costs only the listing of its campaigns (`/account-campaign-mappings/{email}`, plus the two tag reads when its campaigns have tags).
+
+## Meetings booked and the day boundary of daily stats (2026-11-18, for OUT-162 and OUT-167)
+
+Fetched 2026-11-18: https://api.instantly.ai/openapi/api_v2.json (`info.version` 2.0.0, 203 paths) and https://developer.instantly.ai/api-reference/openapi.json (2.0.0, 124 paths). The fields, word for word:
+
+| Field | Endpoint | Description |
+| --- | --- | --- |
+| `total_meeting_booked` | `GET /campaigns/analytics/overview` only | "The total number of meeting booked opportunities created" |
+| `total_meeting_completed` | the same | "The total number of meeting completed opportunities created" |
+| `meetings_booked` | `GET /campaigns/analytics/steps`, only with `include_opportunities_count=true`, and only in the api.instantly.ai spec | "The total number of opportunities from this step whose current CRM status is Meeting Booked" |
+
+`GET /campaigns/analytics` (every campaign), `/campaigns/analytics/daily` and `/accounts/analytics/daily` have no meetings field. A step's `meetings_booked` counts leads whose status is Meeting Booked now, not bookings in the range, so it is not read.
+
+The adapter reads `meetingsBooked` from `total_meeting_booked`, so one campaign's total and the workspace total carry it and every other row has it null. Other adapters declare `meetingsBooked: false`: their research notes record no meetings count.
+
+Seen live, read-only, on 2026-11-18: the overview for 2026-11-10..16 gave `total_meeting_booked` 0, `total_opportunities` 2 and `total_interested` 2; for 2026-11-03..09, 0, 8 and 8. So opportunities are not meetings: the SDR manager's weekly read (OUTB-26 edge 4) had guessed they were. None of the 17 every-campaign rows carried a meetings field.
+
+Daily rows do not state a timezone, and the range parameters say "Date-only values are interpreted as UTC midnight". To settle the day boundary, read-only on 2026-11-18: `GET /campaigns/analytics/daily` for 2026-11-03..16 against the 192 received emails in campaigns over the same days (`GET /emails?email_type=received`, every page), grouped by day. Grouped by UTC day, all 14 days matched `replies` + `replies_automatic`; grouped by New York, Chicago or Los Angeles days, 11 of 14 did. For 25 mailboxes, `GET /accounts/analytics/daily` gave 350 rows (every day listed, zeros included) and all 350 matched by UTC day, 347 by a US zone. Berlin (UTC+1) also matched, since no reply fell in the hour between, so the reading is UTC from the documented range parameters, confirmed against US zones. The adapter sets `timezone: "UTC"` on daily rows. Campaign daily rows left out days with no activity (seen: 2026-11-11 and 11-14 absent on a campaign that sent on the days around them), which `fillDays` makes dense.
