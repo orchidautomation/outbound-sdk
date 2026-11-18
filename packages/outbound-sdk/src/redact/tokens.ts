@@ -4,6 +4,7 @@
 
 import { readEnv } from "../internal/env.ts";
 import { OutboundError } from "../internal/errors.ts";
+import type { Operation } from "../internal/outbound/operations.ts";
 import { hmacSha256Hex } from "../internal/sha256.ts";
 
 /** The shortest `key` `redact` accepts. */
@@ -111,4 +112,27 @@ export const knownTokens = (): Known => {
     unmask: (text) =>
       text.replaceAll(TOKEN, (token) => values.get(token)?.value ?? token),
   };
+};
+
+/** What to do about a token no process can put back but the one that wrote it. */
+export const UNKNOWN_TOKEN_REMEDY =
+  "Redact keeps what each token stands for in memory, only in the process that wrote it, so it is not sent to the vendor. Run the tool that returned it again in this session. The redact key (redact's key option, or OUTBOUND_REDACT_KEY in the environment) keeps tokens the same across runs, so a token you kept matches its records again once they are read in the new session.";
+
+/**
+ * Refuses a call that still names a token once every known one is put back:
+ * a token from another session or process would reach the vendor as it is.
+ */
+export const refuseUnknownTokens = (
+  operation: Operation,
+  provider: string
+): void => {
+  const [token] = JSON.stringify(operation).match(TOKEN) ?? [];
+
+  if (token !== undefined) {
+    throw new OutboundError(
+      "NotFound",
+      `"${token}" is a redacted token from another session or process. ${UNKNOWN_TOKEN_REMEDY}`,
+      { provider }
+    );
+  }
 };
