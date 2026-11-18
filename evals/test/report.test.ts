@@ -109,6 +109,19 @@ test("the answer is the last fenced JSON block, and prose without one has none",
   assert.equal(answerBlock("No block here."), undefined);
 });
 
+test("a listed answer counts as its length where a count was asked for", () => {
+  const task = TASKS.find((one) => one.id === 4);
+  assert.ok(task);
+  assert.equal(
+    task.correct({ campaigns: ["a", "b"] }, { "9": { runningOutThisWeek: 2 } }),
+    true
+  );
+  assert.equal(
+    task.correct({ campaigns: 3 }, { "9": { runningOutThisWeek: 2 } }),
+    false
+  );
+});
+
 test("a definite answer over an incomplete source is a forbidden claim; a hedged one is not", () => {
   assert.equal(forbiddenClaim({ complete: false, owed: 0 }, false), null);
   assert.match(

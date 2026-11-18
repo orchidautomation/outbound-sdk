@@ -131,8 +131,11 @@ export const RUNWAY_CASES: readonly Case[] = [
             (row) => text(at(row, "state")) === "out_of_leads"
           ).length,
           runningOut: running.length,
+          // Already out of leads (whatever days it shows), or out within 7 days.
           runningOutThisWeek: running.filter(
-            (row) => (num(at(row, "daysLeft")) ?? Number.POSITIVE_INFINITY) <= 7
+            (row) =>
+              text(at(row, "state")) === "out_of_leads" ||
+              (num(at(row, "daysLeft")) ?? Number.POSITIVE_INFINITY) <= 7
           ).length,
           stalled: itemsOf(report, "stalled").length,
         },

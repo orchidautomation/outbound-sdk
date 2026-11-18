@@ -36,7 +36,14 @@ const same = (
     return null;
   }
 
-  return at(answer, ...path) === expected;
+  const given = at(answer, ...path);
+
+  // A model sometimes lists the items where the block asks for their count.
+  return (
+    (Array.isArray(given) && typeof expected === "number"
+      ? given.length
+      : given) === expected
+  );
 };
 
 const all = (...checks: readonly (boolean | null)[]): boolean | null =>
