@@ -9,7 +9,7 @@ one day: [
 ]
 flat baseline: true - 0 unusual days
 no stats: NotFound - No stats were returned for campaign cmp_new
-nothing reported: [ 'no_recent_sends', 'too_little_volume' ] [
+nothing reported: [ 'out_of_leads', 'too_little_volume' ] [
   'Reply rate: the vendor reports no reply or volume count.',
   'Bounce rate: the vendor reports no bounce or send count.',
   'Positive replies: the vendor reports no positive reply count.'

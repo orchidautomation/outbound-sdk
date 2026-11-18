@@ -9,6 +9,18 @@ import type {
 import { NOW, single } from "./helpers.ts";
 import { pair, row, unsupported } from "./ops-helpers.ts";
 
+const unstarted = (
+  campaignId: string,
+  count: number,
+  status: NonNullable<MemoryLead["status"]>
+): MemoryLead[] =>
+  Array.from({ length: count }, (_, index) => ({
+    campaignId,
+    email: `${campaignId}-${status}-${index}@example.com`,
+    id: `${campaignId}-${status}-${index}`,
+    status,
+  }));
+
 const same = (campaignId: string, date: string, sent: number) =>
   row(campaignId, date, { contacted: sent, sent });
 
@@ -44,6 +56,13 @@ const DATA: MemoryData = {
     { id: "idle", name: "Idle", status: "paused" },
     { id: "dark", name: "Dark" },
     { id: "blank", name: "Blank" },
+  ],
+  // Leads left to start, so a fall in sends is not lead runout. The 1,000
+  // finished leads keep the 2,000 contacted within twice the campaign's leads.
+  leads: [
+    ...unstarted("bad", 1000, "completed"),
+    ...unstarted("bad", 100, "active"),
+    ...unstarted("blank", 5, "active"),
   ],
   senders: [
     { address: "one@send.example", campaignIds: ["bad", "good"], id: "s1" },
@@ -615,6 +634,12 @@ test("campaign_diagnosis keeps falling_sends when leads are left, or when it can
 
   assert.deepEqual(codes(capped), ["falling_sends"]);
   assert.equal(capped.meta.complete, false);
+  assert.ok(
+    capped.data.notChecked.includes(
+      "Lead runout: max_leads (10) stopped the read of the campaign's active leads before all were counted, so a fall in sends was not checked against the leads left. Raise max_leads to check it."
+    ),
+    capped.data.notChecked.join(" | ")
+  );
 
   // The adapter cannot list a campaign's leads: falling_sends, and a note saying why.
   const blind = await single(runout(28), {
@@ -625,6 +650,10 @@ test("campaign_diagnosis keeps falling_sends when leads are left, or when it can
   assert.ok(
     blind.meta.notes.some((note) => note.startsWith("Lead runout:")),
     blind.meta.notes.join(" | ")
+  );
+  assert.ok(
+    blind.data.notChecked.some((what) => what.startsWith("Lead runout:")),
+    blind.data.notChecked.join(" | ")
   );
 
   // Sends did not fall, so no lead is read: a cap of 1 lead would otherwise stop the read.
@@ -638,6 +667,72 @@ test("campaign_diagnosis keeps falling_sends when leads are left, or when it can
 
   assert.deepEqual(codes(steady), []);
   assert.equal(steady.meta.complete, true);
+});
+
+// Live case (OUT-174): campaigns out of leads read as no_recent_sends or
+// falling_sends, because the read of every status stopped at the 2,000 cap on
+// their finished leads before reaching the few still active. Here 2,500
+// finished leads are listed first.
+const finishedFirst = (active: readonly MemoryLead[]): MemoryData => ({
+  ...runout(0),
+  leads: [...leads("drain", 2500, "completed", true), ...active],
+});
+
+test("campaign_diagnosis counts lead runout from the active leads alone, as client_report does, past thousands of finished leads", async () => {
+  const draining = await single(
+    finishedFirst([
+      ...leads("drain", 12, "active", true),
+      ...leads("drain", 28, "active", false),
+    ])
+  ).insights.campaignDiagnosis(DRAIN, { now: NOW });
+
+  assert.deepEqual(codes(draining), ["out_of_leads"]);
+  assert.equal(draining.meta.complete, true, draining.meta.notes.join(" | "));
+  assert.deepEqual(draining.data.findings[0]?.numbers, {
+    activeLeads: 40,
+    before: 900,
+    daysLeft: 0.7,
+    drop: 0.6889,
+    inSequence: 12,
+    leadsToStart: 28,
+    newLeadsPerDay: 40,
+    sent: 280,
+  });
+
+  // No active lead at all: the empty listing of active leads means none is left to start.
+  const empty = await single(finishedFirst([])).insights.campaignDiagnosis(
+    DRAIN,
+    { now: NOW }
+  );
+
+  assert.deepEqual(codes(empty), ["out_of_leads"]);
+  assert.equal(empty.data.findings[0]?.numbers.leadsToStart, 0);
+  assert.equal(empty.data.findings[0]?.numbers.daysLeft, 0);
+  assert.equal(empty.meta.complete, true, empty.meta.notes.join(" | "));
+});
+
+test("without leads.byStatus campaign_diagnosis reads every lead, and says lead runout was not checked when the cap stops it", async () => {
+  const result = await single(
+    finishedFirst(leads("drain", 28, "active", false)),
+    { "leads.byStatus": false }
+  ).insights.campaignDiagnosis(DRAIN, { now: NOW });
+
+  assert.deepEqual(codes(result), ["falling_sends"]);
+  assert.equal(result.meta.complete, false);
+  assert.ok(
+    result.data.notChecked.includes(
+      "Lead runout: max_leads (2000) stopped the read of the campaign's leads before all were counted, so a fall in sends was not checked against the leads left. Raise max_leads to check it."
+    ),
+    result.data.notChecked.join(" | ")
+  );
+
+  // Every lead fits under the cap: runout is found without the filter too.
+  const fits = await single(
+    finishedFirst(leads("drain", 28, "active", false)),
+    { "leads.byStatus": false }
+  ).insights.campaignDiagnosis({ ...DRAIN, max_leads: 5000 }, { now: NOW });
+
+  assert.deepEqual(codes(fits), ["out_of_leads"]);
 });
 
 const trackingFinding = async (settings: {

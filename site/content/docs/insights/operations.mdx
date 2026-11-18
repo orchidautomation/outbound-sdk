@@ -67,7 +67,7 @@ Why one campaign is underperforming: a list of findings, most serious first.
 | `min_weekly_hours` | 20 | 0 to 168 | Sending windows open fewer hours a week than this limit volume. |
 | `daily_limit_share` | 0.9 | 0 to 1 | Average daily sends at or over this share of the daily limit mean the limit holds volume back. |
 | `max_senders` | 500 | 1 to 500 | The most of the campaign's own senders to read and screen. |
-| `max_leads` | 2,000 | 1 to 50,000 | The most leads to read when sends fell or stopped, to tell lead runout from a fault. |
+| `max_leads` | 2,000 | 1 to 50,000 | The most leads to read when sends fell or stopped, to tell lead runout from a fault. Where the adapter lists active leads alone (`leads.byStatus`), only those are read, as `client_report` reads them. |
 
 `data` (`CampaignDiagnosis`):
 
@@ -97,7 +97,7 @@ The findings:
 | `tracking_off` | low | Open or click tracking is off, so a missing open or click count is expected. |
 
 - **Needs:** `stats.campaign`. It checks more when the adapter has `campaigns.progress`, `campaigns.settings`, `sequence`, `senders.byCampaign` and `stats.byDay`.
-- **Costs:** up to 7 requests, plus one per page of the campaign's senders and, only when sends fell or stopped, one per page of its leads (up to `max_leads`).
+- **Costs:** up to 7 requests, plus one per page of the campaign's senders and, only when sends fell or stopped, one per page of its leads (up to `max_leads`): its active leads only where the adapter lists them alone (`leads.byStatus`). When `max_leads` stops that read, lead runout is not checked and `notChecked` says so.
 - **Notes it can add:** one per part it could not check, the same sentences as `notChecked`: schedule and tracking, sequence length, sender status, recent sending trend.
 - **Does not:** say all is well. An empty list means nothing was found in what could be checked. Read `notChecked` beside it. It does not read the copy: use `copyAudit` and `stepFunnel` for that.
 

@@ -105,7 +105,7 @@ The same function, run on the in-memory adapter limited to what each vendor's ad
 
 ## What it costs in vendor requests
 
-- `campaignDiagnosis`: the campaign, its totals, its settings, its sequence, its progress, a listing of its senders (up to `max_senders`, default 500) and its daily stats. Only when sends fell or stopped, a listing of its leads (up to `max_leads`, default 2,000), to tell lead runout from a fault.
+- `campaignDiagnosis`: the campaign, its totals, its settings, its sequence, its progress, a listing of its senders (up to `max_senders`, default 500) and its daily stats. Only when sends fell or stopped, a listing of its leads (up to `max_leads`, default 2,000), to tell lead runout from a fault: only its active leads where the adapter lists them alone (`leads.byStatus`). If `max_leads` stops that read, lead runout is not checked and `notChecked` says so.
 - `anomalies`: one stats read.
 - `benchmarks.campaign`: two stats reads, the campaign and the workspace. Its result carries the count in `requests`.
 
