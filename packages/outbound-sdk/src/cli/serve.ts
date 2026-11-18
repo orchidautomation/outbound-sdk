@@ -2,9 +2,9 @@
 
 import { OutboundError } from "../internal/errors.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
-import { createTools, TOOL_NAMES } from "../tools/index.ts";
 import type { InsightToolCaps } from "./config.ts";
 import { createMcpServer } from "./mcp.ts";
+import { catalog } from "./offered.ts";
 import type { ThrottleTotal } from "./progress.ts";
 import { serveStdio } from "./stdio.ts";
 import { didYouMean } from "./suggest.ts";
@@ -42,8 +42,10 @@ export interface ServeIo {
 }
 
 /**
- * Serves MCP on stdio. `unmasked` is the same instance without redact, to
- * tell which tools redact left out; `wanted` is what `--tools` names.
+ * Serves MCP on stdio: the CLI's catalog, and every tool it leaves out named
+ * with the reason. `unmasked` is the same instance without redact, to tell
+ * which tools redact left out; `wanted` is what `--tools` names, and a name
+ * the catalog leaves out is refused with its reason.
  */
 export const serve = async (
   outbound: OutboundApi,
@@ -52,52 +54,36 @@ export const serve = async (
   wanted: ReadonlySet<string> | undefined,
   caps: InsightToolCaps
 ): Promise<void> => {
-  // Loaded on demand, so the other commands do not pay for the insights.
-  const { insightTools } = await import("../insights/index.ts");
-
-  const offered = (instance: OutboundApi) =>
-    createTools(instance, { extra: insightTools(instance, caps) }).map(
-      (tool) => tool.name
-    );
-
-  // A tool offered without redact but not with it was left out by redact.
-  const here = offered(outbound);
-
-  const masked = (unmasked === undefined ? [] : offered(unmasked)).filter(
-    (name) => !here.includes(name)
+  const { leftOut, offered, tools, turnOn } = await catalog(
+    outbound,
+    caps,
+    unmasked,
+    wanted
   );
 
-  const known = [...here, ...masked];
-
   for (const name of wanted ?? []) {
-    if (!known.includes(name)) {
+    const why = leftOut[name];
+
+    if (why !== undefined) {
+      throw new OutboundError("Unsupported", `--tools: ${why}`, {
+        provider: outbound.provider,
+      });
+    }
+
+    if (!offered.includes(name)) {
       throw new OutboundError(
         "Invalid",
-        `--tools: "${name}" is not a tool this server can offer.${didYouMean(name, known)} Run "outbound tools" to list them`
+        `--tools: "${name}" is not a tool this server can offer.${didYouMean(name, [...offered, ...Object.keys(leftOut)])} Run "outbound tools" to list them`
       );
     }
   }
 
-  const keeps = (name: string): boolean =>
-    wanted === undefined || wanted.has(name);
-
-  const leftOut = Object.fromEntries(
-    masked
-      .filter(keeps)
-      .map((name) => [
-        name,
-        `${name} is left out while the redact plugin is on: it needs what redact masks. Start the server with --no-redact to offer it; personal fields are then not masked.`,
-      ])
-  );
-
   const server = createMcpServer(outbound, {
-    // Given the allowlist, so no insight's hint names an insight left out.
-    extra: insightTools(outbound, {
-      ...caps,
-      only: wanted === undefined ? undefined : [...wanted],
-    }),
-    leftOut,
-    only: TOOL_NAMES.filter(keeps),
+    // The catalog's own tools, so the server offers what `outbound tools` lists.
+    extra: tools,
+    // Named in initialize, and a call to one answered with how to get it.
+    leftOut: wanted === undefined ? turnOn : {},
+    only: [],
     throttled: io.throttled,
     version: packageVersion(),
   });

@@ -6,7 +6,7 @@
         "campaignName": "SaaS founders",
         "category": "positive",
         "channel": "email",
-        "checkedBy": "timeline",
+        "checkedBy": "thread",
         "finding": "A positive reply has waited 7 days with nothing sent after it. The latest message is inbound and unanswered for 2 days (received 2026-11-12 12:00 UTC). Read it before following up.",
         "hoursWaiting": 170,
         "email": "ana@northwind.example.com",

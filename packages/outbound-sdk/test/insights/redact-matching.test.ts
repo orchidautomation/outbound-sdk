@@ -112,7 +112,7 @@ test("with redact masking emails the insights that need the address itself refus
     (error) =>
       OutboundError.is(error) &&
       error.code === "Unsupported" &&
-      /person_summary is not available while the redact plugin masks email addresses and LinkedIn profiles/u.test(
+      /^A person cannot be looked up while the redact plugin masks email addresses and LinkedIn profiles: .*give the lead ref another tool returned instead$/u.test(
         error.message
       )
   );
@@ -134,10 +134,11 @@ test("insightTools leaves out what redact keeps from working, and no hint names 
     names().filter((name) => people.includes(name)),
     people
   );
-  // A masked address is a token keyed for the run, which tells people apart.
+  // A masked address is a token keyed for the run, which tells people apart,
+  // and person_summary looks a lead ref up by the tokens redact can put back.
   assert.deepEqual(
     names({}).filter((name) => people.includes(name)),
-    ["lead_collisions", "suppression_check"]
+    ["person_summary", "lead_collisions", "suppression_check"]
   );
   // With only emails masked a person is still looked up by LinkedIn profile.
   assert.deepEqual(
@@ -334,17 +335,20 @@ test("person_summary takes a lead ref while the identifier it is looked up by is
   assert.deepEqual(byRef.data.identifiers, ["email:person1@example.com"]);
   assert.equal(byRef.data.totals.campaigns, 2);
 
-  // With its address masked nothing is left to look it up by.
-  await assert.rejects(
-    build({ fields: ["email"] }).outbound.insights.personSummary({
-      person: "memory:default:lead_1",
-    }),
-    (error) =>
-      OutboundError.is(error) &&
-      error.code === "Unsupported" &&
-      /redact plugin masks email addresses/u.test(error.message) &&
-      /no LinkedIn profile/u.test(error.message)
+  // With its address masked it is looked up by the token redact wrote for
+  // it, which redact puts back on the way to the vendor: the same person in
+  // both campaigns, shown masked.
+  const masked = await build({
+    fields: ["email"],
+  }).outbound.insights.personSummary({ person: "memory:default:lead_1" });
+
+  assert.equal(masked.data.found, true);
+  assert.match(
+    masked.data.identifiers.join(","),
+    /^email:redacted:[\da-f]{16}$/u
   );
+  assert.equal(masked.data.totals.campaigns, 2);
+  assert.doesNotMatch(JSON.stringify(masked), /person1@example/u);
 });
 
 test("a hashing redact keeps person_summary working by hashing the address given, and account_summary says a hash keeps no domain", async () => {

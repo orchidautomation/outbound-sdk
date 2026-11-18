@@ -456,8 +456,11 @@ test("a combined instance routes lookups by ref and walks listings across member
     ).map((lead) => lead.ref),
     ["memory:client-b:lead_9"]
   );
-  await assert.rejects(
-    async () => await outbound.thread("t1").messages(),
-    unsupported
+  // A thread id names no member, so each member that reads threads is asked.
+  assert.deepEqual(
+    (await outbound.thread("t1").messages()).items.map(
+      (message) => message.ref
+    ),
+    (await client().thread("t1").messages()).items.map((message) => message.ref)
   );
 });

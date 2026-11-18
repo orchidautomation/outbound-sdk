@@ -62,7 +62,7 @@ const under = (fields: readonly ("email" | "linkedin")[]) =>
     plugins: [redact({ fields }), insights()],
   });
 
-test("person_summary looks a lead ref up by what redact leaves, refuses it when nothing is left, and needs leads.get for one", async () => {
+test("person_summary looks a lead ref up by what redact leaves, by redact's tokens when nothing is left, and needs leads.get for one", async () => {
   // l1 has a LinkedIn profile too, which is left unmasked.
   const byProfile = await under(["email"]).insights.personSummary({
     person: "memory:agency:l1",
@@ -73,15 +73,19 @@ test("person_summary looks a lead ref up by what redact leaves, refuses it when 
     byProfile.data.identifiers.every((key) => key.startsWith("linkedin:"))
   );
 
-  await assert.rejects(
-    under(["email", "linkedin"]).insights.personSummary({
-      person: "memory:agency:l1",
-    }),
-    (error) =>
-      OutboundError.is(error) &&
-      error.code === "Unsupported" &&
-      /redact plugin masks/u.test(error.message)
+  // With both masked it is looked up by the tokens redact wrote for it.
+  const byToken = await under(["email", "linkedin"]).insights.personSummary({
+    person: "memory:agency:l1",
+  });
+
+  assert.equal(byToken.data.found, true);
+  assert.deepEqual(
+    byToken.data.identifiers.map((key) => key.replace(/[\da-f]{16}$/u, "")),
+    ["email:redacted:"]
   );
+  // The address links all three of the person's campaigns; the profile alone, one.
+  assert.equal(byToken.data.totals.campaigns, 3);
+  assert.equal(byProfile.data.totals.campaigns, 1);
 
   await assert.rejects(
     single(EMAIL_TOOL, { "leads.get": false }).insights.personSummary({

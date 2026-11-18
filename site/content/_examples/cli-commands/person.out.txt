@@ -9,7 +9,7 @@ $ outbound person 'person1@example.com' --redact
   "data": null,
   "error": {
     "code": "Unsupported",
-    "message": "person_summary is not available while the redact plugin masks email addresses and LinkedIn profiles, which it looks a person up by"
+    "message": "A person cannot be looked up while the redact plugin masks email addresses and LinkedIn profiles: the records come back masked and cannot be matched to the identifier, so give the lead ref another tool returned instead"
   },
   "meta": {
     "complete": false,
@@ -20,7 +20,7 @@ $ outbound person 'person1@example.com' --redact
   },
   "ok": false
 }
-Unsupported: person_summary is not available while the redact plugin masks email addresses and LinkedIn profiles, which it looks a person up by
+Unsupported: A person cannot be looked up while the redact plugin masks email addresses and LinkedIn profiles: the records come back masked and cannot be matched to the identifier, so give the lead ref another tool returned instead
 (exit code 1)
 
 $ outbound person

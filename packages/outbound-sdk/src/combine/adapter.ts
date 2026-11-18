@@ -5,12 +5,17 @@
 // clients can never be confused. It reads every tool live and keeps nothing:
 // each call pays each vendor's rate limit, on that vendor's own budget.
 
-import type { Adapter, AdapterContext, Page } from "../internal/adapter.ts";
+import type {
+  Adapter,
+  AdapterContext,
+  MessageQuery,
+  Page,
+} from "../internal/adapter.ts";
 import {
   intersectCapabilities,
   resolveCapabilities,
 } from "../internal/capabilities.ts";
-import type { Lead, MetricRow } from "../internal/entities.ts";
+import type { Lead, Message, MetricRow } from "../internal/entities.ts";
 import { makeErrorMapper, OutboundError } from "../internal/errors.ts";
 import { mergeFields, resolveFields } from "../internal/fields.ts";
 import type { Json } from "../internal/json.ts";
@@ -184,8 +189,51 @@ const lists = (members: readonly Adapter[]): Lists => ({
     }),
 });
 
+const readsThreads = (member: Adapter): boolean =>
+  resolveCapabilities(member.capabilities)["messages.byThread"];
+
+// A thread id is the vendor's own and names no member, so each member that
+// reads threads is asked for it, side by side. One that cannot take the id,
+// such as a HeyReach member given an Instantly thread, holds no such thread.
+const pageThread = (
+  members: readonly Adapter[],
+  ctx: AdapterContext,
+  query: MessageQuery
+): Promise<Page<Message>> =>
+  pageNewestFirst(
+    members.filter(readsThreads),
+    ctx,
+    query,
+    async (member, memberCtx, next) => {
+      if (member.listMessages === undefined) {
+        throw missing(member, "listMessages");
+      }
+
+      try {
+        return await member.listMessages({ ...query, next }, memberCtx);
+      } catch (error) {
+        if (
+          OutboundError.is(error) &&
+          (error.code === "Invalid" || error.code === "NotFound")
+        ) {
+          return { items: [] };
+        }
+
+        throw error;
+      }
+    }
+  );
+
 const messageLists = (members: readonly Adapter[]): MessageLists => ({
   listMessages: (query, ctx) => {
+    if (
+      query.threadId !== undefined &&
+      query.leadId === undefined &&
+      query.campaignId === undefined
+    ) {
+      return pageThread(members, ctx, query);
+    }
+
     const lead =
       query.leadId === undefined
         ? undefined
@@ -366,8 +414,8 @@ export const combine = (members: readonly Adapter[]): Adapter => {
     ...accountReads(members),
     capabilities: {
       ...intersectCapabilities(first ?? resolveCapabilities(), ...rest),
-      // A thread id is the vendor's own and names no member, so it cannot be routed.
-      "messages.byThread": false,
+      // A thread id names no member, so every member that reads threads is asked.
+      "messages.byThread": members.some(readsThreads),
       // A native read belongs to one vendor; reach it through workspace(id).
       native: false,
       // A combined instance always knows its workspaces: they are its members.

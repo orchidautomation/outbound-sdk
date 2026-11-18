@@ -329,17 +329,6 @@ export const personSummary = defineInsight({
       (price.one("campaigns.get") + price.walk("messages.list")),
   scales: "max_campaigns",
   name: "person_summary",
-  maskedOut: (masking) => {
-    // With one kind masked the person is looked up by the other, and a
-    // hashed identifier is matched by hashing the one given.
-    const masked = new Set(masking.fields);
-
-    return masked.has("email") &&
-      masked.has("linkedin") &&
-      masking.strategy === "mask"
-      ? "email addresses and LinkedIn profiles, which it looks a person up by"
-      : null;
-  },
   needs: ["leads.lookup", "leads.timeline"],
   needsFor: (values) => (refNeedsRead(personOf(values)) ? ["leads.get"] : []),
   next: "Use account_summary with their email domain to see everyone at the same company.",
