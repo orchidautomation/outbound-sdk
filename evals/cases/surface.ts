@@ -136,11 +136,34 @@ export const judgeTimeBudget = (outcome: CallOutcome): Verdict => {
   );
 };
 
-const CAP = 5;
+// Enough to read part of client_report, so there is work to keep.
+const CAP = 20;
+
+// Too few to keep anything, so the call fails; it must say the cap was the caller's.
+const TINY_CAP = 5;
 
 /** Case 20: a request cap keeps partial work, under a code that is not RateLimited. */
-export const judgeRequestCap = (outcome: CallOutcome): Verdict => {
+export const judgeRequestCap = (
+  outcome: CallOutcome,
+  tiny?: CallOutcome
+): Verdict => {
+  const tinyLimit = text(at(tiny?.structured, "error", "limit"));
+
+  if (tiny?.isError === true && tinyLimit !== "call" && tinyLimit !== "run") {
+    return fail(
+      `--max-requests ${TINY_CAP} ended ${tiny.name} as ${codeOf(tiny)} with no error.limit saying the cap was the caller's, like a vendor 429`
+    );
+  }
+
   if (outcome.isError) {
+    const limit = text(at(outcome.structured, "error", "limit"));
+
+    if (limit === "call" || limit === "run") {
+      return fail(
+        `--max-requests ${CAP} ended ${outcome.name} at the caller's cap and kept nothing of ${plural(outcome.requests ?? 0, "request")}`
+      );
+    }
+
     return outcome.code === "RateLimited"
       ? fail(
           `--max-requests ${CAP} ended ${outcome.name} as RateLimited, like a vendor 429`
@@ -368,6 +391,9 @@ export const SURFACE_CASES: readonly Case[] = [
       judgeRequestCap(
         await ctx
           .mcp([...DEFAULT_FLAGS, "--max-requests", String(CAP)])
+          .call("client_report"),
+        await ctx
+          .mcp([...DEFAULT_FLAGS, "--max-requests", String(TINY_CAP)])
           .call("client_report")
       ),
     title: "request budget",

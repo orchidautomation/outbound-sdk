@@ -168,6 +168,9 @@ const channel = (transport: Transport) => {
   return { progress, request, state };
 };
 
+/** The longest a case waits for a rate window before calling a tool again. */
+const RETRY_WAIT_MAX_MS = 120_000;
+
 export const session = (transport: Transport, budget: Budget): Session => {
   const { progress, request, state } = channel(transport);
   const memo = new Map<string, Promise<CallOutcome>>();
@@ -213,10 +216,33 @@ export const session = (transport: Transport, budget: Budget): Session => {
     const started = transport.now();
     const params: JsonObject = { arguments: args, name };
 
-    const message = await request(
-      "tools/call",
-      withProgress ? { ...params, _meta: { progressToken: token } } : params
+    const send = () =>
+      request(
+        "tools/call",
+        withProgress ? { ...params, _meta: { progressToken: token } } : params
+      );
+
+    let message = await send();
+
+    const retryAfterMs = num(
+      at(message, "result", "structuredContent", "error", "retryAfterMs")
     );
+
+    // A retryable stop that says when it frees is waited out once, as a
+    // careful client would: the case is about the answer, not the rate window.
+    if (
+      bool(at(message, "result", "structuredContent", "error", "retryable")) ===
+        true &&
+      retryAfterMs !== null &&
+      retryAfterMs <= RETRY_WAIT_MAX_MS
+    ) {
+      await transport.settle(
+        new Promise((resolve) => {
+          setTimeout(resolve, retryAfterMs + 1000);
+        })
+      );
+      message = await send();
+    }
 
     const ms = transport.now() - started;
     const first = progress.get(token);

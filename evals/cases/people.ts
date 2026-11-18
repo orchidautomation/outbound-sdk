@@ -135,6 +135,8 @@ export const judgeRepliedSources = (
       );
 };
 
+const TOKEN = /redacted:[0-9a-f]+/u;
+
 const warns = (said: string): boolean =>
   /no key|OUTBOUND_REDACT_KEY/u.test(said);
 
@@ -142,7 +144,12 @@ const warns = (said: string): boolean =>
 export const judgeRedactParity = (
   sdkRuns: readonly (readonly string[])[],
   cli: readonly string[],
-  keyless: { readonly sdk: readonly string[]; readonly cli: string }
+  keyless: {
+    readonly sdk: readonly string[];
+    readonly cli: string;
+    /** Whether the keyless SDK read wrote a token at all; only then is a note due. */
+    readonly sdkWroteToken: boolean;
+  }
 ): Verdict => {
   const [first = [], second = []] = sdkRuns;
   const across = first.filter((token, index) => second[index] !== token).length;
@@ -160,7 +167,7 @@ export const judgeRedactParity = (
       surfaces > 0
         ? `${surfaces} of ${plural(first.length, "token")} differ between the CLI and the SDK with the same key`
         : null,
-      keyless.sdk.some(warns)
+      !keyless.sdkWroteToken || keyless.sdk.some(warns)
         ? null
         : "the SDK redacts a list read with no key and gives no warning",
       warns(keyless.cli)
@@ -370,9 +377,12 @@ export const PEOPLE_CASES: readonly Case[] = [
 
       ctx.budget.check();
 
+      // Five, like the keyed reads: a combined page of one can hold no reply
+      // at all (HeyReach's first page is a conversation with none), and a
+      // read that writes no token owes no note.
       const keyless = await ctx.settle(
         createOutbound({ ...options, plugins: [redact()] }).replies.list({
-          limit: 1,
+          limit: 5,
         })
       );
 
@@ -398,6 +408,7 @@ export const PEOPLE_CASES: readonly Case[] = [
         ? judgeRedactParity(runs, cliTokens, {
             cli: cliSaid,
             sdk: keyless.meta.notes,
+            sdkWroteToken: TOKEN.test(JSON.stringify(keyless.items)),
           })
         : fail(`replies --redact exited ${cli.code}`);
     },

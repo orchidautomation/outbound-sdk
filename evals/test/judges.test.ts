@@ -298,6 +298,24 @@ verdicts({
     judgeRequestCap(outcome({ complete: false })),
     judgeRequestCap(outcome({ code: "RateLimited", isError: true })),
   ],
+  "20 request budget, a cap too small to keep anything": [
+    judgeRequestCap(
+      outcome({ complete: false }),
+      outcome({
+        code: "RateLimited",
+        isError: true,
+        structured: { error: { code: "RateLimited", limit: "run" } },
+      })
+    ),
+    judgeRequestCap(
+      outcome({ complete: false }),
+      outcome({
+        code: "RateLimited",
+        isError: true,
+        structured: { error: { code: "RateLimited" } },
+      })
+    ),
+  ],
   "21 person reconcile": [
     judgePersonReconcile(
       { data: { totals: { messagesSent: 1, replies: 1 } } },
@@ -323,8 +341,25 @@ verdicts({
     judgeRedactParity([["t1"], ["t1"]], ["t1"], {
       cli: "redact has no key",
       sdk: ["Set OUTBOUND_REDACT_KEY"],
+      sdkWroteToken: true,
     }),
-    judgeRedactParity([["t1"], ["t2"]], ["t1"], { cli: "", sdk: [] }),
+    judgeRedactParity([["t1"], ["t2"]], ["t1"], {
+      cli: "",
+      sdk: [],
+      sdkWroteToken: true,
+    }),
+  ],
+  "24 redact parity, a keyless read that wrote no token": [
+    judgeRedactParity([["t1"], ["t1"]], ["t1"], {
+      cli: "redact has no key",
+      sdk: [],
+      sdkWroteToken: false,
+    }),
+    judgeRedactParity([["t1"], ["t1"]], ["t1"], {
+      cli: "redact has no key",
+      sdk: [],
+      sdkWroteToken: true,
+    }),
   ],
   "25 incremental sync": [
     judgeSync({ filter: "client", notes: ["a full walk"], requests: 3 }),
