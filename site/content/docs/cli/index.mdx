@@ -76,7 +76,7 @@ A command runs with one [plugin](/docs/plugins) by default, [identity](/docs/plu
 
 ## Output
 
-A command prints one JSON value on standard output, always in the same shape, the envelope: indented by default, on one line with `--compact`. Records in it are the SDK's [records](/docs/api/records), less `raw`, the vendor's own payload; `--raw` keeps it. List commands stop at `--limit`, which defaults to 50; `replies --since` reads the whole window instead, up to 2,000 records.
+A command prints one JSON value on standard output, always in the same shape, the envelope: indented by default, on one line with `--compact`. Records in it are the SDK's [records](/docs/api/records), less `raw`, the vendor's own payload; `--raw` keeps it. List commands stop at `--limit`, which defaults to 50; `leads --since` and `replies --since` read the whole window instead, up to 2,000 records. With `--jsonl`, a list prints one record per line as it is read, then the envelope without its data on the last line; see [loading a warehouse](/docs/cli/commands#loading-a-warehouse). `--card`, `--slack-text` and `--slack` print the card, not the envelope.
 
 <include meta='title="output.ts"'>../../_examples/cli-index/output.ts</include>
 
@@ -95,12 +95,14 @@ Every command prints the same top-level keys, so a script or an agent parses one
 | `error` | On failure only: `code` and `message`, the same as standard error's `<code>: <message>`. |
 | `meta.complete` | `true` when the answer covers everything asked, `false` when it covers part of it, for example when `--limit` cut a list or a cap stopped a read. |
 | `meta.notes` | Why `complete` is `false`, and what else to know, for example "Stopped at 50 leads; more exist. Pass --limit to read more." Standard error gets the same notes. |
+| `meta.cursor` | On a list `--limit` stopped, and on a list that failed part way: where `--cursor` resumes it, or `null` to start over. Left out otherwise. |
+| `meta.repeats` | On a list `--limit` stopped: how many of the records a resumed run reads first were printed already, usually 0. |
 | `meta.provider` | The adapter's id, or `null` for `providers`, which needs none. |
 | `meta.requests` | The vendor requests the command sent. A cache hit sends none. |
 | `meta.throttledMs` | Milliseconds the command spent waiting on rate limits, its own budget and any 429 together; waits that overlap count once. A wait longer than 2 seconds also prints one line on standard error, such as `Waiting 60s for Instantly's emails rate limit (10 a minute)…`, and a 429 prints `Throttled by Instantly: it answered 429…`, so a slow read never looks hung. Standard output is unchanged, `--compact` included. |
 | `next` | What to ask next, from a tool. Left out by other commands. |
 
-The rest of a record's, a tool's or an insight's `meta`, such as `evidence` and `fetchedAt`, stays in `meta` beside these; an insight's name is `meta.insight`. `--card` and `--slack` put the card or the Slack message in `data`. The MCP server, `version` and `update` do not print JSON, so they print no envelope.
+The rest of a record's, a tool's or an insight's `meta`, such as `evidence` and `fetchedAt`, stays in `meta` beside these; an insight's name is `meta.insight`. `--card` and `--slack-text` print the card as text, and `--slack` the Slack message's JSON, instead of the envelope. The MCP server, `version` and `update` do not print JSON, so they print no envelope.
 
 <include meta='title="envelope.ts"'>
   ../../_examples/cli-index/envelope.ts
@@ -115,6 +117,8 @@ The rest of a record's, a tool's or an insight's `meta`, such as `evidence` and 
 | Exit code | When |
 | --- | --- |
 | `0` | The command ran and got its answer. |
+| `2` | `tool` was given no `--input` and the tool needs one. |
+| `3` | A list `--limit` stopped while more records exist. The answer is printed as usual, with `meta.complete` `false` and `meta.cursor` to resume from, so a script cannot take a cut-off load for a whole one. |
 | `1` | Anything else: an unknown command or option, a missing argument, a flag value that is not one of the allowed words, a record that does not exist (a campaign, sender, thread, or the campaign or list `leads` reads), a read the adapter cannot serve, a rejected key, or a tool whose result is `{ "ok": false }`. |
 
 A failure prints its envelope on standard output, `{ "ok": false, "data": null, "error": { "code", "message" }, "meta" }`, and `<code>: <message>` on standard error, where the code is an [`OutboundError` code](/docs/api/errors) such as `Invalid`, `NotFound`, `Unsupported` or `Unauthorized`, or `Error` for a failure that is not an `OutboundError`. A tool whose result is `{ "ok": false }` prints it in the envelope, with the tool's `error` and `next`, and writes nothing to standard error.

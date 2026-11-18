@@ -329,10 +329,8 @@ const clientReport: CardBuilder = (data) => {
   const actions = rows(data, "actions");
 
   return {
-    bullets: [
-      ...campaignsCapped(data),
-      ...actions.map((action) => `👉 ${show(action, "action")}`),
-    ],
+    actions: actions.map((action) => `👉 ${show(action, "action")}`),
+    bullets: campaignsCapped(data),
     finding: str(totals, "finding"),
     notes: strings(data, "leftOut").map((part) => `Left out: ${part}`),
     stats: comparisonStats(totals),

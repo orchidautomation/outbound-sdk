@@ -73,7 +73,8 @@ interface Filtered<Item> {
 }
 
 // When the vendor cannot filter by date, the wrapper filters after fetching
-// and marks the result as derived.
+// and marks the result as derived. Leads are filtered on `createdAt`, so a
+// lead changed after `since` but created before it is left out.
 const filterByTime = <Item>(
   page: Page<Item>,
   range: TimeRange,

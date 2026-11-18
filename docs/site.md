@@ -77,7 +77,7 @@ The site is deployed by hand with the Vercel CLI, from a build made on your mach
 ```sh
 cd site
 vercel link --yes --project outbound-sdk-docs   # once per checkout
-npx blume build                                 # writes site/.vercel/output
+npm run build                                   # writes public/version.txt, then site/.vercel/output
 vercel deploy --prebuilt                        # a preview, behind Vercel's login
 vercel deploy --prebuilt --prod                 # production: outbound-sdk.dev
 ```
@@ -87,11 +87,12 @@ Then check it:
 ```sh
 curl -s -o /dev/null -w '%{http_code}\n' https://outbound-sdk.dev/docs
 curl -s https://outbound-sdk.dev/llms.txt | head -5
+curl -s https://outbound-sdk.dev/version.txt     # the commit it was built from
 ```
 
 Things to know:
 
-- **Publish from a commit that passed `npm run check`,** and say which commit in the pull request. Nothing ties a deployment to a commit except you.
+- **Publish from a commit that passed `npm run check`,** from a clean checkout. `npm run build` runs `scripts/site-version.mjs` first, which writes the commit, whether the checkout had uncommitted changes, and the build time to `site/public/version.txt` (git-ignored), so the live `/version.txt` says what is deployed. If it reads `dirty true`, deploy again from a clean checkout. Compare its commit with `git rev-parse origin/main` to see whether the site is behind.
 - **The Vercel project must stay disconnected from Git.** Connected, Vercel builds every pushed branch from the repository root and puts a failing check on pull requests that have nothing to do with the site. If `vercel link` connects it, run `vercel git disconnect --yes`.
 - **A preview is behind Vercel's login.** Read one with `vercel curl /docs --deployment <url>`.
 - **The domain** `outbound-sdk.dev` and `www.outbound-sdk.dev` are attached to the project. Nothing needs doing per deploy.

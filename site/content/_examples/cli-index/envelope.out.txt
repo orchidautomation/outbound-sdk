@@ -1,5 +1,6 @@
 $ outbound campaigns --limit 1
 Stopped at 1 campaign; more exist. Pass --limit to read more.
+To resume, pass --cursor eyJhIjoiY2FtcGFpZ25zLmxpc3QiLCJuIjoxLCJwIjoibWVtb3J5IiwidiI6MSwidyI6ImRlZmF1bHQifQ.
 {
   "data": {
     "items": [
@@ -22,14 +23,18 @@ Stopped at 1 campaign; more exist. Pass --limit to read more.
   "meta": {
     "complete": false,
     "notes": [
-      "Stopped at 1 campaign; more exist. Pass --limit to read more."
+      "Stopped at 1 campaign; more exist. Pass --limit to read more.",
+      "To resume, pass --cursor eyJhIjoiY2FtcGFpZ25zLmxpc3QiLCJuIjoxLCJwIjoibWVtb3J5IiwidiI6MSwidyI6ImRlZmF1bHQifQ."
     ],
     "provider": "memory",
     "requests": 0,
-    "throttledMs": 0
+    "throttledMs": 0,
+    "cursor": "eyJhIjoiY2FtcGFpZ25zLmxpc3QiLCJuIjoxLCJwIjoibWVtb3J5IiwidiI6MSwidyI6ImRlZmF1bHQifQ",
+    "repeats": 0
   },
   "ok": true
 }
+(exit code 3)
 
 $ outbound thread no-such-thread --compact
 {"data":null,"error":{"code":"NotFound","message":"No thread no-such-thread, or it has no messages"},"meta":{"complete":false,"notes":[],"provider":"memory","requests":0,"throttledMs":0},"ok":false}

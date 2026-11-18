@@ -73,11 +73,30 @@ export interface SyncResult {
   readonly pages: number;
   /** `true` when this run continued one that had not finished. */
   readonly resumed: boolean;
-  /** The lower bound this run asked for, when the collection can filter by date. */
+  /**
+   * The lower bound this run asked for, when the collection can filter by
+   * date. It is a creation time: a record created before it and changed
+   * since is not read again.
+   */
   readonly since: string | undefined;
   /** `false` when the run stopped at `maxPages` with more to read. */
   readonly complete: boolean;
+  /** Vendor requests this run made. */
+  readonly requests: number;
+  /** Milliseconds this run waited for the rate budget. */
+  readonly throttledMs: number;
+  /**
+   * Who applied `since`: `server` the vendor, so only newer records were
+   * read; `client` the SDK, after reading every record, so the run cost a
+   * full walk; `none` when no date filter applied (a first run, or a
+   * collection with no date).
+   */
+  readonly filter: SyncFilter;
+  /** What to know about this run, such as a date filter that cost a full walk. */
+  readonly notes: readonly string[];
 }
+
+export type SyncFilter = "client" | "none" | "server";
 
 export interface SyncPluginOptions {
   readonly checkpoints: CheckpointStore;
@@ -126,6 +145,7 @@ const assertCollection = (outbound: OutboundApi, collection: string): void => {
 
 interface Walk {
   readonly since: string | undefined;
+  readonly filter: SyncFilter;
   readonly start: (cursor: string | undefined) => ListAll<Entity>;
 }
 
@@ -144,14 +164,18 @@ const walkFor = <Item extends Entity>(
   const { campaignId, limit } = options;
   const dated = collection !== "campaigns" && collection !== "senders";
 
-  const filter =
-    dated && outbound.capabilities[SINCE_CAPABILITY[collection]] !== false;
+  const grade = dated
+    ? outbound.capabilities[SINCE_CAPABILITY[collection]]
+    : false;
+
+  const filter = grade !== false;
 
   const range: LeadFilters & CampaignFilters = filter
     ? { campaignId, since }
     : { campaignId };
 
   return {
+    filter: grade === false || since === undefined ? "none" : grade,
     since: filter ? since : undefined,
     start: (cursor) => {
       switch (collection) {
@@ -239,20 +263,35 @@ const runSync = async <Item extends Entity>(
     });
   };
 
+  const result = (complete: boolean): SyncResult => {
+    const requests = iterator.meta?.requests ?? 0;
+
+    return {
+      collection,
+      complete,
+      filter: walk.filter,
+      notes:
+        walk.filter === "client"
+          ? [
+              `${outbound.provider} cannot filter ${collection} by date, so this run read every record (${requests} requests) and kept the ${records} created since ${walk.since ?? ""}. A record created earlier and changed since is not read again: reset the checkpoint on a schedule to pick those up.`,
+            ]
+          : [],
+      pages,
+      records,
+      requests,
+      resumed: previous.cursor !== undefined,
+      since: walk.since,
+      throttledMs: iterator.meta?.throttledMs ?? 0,
+    };
+  };
+
   for await (const item of iterator) {
     // The walker moves its cursor once a page is fully handed out.
     if (iterator.cursor !== lastCursor && page.length > 0) {
       await flush();
 
       if (options.maxPages !== undefined && pages >= options.maxPages) {
-        return {
-          collection,
-          complete: false,
-          pages,
-          records,
-          resumed: previous.cursor !== undefined,
-          since: walk.since,
-        };
+        return result(false);
       }
     }
 
@@ -267,14 +306,7 @@ const runSync = async <Item extends Entity>(
   // The run finished: the next one starts from when this one began.
   await store.set(key, { since: startedAt });
 
-  return {
-    collection,
-    complete: true,
-    pages,
-    records,
-    resumed: previous.cursor !== undefined,
-    since: walk.since,
-  };
+  return result(true);
 };
 
 /** Incremental, resumable syncs with checkpoints in a store you supply. */

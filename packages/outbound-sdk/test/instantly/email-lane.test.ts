@@ -131,7 +131,8 @@ const WAITING =
 test("replies past the lane's minute says on stderr what it waits for, and meta.throttledMs says how long", async () => {
   const ran = await outbound(["replies", "--limit", "2000", "--compact"]);
 
-  assert.equal(ran.code, 0, ran.err.join("\n"));
+  // The fake has more replies than --limit, so it exits 3.
+  assert.equal(ran.code, 3, ran.err.join("\n"));
   assert.equal(ran.out.length, 1);
   const answer = JSON.parse(ran.out[0] ?? "") as Envelope;
   assert.equal(answer.data.items.length, 2000);
@@ -176,7 +177,8 @@ test("a 429 from another process on the workspace is reported as throttled by In
     refuse: 2,
   });
 
-  assert.equal(ran.code, 0, ran.err.join("\n"));
+  // The fake has more replies than --limit, so it exits 3.
+  assert.equal(ran.code, 3, ran.err.join("\n"));
   const answer = JSON.parse(ran.out[0] ?? "") as Envelope;
   assert.equal(answer.data.items.length, 300);
 
@@ -280,7 +282,8 @@ test("a --config file's rateLimitStore holds the budget, so processes that share
     file,
   ]);
 
-  assert.equal(ran.code, 0, ran.err.join("\n"));
+  // The fake has more replies than --limit, so it exits 3.
+  assert.equal(ran.code, 3, ran.err.join("\n"));
 
   const { keys } = (await import(file)) as { keys: string[] };
   assert.equal(keys.filter((key) => key.endsWith("#emails")).length, 3);

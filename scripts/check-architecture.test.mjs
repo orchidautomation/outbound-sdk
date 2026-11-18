@@ -3,6 +3,7 @@ import {
   cpSync,
   mkdirSync,
   mkdtempSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -38,7 +39,10 @@ const healthy = {
 };
 
 const violationsFor = async (files = {}) => {
-  const root = mkdtempSync(path.join(tmpdir(), "outbound-architecture-"));
+  const root = mkdtempSync(
+    path.join(realpathSync(tmpdir()), "outbound-architecture-")
+  );
+
   roots.push(root);
 
   for (const [file, contents] of Object.entries({ ...healthy, ...files })) {

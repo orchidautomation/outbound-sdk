@@ -307,7 +307,8 @@ test("replies --since on the combined instance lists both tools newest first", a
     "5"
   );
 
-  assert.equal(code, 0, text);
+  // More replies exist past --limit, so it exits 3.
+  assert.equal(code, 3, text);
   assert.deepEqual(
     dataOf<{ items: { ref: string }[] }>(text).items.map((reply) => reply.ref),
     [

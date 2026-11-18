@@ -1,8 +1,11 @@
 import { requireCapability } from "../capabilities.ts";
 import type { CapabilityKey } from "../capabilities.ts";
-import { metricRowSchema } from "../entities.ts";
+import type { CallState } from "../engine/request.ts";
+import { metricRowSchema, senderSchema } from "../entities.ts";
 import type { MetricScope } from "../entities.ts";
 import { OutboundError } from "../errors.ts";
+import type { Json } from "../json.ts";
+import { plural } from "../numbers.ts";
 import type { StatsResult, TopLevelStatsOptions } from "./api.ts";
 import { checked, infoFor, metaFor, perform } from "./core.ts";
 import type { Core } from "./core.ts";
@@ -37,6 +40,36 @@ const sendersOf = (
   return options.scopeIds.map((id) => assertId(id, "Sender"));
 };
 
+/** Every sender's ref, page by page, counted in the stats call's own requests and budget. */
+const everySenderId = async (
+  core: Core,
+  state: CallState
+): Promise<string[]> => {
+  const ids = new Set<string>();
+  let next: Json | undefined;
+
+  do {
+    // oxlint-disable-next-line no-await-in-loop -- each page needs the previous page's continuation.
+    const output = await core.run(
+      { kind: "senders.list", query: { limit: undefined, next } },
+      infoFor(core, state)
+    );
+
+    for (const sender of checked(
+      core,
+      senderSchema,
+      output.items,
+      "senders.list"
+    )) {
+      ids.add(sender.ref);
+    }
+
+    ({ next } = output);
+  } while (next !== undefined);
+
+  return [...ids];
+};
+
 /**
  * Counts for a scope, as totals or one row per day. Async, so a refused
  * input or capability rejects like every other failure of the call.
@@ -59,16 +92,23 @@ export const readStats = async (
   // The campaign scope with no campaign named is a row per campaign.
   const everyCampaign = scope === "campaign" && options.scopeId === undefined;
 
-  if (
-    scope !== "workspace" &&
+  // The sender scope with no sender named is a row per sender, read in the
+  // batches `scopeIds` reads in.
+  const everySender =
+    scope === "sender" &&
     options.scopeId === undefined &&
-    scopeIds === undefined &&
-    !everyCampaign
-  ) {
+    scopeIds === undefined;
+
+  // Every other scope reads all of its kind without an id; a step does not.
+  if (scope === "step" && options.scopeId === undefined) {
     throw new OutboundError(
       "Invalid",
-      `stats for the ${scope} scope need a scopeId`
+      "stats for the step scope need a scopeId"
     );
+  }
+
+  if (everySender) {
+    requireCapability(core.gate, "senders.list", "Listing senders");
   }
 
   requireCapability(
@@ -79,11 +119,13 @@ export const readStats = async (
       : `Reading stats for the ${scope} scope`
   );
 
-  if (scopeIds !== undefined) {
+  if (scopeIds !== undefined || everySender) {
     requireCapability(
       core.gate,
       "stats.bySenders",
-      "Reading stats for several senders in one call"
+      everySender
+        ? "Reading stats for every sender in one call (pass scopeId to read one sender)"
+        : "Reading stats for several senders in one call"
     );
   }
 
@@ -92,10 +134,34 @@ export const readStats = async (
   }
 
   return await perform(core, "stats", options, async (state) => {
+    const senders = everySender ? await everySenderId(core, state) : scopeIds;
+
+    const listed = everySender
+      ? [`Read every sender: ${plural(senders?.length ?? 0, "sender")} listed.`]
+      : [];
+
+    if (senders !== undefined && senders.length === 0) {
+      return {
+        meta: metaFor(core, state, {
+          complete: true,
+          evidence: "exact",
+          notes: listed,
+        }),
+        rows: [],
+      };
+    }
+
     const output = await core.run(
       {
         kind: "stats",
-        query: { by, from, scope, scopeId: options.scopeId, scopeIds, to },
+        query: {
+          by,
+          from,
+          scope,
+          scopeId: options.scopeId,
+          scopeIds: senders,
+          to,
+        },
       },
       infoFor(core, state)
     );
@@ -105,7 +171,7 @@ export const readStats = async (
         complete: true,
         evidence: output.evidence,
         fetchedAt: output.fetchedAt,
-        notes: output.notes,
+        notes: [...listed, ...(output.notes ?? [])],
         stale: output.stale,
       }),
       rows: checked(core, metricRowSchema, output.items, "stats"),

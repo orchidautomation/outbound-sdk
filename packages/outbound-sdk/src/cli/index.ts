@@ -9,9 +9,9 @@ import { fromEnv } from "../loader/index.ts";
 import { parse } from "./args.ts";
 import { COMMANDS, listProviders } from "./commands.ts";
 import { insightToolCaps, setupFor } from "./config.ts";
-import { requestCounter, valueOf } from "./envelope.ts";
-import type { RunFacts } from "./envelope.ts";
-import { printAnswer, printFailure } from "./output.ts";
+import { requestCounter, valueOf, Answer } from "./envelope.ts";
+import type { Printed, RunFacts } from "./envelope.ts";
+import { printAnswer, printFailure, printLine } from "./output.ts";
 import { throttleMonitor } from "./progress.ts";
 import { namedTools, serve } from "./serve.ts";
 import { runNpm, runSelf } from "./update.ts";
@@ -50,6 +50,26 @@ export interface CliIo {
   /** Waits between `outbound update` install retries. Meant for tests. */
   readonly sleep?: ((ms: number) => Promise<void>) | undefined;
 }
+
+/** The exit code of a command that printed its answer. */
+const exitCode = (name: string | undefined, answer: Printed): number => {
+  // A list `--limit` stopped while more records exist exits 3, so a
+  // script cannot take a cut-off load for a whole one.
+  if (answer instanceof Answer && answer.walked.truncated === true) {
+    return 3;
+  }
+
+  // A tool never throws: its failure is a result, printed like any other.
+  // The exit code still says the command did not get an answer: 2 when it
+  // was given no input to run on, 1 when it ran and failed.
+  const printed = valueOf(answer);
+
+  if (name !== "tool" || field(printed, "ok") !== false) {
+    return 0;
+  }
+
+  return field(field(printed, "error"), "code") === "InputRequired" ? 2 : 1;
+};
 
 /** Runs the CLI. Returns the process exit code. */
 export const run = async (
@@ -139,6 +159,7 @@ export const run = async (
     }
 
     const answer = await command.run(outbound, {
+      emit: (record) => printLine(io.stdout, record, values),
       flags: values,
       note: io.stderr,
       positionals: rest,
@@ -146,21 +167,18 @@ export const run = async (
 
     printAnswer(io.stdout, answer, values, facts());
 
-    // A tool never throws: its failure is a result, printed like any other.
-    // The exit code still says the command did not get an answer: 2 when it
-    // was given no input to run on, 1 when it ran and failed.
-    const printed = valueOf(answer);
-
-    if (name !== "tool" || field(printed, "ok") !== false) {
-      return 0;
-    }
-
-    return field(field(printed, "error"), "code") === "InputRequired" ? 2 : 1;
+    return exitCode(name, answer);
   } catch (error) {
     const code = OutboundError.is(error) ? error.code : "Error";
     const message = error instanceof Error ? error.message : String(error);
+    const cursor = OutboundError.is(error) ? error.partial?.cursor : undefined;
 
-    printFailure(io.stdout, { argv, name: named }, { code, message }, facts());
+    printFailure(
+      io.stdout,
+      { argv, name: named },
+      { code, cursor, message },
+      facts()
+    );
     io.stderr(`${code}: ${message}`);
 
     return 1;

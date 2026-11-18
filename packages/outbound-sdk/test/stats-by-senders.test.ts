@@ -4,6 +4,7 @@
 // daily read and a tracking lookup each.
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 import { combine } from "../src/combine/index.ts";
@@ -193,4 +194,82 @@ test("a combined instance sends each member only its own senders", async () => {
     [...new Set(result.rows.map((row) => row.scopeRef))].toSorted(),
     [refOf(0, "a"), refOf(2, "a"), refOf(1, "b")]
   );
+});
+
+test("instantly: stats for the sender scope with no id read every sender in batches, 300 senders in seven requests", async () => {
+  const [account] = JSON.parse(
+    readFileSync(
+      new URL("../../../fixtures/instantly/listAccounts.json", import.meta.url),
+      "utf-8"
+    )
+  ).items;
+
+  const accountsPage = (request: RecordedRequest): Response | undefined => {
+    const url = new URL(request.url);
+
+    if (url.pathname !== "/api/v2/accounts") {
+      return dailyFor(request);
+    }
+
+    const start = Number(url.searchParams.get("starting_after") ?? 0);
+    const end = Math.min(start + 100, 300);
+
+    return json({
+      items: Array.from({ length: end - start }, (_, offset) => ({
+        ...account,
+        email: address(start + offset),
+      })),
+      next_starting_after: end < 300 ? String(end) : null,
+    });
+  };
+
+  const { outbound, requests, settle, unrouted } = harness(suite, accountsPage);
+
+  const result = await settle(
+    outbound.stats({
+      by: "day",
+      from: "2026-11-01",
+      scope: "sender",
+      to: "2026-11-14",
+    })
+  );
+
+  assert.deepEqual(unrouted, []);
+  assert.equal(
+    requests.filter(
+      (request) => new URL(request.url).pathname === "/api/v2/accounts"
+    ).length,
+    3,
+    "the senders are listed a page at a time"
+  );
+  assert.deepEqual(
+    dailyReads(requests).map((url) => url.searchParams.getAll("emails").length),
+    [200, 100],
+    "then read 200 mailboxes at a time, not one at a time"
+  );
+  assert.equal(
+    requests.length,
+    7,
+    "3 listing pages, 2 daily reads and the workspace tracking lookup (2)"
+  );
+  assert.equal(result.meta.requests, requests.length);
+  assert.ok(
+    result.meta.notes.includes("Read every sender: 300 senders listed.")
+  );
+  assert.equal(result.rows.length, 299 * 2);
+  assert.ok(result.rows.every((row) => row.scope === "sender"));
+});
+
+test("stats for every sender is refused before any request where the adapter cannot read several senders", async () => {
+  const { outbound, requests } = harness(heyreachSuite);
+
+  await assert.rejects(
+    outbound.stats({ scope: "sender" }),
+    (error) =>
+      OutboundError.is(error) &&
+      error.code === "Unsupported" &&
+      /stats\.bySenders/u.test(error.message) &&
+      /pass scopeId/u.test(error.message)
+  );
+  assert.equal(requests.length, 0);
 });

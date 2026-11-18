@@ -3,6 +3,7 @@ import {
   copyFileSync,
   mkdirSync,
   mkdtempSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -52,7 +53,10 @@ test("is skipped", { skip: true }, () => assert.fail("ran"));
 };
 
 const workspace = () => {
-  const root = mkdtempSync(path.join(tmpdir(), "outbound-workers-"));
+  const root = mkdtempSync(
+    path.join(realpathSync(tmpdir()), "outbound-workers-")
+  );
+
   roots.push(root);
 
   for (const [file, contents] of Object.entries(miniature)) {

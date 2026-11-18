@@ -51,10 +51,13 @@ const replies = async (...flags: string[]) => {
     },
   });
 
-  assert.equal(code, 0, err.join("\n"));
+  const envelope = JSON.parse(out.join("\n")) as Envelope;
+
+  // A window --limit cut exits 3; a whole one exits 0.
+  assert.equal(code, envelope.meta.complete ? 0 : 3, err.join("\n"));
 
   return {
-    envelope: JSON.parse(out.join("\n")) as Envelope,
+    envelope,
     err: err.join("\n"),
   };
 };

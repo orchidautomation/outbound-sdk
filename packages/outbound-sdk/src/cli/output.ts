@@ -2,14 +2,15 @@
 // unless `--raw` asks for it: for a reply it can carry the whole quoted
 // thread as text and HTML, even when `--bodies` was not passed.
 
-import { isJsonObject } from "../internal/json.ts";
+import { isJsonArray, isJsonObject } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
-import { envelope, failedEnvelope } from "./envelope.ts";
+import { Answer, envelope, failedEnvelope } from "./envelope.ts";
 import type { Failure, Printed, RunFacts } from "./envelope.ts";
 
-/** The CLI's own `--compact` and `--raw`. */
+/** The CLI's own `--compact`, `--jsonl` and `--raw`. */
 export interface PrintOptions {
   readonly compact?: boolean | undefined;
+  readonly jsonl?: boolean | undefined;
   readonly raw?: boolean | undefined;
 }
 
@@ -50,13 +51,86 @@ export const printJson = (
   );
 };
 
-/** Prints a command's answer in the envelope (see `envelope.ts`). */
+/** One record as one JSON line, as `--jsonl` writes it. */
+export const printLine = (
+  write: (text: string) => void,
+  value: Json,
+  options: PrintOptions
+): void => {
+  printJson(write, value, { ...options, compact: true });
+};
+
+/**
+ * With `--jsonl`: each record of a list on its own line, unless the listing
+ * already wrote them as they arrived, then the envelope without its data as
+ * the last line, `{ meta, ok }`, with `meta.records` counting the lines
+ * before it. An answer that is not a list is its envelope on one line.
+ */
+const printLines = (
+  write: (text: string) => void,
+  printed: Printed,
+  options: PrintOptions,
+  facts: RunFacts
+): void => {
+  const whole = envelope(printed, facts);
+
+  if (!(printed instanceof Answer && printed.list)) {
+    printLine(write, whole, options);
+
+    return;
+  }
+
+  const { data: _listed, ...rest } = whole;
+
+  const records =
+    printed.walked.streamed !== true && isJsonArray(printed.value)
+      ? printed.value
+      : [];
+
+  for (const record of records) {
+    printLine(write, record, options);
+  }
+
+  const meta = isJsonObject(rest.meta) ? rest.meta : {};
+
+  printLine(
+    write,
+    {
+      ...rest,
+      meta: {
+        ...meta,
+        records:
+          printed.walked.streamed === true
+            ? (printed.walked.records ?? 0)
+            : records.length,
+      },
+    },
+    options
+  );
+};
+
+/**
+ * Prints a command's answer in the envelope (see `envelope.ts`), as JSON
+ * lines with `--jsonl`, or as text when the answer is text (`--card`).
+ */
 export const printAnswer = (
   write: (text: string) => void,
   printed: Printed,
   options: PrintOptions,
   facts: RunFacts
 ): void => {
+  if (printed instanceof Answer && printed.text !== undefined) {
+    write(printed.text);
+
+    return;
+  }
+
+  if (options.jsonl === true) {
+    printLines(write, printed, options, facts);
+
+    return;
+  }
+
   printJson(write, envelope(printed, facts), options);
 };
 
@@ -80,7 +154,7 @@ export const printFailure = (
 ): void => {
   if (!TEXT_COMMANDS.has(run.name ?? "")) {
     printJson(write, failedEnvelope(failure, facts), {
-      compact: run.argv.includes("--compact"),
+      compact: run.argv.includes("--compact") || run.argv.includes("--jsonl"),
     });
   }
 };

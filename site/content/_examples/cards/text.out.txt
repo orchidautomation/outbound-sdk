@@ -1,0 +1,29 @@
+Sender health
+
+🟢 No sender needs attention (2 checked).
+
+Senders checked: 2
+Not active: 0
+Failing: 0
+
+Sender                | Kind    | Status | Daily limit | Warmup
+outreach1@example.com | mailbox | active | 40          | 96
+outreach2@example.com | mailbox | active | 40          | 88
+
+exact · memory · 0 requests
+
+*Sender health*
+
+*🟢 No sender needs attention (2 checked).*
+
+*Senders checked*: 2
+*Not active*: 0
+*Failing*: 0
+
+```
+Sender                | Kind    | Status | Daily limit | Warmup
+outreach1@example.com | mailbox | active | 40          | 96
+outreach2@example.com | mailbox | active | 40          | 88
+```
+
+exact · memory · 0 requests

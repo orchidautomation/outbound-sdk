@@ -10,5 +10,5 @@ await outbound("leads", "--list", "lst_founders", "--compact");
 
 await outbound("lists");
 
-// `leads` takes no --since: refused, not ignored.
-await outbound("leads", "--since", "2030-01-01");
+// `leads` takes no --sender: refused, not ignored.
+await outbound("leads", "--sender", "x");

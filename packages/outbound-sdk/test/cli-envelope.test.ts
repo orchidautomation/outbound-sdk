@@ -82,7 +82,8 @@ test("every command prints ok, data and meta with complete, notes, provider and 
     const answer = ran.json() as Envelope;
     const what = argv.join(" ");
 
-    assert.equal(ran.code, 0, what);
+    // A list --limit cut exits 3 and says where to resume.
+    assert.equal(ran.code, "cursor" in answer.meta ? 3 : 0, what);
     assert.equal(answer.ok, true, what);
     assert.ok("data" in answer, what);
     assert.equal(typeof answer.meta.complete, "boolean", what);
@@ -108,10 +109,14 @@ test("a list goes in data.items, and stdout says when --limit cut it", async () 
   const cut = await cli(["campaigns", "--limit", "1"]);
   const answer = cut.json() as Envelope;
 
+  assert.equal(cut.code, 3, "a cut-off list is not a whole one");
   assert.equal((answer.data?.items as unknown[] | undefined)?.length, 1);
   assert.equal(answer.meta.complete, false);
+  assert.equal(typeof answer.meta.cursor, "string");
+  assert.equal(answer.meta.repeats, 0, "the page ended where --limit did");
   assert.deepEqual(answer.meta.notes, [
     "Stopped at 1 campaign; more exist. Pass --limit to read more.",
+    `To resume, pass --cursor ${String(answer.meta.cursor)}.`,
   ]);
   // People still read the note on stderr.
   assert.match(cut.err, /Stopped at 1 campaign; more exist/u);

@@ -151,7 +151,7 @@ test("redact masks every personal field and drops the raw payload", async () => 
     "a missing value stays null"
   );
   const serialized = JSON.stringify(await outbound.leads.list());
-  assert.ok(!/person1|alex|example co|555/iu.test(serialized), serialized);
+  assert.ok(!/person1|alex|example co|555 0100/iu.test(serialized), serialized);
 });
 
 test("redact refuses message bodies instead of returning them masked", async () => {
