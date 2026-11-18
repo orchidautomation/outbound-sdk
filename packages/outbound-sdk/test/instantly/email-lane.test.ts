@@ -126,7 +126,7 @@ interface Envelope {
 }
 
 const WAITING =
-  /^Waiting (?<seconds>\d+)s for Instantly's emails rate limit \(10 a minute\)…$/u;
+  /^Waiting (?<seconds>\d+)s for Instantly's emails rate limit \(20 a minute; this process reads up to 10 a minute\)…$/u;
 
 test("replies past the lane's minute says on stderr what it waits for, and meta.throttledMs says how long", async () => {
   const ran = await outbound(["replies", "--limit", "2000", "--compact"]);
@@ -216,7 +216,9 @@ const call = (id: number): string =>
   });
 
 test("an MCP tool call that waits more than 5 s on the lane says so in meta.notes", async () => {
-  const ran = await outbound(["mcp"], {
+  // All 11 calls arrive at once and the last waits about a minute in line,
+  // past the default time budget, so the budget is raised to let it finish.
+  const ran = await outbound(["mcp", "--time-budget", "600"], {
     stdin: Array.from({ length: 11 }, (_unused, index) => call(index + 1)),
   });
 
@@ -313,6 +315,7 @@ test("a wait counts as it elapses, so the tool call that sits through it is the 
   const wait = (waitMs: number) => {
     monitor.hooks.onThrottle?.({
       cause: "budget",
+      declared: [{ perMs: 60_000, requests: 20 }],
       lane: "emails",
       provider: "instantly",
       waitMs,

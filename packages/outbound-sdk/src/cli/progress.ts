@@ -46,14 +46,24 @@ const seconds = (ms: number): string =>
 const nameOf = (provider: string): string =>
   findProvider(provider)?.name ?? provider;
 
-const limitOf = (event: ThrottleEvent): string => {
-  const lane = event.lane === "default" ? "" : ` ${event.lane}`;
-
-  const windows = event.windows
+const rates = (windows: ThrottleEvent["windows"]): string =>
+  windows
     .map((window) => `${window.requests} ${per(window.perMs)}`)
     .join(" and ");
 
-  return `${nameOf(event.provider)}'s${lane} rate limit${windows === "" ? "" : ` (${windows})`}`;
+// The vendor's published limit, then the rate this process keeps to when it
+// is lower: its share of the limit, slowed further after a 429.
+const limitOf = (event: ThrottleEvent): string => {
+  const lane = event.lane === "default" ? "" : ` ${event.lane}`;
+  const declared = rates(event.declared);
+  const current = rates(event.windows);
+
+  const shown =
+    current === declared
+      ? declared
+      : `${declared}; this process reads up to ${current}`;
+
+  return `${nameOf(event.provider)}'s${lane} rate limit${declared === "" ? "" : ` (${shown})`}`;
 };
 
 /** One wait, in the words stderr and a tool note use. */

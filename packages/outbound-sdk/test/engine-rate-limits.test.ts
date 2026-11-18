@@ -283,6 +283,7 @@ test("a throttle wait names its cause and the windows it waits on", async () => 
   assert.deepEqual(throttles, [
     {
       cause: "budget",
+      declared: [{ perMs: 60_000, requests: 20 }],
       lane: "emails",
       provider: "testvendor",
       waitMs: 60_000,

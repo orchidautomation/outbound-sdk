@@ -26,6 +26,10 @@ export type { McpServer, McpServerOptions } from "./mcp.ts";
 
 export { serveStdio } from "./stdio.ts";
 
+export { DEFAULT_TIME_BUDGET_MS, toolCallScope } from "./tool-call.ts";
+
+export type { ToolCallScope } from "./tool-call.ts";
+
 export { describeWait, throttleMonitor } from "./progress.ts";
 
 export type { ThrottleMonitor, ThrottleTotal } from "./progress.ts";
@@ -128,7 +132,7 @@ export const run = async (
 
       await serve(
         outbound,
-        { ...io, throttled: monitor.total },
+        { ...io, throttled: monitor.total, timeBudget: values["time-budget"] },
         unmasked,
         namedTools(values.tools),
         // A tool call may spend what --max-requests allows, which replaces an insight's default cap.
