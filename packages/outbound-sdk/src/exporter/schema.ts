@@ -36,6 +36,8 @@ export interface RowJsonSchema {
   readonly properties: Readonly<Record<string, ColumnSchema>>;
   readonly required: readonly string[];
   readonly additionalProperties: false;
+  /** Shared definitions the properties refer to with `$ref`, such as the recursive `raw` payload. Empty when none. */
+  readonly $defs: Readonly<Record<string, ColumnSchema>>;
 }
 
 const recordFields = (record: RecordName): Record<string, z.ZodType> => {
@@ -106,6 +108,8 @@ export const recordJsonSchema = (
     properties: (json.properties ?? {}) as Record<string, ColumnSchema>,
     required: json.required ?? [],
     type: "object",
+    // SAFETY: each definition is the JSON Schema of a Zod type, an object like every property.
+    $defs: (json.$defs ?? {}) as Record<string, ColumnSchema>,
   };
 };
 

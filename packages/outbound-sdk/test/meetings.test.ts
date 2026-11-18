@@ -169,3 +169,33 @@ test("period_comparison says why meetings are null, and never substitutes opport
     result.meta.notes.join(" | ")
   );
 });
+
+test("period_comparison sets the meetings change to null when the periods count different campaigns", async () => {
+  const shifted: MemoryData = {
+    campaigns: [
+      { id: "c1", name: "Earlier" },
+      { id: "c2", name: "Later" },
+    ],
+    stats: [
+      row("c1", "2026-11-01", { meetingsBooked: 3, replied: 20, sent: 400 }),
+      row("c1", "2026-11-08", { replied: 17, sent: 400 }),
+      row("c2", "2026-11-02", { replied: 10, sent: 300 }),
+      row("c2", "2026-11-09", { meetingsBooked: 2, replied: 10, sent: 300 }),
+    ],
+  };
+
+  const result = await single(shifted).insights.periodComparison(
+    {},
+    { now: NOW }
+  );
+
+  assert.equal(result.data.total.previous.meetingsBooked, 3);
+  assert.equal(result.data.total.current.meetingsBooked, 2);
+  assert.equal(result.data.total.change.meetingsBooked, null);
+  assert.ok(
+    result.meta.notes.includes(
+      "meetingsBooked counts different campaigns in the two periods: 1 of 2 this period and 1 of 2 the period before, so change.meetingsBooked is null rather than a difference between unlike totals. Campaigns that do not report meetings are left out, not counted as 0."
+    ),
+    result.meta.notes.join(" | ")
+  );
+});

@@ -349,33 +349,47 @@ export const totalOf = (
     alpha
   );
 
+const counted = (flags: readonly boolean[]): number =>
+  flags.filter(Boolean).length;
+
 /**
  * Says why the total's meetingsBooked is null, or which campaigns it leaves
  * out, so a missing meetings count is never read as no meetings and never
- * replaced by opportunities or positive replies. Returns the total.
+ * replaced by opportunities or positive replies. When the two periods count
+ * different campaigns, the change is null: it would set unlike totals
+ * against each other. Returns the total.
  */
 export const noteMeetings = (
   context: InsightContext,
   campaigns: readonly CampaignPeriods[],
   total: Comparison
 ): Comparison => {
-  const reporting = campaigns.filter(
-    (entry) =>
-      (entry.current.meetingsBooked ?? null) !== null ||
-      (entry.previous.meetingsBooked ?? null) !== null
-  ).length;
+  const reports = (side: "current" | "previous") =>
+    campaigns.map((entry) => (entry[side].meetingsBooked ?? null) !== null);
 
-  if (campaigns.length === 0 || reporting === campaigns.length) {
+  const now = reports("current");
+  const before = reports("previous");
+  const same = now.every((flag, index) => flag === before[index]);
+
+  if (campaigns.length === 0 || (same && counted(now) === campaigns.length)) {
+    return total;
+  }
+
+  if (same) {
+    context.note(
+      counted(now) === 0
+        ? `meetingsBooked is null: no campaign read reports a count of meetings booked, and the tool's fields.metricRow.meetingsBooked says whether it records one at all. Opportunities and positive replies are not meetings, so neither stands in for it.`
+        : `meetingsBooked counts only the ${counted(now)} of ${campaigns.length} campaigns that report meetings booked; the others are left out, not counted as 0.`
+    );
+
     return total;
   }
 
   context.note(
-    reporting === 0
-      ? `meetingsBooked is null: no campaign read reports a count of meetings booked, and the tool's fields.metricRow.meetingsBooked says whether it records one at all. Opportunities and positive replies are not meetings, so neither stands in for it.`
-      : `meetingsBooked counts only the ${reporting} of ${campaigns.length} campaigns that report meetings booked; the others are left out, not counted as 0.`
+    `meetingsBooked counts different campaigns in the two periods: ${counted(now)} of ${campaigns.length} this period and ${counted(before)} of ${campaigns.length} the period before, so change.meetingsBooked is null rather than a difference between unlike totals. Campaigns that do not report meetings are left out, not counted as 0.`
   );
 
-  return total;
+  return { ...total, change: { ...total.change, meetingsBooked: null } };
 };
 
 /** Says in a note which rates of a total leave rows out. Returns the comparison. */

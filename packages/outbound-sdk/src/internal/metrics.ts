@@ -238,7 +238,11 @@ const dayOf = (value: string, name: string): number => {
     ? Date.parse(`${value}T00:00:00Z`)
     : Number.NaN;
 
-  if (Number.isNaN(time)) {
+  // A day that does not exist, such as 2026-02-30, parses as a later one.
+  if (
+    Number.isNaN(time) ||
+    new Date(time).toISOString().slice(0, 10) !== value
+  ) {
     throw new OutboundError("Invalid", `${name} must be a day, YYYY-MM-DD`);
   }
 

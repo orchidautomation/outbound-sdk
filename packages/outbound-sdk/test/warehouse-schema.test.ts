@@ -108,9 +108,12 @@ test("recordJsonSchema requires every column and makes a field a vendor may leav
   assert.equal(schema.additionalProperties, false);
   assert.deepEqual(schema.properties.leftCompany?.type, ["boolean", "null"]);
   assert.equal("raw" in schema.properties, false);
-  assert.ok(
-    "raw" in recordJsonSchema("reply", { includeRaw: true }).properties
-  );
+
+  // raw is recursive JSON: its $ref must resolve within the document.
+  const withRaw = recordJsonSchema("reply", { includeRaw: true });
+  const reference = withRaw.properties.raw?.$ref ?? "";
+  assert.match(reference, /^#\/\$defs\//u);
+  assert.ok(reference.slice("#/$defs/".length) in (withRaw.$defs ?? {}));
 });
 
 // Loading the table with COPY is run by site/content/_examples/duckdb/typed.ts,
@@ -252,6 +255,11 @@ test("fillDays refuses totals, bad days and a range that runs backwards", async 
   assert.throws(
     () => fillDays([], { from: "11/01/2026", to: "2026-11-02" }),
     invalid
+  );
+  assert.throws(
+    () => fillDays([], { from: "2026-02-30", to: "2026-03-02" }),
+    invalid,
+    "a day that does not exist is refused, not moved to March"
   );
   assert.throws(
     () => fillDays([], { from: "2026-11-03", to: "2026-11-02" }),
