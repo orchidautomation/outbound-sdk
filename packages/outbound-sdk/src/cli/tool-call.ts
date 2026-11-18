@@ -7,6 +7,7 @@
 
 import { AsyncLocalStorage } from "node:async_hooks";
 
+import { stoppedByDeadline } from "../internal/engine/request.ts";
 import { defaultRuntime } from "../internal/engine/runtime.ts";
 import type { Runtime } from "../internal/engine/runtime.ts";
 import { OutboundError } from "../internal/errors.ts";
@@ -22,6 +23,12 @@ import type { ThrottleTotal } from "./progress.ts";
  * hosts wait for a tool call, with room for the answer to arrive.
  */
 export const DEFAULT_TIME_BUDGET_MS = 50_000;
+
+/**
+ * How long a call that was stopped may take to wind down before it is
+ * answered without it, as a tool that reads past the scope would need.
+ */
+export const LATE_AFTER_MS = 5000;
 
 /** How often a client that sent a `progressToken` hears from a call still running. */
 export const PROGRESS_EVERY_MS = 5000;
@@ -64,8 +71,7 @@ const timeStop = (
 const ranOut = (call: ToolCall, error: unknown): error is OutboundError =>
   OutboundError.is(error) &&
   error.limit !== "call" &&
-  (call.expired() ||
-    (error.code === "RateLimited" && error.limit === "deadline"));
+  (call.expired() || stoppedByDeadline(error));
 
 /**
  * The scope tool calls run in. Its layer gives each SDK call the tool call's
@@ -143,6 +149,12 @@ export interface Calls {
     readonly progressToken: Json | undefined;
     readonly notify: ((message: JsonObject) => void) | undefined;
     readonly body: () => Promise<Result>;
+    /**
+     * The answer when `body` has not finished `LATE_AFTER_MS` after the
+     * budget ran out, given the stop message: a tool whose reads do not go
+     * through the scope keeps running, and the calls after it go on.
+     */
+    readonly late: (message: string) => Result;
   }) => Promise<Result | undefined>;
   /** Stops the call with this id, queued or running, and drops its answer. */
   readonly cancel: (id: RequestId) => void;
@@ -152,6 +164,19 @@ const secondsOf = (ms: number): number => Math.round(ms / 1000);
 
 /** What stopping does when there is nothing to stop. */
 const nothing = (): undefined => undefined;
+
+// How far a call is, and how much of that it spent waiting on rate limits.
+const progressMessage = (
+  elapsed: number,
+  waitedBefore: number,
+  throttle: ThrottleTotal | undefined
+): string => {
+  const waited = (throttle?.ms ?? 0) - waitedBefore;
+
+  return waited >= 1000
+    ? `${secondsOf(elapsed)}s in, ${secondsOf(waited)}s of it waiting on rate limits. Last wait: ${throttle?.reason ?? "unknown"}`
+    : `${secondsOf(elapsed)}s in, still reading.`;
+};
 
 /** Tool calls one at a time, each within its time budget and cancellable. */
 export const toolCalls = (options: CallsOptions): Calls => {
@@ -183,16 +208,8 @@ export const toolCalls = (options: CallsOptions): Calls => {
         return;
       }
 
-      const throttle = options.throttled?.();
-      const waited = (throttle?.ms ?? 0) - waitedBefore;
-
-      const message =
-        waited >= 1000
-          ? `${secondsOf(elapsed)}s in, ${secondsOf(waited)}s of it waiting on rate limits. Last wait: ${throttle?.reason ?? "unknown"}`
-          : `${secondsOf(elapsed)}s in, still reading.`;
-
       const params: JsonObject = {
-        message,
+        message: progressMessage(elapsed, waitedBefore, options.throttled?.()),
         progress: secondsOf(elapsed),
         progressToken: token,
       };
@@ -217,10 +234,30 @@ export const toolCalls = (options: CallsOptions): Calls => {
     cancel: (id) => {
       running.get(id)?.abort();
     },
-    run: async ({ body, id, name, notify, progressToken }) => {
+    run: async ({ body, id, late, name, notify, progressToken }) => {
       const controller = new AbortController();
       const startedAt = clock.now();
       let expired = false;
+      let stopLate: () => void = nothing;
+      let giveUp: () => void = nothing;
+
+      // oxlint-disable-next-line promise/avoid-new -- settled by a timer once the call was stopped.
+      const lateAnswer = new Promise<ReturnType<typeof late> | undefined>(
+        (resolve) => {
+          giveUp = () => {
+            resolve(expired ? late(call.stopMessage) : undefined);
+          };
+        }
+      );
+
+      controller.signal.addEventListener(
+        "abort",
+        () => {
+          stopLate = clock.timer(LATE_AFTER_MS, giveUp);
+        },
+        { once: true }
+      );
+
       running.set(id, controller);
 
       const stopTimer = limited
@@ -239,11 +276,14 @@ export const toolCalls = (options: CallsOptions): Calls => {
         stopMessage: `${name} stopped at its time budget of ${secondsOf(timeBudgetMs)}s: what it had not read would not have been read in time, so the answer leaves it out. Call it again with less to read, such as fewer campaigns or a shorter range, or raise ${timeBudgetSetting} and the client's tool timeout with it.`,
       };
 
-      const turn = queue.then(async () =>
-        controller.signal.aborted && !expired
-          ? undefined
-          : await scope.current.run(call, body)
-      );
+      const turn = Promise.race([
+        queue.then(async () =>
+          controller.signal.aborted && !expired
+            ? undefined
+            : await scope.current.run(call, body)
+        ),
+        lateAnswer,
+      ]);
 
       queue = turn.catch(nothing);
 
@@ -253,6 +293,7 @@ export const toolCalls = (options: CallsOptions): Calls => {
         return controller.signal.aborted && !expired ? undefined : answer;
       } finally {
         stopTimer();
+        stopLate();
         stopProgress();
         running.delete(id);
       }

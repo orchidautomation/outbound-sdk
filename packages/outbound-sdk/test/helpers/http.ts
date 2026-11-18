@@ -17,6 +17,8 @@ export interface RecordedRequest {
   readonly method: string;
   readonly headers: Record<string, string>;
   readonly body: string | undefined;
+  /** The request's signal, for a reply that stops when it aborts. */
+  readonly signal: AbortSignal | undefined;
 }
 
 /** `"hang"` never answers until the request is aborted. */
@@ -61,6 +63,7 @@ export const createFetch = (handler: Handler): FakeFetch => {
         body: typeof init?.body === "string" ? init.body : undefined,
         headers: Object.fromEntries(new Headers(init?.headers).entries()),
         method: init?.method ?? "GET",
+        signal: init?.signal ?? undefined,
         url: String(input),
       };
 

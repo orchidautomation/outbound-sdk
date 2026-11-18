@@ -294,6 +294,14 @@ const callOnce = async (
   return withWait(called, (after?.ms ?? 0) - before, after?.reason);
 };
 
+// The answer for a tool whose reads do not go through the scope, when it is
+// still running after its budget.
+const lateAnswer = (message: string): ToolResult => ({
+  error: { code: "RateLimited", message, retryable: false },
+  next: "Do not call it again with the same input: it stops at the same place. Ask for less, or raise the time budget.",
+  ok: false,
+});
+
 // notifications/cancelled names the request the client gave up on.
 const cancelledId = (params: Json | undefined): RequestId | undefined => {
   const id = field(params, "requestId");
@@ -333,6 +341,7 @@ export const createMcpServer = (
       body: () =>
         callOnce(tool, field(params, "arguments") ?? {}, options, budget),
       id,
+      late: lateAnswer,
       name: tool.name,
       notify,
       progressToken: field(field(params, "_meta"), "progressToken"),

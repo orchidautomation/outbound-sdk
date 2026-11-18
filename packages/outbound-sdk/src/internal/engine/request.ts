@@ -80,10 +80,13 @@ const readBody = async (response: Response): Promise<Json> => {
   return parseJson(raw) ?? raw;
 };
 
+// The response and its body. The timeout and the caller's signal stay
+// connected until the body is read, so a vendor that sends headers and
+// then stalls is stopped like one that never answers.
 const fetchOnce = async (
   spec: RequestSpec,
   environment: RequestEnvironment
-): Promise<Response> => {
+): Promise<{ readonly response: Response; readonly body: Json }> => {
   const { runtime, state } = environment;
   const controller = new AbortController();
 
@@ -101,7 +104,7 @@ const fetchOnce = async (
   state.signal?.addEventListener("abort", onCallerAbort, { once: true });
 
   try {
-    return await runtime.fetch(spec.url, {
+    const response = await runtime.fetch(spec.url, {
       headers: {
         accept: "application/json",
         ...(spec.body === undefined
@@ -115,6 +118,8 @@ const fetchOnce = async (
         ? undefined
         : { body: JSON.stringify(spec.body) }),
     });
+
+    return { body: await readBody(response), response };
   } catch (error) {
     throw timedOut ? TIMED_OUT : error;
   } finally {
@@ -211,9 +216,8 @@ const attempt = async (
   let status: number | null = null;
 
   try {
-    const response = await fetchOnce(spec, environment);
+    const { body, response } = await fetchOnce(spec, environment);
     ({ status } = response);
-    const body = await readBody(response);
     await noteHeaders(response, environment);
 
     if (response.ok) {
@@ -278,6 +282,18 @@ const assertRequestBudget = (environment: RequestEnvironment): void => {
   }
 };
 
+// Errors of calls that stopped retrying because the next try would pass the deadline.
+const PASSED_DEADLINE = new WeakSet<OutboundError>();
+
+/**
+ * `true` for an error of a call its deadline stopped: a wait for the rate
+ * budget, or a retry, that would have passed it.
+ */
+export const stoppedByDeadline = (error: unknown): error is OutboundError =>
+  OutboundError.is(error) &&
+  (PASSED_DEADLINE.has(error) ||
+    (error.code === "RateLimited" && error.limit === "deadline"));
+
 const exhausted = (error: OutboundError, timedOut: boolean): OutboundError =>
   timedOut
     ? new OutboundError(error.code, error.message, {
@@ -322,7 +338,10 @@ export const execute = async (
       state.deadlineAt !== undefined &&
       runtime.now() + delayMs > state.deadlineAt
     ) {
-      throw exhausted(result.error, true);
+      const stopped = exhausted(result.error, true);
+      PASSED_DEADLINE.add(stopped);
+
+      throw stopped;
     }
 
     fire(hooks.onRetry, {

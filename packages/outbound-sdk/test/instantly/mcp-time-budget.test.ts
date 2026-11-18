@@ -9,11 +9,15 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { run } from "../../src/cli/index.ts";
+import { createMcpServer, run } from "../../src/cli/index.ts";
+import { createOutbound } from "../../src/index.ts";
 import { instantly } from "../../src/instantly/index.ts";
+import { memory } from "../../src/memory/index.ts";
+import type { OutboundTool } from "../../src/tools/index.ts";
 import { createClock } from "../helpers/clock.ts";
 import { fixture } from "../helpers/fixtures.ts";
 import { createFetch, json } from "../helpers/http.ts";
+import type { Handler } from "../helpers/http.ts";
 import { KEY } from "./suite.ts";
 
 const [template] = (
@@ -83,18 +87,18 @@ const mcp = async (
   messages: (
     written: readonly Line[],
     sent: () => number
-  ) => AsyncIterable<string>
+  ) => AsyncIterable<string>,
+  answer: Handler = (request) =>
+    new URL(request.url).pathname === "/api/v2/emails"
+      ? emailPage(pageOf(request.url))
+      : json({ items: [] })
 ) => {
   const clock = createClock();
   const lines: Line[] = [];
   const err: string[] = [];
   runs += 1;
 
-  const http = createFetch((request) =>
-    new URL(request.url).pathname === "/api/v2/emails"
-      ? emailPage(pageOf(request.url))
-      : json({ items: [] })
-  );
+  const http = createFetch(answer);
 
   const code = await clock.settle(
     run(["mcp", ...argv], {
@@ -229,6 +233,74 @@ test("a call that runs out its time budget returns by then with what it read, ma
   assert.ok(ran.requests > 1 && ran.requests < PAGES, String(ran.requests));
 });
 
+// The third page of emails is refused with a Retry-After longer than the
+// budget has left, so the call stops instead of retrying (finding on #115).
+test("a 429 whose Retry-After would pass the budget keeps what the call read", async () => {
+  const ran = await mcp(
+    ["--time-budget", "60"],
+    () => given(droppedReplies(1))(),
+    (request) => {
+      if (new URL(request.url).pathname !== "/api/v2/emails") {
+        return json({ items: [] });
+      }
+
+      const page = pageOf(request.url);
+
+      return page === 2
+        ? json({ message: "Rate limit exceeded" }, 429, {
+            "retry-after": "120",
+          })
+        : emailPage(page);
+    }
+  );
+
+  assert.equal(ran.code, 0, ran.err);
+  const content = answerTo(ran.lines, 1)?.message.result?.structuredContent;
+  assert.equal(content?.ok, true, JSON.stringify(content));
+  assert.equal(content?.meta.complete, false);
+  assert.ok(
+    content?.meta.notes.some((note) => TIME_NOTE.test(note)),
+    JSON.stringify(content?.meta.notes)
+  );
+});
+
+// A body that never ends until the request is aborted, as a stalled
+// connection behaves under fetch.
+const stalled = (signal: AbortSignal | null | undefined): Response =>
+  new Response(
+    new ReadableStream({
+      start: (controller) => {
+        signal?.addEventListener("abort", () => {
+          controller.error(new Error("aborted"));
+        });
+      },
+    }),
+    { headers: { "content-type": "application/json" }, status: 200 }
+  );
+
+test("a vendor that sends headers and stalls its body is stopped at the budget, keeping what was read", async () => {
+  const ran = await mcp(
+    ["--time-budget", "60"],
+    () => given(droppedReplies(1))(),
+    (request) => {
+      if (new URL(request.url).pathname !== "/api/v2/emails") {
+        return json({ items: [] });
+      }
+
+      const page = pageOf(request.url);
+
+      return page === 2 ? stalled(request.signal) : emailPage(page);
+    }
+  );
+
+  assert.equal(ran.code, 0, ran.err);
+  const answer = answerTo(ran.lines, 1);
+  const content = answer?.message.result?.structuredContent;
+  assert.ok((answer?.at ?? Infinity) <= 61_000, String(answer?.at));
+  assert.equal(content?.ok, true, JSON.stringify(content));
+  assert.equal(content?.meta.complete, false);
+});
+
 test("by default a tool call answers inside the minute an agent host waits", async () => {
   const ran = await mcp([], () => given(droppedReplies(1))());
 
@@ -276,6 +348,54 @@ test("a cancelled tool call stops reading and is not answered", async () => {
   assert.ok((last?.at ?? Infinity) < 30_000, String(last?.at));
   assert.ok(atCancel > 0);
   assert.equal(ran.requests, atCancel, "nothing is read after the cancel");
+});
+
+// A tool built on an instance outside the server's scope does not see the
+// budget, so the server answers for it and goes on to the next call.
+test("a tool that reads past the scope is answered 5 s after its budget, and the next call runs", async () => {
+  const clock = createClock();
+  const outbound = createOutbound({ adapter: memory({ workspaceId: "acme" }) });
+
+  const stuck: OutboundTool = {
+    call: () =>
+      new Promise(() => {
+        // Never settles, like a read that ignores the call's signal.
+      }),
+    description: "Never answers.",
+    fields: {},
+    name: "stuck",
+    needs: [],
+    parameters: { properties: {}, type: "object" },
+  };
+
+  const server = createMcpServer(outbound, {
+    extra: [stuck],
+    only: [],
+    runtime: clock.runtime,
+    timeBudgetMs: 10_000,
+  });
+
+  const call = (id: number) =>
+    server.handle({
+      id,
+      jsonrpc: "2.0",
+      method: "tools/call",
+      params: { arguments: {}, name: "stuck" },
+    });
+
+  const answers = (await clock.settle(Promise.all([call(1), call(2)]))) as {
+    result: { isError: boolean };
+  }[];
+
+  const [first, second] = answers;
+  assert.equal(first?.result.isError, true);
+  assert.match(
+    JSON.stringify(first?.result),
+    /RateLimited.*stuck stopped at its time budget of 10s/u
+  );
+  // The second call waited in line, so its budget ran out too, at the same time.
+  assert.equal(second?.result.isError, true);
+  assert.ok(clock.elapsed() <= 15_000, String(clock.elapsed()));
 });
 
 test("--time-budget takes a positive whole number of seconds", async () => {
