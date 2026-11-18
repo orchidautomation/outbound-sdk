@@ -169,7 +169,7 @@ A run is one listing per collection: the number of pages, times that vendor's co
 
 ## Limits
 
-- On Instantly a reply names its lead by address, so `reply.leadRef` holds the lowercased address, not the lead's `ref`. The `lead_ref` column in this guide's schema then joins to the lead's `email`, not to its `ref`.
+- A lead is one per campaign on Instantly, so `lead_ref` joins a reply to the lead in its campaign. One person in two campaigns has two leads; group by the reply's `leadEmail` to count people.
 - Delivery is at least once. A page can arrive twice; it never arrives zero times. Writes must be idempotent.
 - A checkpoint belongs to one provider, workspace, collection and campaign. Syncing with and without `campaignId` keeps two separate checkpoints.
 - A dated run finds new records, not changed ones. See the note on lead status above.

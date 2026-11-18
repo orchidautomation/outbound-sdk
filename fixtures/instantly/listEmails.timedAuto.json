@@ -1,0 +1,102 @@
+{
+  "items": [
+    {
+      "id": "01a1d77f-5e65-78a7-8eb0-0211b0000074",
+      "timestamp_created": "2026-11-12T10:00:00.000Z",
+      "timestamp_email": "2026-11-12T10:00:00.000Z",
+      "message_id": "<01a1d77f-5e65-78a7-8eb0-0211b0000074@mail.example.com>",
+      "subject": "Re: Partner outreach for Example teams",
+      "from_address_email": "person72@example.com",
+      "from_address_json": [],
+      "to_address_email_list": "sender71@example.com",
+      "to_address_json": [],
+      "body": {
+        "text": "Yes, this is relevant for us. Can you send times for a call next week?"
+      },
+      "content_preview": "Yes, this is relevant for us. Can you send times for a call next week?",
+      "organization_id": "01a1d77f-5e65-78a7-8eb0-0212308950a6",
+      "campaign_id": "01a1d77f-5e65-78a7-8eb0-0213c3e7d6dc",
+      "eaccount": "sender71@example.com",
+      "lead": "person72@example.com",
+      "ue_type": 2,
+      "step": "0_0_0",
+      "i_status": 1,
+      "is_focused": 1,
+      "is_unread": 1,
+      "thread_id": "01a1d77f-5e65-78a7-8eb0-021717740272"
+    },
+    {
+      "id": "01a1d77f-5e65-78a7-8eb0-0211b0000073",
+      "timestamp_created": "2026-11-11T09:00:00.000Z",
+      "timestamp_email": "2026-11-11T09:00:00.000Z",
+      "message_id": "<01a1d77f-5e65-78a7-8eb0-0211b0000073@mail.example.com>",
+      "subject": "Partner outreach for Example teams",
+      "from_address_email": "sender71@example.com",
+      "from_address_json": [],
+      "to_address_email_list": "person72@example.com",
+      "to_address_json": [],
+      "body": {
+        "text": "Hi there, a short note about partner outreach."
+      },
+      "content_preview": "Hi there, a short note about partner outreach.",
+      "organization_id": "01a1d77f-5e65-78a7-8eb0-0212308950a6",
+      "campaign_id": "01a1d77f-5e65-78a7-8eb0-0213c3e7d6dc",
+      "eaccount": "sender71@example.com",
+      "lead": "person72@example.com",
+      "ue_type": 1,
+      "step": "0_0_0",
+      "is_focused": 1,
+      "is_unread": 0,
+      "thread_id": "01a1d77f-5e65-78a7-8eb0-021717740272"
+    },
+    {
+      "id": "01a1d77f-5e65-78a7-8eb0-0211b0000072",
+      "timestamp_created": "2026-11-10T09:00:31.000Z",
+      "timestamp_email": "2026-11-10T09:00:31.000Z",
+      "message_id": "<01a1d77f-5e65-78a7-8eb0-0211b0000072@mail.example.com>",
+      "subject": "Re: Partner outreach for Example teams",
+      "from_address_email": "person71@example.com",
+      "from_address_json": [],
+      "to_address_email_list": "sender71@example.com",
+      "to_address_json": [],
+      "body": {
+        "text": "Thanks for your note. I will take a look."
+      },
+      "content_preview": "Thanks for your note. I will take a look.",
+      "organization_id": "01a1d77f-5e65-78a7-8eb0-0212308950a6",
+      "campaign_id": "01a1d77f-5e65-78a7-8eb0-0213c3e7d6dc",
+      "eaccount": "sender71@example.com",
+      "lead": "person71@example.com",
+      "ue_type": 2,
+      "step": "0_0_0",
+      "i_status": 1,
+      "is_focused": 1,
+      "is_unread": 1,
+      "thread_id": "01a1d77f-5e65-78a7-8eb0-021717740271"
+    },
+    {
+      "id": "01a1d77f-5e65-78a7-8eb0-0211b0000071",
+      "timestamp_created": "2026-11-10T09:00:00.000Z",
+      "timestamp_email": "2026-11-10T09:00:00.000Z",
+      "message_id": "<01a1d77f-5e65-78a7-8eb0-0211b0000071@mail.example.com>",
+      "subject": "Partner outreach for Example teams",
+      "from_address_email": "sender71@example.com",
+      "from_address_json": [],
+      "to_address_email_list": "person71@example.com",
+      "to_address_json": [],
+      "body": {
+        "text": "Hi there, a short note about partner outreach."
+      },
+      "content_preview": "Hi there, a short note about partner outreach.",
+      "organization_id": "01a1d77f-5e65-78a7-8eb0-0212308950a6",
+      "campaign_id": "01a1d77f-5e65-78a7-8eb0-0213c3e7d6dc",
+      "eaccount": "sender71@example.com",
+      "lead": "person71@example.com",
+      "ue_type": 1,
+      "step": "0_0_0",
+      "is_focused": 1,
+      "is_unread": 0,
+      "thread_id": "01a1d77f-5e65-78a7-8eb0-021717740271"
+    }
+  ]
+}

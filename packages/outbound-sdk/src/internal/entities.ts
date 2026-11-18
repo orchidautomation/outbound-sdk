@@ -274,6 +274,15 @@ const messageFields = {
   bodyText: z.string().nullable(),
   campaignRef: z.string().nullable(),
   channel: channelSchema,
+  /**
+   * The address of the lead the message is with, as the message names it.
+   * `null` when it names none; absent from adapters that do not read it.
+   */
+  leadEmail: z.string().nullable().optional(),
+  /**
+   * The lead's ref, the same one `leads.list` returns, so a message joins to
+   * its lead by ref. `null` when the vendor ties the message to no lead.
+   */
   leadRef: z.string().nullable(),
   senderRef: z.string().nullable(),
   sentAt: isoDateTime,
@@ -317,7 +326,8 @@ export type Message = z.infer<typeof messageSchema>;
 
 /**
  * One received message, not one person: a lead who replies twice in a thread
- * is two replies. Count people by `leadRef`, as `MetricRow.replied` does.
+ * is two replies. Count people by `leadEmail` where it is present, since
+ * one person in two campaigns is two leads, and otherwise by `leadRef`.
  */
 export const replySchema = z.object({
   ...messageFields,

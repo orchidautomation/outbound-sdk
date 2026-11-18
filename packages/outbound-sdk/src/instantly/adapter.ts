@@ -330,8 +330,8 @@ const leadReaders = (
   client: InstantlyClient
 ): Pick<Readers, "getLead" | "listLeads"> => ({
   getLead: async (id, ctx) => {
-    // A message's leadRef holds the lead's address: an email names its lead
-    // by address only. The first record with that address stands for it.
+    // A ref made before leadRef held the lead's id (OUT-149) names the lead
+    // by address. The first record with that address stands for it.
     const address = emailAddress(id);
 
     if (address !== null) {

@@ -47,11 +47,13 @@ $ outbound replies --by person
   "data": {
     "items": [
       {
+        "automatic": 0,
         "categories": [
           "positive"
         ],
         "firstAt": "2026-11-12T09:30:00.000Z",
         "lastAt": "2026-11-12T09:30:00.000Z",
+        "leadEmail": null,
         "leadRef": "memory:default:lead_1",
         "messages": 1,
         "threadIds": [

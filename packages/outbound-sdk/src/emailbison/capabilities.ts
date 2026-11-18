@@ -114,6 +114,8 @@ export const fields: FieldDeclaration = {
   // A message is not marked automatic; a reply is.
   message: {
     isAuto: false,
+    // Read only by the Instantly adapter, whose emails name their lead by address.
+    leadEmail: false,
     isAutoSource: false,
     stepIndex: false,
     // No link to one master inbox conversation is documented.
@@ -140,6 +142,7 @@ export const fields: FieldDeclaration = {
   },
   placementTest: false,
   reply: {
+    leadEmail: false,
     // A fixed rule reads the sender, subject and body when automated_reply is missing.
     leftCompany: "derived",
     stepIndex: false,

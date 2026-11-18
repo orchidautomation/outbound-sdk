@@ -7,9 +7,9 @@ import { z } from "zod";
 import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Lead, Message } from "../../internal/entities.ts";
 import { OutboundError } from "../../internal/errors.ts";
-import { assertRefReadable, leadRefParts } from "../../internal/person.ts";
+import { plural } from "../../internal/numbers.ts";
 import { untrusted } from "../../tools/shared.ts";
-import { defineInsight, maskingOf } from "../define.ts";
+import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { readByRef } from "./read.ts";
 import {
@@ -18,7 +18,12 @@ import {
   withoutBody,
 } from "./thread-context.ts";
 import type { LatestMessage, ThreadContext } from "./thread-context.ts";
-import { inCampaign, readConversation } from "./thread-read.ts";
+import {
+  bodiesOf,
+  inCampaign,
+  readConversation,
+  refuseUnreadable,
+} from "./thread-read.ts";
 import type { Read, Target } from "./thread-read.ts";
 
 /** The most characters of a message a snippet keeps. */
@@ -30,9 +35,10 @@ const ids = (what: string) =>
 const input = z.object({
   bodies: z
     .enum(["none", "snippet"])
-    .default("snippet")
+    .nullable()
+    .default(null)
     .describe(
-      "snippet returns the first 280 characters of each message, wrapped as untrusted content; none returns no text"
+      "snippet returns the first 280 characters of each message, wrapped as untrusted content; none returns no text. Null means snippet, or none when the redact plugin masks message bodies"
     ),
   cursor: z
     .string()
@@ -183,7 +189,7 @@ const recordOf = (
   context: InsightContext,
   read: Read,
   lead: Lead | undefined,
-  values: Input
+  values: Input & { readonly bodies: "none" | "snippet" }
 ): ThreadRecord => {
   const messages =
     read.messages === null
@@ -238,6 +244,32 @@ const coverageOf = (
   };
 };
 
+/** Marks the answer incomplete for each conversation or lead that could not be read. */
+const markUnread = (
+  context: InsightContext,
+  reads: readonly Read[],
+  refs: readonly string[],
+  leads: ReadonlyMap<string, Lead>
+): void => {
+  const failed = reads.filter((read) => read.failed !== null).length;
+
+  if (failed > 0) {
+    context.partial(
+      `${failed} of ${plural(reads.length, "conversation")} on this page could not be read, so who wrote last is unknown there; coverage.unchecked names each with why.`
+    );
+  }
+
+  const leadsUnread = context.outbound.capabilities["leads.get"]
+    ? refs.filter((ref) => !leads.has(ref)).length
+    : 0;
+
+  if (leadsUnread > 0) {
+    context.partial(
+      `${leadsUnread} of ${plural(refs.length, "lead")} could not be read, so their meetings and labels are unknown; each record's followUp.unchecked says so.`
+    );
+  }
+};
+
 export const threadContexts = defineInsight({
   description:
     "Reads the conversations behind given lead refs or thread ids, in pages, without a campaign-wide reply read: each conversation's newest messages (a 280-character snippet each, wrapped as untrusted content, unless bodies is none), who wrote last and when, the meeting the vendor records on the lead (Instantly's interest status; other vendors record none, which the answer says), the vendor's own labels kept apart in vendorSentiment, and a follow-up assessment from fixed rules: needed is true only when the latest message is inbound, not automatic and no meeting is recorded, false when the latest message is outbound or a meeting is recorded, null otherwise, with the evidence it used and what it could not check. No rule reads what a message says, so read the latest message before acting on it. coverage gives how many were requested, read and found, which could not be read and why, and nextCursor for the next page. Costs one walk of messages per conversation and up to one lead read per conversation.",
@@ -272,37 +304,15 @@ export const threadContexts = defineInsight({
       );
     }
 
-    if (
-      values.bodies === "snippet" &&
-      (maskingOf(context.outbound)?.fields.includes("body") ?? false)
-    ) {
-      throw new OutboundError(
-        "Unsupported",
-        "thread_context: the redact plugin masks message bodies, so snippets cannot be returned; pass bodies: none"
-      );
-    }
+    const bodies = bodiesOf(context, values.bodies);
 
-    for (const target of targets) {
-      const parts = target.kind === "lead" ? leadRefParts(target.id) : null;
-
-      if (target.kind === "lead" && parts === null) {
-        throw new OutboundError(
-          "Invalid",
-          `thread_context: "${target.id}" is not a lead ref (provider:workspace:id); pass the lead ref another tool returned`,
-          { provider: context.outbound.provider }
-        );
-      }
-
-      if (parts !== null) {
-        assertRefReadable(context.outbound, { ...parts, text: target.id });
-      }
-    }
+    refuseUnreadable(context, targets);
 
     const start = startOf(values.cursor, targets.length);
     const page = targets.slice(start, start + values.page_size);
 
     const reads = await mapConcurrent(page, (target) =>
-      readConversation(context, target, values.bodies === "snippet")
+      readConversation(context, target, bodies === "snippet")
     );
 
     const refs = [
@@ -332,9 +342,11 @@ export const threadContexts = defineInsight({
         context,
         read,
         ref === null ? undefined : leads.get(ref),
-        values
+        { ...values, bodies }
       );
     });
+
+    markUnread(context, reads, refs, leads);
 
     if (start + page.length < targets.length) {
       context.partial(

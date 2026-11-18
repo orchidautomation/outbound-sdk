@@ -15,6 +15,7 @@ import type { Json, JsonObject } from "../internal/json.ts";
 import { mapPage } from "../internal/page.ts";
 import { EMAILS_LANE } from "./capabilities.ts";
 import type { InstantlyClient } from "./client.ts";
+import { leadIdsFor, oneLead } from "./lead-ids.ts";
 import {
   isScheduled,
   isSentByHand,
@@ -22,37 +23,54 @@ import {
   toMessage,
   toReply,
 } from "./map-lead.ts";
+import type { LeadIds } from "./map-lead.ts";
 import { listEnvelope } from "./map.ts";
 import { pageSize, readLabels } from "./pages.ts";
 import { withAnsweredSteps } from "./thread.ts";
 
 interface EmailCursor {
   readonly after: string | undefined;
-  /** The lead's address, resolved once and carried in the cursor. */
+  /** The lead's address, campaign and id, resolved once and carried in the cursor. */
   readonly lead: string | undefined;
+  readonly campaign: string | undefined;
+  readonly id: string | undefined;
 }
 
 const emailCursor = (next: Json | undefined): EmailCursor => ({
   after: text(field(next, "after")) ?? undefined,
+  campaign: text(field(next, "campaign")) ?? undefined,
+  id: text(field(next, "id")) ?? undefined,
   lead: text(field(next, "lead")) ?? undefined,
 });
 
-// GET /emails filters by the lead's address, not its id.
-const leadAddress = async (
+/** The lead a timeline is read for. `id` is unknown when it was named by address. */
+interface TimelineLead {
+  readonly address: string;
+  readonly campaign: string | undefined;
+  readonly id: string | undefined;
+}
+
+// GET /emails filters by the lead's address, not its id. A lead is one
+// campaign's record, so its timeline is read in that campaign.
+const timelineLead = async (
   client: InstantlyClient,
   ctx: AdapterContext,
   leadId: string | undefined,
   cursor: EmailCursor
-): Promise<string | undefined> => {
-  if (leadId === undefined || cursor.lead !== undefined) {
-    return cursor.lead;
+): Promise<TimelineLead | undefined> => {
+  if (cursor.lead !== undefined) {
+    return { address: cursor.lead, campaign: cursor.campaign, id: cursor.id };
   }
 
-  // A message's leadRef is the lead's address already.
+  if (leadId === undefined) {
+    return undefined;
+  }
+
+  // A ref made before leadRef held the lead's id names it by address.
   const given = emailAddress(leadId);
 
   if (given !== null) {
-    return given;
+    return { address: given, campaign: undefined, id: undefined };
   }
 
   const lead = await client.getObject(
@@ -60,7 +78,7 @@ const leadAddress = async (
     `/leads/${encodeURIComponent(leadId)}`
   );
 
-  const address = text(lead.email);
+  const address = emailAddress(lead.email);
 
   if (address === null) {
     throw new OutboundError("NotFound", `Lead ${leadId} has no email address`, {
@@ -68,7 +86,11 @@ const leadAddress = async (
     });
   }
 
-  return address;
+  return {
+    address,
+    campaign: text(lead.campaign) ?? undefined,
+    id: leadId,
+  };
 };
 
 // A list response cuts a large body down to an excerpt and says so. The
@@ -87,9 +109,24 @@ const withFullBody = async (
       });
 };
 
+/** The next page's cursor, carrying the timeline's lead so it is not read again. */
+const nextCursor = (
+  after: string | undefined,
+  lead: TimelineLead | undefined
+): Json | undefined =>
+  after === undefined
+    ? undefined
+    : {
+        after,
+        campaign: lead?.campaign ?? null,
+        id: lead?.id ?? null,
+        lead: lead?.address ?? null,
+      };
+
 interface EmailPage {
   readonly items: JsonObject[];
   readonly next: Json | undefined;
+  readonly leadIds: LeadIds;
 }
 
 const listEmails = async (
@@ -103,16 +140,16 @@ const listEmails = async (
   const threadId = "threadId" in query ? query.threadId : undefined;
   const byHand = "byHand" in query && query.byHand === true;
   const sentByHand = byHand ? "manual" : undefined;
-  const lead = await leadAddress(client, ctx, leadId, cursor);
+  const lead = await timelineLead(client, ctx, leadId, cursor);
 
   const envelope = listEnvelope(
     await client.get(ctx, "/emails", {
       lane: EMAILS_LANE,
       query: {
-        campaign_id: query.campaignId,
+        campaign_id: query.campaignId ?? lead?.campaign,
         email_type: received ? "received" : sentByHand,
         is_unread: "unread" in query ? query.unread : undefined,
-        lead,
+        lead: lead?.address,
         limit: pageSize(query.limit),
         max_timestamp_created: query.until,
         min_timestamp_created: query.since,
@@ -136,10 +173,11 @@ const listEmails = async (
           sent.map(async (item) => await withFullBody(client, ctx, item))
         )
       : sent,
-    next:
-      envelope.next === undefined
-        ? undefined
-        : { after: envelope.next, lead: lead ?? null },
+    leadIds:
+      lead?.id === undefined
+        ? await leadIdsFor(client, ctx, sent)
+        : oneLead(lead.address, lead.campaign ?? null, lead.id),
+    next: nextCursor(envelope.next, lead),
   };
 };
 
@@ -150,7 +188,7 @@ export const mailReaders = (
     const page = await listEmails(client, ctx, query, false);
 
     const mapped = mapPage(page, (item) =>
-      toMessage(client.identity, item, query.includeBody)
+      toMessage(client.identity, item, query.includeBody, page.leadIds)
     );
 
     return { ...mapped, items: withAnsweredSteps(mapped.items) };
@@ -165,7 +203,7 @@ export const mailReaders = (
     );
 
     const replies = page.items.map((item) =>
-      toReply(client.identity, item, query.includeBody, labels)
+      toReply(client.identity, item, query.includeBody, labels, page.leadIds)
     );
 
     return {

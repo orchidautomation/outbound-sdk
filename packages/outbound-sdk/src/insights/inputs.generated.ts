@@ -182,7 +182,7 @@ export interface InsightInputs {
       | undefined;
 
     /**
-     * Set to true to also check replies flagged automatic, by the vendor or by a fixed rule
+     * Set to true to also check replies flagged automatic, by the vendor or by a fixed rule, and to list conversations whose latest message is an automatic reply
      *
      * Defaults to `false`.
      */
@@ -326,11 +326,11 @@ export interface InsightInputs {
   /** The input of `threadContext` (the `thread_context` tool). */
   readonly threadContext: {
     /**
-     * snippet returns the first 280 characters of each message, wrapped as untrusted content; none returns no text
+     * snippet returns the first 280 characters of each message, wrapped as untrusted content; none returns no text. Null means snippet, or none when the redact plugin masks message bodies
      *
-     * Defaults to `"snippet"`.
+     * Defaults to `null`.
      */
-    readonly bodies?: "none" | "snippet" | undefined;
+    readonly bodies?: "none" | "snippet" | null | undefined;
 
     /**
      * coverage.nextCursor from the previous call with the same leads and threads, to read the next page of conversations

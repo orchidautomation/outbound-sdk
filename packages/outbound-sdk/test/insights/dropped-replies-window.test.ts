@@ -105,6 +105,14 @@ const elsewhere = (count: number) =>
     thread_id: `elsewhere-${index}`,
   }));
 
+const leadOf = (address: string) => ({
+  campaign: CAMPAIGN,
+  email: address,
+  first_name: "Sam",
+  id: `lead-${address.split("@")[0] ?? address}`,
+  last_name: "Sample",
+});
+
 const workspace = (padding = 0) => {
   const clock = createClock();
   const unrouted: string[] = [];
@@ -118,19 +126,13 @@ const workspace = (padding = 0) => {
         contacts?: string[];
       };
 
-      const [address] = contacts;
+      return json({ items: contacts.map(leadOf) });
+    }
 
-      return json({
-        items: [
-          {
-            campaign: CAMPAIGN,
-            email: address,
-            first_name: "Sam",
-            id: `lead-${address}`,
-            last_name: "Sample",
-          },
-        ],
-      });
+    const byId = /^\/api\/v2\/leads\/lead-(?<local>[^/]+)$/u.exec(url.pathname);
+
+    if (byId?.groups?.local !== undefined) {
+      return json(leadOf(`${byId.groups.local}@example.com`));
     }
 
     if (url.pathname !== "/api/v2/emails") {
@@ -252,7 +254,17 @@ test("dropped_replies reads the whole window by default and finds the 51st reply
     ["received", "received", "manual", "manual", null]
   );
   assert.deepEqual(threadReads(urls), ["thread:thread-50"]);
-  assert.ok(result.meta.requests <= 10, `${result.meta.requests} requests`);
+  // Each page of emails looks up its leads' ids once (OUT-149); the rest of
+  // the read stays within 10 requests.
+  const lookups = urls.filter((url) => url.pathname === "/api/v2/leads/list");
+  assert.equal(
+    lookups.length,
+    urls.filter((url) => url.pathname === "/api/v2/emails").length
+  );
+  assert.ok(
+    result.meta.requests - lookups.length <= 10,
+    `${result.meta.requests} requests`
+  );
   assert.equal(result.meta.requests, http.requests.length);
   assert.ok(clock.elapsed() < 5000, `${clock.elapsed()} ms`);
 });

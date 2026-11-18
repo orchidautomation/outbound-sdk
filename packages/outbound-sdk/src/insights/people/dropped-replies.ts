@@ -38,7 +38,7 @@ const input = z.object({
     .boolean()
     .default(false)
     .describe(
-      "Set to true to also check replies flagged automatic, by the vendor or by a fixed rule"
+      "Set to true to also check replies flagged automatic, by the vendor or by a fixed rule, and to list conversations whose latest message is an automatic reply"
     ),
   include_inbox: z
     .boolean()
@@ -79,7 +79,11 @@ export interface DroppedReplies {
     readonly repliesRead: number;
     /** Left out for a category that needs no answer. */
     readonly skippedByCategory: number;
-    /** Left out because they are flagged automatic, by the vendor or by a fixed rule. */
+    /**
+     * Left out because they are flagged automatic, by the vendor or by a fixed
+     * rule, or because their conversation, read in full, ends in an automatic
+     * reply. 0 with `include_auto`.
+     */
     readonly skippedAuto: number;
     /**
      * Set aside because their conversation belongs to no campaign, such as a
@@ -88,7 +92,7 @@ export interface DroppedReplies {
      * set by dropped_replies; optional so a value built by hand stays valid.
      */
     readonly notInCampaign?: number | null;
-    /** Conversations the remaining replies belong to. */
+    /** Conversations the remaining replies belong to: answered, dropped, tooRecent and unchecked add up to it. */
     readonly conversations: number;
     readonly answered: number;
     readonly dropped: number;
@@ -275,7 +279,7 @@ const readReplies = (
 
 export const droppedReplies = defineInsight({
   description:
-    "Replies from prospects that nobody answered. Reads every reply since a date (14 days before now by default, up to 2,000 or max_replies), keeps the categories that need an answer, and reports a conversation as dropped when nothing was sent after the reply and it has waited longer than older_than_hours. Where the tool lists the messages sent by hand (messages.byHand), one listing of those in the window settles every answered conversation; a conversation is read in full, by its thread or the lead's timeline, only when it may be dropped, or when that listing stopped at its max and did not answer it. Replies in conversations that belong to no campaign, such as a LinkedIn account's own messages on HeyReach, are set aside and counted in totals.notInCampaign unless include_inbox is true. Returns the dropped replies longest waiting first with hours waiting, category, the campaign and its name, and the lead with their name, email and LinkedIn profile. A reply that could not be checked, including one whose conversation could not be read, is counted in totals.unchecked with a note and meta.complete: false, never reported as dropped. Costs one request per page of replies and of messages sent by hand, one per conversation read in full, and one per lead and per campaign among the dropped replies to name them. totals.moreRepliesExist is true when the read stopped with replies left unread. Dropped means only that nothing was sent after the reply: each one also carries the conversation's activity (its latest message, which can be a later message than the labelled reply), meeting (what the vendor records on the lead, Instantly only, so a prospect who booked through a calendar link shows as booked), vendorSentiment (the vendor's labels, kept apart) and followUp, a fixed-rule assessment with its evidence and what it could not check. No rule reads what a message says, so read the latest message with thread_context before following up.",
+    "Replies from prospects that nobody answered. Reads every reply since a date (14 days before now by default, up to 2,000 or max_replies), keeps the categories that need an answer, and reports a conversation as dropped when nothing was sent after the reply and it has waited longer than older_than_hours. Where the tool lists the messages sent by hand (messages.byHand), one listing of those in the window settles every answered conversation; a conversation is read in full, by its thread or the lead's timeline, only when it may be dropped, or when that listing stopped at its max and did not answer it. Replies in conversations that belong to no campaign, such as a LinkedIn account's own messages on HeyReach, are set aside and counted in totals.notInCampaign unless include_inbox is true. Returns the dropped replies longest waiting first with hours waiting, category, the campaign and its name, and the lead with their name, email and LinkedIn profile. A conversation that, read in full, ends in an automatic reply (such as one within a minute of the email it answers) counts in totals.skippedAuto, not as dropped, unless include_auto is true. A reply that could not be checked, including one whose conversation could not be read, is counted in totals.unchecked with a note and meta.complete: false, never reported as dropped. Costs one request per page of replies and of messages sent by hand, one per conversation read in full, and one per lead and per campaign among the dropped replies to name them. totals.moreRepliesExist is true when the read stopped with replies left unread. Dropped means only that nothing was sent after the reply: each one also carries the conversation's activity (its latest message, which can be a later message than the labelled reply), meeting (what the vendor records on the lead, Instantly only, so a prospect who booked through a calendar link shows as booked), vendorSentiment (the vendor's labels, kept apart) and followUp, a fixed-rule assessment with its evidence and what it could not check. No rule reads what a message says, so read the latest message with thread_context before following up.",
   inputSchema: input,
   key: "droppedReplies",
   cost: (values, price) => {
@@ -364,21 +368,30 @@ export const droppedReplies = defineInsight({
             values.max_replies ?? WINDOW_REPLIES
           );
 
-    const { answered, dropped, tooRecent, unread } = await check(
+    const {
+      answered,
+      automatic,
+      automaticReplies,
+      dropped,
+      tooRecent,
+      unread,
+    } = await check(
       context,
       checkable,
       sent,
-      values.older_than_hours
+      values.older_than_hours,
+      values.include_auto
     );
 
     const withNames = await named(context, dropped);
     const notChecked = unchecked + unread;
+    const owedOrUnknown = conversations.length - automatic;
 
     if (notChecked > 0) {
       context.partial(
-        notChecked === conversations.length
+        notChecked === owedOrUnknown
           ? `None of the ${plural(notChecked, "conversation")} could be checked, so dropped counts none of them. totals.unchecked counts them, as neither dropped nor answered.`
-          : `${plural(notChecked, "conversation")} of ${conversations.length} could not be checked, so dropped counts only the ${conversations.length - notChecked} that were. totals.unchecked counts the rest, as neither dropped nor answered.`
+          : `${plural(notChecked, "conversation")} of ${owedOrUnknown} could not be checked, so dropped counts only the ${owedOrUnknown - notChecked} that were. totals.unchecked counts the rest, as neither dropped nor answered.`
       );
     }
 
@@ -392,12 +405,12 @@ export const droppedReplies = defineInsight({
       since,
       totals: {
         answered,
-        conversations: conversations.length,
+        conversations: owedOrUnknown,
         dropped: dropped.length,
         moreRepliesExist: listed.capped,
         notInCampaign: separates ? inWindow.length - replies.length : null,
         repliesRead: read.length,
-        skippedAuto: wanted.length - kept.length,
+        skippedAuto: wanted.length - kept.length + automaticReplies,
         skippedByCategory: replies.length - wanted.length,
         tooRecent,
         unchecked: notChecked,

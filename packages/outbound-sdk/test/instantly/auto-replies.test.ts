@@ -27,21 +27,24 @@ test("instantly: a machine mailbox and a helpdesk autoresponder are flagged auto
 
   const seen = page.items
     .map((reply) =>
-      [reply.leadRef, reply.isAuto, reply.isAutoSource, reply.leftCompany].join(
-        " "
-      )
+      [
+        reply.leadEmail,
+        reply.isAuto,
+        reply.isAutoSource,
+        reply.leftCompany,
+      ].join(" ")
     )
     .toSorted();
 
   assert.deepEqual(seen, [
     // The company mailbox, 4 times: it says the contact changed.
-    ...Array.from({ length: 4 }, () => `${ref(MAILBOX)} true rule true`),
+    ...Array.from({ length: 4 }, () => `${MAILBOX} true rule true`),
     // The helpdesk, twice.
-    `${ref(HELPDESK)} true rule false`,
-    `${ref(HELPDESK)} true rule false`,
+    `${HELPDESK} true rule false`,
+    `${HELPDESK} true rule false`,
     // The person, twice, one of them mentioning being out of office.
-    `${ref(PERSON)} false rule false`,
-    `${ref(PERSON)} false rule false`,
+    `${PERSON} false rule false`,
+    `${PERSON} false rule false`,
   ]);
 });
 

@@ -1,4 +1,5 @@
 {
+  "automatic": null,
   "unique_people": 1,
   "unique_threads": null,
   "replies": [
@@ -9,6 +10,7 @@
       "category_source": "vendor",
       "is_auto": null,
       "lead": "memory:acme:lead_dana",
+      "lead_email": null,
       "received_at": "2026-11-12T09:30:00.000Z",
       "reply": "memory:acme:msg_dana",
       "url": null
@@ -16,6 +18,7 @@
   ]
 }
 {
+  "automatic": null,
   "unique_people": 3,
   "unique_threads": null,
   "replies": [
@@ -30,6 +33,7 @@
       "category_source": "vendor",
       "is_auto": null,
       "lead": "memory:acme:lead_dana",
+      "lead_email": null,
       "received_at": "2026-11-12T09:30:00.000Z",
       "reply": "memory:acme:msg_dana",
       "url": null
@@ -45,6 +49,7 @@
       "category_source": "vendor",
       "is_auto": null,
       "lead": "memory:acme:lead_sam",
+      "lead_email": null,
       "received_at": "2026-11-13T15:05:00.000Z",
       "reply": "memory:acme:msg_sam",
       "url": null
@@ -60,6 +65,7 @@
       "category_source": "vendor",
       "is_auto": null,
       "lead": "memory:acme:lead_lee",
+      "lead_email": null,
       "received_at": "2026-11-13T18:20:00.000Z",
       "reply": "memory:acme:msg_lee",
       "url": null

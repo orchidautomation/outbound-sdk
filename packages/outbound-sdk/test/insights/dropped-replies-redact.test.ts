@@ -123,15 +123,28 @@ test("a conversation that cannot be read is counted unchecked, with a note", asy
   );
 });
 
-test("a request cap still stops dropped_replies instead of leaving replies unchecked", async () => {
+// OUT-156: a cap keeps what was read, and never passes a stopped read off
+// as an answered or dropped conversation.
+test("a request cap stops dropped_replies with what it read, marked incomplete, never as answered", async () => {
   const reads = spy(
     new OutboundError("RateLimited", "The run cap was reached.", {
       limit: "run",
     })
   );
 
-  await assert.rejects(
-    build(reads).insights.droppedReplies({ since: "2026-11-01" }, { now: NOW }),
-    (error) => OutboundError.is(error) && error.code === "RateLimited"
+  const result = await build(reads).insights.droppedReplies(
+    { since: "2026-11-01" },
+    { now: NOW }
+  );
+
+  assert.equal(result.meta.complete, false);
+  assert.equal(result.data.totals.dropped, 0);
+  assert.equal(result.data.totals.answered, 0);
+  assert.equal(result.data.totals.unchecked, result.data.totals.conversations);
+  assert.ok(
+    result.meta.notes.some((note) =>
+      note.startsWith("A request cap stopped the run")
+    ),
+    result.meta.notes.join("\n")
   );
 });

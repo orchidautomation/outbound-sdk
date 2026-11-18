@@ -138,6 +138,8 @@ test("instantly: a body the list cut short is read whole from the email itself",
   assert.deepEqual(requests.map(pathOf), [
     "GET /api/v2/emails",
     "GET /api/v2/emails/01a1d77f-5e65-78a7-8eb0-021174eeab65",
+    // The page's lookup of its leads' ids (OUT-149).
+    "POST /api/v2/leads/list",
   ]);
   assert.equal(
     page.items[0]?.bodyHtml,
@@ -165,7 +167,11 @@ test("instantly: a body the list cut short is read whole from the email itself",
 test("instantly: without bodies, a cut-short body costs no extra request", async () => {
   const { outbound, requests, settle } = harness(suite);
   const page = await settle(outbound.messages.list());
-  assert.equal(requests.length, 1);
+  // Only the page and its lookup of the leads' ids (OUT-149).
+  assert.deepEqual(requests.map(pathOf), [
+    "GET /api/v2/emails",
+    "POST /api/v2/leads/list",
+  ]);
   assert.equal(page.items[0]?.bodyText, null);
 });
 
@@ -199,6 +205,8 @@ test("instantly: a reply with a custom status takes its category from the label"
   );
   assert.deepEqual(requests.map(pathOf), [
     "GET /api/v2/emails",
+    // The page's lookup of its leads' ids (OUT-149).
+    "POST /api/v2/leads/list",
     "GET /api/v2/lead-labels",
   ]);
 });

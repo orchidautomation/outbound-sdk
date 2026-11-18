@@ -125,6 +125,8 @@ export const fields: FieldDeclaration = {
   },
   message: {
     bodyHtml: false,
+    // Read only by the Instantly adapter, whose emails name their lead by address.
+    leadEmail: false,
     isAuto: false,
     isAutoSource: false,
     stepIndex: false,
@@ -157,6 +159,7 @@ export const fields: FieldDeclaration = {
   placementTest: false,
   reply: {
     bodyHtml: false,
+    leadEmail: false,
     // The lead's newest auto-tag, not a label on the message.
     category: "derived",
     categorySource: "derived",

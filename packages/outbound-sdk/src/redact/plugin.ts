@@ -41,6 +41,7 @@ import {
   KEYLESS_NOTES,
   keyedToken,
   knownTokens,
+  refuseUnknownTokens,
   TOKEN,
   warnUnkeyedHash,
 } from "./tokens.ts";
@@ -323,13 +324,19 @@ const redactFields = (masks: Masks, record: OutboundRecord): OutboundRecord => {
   }
 
   if ("direction" in record) {
-    return {
+    const message = {
       ...record,
       bodyHtml: maskIf(masks, "body", record.bodyHtml),
       bodyText: maskIf(masks, "body", record.bodyText),
       raw: null,
       subject: maskIf(masks, "subject", record.subject),
     };
+
+    if (record.leadEmail !== undefined) {
+      message.leadEmail = maskIdentifier(masks, "email", record.leadEmail);
+    }
+
+    return message;
   }
 
   if ("custom" in record) {
@@ -549,8 +556,11 @@ export const redact = (
       },
     }),
     name: "redact",
-    wrap: async (operation, next): Promise<OperationOutput> => {
+    wrap: async (operation, next, info): Promise<OperationOutput> => {
       const sent = unmasked(masks.known, operation);
+
+      refuseUnknownTokens(sent, info.provider);
+
       let output: OperationOutput;
 
       try {

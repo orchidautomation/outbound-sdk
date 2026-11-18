@@ -179,10 +179,11 @@ test("hot_leads on the stress-test shape answers completely in about 10 requests
   assert.equal(result.meta.complete, true, result.meta.notes.join(" "));
   assert.deepEqual(result.meta.notes, []);
 
-  // 2 pages of replies and the empty page after, 5 positive filters, and 2
+  // 2 pages of replies and the empty page after, one lookup of each page's
+  // addresses for the leads' ids (OUT-149), 5 positive filters, and 2
   // lookups of addresses, the full first one followed by an empty page.
-  assert.equal(http.requests.length, 11);
-  assert.equal(result.meta.requests, 11);
+  assert.equal(http.requests.length, 13);
+  assert.equal(result.meta.requests, 13);
 
   assert.deepEqual(
     result.data.leads.slice(0, 3).map((each) => each.email),
@@ -231,7 +232,10 @@ test("hot_leads looks up the leads behind replies in batches of 100 addresses", 
     return Array.isArray(body.contacts) ? [body.contacts.length] : [];
   });
 
-  assert.deepEqual(batches, [100, 100, OTHERS.length - 100]);
+  // First each reply page's own lookup for the leads' ids (OUT-149), at most
+  // 100 addresses each, then hot_leads' lookups of the leads not listed.
+  assert.ok(batches.slice(0, -3).every((size) => size <= 100));
+  assert.deepEqual(batches.slice(-3), [100, 100, OTHERS.length - 100]);
 });
 
 test("hot_leads walks the lead list only when asked, for open and click scoring", async () => {

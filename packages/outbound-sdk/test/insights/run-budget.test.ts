@@ -94,6 +94,37 @@ test("a budget that stops the reads naming dropped replies keeps the replies and
   );
 });
 
+test("a budget that stops dropped_replies' conversation reads keeps what it read and counts the rest unchecked", async () => {
+  const { http, outbound } = over(world(2, 4), {
+    plugins: [
+      budget({ maxRequests: 2, per: "run", setting: "--max-requests" }),
+    ],
+  });
+
+  const result = await outbound.insights.droppedReplies({}, { now: NOW });
+  const { totals } = result.data;
+
+  assert.equal(http.requests.length, 2, "not one request past the budget");
+  assert.equal(result.meta.requests, 2);
+  assert.equal(result.meta.complete, false);
+  assert.ok(totals.unchecked > 0);
+  // A stopped read is never passed off as answered or dropped.
+  assert.equal(
+    totals.answered + totals.dropped + totals.tooRecent + totals.unchecked,
+    totals.conversations
+  );
+  assert.ok(
+    result.meta.notes.some(
+      (note) =>
+        note.startsWith("A request cap stopped the run:") &&
+        note.includes(OWN_CAP) &&
+        note.includes("Raise --max-requests.") &&
+        note.endsWith(" conversations; the answer covers those.")
+    ),
+    result.meta.notes.join("\n")
+  );
+});
+
 test("the CLI returns the partial answer at --max-requests, exit 0, not a RateLimited failure", async () => {
   const out: string[] = [];
   const err: string[] = [];

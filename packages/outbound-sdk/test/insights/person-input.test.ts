@@ -29,6 +29,7 @@ import { EMAIL_TOOL } from "./helpers.ts";
 // listReplies.json, as Instantly sends it: the reply names its lead by address.
 const REPLIER = "person6@example.com";
 const REPLY_REF = `instantly:client-a:${REPLIER}`;
+const REPLIER_LEAD = "instantly:client-a:01a1d77f-5e65-78a7-8eb0-0216d691e16c";
 
 const PROFILE_REF =
   "heyreach:client-a:https://www.linkedin.com/in/example-person-1";
@@ -72,16 +73,30 @@ const invalid = (pattern: RegExp) => (error: unknown) =>
   error.code === "Invalid" &&
   pattern.test(error.message);
 
-test("instantly: person_summary takes a reply's leadRef and asks Instantly for the address alone", async () => {
+test("instantly: person_summary takes a reply's leadRef, the lead's own ref", async () => {
   const { outbound, requests, settle, unrouted } = onInstantly();
   const replies = await settle(outbound.replies.list());
 
-  const ref = replies.items.find(
-    (reply) => reply.leadRef === REPLY_REF
-  )?.leadRef;
+  const reply = replies.items.find((each) => each.leadEmail === REPLIER);
 
-  assert.equal(ref, REPLY_REF, "the fixture's reply names its lead by address");
+  assert.equal(reply?.leadRef, REPLIER_LEAD);
   requests.length = 0;
+
+  const result = await settle(
+    outbound.insights.personSummary({ lead_ref: reply?.leadRef ?? "" })
+  );
+
+  // It is read like any lead's ref: by id first, for the address.
+  assert.equal(result.data.found, true);
+  assert.equal(
+    new URL(requests[0]?.url ?? "").pathname,
+    "/api/v2/leads/01a1d77f-5e65-78a7-8eb0-0216d691e16c"
+  );
+  assert.deepEqual(unrouted, []);
+});
+
+test("instantly: person_summary takes a ref that names its lead by address, as refs did before OUT-149, and asks for the address alone", async () => {
+  const { outbound, requests, settle, unrouted } = onInstantly();
 
   for (const input of [{ person: REPLY_REF }, { lead_ref: REPLY_REF }]) {
     const first = requests.length;

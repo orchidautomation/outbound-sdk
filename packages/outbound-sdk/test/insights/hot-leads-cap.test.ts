@@ -302,9 +302,18 @@ test("hot_leads on Instantly does not read again a listed lead its reply names b
   const lookups = http.requests.flatMap((request) => {
     const body = request.body === undefined ? {} : JSON.parse(request.body);
 
-    return body.contacts ?? [];
+    return body.contacts === undefined ? [] : [body.contacts];
   });
 
   assert.deepEqual(unrouted, []);
-  assert.deepEqual(lookups, ["person31@example.com"], "person16 was listed");
+  // The reply page's own lookup of its addresses, for the leads' ids
+  // (OUT-149), then hot_leads' lookup of the leads no listing returned.
+  assert.deepEqual(
+    lookups,
+    [
+      ["person16@example.com", "person31@example.com"],
+      ["person31@example.com"],
+    ],
+    "person16 was listed"
+  );
 });

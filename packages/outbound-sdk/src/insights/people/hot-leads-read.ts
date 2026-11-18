@@ -11,7 +11,7 @@ import type {
 import { OutboundError } from "../../internal/errors.ts";
 import { emailAddress } from "../../internal/json.ts";
 import type { ListAll } from "../../internal/outbound/api.ts";
-import { parseRef } from "../../internal/ref.ts";
+import { makeRef, parseRef } from "../../internal/ref.ts";
 import { confirmCampaign } from "../campaign.ts";
 import { maskingOf } from "../define.ts";
 import type { InsightContext } from "../define.ts";
@@ -162,6 +162,17 @@ const listedLeads = async (
   return { capped: walk.truncated || wasCutShort(leads), leads };
 };
 
+/**
+ * The ref a reply names its lead by: its leadRef, or, where the vendor found
+ * no lead for it (a lead deleted since), a ref made of the address it names,
+ * so the lead is still looked for and counted as unreadable when it is gone.
+ */
+const leadOfReply = (reply: Reply): string | null =>
+  reply.leadRef ??
+  (reply.leadEmail === null || reply.leadEmail === undefined
+    ? null
+    : makeRef(reply.provider, reply.workspaceId, reply.leadEmail));
+
 /** The ref each engaged reply names, newest first, with the campaign of its newest reply. */
 const repliedRefs = (
   replies: readonly Reply[],
@@ -171,15 +182,17 @@ const repliedRefs = (
   const refs = new Map<string, string | null>();
 
   for (const reply of replies) {
+    const ref = leadOfReply(reply);
+
     if (
-      reply.leadRef !== null &&
+      ref !== null &&
       reply.isAuto !== true &&
       !NOT_ENGAGED.has(reply.category) &&
       (campaign === null || reply.campaignRef === campaign) &&
-      !refs.has(reply.leadRef) &&
+      !refs.has(ref) &&
       !listed.some((lead) => belongs(lead, reply))
     ) {
-      refs.set(reply.leadRef, reply.campaignRef);
+      refs.set(ref, reply.campaignRef);
     }
   }
 
@@ -219,18 +232,60 @@ const byAddress = (
 
 type Resolves = (token: string) => "email" | "linkedin" | null;
 
+const isToken = (value: string | undefined): boolean =>
+  value?.startsWith("redacted:") ?? false;
+
 /**
- * The address a ref names its lead by, or the redact plugin's token for one,
- * which the plugin puts back on the call to the vendor; `null` for any other id.
+ * The address a lead is looked up by: the one its replies name in
+ * `leadEmail`, or the ref's own id where that is an address, or the redact
+ * plugin's token for one, which the plugin puts back on the call to the
+ * vendor; `null` when there is none.
  */
-const address = (ref: string, resolves: Resolves): string | null => {
-  const id = parseRef(ref)?.sourceId;
+const address = (
+  ref: string,
+  resolves: Resolves,
+  emails: ReadonlyMap<string, string>
+): string | null => {
+  for (const value of [emails.get(ref), parseRef(ref)?.sourceId]) {
+    const found =
+      emailAddress(value) ??
+      (value !== undefined && resolves(value) === "email" ? value : null);
+
+    if (found !== null) {
+      return found;
+    }
+  }
+
+  return null;
+};
+
+/** Where a redact token stands in for an address, whether the plugin can put it back. */
+const readable = (
+  ref: string,
+  resolves: Resolves,
+  emails: ReadonlyMap<string, string>
+): boolean => {
+  const id = parseRef(ref)?.sourceId ?? ref;
 
   return (
-    emailAddress(id) ??
-    (id !== undefined && resolves(id) === "email" ? id : null)
+    (!isToken(id) || resolves(id) !== null) &&
+    (!isToken(emails.get(ref)) || address(ref, resolves, emails) !== null)
   );
 };
+
+/** The address each reply names its lead by, by the reply's leadRef. */
+const emailsOf = (replies: readonly Reply[]): Map<string, string> =>
+  new Map(
+    replies.flatMap((reply) => {
+      const ref = leadOfReply(reply);
+
+      return ref === null ||
+        reply.leadEmail === null ||
+        reply.leadEmail === undefined
+        ? []
+        : [[ref, reply.leadEmail] as const];
+    })
+  );
 
 /** Reads the leads named by address in batches. */
 const lookUp = async (
@@ -283,14 +338,11 @@ const repliedLeads = async (
   const masking = maskingOf(outbound);
   const resolves: Resolves = masking?.resolves ?? (() => null);
   const replied = repliedRefs(replies, values.campaign, listed);
+  const emails = emailsOf(replies);
 
   // A masked address redact cannot put back would reach the vendor as a token.
   const wanted = addressesMasked(context)
-    ? new Map(
-        [...replied].filter(
-          ([ref]) => resolves(parseRef(ref)?.sourceId ?? ref) !== null
-        )
-      )
+    ? new Map([...replied].filter(([ref]) => readable(ref, resolves, emails)))
     : replied;
 
   if (wanted.size < replied.size) {
@@ -306,15 +358,19 @@ const repliedLeads = async (
   const many = outbound.capabilities["leads.lookupMany"] === true;
 
   const byAddressRefs = many
-    ? [...wanted.keys()].filter((ref) => address(ref, resolves) !== null)
+    ? [...wanted.keys()].filter(
+        (ref) => address(ref, resolves, emails) !== null
+      )
     : [];
 
   const addresses = [
-    ...new Set(byAddressRefs.flatMap((ref) => address(ref, resolves) ?? [])),
+    ...new Set(
+      byAddressRefs.flatMap((ref) => address(ref, resolves, emails) ?? [])
+    ),
   ];
 
   const byRef = [...wanted.keys()].filter(
-    (ref) => !many || address(ref, resolves) === null
+    (ref) => !many || address(ref, resolves, emails) === null
   );
 
   if (!outbound.capabilities["leads.get"] && byRef.length > 0) {
