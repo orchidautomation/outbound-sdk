@@ -15,6 +15,7 @@ import {
 } from "../../internal/runway.ts";
 import type { Runway, RunwayState } from "../../internal/runway.ts";
 import { readCapped } from "../capped.ts";
+import type { Capped } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { percent, round, spoken } from "../stats.ts";
@@ -205,18 +206,29 @@ const ownerOf = (context: InsightContext, campaign: Campaign) =>
     ? context.outbound.workspace(`${campaign.provider}:${campaign.workspaceId}`)
     : context.outbound;
 
-/** How long a campaign's leads last: its leads by status and the recent pace of new leads started. */
-export const readRunway = async (
+/** The leads a runway counts, and whether the read asked for the active leads alone. */
+export interface RunwayLeads extends Capped<Lead> {
+  /** `true` when the tool listed only the active leads (`leads.byStatus`). */
+  readonly activeOnly: boolean;
+}
+
+/**
+ * A campaign's leads for its runway, through the tool that owns it, up to
+ * `maxLeads`: only the active ones when `activeOnly` is set and the tool can
+ * list them alone. client_report, lead_runway and campaign_diagnosis read
+ * through it, so they count the same leads.
+ */
+export const readRunwayLeads = async (
   context: InsightContext,
   campaign: Campaign,
-  options: ForecastOptions
-) => {
+  options: Omit<ForecastOptions, "days">
+): Promise<RunwayLeads> => {
   const owner = ownerOf(context, campaign);
 
   const status =
     options.activeOnly === true ? runwayStatus(owner.capabilities) : undefined;
 
-  const { capped, items: leads } = await readCapped(
+  const read = await readCapped(
     context,
     (max) => owner.campaign(campaign.ref).leads.listAll({ max, status }),
     {
@@ -224,6 +236,21 @@ export const readRunway = async (
       max: options.maxLeads,
       what: options.leadsWhat,
     }
+  );
+
+  return { ...read, activeOnly: status !== undefined };
+};
+
+/** How long a campaign's leads last: its leads by status and the recent pace of new leads started. */
+export const readRunway = async (
+  context: InsightContext,
+  campaign: Campaign,
+  options: ForecastOptions
+) => {
+  const { capped, items: leads } = await readRunwayLeads(
+    context,
+    campaign,
+    options
   );
 
   const complete = !capped;

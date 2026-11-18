@@ -49,6 +49,13 @@ export const seed: MemoryData = {
       ],
     },
   ],
+  // 600 leads not yet started: 40 days at the recent pace, so the fall in
+  // sends is not lead runout.
+  leads: Array.from({ length: 600 }, (_, index) => ({
+    campaignId: CAMPAIGN,
+    email: `lead${index}@example.com`,
+    id: `lead_${index}`,
+  })),
   senders: [
     {
       address: "cara@example.com",
