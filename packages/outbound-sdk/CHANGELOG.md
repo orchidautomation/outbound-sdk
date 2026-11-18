@@ -1,5 +1,30 @@
 # outbound-sdk
 
+## 0.15.0
+
+### Breaking changes
+
+These are minor bumps while the package is below 1.0, but code or scripts that rely on the old behaviour need a change:
+
+- **`campaign_diagnosis` reports a campaign with no active leads as `out_of_leads`** (OUT-174), as `client_report` does. A campaign with no leads at all used to show as `no_recent_sends`.
+- **`client_report` can come back partial on Instantly** (OUT-175) when a campaign's skipped leads cannot be counted, where it used to read as complete with only a note.
+
+### Minor Changes
+
+- Instantly fills `progress().skipped`, and `campaign_diagnosis` and `client_report` flag campaigns with many skipped leads (OUT-175).
+
+  - `campaign(id).progress()` on Instantly now counts `skipped`: the leads with status -3 among those Instantly has not contacted (`POST /leads/list` with `FILTER_VAL_NOT_CONTACTED`), at most 50 pages. Past the cap it stays `null` with a note giving the minimum, never a low count.
+  - `campaign_diagnosis` gains a `many_skipped_leads` finding, and `client_report` a `manySkippedLeads` section and `check_skipped_leads` actions. Both fire when skipped leads are over `max_skipped_share` (5% by default) of a campaign's leads and at least `min_skipped` (100). This usually means a block list or a duplicate rule keeps out leads meant to be sent to.
+  - `client_report` is marked partial, naming the campaigns, when a campaign's skipped leads cannot be counted.
+
+### Patch Changes
+
+- f94de44: `campaign_diagnosis` counts lead runout from active leads only, as `client_report` does (OUT-174).
+
+  - When sends fell or stopped, it now reads only the campaign's active leads where the tool lists them alone (`leads.byStatus`), through the same read `client_report` and `lead_runway` use. A campaign with thousands of finished leads is no longer cut off at `max_leads` before its active ones are counted, so a campaign that ran out of leads is reported as `out_of_leads` instead of `no_recent_sends` or `falling_sends`.
+  - An empty listing of active leads means none is left to start, so it reports `out_of_leads`, as `client_report` does.
+  - When `max_leads` still stops the read, `notChecked` says that lead runout was not checked and how to raise the cap. So does an adapter that cannot list a campaign's leads.
+
 ## 0.14.0
 
 ### Breaking changes
