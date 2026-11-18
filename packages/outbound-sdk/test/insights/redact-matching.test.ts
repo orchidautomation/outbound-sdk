@@ -203,7 +203,9 @@ test("a hashing redact keeps exact matching working, and says what it cannot mat
 });
 
 test("a masking redact matches people on its keyed tokens, and says a domain entry cannot be matched", async () => {
-  const { outbound } = build({});
+  const { outbound } = build({
+    key: "test-key-0123456789abcdef0123456789abcdef",
+  });
 
   const collisions = await outbound.insights.leadCollisions({
     include_past: true,

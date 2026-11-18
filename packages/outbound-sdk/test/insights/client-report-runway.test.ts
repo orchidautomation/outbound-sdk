@@ -105,29 +105,42 @@ test("on a combined instance the runway uses the filter of the tool that owns th
 // combined instance for active leads, which only some tools can list, and was
 // refused as Unsupported. It reads through the owning tool, as client_report does.
 test("on a combined instance lead_runway reads through the owning tool and agrees with client_report", async () => {
-  const outbound = combined();
+  // lead_runway reads the clock itself, so it is pinned to the report's NOW.
+  // Workers' node:test has no mock timers, so Date.now is swapped by hand.
+  const realNow = Date.now;
+  Date.now = () => NOW;
 
-  const tool = createTools(outbound).find(
-    (candidate) => candidate.name === "lead_runway"
-  );
+  try {
+    const outbound = combined();
 
-  assert.ok(tool);
+    const tool = createTools(outbound).find(
+      (candidate) => candidate.name === "lead_runway"
+    );
 
-  const result = await tool.call({
-    campaign: "mailtool:agency:big",
-    max_leads: 500,
-  } as never);
+    assert.ok(tool);
 
-  assert.equal(result.ok, true, JSON.stringify(result));
+    const result = await tool.call({
+      campaign: "mailtool:agency:big",
+      max_leads: 500,
+    } as never);
 
-  const { data } = result as { data: Record<string, unknown> };
-  const report = await outbound.insights.clientReport({}, { now: NOW });
+    assert.equal(result.ok, true, JSON.stringify(result));
 
-  const big = report.data.runningOutOfLeads?.find(
-    (each) => each.campaign === "mailtool:agency:big"
-  );
+    const { data } = result as { data: Record<string, unknown> };
+    const report = await outbound.insights.clientReport({}, { now: NOW });
 
-  assert.equal(data.counted_leads, 20, "only the active leads, under the cap");
-  assert.equal(data.state, big?.state);
-  assert.equal(data.active_leads, big?.remaining);
+    const big = report.data.runningOutOfLeads?.find(
+      (each) => each.campaign === "mailtool:agency:big"
+    );
+
+    assert.equal(
+      data.counted_leads,
+      20,
+      "only the active leads, under the cap"
+    );
+    assert.equal(data.state, big?.state);
+    assert.equal(data.active_leads, big?.remaining);
+  } finally {
+    Date.now = realNow;
+  }
 });

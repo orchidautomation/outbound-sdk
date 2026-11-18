@@ -102,9 +102,12 @@ test("hot_leads without redact finds the lead that replied and the lead labelled
   assert.equal(result.meta.complete, true, result.meta.notes.join(" "));
 });
 
+// A test key only, so the answer carries no keyless note to tell it apart.
+const KEY = "test-key-0123456789abcdef0123456789abcdef";
+
 for (const [strategy, options] of [
-  ["mask", {}],
-  ["hash", { strategy: "hash" }],
+  ["mask", { key: KEY }],
+  ["hash", { key: KEY, strategy: "hash" }],
 ] as const) {
   test(`hot_leads under a ${strategy} redact looks up the lead that replied through redact, and ranks the same leads`, async () => {
     const plain = await build([]).run();
