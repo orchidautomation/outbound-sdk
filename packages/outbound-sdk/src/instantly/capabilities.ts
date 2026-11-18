@@ -142,7 +142,6 @@ export const fields: FieldDeclaration = {
     contentHash: false,
     delivered: false,
     inmailsSent: false,
-    timezone: false,
   },
   // A test has a creation time and a next run, and no start or end date.
   placementTest: { endsAt: false, startsAt: false },
@@ -236,7 +235,8 @@ export const caveats: readonly string[] = [
   "An email's step and a lead's last step are ids of the form sequence_step_variant, each counted from 0 (seen live, not documented); any other form gives a null step. Step analytics count steps from 0 too, and can hold a row with no step for counts Instantly could not tie to one.",
   "Whether reply_count includes automatic replies is not documented; replied uses the unique reply count and repliedAuto the unique automatic count.",
   "Open counts are returned even when a campaign has open tracking turned off, because the analytics response does not say whether tracking was on.",
-  "Daily analytics rows do not state their timezone, so timezone is null.",
+  "Daily analytics rows do not state their timezone. They are read as UTC days: the range parameters are documented as UTC midnight, and seen live on 2026-11-18 every day's replies over 14 days, for the workspace's campaigns and for 25 mailboxes, matched received emails grouped by UTC day and not by a US timezone. Campaign daily rows leave out a day with no activity; mailbox daily rows list every day.",
+  'meetingsBooked is total_meeting_booked, which only the analytics overview reports (one campaign\'s total and the workspace total): Instantly counts leads moved to Meeting Booked in the range. Rows of stats({ scope: "campaign" }) for every campaign, daily, step and mailbox rows have it null.',
   "Campaign tags need two more reads (custom-tag-mappings, then custom-tags) and so a key that can read both; an all:read key can. Turn the tags capability off to skip them: campaign tags are then empty.",
   "A page of campaigns reads at most 10 pages of 100 tag assignments. A page with more assignments than that is refused with a Provider error, not returned with tags missing.",
   "A step's delay is documented as the wait before the next email, so a step's delayDays is the delay of the step before it; the first step of a campaign waits 0 and the first step of a subsequence waits its pre_delay.",

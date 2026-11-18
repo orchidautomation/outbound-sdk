@@ -32,6 +32,18 @@ The `exporter` plugin streams a listing to a `.jsonl` file as it reads, so the e
 
 This is the fastest way to get a full copy, but every run reads everything again. For a copy you keep current, use the incremental load below.
 
+## A typed table
+
+`read_json_auto` types a column from the values it sees, so a column that is `null` in every row so far gets the type `NULL`, and one vendor's file can have columns another's lacks. For a table that keeps its shape, export with `record` and create the table with `duckdbTable`, both from the record's schema ([a stable schema](/docs/plugins/exporter#a-stable-schema)). Every row then has every field, `null` where the vendor leaves one out, and `COPY` loads the file by column name.
+
+<include meta='title="typed.ts"'>../../_examples/duckdb/typed.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/duckdb/typed.out.txt
+</include>
+
+`recordJsonSchema(record)` gives the same row as JSON Schema for another warehouse.
+
 ## The warehouse
 
 One table per collection, keyed on `ref` (`provider:workspace:id`), which is unique across vendors and clients. The sync checkpoints live in the same database, so the records and the point a run got to cannot drift apart.
@@ -62,7 +74,7 @@ Stats are totals the vendor computes, not records with a `ref`, and a vendor can
   ../../_examples/duckdb/stats.out.txt
 </include>
 
-A count the vendor does not report is `null`, never `0`, and lands as `NULL`. `sum` skips `NULL`, so a rate over campaigns that report only some counts can read higher than it is. Filter to the rows that report both sides when that matters.
+A vendor can leave out a day with no activity, and a count the vendor does not report is `null`, never `0`. [`fillDays`](/docs/api/stats#days-with-no-row) adds a row for each missing day, marked `evidence: "derived"`, and each row's `timezone` says where its day starts (UTC on Instantly and HeyReach). A null count lands as `NULL`. `sum` skips `NULL`, so a rate over campaigns that report only some counts can read higher than it is. Filter to the rows that report both sides when that matters.
 
 ## A redacted warehouse
 

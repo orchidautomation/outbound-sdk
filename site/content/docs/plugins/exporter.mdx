@@ -31,7 +31,8 @@ Runs on the [shared seed](/docs/plugins#every-plugin).
 | --- | --- | --- | --- |
 | `source` | `AsyncIterable` | required | Anything that yields records: `outbound.leads.listAll()`, a campaign's `leads.listAll()`, or a generator of your own. |
 | `to` | `string \| RowWriter` | required | A file path ending in `.csv` or `.jsonl`, or a writer. An existing file is overwritten. |
-| `columns` | `string[]` | the first record's fields, without `raw` | The columns to write, in order. |
+| `columns` | `string[]` | every field of `record`, or else the first record's fields, without `raw` | The columns to write, in order. |
+| `record` | `RecordName` | none | The record the source yields, such as `"reply"`, `"lead"` or `"metricRow"`. Every row then has every field of that record, `null` where a vendor leaves one out. |
 | `includeRaw` | `boolean` | `false` | Keep `raw`, the vendor's payload, among the default columns. It has no effect when `columns` is set. |
 
 It returns `{ rows, columns }`.
@@ -44,7 +45,19 @@ It returns `{ rows, columns }`.
 | `.jsonl` | One JSON object per line with exactly the listed columns. A missing field is `null`. | None |
 | `RowWriter` | A JSON object with exactly the listed columns, in order, as for `.jsonl`. `columns` and `includeRaw` apply to it as they do to a file. A missing field is `null`. | Up to you |
 
-The default columns come from the first record only. A later record with a field the first one lacked does not get a column. Name `columns` when records vary.
+Without `record` or `columns`, the columns come from the first record only. A later record with a field the first one lacked does not get a column, so a file of HeyReach replies and one of Instantly replies have different columns (HeyReach replies carry no `leftCompany`). Pass `record` when the file goes into a table.
+
+## A stable schema
+
+Three functions from `outbound-sdk/exporter` describe an export of one record, all generated from the record's schema, so they never drift from what `export` writes:
+
+| Function | Returns |
+| --- | --- |
+| `recordColumns(record, { includeRaw })` | The columns `export` writes with `record`, in order. |
+| `recordJsonSchema(record, { includeRaw })` | The JSON Schema (draft 2020-12) of one row: every column required, a field a vendor may leave out nullable. |
+| `duckdbTable(record, { table, includeRaw })` | A DuckDB `CREATE TABLE IF NOT EXISTS` with one typed column per field. `COPY <table> FROM 'file.jsonl'` loads an export of the same record into it. |
+
+A typed table keeps a column's type when every row so far is `null`, where `read_json_auto` would infer the type `NULL` and break the next load that has a value. The [DuckDB guide](/docs/guides/duckdb#a-typed-table) shows the load.
 
 An item of the source that is not an object is skipped and not counted.
 

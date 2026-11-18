@@ -18,7 +18,9 @@
 
 - Open counts are returned even when a campaign has open tracking turned off, because the analytics response does not say whether tracking was on.
 
-- Daily analytics rows do not state their timezone, so timezone is null.
+- Daily analytics rows do not state their timezone. They are read as UTC days: the range parameters are documented as UTC midnight, and seen live on 2026-11-18 every day's replies over 14 days, for the workspace's campaigns and for 25 mailboxes, matched received emails grouped by UTC day and not by a US timezone. Campaign daily rows leave out a day with no activity; mailbox daily rows list every day.
+
+- meetingsBooked is total_meeting_booked, which only the analytics overview reports (one campaign's total and the workspace total): Instantly counts leads moved to Meeting Booked in the range. Rows of stats({ scope: "campaign" }) for every campaign, daily, step and mailbox rows have it null.
 
 - Campaign tags need two more reads (custom-tag-mappings, then custom-tags) and so a key that can read both; an all:read key can. Turn the tags capability off to skip them: campaign tags are then empty.
 

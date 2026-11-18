@@ -54,7 +54,16 @@ test("instantly: daily and step analytics keep their own counts", async () => {
   assert.equal(daily.rows[0]?.replied, 60);
   assert.equal(daily.rows[0]?.repliedAuto, 4);
   assert.equal(daily.rows[0]?.positive, null);
-  assert.equal(daily.rows[0]?.timezone, null);
+  assert.equal(
+    daily.rows[0]?.timezone,
+    "UTC",
+    "Instantly cuts days at UTC midnight"
+  );
+  assert.equal(
+    daily.rows[0]?.meetingsBooked,
+    null,
+    "the daily report has no meetings"
+  );
 
   const steps = await settle(
     outbound.campaign(CAMPAIGN).stats({ scope: "step" })

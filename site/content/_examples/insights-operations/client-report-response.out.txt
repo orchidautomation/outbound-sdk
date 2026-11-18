@@ -88,6 +88,7 @@
         "bounceRate": 0.0066,
         "bounced": 13,
         "contacted": 0,
+        "meetingsBooked": null,
         "positive": -7,
         "positiveRate": -0.0032,
         "replied": -21,
@@ -101,6 +102,7 @@
         "replied": 49,
         "sent": 2170,
         "bounceRate": 0.0204,
+        "meetingsBooked": null,
         "positiveRate": 0.0065,
         "replyRate": 0.0226
       },
@@ -112,6 +114,7 @@
         "replied": 70,
         "sent": 2170,
         "bounceRate": 0.0138,
+        "meetingsBooked": null,
         "positiveRate": 0.0097,
         "replyRate": 0.0323
       },
@@ -289,7 +292,8 @@
     "complete": true,
     "evidence": "exact",
     "notes": [
-      "Totals: this period's bounce rate (3 of 4), the earlier period's bounce rate (3 of 4) count only the campaigns that report both the count and what it is divided by. The others are left out of the rate, not counted as 0."
+      "Totals: this period's bounce rate (3 of 4), the earlier period's bounce rate (3 of 4) count only the campaigns that report both the count and what it is divided by. The others are left out of the rate, not counted as 0.",
+      "meetingsBooked is null: no campaign read reports a count of meetings booked, and the tool's fields.metricRow.meetingsBooked says whether it records one at all. Opportunities and positive replies are not meetings, so neither stands in for it."
     ],
     "requests": 0,
     "computedAt": "2026-11-14T12:00:00.000Z",

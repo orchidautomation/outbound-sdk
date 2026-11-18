@@ -142,6 +142,8 @@ export const fields: FieldDeclaration = {
     contentHash: false,
     delivered: false,
     leads: false,
+    // No meetings count in the vendor's analytics.
+    meetingsBooked: false,
     opened: false,
     openedTotal: false,
     opportunities: false,

@@ -71,6 +71,10 @@ const DATA: MemoryData = {
 };
 
 // Small reports no bounces, and in the earlier period only Bouncy does.
+// The memory data records no meetings, so the totals say why they have none.
+const MEETINGS_NOTE =
+  "meetingsBooked is null: no campaign read reports a count of meetings booked, and the tool's fields.metricRow.meetingsBooked says whether it records one at all. Opportunities and positive replies are not meetings, so neither stands in for it.";
+
 const BOUNCE_NOTE =
   "Totals: this period's bounce rate (3 of 4), the earlier period's bounce rate (1 of 3) count only the campaigns that report both the count and what it is divided by. The others are left out of the rate, not counted as 0.";
 
@@ -101,6 +105,7 @@ test("client_report composes totals, best and worst campaigns, bounce problems, 
     bounceRate: 0.03,
     bounced: 27,
     contacted: 300,
+    meetingsBooked: null,
     positive: null,
     positiveRate: null,
     replied: 31,
@@ -111,6 +116,7 @@ test("client_report composes totals, best and worst campaigns, bounce problems, 
     bounceRate: 0.01,
     bounced: 2,
     contacted: 280,
+    meetingsBooked: null,
     positive: null,
     positiveRate: null,
     replied: 35,
@@ -250,7 +256,7 @@ test("client_report composes totals, best and worst campaigns, bounce problems, 
   ]);
   assert.deepEqual(result.data.leftOut, []);
   assert.equal(result.meta.complete, true);
-  assert.deepEqual(result.meta.notes, [BOUNCE_NOTE]);
+  assert.deepEqual(result.meta.notes, [BOUNCE_NOTE, MEETINGS_NOTE]);
 });
 
 test("client_report moves with top, the bounce limit, min_sent and the runway", async () => {
@@ -404,6 +410,7 @@ test("client_report leaves out the sections the adapter cannot serve, and names 
   assert.deepEqual(noDays.data.leftOut, [unusual, runway]);
   assert.deepEqual(noDays.meta.notes, [
     BOUNCE_NOTE,
+    MEETINGS_NOTE,
     `Left out. ${unusual}`,
     `Left out. ${runway}`,
   ]);

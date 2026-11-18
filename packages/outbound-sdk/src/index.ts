@@ -158,11 +158,13 @@ export type {
 export {
   computeRates,
   emptyCounts,
+  fillDays,
   METRIC_DEFINITIONS,
   sumCounts,
 } from "./internal/metrics.ts";
 
 export type {
+  FillDaysOptions,
   MetricCounts,
   MetricDefinition,
   MetricName,

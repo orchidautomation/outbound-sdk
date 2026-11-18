@@ -8,6 +8,18 @@ import { OutboundError } from "../internal/errors.ts";
 import { isJsonObject, toJson } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
 import type { OutboundPlugin } from "../internal/outbound/plugins.ts";
+import { recordColumns } from "./schema.ts";
+import type { RecordName } from "./schema.ts";
+
+export { duckdbTable, recordColumns, recordJsonSchema } from "./schema.ts";
+
+export type {
+  ColumnSchema,
+  DuckdbTableOptions,
+  RecordName,
+  RecordSchemaOptions,
+  RowJsonSchema,
+} from "./schema.ts";
 
 /**
  * Receives rows one at a time. Implement it to write Parquet, DuckDB or
@@ -22,8 +34,18 @@ export interface RowWriter {
 export interface ExportOptions {
   /** A file path ending in `.csv` or `.jsonl`, or a writer. */
   readonly to: RowWriter | string;
-  /** The columns to write, in order. Defaults to the first record's fields without `raw`. */
+  /**
+   * The columns to write, in order. Defaults to every field of `record`,
+   * or else the first record's fields, without `raw`.
+   */
   readonly columns?: readonly string[] | undefined;
+  /**
+   * The record the source yields, such as `reply` or `metricRow`. Every
+   * row then has every field of that record, `null` where a vendor leaves
+   * one out, so files from different vendors share one set of columns and
+   * match `duckdbTable(record)` and `recordJsonSchema(record)`.
+   */
+  readonly record?: RecordName | undefined;
   /** Include the vendor's raw payload when `columns` is not given. Defaults to `false`. */
   readonly includeRaw?: boolean | undefined;
 }
@@ -99,7 +121,14 @@ const exportRows = async <Item>(
   options: ExportOptions
 ): Promise<ExportResult> => {
   let writer: RowWriter | undefined;
-  let columns: readonly string[] = options.columns ?? [];
+
+  const declared =
+    options.columns ??
+    (options.record === undefined
+      ? undefined
+      : recordColumns(options.record, options));
+
+  let columns: readonly string[] = declared ?? [];
   let rows = 0;
 
   try {
@@ -109,7 +138,7 @@ const exportRows = async <Item>(
       if (isJsonObject(row)) {
         if (writer === undefined) {
           columns =
-            options.columns ??
+            declared ??
             Object.keys(row).filter(
               (key) => options.includeRaw === true || key !== "raw"
             );
