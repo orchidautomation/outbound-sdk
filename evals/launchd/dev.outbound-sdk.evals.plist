@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- The nightly eval run. Install it as evals/README.md says: copy it to
+     ~/Library/LaunchAgents with REPO replaced by this checkout's path. -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>dev.outbound-sdk.evals</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>-i</string>
+    <string>REPO/evals/nightly.sh</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>REPO</string>
+  <!-- 03:00 on the Mac's clock, which is America/New_York. -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>3</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>/tmp/outbound-evals.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/outbound-evals.log</string>
+</dict>
+</plist>
