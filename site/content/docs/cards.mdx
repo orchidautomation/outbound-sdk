@@ -67,12 +67,23 @@ The rich blocks carry the plain ones as their fallback, for a Slack client that 
 
 The test suite holds every card to both sides: the json-render chat catalog must accept the spec inside Slack's limits, the `plain` blocks must equal what Chat SDK's Slack adapter writes, and the `rich` blocks must keep to the rules Slack's API enforces.
 
+### As text
+
+`toText(card)` writes the card as plain text, for a terminal, a log or an email, and `toText(card, { style: "slack" })` as Slack's mrkdwn, which the message composer takes when you paste it. Tables and charts become aligned text.
+
+<include meta='title="text.ts"'>../_examples/cards/text.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../_examples/cards/text.out.txt
+</include>
+
 ## What each card shows
 
 Every [tool](/docs/tools) and every [insight](/docs/insights) has a card; `CARD_NAMES` lists them. Each one has the same parts, in the same order:
 
 - **A finding.** The one sentence to read if nothing else is read. A check that had nothing to read says so; it does not show green.
 - **Numbers.** Up to twenty, as label and value. In Slack they are a grid of tiles, three to a row.
+- **What to do**, where the answer ranks actions, such as `client_report`'s: every one, in the answer's order, up to twenty, before any other list, so a long list never hides one.
 - **A list or a table.** Cut to eight rows, with a line saying how many more there are. The `maxRows` option changes the cut. In Slack, up to nine leads or replies are drawn as cards side by side.
 - **A chart**, where the answer has a series or a split: reply rate by campaign, replies by weekday, a count per day.
 - **The source.** The evidence level, the provider and the number of vendor requests, then the insight's notes. A read a cap stopped early is marked incomplete.
@@ -107,7 +118,7 @@ Message text is shown only when it was asked for (`include_bodies` on the tool, 
 
 ## From the command line
 
-[`outbound tool`](/docs/cli) and `outbound insight` take `--card` to print the answer's card and `--slack` to print it as a Slack message:
+[`outbound tool`](/docs/cli) and `outbound insight` take `--card` to print the answer's card as text, `--slack-text` to print that text in Slack's mrkdwn for pasting into the composer, and `--slack` to print the Slack message's JSON alone, without the envelope, so it pipes to an incoming webhook:
 
 ```sh
 outbound insight bounce_watch --slack --compact \

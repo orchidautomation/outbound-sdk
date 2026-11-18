@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 import { memoryCacheStore } from "../src/cache/index.ts";
@@ -9,6 +10,7 @@ import {
   OutboundError,
 } from "../src/index.ts";
 import type { Campaign, Message, OutboundEvent } from "../src/index.ts";
+import { instantly } from "../src/instantly/index.ts";
 import { memory } from "../src/memory/index.ts";
 import type { MemoryData } from "../src/memory/index.ts";
 import { reconcile } from "../src/reconcile/index.ts";
@@ -57,10 +59,14 @@ test("sync walks every page, hands each to onPage, and records when it finished"
   assert.deepEqual(first, {
     collection: "campaigns",
     complete: true,
+    filter: "none",
+    notes: [],
     pages: 3,
     records: 5,
+    requests: 0,
     resumed: false,
     since: undefined,
+    throttledMs: 0,
   });
 
   now += 3_600_000;
@@ -436,4 +442,95 @@ test("failover has nothing to serve for a read it never saw, or one that is too 
     async () => await old.clock.settle(old.outbound.campaigns.list()),
     OutboundError
   );
+});
+
+// OUT-160: Instantly cannot filter leads by date, so an incremental run reads
+// every lead and the SDK keeps the newer ones. The result says so, with the
+// cost, instead of looking like a cheap server-side delta.
+test("an incremental sync the SDK filters says it cost a full walk", async () => {
+  const [lead] = (
+    JSON.parse(
+      readFileSync(
+        new URL("../../../fixtures/instantly/listLeads.json", import.meta.url),
+        "utf-8"
+      )
+    ) as { items: Record<string, unknown>[] }
+  ).items;
+
+  // Three pages of 100 leads; one was created after the first run.
+  const http = createFetch((request) => {
+    const page = Number(
+      (JSON.parse(request.body ?? "{}") as { starting_after?: string })
+        .starting_after ?? 0
+    );
+
+    return json({
+      items: Array.from({ length: 100 }, (_, index) => ({
+        ...lead,
+        email: `person${page + index + 1}@example.com`,
+        id: `lead-${page + index + 1}`,
+        timestamp_created:
+          page + index === 250
+            ? "2026-10-10T12:00:00.000Z"
+            : "2026-09-01T00:00:00.000Z",
+      })),
+      next_starting_after: page < 200 ? String(page + 100) : null,
+    });
+  });
+
+  const clock = createClock();
+  const checkpoints = memoryCheckpointStore();
+  let now = Date.UTC(2026, 9, 10);
+
+  const outbound = createOutbound({
+    adapter: instantly({ apiKey: "inst_key_for_client_a_0001" }),
+    fetch: http.fetch,
+    plugins: [sync({ checkpoints, now: () => now })],
+    rateLimitStore: new MemoryRateLimitStore(),
+    runtime: clock.runtime,
+  });
+
+  assert.equal(outbound.capabilities["leads.since"], "client");
+
+  const first = await clock.settle(
+    outbound.sync.run("leads", { onPage: () => {} })
+  );
+
+  assert.equal(first.filter, "none", "a first run asks for no date");
+  assert.equal(first.records, 300);
+  assert.equal(first.requests, 3);
+  assert.deepEqual(first.notes, []);
+
+  now += 3_600_000;
+  const before = http.requests.length;
+
+  const second = await clock.settle(
+    outbound.sync.run("leads", { onPage: () => {} })
+  );
+
+  assert.equal(second.records, 1, "only the lead created since the last run");
+  assert.equal(second.filter, "client");
+  assert.equal(second.requests, http.requests.length - before);
+  assert.equal(second.requests, 3, "every page read, for one new lead");
+  assert.equal(typeof second.throttledMs, "number");
+  assert.deepEqual(second.notes, [
+    `instantly cannot filter leads by date, so this run read every record (3 requests) and kept the 1 created since ${second.since ?? ""}. A record created earlier and changed since is not read again: reset the checkpoint on a schedule to pick those up.`,
+  ]);
+});
+
+test("a vendor that filters by date reports a server filter and no note", async () => {
+  let now = Date.UTC(2026, 9, 10);
+  const checkpoints = memoryCheckpointStore();
+
+  const outbound = createOutbound({
+    adapter: memory({ data: seeded(), pageSize: 2 }),
+    plugins: [sync({ checkpoints, now: () => now })],
+  });
+
+  await outbound.sync.run("messages", { onPage: () => {} });
+  now += 3_600_000;
+  const second = await outbound.sync.run("messages", { onPage: () => {} });
+
+  assert.equal(second.filter, "server");
+  assert.deepEqual(second.notes, []);
 });

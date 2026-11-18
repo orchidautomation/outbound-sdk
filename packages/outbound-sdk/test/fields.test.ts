@@ -150,7 +150,7 @@ test("stats: the campaign scope with no campaign named returns a row per campaig
     "refused as unsupported, by the capability's name"
   );
   await assert.rejects(
-    async () => await off.stats({ scope: "sender" }),
+    async () => await off.stats({ scope: "step" }),
     /need a scopeId/u,
     "the other scopes still need an id"
   );

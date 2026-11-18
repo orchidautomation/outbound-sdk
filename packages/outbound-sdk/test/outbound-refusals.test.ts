@@ -95,7 +95,7 @@ test("an input refusal rejects the promise too", async () => {
       /from must not be after to/u,
       () => outbound.stats({ from: "2026-10-02", to: "2026-10-01" }),
     ],
-    [/need a scopeId/u, () => outbound.stats({ scope: "sender" })],
+    [/need a scopeId/u, () => outbound.stats({ scope: "step" })],
     [
       /limit must be a positive integer/u,
       () => outbound.leads.list({ limit: 0 }),

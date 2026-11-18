@@ -6,12 +6,11 @@ import {
   replyCategorySchema,
 } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
-import { parseJson, toJson } from "../internal/json.ts";
+import { toJson } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
 import { providers } from "../providers/index.ts";
 import { resolveCampaign } from "../tools/by-name.ts";
-import type { ToolResult } from "../tools/index.ts";
 import {
   campaignOption,
   confirmScope,
@@ -19,9 +18,29 @@ import {
   searchCampaigns,
 } from "./by-name.ts";
 import { insightCaps, insightToolCaps } from "./config.ts";
+import { drawn, wantsCard } from "./drawn.ts";
 import { Answer, coverageOf, sections } from "./envelope.ts";
 import type { Printed } from "./envelope.ts";
-import { listedReplies, listing, WINDOW_LIMIT } from "./listing.ts";
+import {
+  BY,
+  choice,
+  clientFiltered,
+  count,
+  parseInput,
+  REPLIES_BY,
+  required,
+  STATS_SCOPES,
+  text,
+  walkOptions,
+} from "./inputs.ts";
+import type { CommandInput } from "./inputs.ts";
+import {
+  listedReplies,
+  listing,
+  WINDOW_LIMIT,
+  WINDOW_STOP,
+  withNotes,
+} from "./listing.ts";
 import { readNative } from "./native.ts";
 import {
   describeTool,
@@ -33,78 +52,7 @@ import {
 } from "./offered.ts";
 import { didYouMean } from "./suggest.ts";
 
-export interface CommandInput {
-  readonly positionals: readonly string[];
-  readonly flags: Readonly<Record<string, string | boolean | undefined>>;
-  /** Writes a line for the person to stderr, apart from the JSON on stdout. */
-  readonly note: (text: string) => void;
-}
-
 type Command = (outbound: OutboundApi, input: CommandInput) => Promise<Printed>;
-
-const text = (input: CommandInput, name: string): string | undefined => {
-  const value = input.flags[name];
-
-  return value === undefined || value === true || value === false
-    ? undefined
-    : value;
-};
-
-const count = (input: CommandInput, name: string, fallback: number): number => {
-  const value = text(input, name);
-  const parsed = value === undefined ? fallback : Number(value);
-
-  if (!Number.isInteger(parsed) || parsed < 1) {
-    throw new OutboundError(
-      "Invalid",
-      `--${name} must be a positive whole number`
-    );
-  }
-
-  return parsed;
-};
-
-/** A flag that takes one of a fixed set of words. Anything else is refused, never guessed. */
-const choice = <Value extends string>(
-  input: CommandInput,
-  name: string,
-  allowed: readonly Value[]
-): Value | undefined => {
-  const value = text(input, name);
-  const match = allowed.find((candidate) => candidate === value);
-
-  if (value !== undefined && match === undefined) {
-    throw new OutboundError(
-      "Invalid",
-      `--${name} must be one of: ${allowed.join(", ")}`
-    );
-  }
-
-  return match;
-};
-
-const BY = ["day", "total"] as const;
-const REPLIES_BY = ["person"] as const;
-
-const parseInput = (source: string | undefined): Json => {
-  const parsed = source === undefined ? {} : parseJson(source);
-
-  if (parsed === undefined) {
-    throw new OutboundError("Invalid", "--input must be valid JSON");
-  }
-
-  return parsed;
-};
-
-const required = (input: CommandInput, index: number, what: string): string => {
-  const value = input.positionals[index];
-
-  if (value === undefined) {
-    throw new OutboundError("Invalid", `Missing ${what}`);
-  }
-
-  return value;
-};
 
 const asJson = toJson;
 
@@ -120,33 +68,6 @@ const fieldExceptions = (outbound: OutboundApi): Json =>
       return stated.length === 0 ? [] : [[record, Object.fromEntries(stated)]];
     })
   );
-
-const wantsCard = (input: CommandInput): boolean =>
-  input.flags.slack === true || input.flags.card === true;
-
-/**
- * A tool result as it should be printed: itself, or with `--card` its card,
- * or with `--slack` that card as a Slack message, ready to post.
- */
-const drawn = async (
-  name: string,
-  result: ToolResult,
-  input: CommandInput
-): Promise<Printed> => {
-  if (!wantsCard(input)) {
-    return asJson(result);
-  }
-
-  // Loaded on demand, so the other commands do not pay for the cards.
-  const { cardFor, toSlackMessage } = await import("../cards/index.ts");
-  const card = cardFor(name, result);
-
-  // The card covers what the result covered.
-  return new Answer(
-    asJson(input.flags.slack === true ? toSlackMessage(card) : card),
-    coverageOf(asJson(result))
-  );
-};
 
 /** The catalog's left-out reasons, as notes on a list of what is offered. */
 /**
@@ -237,11 +158,11 @@ const SECTIONS = ["sequence", "settings", "stats", "subsequences"] as const;
 
 const COMMAND_TABLE = {
   blocklist: {
-    flags: ["limit"],
-    help: "blocklist [--limit N]",
+    flags: ["cursor", "jsonl", "limit"],
+    help: "blocklist [--limit N] [--cursor C] [--jsonl]",
     run: (outbound, input) =>
       listing(
-        outbound.blocklist.listAll({ max: count(input, "limit", 50) }),
+        outbound.blocklist.listAll(walkOptions(input)),
         input,
         "entry",
         "entries"
@@ -301,16 +222,30 @@ const COMMAND_TABLE = {
     },
   },
   campaigns: {
-    flags: ["limit", "search", "status"],
-    help: "campaigns [--status active|paused|draft|completed|archived] [--search TEXT] [--limit N]",
+    flags: ["cursor", "jsonl", "limit", "search", "status"],
+    help: "campaigns [--status active|paused|draft|completed|archived] [--search TEXT] [--limit N] [--cursor C] [--jsonl]",
     run: (outbound, input) => {
       const search = text(input, "search");
+
+      if (search !== undefined && text(input, "cursor") !== undefined) {
+        throw new OutboundError(
+          "Invalid",
+          "--cursor resumes a listing; --search reads every campaign, so it takes none"
+        );
+      }
+
+      const status = choice(input, "status", campaignStatusSchema.options);
 
       return search === undefined
         ? listing(
             outbound.campaigns.listAll({
-              max: count(input, "limit", 50),
-              status: choice(input, "status", campaignStatusSchema.options),
+              ...walkOptions(
+                input,
+                50,
+                status !== undefined &&
+                  outbound.capabilities["campaigns.status"] === "client"
+              ),
+              status,
             }),
             input,
             "campaign"
@@ -320,7 +255,10 @@ const COMMAND_TABLE = {
             note: input.note,
             search,
             status: choice(input, "status", campaignStatusSchema.options),
-          }).then(asJson);
+          }).then(
+            (found) =>
+              new Answer(asJson(found), { complete: true, notes: [] }, true)
+          );
     },
   },
   capabilities: {
@@ -343,40 +281,54 @@ const COMMAND_TABLE = {
       asJson(await outbound.sender(required(input, 0, "a sender id")).health()),
   },
   insight: {
-    flags: ["card", "input", "slack"],
-    help: "insight [name] [--input JSON] [--card | --slack]  computed answers; no name lists them",
+    flags: ["card", "input", "slack", "slack-text"],
+    help: "insight [name] [--input JSON] [--card | --slack-text | --slack]  computed answers; no name lists them. --card prints the answer as text, --slack-text as Slack mrkdwn to paste, --slack as a Slack message's JSON",
     run: runInsight,
   },
   leads: {
-    flags: ["campaign", "limit", "list"],
-    help: "leads [--campaign ID|NAME | --list ID|NAME] [--limit N]",
+    flags: ["campaign", "cursor", "jsonl", "limit", "list", "since"],
+    help: "leads [--campaign ID|NAME | --list ID|NAME] [--since ISO] [--limit N] [--cursor C] [--jsonl]  --since keeps the leads created since then (a lead updated later is not); with --since, --limit defaults to the whole window up to 2000",
     run: async (outbound, input) => {
+      const since = text(input, "since");
+
+      const windowed =
+        since !== undefined && text(input, "limit") === undefined;
+
       const scope = {
         campaignId: await campaignOption(outbound, text(input, "campaign")),
         listId: await listOption(outbound, text(input, "list")),
       };
 
+      const filtered = clientFiltered(outbound, "leads.since", since, input);
+
       const walk = outbound.leads.listAll({
         ...scope,
-        max: count(input, "limit", 50),
+        ...walkOptions(
+          input,
+          windowed ? WINDOW_LIMIT : 50,
+          filtered.length > 0
+        ),
+        since,
       });
 
-      const answer = await listing(walk, input, "lead");
+      const answer = await listing(
+        walk,
+        input,
+        "lead",
+        undefined,
+        windowed ? WINDOW_STOP : undefined
+      );
 
-      await confirmScope(outbound, scope, answer.size);
+      await confirmScope(outbound, scope, answer.walked.records ?? 0);
 
-      return answer;
+      return withNotes(answer, filtered);
     },
   },
   lists: {
-    flags: ["limit"],
-    help: "lists [--limit N]",
+    flags: ["cursor", "jsonl", "limit"],
+    help: "lists [--limit N] [--cursor C] [--jsonl]",
     run: (outbound, input) =>
-      listing(
-        outbound.lists.listAll({ max: count(input, "limit", 50) }),
-        input,
-        "list"
-      ),
+      listing(outbound.lists.listAll(walkOptions(input)), input, "list"),
   },
   limits: {
     flags: [],
@@ -395,8 +347,8 @@ const COMMAND_TABLE = {
     },
   },
   person: {
-    flags: ["card", "limit", "slack"],
-    help: "person <email, LinkedIn URL or lead ref> [--limit N] [--card | --slack]  one person's campaigns across every tool; a lead ref is taken as another command printed it",
+    flags: ["card", "limit", "slack", "slack-text"],
+    help: "person <email, LinkedIn URL or lead ref> [--limit N] [--card | --slack-text | --slack]  one person's campaigns across every tool; a lead ref is taken as another command printed it",
     // The person_summary insight, with its input taken from the arguments.
     run: (outbound, input) =>
       runInsight(outbound, {
@@ -421,11 +373,13 @@ const COMMAND_TABLE = {
       "by",
       "campaign",
       "category",
+      "cursor",
       "include-inbox",
+      "jsonl",
       "limit",
       "since",
     ],
-    help: "replies [--campaign ID|NAME] [--category positive|negative|neutral|ooo|...] [--since ISO] [--limit N] [--bodies] [--by person] [--include-inbox]  one record per message; --by person gives one row per person. --limit defaults to 50, or with --since to the whole window up to 2000. --include-inbox adds conversations outside every campaign (HeyReach)",
+    help: "replies [--campaign ID|NAME] [--category positive|negative|neutral|ooo|...] [--since ISO] [--limit N] [--cursor C] [--jsonl] [--bodies] [--by person] [--include-inbox]  one record per message; --by person gives one row per person. --since keeps the replies received since then; --limit defaults to 50, or with --since to the whole window up to 2000. --include-inbox adds conversations outside every campaign (HeyReach)",
     run: async (outbound, input) => {
       const by = choice(input, "by", REPLIES_BY);
       const since = text(input, "since");
@@ -434,53 +388,70 @@ const COMMAND_TABLE = {
       const windowed =
         since !== undefined && text(input, "limit") === undefined;
 
+      const filtered = clientFiltered(outbound, "replies.since", since, input);
+
       const walk = outbound.replies.listAll({
         campaignId: await campaignOption(outbound, text(input, "campaign")),
         category: choice(input, "category", replyCategorySchema.options),
         include: input.flags.bodies === true ? ["body"] : undefined,
         includeInbox: input.flags["include-inbox"] === true || undefined,
-        max: count(input, "limit", windowed ? WINDOW_LIMIT : 50),
+        ...walkOptions(
+          input,
+          windowed ? WINDOW_LIMIT : 50,
+          filtered.length > 0
+        ),
         since,
       });
 
-      return listedReplies(walk, input, by === "person", windowed);
+      return withNotes(
+        await listedReplies(walk, input, by === "person", windowed),
+        filtered
+      );
     },
   },
   senders: {
-    flags: ["limit"],
-    help: "senders [--limit N]",
+    flags: ["cursor", "jsonl", "limit"],
+    help: "senders [--limit N] [--cursor C] [--jsonl]",
     run: (outbound, input) =>
-      listing(
-        outbound.senders.listAll({ max: count(input, "limit", 50) }),
-        input,
-        "sender"
-      ),
+      listing(outbound.senders.listAll(walkOptions(input)), input, "sender"),
   },
   stats: {
-    flags: ["by", "from", "to"],
-    help: "stats [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--by day|total]",
-    run: async (outbound, input) =>
-      asJson(
-        await outbound.stats({
-          by: choice(input, "by", BY),
-          from: text(input, "from"),
-          to: text(input, "to"),
-        })
-      ),
+    flags: ["by", "from", "jsonl", "scope", "sender", "to"],
+    help: "stats [--scope workspace|campaign|sender] [--sender ID] [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--by day|total] [--jsonl]  --scope campaign gives a row per campaign and --scope sender a row per sender, every sender read in batches where the tool allows; --sender reads one sender",
+    run: async (outbound, input) => {
+      const sender = text(input, "sender");
+      const scope = choice(input, "scope", STATS_SCOPES);
+
+      if (sender !== undefined && scope !== undefined && scope !== "sender") {
+        throw new OutboundError(
+          "Invalid",
+          `--sender reads the sender scope, not --scope ${scope}`
+        );
+      }
+
+      const result = await outbound.stats({
+        by: choice(input, "by", BY),
+        from: text(input, "from"),
+        scope: sender === undefined ? scope : "sender",
+        scopeId: sender,
+        to: text(input, "to"),
+      });
+
+      // A row per line, so a load reads the rows as it reads any listing.
+      return input.flags.jsonl === true
+        ? new Answer(asJson(result.rows), coverageOf(asJson(result)), true)
+        : asJson(result);
+    },
   },
   tags: {
-    flags: ["limit"],
-    help: "tags [--limit N]",
+    flags: ["cursor", "jsonl", "limit"],
+    help: "tags [--limit N] [--cursor C] [--jsonl]",
     run: (outbound, input) =>
-      listing(
-        outbound.tags.listAll({ max: count(input, "limit", 50) }),
-        input,
-        "tag"
-      ),
+      listing(outbound.tags.listAll(walkOptions(input)), input, "tag"),
   },
   thread: {
-    flags: ["bodies"],
-    help: "thread <id> [--bodies]",
+    flags: ["bodies", "jsonl"],
+    help: "thread <id> [--bodies] [--jsonl]",
     run: async (outbound, input) => {
       const id = required(input, 0, "a thread id");
 
@@ -507,8 +478,8 @@ const COMMAND_TABLE = {
     },
   },
   tool: {
-    flags: ["card", "input", "slack"],
-    help: "tool <name> [--input JSON] [--card | --slack]  without --input, a tool that needs input fails with what it takes (exit 2)",
+    flags: ["card", "input", "slack", "slack-text"],
+    help: "tool <name> [--input JSON] [--card | --slack-text | --slack]  without --input, a tool that needs input fails with what it takes (exit 2)",
     run: async (outbound, input) => {
       const name = required(input, 0, "a tool name");
 
@@ -563,13 +534,13 @@ const COMMAND_TABLE = {
     },
   },
   webhooks: {
-    flags: ["campaign", "limit"],
-    help: "webhooks [--campaign ID|NAME] [--limit N]",
+    flags: ["campaign", "cursor", "jsonl", "limit"],
+    help: "webhooks [--campaign ID|NAME] [--limit N] [--cursor C] [--jsonl]",
     run: async (outbound, input) =>
       listing(
         outbound.webhooks.listAll({
           campaignId: await campaignOption(outbound, text(input, "campaign")),
-          max: count(input, "limit", 50),
+          ...walkOptions(input),
         }),
         input,
         "webhook"

@@ -593,16 +593,18 @@ test("the executable exits 1 and writes the reason to stderr for a wrong command
   assert.match(result.stderr, /Invalid: Unknown command "nope"/u);
 });
 
-test("--card prints a tool's card and --slack a Slack message ready to post", async () => {
-  const card = (await cli("tool", "sender_health", "--card")).data() as {
-    root: string;
-    elements: Record<string, { type: string; props: { title?: string } }>;
-  };
+test("--card prints a tool's card as text and --slack a Slack message ready to post", async () => {
+  const card = await cli("tool", "sender_health", "--card");
 
-  assert.equal(card.elements[card.root]?.type, "Card");
-  assert.equal(card.elements[card.root]?.props.title, "Sender health");
+  assert.equal(card.code, 0);
+  assert.match(
+    card.out,
+    /^Sender health\n\n🟢 No sender needs attention \(2 checked\)\./u,
+    "text a person reads, not JSON"
+  );
+  assert.throws(() => card.json(), SyntaxError);
 
-  const slack = (await cli("tool", "sender_health", "--slack")).data() as {
+  const slack = (await cli("tool", "sender_health", "--slack")).json() as {
     text: string;
     blocks: { type: string }[];
   };
@@ -612,10 +614,23 @@ test("--card prints a tool's card and --slack a Slack message ready to post", as
     "Sender health: 🟢 No sender needs attention (2 checked)."
   );
   assert.equal(slack.blocks[0]?.type, "header");
+  assert.ok(!("meta" in slack), "the message alone, ready to post");
+
+  const pasted = await cli("tool", "sender_health", "--slack-text");
+
+  assert.equal(pasted.code, 0);
+  assert.match(
+    pasted.out,
+    /^\*Sender health\*\n\n\*🟢 No sender needs attention \(2 checked\)\.\*\n\n\*Senders checked\*: 2\n/u,
+    "mrkdwn the composer takes"
+  );
+
+  const both = await cli("tool", "sender_health", "--card", "--slack");
+  assert.equal(both.code, 1);
 });
 
 test("--slack draws an insight too, and an unknown insight is still an error", async () => {
-  const slack = (await cli("insight", "hot_leads", "--slack")).data() as {
+  const slack = (await cli("insight", "hot_leads", "--slack")).json() as {
     text: string;
     blocks: { type: string }[];
   };

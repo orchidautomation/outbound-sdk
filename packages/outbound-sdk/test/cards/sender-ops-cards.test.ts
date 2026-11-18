@@ -803,3 +803,51 @@ test("client_report leads with the change and lists what to do", () => {
   );
   excludes(read(cardFor("client_report", insight(report(false)))), "👉", "🟢");
 });
+
+test("client_report shows every action, however many other bullets the card holds", () => {
+  const many = {
+    ...report(true),
+    actions: Array.from({ length: 12 }, (_, index) => ({
+      action: `Fix the bounces of Campaign ${index + 1}.`,
+      campaign: `c${index + 1}`,
+      campaignName: `Campaign ${index + 1}`,
+      kind: "fix_bounces",
+      number: 0.1,
+    })),
+    campaignsRead: 3,
+    moreCampaignsExist: true,
+  };
+
+  const text = read(cardFor("client_report", insight(many)));
+
+  includes(
+    text,
+    "• 👉 Fix the bounces of Campaign 1.",
+    "• 👉 Fix the bounces of Campaign 12.",
+    "Stopped at 3 campaigns read (max_campaigns)"
+  );
+  excludes(text, "… and");
+});
+
+test("client_report keeps long actions whole, past one text block's limit", () => {
+  const name = "N".repeat(260);
+
+  const many = {
+    ...report(true),
+    actions: Array.from({ length: 12 }, (_, index) => ({
+      action: `Fix the bounces of ${name} ${index + 1}.`,
+      campaign: `c${index + 1}`,
+      campaignName: `${name} ${index + 1}`,
+      kind: "fix_bounces",
+      number: 0.1,
+    })),
+  };
+
+  const text = read(cardFor("client_report", insight(many)));
+
+  includes(
+    text,
+    `• 👉 Fix the bounces of ${name} 1.`,
+    `• 👉 Fix the bounces of ${name} 12.`
+  );
+});

@@ -20,17 +20,42 @@ export interface Coverage {
   readonly notes: readonly string[];
 }
 
+/** What a list's walk knows besides its records. */
+export interface Walked {
+  /** `true` when `--limit` stopped the walk while more records exist. */
+  readonly truncated?: boolean | undefined;
+  /** Where to resume with `--cursor`. `undefined` on a truncated walk means from the start. */
+  readonly cursor?: string | undefined;
+  /** How many of the records printed last a resumed walk reads again. */
+  readonly repeats?: number | undefined;
+  /** `true` when the records were already written as JSON lines. */
+  readonly streamed?: boolean | undefined;
+  /** How many records the walk handed out. */
+  readonly records?: number | undefined;
+}
+
 /** An answer with what the JSON itself cannot carry: whether `--limit` cut a list. */
 export class Answer {
   readonly value: Json;
   readonly coverage: Coverage;
   /** `true` for a list, which the envelope puts in `data.items`. */
   readonly list: boolean;
+  readonly walked: Walked;
+  /** Printed as it is in place of the envelope, as `--card` prints a card. */
+  readonly text: string | undefined;
 
-  constructor(value: Json, coverage: Coverage, list = false) {
+  constructor(
+    value: Json,
+    coverage: Coverage,
+    list = false,
+    walked: Walked = {},
+    text?: string
+  ) {
     this.value = value;
     this.coverage = coverage;
     this.list = list;
+    this.walked = walked;
+    this.text = text;
   }
 
   /** How many records a list holds; 0 for an answer that is not a list. */
@@ -172,6 +197,11 @@ export const envelope = (printed: Printed, facts: RunFacts): JsonObject => {
     throttledMs: facts.throttledMs,
   };
 
+  if (printed instanceof Answer && printed.walked.truncated === true) {
+    meta.cursor = printed.walked.cursor ?? null;
+    meta.repeats = printed.walked.repeats ?? 0;
+  }
+
   if (isString(insight)) {
     meta.insight = insight;
   }
@@ -200,21 +230,31 @@ export const envelope = (printed: Printed, facts: RunFacts): JsonObject => {
 export interface Failure {
   readonly code: string;
   readonly message: string;
+  /** Where a list that failed part way resumes with `--cursor`; `null` from the start. */
+  readonly cursor?: string | null | undefined;
 }
 
 /** A command that threw, in the envelope. stderr still gets the one-line reason. */
 export const failedEnvelope = (
   failure: Failure,
   facts: RunFacts
-): JsonObject => ({
-  data: null,
-  error: { code: failure.code, message: failure.message },
-  meta: {
+): JsonObject => {
+  const meta: JsonObject = {
     complete: false,
     notes: [],
     provider: facts.provider,
     requests: facts.requests,
     throttledMs: facts.throttledMs,
-  },
-  ok: false,
-});
+  };
+
+  if (failure.cursor !== undefined) {
+    meta.cursor = failure.cursor;
+  }
+
+  return {
+    data: null,
+    error: { code: failure.code, message: failure.message },
+    meta,
+    ok: false,
+  };
+};

@@ -205,6 +205,8 @@ export interface TopLevelStatsOptions extends StatsOptions {
   /**
    * The campaign or sender, for the `campaign`, `step` and `sender` scopes.
    * The `campaign` scope without one returns a row per campaign, in one call.
+   * The `sender` scope without one (or `scopeIds`) lists every sender and
+   * reads them as `scopeIds` does; it needs `stats.bySenders`.
    */
   readonly scopeId?: string | undefined;
   /**

@@ -48,7 +48,7 @@ interface State {
 }
 
 /** A table as aligned text, for a second table or a chart Slack will not draw. */
-const asciiTable = (headers: string[], rows: string[][]): string => {
+export const asciiTable = (headers: string[], rows: string[][]): string => {
   const all = [headers, ...rows];
 
   const widths = headers.map((_, column) =>
@@ -144,7 +144,7 @@ const seriesRows = (chart: JsonObject, categories: string[]): string[][] =>
     ),
   ]);
 
-const chartAscii = (title: string, chart: JsonObject): string =>
+export const chartAscii = (title: string, chart: JsonObject): string =>
   chart.type === "pie"
     ? `${title}\n${asciiTable(
         ["Label", "Value"],

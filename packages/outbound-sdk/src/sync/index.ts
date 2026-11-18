@@ -11,6 +11,7 @@ export type {
   CheckpointStore,
   SyncCollection,
   SyncExtension,
+  SyncFilter,
   SyncOptions,
   SyncPluginOptions,
   SyncResult,

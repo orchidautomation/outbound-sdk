@@ -27,7 +27,7 @@ The output shows what the CLI does with the demo data. It does not show what a v
 | `lists` | Saved lead lists | `outbound.lists.listAll` |
 | `replies` | Replies from prospects, one record per message | `outbound.replies.listAll` |
 | `thread <id>` | The messages in one conversation | `outbound.thread(id).messages` |
-| `stats` | Workspace totals, or one row per day | `outbound.stats` |
+| `stats` | Workspace totals, or one row per day; with `--scope`, a row per campaign or per sender | `outbound.stats` |
 | `tags` | Tags | `outbound.tags.listAll` |
 | `blocklist` | Blocked addresses and domains | `outbound.blocklist.listAll` |
 | `webhooks` | Webhook subscriptions registered at the vendor | `outbound.webhooks.listAll` |
@@ -50,7 +50,9 @@ The output shows what the CLI does with the demo data. It does not show what a v
 | `--compact` | all that print JSON | Print the JSON on one line. |
 | `--raw` | all that print JSON | Keep each record's `raw`, the vendor's own payload. Left out by default: for a reply it can hold the whole quoted thread, `--bodies` or not. |
 | `--help`, `-h` | all | Print the usage text and exit 0. After a command, `outbound leads --help`, print that command's options and the ones every command takes. |
-| `--limit <n>` | `campaigns`, `senders`, `leads`, `lists`, `replies`, `tags`, `blocklist`, `webhooks`, `person` | Stop after this many records. A positive whole number. Defaults to 50, except for `replies` with `--since`, where it defaults to the whole window, up to 2,000 records. When a listing stops there and more records exist, `meta.complete` is `false` and `meta.notes` says so, for example "Stopped at 50 leads; more exist. Pass --limit to read more.", and standard error gets the same sentence. See [the envelope](/docs/cli#the-envelope). |
+| `--limit <n>` | `campaigns`, `senders`, `leads`, `lists`, `replies`, `tags`, `blocklist`, `webhooks`, `person` | Stop after this many records. A positive whole number. Defaults to 50, except for `leads` and `replies` with `--since`, where it defaults to the whole window, up to 2,000 records. When a listing stops there and more records exist, the command exits **3**, `meta.complete` is `false`, `meta.cursor` says where to resume and `meta.notes` says so, for example "Stopped at 50 leads; more exist. Pass --limit to read more." and "To resume, pass --cursor …", and standard error gets the same sentences. See [the envelope](/docs/cli#the-envelope). |
+| `--cursor <cursor>` | `campaigns`, `senders`, `leads`, `lists`, `replies`, `tags`, `blocklist`, `webhooks` | Resume a listing from the `meta.cursor` an earlier run printed, with the same filters. Pages are read at `--limit`'s size, so a run `--limit` stopped ends on a page and the next one repeats no record. Where a page is cut, `meta.repeats` says how many of the first records the next run reads again, so dedupe on `ref`. `meta.cursor` is `null` when the next run starts from the beginning. |
+| `--jsonl` | `campaigns`, `senders`, `leads`, `lists`, `replies`, `tags`, `blocklist`, `webhooks`, `thread`, `stats` | Print one record per line as each page arrives, instead of one JSON document, so a load of any size never sits in memory. The last line is the envelope without its data, `{ "meta": ..., "ok": true }`, with `meta.records` counting the lines before it. A failure part way prints `{ "ok": false, "error": ..., "meta": ... }` as the last line, with `meta.cursor` where to resume. For `stats`, each line is a row. `replies --by person` needs every reply first, so its rows are printed at the end. |
 | `--status <status>` | `campaigns` | Only campaigns with this status: `active`, `paused`, `draft`, `completed`, `archived` or `unknown`. |
 | `--search <text>` | `campaigns` | Only campaigns whose name contains this text, ignoring case. Every campaign is read to find them. |
 | `--stats` | `campaign` | The campaign's counts. |
@@ -58,15 +60,19 @@ The output shows what the CLI does with the demo data. It does not show what a v
 | `--subsequences` | `campaign` | The campaign's subsequences. |
 | `--settings` | `campaign` | How the campaign is set up to send. |
 | `--from <day>`, `--to <day>` | `campaign --stats`, `stats` | First and last day, `YYYY-MM-DD`. |
+| `--scope <scope>` | `stats` | `workspace`, the default, for the account's totals; `campaign` for a row per campaign; `sender` for a row per sender. Every sender is read in batches where the vendor allows it (`stats.bySenders`, Instantly: 200 mailboxes a request); elsewhere `--scope sender` is refused as `Unsupported` before any request, and `--sender` reads one. |
+| `--sender <id>` | `stats` | One sender's rows. |
 | `--by <grouping>` | `campaign --stats`, `stats`, `replies` | For stats, `day` gives one row per day and `total`, the default, one total row. For `replies`, `person` gives one row per person instead of one per message. Any other value is refused as `Invalid`. |
 | `--campaign <id or name>` | `leads`, `replies`, `webhooks` | Only records for this campaign. |
 | `--list <id or name>` | `leads` | Only leads in this saved list. |
 | `--category <category>` | `replies` | Only replies in this category: `positive`, `negative`, `neutral`, `ooo`, `bounce`, `unsubscribe` or `unknown`. |
-| `--since <ISO date>` | `replies` | Only replies on or after this time. Without `--limit`, every reply in the window is read, up to 2,000; a window that holds more stops there with `meta.complete` `false` and a note that names the ceiling. |
+| `--since <ISO date>` | `leads`, `replies` | Only leads created, or replies received, on or after this time. A lead created earlier and changed since is not listed. Without `--limit`, every record in the window is read, up to 2,000; a window that holds more stops there with exit code 3, `meta.complete` `false` and a note that names the ceiling. Where the vendor cannot filter by date (`leads.since` or `replies.since` is `client`, such as Instantly's leads), every record is read and the newer ones kept, and a note on stderr and in `meta.notes` says it costs as many requests as reading them all. |
 | `--bodies` | `replies`, `thread` | Include message text. Left out by default. |
 | `--include-inbox` | `replies` | Also list replies in conversations that belong to no campaign, such as a LinkedIn account's own messages on HeyReach. Left out by default. |
 | `--input <json>` | `tool`, `insight`, `native` | The input, as a JSON object in one argument. Defaults to `{}`. |
-| `--card`, `--slack` | `tool`, `insight`, `person` | Print the answer as a [card](/docs/cards), or as a Slack message. |
+| `--card` | `tool`, `insight`, `person` | Print the answer as a [card](/docs/cards) in plain text, for a person to read. Not JSON and not in the envelope. |
+| `--slack-text` | `tool`, `insight`, `person` | Print the card as text in Slack's mrkdwn, ready to paste into the message composer. Not in the envelope. |
+| `--slack` | `tool`, `insight`, `person` | Print the card as a Slack message's JSON alone, `{ text, blocks }`, not in the envelope, ready for `chat.postMessage` or an incoming webhook. Pass one of `--card`, `--slack-text` and `--slack`. |
 | `--redact`, `--no-redact` | all that need an adapter | Mask personal fields, or do not. Masking is on by default for `mcp` only. |
 | `--cache <seconds>` | all that need an adapter | Reuse an answer for this long, within this process. Each command is a new process, so only `mcp` reuses answers; a one-shot command says so on stderr. Use a store in a config file to persist. |
 | `--max-requests <n>` | all that need an adapter | The most vendor requests one command, or one MCP tool call, may make. |
@@ -76,7 +82,7 @@ The output shows what the CLI does with the demo data. It does not show what a v
 
 The last five add [plugins](/docs/cli#plugins); the overview says which plugin each adds and in what order.
 
-A flag a command does not take is refused before any request, with exit code 1: `outbound leads --since 2030-01-01` writes "Invalid: --since is not an option of leads". The flags in the last five rows, `--provider`, `--compact`, `--raw` and `--help` are taken by every command.
+A flag a command does not take is refused before any request, with exit code 1: `outbound leads --sender x` writes "Invalid: --sender is not an option of leads". The flags in the last five rows, `--provider`, `--compact`, `--raw` and `--help` are taken by every command.
 
 When `campaign` gets one of `--stats`, `--sequence`, `--subsequences` and `--settings`, its `data` is that answer. Given two or more, `data` holds each answer under its name: `outbound campaign <id> --stats --sequence` prints `data: { "sequence": ..., "stats": ... }`.
 
@@ -139,6 +145,20 @@ Each record `replies` prints is one message, not one person: a lead who writes t
 </include>
 
 `webhooks` lists the subscriptions that exist at the vendor. The CLI registers none. `limits` on the in-memory adapter reports a budget that is not a vendor's; on a real adapter it is the adapter's declared [rate limit](/docs/rate-limits) and how much of it this process has used.
+
+## Loading a warehouse
+
+The CLI can feed a loader. `--jsonl` prints a record per line as each page arrives, so DuckDB's `read_json` or any NDJSON reader takes the output as it is, and the last line, `{ "meta": ..., "ok": true }`, says whether the load is whole. A run `--limit` stopped exits 3, and its `meta.cursor` resumes it. `leads --since` keeps the leads created since a time; a lead created earlier and changed since is not among them, so reload in full now and then to pick up status changes. `stats --scope sender` reads every sender's rows, in batches where the vendor allows it. For loads on a schedule, the [sync plugin](/docs/plugins/sync) keeps the cursor and the time for you.
+
+<include meta='title="loader.ts"'>
+  ../../_examples/cli-commands/loader.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/cli-commands/loader.out.txt
+</include>
+
+Bulk rows belong to the CLI and the SDK. The MCP server's tools answer questions; none of them lists or exports records.
 
 ## tools, tool and insight
 

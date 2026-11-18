@@ -60,20 +60,21 @@ test("a listing stopped at --limit says so on stderr and in stdout's meta", asyn
   const two = await cli("leads", "--limit", "2", "--compact");
   const listed = JSON.parse(two.out) as Listed;
 
-  assert.equal(two.code, 0);
+  assert.equal(two.code, 3, "a list --limit cut exits 3");
   assert.equal(listed.data.items.length, 2);
-  assert.equal(
+  assert.match(
     two.err,
-    "Stopped at 2 leads; more exist. Pass --limit to read more."
+    /^Stopped at 2 leads; more exist\. Pass --limit to read more\.\nTo resume, pass --cursor \S+\.$/u
   );
   assert.equal(listed.meta.complete, false);
-  assert.deepEqual(listed.meta.notes, [two.err]);
+  assert.deepEqual(listed.meta.notes, two.err.split("\n"));
 
   const one = await cli("campaigns", "--limit", "1", "--compact");
 
-  assert.equal(
+  assert.equal(one.code, 3);
+  assert.match(
     one.err,
-    "Stopped at 1 campaign; more exist. Pass --limit to read more."
+    /^Stopped at 1 campaign; more exist\. Pass --limit to read more\./u
   );
 
   // Everything fits under the default: nothing to say.
@@ -86,10 +87,7 @@ test("a listing stopped at --limit says so on stderr and in stdout's meta", asyn
 
 test("a flag a command does not take is Invalid, and exits 1 before any read", async () => {
   for (const [argv, message] of [
-    [
-      ["leads", "--since", "2030-01-01"],
-      "Invalid: --since is not an option of leads",
-    ],
+    [["leads", "--sender", "x"], "Invalid: --sender is not an option of leads"],
     [
       ["senders", "--campaign", "x"],
       "Invalid: --campaign is not an option of senders",
@@ -150,7 +148,7 @@ test("--help lists each command's options, and each one listed is taken", async 
   assert.equal(leads.code, 0);
   assert.match(
     leads.out,
-    /^Usage: outbound leads \[--campaign ID\|NAME \| --list ID\|NAME\] \[--limit N\]$/mu
+    /^Usage: outbound leads \[--campaign ID\|NAME \| --list ID\|NAME\] \[--since ISO\] \[--limit N\] \[--cursor C\] \[--jsonl\] /mu
   );
   assert.match(leads.out, /--provider <id>/u);
 });

@@ -26,6 +26,10 @@ export { toSlackBlocks, toSlackMessage } from "./slack.ts";
 
 export type { SlackMessage, SlackOptions } from "./slack.ts";
 
+export { toText } from "./text.ts";
+
+export type { TextOptions } from "./text.ts";
+
 export { safe } from "./format.ts";
 
 export type { CardOptions } from "./content.ts";

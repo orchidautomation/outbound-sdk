@@ -1,5 +1,6 @@
 $ outbound senders --limit 1
 Stopped at 1 sender; more exist. Pass --limit to read more.
+To resume, pass --cursor eyJhIjoic2VuZGVycy5saXN0IiwibiI6MSwicCI6Im1lbW9yeSIsInYiOjEsInciOiJkZWZhdWx0In0.
 {
   "data": {
     "items": [
@@ -27,14 +28,18 @@ Stopped at 1 sender; more exist. Pass --limit to read more.
   "meta": {
     "complete": false,
     "notes": [
-      "Stopped at 1 sender; more exist. Pass --limit to read more."
+      "Stopped at 1 sender; more exist. Pass --limit to read more.",
+      "To resume, pass --cursor eyJhIjoic2VuZGVycy5saXN0IiwibiI6MSwicCI6Im1lbW9yeSIsInYiOjEsInciOiJkZWZhdWx0In0."
     ],
     "provider": "memory",
     "requests": 0,
-    "throttledMs": 0
+    "throttledMs": 0,
+    "cursor": "eyJhIjoic2VuZGVycy5saXN0IiwibiI6MSwicCI6Im1lbW9yeSIsInYiOjEsInciOiJkZWZhdWx0In0",
+    "repeats": 0
   },
   "ok": true
 }
+(exit code 3)
 
 $ outbound health mbx_1
 {
@@ -80,6 +85,7 @@ $ outbound health mbx_1
 
 $ outbound leads --campaign cmp_founders --limit 1
 Stopped at 1 lead; more exist. Pass --limit to read more.
+To resume, pass --cursor eyJhIjoibGVhZHMubGlzdCIsIm4iOjEsInAiOiJtZW1vcnkiLCJ2IjoxLCJ3IjoiZGVmYXVsdCJ9.
 {
   "data": {
     "items": [
@@ -132,14 +138,18 @@ Stopped at 1 lead; more exist. Pass --limit to read more.
   "meta": {
     "complete": false,
     "notes": [
-      "Stopped at 1 lead; more exist. Pass --limit to read more."
+      "Stopped at 1 lead; more exist. Pass --limit to read more.",
+      "To resume, pass --cursor eyJhIjoibGVhZHMubGlzdCIsIm4iOjEsInAiOiJtZW1vcnkiLCJ2IjoxLCJ3IjoiZGVmYXVsdCJ9."
     ],
     "provider": "memory",
     "requests": 0,
-    "throttledMs": 0
+    "throttledMs": 0,
+    "cursor": "eyJhIjoibGVhZHMubGlzdCIsIm4iOjEsInAiOiJtZW1vcnkiLCJ2IjoxLCJ3IjoiZGVmYXVsdCJ9",
+    "repeats": 0
   },
   "ok": true
 }
+(exit code 3)
 
 $ outbound leads --list lst_founders --compact
 {"data":{"items":[{"provider":"memory","ref":"memory:default:lead_1","schemaVersion":1,"sourceId":"lead_1","workspaceId":"default","bounced":null,"progress":"unknown","replied":true,"status":"replied","unsubscribed":null,"campaignRef":"memory:default:cmp_founders","company":"Example Co","companyLinkedinUrl":null,"createdAt":"2026-10-30T10:00:00.000Z","custom":{},"email":"person1@example.com","engagement":{"clicks":null,"lastContactedAt":"2026-11-11T14:00:00.000Z","lastOpenedAt":null,"lastRepliedAt":"2026-11-12T09:30:00.000Z","opens":2,"repliedStepIndex":null,"replies":1,"stepIndex":0},"firstName":"Alex","interest":"Interested","interestCategory":null,"tags":[],"lastName":"Example","linkedinUrl":null,"location":null,"meeting":null,"phone":null,"recipientMailProvider":null,"title":"Founder","website":null,"personKey":"email:person1@example.com","personKeys":["email:person1@example.com"]},{"provider":"memory","ref":"memory:default:lead_2","schemaVersion":1,"sourceId":"lead_2","workspaceId":"default","bounced":null,"progress":"active","replied":null,"status":"active","unsubscribed":null,"campaignRef":"memory:default:cmp_founders","company":"Sample Ltd","companyLinkedinUrl":null,"createdAt":"2026-10-31T10:00:00.000Z","custom":{},"email":"person2@example.com","engagement":null,"firstName":"Sam","interest":null,"interestCategory":null,"tags":[],"lastName":"Sample","linkedinUrl":null,"location":null,"meeting":null,"phone":null,"recipientMailProvider":null,"title":"CEO","website":null,"personKey":"email:person2@example.com","personKeys":["email:person2@example.com"]}]},"meta":{"complete":true,"notes":[],"provider":"memory","requests":0,"throttledMs":0},"ok":true}
@@ -171,12 +181,12 @@ $ outbound lists
   "ok": true
 }
 
-$ outbound leads --since 2030-01-01
+$ outbound leads --sender x
 {
   "data": null,
   "error": {
     "code": "Invalid",
-    "message": "--since is not an option of leads"
+    "message": "--sender is not an option of leads"
   },
   "meta": {
     "complete": false,
@@ -187,6 +197,6 @@ $ outbound leads --since 2030-01-01
   },
   "ok": false
 }
-Invalid: --since is not an option of leads
+Invalid: --sender is not an option of leads
 (exit code 1)
 

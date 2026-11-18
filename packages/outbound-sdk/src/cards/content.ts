@@ -26,6 +26,11 @@ export interface CardContent {
   /** The one sentence to read if nothing else is read. */
   readonly finding?: string | null | undefined;
   readonly stats?: readonly Stat[] | undefined;
+  /**
+   * What to do, in the order the answer ranked it. Shown before the list and
+   * cut only past MAX_ACTIONS, so a long list never hides one.
+   */
+  readonly actions?: readonly string[] | undefined;
   readonly bullets?: readonly string[] | undefined;
   readonly table?: ContentTable | undefined;
   readonly chart?: ChartData | null | undefined;
@@ -51,6 +56,9 @@ export interface CardOptions {
 }
 
 export const DEFAULT_MAX_ROWS = 8;
+
+/** The most actions a card shows, whatever `maxRows` says. */
+export const MAX_ACTIONS = 20;
 
 // Slack's limits, which are the tightest of the chat platforms.
 const MAX_FIELDS = 10;
@@ -83,6 +91,31 @@ const bulletText = (
     ...bullets.slice(0, max).map((line) => `• ${clip(line, MAX_BULLET)}`),
     ...more(Math.min(max, bullets.length), Math.max(total, bullets.length)),
   ].join("\n");
+
+/**
+ * Actions as bullets, in as many text nodes as their length needs, so the
+ * text limit of one node never cuts an action off.
+ */
+const actionNodes = (actions: readonly string[], max: number): CardNode[] => {
+  if (actions.length === 0) {
+    return [];
+  }
+
+  const lines = bulletText(actions, max).split("\n");
+  const chunks: string[][] = [];
+
+  for (const line of lines) {
+    const last = chunks.at(-1);
+
+    if (last !== undefined && [...last, line].join("\n").length <= MAX_TEXT) {
+      last.push(line);
+    } else {
+      chunks.push([line]);
+    }
+  }
+
+  return chunks.map((chunk) => textNode(chunk.join("\n"), "plain"));
+};
 
 const statNodes = (stats: readonly Stat[], max: number): CardNode[] => {
   const kept = stats.slice(0, max);
@@ -154,6 +187,7 @@ export const layout = (
   return [
     ...(content.finding ? [textNode(content.finding, "bold")] : []),
     ...statNodes(content.stats ?? [], MAX_STATS),
+    ...actionNodes(content.actions ?? [], Math.max(max, MAX_ACTIONS)),
     ...(content.bullets?.length
       ? [textNode(bulletText(content.bullets, max), "plain")]
       : []),
@@ -175,8 +209,9 @@ const rowLines = (table: TableData | undefined): string[] =>
 
 /** A short form for one section of a digest: no table and no chart. */
 export const compact = (content: CardContent): CardNode[] => {
-  const fromTable = !content.bullets?.length;
-  const lines = fromTable ? rowLines(content.table) : (content.bullets ?? []);
+  const listed = [...(content.actions ?? []), ...(content.bullets ?? [])];
+  const fromTable = listed.length === 0;
+  const lines = fromTable ? rowLines(content.table) : listed;
   const total = fromTable ? content.table?.total : undefined;
 
   return [

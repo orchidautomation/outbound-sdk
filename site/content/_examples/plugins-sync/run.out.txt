@@ -4,10 +4,14 @@ run 1, stopped after one page:
 {
   collection: 'leads',
   complete: false,
+  filter: 'none',
+  notes: [],
   pages: 1,
   records: 2,
+  requests: 0,
   resumed: false,
-  since: undefined
+  since: undefined,
+  throttledMs: 0
 }
 run 2, picks up on the second page:
   page: lead_priya, lead_omar
@@ -16,20 +20,28 @@ run 2, picks up on the second page:
 {
   collection: 'leads',
   complete: true,
+  filter: 'none',
+  notes: [],
   pages: 1,
   records: 2,
+  requests: 0,
   resumed: true,
-  since: undefined
+  since: undefined,
+  throttledMs: 0
 }
 run 3, asks only for leads created since run 1 began, less 5 minutes:
   checkpoint saved: {"since":"2026-11-14T12:00:00.000Z"}
 {
   collection: 'leads',
   complete: true,
+  filter: 'server',
+  notes: [],
   pages: 0,
   records: 0,
+  requests: 0,
   resumed: false,
-  since: '2026-11-14T11:55:00.000Z'
+  since: '2026-11-14T11:55:00.000Z',
+  throttledMs: 0
 }
 after reset, the next run starts over:
   checkpoint deleted
