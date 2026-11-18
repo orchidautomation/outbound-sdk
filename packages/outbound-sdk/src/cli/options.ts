@@ -29,6 +29,7 @@ export const OPTIONS = {
   stats: { type: "boolean" },
   status: { type: "string" },
   subsequences: { type: "boolean" },
+  "time-budget": { type: "string" },
   to: { type: "string" },
   tools: { type: "string" },
   version: { short: "v", type: "boolean" },

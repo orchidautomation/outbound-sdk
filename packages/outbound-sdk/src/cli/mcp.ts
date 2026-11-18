@@ -3,8 +3,11 @@
 // the adapter; nothing is hosted and nothing is stored.
 //
 // The Model Context Protocol is JSON-RPC 2.0. Only what a tool server needs
-// is implemented: initialize, ping, tools/list and tools/call.
+// is implemented: initialize, ping, tools/list and tools/call, with progress
+// notifications and cancellation for a long tool call.
 
+import type { Runtime } from "../internal/engine/runtime.ts";
+import { OutboundError } from "../internal/errors.ts";
 import {
   field,
   isJsonObject,
@@ -16,8 +19,14 @@ import {
 import type { Json, JsonObject } from "../internal/json.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
 import { createTools } from "../tools/index.ts";
-import type { ToolResult, ToolsOptions } from "../tools/index.ts";
+import type { OutboundTool, ToolResult, ToolsOptions } from "../tools/index.ts";
 import type { ThrottleTotal } from "./progress.ts";
+import {
+  DEFAULT_TIME_BUDGET_MS,
+  toolCalls,
+  toolCallScope,
+} from "./tool-call.ts";
+import type { RequestId, ToolCallScope } from "./tool-call.ts";
 
 export const PROTOCOL_VERSIONS = [
   "2025-06-18",
@@ -43,13 +52,42 @@ export interface McpServerOptions extends ToolsOptions {
    * model can tell a slow vendor limit from a hang.
    */
   readonly throttled?: (() => ThrottleTotal) | undefined;
+  /**
+   * Milliseconds one tool call may take, counted from when it arrives.
+   * When it runs out the call answers with what it read, marked
+   * `complete: false` with a note saying what it left out. Defaults to
+   * 50,000, under the minute most agent hosts wait; `Infinity` for none.
+   */
+  readonly timeBudgetMs?: number | undefined;
+  /** What a caller raises for a longer budget, named when a call stops at it. Defaults to `timeBudgetMs`. */
+  readonly timeBudgetSetting?: string | undefined;
+  /**
+   * The scope `outbound` was already put under with `scope.over()`, when
+   * tools in `extra` were built on it. Without it the server makes its own.
+   */
+  readonly scope?: ToolCallScope | undefined;
+  /** Replaces the clock and timers. Meant for tests. */
+  readonly runtime?: Partial<Pick<Runtime, "now" | "timer">> | undefined;
 }
 
+/** Sends a message the server starts, such as a progress notification. */
+export type Notify = (message: JsonObject) => void;
+
 export interface McpServer {
-  /** Handles one JSON-RPC message. Returns `undefined` for a notification. */
-  readonly handle: (message: Json) => Promise<JsonObject | undefined>;
+  /**
+   * Handles one JSON-RPC message. Returns `undefined` for a notification
+   * and for a call the client cancelled. `notify` receives the progress of
+   * a tool call whose client sent a `progressToken`.
+   */
+  readonly handle: (
+    message: Json,
+    notify?: Notify
+  ) => Promise<JsonObject | undefined>;
   /** Handles one line of input, which must be one JSON-RPC message. */
-  readonly handleLine: (line: string) => Promise<string | undefined>;
+  readonly handleLine: (
+    line: string,
+    notify?: Notify
+  ) => Promise<string | undefined>;
 }
 
 const INSTRUCTIONS =
@@ -161,8 +199,6 @@ const withWait = (
       };
 };
 
-type RequestId = number | string;
-
 const result = (id: RequestId, value: JsonObject): JsonObject => ({
   id,
   jsonrpc: "2.0",
@@ -185,34 +221,101 @@ const idOf = (message: Json): RequestId | undefined => {
   return isString(id) || isNumber(id) ? id : undefined;
 };
 
+const timeBudgetOf = (options: McpServerOptions): number => {
+  const budget = options.timeBudgetMs ?? DEFAULT_TIME_BUDGET_MS;
+
+  if (!(budget > 0)) {
+    throw new OutboundError(
+      "Invalid",
+      "timeBudgetMs must be a positive number of milliseconds, or Infinity for no limit"
+    );
+  }
+
+  return budget;
+};
+
+// What initialize answers: the protocol version the client asked for when
+// the server speaks it, else the newest.
+const initialized = (
+  params: Json | undefined,
+  instructions: string,
+  version: string | undefined
+): JsonObject => {
+  const requested = field(params, "protocolVersion");
+  const supported = PROTOCOL_VERSIONS.find((known) => known === requested);
+
+  return {
+    capabilities: { tools: { listChanged: false } },
+    instructions,
+    protocolVersion: supported ?? PROTOCOL_VERSIONS[0],
+    serverInfo: { name: "outbound-sdk", version: version ?? "0.0.0" },
+  };
+};
+
+const listed = (tool: OutboundTool): JsonObject => ({
+  annotations: { readOnlyHint: true },
+  description: tool.description,
+  inputSchema: tool.parameters,
+  name: tool.name,
+});
+
+// The instance tools read through, under the scope that holds each call to
+// its time budget, and the calls run in it.
+const servedOn = (given: OutboundApi, options: McpServerOptions) => {
+  const scope = options.scope ?? toolCallScope();
+
+  const calls = toolCalls({
+    runtime: options.runtime,
+    scope,
+    throttled: options.throttled,
+    timeBudgetMs: timeBudgetOf(options),
+    timeBudgetSetting: options.timeBudgetSetting ?? "timeBudgetMs",
+  });
+
+  // Under its own scope here; under the caller's, `given` already is.
+  return {
+    calls,
+    outbound: options.scope === undefined ? scope.over(given) : given,
+  };
+};
+
+// One tool call, noting the wait on rate limits when it was long.
+const callOnce = async (
+  tool: OutboundTool,
+  args: Json,
+  options: McpServerOptions,
+  budget: WithRequestBudget["requestBudget"] | undefined
+): Promise<ToolResult> => {
+  budget?.reset();
+  const before = options.throttled?.().ms ?? 0;
+  const called = await tool.call(args);
+  const after = options.throttled?.();
+
+  return withWait(called, (after?.ms ?? 0) - before, after?.reason);
+};
+
+// notifications/cancelled names the request the client gave up on.
+const cancelledId = (params: Json | undefined): RequestId | undefined => {
+  const id = field(params, "requestId");
+
+  return isString(id) || isNumber(id) ? id : undefined;
+};
+
 export const createMcpServer = (
-  outbound: OutboundApi,
+  given: OutboundApi,
   options: McpServerOptions = {}
 ): McpServer => {
+  const { calls, outbound } = servedOn(given, options);
   const tools = createTools(outbound, options);
   const byName = new Map(tools.map((tool) => [tool.name, tool]));
   const instructions = `${INSTRUCTIONS} ${describePlugins(outbound)}${describeLeftOut(outbound, options.leftOut)}`;
   const budget = budgetOf(outbound);
 
-  const initialize = (id: RequestId, params: Json | undefined): JsonObject => {
-    const requested = field(params, "protocolVersion");
-
-    const supported = PROTOCOL_VERSIONS.find(
-      (version) => version === requested
-    );
-
-    return result(id, {
-      capabilities: { tools: { listChanged: false } },
-      instructions,
-      protocolVersion: supported ?? PROTOCOL_VERSIONS[0],
-      serverInfo: { name: "outbound-sdk", version: options.version ?? "0.0.0" },
-    });
-  };
-
   const callTool = async (
     id: RequestId,
-    params: Json | undefined
-  ): Promise<JsonObject> => {
+    params: Json | undefined,
+    notify: Notify | undefined
+  ): Promise<JsonObject | undefined> => {
     const name = field(params, "name");
     const tool = isString(name) ? byName.get(name) : undefined;
 
@@ -226,11 +329,20 @@ export const createMcpServer = (
       );
     }
 
-    budget?.reset();
-    const before = options.throttled?.().ms ?? 0;
-    const called = await tool.call(field(params, "arguments") ?? {});
-    const after = options.throttled?.();
-    const outcome = withWait(called, (after?.ms ?? 0) - before, after?.reason);
+    const outcome = await calls.run({
+      body: () =>
+        callOnce(tool, field(params, "arguments") ?? {}, options, budget),
+      id,
+      name: tool.name,
+      notify,
+      progressToken: field(field(params, "_meta"), "progressToken"),
+    });
+
+    // The client cancelled the call, so it is not answered.
+    if (outcome === undefined) {
+      return undefined;
+    }
+
     const structured = toJson(outcome);
 
     return result(id, {
@@ -240,7 +352,10 @@ export const createMcpServer = (
     });
   };
 
-  const handle = async (message: Json): Promise<JsonObject | undefined> => {
+  const handle = async (
+    message: Json,
+    notify?: Notify
+  ): Promise<JsonObject | undefined> => {
     const method = field(message, "method");
     const id = idOf(message);
 
@@ -253,13 +368,22 @@ export const createMcpServer = (
     }
 
     if (id === undefined) {
+      const cancelled = cancelledId(message.params);
+
+      if (method === "notifications/cancelled" && cancelled !== undefined) {
+        calls.cancel(cancelled);
+      }
+
       // A notification, such as notifications/initialized: nothing to answer.
       return undefined;
     }
 
     switch (method) {
       case "initialize": {
-        return initialize(id, message.params);
+        return result(
+          id,
+          initialized(message.params, instructions, options.version)
+        );
       }
 
       case "ping": {
@@ -267,18 +391,11 @@ export const createMcpServer = (
       }
 
       case "tools/list": {
-        return result(id, {
-          tools: tools.map((tool) => ({
-            annotations: { readOnlyHint: true },
-            description: tool.description,
-            inputSchema: tool.parameters,
-            name: tool.name,
-          })),
-        });
+        return result(id, { tools: tools.map(listed) });
       }
 
       case "tools/call": {
-        return await callTool(id, message.params);
+        return await callTool(id, message.params, notify);
       }
 
       default: {
@@ -289,7 +406,7 @@ export const createMcpServer = (
 
   return {
     handle,
-    handleLine: async (line) => {
+    handleLine: async (line, notify) => {
       if (line.trim() === "") {
         return;
       }
@@ -300,7 +417,7 @@ export const createMcpServer = (
         return JSON.stringify(failure(null, PARSE_ERROR, "Parse error"));
       }
 
-      const response = await handle(message);
+      const response = await handle(message, notify);
 
       return response === undefined ? undefined : JSON.stringify(response);
     },

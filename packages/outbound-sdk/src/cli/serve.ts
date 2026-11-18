@@ -4,10 +4,12 @@ import { OutboundError } from "../internal/errors.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
 import type { InsightToolCaps } from "./config.ts";
 import { createMcpServer } from "./mcp.ts";
+import type { McpServerOptions } from "./mcp.ts";
 import { catalog } from "./offered.ts";
 import type { ThrottleTotal } from "./progress.ts";
 import { serveStdio } from "./stdio.ts";
 import { didYouMean } from "./suggest.ts";
+import { toolCallScope } from "./tool-call.ts";
 import { packageVersion } from "./version.ts";
 
 /** The tools `--tools` names, or `undefined` without it: every tool. */
@@ -33,12 +35,30 @@ export const namedTools = (
   return new Set(names);
 };
 
+/** `--time-budget`, in whole seconds. */
+const secondsFlag = (value: string): number => {
+  const seconds = Number(value);
+
+  if (!Number.isInteger(seconds) || seconds < 1) {
+    throw new OutboundError(
+      "Invalid",
+      `--time-budget takes a positive whole number of seconds, not "${value}"`
+    );
+  }
+
+  return seconds;
+};
+
 /** What `serve` reads messages from and writes answers to. */
 export interface ServeIo {
   readonly stdin?: (() => AsyncIterable<string> | Iterable<string>) | undefined;
   readonly stdout: (text: string) => void;
   /** How long the server has waited on rate limits, for the note on a slow tool call. */
   readonly throttled?: (() => ThrottleTotal) | undefined;
+  /** `--time-budget`: the seconds one tool call may take. */
+  readonly timeBudget?: string | undefined;
+  /** Replaces the clock and timers. Meant for tests. */
+  readonly runtime?: McpServerOptions["runtime"];
 }
 
 /**
@@ -48,12 +68,19 @@ export interface ServeIo {
  * the catalog leaves out is refused with its reason.
  */
 export const serve = async (
-  outbound: OutboundApi,
+  given: OutboundApi,
   io: ServeIo,
   unmasked: OutboundApi | undefined,
   wanted: ReadonlySet<string> | undefined,
   caps: InsightToolCaps
 ): Promise<void> => {
+  const timeBudgetMs =
+    io.timeBudget === undefined ? undefined : secondsFlag(io.timeBudget) * 1000;
+
+  // Every tool is built on the scoped instance, so each call keeps to its time budget.
+  const scope = toolCallScope();
+  const outbound = scope.over(given);
+
   const { leftOut, offered, tools, turnOn } = await catalog(
     outbound,
     caps,
@@ -84,7 +111,11 @@ export const serve = async (
     // Named in initialize, and a call to one answered with how to get it.
     leftOut: wanted === undefined ? turnOn : {},
     only: [],
+    runtime: io.runtime,
+    scope,
     throttled: io.throttled,
+    timeBudgetMs,
+    timeBudgetSetting: "--time-budget on outbound mcp",
     version: packageVersion(),
   });
 

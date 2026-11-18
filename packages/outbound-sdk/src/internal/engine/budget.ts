@@ -55,14 +55,22 @@ export class Budget {
     this.#options = options;
   }
 
+  /** The vendor's published windows for `lane`. */
+  declared(lane: string): readonly RateWindow[] {
+    const { limits } = this.#options;
+
+    return lane === DEFAULT_LANE
+      ? limits.windows
+      : (limits.lanes?.[lane] ?? []);
+  }
+
   /** The windows a request on `lane` must fit, after `share` and any slowdown. */
   windows(lane: string): readonly RateWindow[] {
-    const { limits, share } = this.#options;
+    const { share } = this.#options;
 
-    const declared =
-      lane === DEFAULT_LANE ? limits.windows : (limits.lanes?.[lane] ?? []);
-
-    return declared.map((window) => scaleWindow(window, share * this.#factor));
+    return this.declared(lane).map((window) =>
+      scaleWindow(window, share * this.#factor)
+    );
   }
 
   #storeKey(lane: string): string {
@@ -167,6 +175,7 @@ export class Budget {
             now < (this.#vendorPausedUntil.get(lane) ?? 0)
               ? "vendor"
               : "budget",
+          declared: this.declared(lane),
           lane,
           provider,
           waitMs,
@@ -198,14 +207,11 @@ export class Budget {
    * minute that is 3 s, the time one more request takes to fit.
    */
   vendorPauseMs(lane: string): number {
-    const { limits } = this.#options;
-
-    const declared =
-      lane === DEFAULT_LANE ? limits.windows : (limits.lanes?.[lane] ?? []);
-
     return Math.max(
       MIN_VENDOR_PAUSE_MS,
-      ...declared.map((window) => Math.ceil(window.perMs / window.requests))
+      ...this.declared(lane).map((window) =>
+        Math.ceil(window.perMs / window.requests)
+      )
     );
   }
 

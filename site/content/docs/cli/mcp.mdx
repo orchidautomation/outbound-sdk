@@ -96,7 +96,7 @@ For any other plugin, or for a plugin's options, pass `--config` with the path t
 
 ### Waits on rate limits
 
-A tool call that waits more than 5 seconds on rate limits gets `meta.throttledMs` and a note in `meta.notes` that names the last wait, so a model can tell a slow vendor limit, such as Instantly's 20 list-email requests a minute, from a hang. A failed call gets `meta.throttledMs` alone. A wait longer than 2 seconds also prints one line on standard error, which the protocol leaves free.
+A tool call that waits more than 5 seconds on rate limits gets `meta.throttledMs` and a note in `meta.notes` that names the last wait, so a model can tell a slow vendor limit, such as Instantly's 20 list-email requests a minute, from a hang. A failed call gets `meta.throttledMs` alone. A wait longer than 2 seconds also prints one line on standard error, which the protocol leaves free. A wait names the vendor's published limit and, when it is lower, the rate this process keeps to: its share of the limit, halved again after each 429, as in "Instantly's emails rate limit (20 a minute; this process reads up to 10 a minute)".
 
 The flags and `--config` work on the other commands too. Only `outbound mcp` turns `redact()` on by default; elsewhere, add `--redact`.
 
@@ -105,6 +105,12 @@ The flags and `--config` work on the other commands too. Only `outbound mcp` tur
 `--max-requests` adds `budget({ maxRequests, per: "run" })`. The server resets that budget before each tool call, so the cap is what a single tool call may spend, however many reads the tool makes. A tool that reaches it returns `isError: true` with `RateLimited`. The same holds for a server you build yourself: a `budget({ per: "run" })` on the instance is reset before each tool call.
 
 Without `--max-requests` a tool call still has a cap: the [default of each tool call](/docs/tools#request-caps), 100 requests for a built-in tool and what the input can cost, at most 500, for an insight. `--max-requests` sits beside the built-in tools' default, and the lower one stops the call; for an insight it replaces the default. Cap messages name `--max-requests on outbound mcp`. A stopped call has `retryable: false` and a `next` that tells the model not to call again with the same input. To change the default on a server you build yourself, pass `maxRequestsPerToolCall` to `createMcpServer` and to `insightTools`.
+
+### A time budget per tool call
+
+Most agent hosts give up on a tool call after about a minute and keep nothing, while a read on a slow lane, such as `dropped_replies` on Instantly's emails, can take five. So each tool call has a time budget, 50 seconds by default, counted from when the call arrives. `--time-budget <seconds>` sets another for the server; raise the client's tool timeout with it. A wait on a rate limit that would pass the budget is not started, and a read still under way when it runs out is stopped. An insight then answers with what it read, `meta.complete: false` and a note that names the tool, the budget and how to get the rest: call it again with less to read, or raise `--time-budget on outbound mcp`. A built-in tool returns `isError: true` with `RateLimited` and the same message. Tool calls run one at a time, so a call that waits behind another spends its budget waiting.
+
+A client that sends `_meta.progressToken` with `tools/call` gets `notifications/progress` every 5 seconds while the call runs: `progress` is the seconds so far, `total` the budget in seconds, and `message` says how long the call has waited on rate limits and names the last wait. `ping` is answered while a call runs, and `notifications/cancelled` stops the call it names: it reads nothing more and is not answered.
 
 ## What the server implements
 
@@ -115,11 +121,12 @@ The protocol is JSON-RPC 2.0, one message per line. The server implements what a
 | `initialize` | The protocol version, `capabilities.tools`, `serverInfo` and `instructions` |
 | `ping` | An empty result |
 | `tools/list` | Every tool: `name`, `description`, `inputSchema` and `annotations.readOnlyHint` |
-| `tools/call` | The tool's result as `content` (one text item of JSON), `structuredContent` and `isError` |
+| `tools/call` | The tool's result as `content` (one text item of JSON), `structuredContent` and `isError`, with `notifications/progress` first when the call sent a `progressToken` |
+| `notifications/cancelled` | Nothing. The call it names stops and is not answered. |
 | a notification (no `id`) | Nothing. `notifications/initialized` is accepted and ignored. |
 | anything else | Error `-32601`, method not found |
 
-There are no resources, prompts, sampling or list-change notifications. `PROTOCOL_VERSIONS` lists the protocol versions the server speaks. If the client asks for one of them the server answers with it; otherwise it answers with the newest it has.
+Messages are read while a tool call runs, and each answer is written when it is ready. There are no resources, prompts, sampling or list-change notifications. `PROTOCOL_VERSIONS` lists the protocol versions the server speaks. If the client asks for one of them the server answers with it; otherwise it answers with the newest it has.
 
 ## The tools it serves
 
@@ -164,7 +171,7 @@ A tool that fails is a normal result with `isError: true`, so the model can read
 
 | Function | Takes | Returns |
 | --- | --- | --- |
-| `handle(message)` | One parsed JSON-RPC message | The response object, or `undefined` for a notification |
-| `handleLine(line)` | One line of text | The response as a JSON string, or `undefined` for a notification or a blank line |
+| `handle(message, notify?)` | One parsed JSON-RPC message, and where to send progress notifications | The response object, or `undefined` for a notification or a cancelled call |
+| `handleLine(line, notify?)` | One line of text, and where to send progress notifications | The response as a JSON string, or `undefined` for a notification, a cancelled call or a blank line |
 
-Options are `only` and `extra` from [`createTools`](/docs/tools#options), plus `version`, which is reported as `serverInfo.version` and defaults to `0.0.0`. `outbound mcp` passes the installed package's version. Use it when you want the instance built in your own code, a subset of the tools, or a transport other than stdio. A server you build has only the plugins you give it: `redact()` is the CLI's default, not `createMcpServer`'s.
+Options are `only` and `extra` from [`createTools`](/docs/tools#options), plus `version`, which is reported as `serverInfo.version` and defaults to `0.0.0`, and `timeBudgetMs`, the time budget of each tool call in milliseconds (50,000 by default, `Infinity` for none). `outbound mcp` passes the installed package's version. Use it when you want the instance built in your own code, a subset of the tools, or a transport other than stdio. A server you build has only the plugins you give it: `redact()` is the CLI's default, not `createMcpServer`'s.

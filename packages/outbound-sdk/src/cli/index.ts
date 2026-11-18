@@ -128,7 +128,7 @@ export const run = async (
 
       await serve(
         outbound,
-        { ...io, throttled: monitor.total },
+        { ...io, throttled: monitor.total, timeBudget: values["time-budget"] },
         unmasked,
         namedTools(values.tools),
         // A tool call may spend what --max-requests allows, which replaces an insight's default cap.

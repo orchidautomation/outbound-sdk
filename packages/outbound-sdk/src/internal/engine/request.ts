@@ -23,11 +23,15 @@ export const DEFAULT_TIMEOUT_MS = 30_000;
 export interface CallState {
   requests: number;
   throttledMs: number;
-  readonly signal: AbortSignal | undefined;
+  /** Aborts the call. A plugin may add a signal of its own to it. */
+  signal: AbortSignal | undefined;
   readonly timeoutMs: number;
   readonly retry: RetryPolicy;
-  /** An epoch in milliseconds: the total budget across retries and waits. */
-  readonly deadlineAt: number | undefined;
+  /**
+   * An epoch in milliseconds: the total budget across retries and waits. A
+   * plugin may bring it forward.
+   */
+  deadlineAt: number | undefined;
   /** Stop after this many vendor requests. A plugin may lower it. */
   maxRequests: number | undefined;
   /**
@@ -335,6 +339,7 @@ export const execute = async (
       state.throttledMs += delayMs;
       fire(hooks.onThrottle, {
         cause: "vendor",
+        declared: environment.budget.declared(lane),
         lane,
         provider: adapter.name,
         waitMs: delayMs,
