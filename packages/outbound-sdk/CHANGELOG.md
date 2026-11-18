@@ -1,5 +1,46 @@
 # outbound-sdk
 
+## 0.14.0
+
+### Breaking changes
+
+These are minor bumps while the package is below 1.0, but code or scripts that rely on the old behaviour need a change:
+
+- **A listing cut off by `--limit` exits 3** (OUT-160). It used to exit 0 while more records existed. A script that treats any non-zero exit as failure should accept 3 or read `meta.complete`.
+- **`--card` and `--slack` print without the envelope** (OUT-164). `--card` prints the card as text and `--slack` prints the Slack message's JSON alone, where both used to sit inside the envelope's `data`.
+- **`outbound mcp` answers a tool call at a 50-second time budget** (OUT-154). A call that used to run for minutes now returns what it read with `meta.complete: false`, or `RateLimited` from a built-in tool, unless you raise it with `--time-budget <seconds>` or `timeBudgetMs`.
+- **`stats({ scope: "sender" })` without an id lists every sender** (OUT-163). It used to fail with `Invalid`; where the vendor cannot list senders' stats it is `Unsupported` before any request.
+- **Instantly daily stats rows carry `timezone: "UTC"`** (OUT-167), where they used to carry `null`.
+
+### Minor Changes
+
+- 7595c47: Make the CLI a loader, and the data path say what it costs (OUT-160, OUT-161, OUT-163, OUT-164).
+
+  - **`--jsonl`** on every listing (`leads`, `campaigns`, `senders`, `lists`, `replies`, `tags`, `blocklist`, `webhooks`, `thread`) and on `stats` prints one record per line as each page arrives, then one `{ meta, ok }` line with `meta.records`.
+  - **`--cursor`** resumes a listing from the `meta.cursor` an earlier run printed. Pages are read at `--limit`'s size, so a resumed run repeats no record; where it must, `meta.repeats` says how many.
+  - **Exit code 3** when `--limit` stops a list while more records exist. This changes behaviour: such a run used to exit 0. A script that treats any non-zero exit as failure should accept 3 or read `meta.complete`.
+  - **`leads --since`** keeps the leads created since a time, reading the whole window up to 2,000 by default, as `replies --since` does. Where the vendor cannot filter by date (Instantly's leads), a note says it costs a full walk.
+  - **`stats({ scope: "sender" })` without an id** lists every sender and reads them in batches where the vendor allows it (`stats.bySenders`; Instantly, 200 mailboxes a request), instead of failing with `Invalid`. Elsewhere it is `Unsupported` before any request. The CLI's `stats` takes `--scope workspace|campaign|sender` and `--sender ID`.
+  - **`SyncResult`** carries `requests`, `throttledMs`, `filter` (`server`, `client` or `none`) and `notes`. A run the SDK filtered after reading every record says so, with its cost.
+  - **`--card`** prints the card as text, `--slack-text` as Slack mrkdwn for the composer, and `--slack` the Slack message's JSON alone, without the envelope, so it pipes to a webhook. `toText(card, { style })` in `outbound-sdk/cards` does the same in code. This changes `--card` and `--slack` output, which used to be the card or message inside the envelope's `data`.
+  - A card shows every ranked action, such as `client_report`'s, before any other list, so the eight-row cut never hides one.
+- 511b164: Link one person across tools honestly (OUT-157, OUT-159).
+
+  - `person()` and `cross_channel_lead` keep each message once. A vendor that uses one lead id in every campaign (Smartlead) no longer repeats a person's timeline once per campaign, and each ref's timeline is read once. `cross_channel_lead` timeline entries name their `campaign` and `is_auto`, and a note says how its counts differ from `person_summary`'s.
+  - `person()` returns `links`: per tool, the identifier types it fills, those it can be searched by, and whether it holds the person (`linked`, `absent` or `undetermined`). A tool that can be searched by none of the person's identifier types is `undetermined`, never absent; `cross_channel_lead` and `person_summary` mark that answer incomplete and name the tool.
+  - New `outbound.identifiers()` on the identity plugin (no request) and `leadIdentifierCoverage(leads)` from `outbound-sdk/identity` say which identifier types each tool carries and which two or more share. Empty `shared` means no one can be linked across tools.
+  - `leadFields` takes a list of candidate custom field names, tried in order, such as `{ linkedinUrl: ["linkedin_profile", "linkedin_url"] }`. `fromEnv` takes `leadFields` and reads `OUTBOUND_LEAD_FIELDS` (JSON), and a CLI or `outbound mcp` config file can export `leadFields`.
+  - With no `leadFields.linkedinUrl`, a lead's custom field named like a LinkedIn profile (`linkedin`, `linkedin url`, `linkedin profile` or `linkedin profile url`, ignoring case, spaces, underscores and hyphens) fills `linkedinUrl` when its value is a linkedin.com/in/ URL, so Instantly's `linkedinUrl` grade is now `derived` instead of `false`. An explicit mapping replaces those names.
+- 405ea9c: `outbound mcp` keeps a long tool call inside an agent host's timeout (OUT-154).
+
+  - Each tool call has a time budget, 50 seconds by default, counted from when the call arrives; `--time-budget <seconds>` sets another, and `createMcpServer` takes `timeBudgetMs` (`Infinity` for none). A rate-limit wait that would pass it is not started and a read under way is stopped, so an insight answers with what it read, `meta.complete: false` and a note naming the budget and how to get the rest. A built-in tool returns `RateLimited` with the same message. This changes behavior: a call that used to run for minutes now answers at the budget unless you raise it.
+  - A `tools/call` with `_meta.progressToken` gets `notifications/progress` every 5 seconds: seconds so far, the budget as `total`, and how long it has waited on rate limits.
+  - The server reads messages while a tool call runs: `ping` is answered and `notifications/cancelled` stops the call, which is then not answered. Tool calls still run one at a time. `handle` and `handleLine` take an optional `notify` for progress.
+  - Throttle messages name the vendor's published limit apart from the rate this process keeps to, as "Instantly's emails rate limit (20 a minute; this process reads up to 10 a minute)". `ThrottleEvent` gains `declared`, the published windows.
+- 3e5264d: Stats rows add `meetingsBooked`, the vendor's count of meetings booked (OUT-162). Instantly fills it from `total_meeting_booked` on one campaign's total and the workspace total; every other row, and every other adapter, has it `null`, and `outbound.fields.metricRow.meetingsBooked` is `false` on Smartlead, HeyReach and EmailBison. `periodComparison` and `clientReport` carry it in each period's numbers and in `change`, never filled from opportunities or positive replies, with a note when it is `null` or counts only some campaigns.
+
+  Warehouse loads get a stable schema (OUT-167). `export()` takes `record` (such as `"reply"` or `"metricRow"`) and then writes every field of that record, `null` where a vendor leaves one out, so files from different vendors share their columns. `outbound-sdk/exporter` adds `recordColumns`, `recordJsonSchema` (JSON Schema of an exported row) and `duckdbTable` (a typed `CREATE TABLE` that `COPY` loads a `.jsonl` export into), all generated from the record schemas. `fillDays(rows, { from, to, fill })` makes daily stats dense: a day the vendor returned no row for gets one with `evidence: "derived"` and counts `null`, or 0 with `fill: "zero"` for the counts the scope reports. Instantly's daily rows now carry `timezone: "UTC"` instead of `null`.
+
 ## 0.13.0
 
 ### Breaking changes
