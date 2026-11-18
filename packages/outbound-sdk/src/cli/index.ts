@@ -92,14 +92,14 @@ export const run = async (
     // `parse` refused an unknown command, so no command here is `mcp`.
     const command = name === undefined ? undefined : COMMANDS.get(name);
 
-    const adapter =
-      io.adapter ?? (await fromEnv({ provider: values.provider }));
-
-    const { plugins, rateLimitStore } = await setupFor(
+    const { leadFields, plugins, rateLimitStore } = await setupFor(
       values,
       command === undefined,
       io.stderr
     );
+
+    const adapter =
+      io.adapter ?? (await fromEnv({ leadFields, provider: values.provider }));
 
     // Innermost, so it counts each request the engine sends, cache hits not.
     if (command !== undefined) {

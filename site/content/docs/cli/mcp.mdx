@@ -92,6 +92,7 @@ For any other plugin, or for a plugin's options, pass `--config` with the path t
 - The plugins are placed in this order, outermost first: `redact()`, the file's plugins, `cache()` from `--cache`, `budget()` from `--max-requests`, then `identity()`, which the CLI always adds unless the file lists it. To place a cache or a budget elsewhere, list it in the file instead of using its flag.
 - A `redact()` in the file replaces the default one, with the options you gave it. Setting `--no-redact` as well is refused.
 - The file may also export `rateLimitStore`, the store `createOutbound` takes. A vendor's limit covers the whole workspace, so two terminals, or the CLI and an MCP server, on one key slow each other down; with one shared store, such as [`redisRateLimitStore()`](/docs/guides/shared-rate-budget), they spend one budget instead of drawing 429s from each other.
+- The file may also export `leadFields`, the custom fields every tool reads a lead field from where the vendor's own is empty, as each adapter's `leadFields` option takes them. `{ linkedinUrl: ["linkedin_profile", "linkedin_url"] }` gives Instantly leads the LinkedIn profiles an account keeps in custom fields, so `cross_channel_lead` can link them to HeyReach. Without a config file, `OUTBOUND_LEAD_FIELDS` takes the same map as JSON.
 - A file that cannot be loaded, has no default export, or exports something other than a list of plugins and a rate limit store stops the command with exit code 1 before the server answers anything.
 
 ### Waits on rate limits

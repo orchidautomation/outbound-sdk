@@ -5,6 +5,11 @@ import { z } from "zod";
 import { mapConcurrent } from "../../internal/concurrency.ts";
 import type { Lead, Message } from "../../internal/entities.ts";
 import {
+  identifierCoverage,
+  linksOf,
+  undeterminedNote,
+} from "../../internal/identifiers.ts";
+import {
   checkPerson,
   personFields,
   personOf,
@@ -316,7 +321,7 @@ const byChannel = (campaigns: readonly PersonCampaign[]) => {
 
 export const personSummary = defineInsight({
   description:
-    "Everything about one person across campaigns and channels, from one of lead_ref (a lead ref exactly as another tool returned it), email, linkedin_url, or person (any of the three): each campaign they are in, how many messages they were sent, whether and how often they replied, which steps they replied to, their interest label, and totals by channel. Records are linked by exact identifier only, so an email finds a LinkedIn record only when a tool holds both for that person. A record the vendor labels out-of-office or bounced counts no replies, since they were automatic, and a reply in the thread flagged automatic (isAuto, from the vendor or a fixed rule) is not counted either. A lead ref from a tool or workspace the instance does not read is refused before any request. Costs one lookup per identifier, one request to read a lead ref whose id is not already an address or profile (a HeyReach ref needs none), then up to 2 requests per campaign. Each campaign also carries its conversation's context: activity (the latest message, who sent it and when), meeting (what the vendor records on the lead, Instantly only), vendorSentiment (the vendor's labels, kept apart) and followUp, a fixed-rule assessment whose needed is true only when the latest message is inbound, not automatic and no meeting is recorded, with its evidence and what it could not check.",
+    "Everything about one person across campaigns and channels, from one of lead_ref (a lead ref exactly as another tool returned it), email, linkedin_url, or person (any of the three): each campaign they are in, how many messages they were sent, whether and how often they replied, which steps they replied to, their interest label, and totals by channel. Records are linked by exact identifier only, so an email finds a LinkedIn record only when a tool holds both for that person. A record the vendor labels out-of-office or bounced counts no replies, since they were automatic, and a reply in the thread flagged automatic (isAuto, from the vendor or a fixed rule) is not counted either. Each campaign counts the messages of its own campaign only, and the totals add the campaigns up; cross_channel_lead lists every message once across campaigns and tools, automatic replies included. A tool that fills none of the person's identifier types (an Instantly lead has no LinkedIn profile unless leadFields maps one) cannot be searched for them, so the answer is marked incomplete and a note names it. A lead ref from a tool or workspace the instance does not read is refused before any request. Costs one lookup per identifier, one request to read a lead ref whose id is not already an address or profile (a HeyReach ref needs none), then up to 2 requests per campaign. Each campaign also carries its conversation's context: activity (the latest message, who sent it and when), meeting (what the vendor records on the lead, Instantly only), vendorSentiment (the vendor's labels, kept apart) and followUp, a fixed-rule assessment whose needed is true only when the latest message is inbound, not automatic and no meeting is recorded, with its evidence and what it could not check.",
   inputSchema: input,
   key: "personSummary",
   cost: (values, price) =>
@@ -343,6 +348,18 @@ export const personSummary = defineInsight({
 
     const contacted = campaigns.filter((entry) => entry.messagesSent > 0);
     const replied = campaigns.filter((entry) => entry.replied);
+
+    const links = linksOf(
+      await identifierCoverage(context.outbound),
+      found.keys,
+      found.records
+    );
+
+    for (const link of links) {
+      if (link.status === "undetermined") {
+        context.partial(undeterminedNote(link));
+      }
+    }
 
     const summary: PersonSummary = {
       campaigns,

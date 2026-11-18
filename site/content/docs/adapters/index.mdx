@@ -32,7 +32,7 @@ Every vendor factory takes the same core options:
 | `apiKey` | the key variable above | The vendor key. A missing key throws when the adapter is constructed. |
 | `workspaceId` | `<PROVIDER>_WORKSPACE_ID`, then `default` | Your own label for the client or workspace. It is part of every ref (`provider:workspace:id`). |
 | `baseUrl` | the vendor's API | For a proxy or a test server. |
-| `leadFields` | none | Which of a lead's custom fields holds a value the vendor has no field for, such as `{ title: "job_title" }`. Read only where the vendor's own field is empty. See [field grades](/docs/capabilities#field-grades). |
+| `leadFields` | `OUTBOUND_LEAD_FIELDS`, then none | Which of a lead's custom fields holds a value the vendor has no field for, such as `{ title: "job_title" }`, or several names tried in order, such as `{ linkedinUrl: ["linkedin_profile", "linkedin_url"] }`. Read only where the vendor's own field is empty. `OUTBOUND_LEAD_FIELDS` takes the same map as JSON, and is read by `fromEnv` and the CLI; a CLI config file's `leadFields` wins over it. See [field grades](/docs/capabilities#field-grades). |
 | `capabilities` | what the adapter declares | Overrides single capabilities, for example to turn one off on a plan without the endpoint. |
 
 Constructing an adapter makes no request.

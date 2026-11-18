@@ -3,8 +3,11 @@
 // The SDK never guesses which: the caller says, and the adapter then reads
 // the custom field wherever the vendor's own field is empty.
 
+import { z } from "zod";
+
 import type { Adapter } from "./adapter.ts";
 import type { Lead } from "./entities.ts";
+import { OutboundError } from "./errors.ts";
 import type { FieldDeclaration } from "./fields.ts";
 
 const MAPPABLE = [
@@ -21,24 +24,75 @@ type Mappable = (typeof MAPPABLE)[number];
 
 /**
  * A lead field and the name of the custom field that holds it, for example
- * `{ title: "job_title" }`. The name is matched exactly.
+ * `{ title: "job_title" }`, or several names to try in order, for example
+ * `{ linkedinUrl: ["linkedin_profile", "linkedin_url"] }` when an account
+ * named the same field differently in different lists. Names are matched
+ * exactly, and the first that holds a value is read.
  */
-export type LeadFieldMap = Readonly<Partial<Record<Mappable, string>>>;
+export type LeadFieldMap = Readonly<
+  Partial<Record<Mappable, string | readonly string[] | undefined>>
+>;
+
+const namesOf = (name: string | readonly string[] | undefined): string[] =>
+  name === undefined ? [] : [name].flat();
 
 /** `lead` with each mapped field the vendor left empty read from `custom`. */
 export const fillFromCustom = (lead: Lead, map: LeadFieldMap): Lead => {
   const filled: Partial<Record<Mappable, string>> = {};
 
   for (const field of MAPPABLE) {
-    const name = map[field];
-    const value = name === undefined ? undefined : lead.custom[name]?.trim();
+    const value = namesOf(map[field])
+      .map((name) => lead.custom[name]?.trim())
+      .find((each) => each !== undefined && each !== "");
 
-    if (lead[field] === null && value !== undefined && value !== "") {
+    if (lead[field] === null && value !== undefined) {
       filled[field] = value;
     }
   }
 
   return { ...lead, ...filled };
+};
+
+const names = z.union([
+  z.string().trim().min(1),
+  z.array(z.string().trim().min(1)).min(1),
+]);
+
+/**
+ * A lead field map as a config file or an environment variable gives it:
+ * each key a mappable field, each value a custom field name or a list of them.
+ */
+export const leadFieldMapSchema = z.strictObject({
+  company: names.optional(),
+  companyLinkedinUrl: names.optional(),
+  linkedinUrl: names.optional(),
+  location: names.optional(),
+  phone: names.optional(),
+  title: names.optional(),
+  website: names.optional(),
+});
+
+/** Why a lead field map from `source` failed `leadFieldMapSchema`, in one sentence. */
+export const leadFieldsInvalid = (
+  source: string,
+  error: z.ZodError
+): OutboundError => {
+  const [issue] = error.issues;
+  const [field] = issue?.path ?? [];
+
+  if (issue?.code === "unrecognized_keys") {
+    return new OutboundError(
+      "Invalid",
+      `${source} names "${issue.keys.join('", "')}", which is not a lead field it can fill. Use one of: ${MAPPABLE.join(", ")}`
+    );
+  }
+
+  return new OutboundError(
+    "Invalid",
+    field === undefined
+      ? `${source} must map lead fields to custom field names, such as { "linkedinUrl": ["linkedin_profile", "linkedin_url"] }`
+      : `${source} maps "${String(field)}" to something other than a custom field name or a list of them; give a custom field name or a list of them`
+  );
 };
 
 type LeadReaders = Pick<Adapter, "getLead" | "listLeads">;

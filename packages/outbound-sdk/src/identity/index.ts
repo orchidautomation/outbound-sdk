@@ -13,4 +13,15 @@ export type {
   PersonOptions,
 } from "./plugin.ts";
 
+export { leadIdentifierCoverage } from "../internal/identifiers.ts";
+
+export type {
+  IdentifierCoverage,
+  IdentifierType,
+  LeadIdentifierCoverage,
+  PersonLink,
+  ToolIdentifiers,
+  ToolLeadIdentifiers,
+} from "../internal/identifiers.ts";
+
 export { emailKey, keysOf, linkedinKey, toKey } from "./keys.ts";
