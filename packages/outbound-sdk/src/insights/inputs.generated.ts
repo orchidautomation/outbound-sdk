@@ -894,6 +894,20 @@ export interface InsightInputs {
     readonly max_bounce_rate?: number | undefined;
 
     /**
+     * Skipped leads (loaded, then never sent to by the tool) over this share of a campaign's leads are a finding
+     *
+     * A number from 0 to 1. Defaults to `0.05`.
+     */
+    readonly max_skipped_share?: number | undefined;
+
+    /**
+     * Fewer skipped leads than this are never a finding
+     *
+     * A whole number from 1 to 9,007,199,254,740,991. Defaults to `100`.
+     */
+    readonly min_skipped?: number | undefined;
+
+    /**
      * A fall in sends, recent days against the days before, over this share is a finding
      *
      * A number from 0 to 1. Defaults to `0.3`.
@@ -1253,6 +1267,20 @@ export interface InsightInputs {
      * A number from 0 to 1. Defaults to `0.03`.
      */
     readonly max_bounce_rate?: number | undefined;
+
+    /**
+     * Skipped leads (loaded, then never sent to by the tool) over this share of a campaign's leads are a finding
+     *
+     * A number from 0 to 1. Defaults to `0.05`.
+     */
+    readonly max_skipped_share?: number | undefined;
+
+    /**
+     * Fewer skipped leads than this are never a finding
+     *
+     * A whole number from 1 to 9,007,199,254,740,991. Defaults to `100`.
+     */
+    readonly min_skipped?: number | undefined;
 
     /**
      * The most leads to read per active campaign, for leads left. Where the tool lists active leads alone (leads.byStatus), only those are read.

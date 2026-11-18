@@ -1,0 +1,65 @@
+{
+  "items": [
+    {
+      "campaign": "01a1d77f-5e23-7a9a-9112-a6f7089f329f",
+      "company_name": "Example Blocked Co",
+      "email": "person61@example.com",
+      "email_click_count": 0,
+      "email_open_count": 0,
+      "email_reply_count": 0,
+      "esp_code": 2,
+      "first_name": "Casey",
+      "id": "01a1d77f-5156-7723-b616-dca4fb991701",
+      "last_name": "Example",
+      "organization": "01a1d77f-5158-772f-ad63-67d98f6cd2f4",
+      "status": -3,
+      "timestamp_created": "2026-11-10T12:00:00.000Z"
+    },
+    {
+      "campaign": "01a1d77f-5e23-7a9a-9112-a6f7089f329f",
+      "company_name": "Example Blocked Co",
+      "email": "person62@example.com",
+      "email_click_count": 0,
+      "email_open_count": 0,
+      "email_reply_count": 0,
+      "esp_code": 2,
+      "first_name": "Jordan",
+      "id": "01a1d77f-5156-7723-b616-dca4fb991702",
+      "last_name": "Example",
+      "organization": "01a1d77f-5158-772f-ad63-67d98f6cd2f4",
+      "status": -3,
+      "timestamp_created": "2026-11-10T12:00:00.000Z"
+    },
+    {
+      "campaign": "01a1d77f-5e23-7a9a-9112-a6f7089f329f",
+      "company_name": "Example Waiting Co",
+      "email": "person63@example.com",
+      "email_click_count": 0,
+      "email_open_count": 0,
+      "email_reply_count": 0,
+      "esp_code": 2,
+      "first_name": "Taylor",
+      "id": "01a1d77f-5156-7723-b616-dca4fb991703",
+      "last_name": "Example",
+      "organization": "01a1d77f-5158-772f-ad63-67d98f6cd2f4",
+      "status": 1,
+      "timestamp_created": "2026-11-10T12:00:00.000Z"
+    },
+    {
+      "campaign": "01a1d77f-5e23-7a9a-9112-a6f7089f329f",
+      "company_name": "Example Duplicate Co",
+      "email": "person64@example.com",
+      "email_click_count": 0,
+      "email_open_count": 0,
+      "email_reply_count": 0,
+      "esp_code": 2,
+      "first_name": "Avery",
+      "id": "01a1d77f-5156-7723-b616-dca4fb991704",
+      "last_name": "Example",
+      "organization": "01a1d77f-5158-772f-ad63-67d98f6cd2f4",
+      "status": -3,
+      "timestamp_created": "2026-11-10T12:00:00.000Z"
+    }
+  ],
+  "next_starting_after": "01a1d77f-5156-7723-b616-dca4fb991704"
+}

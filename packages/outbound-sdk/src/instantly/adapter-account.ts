@@ -18,6 +18,7 @@ import {
 } from "./map-account.ts";
 import { toSubsequence } from "./map.ts";
 import { listPage } from "./pages.ts";
+import { countSkipped } from "./skipped-count.ts";
 
 type AccountReaders = Pick<
   Adapter,
@@ -39,6 +40,7 @@ export const accountReaders = (client: InstantlyClient): AccountReaders => {
 
   return {
     // The per-campaign report, asked for one campaign: an array of one row.
+    // It has no skipped count, so the leads not contacted are counted too.
     getCampaignProgress: async (id, ctx) => {
       const rows = await client.getRows(ctx, "/campaigns/analytics", {
         query: { id },
@@ -52,7 +54,12 @@ export const accountReaders = (client: InstantlyClient): AccountReaders => {
         });
       }
 
-      return toCampaignProgress(identity, id, row);
+      return toCampaignProgress(
+        identity,
+        id,
+        row,
+        await countSkipped(client, ctx, id)
+      );
     },
     getCampaignSettings: async (id, ctx) =>
       toCampaignSettings(

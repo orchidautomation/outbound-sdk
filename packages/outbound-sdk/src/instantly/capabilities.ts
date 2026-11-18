@@ -23,6 +23,12 @@ export const WORKSPACE_ENV = "INSTANTLY_WORKSPACE_ID";
 export const EMAILS_LANE = "emails";
 export const PAGE_SIZE = 100;
 
+/**
+ * The most pages of leads not contacted read to count a campaign's skipped
+ * leads: 5,000 leads. Live campaigns of up to 31,243 leads took 1 to 23.
+ */
+export const SKIPPED_PAGES_AT_MOST = 50;
+
 /** Three native reads have a limit of their own; each is a lane. */
 export const LABEL_PREDICTION_LANE = "labelPrediction";
 export const LOCAL_FILTERS_LANE = "localBusinessFilters";
@@ -37,7 +43,8 @@ export const capabilities: CapabilityDeclaration = {
   blocklist: true,
   // GET /account-campaign-mappings/{email}.
   "campaigns.bySender": true,
-  // GET /campaigns/analytics for one id: leads_count and completed_count.
+  // GET /campaigns/analytics for one id: leads_count and completed_count;
+  // skipped from POST /leads/list with filter FILTER_VAL_NOT_CONTACTED.
   "campaigns.progress": true,
   "campaigns.settings": true,
   // Draft and completed are filtered by Instantly. Active and paused each
@@ -117,13 +124,13 @@ export const capabilities: CapabilityDeclaration = {
 // What an Instantly record never carries. A lead has no LinkedIn fields, no
 // location and no tags, and no report says how many emails were delivered.
 export const fields: FieldDeclaration = {
-  // The per-campaign report counts every lead and the finished ones only.
+  // The per-campaign report counts every lead and the finished ones only;
+  // skipped is counted from a listing of the leads not contacted.
   campaignProgress: {
     blocked: false,
     failed: false,
     inProgress: false,
     notStarted: false,
-    skipped: false,
     stopped: false,
   },
   lead: {
@@ -180,8 +187,10 @@ export const costs = {
   "campaigns.get": { perPage: 3 },
   // The campaigns, their tag assignments, then the tags' names.
   "campaigns.list": { pageSize: PAGE_SIZE, perPage: 3, perWalk: 1 },
-  // The per-campaign report, asked for one campaign.
-  "campaigns.progress": { perPage: 1 },
+  // The per-campaign report, asked for one campaign, then the leads not
+  // contacted, to count the skipped ones: usually one page, at most
+  // SKIPPED_PAGES_AT_MOST.
+  "campaigns.progress": { perPage: 2, perWalk: SKIPPED_PAGES_AT_MOST - 1 },
   "campaigns.settings": { perPage: 1 },
   // A custom interest label costs one more read of the label list, made only
   // when the lead or a page of leads holds one.

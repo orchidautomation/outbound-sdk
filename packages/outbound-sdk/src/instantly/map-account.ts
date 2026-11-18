@@ -94,12 +94,14 @@ export const toCampaignSettings = (
 /**
  * One campaign's row of `GET /campaigns/analytics`: `leads_count` is every
  * lead and `completed_count` the leads the campaign was completed for. The
- * report does not split the rest.
+ * report does not split the rest. `skipped` is counted from the leads not
+ * contacted (see skipped-count.ts), `null` when that count was not finished.
  */
 export const toCampaignProgress = (
   identity: Identity,
   campaignId: string,
-  raw: JsonObject
+  raw: JsonObject,
+  skipped: number | null
 ): CampaignProgress => ({
   ...recordBase(identity, campaignId, raw),
   blocked: null,
@@ -109,7 +111,7 @@ export const toCampaignProgress = (
   inProgress: null,
   leads: count(raw.leads_count),
   notStarted: null,
-  skipped: null,
+  skipped,
   stopped: null,
 });
 

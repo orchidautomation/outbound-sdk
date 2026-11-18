@@ -4,7 +4,7 @@
 import { z } from "zod";
 
 import { OutboundError } from "../../internal/errors.ts";
-import { plural } from "../../internal/numbers.ts";
+import { count as formatCount, plural } from "../../internal/numbers.ts";
 import { either, readCampaignsIn } from "../capped.ts";
 import type { CampaignsRead } from "../capped.ts";
 import { defineInsight } from "../define.ts";
@@ -42,6 +42,12 @@ import type {
   ReplyBasis,
   ToolLeftOut,
 } from "./shared.ts";
+import {
+  readManySkipped,
+  skippedFields,
+  skippedLimits,
+} from "./skipped-leads.ts";
+import type { SkippedLeads } from "./skipped-leads.ts";
 
 const input = z.object({
   ...listFields(
@@ -85,6 +91,7 @@ const input = z.object({
     .max(1)
     .default(0.03)
     .describe("A campaign bounce rate over this is a bounce problem"),
+  ...skippedFields,
   max_leads_per_campaign: z
     .number()
     .int()
@@ -174,6 +181,13 @@ export interface ClientReport extends CampaignsRead {
   readonly bottom: readonly RankedCampaign[];
   /** Worst first. */
   readonly bounceProblems: readonly BounceProblem[];
+  /**
+   * Campaigns whose skipped leads (loaded, then never sent to by the tool)
+   * are over `max_skipped_share` of their leads and at least `min_skipped`,
+   * highest share first. `null` when the tool does not count skipped leads.
+   * Always set by the insight; optional so a value built by hand stays valid.
+   */
+  readonly manySkippedLeads?: readonly SkippedLeads[] | null;
   /** Unusual days in the period, workspace-wide. `null` when the adapter cannot serve them. */
   readonly anomalies: readonly Anomaly[] | null;
   /**
@@ -255,6 +269,7 @@ type Sections = Pick<
   | "anomalies"
   | "bottom"
   | "bounceProblems"
+  | "manySkippedLeads"
   | "runningOutOfLeads"
   | "stalled"
   | "totals"
@@ -275,6 +290,13 @@ const actionsOf = (
       campaignName: problem.campaignName,
       kind: "fix_bounces" as const,
       number: problem.rate,
+    })),
+    ...(report.manySkippedLeads ?? []).map((campaign) => ({
+      action: `Find out why ${campaign.campaignName} skipped ${formatCount(campaign.skipped)} of its ${formatCount(campaign.leads)} leads (${percent(campaign.share)}): check the block list and the campaign's duplicate rules.`,
+      campaign: campaign.campaign,
+      campaignName: campaign.campaignName,
+      kind: "check_skipped_leads" as const,
+      number: campaign.skipped,
     })),
     ...(report.totals.verdict === "down"
       ? [
@@ -314,6 +336,32 @@ const actionsOf = (
     ),
   ];
 };
+
+/** The sections left out because the adapter cannot serve them. */
+const leftOutOf = (parts: {
+  readonly anomalies: unknown;
+  readonly runways: unknown;
+  readonly skipped: unknown;
+  readonly tagged: boolean;
+}): string[] => [
+  ...(parts.anomalies === null
+    ? [
+        parts.tagged
+          ? "Unusual days: they are workspace-wide, so a tag leaves them out."
+          : "Unusual days: the adapter has no workspace stats by day.",
+      ]
+    : []),
+  ...(parts.runways === null
+    ? [
+        "Campaigns running out of leads: the adapter cannot list a campaign's leads or has no stats by day.",
+      ]
+    : []),
+  ...(parts.skipped === null
+    ? [
+        "Campaigns with many skipped leads: the adapter does not report how many of a campaign's leads were skipped.",
+      ]
+    : []),
+];
 
 /**
  * The context narrowed to the tool `provider` names: a provider, or a
@@ -367,7 +415,7 @@ const scopedTo = async (
 
 export const clientReport = defineInsight({
   description:
-    "One report for one client or workspace over the last `days` complete days: totals and the change from the period before, the best and worst campaigns by the low end of the interval of the reply rate, campaigns with a bounce problem, unusual days, active campaigns running out of leads (none left to start, or running out within runway_days at the recent pace of new leads started) and, apart, stalled ones (leads left to start but none started in the period), and a short list of action items in plain language, each naming the campaign and the number behind it, with the campaigns that need leads in one item at the end. `remaining` counts leads not yet started; leads partway through the sequence are `inSequence`. Pass provider to read one tool of a combined instance, and tag for one client's campaigns. totalsBasis says what the totals count, and on a combined instance a tool with no campaign in statuses is named in toolsLeftOut with its own totals for the period, one stats request each. Reply rates divide by messages sent (`replyRateBasis`), since a period's replies also answer leads contacted before it, and by leads contacted for both periods only when a period does not report messages sent. Use it for a weekly client update. A section the adapter cannot serve is null and named in `leftOut`, and a null count is one the vendor does not report: totals.current.meetingsBooked is null where the tool records no meetings, never opportunities or positive replies. Costs two stats requests per campaign, one for the workspace, and for each active campaign one more plus its pages of leads, its active leads only where the tool lists them alone (leads.byStatus). On Instantly a stats read is 2 requests, since it also reads the campaign's tracking settings, so each active campaign costs about 7.",
+    "One report for one client or workspace over the last `days` complete days: totals and the change from the period before, the best and worst campaigns by the low end of the interval of the reply rate, campaigns with a bounce problem, unusual days, active campaigns running out of leads (none left to start, or running out within runway_days at the recent pace of new leads started) and, apart, stalled ones (leads left to start but none started in the period), campaigns with many skipped leads (loaded, then never sent to by the tool: over max_skipped_share of the campaign's leads, 5% by default, and at least min_skipped, 100), which usually means a block list or a duplicate rule keeps out leads meant to be sent to, and a short list of action items in plain language, each naming the campaign and the number behind it, with the campaigns that need leads in one item at the end. `remaining` counts leads not yet started; leads partway through the sequence are `inSequence`. Pass provider to read one tool of a combined instance, and tag for one client's campaigns. totalsBasis says what the totals count, and on a combined instance a tool with no campaign in statuses is named in toolsLeftOut with its own totals for the period, one stats request each. Reply rates divide by messages sent (`replyRateBasis`), since a period's replies also answer leads contacted before it, and by leads contacted for both periods only when a period does not report messages sent. Use it for a weekly client update. A section the adapter cannot serve is null and named in `leftOut`, and a null count is one the vendor does not report: totals.current.meetingsBooked is null where the tool records no meetings, never opportunities or positive replies. Costs two stats requests per campaign, one for the workspace, and for each active campaign one more plus its pages of leads, its active leads only where the tool lists them alone (leads.byStatus). Where the tool counts skipped leads, each campaign also costs one progress read: on Instantly the report and the pages of leads not contacted, usually 2 requests and at most 51. On Instantly a stats read is 2 requests, since it also reads the campaign's tracking settings, so each active campaign costs about 9.",
   inputSchema: input,
   key: "clientReport",
   cost: (values, price) => {
@@ -385,7 +433,11 @@ export const clientReport = defineInsight({
         ? price.upTo(campaigns) *
           (price.list("leads.list", values.max_leads_per_campaign) +
             price.one("stats"))
-        : 0)
+        : 0) +
+      // Each campaign's progress, where the tool counts its skipped leads.
+      (capabilities["campaigns.progress"] === false
+        ? 0
+        : price.upTo(campaigns) * price.one("campaigns.progress"))
     );
   },
   scales: "max_campaigns",
@@ -462,6 +514,12 @@ export const clientReport = defineInsight({
 
     const runways = await readRunways(context, periods.campaigns, options);
 
+    const manySkippedLeads = await readManySkipped(
+      context,
+      periods.campaigns.map((entry) => entry.campaign),
+      skippedLimits(options)
+    );
+
     const sections: Sections = {
       anomalies,
       bottom: ranking.ranked
@@ -469,25 +527,18 @@ export const clientReport = defineInsight({
         .slice(-options.limit)
         .toReversed(),
       bounceProblems: bounceProblems(periods.campaigns, options),
+      manySkippedLeads,
       runningOutOfLeads: runways?.runningOut ?? null,
       stalled: runways?.stalled ?? null,
       totals,
     };
 
-    const leftOut = [
-      ...(sections.anomalies === null
-        ? [
-            tag === undefined
-              ? "Unusual days: the adapter has no workspace stats by day."
-              : "Unusual days: they are workspace-wide, so a tag leaves them out.",
-          ]
-        : []),
-      ...(runways === null
-        ? [
-            "Campaigns running out of leads: the adapter cannot list a campaign's leads or has no stats by day.",
-          ]
-        : []),
-    ];
+    const leftOut = leftOutOf({
+      anomalies: sections.anomalies,
+      runways,
+      skipped: manySkippedLeads,
+      tagged: tag !== undefined,
+    });
 
     for (const section of leftOut) {
       context.note(`Left out. ${section}`);

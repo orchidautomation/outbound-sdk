@@ -108,3 +108,7 @@ Added on 2026-11-16 for OUT-92, by hand: `listEmails.autoReplies.json`, one camp
 
 - `listEmails.timedAuto.json` (`GET /emails`, both directions): written by hand in the shape of `listEmails.followUp.json`. Two threads in one campaign, each a step-1 send and an `i_status` 1 (positive) reply from a person's address with a plain body. The first reply arrives 31 seconds after its send, the shape of the live replies the agent and SDR manager runs counted as dropped (2026-11-17): no address, subject or phrase rule matches it, so only the one-minute timing rule, which needs the send, marks it automatic. The second arrives a day later. Every value is made up.
 - `listLeads.timedAuto.json` (`POST /leads/list`): the two leads of those threads, trimmed to the fields under test.
+
+## Added 2026-11-18 for OUT-175
+
+- `listLeads.notContacted.json` (`POST /leads/list` with `filter: "FILTER_VAL_NOT_CONTACTED"`): written by hand, not captured. One campaign's leads Instantly has not contacted, in the shape the live counts recorded in OUT-175 showed: mostly skipped leads (`status` -3, nothing sent, two at one company) and one active lead not yet started (`status` 1). It is a single short page, and carries a cursor as live last pages do. Every value is made up.

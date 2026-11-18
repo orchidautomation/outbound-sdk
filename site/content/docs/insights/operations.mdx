@@ -64,6 +64,8 @@ Why one campaign is underperforming: a list of findings, most serious first.
 | `min_positive_share` | 0.2 | 0 to 1 | A share of replies that are positive under this is a finding. |
 | `days` | 7 | 1 to 30 | The days, ending yesterday, held against the same number before. |
 | `max_send_drop` | 0.3 | 0 to 1 | A fall in sends, recent days against the days before, over this share is a finding. |
+| `max_skipped_share` | 0.05 | 0 to 1 | Skipped leads (loaded, then never sent to by the tool) over this share of the campaign's leads are a finding. |
+| `min_skipped` | 100 | 1 or more, whole | Fewer skipped leads than this are never a finding. |
 | `min_weekly_hours` | 20 | 0 to 168 | Sending windows open fewer hours a week than this limit volume. |
 | `daily_limit_share` | 0.9 | 0 to 1 | Average daily sends at or over this share of the daily limit mean the limit holds volume back. |
 | `max_senders` | 500 | 1 to 500 | The most of the campaign's own senders to read and screen. |
@@ -85,6 +87,7 @@ The findings:
 | --- | --- | --- |
 | `high_bounce_rate` | high | The bounce rate is over `max_bounce_rate`. |
 | `contacted_exceeds_leads` | high | Leads contacted are more than twice the campaign's leads, so the contacted count is not unique leads and the per-lead rates are off. Needs `campaigns.progress`. A little over is normal: leads removed after starting stay counted. |
+| `many_skipped_leads` | medium | Skipped leads, which the tool loaded and decided never to send to, are over `max_skipped_share` of the campaign's leads and at least `min_skipped`. Usually a block list or a duplicate rule keeping out leads meant to be sent to; `next` points there. Needs `campaigns.progress` with a `skipped` count (Instantly and HeyReach). |
 | `out_of_leads` | high | Sends fell or stopped and under a day of leads is left to start at the recent pace of new leads started, the pace `lead_runway` uses. It replaces `falling_sends` or `no_recent_sends`: the cause is lead runout, not a fault. |
 | `no_recent_sends` | high | The campaign is active but nothing was sent in the last `days`. |
 | `inactive_sender` | high | A sender of the campaign is not active or has a warmup score of 0. Every sender of the campaign is screened, up to `max_senders`. |
@@ -97,7 +100,7 @@ The findings:
 | `tracking_off` | low | Open or click tracking is off, so a missing open or click count is expected. |
 
 - **Needs:** `stats.campaign`. It checks more when the adapter has `campaigns.progress`, `campaigns.settings`, `sequence`, `senders.byCampaign` and `stats.byDay`.
-- **Costs:** up to 7 requests, plus one per page of the campaign's senders and, only when sends fell or stopped, one per page of its leads (up to `max_leads`): its active leads only where the adapter lists them alone (`leads.byStatus`). When `max_leads` stops that read, lead runout is not checked and `notChecked` says so.
+- **Costs:** up to 7 requests, plus one per page of the leads not contacted where the adapter counts skipped leads by listing them (Instantly, at most 50 pages), one per page of the campaign's senders and, only when sends fell or stopped, one per page of its leads (up to `max_leads`): its active leads only where the adapter lists them alone (`leads.byStatus`). When `max_leads` stops that read, lead runout is not checked and `notChecked` says so.
 - **Notes it can add:** one per part it could not check, the same sentences as `notChecked`: schedule and tracking, sequence length, sender status, recent sending trend.
 - **Does not:** say all is well. An empty list means nothing was found in what could be checked. Read `notChecked` beside it. It does not read the copy: use `copyAudit` and `stepFunnel` for that.
 
@@ -393,6 +396,7 @@ One report for one client or workspace over the last `days` complete days, compo
 | `max_bounce_rate` | 0.03 | 0 to 1 | A campaign bounce rate over this is a bounce problem. |
 | `runway_days` | 7 | 0 or more | A campaign with this many days of leads left or fewer is flagged. |
 | `max_leads_per_campaign` | 5,000 | 1 to 50,000 | The most leads to read per active campaign, for leads left. Where the adapter lists active leads alone (`leads.byStatus`), only those are read, so a campaign with thousands of finished leads costs a request or two. |
+| `max_skipped_share`, `min_skipped` | 0.05, 100 | as in `campaignDiagnosis` | A campaign whose skipped leads are over this share of its leads, and at least this many, is listed in `manySkippedLeads`. |
 | `anomaly_threshold` | 2.5 | above 0 | Standard deviations from the baseline that make a day unusual. |
 | `baseline_days` | 14 | 5 to 60 | Days before the period that form the anomaly baseline. |
 | `min_baseline_points` | 5 | 2 or more, whole | The fewest baseline days with data a day needs to be tested. |
@@ -407,16 +411,17 @@ One report for one client or workspace over the last `days` complete days, compo
 - `totals`: every campaign added together, as in `periodComparison`: `current`, `previous`, `change`, `replyRateBasis`, `replyRateTest`, `verdict` and `finding`. A rate counts only the campaigns that report both sides of it. `meetingsBooked` is `null` where the vendor records no meetings, never opportunities or positive replies.
 - `top`, `bottom`: the best and worst campaigns by the low end of the interval of the reply rate, over `replyRateBasis`. `bottom` never repeats a campaign in `top`.
 - `bounceProblems`: campaigns over `max_bounce_rate`, worst first, with the rate as `count`, `of`, `rate`, `low` and `high`, and `bounced` and `sent`, the same counts under their older names.
+- `manySkippedLeads`: campaigns whose skipped leads are over `max_skipped_share` of their leads and at least `min_skipped`, highest share first, each with `skipped`, `leads` and `share`. `null` when the adapter does not count skipped leads.
 - `anomalies`: unusual days in the period, workspace-wide. `null` when the adapter cannot serve them.
 - `totalsBasis`: what `totals` counts, as `totalBasis` in `periodComparison`.
 - `toolsLeftOut`: on a combined instance, each tool with no campaign in `statuses`, with its own workspace `counts` for the period.
 - `runningOutOfLeads`: active campaigns with no lead left to start (`state` `out_of_leads`), first, then those whose leads left to start last `runway_days` or fewer at the recent pace (`state` `draining`), soonest first. Each has `remaining` (leads not yet started), `inSequence` (leads partway through the sequence), `dailyContactRate` and `daysLeft` (`null` when the pace is 0 or unknown). `null` when the adapter cannot serve them.
 - `stalled`: active campaigns with leads left to start but no new lead started in the period, or no daily contacted count, with the same fields and `state` `stalled`. They need a look, not more leads.
-- `actions`: what to do, most pressing first, with the runway last. Each has a `kind` (`fix_bounces`, `reply_rate_fell`, `review_campaign`, `check_anomaly`, `add_leads` or `check_stalled`), the `campaign` and `campaignName` it is about (`null` for an item about several), an `action` sentence and the `number` behind it. Every campaign in `runningOutOfLeads` is in one `add_leads` item and every one in `stalled` in one `check_stalled` item, whose `number` is how many campaigns they name.
+- `actions`: what to do, most pressing first, with the runway last. Each has a `kind` (`fix_bounces`, `check_skipped_leads`, `reply_rate_fell`, `review_campaign`, `check_anomaly`, `add_leads` or `check_stalled`), the `campaign` and `campaignName` it is about (`null` for an item about several), an `action` sentence and the `number` behind it. Every campaign in `runningOutOfLeads` is in one `add_leads` item and every one in `stalled` in one `check_stalled` item, whose `number` is how many campaigns they name.
 - `leftOut`: the sections left out because the adapter cannot serve them.
 
 - **Needs:** `stats.campaign`. Unusual days also need `stats.byDay` and workspace stats. Leads left also needs `leads.byCampaign` and `stats.byDay`.
-- **Costs:** two stats requests per campaign, one for the workspace, and for each active campaign one more plus its pages of leads: its active leads only where the adapter lists them alone (`leads.byStatus`), otherwise every lead up to `max_leads_per_campaign`.
+- **Costs:** two stats requests per campaign, one for the workspace, and for each active campaign one more plus its pages of leads: its active leads only where the adapter lists them alone (`leads.byStatus`), otherwise every lead up to `max_leads_per_campaign`. Where the adapter counts skipped leads, each campaign also costs one progress read: on Instantly usually 2 requests, at most 51.
 - **Notes it can add:** one per section left out, starting "Left out."; `meetingsBooked` is `null` because no campaign read reports meetings, or counts only some campaigns; a rate of `totals` leaves out campaigns that do not report one side of it; a cap was reached.
 - **Does not:** filter by campaign. Without `provider` or `tag` it reports on everything the instance holds, or the one workspace it is scoped to. `tag` filters the campaigns read, so raise `max_campaigns` when the workspace has more than it reads. A campaign whose leads were cut off at `max_leads_per_campaign` is never flagged as running out, because its count is a minimum; a note names those campaigns. It writes no email and sends nothing.
 

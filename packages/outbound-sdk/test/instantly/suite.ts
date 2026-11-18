@@ -117,6 +117,14 @@ export const suite: AdapterSuite = {
           return "listLeadsByEmail.repliers.json";
         }
 
+        // The leads not contacted, read to count a campaign's skipped leads.
+        if (
+          (request.body as { filter?: string } | undefined)?.filter ===
+          "FILTER_VAL_NOT_CONTACTED"
+        ) {
+          return "listLeads.notContacted.json";
+        }
+
         return paged(contacts ? "listLeadsByEmail" : "listLeads")(request);
       },
       method: "POST",

@@ -44,6 +44,7 @@ export interface ActionItem {
   readonly kind:
     | "add_leads"
     | "check_anomaly"
+    | "check_skipped_leads"
     | "check_stalled"
     | "fix_bounces"
     | "reply_rate_fell"

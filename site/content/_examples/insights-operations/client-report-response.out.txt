@@ -68,6 +68,7 @@
         "sent": 560
       }
     ],
+    "manySkippedLeads": [],
     "runningOutOfLeads": [
       {
         "campaign": "memory:acme:founders",
