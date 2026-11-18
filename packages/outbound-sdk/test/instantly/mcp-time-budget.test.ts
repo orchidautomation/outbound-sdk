@@ -207,7 +207,7 @@ test("ping is answered at once while a long tool call is still running", async (
 });
 
 const TIME_NOTE =
-  /dropped_replies stopped at its time budget of 60s, so the answer leaves out what it had not read by then\. Call it again with less to read, such as fewer campaigns or a shorter range, or raise --time-budget on outbound mcp/u;
+  /dropped_replies stopped at its time budget of 60s: what it had not read would not have been read in time, so the answer leaves it out\. Call it again with less to read, such as fewer campaigns or a shorter range, or raise --time-budget on outbound mcp/u;
 
 test("a call that runs out its time budget returns by then with what it read, marked incomplete", async () => {
   const ran = await mcp(["--time-budget", "60"], () =>

@@ -236,7 +236,7 @@ export const toolCalls = (options: CallsOptions): Calls => {
         deadlineAt: limited ? startedAt + timeBudgetMs : undefined,
         expired: () => expired,
         signal: controller.signal,
-        stopMessage: `${name} stopped at its time budget of ${secondsOf(timeBudgetMs)}s, so the answer leaves out what it had not read by then. Call it again with less to read, such as fewer campaigns or a shorter range, or raise ${timeBudgetSetting} and the client's tool timeout with it.`,
+        stopMessage: `${name} stopped at its time budget of ${secondsOf(timeBudgetMs)}s: what it had not read would not have been read in time, so the answer leaves it out. Call it again with less to read, such as fewer campaigns or a shorter range, or raise ${timeBudgetSetting} and the client's tool timeout with it.`,
       };
 
       const turn = queue.then(async () =>
