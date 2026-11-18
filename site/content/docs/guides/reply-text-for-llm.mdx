@@ -36,7 +36,7 @@ The SDK calls no model and does not inspect, classify or clean reply text.
 </include>
 
 - **Without `include_bodies`** a reply is its category, its time and refs. `body` is `null`. A model that only needs to count or sort replies never sees the text.
-- **With it**, `body` is `untrusted_content`, `truncated` and `note`. The second reply is an injection attempt, and it comes through word for word. The third is longer than 500 characters, so it is cut and `truncated` is `true`.
+- **With it**, `body` is `untrustedContent`, `truncated` and `note`. The second reply is an injection attempt, and it comes through word for word. The third is longer than 500 characters, so it is cut and `truncated` is `true`.
 - **`category` comes from the vendor**, never from a model. `category_source` says so.
 - **The tool returns refs, not addresses.** `lead` is a ref such as `memory:acme:lead_dana`. But the first reply carries a phone number and an address in its text, because the prospect typed them.
 
@@ -91,7 +91,7 @@ A hash is a token, not anonymity. Anyone who can guess an address can hash it an
 ## What marking does and does not do
 
 <Callout type="warning" title="The note is a convention, not a control">
-  `untrusted_content` and its note tell a model how to treat the text. Nothing
+  `untrustedContent` and its note tell a model how to treat the text. Nothing
   enforces it. A model can still follow an instruction inside a reply.
 </Callout>
 

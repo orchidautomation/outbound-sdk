@@ -156,6 +156,11 @@ test("heyreach: dropped_replies sets aside conversations in no campaign and coun
   assert.equal(result.data.totals.repliesRead, 3);
   assert.equal(result.data.totals.notInCampaign, 2);
   assert.equal(result.data.totals.dropped, 1);
+  assert.ok(
+    result.meta.notes.includes(
+      "2 replies in conversations that belong to no campaign, such as a LinkedIn account's own messages on HeyReach, were set aside and counted in totals.notInCampaign. Pass include_inbox: true to check them."
+    )
+  );
 
   const all = instance();
 
@@ -168,6 +173,9 @@ test("heyreach: dropped_replies sets aside conversations in no campaign and coun
 
   assert.equal(inbox.data.totals.dropped, 3, "the behavior before the fix");
   assert.equal(inbox.data.totals.notInCampaign, 0);
+  assert.ok(
+    !inbox.meta.notes.some((note) => note.includes("totals.notInCampaign"))
+  );
 });
 
 test("heyreach: reply_timing leaves the inbox's own conversations out of every figure, unless include_inbox", async () => {

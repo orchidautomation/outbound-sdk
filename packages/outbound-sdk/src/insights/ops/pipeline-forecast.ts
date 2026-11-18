@@ -314,7 +314,7 @@ export const forecastCampaign = async (
 
 export const pipelineForecast = defineInsight({
   description:
-    "The leads one campaign has left and what they should produce: leads counted by status, the leads still active, split into those not yet started and those partway through the sequence, the days until no lead is left to start at the recent pace of new leads started per day (the same figure lead_runway gives), and the replies and positive replies to expect from the remaining leads at the campaign's reply rate so far, each with a low and a high figure from the 95% interval. Use it to decide when to load more leads. It is an estimate and lists what it assumes; a null means the vendor does not report the count behind it. Costs one request per page of leads, plus two stats requests.",
+    "The leads one campaign has left and what they should produce: leads by status, the active leads split into not yet started and partway through the sequence, the days until none is left to start at the recent pace (the figure lead_runway gives), and the replies and positive replies to expect at the campaign's reply rate so far, each with a low and a high figure from the 95% interval. Use it to decide when to load more leads. Costs one request per page of leads, plus two stats requests.",
   inputSchema: input,
   key: "pipelineForecast",
   cost: (values, price) =>

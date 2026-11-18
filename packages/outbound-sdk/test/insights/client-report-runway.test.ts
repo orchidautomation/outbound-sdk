@@ -133,13 +133,9 @@ test("on a combined instance lead_runway reads through the owning tool and agree
       (each) => each.campaign === "mailtool:agency:big"
     );
 
-    assert.equal(
-      data.counted_leads,
-      20,
-      "only the active leads, under the cap"
-    );
+    assert.equal(data.countedLeads, 20, "only the active leads, under the cap");
     assert.equal(data.state, big?.state);
-    assert.equal(data.active_leads, big?.remaining);
+    assert.equal(data.activeLeads, big?.remaining);
   } finally {
     Date.now = realNow;
   }

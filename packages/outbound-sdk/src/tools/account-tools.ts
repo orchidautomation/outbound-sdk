@@ -26,17 +26,19 @@ export const campaignSetup: ToolDefinition<z.infer<typeof setupInput>> = {
     return {
       data: {
         campaign: settings.campaignRef,
-        daily_limit: settings.dailyLimit,
-        daily_new_leads: settings.dailyNewLeads,
-        end_date: settings.endDate,
-        gap_minutes: settings.gapMinutes,
-        plain_text: settings.plainText,
+        dailyLimit: settings.dailyLimit,
+        dailyNewLeads: settings.dailyNewLeads,
+        endDate: settings.endDate,
+        gapMinutes: settings.gapMinutes,
+        plainText: settings.plainText,
+        provider: settings.provider,
         schedule: settings.schedule.map((window) => ({ ...window })),
-        start_date: settings.startDate,
-        stop_on_auto_reply: settings.stopOnAutoReply,
-        stop_on_reply: settings.stopOnReply,
-        track_clicks: settings.tracking.clicks,
-        track_opens: settings.tracking.opens,
+        startDate: settings.startDate,
+        stopOnAutoReply: settings.stopOnAutoReply,
+        stopOnReply: settings.stopOnReply,
+        trackClicks: settings.tracking.clicks,
+        trackOpens: settings.tracking.opens,
+        workspaceId: settings.workspaceId,
       },
       meta: {
         complete: settings.meta.complete,
@@ -103,7 +105,7 @@ export const vendorRead: ToolDefinition<z.infer<typeof nativeInput>> = {
     const result = await outbound.native.read(input.name, input.params);
 
     return {
-      data: { note: UNTRUSTED_NOTE, untrusted_content: result.data },
+      data: { note: UNTRUSTED_NOTE, untrustedContent: result.data },
       meta: {
         complete: result.meta.complete,
         evidence: result.meta.evidence,
@@ -123,7 +125,7 @@ const listsInput = z.object({
 
 export const audienceLists: ToolDefinition<z.infer<typeof listsInput>> = {
   description:
-    "The saved lead lists on the account with how many records each holds. Use it to see what audiences exist before asking about one campaign's leads. meta.complete: false means limit cut the list.",
+    "The saved lead lists on the account with how many records each holds. Use it to see what audiences exist before asking about one campaign's leads.",
   inputSchema: listsInput,
   name: "audience_lists",
   needs: ["lists.list"],
@@ -134,11 +136,13 @@ export const audienceLists: ToolDefinition<z.infer<typeof listsInput>> = {
     return {
       data: {
         lists: lists.map((list) => ({
-          created_at: list.createdAt,
+          createdAt: list.createdAt,
           kind: list.kind,
           list: list.ref,
           name: list.name,
+          provider: list.provider,
           size: list.size,
+          workspaceId: list.workspaceId,
         })),
       },
       meta: {

@@ -243,7 +243,7 @@ const canCheckSenders = (context: InsightContext, wanted: boolean): boolean => {
 
 export const bounceWatch = defineInsight({
   description:
-    "Where bounces are too high: the campaigns whose bounce rate (bounced divided by sent) is over a threshold, worst first, each with bounced, sent, the rate and its Wilson interval, and the senders of each such campaign that are themselves over the threshold. Campaigns with too few sends to judge and campaigns with no reported bounce count are listed apart, never as clean. Use it daily, or when a domain's reputation is in doubt. Costs one listing of campaigns and 1 request per campaign, plus 1 listing and up to 1 request per sender for each campaign over the threshold. A null rate means nothing was sent.",
+    "Where bounces are too high: the campaigns whose bounce rate (bounced over sent) is over a threshold, worst first, each with bounced, sent, the rate with its Wilson interval, and its senders that are over the threshold too. Campaigns with too few sends or no bounce count are listed apart, never as clean. Use it daily, or when a domain's reputation is in doubt. Costs a campaign listing and 1 request per campaign, plus a sender listing and 1 request per sender for each campaign over the threshold.",
   inputSchema: input,
   key: "bounceWatch",
   cost: (values, price) => {

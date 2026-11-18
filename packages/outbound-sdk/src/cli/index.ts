@@ -22,6 +22,10 @@ export type { CliConfig } from "./config.ts";
 
 export { createMcpServer, PROTOCOL_VERSIONS } from "./mcp.ts";
 
+export { OUTPUT_SCHEMA } from "./mcp-answers.ts";
+
+export { RENAMED_TOOLS } from "./surface.ts";
+
 export type { McpServer, McpServerOptions } from "./mcp.ts";
 
 export { serveStdio } from "./stdio.ts";

@@ -497,7 +497,9 @@ test("reply_timing leaves replies flagged automatic out, and counts them with in
   assert.equal(result.data.timeToReply.sample, 2);
   assert.equal(result.data.timeToReply.within1Hour, 0);
   assert.equal(result.data.counts.autoReplies, 8);
-  assert.deepEqual(result.meta.notes, []);
+  assert.deepEqual(result.meta.notes, [
+    "Left out 8 automatic replies, flagged by the vendor or by fixed rules on the sender, subject, canned phrases or a reply within a minute of the send. include_auto counts them.",
+  ]);
   assert.equal(result.meta.complete, true);
 
   const all = await outbound.insights.replyTiming(

@@ -30,7 +30,7 @@ const input = z.object({
     .min(1)
     .default([...SENDABLE])
     .describe(
-      "Only a matching lead in one of these states is a violation: active, paused, unknown (not yet started, or the tool does not say), completed, skipped (the tool decided never to send), replied, bounced or unsubscribed. Other matches are counted in totals.alreadyStopped. Defaults to the leads still being sent to."
+      "Lead states that make a match a violation; other matches count in totals.alreadyStopped. Defaults to leads still being sent to."
     ),
   max_block_entries: z
     .number()
@@ -39,7 +39,7 @@ const input = z.object({
     .max(100_000)
     .default(10_000)
     .describe(
-      "The most block list entries to read. A vendor request returns about 50 to 100. A lead on an entry past this cap is not found, so violations is null when entries are left unread."
+      "The most block list entries to read (about 50 to 100 per request); with entries left unread, violations is null."
     ),
   max_campaigns: z
     .number()
@@ -48,7 +48,7 @@ const input = z.object({
     .max(200)
     .default(200)
     .describe(
-      "The most campaigns to check. Each costs one request per page of its leads. Defaults to the most allowed, so every campaign in the statuses is checked."
+      "The most campaigns to check, each one request per page of its leads. The default checks every campaign in the statuses."
     ),
   max_leads_per_campaign: z
     .number()
@@ -293,6 +293,46 @@ const gapsOf = (
       ]),
 ];
 
+/**
+ * Matches each campaign's leads against the block list. A match is a
+ * violation only when the lead's status is in `sendable`.
+ */
+const checkLeads = (
+  read: readonly {
+    readonly campaign: Campaign;
+    readonly items: readonly Lead[];
+  }[],
+  blocked: Blocked,
+  tokens: boolean,
+  sendable: ReadonlySet<string>
+) => {
+  const violations: SuppressionViolation[] = [];
+  const byCampaign: SuppressionCampaign[] = [];
+  let alreadyStopped = 0;
+
+  for (const { campaign, items: leads } of read) {
+    const matched = leads.flatMap((lead) => {
+      const hit = matchLead(lead, blocked, tokens);
+
+      return hit === null ? [] : [toViolation(lead, campaign, hit)];
+    });
+
+    const found = matched.filter((each) => sendable.has(each.leadStatus));
+
+    alreadyStopped += matched.length - found.length;
+
+    violations.push(...found);
+    byCampaign.push({
+      campaign: campaign.ref,
+      campaignName: campaign.name,
+      leadsRead: leads.length,
+      violations: found.length,
+    });
+  }
+
+  return { alreadyStopped, byCampaign, violations };
+};
+
 /** The answer in one sentence, what the check covered first. */
 const findingOf = (
   violations: readonly SuppressionViolation[],
@@ -321,7 +361,7 @@ const findingOf = (
 
 export const suppressionCheck = defineInsight({
   description:
-    "Leads sitting in campaigns although they are on the block list. Reads the block list, then the leads of each campaign in the given statuses (active by default), and matches a lead by exact email address, by email domain against domain entries, and by LinkedIn profile against profile entries. A match is a violation only when the lead's own status is in lead_statuses (active, paused or unknown by default, the leads still being sent to); a lead that already unsubscribed, bounced, replied or completed is counted in totals.alreadyStopped instead. Returns a finding sentence that leads with what was checked, each violation with the lead, the campaign, the entry and how it matched, and counts per campaign. Every campaign in the statuses is checked by default; when a cap leaves campaigns, leads or block entries unread, totals.violations is null, totals.violationsFound counts what was found, and the finding names each cap to raise, never a bare 0. On several tools an entry on one tool's list is also matched against the other tools' leads and marked sameTool false. Costs one request per page of block entries plus one per page of each campaign's leads.",
+    "Leads still being sent to although they are on the block list. Matches each campaign's leads by email address, email domain or LinkedIn profile against the block entries, and returns each violation with the lead, campaign, entry and how it matched, plus counts per campaign. The finding leads with what was checked and names any cap to raise; totals.violations is null when a cap left something unread. Costs one request per page of block entries plus one per page of each campaign's leads.",
   inputSchema: input,
   key: "suppressionCheck",
   cost: (values, price) =>
@@ -359,11 +399,6 @@ export const suppressionCheck = defineInsight({
 
     const campaigns = listedCampaigns.items;
 
-    const sendable = new Set<string>(values.lead_statuses);
-    const violations: SuppressionViolation[] = [];
-    const byCampaign: SuppressionCampaign[] = [];
-    let alreadyStopped = 0;
-
     const read = await mapConcurrent(campaigns, async (campaign) => ({
       campaign,
       ...(await readCappedFlag(
@@ -376,24 +411,17 @@ export const suppressionCheck = defineInsight({
       )),
     }));
 
-    for (const { campaign, items: leads } of read) {
-      const matched = leads.flatMap((lead) => {
-        const hit = matchLead(lead, blocked, tokens);
+    const { alreadyStopped, byCampaign, violations } = checkLeads(
+      read,
+      blocked,
+      tokens,
+      new Set(values.lead_statuses)
+    );
 
-        return hit === null ? [] : [toViolation(lead, campaign, hit)];
-      });
-
-      const found = matched.filter((each) => sendable.has(each.leadStatus));
-
-      alreadyStopped += matched.length - found.length;
-
-      violations.push(...found);
-      byCampaign.push({
-        campaign: campaign.ref,
-        campaignName: campaign.name,
-        leadsRead: leads.length,
-        violations: found.length,
-      });
+    if (alreadyStopped > 0) {
+      context.note(
+        `${plural(alreadyStopped, "lead on the block list is", "leads on the block list are")} in a state outside lead_statuses, such as unsubscribed, bounced, replied or completed, so ${alreadyStopped === 1 ? "it is" : "they are"} counted in totals.alreadyStopped, not as ${alreadyStopped === 1 ? "a violation" : "violations"}.`
+      );
     }
 
     const matches = tally(violations.map((each) => each.matchedBy));

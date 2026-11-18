@@ -95,8 +95,12 @@ const variantFinding = (data: Json | undefined): string => {
     return "No step stats in this date range.";
   }
 
-  return bool(data, "variantStatsReported") === false
-    ? "The vendor does not report results by variant for this campaign."
+  if (bool(data, "variantStatsReported") === false) {
+    return "The vendor does not report results by variant for this campaign.";
+  }
+
+  return num(totals, "stepsTested") === 0
+    ? "No step has two variants to compare."
     : `${plural(num(totals, "winners") ?? 0, "step")} with a real winner out of ${int(
         num(totals, "stepsTested")
       )} tested.`;

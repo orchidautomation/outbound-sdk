@@ -153,6 +153,7 @@ test("suppression_check reports each lead still being sent to on the block list,
   // Entries it could not check leave the answer incomplete (OUT-127).
   assert.equal(result.meta.complete, false);
   assert.deepEqual(result.meta.notes, [
+    "1 lead on the block list is in a state outside lead_statuses, such as unsubscribed, bounced, replied or completed, so it is counted in totals.alreadyStopped, not as a violation.",
     "2 of the block entries read name a company or another kind of entry no lead can be matched on, so they were not checked.",
   ]);
 });
@@ -338,6 +339,7 @@ test("suppression_check says the answer is partial when a cap stops a read", asy
   assert.equal(fewEntries.meta.complete, false);
   assert.deepEqual(fewEntries.meta.notes, [
     "Stopped at 1 block list entry (max_block_entries); more exist.",
+    "1 lead on the block list is in a state outside lead_statuses, such as unsubscribed, bounced, replied or completed, so it is counted in totals.alreadyStopped, not as a violation.",
   ]);
 
   const fewCampaigns = await single(MAIL).insights.suppressionCheck({

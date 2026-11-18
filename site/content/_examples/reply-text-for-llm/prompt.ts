@@ -19,14 +19,14 @@ export const repliesForPrompt = async (
     replies.map((reply) => ({
       category: reply.category,
       lead: reply.leadRef,
-      received_at: reply.sentAt,
+      receivedAt: reply.sentAt,
       text:
         reply.bodyText === null
           ? null
           : {
               note: UNTRUSTED_NOTE,
               truncated: reply.bodyText.length > DEFAULT_BODY_CHARS,
-              untrusted_content: reply.bodyText.slice(0, DEFAULT_BODY_CHARS),
+              untrustedContent: reply.bodyText.slice(0, DEFAULT_BODY_CHARS),
             },
     })),
     null,

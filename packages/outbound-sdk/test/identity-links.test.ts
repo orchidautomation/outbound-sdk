@@ -308,14 +308,14 @@ test("with no identifier type shared, a tool that cannot be searched is undeterm
       provider: "mailtool",
       searchable: ["email"],
       status: "undetermined",
-      workspace: "agency",
+      workspaceId: "agency",
     },
     {
       identifiers: ["linkedin"],
       provider: "lntool",
       searchable: ["linkedin"],
       status: "linked",
-      workspace: "acme",
+      workspaceId: "acme",
     },
   ]);
 

@@ -69,11 +69,16 @@ const failed = (cause: unknown, what: string): Read<never> => {
   };
 };
 
+/** An active campaign a failing sender sends for, listed once in the answer's top-level `campaigns`. */
+export interface ImpactCampaign {
+  readonly campaign: string;
+  readonly campaignName: string;
+  readonly provider: string;
+  readonly workspaceId: string;
+}
+
 interface ActiveCampaigns {
-  readonly campaigns: readonly {
-    readonly campaign: string;
-    readonly name: string;
-  }[];
+  readonly campaigns: readonly ImpactCampaign[];
   readonly count: number | null;
 }
 
@@ -81,7 +86,7 @@ interface RecentSends {
   readonly from: string;
   readonly to: string;
   readonly sent: number | null;
-  readonly last_sent_on: string | null;
+  readonly lastSentOn: string | null;
 }
 
 const activeCampaigns = async (
@@ -109,7 +114,9 @@ const activeCampaigns = async (
       value: {
         campaigns: active.slice(0, CAMPAIGNS_NAMED).map((campaign) => ({
           campaign: campaign.ref,
-          name: campaign.name,
+          campaignName: campaign.name,
+          provider: campaign.provider,
+          workspaceId: campaign.workspaceId,
         })),
         count: walk.truncated ? null : active.length,
       },
@@ -162,7 +169,7 @@ const sendsIn = (
 
   return {
     reason,
-    value: { from, last_sent_on: lastSent ?? null, sent: total, to },
+    value: { from, lastSentOn: lastSent ?? null, sent: total, to },
   };
 };
 
@@ -269,6 +276,7 @@ const batchedSends = async (
 
 export interface Impact {
   readonly impact: JsonObject;
+  readonly campaigns: readonly ImpactCampaign[];
   readonly requests: number;
 }
 
@@ -289,27 +297,27 @@ const impactOf = async (
 
   const sendsKey =
     sends.value === null || sends.value.sent === null
-      ? "recent_sends"
-      : "last_sent_on";
+      ? "recentSends"
+      : "lastSentOn";
 
   const unknown = Object.fromEntries([
-    ["last_authenticated_at", NO_SIGN_IN_TIME],
+    ["lastAuthenticatedAt", NO_SIGN_IN_TIME],
     ...(campaigns.reason === undefined
       ? []
-      : [["active_campaigns", campaigns.reason]]),
+      : [["activeCampaigns", campaigns.reason]]),
     ...(sends.reason === undefined ? [] : [[sendsKey, sends.reason]]),
   ]);
 
   return {
     impact: {
-      active_campaign_count: campaigns.value?.count ?? null,
-      active_campaigns:
+      activeCampaignCount: campaigns.value?.count ?? null,
+      activeCampaigns:
         campaigns.value === null
           ? null
-          : campaigns.value.campaigns.map((campaign) => ({ ...campaign })),
-      last_authenticated_at: null,
-      last_sent_on: sends.value?.last_sent_on ?? null,
-      recent_sends:
+          : campaigns.value.campaigns.map((campaign) => campaign.campaign),
+      lastAuthenticatedAt: null,
+      lastSentOn: sends.value?.lastSentOn ?? null,
+      recentSends:
         sends.value === null
           ? null
           : {
@@ -319,6 +327,7 @@ const impactOf = async (
             },
       unknown,
     },
+    campaigns: campaigns.value?.campaigns ?? [],
     requests: campaigns.requests + sends.requests,
   };
 };
@@ -326,6 +335,12 @@ const impactOf = async (
 export interface Impacts {
   /** By sender ref. */
   readonly bySender: ReadonlyMap<string, JsonObject>;
+  /**
+   * Every active campaign a failing sender sends for, each once: a sender's
+   * `impact.activeCampaigns` holds only refs into it, since senders in a
+   * shared pool send for the same campaigns.
+   */
+  readonly campaigns: readonly JsonObject[];
   readonly requests: number;
   readonly notes: readonly string[];
   /** Failing senders left without impact. */
@@ -358,8 +373,15 @@ export const readImpacts = async (
 
   const skipped = failing.length - chosen.length;
 
+  const campaigns = new Map(
+    read.flatMap((entry) =>
+      entry.campaigns.map((campaign) => [campaign.campaign, campaign] as const)
+    )
+  );
+
   return {
     bySender: new Map(read.map((entry) => [entry.ref, entry.impact])),
+    campaigns: [...campaigns.values()].map((campaign) => ({ ...campaign })),
     notes:
       skipped > 0
         ? [

@@ -1,0 +1,12 @@
+---
+"outbound-sdk": minor
+---
+
+`outbound mcp` and `createMcpServer` list fewer, smaller tools, and send each result once (OUT-168). **Breaking for MCP clients**: `tools/list` names change, and the result text is now a summary. Every old name keeps working until 0.16.0.
+
+- Neighbouring tools are merged into one, picked by `view` (one answer) or `checks` (several, each under `data.<check>`): `campaigns` (campaign_overview, campaign_ranking, campaign_trend), `sender_health` (sender_health, deliverability_check, warmup_readiness, domain_health, bounce_watch), `sender_capacity` (sender_capacity, sender_load), `lead_runway` (lead_runway, pipeline_forecast), `list_hygiene` (suppression_check, lead_collisions), `copy_review` (copy_audit, variant_test, personalization_gaps, copy_reuse), `step_funnel` (step_funnel, winning_steps) and `person` (person_summary, cross_channel_lead, account_summary). `dropped_replies` is now `unanswered_replies`, and `include: "thread"` puts each reply's conversation in its item. With `--provider all` and redact, `tools/list` goes from 36 tools and 84,528 bytes to 23 tools and about 55 KB, and a test keeps it under 56,000 bytes.
+- **Aliases.** A call to any old name runs the tool it was, as it was, with a note in `meta.notes` naming how to call it now. `--tools` and `outbound tool` take old and new names. `RENAMED_TOOLS` from `outbound-sdk/cli` maps each old name to its replacement. The SDK's own tools, insights and CLI insight names are unchanged.
+- **One copy of each result.** A client on protocol `2025-06-18` gets the answer in `structuredContent` and a short summary as the `content` text; an older client still gets the whole answer as text. Every tool declares the answer envelope as `outputSchema` (`OUTPUT_SCHEMA`).
+- **scope.** Every listed tool takes `scope: { provider, workspace }`, and `tag` where the tool can read one campaign tag. `initialize` names what the server reads, says once how to read `meta.complete` and `meta.notes` instead of in every description, and points bulk exports to the CLI's `--jsonl` or the SDK.
+- **person under redact** is always listed: its timeline and account views answer with the masked summary view and a note, instead of the tools being left out.
+- **Shorter descriptions.** Every tool and insight description is at most 600 characters; caveats that apply to one answer now come as notes on that answer. `createTools` and `insightTools` take `answerNote: false` to leave out the shared sentence on `meta.complete`.

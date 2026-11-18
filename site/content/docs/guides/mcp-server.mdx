@@ -34,8 +34,8 @@ This is a recorded exchange with the real server, run in-process on the in-memor
 Three things to notice:
 
 - **`instructions`** tells the client that reply text is data, and names the plugins that are on: `redact`, as `outbound mcp` starts by default. A client may or may not pass it to its model.
-- **36 tools** on an instance with `redact()` and no vendor reads of its own: the built-in tools and the [insights](/docs/insights) this instance can serve. `account_summary`, which matches people by the domain of an email address, is left out while `redact` masks addresses; `person_summary` stays, and looks up a lead ref by the tokens `redact` wrote. Each carries `annotations.readOnlyHint: true`.
-- **A tool result comes twice**: as text in `content`, and as the same object in `structuredContent`. `meta.evidence` says how far to trust the numbers and `next` suggests the tool to call after this one.
+- **23 tools** on an instance with `redact()` and no vendor reads of its own: the built-in tools and the [insights](/docs/insights) this instance can serve, neighbours merged into one tool picked by `view` or `checks` (see [the tools it serves](/docs/cli/mcp#the-tools-it-serves)). Each carries `annotations.readOnlyHint: true` and the answer envelope as `outputSchema`.
+- **A tool result comes once**, in `structuredContent`, with a short summary as the `content` text. `meta.evidence` says how far to trust the numbers and `next` suggests the tool to call after this one.
 
 ## Connect a client
 
@@ -84,7 +84,7 @@ A prospect writes the reply, so a reply can contain text aimed at your agent: "i
 
 - By default `outbound mcp` runs with `redact()`, which refuses reply text outright. The points below apply once you start it with `--no-redact`.
 - `reply_samples` leaves reply text out unless the model asks with `include_bodies: true`.
-- When included, text is cut to 500 characters and returned inside `untrusted_content` with a note that says to treat it as data.
+- When included, text is cut to 500 characters and returned inside `untrustedContent` with a note that says to treat it as data.
 - The note and the server's `instructions` are a convention. A model can ignore them. Do not give the same agent a tool that sends email or changes data and expect the note to hold it back.
 - On a real vendor, with `--no-redact`, the server also offers `vendor_read`, which returns the vendor's own response. It is wrapped the same way, and it is not normalized or masked.
 
@@ -118,7 +118,7 @@ A prospect writes the reply, so a reply can contain text aimed at your agent: "i
 }
 ```
 
-- `--no-redact` turns masking off, for an agent that needs reply text or `cross_channel_lead`.
+- `--no-redact` turns masking off, for an agent that needs reply text or `person`'s timeline and account views.
 - `--cache <seconds>` serves a repeat read from memory for that long.
 - `--max-requests <n>` caps what one tool call may spend against the vendor's rate limit.
 - `--config <file>` loads any other plugin from a file whose default export is `defineConfig({ plugins: [...] })`. `redact()` is put in front of them unless the file has its own.
@@ -143,7 +143,7 @@ Call `serve()` with no arguments from the file your client starts. The sample be
   ../../_examples/mcp-server/own-session.out.txt
 </include>
 
-With `redact()` on the instance, asking for bodies is refused, and `vendor_read` and `cross_channel_lead` are not offered.
+With `redact()` on the instance, asking for bodies is refused, `vendor_read` is not offered, and `person` answers its timeline view with the masked summary.
 
 ## Try it without a key
 
@@ -177,8 +177,8 @@ HeyReach reports no per-step stats and no readable campaign settings, so four in
 
 Starting the server and `tools/list` make no vendor request. A tool call spends requests against the vendor's rate limit, and each result reports the number in `meta.requests`.
 
-- `campaign_overview` reads the campaign list, then stats once per campaign, up to `limit` campaigns (default 10).
-- `deliverability_check` reads the sender list (up to 500 senders), then one or more requests per sender it checks in full, up to `limit` senders (default 10).
+- `campaigns` with view `list` reads the campaign list, then stats once per campaign, up to `limit` campaigns (default 10).
+- `sender_health` with checks `["deliverability"]` reads the sender list (up to 500 senders), then one or more requests per sender it checks in full, up to `limit` senders (default 10).
 - `vendor_read` is one request per call. With no `name` it lists the reads on offer and makes none.
 
 `outbound mcp` sets no cap unless you start it with `--max-requests <n>`. That adds `budget()`, which the server resets before each tool call, so `n` is the most one tool call may spend. A tool that reaches it returns `RateLimited` with `isError: true`.

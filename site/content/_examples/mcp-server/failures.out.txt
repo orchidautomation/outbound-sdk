@@ -1,5 +1,5 @@
-{"id":"bad input","result":{"isError":true,"structuredContent":{"error":{"code":"Invalid","message":"campaign_trend: from Use YYYY-MM-DD"},"ok":false}}}
-{"id":"unknown argument","result":{"isError":true,"structuredContent":{"error":{"code":"Invalid","message":"campaign_overview: \"client\" is not an input. It takes: campaign, from, limit, status, to"},"ok":false}}}
+{"id":"bad input","result":{"isError":true,"structuredContent":{"error":{"code":"Invalid","message":"campaigns with view \"trend\": from Use YYYY-MM-DD"},"ok":false}}}
+{"id":"unknown argument","result":{"isError":true,"structuredContent":{"error":{"code":"Invalid","message":"campaigns: \"client\" is not an input. It takes: campaign, from, limit, max_campaigns, metric, min_sent, scope, status, statuses, to, view"},"ok":false}}}
 {"id":"no such campaign","result":{"isError":true,"structuredContent":{"error":{"code":"NotFound","message":"Campaign nope was not found"},"ok":false}}}
 {"error":{"code":-32602,"message":"Unknown tool: pause_campaign"},"id":"unknown tool"}
 {"error":{"code":-32601,"message":"Method not found: resources/list"},"id":"unknown method","jsonrpc":"2.0"}

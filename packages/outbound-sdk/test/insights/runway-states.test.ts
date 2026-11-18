@@ -272,19 +272,15 @@ test("runway: lead_runway and client_report give the same state, days and comple
     const toolData = (tool as { data: Record<string, unknown> }).data;
 
     assert.equal(toolData.state, entry?.state, live.name);
-    assert.equal(toolData.runway_days, entry?.daysLeft, live.name);
-    assert.equal(
-      toolData.contacted_per_day,
-      entry?.dailyContactRate,
-      live.name
-    );
+    assert.equal(toolData.runwayDays, entry?.daysLeft, live.name);
+    assert.equal(toolData.contactedPerDay, entry?.dailyContactRate, live.name);
     // With no lead's progress reported, every active lead counts as not started.
     assert.equal(
-      toolData.not_started ?? toolData.active_leads,
+      toolData.notStarted ?? toolData.activeLeads,
       entry?.remaining,
       live.name
     );
-    assert.equal(toolData.in_sequence, entry?.inSequence, live.name);
+    assert.equal(toolData.inSequence, entry?.inSequence, live.name);
     assert.equal(tool.ok && tool.meta.complete, meta.complete, live.name);
   }
 });

@@ -112,11 +112,11 @@ const both = async (outbound: Insighted, campaign: string) => {
   });
 
   // The two tools agree on every figure they share.
-  assert.equal(tool.runway_days, data.daysLeft, "same runway");
-  assert.equal(tool.contacted_per_day, data.dailyContactRate, "same pace");
-  assert.equal(tool.not_started, data.notStarted);
-  assert.equal(tool.in_sequence, data.inSequence);
-  assert.equal(tool.active_leads, data.remaining);
+  assert.equal(tool.runwayDays, data.daysLeft, "same runway");
+  assert.equal(tool.contactedPerDay, data.dailyContactRate, "same pace");
+  assert.equal(tool.notStarted, data.notStarted);
+  assert.equal(tool.inSequence, data.inSequence);
+  assert.equal(tool.activeLeads, data.remaining);
 
   return { forecast: data, tool };
 };
@@ -125,16 +125,18 @@ test("runway: both tools divide the leads not started by new leads started per d
   const { forecast, tool } = await both(memoryOutbound(), "memory:acme:c1");
 
   assert.deepEqual(tool, {
-    active_leads: 30,
+    activeLeads: 30,
     campaign: "memory:acme:c1",
-    contacted_per_day: 2,
+    contactedPerDay: 2,
     // Only the active leads are read, as client_report reads them: the completed one is not.
-    counted_leads: 30,
-    in_sequence: 12,
-    not_started: 18,
+    countedLeads: 30,
+    inSequence: 12,
+    notStarted: 18,
+    provider: "memory",
     // 18 not started at 2 a day; the 12 in sequence need no new contact.
-    runway_days: 9,
+    runwayDays: 9,
     state: "draining",
+    workspaceId: "acme",
   });
   assert.equal(
     forecast.remaining,
@@ -147,29 +149,25 @@ test("runway: both tools divide the leads not started by new leads started per d
 test("runway: emails sent are not a pace, so a campaign with no leads-started count has no runway", async () => {
   const { tool } = await both(memoryOutbound(), "memory:acme:c2");
 
-  assert.equal(
-    tool.contacted_per_day,
-    null,
-    "70 emails are not 10 leads a day"
-  );
-  assert.equal(tool.runway_days, null);
+  assert.equal(tool.contactedPerDay, null, "70 emails are not 10 leads a day");
+  assert.equal(tool.runwayDays, null);
 });
 
 test("runway: with no lead's progress reported, every active lead counts as not started", async () => {
   const { tool } = await both(memoryOutbound(), "memory:acme:c3");
 
-  assert.equal(tool.not_started, null);
-  assert.equal(tool.in_sequence, null);
-  assert.equal(tool.contacted_per_day, 1);
-  assert.equal(tool.runway_days, 5, "all 5 active leads at 1 a day");
+  assert.equal(tool.notStarted, null);
+  assert.equal(tool.inSequence, null);
+  assert.equal(tool.contactedPerDay, 1);
+  assert.equal(tool.runwayDays, 5, "all 5 active leads at 1 a day");
 });
 
 test("runway: leads still finishing the sequence leave no runway of new leads", async () => {
   const { forecast, tool } = await both(memoryOutbound(), "memory:acme:c4");
 
-  assert.equal(tool.not_started, 0);
-  assert.equal(tool.in_sequence, 3);
-  assert.equal(tool.runway_days, 0);
+  assert.equal(tool.notStarted, 0);
+  assert.equal(tool.inSequence, 3);
+  assert.equal(tool.runwayDays, 0);
   assert.equal(
     forecast.finding,
     "No new leads are left to start; 3 leads are finishing the sequence. Add leads to keep the campaign starting new ones."
@@ -253,10 +251,10 @@ test("runway: on Instantly the pace is new_leads_contacted, not the daily contac
   );
 
   // 8 + 3 + 3 leads started over 7 days, not 425 emails.
-  assert.equal(tool.contacted_per_day, 2);
-  assert.equal(tool.not_started, 4);
-  assert.equal(tool.in_sequence, 6);
-  assert.equal(tool.runway_days, 2);
+  assert.equal(tool.contactedPerDay, 2);
+  assert.equal(tool.notStarted, 4);
+  assert.equal(tool.inSequence, 6);
+  assert.equal(tool.runwayDays, 2);
 
   // Rates divide by the 430 leads started, not 1,404 lead-step contacts.
   assert.equal(forecast.replyRate.of, 430);

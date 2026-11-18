@@ -184,6 +184,14 @@ export const renderVariant = (
   return { body, subject, unfilled: [...unfilled] };
 };
 
+// A single brace holding a `|` is spintax, as variables.ts reads copy.
+const SPINTAX = /(?<!\{)\{[^{}]*\|[^{}]*\}(?!\})/u;
+
+const hasSpintax = (variant: SequenceVariant): boolean =>
+  [variant.subject, variant.body].some(
+    (text) => text !== null && SPINTAX.test(text)
+  );
+
 const previewStep = (
   step: Sequence["steps"][number],
   lead: Lead | undefined
@@ -205,7 +213,7 @@ const previewStep = (
 
 export const copyPreview = defineInsight({
   description:
-    "A campaign's copy as written and as one real lead receives it. Returns every step and variant with its subject and body exactly as stored, the same copy with the lead's values put into each {{variable}}, {variable} and %variable%, and the rendered body as plain text. Use it to read copy that is all or partly templated, such as {{subject1}} and {{content1}} filled from custom fields. Values come from first name, last name, company, title, email, or a custom field of the same name without regard to case, spaces, underscores or hyphens; a missing value falls back to the copy's own fallback, such as {{firstName|there}}, and otherwise the variable is left as written and listed as unfilled. Pass a lead's ref to choose the lead, or leave it out to use the lead read with the most variables filled. A sender signature or other variable the tool fills itself at send time stays as written. Spintax is not resolved. Costs one request for the sequence plus one for a given lead, or one per page of leads read.",
+    "A campaign's copy as written and as one real lead receives it. Returns every step and variant with its subject and body as stored, the same copy with the lead's values put into each {{variable}}, {variable} and %variable%, the rendered body as plain text, and the variables left unfilled. Use it to read templated copy, such as {{content1}} filled from a custom field. A variable takes the lead or custom field of the same name, ignoring case, spaces, underscores and hyphens, else the copy's own fallback. Costs 1 request for the sequence, plus 1 for a given lead or 1 per page of leads read.",
   inputSchema: input,
   key: "copyPreview",
   cost: (values, price) =>
@@ -259,6 +267,26 @@ export const copyPreview = defineInsight({
         step.variants.flatMap((variant) => variant.unfilled.map(keyOf))
       )
     );
+
+    if (lead !== undefined && unfilled.size > 0) {
+      context.note(
+        `Left as written: ${[
+          ...new Set(
+            steps.flatMap((step) =>
+              step.variants.flatMap((variant) => variant.unfilled)
+            )
+          ),
+        ].join(
+          ", "
+        )}. The lead has no value and the copy no fallback, or the sending tool fills it at send time, such as a signature.`
+      );
+    }
+
+    if (sequence.steps.some((step) => step.variants.some(hasSpintax))) {
+      context.note(
+        "Spintax such as {Hi|Hello} is shown as written, not resolved."
+      );
+    }
 
     const has = lead === undefined ? null : keysWithValue(lead);
 

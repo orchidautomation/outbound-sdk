@@ -183,10 +183,10 @@ test("deliverability_check gives the warmup counts behind the spam rate", async 
     result.data as {
       senders: {
         address: string;
-        checked_at: string | null;
-        warmup_inbox: number | null;
-        warmup_spam: number | null;
-        warmup_spam_rate: number | null;
+        checkedAt: string | null;
+        warmupInbox: number | null;
+        warmupSpam: number | null;
+        warmupSpamRate: number | null;
       }[];
     }
   ).senders.toSorted((left, right) =>
@@ -195,10 +195,10 @@ test("deliverability_check gives the warmup counts behind the spam rate", async 
 
   assert.deepEqual(
     rows.map((each) => [
-      each.warmup_spam,
-      each.warmup_inbox,
-      each.warmup_spam_rate,
-      each.checked_at,
+      each.warmupSpam,
+      each.warmupInbox,
+      each.warmupSpamRate,
+      each.checkedAt,
     ]),
     [
       [10, 90, 0.1, "2026-11-13T08:00:00.000Z"],
@@ -251,21 +251,27 @@ test("campaign_overview passes the vendor's notes on, says what period it read, 
   assert.ok(result.ok, JSON.stringify(result));
 
   const data = result.data as {
-    campaigns: { name: string; metrics: { replied: number | null } | null }[];
+    campaigns: {
+      campaignName: string;
+      metrics: { replied: number | null } | null;
+    }[];
     period: { from: string | null; to: string | null };
   };
 
   assert.deepEqual(data.period, { from: "2026-11-01", to: "2026-11-30" });
   // A reported 0 stays 0; a campaign with no row is null, with a note.
   assert.deepEqual(
-    data.campaigns.map((each) => [each.name, each.metrics?.replied ?? null]),
+    data.campaigns.map((each) => [
+      each.campaignName,
+      each.metrics?.replied ?? null,
+    ]),
     [
       ["Reported", 0],
       ["Silent", null],
     ]
   );
   assert.equal(
-    data.campaigns.find((each) => each.name === "Silent")?.metrics,
+    data.campaigns.find((each) => each.campaignName === "Silent")?.metrics,
     null
   );
   assert.deepEqual(result.meta.notes, [

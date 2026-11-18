@@ -388,6 +388,7 @@ test("lead_collisions says the answer is partial when a cap stops a read", async
   assert.equal(fewCampaigns.meta.complete, false);
   assert.deepEqual(fewCampaigns.meta.notes, [
     "Stopped at 2 campaigns (max_campaigns); more exist.",
+    "1 person is in two or more of the campaigns but active in fewer than two: counted in totals.pastOverlaps, not listed. Pass include_past: true to list them.",
   ]);
 
   const fewLeads = await single(MAIL).insights.leadCollisions({

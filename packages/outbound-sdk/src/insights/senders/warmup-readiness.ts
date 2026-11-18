@@ -182,7 +182,7 @@ const countReasons = (judged: readonly UnreadySender[]): ReadinessCounts =>
 
 export const warmupReadiness = defineInsight({
   description:
-    "Which senders are not ready to send, each with its reasons: warmup off, warmup score under the bar or not reported, status not active, no daily limit and, with check_health, failing DNS records or too many warmup emails in spam. Returns counts by reason and how many are ready. A LinkedIn seat is judged on its status only. Use it before attaching mailboxes to a campaign or raising their limits. Costs one listing of senders, plus 1 request per mailbox with check_health. A null score means the vendor does not report one, which counts as not ready, not as 0.",
+    "Which senders are not ready to send, each with its reasons: warmup off, warmup score under the bar or not reported, status not active, no daily limit and, with check_health, failing DNS records or too many warmup emails in spam. Returns counts by reason and how many are ready. A LinkedIn seat is judged on its status only. Use it before attaching mailboxes to a campaign or raising their limits. Costs a sender listing, plus 1 request per mailbox with check_health.",
   inputSchema: input,
   key: "warmupReadiness",
   cost: (values, price) =>

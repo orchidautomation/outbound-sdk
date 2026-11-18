@@ -36,7 +36,7 @@ const rank = (sender: Sender): number => {
 };
 
 export const senderHealth: ToolDefinition<z.infer<typeof healthInput>> = {
-  description: `The state of each sender (mailbox or LinkedIn seat): address, status, daily limit and warmup. Every sender is checked from the sender list (up to ${SCREENED_AT_MOST}, 1 request per 100). Disconnected or failing senders are listed first, each with impact: the active campaigns it sends for, what it sent in the last 14 days, the day it last sent and its last successful sign-in, each null with a reason in impact.unknown where the vendor does not report it. unhealthy counts the checked senders that are not active and failing those disconnected or failing; total is how many senders exist (null past ${SCREENED_AT_MOST}). meta.complete: false means more senders exist than were checked, limit cut the list or impact was left out for some failing senders, and meta.notes says which.`,
+  description: `The state of each sender (mailbox or LinkedIn seat): address, status, daily limit and warmup, checked from the sender list (up to ${SCREENED_AT_MOST}, 1 request per 100). Disconnected or failing senders come first, each with impact: the refs of the active campaigns it sends for (each campaign listed once in campaigns), what it sent in the last 14 days, the day it last sent and its last successful sign-in. unhealthy counts the checked senders that are not active and failing those disconnected or failing; total is how many senders exist.`,
   inputSchema: healthInput,
   name: "sender_health",
   needs: ["senders.list"],
@@ -47,7 +47,13 @@ export const senderHealth: ToolDefinition<z.infer<typeof healthInput>> = {
 
     const impacts = input.impact
       ? await readImpacts(outbound, failing)
-      : { bySender: new Map(), notes: [], requests: 0, skipped: 0 };
+      : {
+          bySender: new Map(),
+          campaigns: [],
+          notes: [],
+          requests: 0,
+          skipped: 0,
+        };
 
     const cut = senders.length > input.limit;
 
@@ -68,6 +74,7 @@ export const senderHealth: ToolDefinition<z.infer<typeof healthInput>> = {
 
     return {
       data: {
+        campaigns: [...impacts.campaigns],
         checked: senders.length,
         failing: failing.length,
         senders: senders
@@ -76,13 +83,15 @@ export const senderHealth: ToolDefinition<z.infer<typeof healthInput>> = {
           .map((sender) => {
             const row: JsonObject = {
               address: sender.address,
-              daily_limit: sender.dailyLimit,
+              dailyLimit: sender.dailyLimit,
               kind: sender.kind,
               name: sender.name,
+              provider: sender.provider,
               sender: sender.ref,
               status: sender.status,
-              warmup_enabled: sender.warmup?.enabled ?? null,
-              warmup_score: sender.warmup?.score ?? null,
+              warmupEnabled: sender.warmup?.enabled ?? null,
+              warmupScore: sender.warmup?.score ?? null,
+              workspaceId: sender.workspaceId,
             };
 
             const impact = impacts.bySender.get(sender.ref);

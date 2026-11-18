@@ -26,6 +26,8 @@ import {
   choice,
   clientFiltered,
   count,
+  dayFlag,
+  instantFlag,
   parseInput,
   REPLIES_BY,
   required,
@@ -45,6 +47,8 @@ import { readNative } from "./native.ts";
 import {
   describeTool,
   listedInsights,
+  listedTool,
+  listedTools,
   listedWith,
   offeredTools,
   refuseLeftOut,
@@ -178,7 +182,7 @@ const COMMAND_TABLE = {
       "subsequences",
       "to",
     ],
-    help: "campaign <id or name> [--stats] [--sequence] [--subsequences] [--settings] [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--by day|total]",
+    help: "campaign <id or name> [--stats] [--sequence] [--subsequences] [--settings] [--from DATE] [--to DATE] [--by day|total]",
     run: async (outbound, input) => {
       const campaign = outbound.campaign(
         await resolveCampaign(
@@ -196,8 +200,8 @@ const COMMAND_TABLE = {
           asJson(
             await campaign.stats({
               by,
-              from: text(input, "from"),
-              to: text(input, "to"),
+              from: dayFlag(input, "from"),
+              to: dayFlag(input, "to"),
             })
           ),
         subsequences: () =>
@@ -287,9 +291,9 @@ const COMMAND_TABLE = {
   },
   leads: {
     flags: ["campaign", "cursor", "jsonl", "limit", "list", "since"],
-    help: "leads [--campaign ID|NAME | --list ID|NAME] [--since ISO] [--limit N] [--cursor C] [--jsonl]  --since keeps the leads created since then (a lead updated later is not); with --since, --limit defaults to the whole window up to 2000",
+    help: "leads [--campaign ID|NAME | --list ID|NAME] [--since DATE] [--limit N] [--cursor C] [--jsonl]  --since keeps the leads created since then (a lead updated later is not); with --since, --limit defaults to the whole window up to 2000",
     run: async (outbound, input) => {
-      const since = text(input, "since");
+      const since = instantFlag(input, "since");
 
       const windowed =
         since !== undefined && text(input, "limit") === undefined;
@@ -299,7 +303,12 @@ const COMMAND_TABLE = {
         listId: await listOption(outbound, text(input, "list")),
       };
 
-      const filtered = clientFiltered(outbound, "leads.since", since, input);
+      const filtered = clientFiltered(
+        outbound,
+        "leads.since",
+        text(input, "since"),
+        input
+      );
 
       const walk = outbound.leads.listAll({
         ...scope,
@@ -379,16 +388,21 @@ const COMMAND_TABLE = {
       "limit",
       "since",
     ],
-    help: "replies [--campaign ID|NAME] [--category positive|negative|neutral|ooo|...] [--since ISO] [--limit N] [--cursor C] [--jsonl] [--bodies] [--by person] [--include-inbox]  one record per message; --by person gives one row per person. --since keeps the replies received since then; --limit defaults to 50, or with --since to the whole window up to 2000. --include-inbox adds conversations outside every campaign (HeyReach)",
+    help: "replies [--campaign ID|NAME] [--category positive|negative|neutral|ooo|...] [--since DATE] [--limit N] [--cursor C] [--jsonl] [--bodies] [--by person] [--include-inbox]  one record per message; --by person gives one row per person. --since keeps the replies received since then; --limit defaults to 50, or with --since to the whole window up to 2000. --include-inbox adds conversations outside every campaign (HeyReach)",
     run: async (outbound, input) => {
       const by = choice(input, "by", REPLIES_BY);
-      const since = text(input, "since");
+      const since = instantFlag(input, "since");
 
       // A time window means all of it, up to a ceiling, unless --limit says otherwise.
       const windowed =
         since !== undefined && text(input, "limit") === undefined;
 
-      const filtered = clientFiltered(outbound, "replies.since", since, input);
+      const filtered = clientFiltered(
+        outbound,
+        "replies.since",
+        text(input, "since"),
+        input
+      );
 
       const walk = outbound.replies.listAll({
         campaignId: await campaignOption(outbound, text(input, "campaign")),
@@ -417,7 +431,7 @@ const COMMAND_TABLE = {
   },
   stats: {
     flags: ["by", "from", "jsonl", "scope", "sender", "to"],
-    help: "stats [--scope workspace|campaign|sender] [--sender ID] [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--by day|total] [--jsonl]  --scope campaign gives a row per campaign and --scope sender a row per sender, every sender read in batches where the tool allows; --sender reads one sender",
+    help: "stats [--scope workspace|campaign|sender] [--sender ID] [--from DATE] [--to DATE] [--by day|total] [--jsonl]  --scope campaign gives a row per campaign and --scope sender a row per sender, every sender read in batches where the tool allows; --sender reads one sender",
     run: async (outbound, input) => {
       const sender = text(input, "sender");
       const scope = choice(input, "scope", STATS_SCOPES);
@@ -431,10 +445,10 @@ const COMMAND_TABLE = {
 
       const result = await outbound.stats({
         by: choice(input, "by", BY),
-        from: text(input, "from"),
+        from: dayFlag(input, "from"),
         scope: sender === undefined ? scope : "sender",
         scopeId: sender,
-        to: text(input, "to"),
+        to: dayFlag(input, "to"),
       });
 
       // A row per line, so a load reads the rows as it reads any listing.
@@ -483,25 +497,31 @@ const COMMAND_TABLE = {
     run: async (outbound, input) => {
       const name = required(input, 0, "a tool name");
 
-      const catalogued = await offeredTools(outbound, input.flags);
-      const offered = catalogued.tools;
-      const tool = offered.find((candidate) => candidate.name === name);
+      const catalogued = await listedTools(outbound, input.flags);
+      const offered = catalogued.surface.tools;
+      const given = text(input, "input");
 
-      if (tool === undefined) {
+      const found = listedTool(
+        catalogued.surface,
+        name,
+        parseInput(given) ?? {}
+      );
+
+      if (found === undefined) {
         // A tool this instance cannot serve is refused with the reason, as
         // running the insight would be, not called unknown.
         refuseLeftOut(outbound, catalogued, name);
 
         throw new OutboundError(
           "Invalid",
-          `Unknown tool "${name}".${didYouMean(
-            name,
-            offered.map((each) => each.name)
-          )} Run "outbound tools" to list them`
+          `Unknown tool "${name}".${didYouMean(name, [
+            ...offered.map((each) => each.name),
+            ...catalogued.surface.aliases.keys(),
+          ])} Run "outbound tools" to list them`
         );
       }
 
-      const given = text(input, "input");
+      const { card, forCard, tool } = found;
 
       // Nothing to run on: a failure a script can tell from an answer, with
       // what the tool takes as its data.
@@ -518,19 +538,16 @@ const COMMAND_TABLE = {
         };
       }
 
-      return drawn(name, await tool.call(parseInput(given)), input);
+      return drawn(card, forCard(await tool.call(parseInput(given))), input);
     },
   },
   tools: {
     flags: [],
     help: "tools",
     run: async (outbound, input) => {
-      const { leftOut, tools: offered } = await offeredTools(
-        outbound,
-        input.flags
-      );
+      const { leftOut, surface } = await listedTools(outbound, input.flags);
 
-      return listedWith(asJson(offered.map(describeTool)), leftOut);
+      return listedWith(asJson(surface.tools.map(describeTool)), leftOut);
     },
   },
   webhooks: {

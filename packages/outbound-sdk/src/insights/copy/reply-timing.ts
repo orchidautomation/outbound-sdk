@@ -3,6 +3,7 @@
 import { z } from "zod";
 
 import type { Message } from "../../internal/entities.ts";
+import { plural } from "../../internal/numbers.ts";
 import { confirmCampaign } from "../campaign.ts";
 import { readCapped } from "../capped.ts";
 import { defineInsight } from "../define.ts";
@@ -35,13 +36,13 @@ const input = z.object({
     .boolean()
     .default(false)
     .describe(
-      "Count replies flagged automatic (isAuto true), such as out-of-office messages and autoresponders. false leaves them out of every figure and counts them in counts.autoReplies."
+      "Count replies flagged automatic, such as out-of-office. false leaves them out and counts them in counts.autoReplies."
     ),
   include_inbox: z
     .boolean()
     .default(false)
     .describe(
-      "Also time conversations that belong to no campaign, such as a LinkedIn account's own messages on HeyReach. false leaves their messages out of every figure and counts them in counts.notInCampaign."
+      "Also time conversations outside every campaign, such as a HeyReach seat's own. false counts them in counts.notInCampaign."
     ),
   max_messages: z
     .number()
@@ -333,7 +334,7 @@ const noteGaps = (
 
 export const replyTiming = defineInsight({
   description:
-    "How fast people reply and when. Pairs each received message with the last message sent before it in the same thread (or to the same lead) and returns the median, 75th and 90th percentile of hours to reply, the share of replies within 1, 24 and 72 hours, replies by weekday and by hour of day, the weekday and hour of the sends that drew replies, and how many replies could not be paired; over a quarter unpaired, the answer is marked partial, since a reply to a send from before `since` cannot pair and those are the slow ones. Use it to choose follow-up delays and sending hours. Messages in conversations that belong to no campaign, such as a LinkedIn account's own messages on HeyReach, are left out and counted in counts.notInCampaign unless include_inbox is true. Costs 1 request per page of messages, up to max_messages. A null figure means no reply could be paired. A received message flagged automatic (isAuto true: the vendor's flag, or a fixed rule on the sender, subject, canned phrases or a reply within a minute of the send) is left out and counted in counts.autoReplies unless include_auto is true; a message with no flag is counted as a reply.",
+    "How fast people reply and when. Pairs each reply with the last send before it in the same thread or to the same lead, and returns the median, 75th and 90th percentile hours to reply, the share within 1, 24 and 72 hours, replies and the sends that drew them by weekday and hour, and counts of unpaired, automatic and non-campaign messages. Use it to choose follow-up delays and sending hours. Costs 1 request per page of messages, up to max_messages. A null figure means no reply could be paired.",
   inputSchema: input,
   key: "replyTiming",
   cost: (values, price) =>
@@ -388,6 +389,12 @@ export const replyTiming = defineInsight({
     const unpaired = paired.unpaired + untimed;
 
     noteGaps(context, unpaired, received, args.include_auto);
+
+    if (!args.include_auto && inCampaigns.length > messages.length) {
+      context.note(
+        `Left out ${plural(inCampaigns.length - messages.length, "automatic reply", "automatic replies")}, flagged by the vendor or by fixed rules on the sender, subject, canned phrases or a reply within a minute of the send. include_auto counts them.`
+      );
+    }
 
     const timing: ReplyTiming = {
       campaign:

@@ -9,10 +9,10 @@ const metrics = (
   replied: number | null,
   rate: number | null
 ) => ({
-  bounce_rate: 0.011,
+  bounceRate: 0.011,
   positive: 3,
   replied,
-  reply_rate: rate,
+  replyRate: rate,
   sent,
 });
 
@@ -22,9 +22,9 @@ test("campaign_overview names the leader and writes each count as returned", () 
       "campaign_overview",
       tool({
         campaigns: [
-          { metrics: metrics(1200, 60, 0.05), name: "Founders Q4" },
-          { metrics: metrics(900, 72, 0.08), name: "Agencies Q4" },
-          { metrics: null, name: "Never sent" },
+          { metrics: metrics(1200, 60, 0.05), campaignName: "Founders Q4" },
+          { metrics: metrics(900, 72, 0.08), campaignName: "Agencies Q4" },
+          { metrics: null, campaignName: "Never sent" },
         ],
       })
     )
@@ -44,7 +44,7 @@ test("a count the vendor does not report is a dash, never a zero", () => {
   const text = read(
     cardFor(
       "campaign_overview",
-      tool({ campaigns: [{ metrics: null, name: "Never sent" }] })
+      tool({ campaigns: [{ metrics: null, campaignName: "Never sent" }] })
     )
   );
 
@@ -109,8 +109,8 @@ test("winning_steps leads with the best step that has a rate", () => {
       tool({
         campaign: "c1",
         steps: [
-          { metrics: metrics(400, 24, 0.06), step: 1, variant: "B" },
-          { metrics: metrics(410, 12, 0.029), step: 0, variant: null },
+          { metrics: metrics(400, 24, 0.06), stepIndex: 1, variant: "B" },
+          { metrics: metrics(410, 12, 0.029), stepIndex: 0, variant: null },
         ],
       })
     )
@@ -125,12 +125,12 @@ test("winning_steps leads with the best step that has a rate", () => {
 });
 
 const sender = (status: string, warmup: Record<string, boolean | number>) => ({
-  daily_limit: 40,
+  dailyLimit: 40,
   kind: "mailbox",
   sender: `s-${status}`,
   status,
-  warmup_enabled: null,
-  warmup_score: null,
+  warmupEnabled: null,
+  warmupScore: null,
   ...warmup,
 });
 
@@ -140,9 +140,9 @@ test("sender_health counts the senders that are not active", () => {
       "sender_health",
       tool({
         senders: [
-          sender("error", { warmup_enabled: false }),
-          sender("active", { warmup_score: 96 }),
-          sender("paused", { warmup_enabled: true }),
+          sender("error", { warmupEnabled: false }),
+          sender("active", { warmupScore: 96 }),
+          sender("paused", { warmupEnabled: true }),
           sender("unknown", {}),
         ],
         unhealthy: 3,
@@ -251,7 +251,9 @@ test("campaign_overview and reply_samples show the tool's note when limit cut th
         "campaign_overview",
         tool(
           {
-            campaigns: [{ metrics: metrics(10, 1, 0.1), name: "Founders Q4" }],
+            campaigns: [
+              { metrics: metrics(10, 1, 0.1), campaignName: "Founders Q4" },
+            ],
           },
           {
             complete: false,
@@ -269,7 +271,7 @@ test("campaign_overview and reply_samples show the tool's note when limit cut th
       cardFor(
         "reply_samples",
         tool(
-          { replies: [{ category: "interested", received_at: null }] },
+          { replies: [{ category: "interested", receivedAt: null }] },
           {
             complete: false,
             notes: ["Stopped at 1 reply (limit); more exist."],
@@ -295,18 +297,18 @@ test("reply_samples quotes prospect text as inert data", () => {
             body: {
               note: "x",
               truncated: false,
-              untrusted_content:
+              untrustedContent:
                 "Sure <!channel> see [my site](https://evil.example) ```x``` @here",
             },
             category: "interested",
             lead: "instantly:acme:l1",
-            received_at: "2026-11-12T10:00:00.000Z",
+            receivedAt: "2026-11-12T10:00:00.000Z",
           },
           {
             body: null,
             category: "out_of_office",
             lead: "instantly:acme:l2",
-            received_at: null,
+            receivedAt: null,
           },
         ],
       })
@@ -335,13 +337,13 @@ const runway = (days: number | null, stopped: boolean) =>
       "lead_runway",
       tool(
         {
-          active_leads: 420,
+          activeLeads: 420,
           campaign: "c1",
-          contacted_per_day: 35.5,
-          counted_leads: 2000,
-          in_sequence: 120,
-          not_started: 300,
-          runway_days: days,
+          contactedPerDay: 35.5,
+          countedLeads: 2000,
+          inSequence: 120,
+          notStarted: 300,
+          runwayDays: days,
         },
         {
           complete: !stopped,
@@ -384,7 +386,7 @@ test("compare_clients puts clients side by side", () => {
           client: "Acme",
           positive: 4,
           replied: 30,
-          reply_rate: 0.05,
+          replyRate: 0.05,
           sent: 600,
         },
         {
@@ -392,7 +394,7 @@ test("compare_clients puts clients side by side", () => {
           client: "unassigned",
           positive: null,
           replied: 10,
-          reply_rate: null,
+          replyRate: null,
           sent: null,
         },
       ],
@@ -427,13 +429,13 @@ test("cross_channel_lead shows the newest message first", () => {
             body: null,
             channel: "email",
             direction: "out",
-            sent_at: "2026-11-01T09:00:00.000Z",
+            sentAt: "2026-11-01T09:00:00.000Z",
           },
           {
-            body: { untrusted_content: "Call me" },
+            body: { untrustedContent: "Call me" },
             channel: "linkedin",
             direction: "in",
-            sent_at: "2026-11-03T09:00:00.000Z",
+            sentAt: "2026-11-03T09:00:00.000Z",
           },
         ],
       })
@@ -466,11 +468,11 @@ test("campaign_setup writes each setting and each sending window", () => {
       "campaign_setup",
       tool({
         campaign: "c1",
-        daily_limit: 80,
-        daily_new_leads: null,
-        end_date: null,
-        gap_minutes: 12,
-        plain_text: null,
+        dailyLimit: 80,
+        dailyNewLeads: null,
+        endDate: null,
+        gapMinutes: 12,
+        plainText: null,
         schedule: [
           {
             days: [1, 2, 3],
@@ -480,11 +482,11 @@ test("campaign_setup writes each setting and each sending window", () => {
           },
           { days: [], from: "10:00", timezone: null, to: "12:00" },
         ],
-        start_date: "2026-10-05",
-        stop_on_auto_reply: false,
-        stop_on_reply: true,
-        track_clicks: false,
-        track_opens: true,
+        startDate: "2026-10-05",
+        stopOnAutoReply: false,
+        stopOnReply: true,
+        trackClicks: false,
+        trackOpens: true,
       })
     )
   );
@@ -513,17 +515,17 @@ test("deliverability_check lists each sender's failing records", () => {
             connected: false,
             dns: { dkim: false, dmarc: null, mx: true, spf: true },
             problems: ["DKIM record fails", "the vendor cannot sign in"],
-            warmup_spam_rate: 0.25,
+            warmupSpamRate: 0.25,
           },
           {
             address: "out1@example.com",
             connected: true,
             dns: { dkim: true, dmarc: true, mx: true, spf: true },
             problems: [],
-            warmup_spam_rate: null,
+            warmupSpamRate: null,
           },
         ],
-        with_problems: 1,
+        withProblems: 1,
       })
     )
   );
@@ -541,7 +543,7 @@ test("deliverability_check lists each sender's failing records", () => {
         "deliverability_check",
         tool({
           senders: [{ address: "a@example.com", dns: {}, problems: [] }],
-          with_problems: 0,
+          withProblems: 0,
         })
       )
     ),
@@ -565,12 +567,12 @@ test("deliverability_check shows the tool's note when not every sender was check
             },
           ],
           total: 30,
-          with_problems: 4,
+          withProblems: 4,
         },
         {
           complete: false,
           notes: [
-            "Only 1 of 30 senders were checked in full, those with a problem in the sender list first; the rest were screened for status and warmup only, and with_problems counts what that found. Raise limit to check more.",
+            "Only 1 of 30 senders were checked in full, those with a problem in the sender list first; the rest were screened for status and warmup only, and withProblems counts what that found. Raise limit to check more.",
           ],
         }
       )
@@ -593,7 +595,7 @@ test("audience_lists shows each list with its size", () => {
         tool({
           lists: [
             {
-              created_at: "2026-09-30T09:00:00.000Z",
+              createdAt: "2026-09-30T09:00:00.000Z",
               kind: "lead",
               name: "SaaS founders",
               size: 12_500,
@@ -623,7 +625,7 @@ test("vendor_read lists the reads on offer but never draws a raw response", () =
   const raw = read(
     cardFor(
       "vendor_read",
-      tool({ note: "n", untrusted_content: { secret: "<!channel> hello" } })
+      tool({ note: "n", untrustedContent: { secret: "<!channel> hello" } })
     )
   );
 

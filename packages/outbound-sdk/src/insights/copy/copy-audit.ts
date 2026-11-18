@@ -59,7 +59,7 @@ const input = z.object({
     .max(20)
     .default(3)
     .describe(
-      "How many leads' rendered copy to audit when a subject or body is mostly variables, such as {{body_1}} filled from a custom field. The leads that fill the most of those variables are used. 0 audits the copy as stored only."
+      "Leads' rendered copy to audit when copy is mostly variables; the leads filling the most are used. 0 audits stored copy only."
     ),
   spam_words: z
     .array(z.string().min(1))
@@ -242,7 +242,7 @@ const noteSamples = (
 
 export const copyAudit = defineInsight({
   description:
-    "Problems in a campaign's copy before it sends. Checks every step and variant for a long subject, a long body, too many links, spam words, unbalanced or empty {{ }} variables, words in capitals, repeated exclamation marks, an image or tracking pixel, a missing subject on the first email, and a follow-up whose subject breaks the thread; a LinkedIn campaign skips the email-only checks and flags a connection request over the character limit. Returns each finding with a severity and the text that triggered it, and a count per check. When a subject or body is mostly variables, such as {{body_1}} filled from a custom field, that variant is audited as sample leads receive it, rendered as copy_preview renders it, and each such finding names its lead; when a variant cannot be rendered for any sample lead, clean is false and variantsNotAudited counts it, never a bare clean true. Costs 2 requests, plus one per page of leads read when copy is written per lead. Fixed rules only, no model. A variant whose body the vendor does not return is counted, not judged.",
+    "Problems in a campaign's copy before it sends. Checks every step and variant against fixed rules: subject and body length, links, spam words, broken {{ }} variables, words in capitals, exclamation marks, images or tracking pixels, a missing first subject, a follow-up subject that breaks the thread, and on LinkedIn a connection request over the limit. Returns each finding with its severity and the text behind it, and a count per check. Copy written per lead in variables is audited as sample leads receive it. Costs 2 requests, plus 1 per page of leads when copy is written per lead.",
   inputSchema: input,
   key: "copyAudit",
   cost: (values, price) =>

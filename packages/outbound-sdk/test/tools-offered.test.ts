@@ -110,14 +110,14 @@ test("cross_channel_lead returns message text when include_bodies is set", async
   assert.ok(result.ok, JSON.stringify(result));
 
   const { timeline } = result.data as {
-    timeline: { body: { note: string; untrusted_content: string } | null }[];
+    timeline: { body: { note: string; untrustedContent: string } | null }[];
   };
 
   assert.ok(timeline.length > 0);
 
   for (const message of timeline) {
     assert.equal(message.body?.note, UNTRUSTED_NOTE);
-    assert.ok((message.body?.untrusted_content.length ?? 0) > 0);
+    assert.ok((message.body?.untrustedContent.length ?? 0) > 0);
   }
 
   const without = await run(tools, "cross_channel_lead", {

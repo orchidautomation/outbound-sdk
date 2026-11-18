@@ -7,11 +7,15 @@ import { isJsonObject, toJson } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
 import { createTools, TOOL_NAMES } from "../tools/index.ts";
-import type { OutboundTool } from "../tools/index.ts";
+import type { OutboundTool, ToolResult } from "../tools/index.ts";
 import { leftOutReason } from "../tools/registry.ts";
 import { insightToolCaps } from "./config.ts";
 import type { InsightToolCaps, PluginFlags } from "./config.ts";
 import { Answer } from "./envelope.ts";
+import { GROUPS } from "./surface-groups.ts";
+import type { Group, Member } from "./surface-groups.ts";
+import { aliasTool, sharpen } from "./surface.ts";
+import type { Surface } from "./surface.ts";
 
 // How a tool redact left out is turned on. Only `outbound mcp` passes the
 // unmasked instance that tells them apart, and it turns redact on itself.
@@ -36,6 +40,38 @@ export interface Catalog {
 }
 
 /**
+ * The built-in tools and the insights one instance offers, as the catalog
+ * lists them, `only` narrowing them by name.
+ */
+export const offerOn = async (
+  instance: OutboundApi,
+  caps: InsightToolCaps,
+  only?: ReadonlySet<string>
+): Promise<{
+  readonly members: readonly OutboundApi[];
+  readonly tools: OutboundTool[];
+}> => {
+  const { insightTools, membersOf } = await import("../insights/index.ts");
+  const members = await membersOf(instance);
+  const names = only === undefined ? undefined : [...only];
+
+  return {
+    members,
+    tools: createTools(instance, {
+      answerNote: false,
+      extra: insightTools(instance, {
+        ...caps,
+        answerNote: false,
+        members,
+        only: names,
+      }),
+      members,
+      only: TOOL_NAMES.filter((name) => only?.has(name) ?? true),
+    }),
+  };
+};
+
+/**
  * The one catalog every CLI surface reads. `unmasked` is the same instance
  * without redact, to tell which tools redact left out; `wanted` is what
  * `--tools` names, which narrows what is offered but not what is left out.
@@ -47,24 +83,11 @@ export const catalog = async (
   wanted?: ReadonlySet<string> | undefined
 ): Promise<Catalog> => {
   // Loaded on demand, so the other commands do not pay for the insights.
-  const { insightTools, listInsights, membersOf } =
-    await import("../insights/index.ts");
-
+  const { listInsights } = await import("../insights/index.ts");
   const { insightLeftOutReason } = await import("../insights/tools.ts");
 
-  const offer = async (instance: OutboundApi, only?: ReadonlySet<string>) => {
-    const members = await membersOf(instance);
-    const names = only === undefined ? undefined : [...only];
-
-    return {
-      members,
-      tools: createTools(instance, {
-        extra: insightTools(instance, { ...caps, members, only: names }),
-        members,
-        only: TOOL_NAMES.filter((name) => only?.has(name) ?? true),
-      }),
-    };
-  };
+  const offer = async (instance: OutboundApi, only?: ReadonlySet<string>) =>
+    await offerOn(instance, caps, only);
 
   const here = await offer(outbound, wanted);
   const every = wanted === undefined ? here : await offer(outbound);
@@ -137,6 +160,85 @@ export const offeredTools = async (
   outbound: OutboundApi,
   flags: PluginFlags
 ): Promise<Catalog> => await catalog(outbound, insightToolCaps(flags, false));
+
+/** The catalog as `outbound mcp` lists it: merged tools, and the old names. */
+export const listedTools = async (
+  outbound: OutboundApi,
+  flags: PluginFlags
+): Promise<Catalog & { readonly surface: Surface }> => {
+  const caps = insightToolCaps(flags, false);
+  const found = await catalog(outbound, caps);
+
+  const surface = sharpen(found.tools, {
+    members: () =>
+      Promise.resolve(
+        found.members.map((member) => ({
+          provider: member.provider,
+          tools: async () => {
+            const served = await offerOn(member, caps);
+
+            return served.tools;
+          },
+          workspaceId: member.workspaceId,
+        }))
+      ),
+    provider: outbound.provider,
+    workspaceId: outbound.workspaceId,
+  });
+
+  return { ...found, surface };
+};
+
+export interface ListedTool {
+  readonly tool: OutboundTool;
+  /** The tool whose card draws the answer. */
+  readonly card: string;
+  /** The answer as that card reads it: one check's own answer, for a merged tool. */
+  readonly forCard: (result: ToolResult) => ToolResult;
+}
+
+const asItIs = (result: ToolResult): ToolResult => result;
+
+// The view or the one check the input picks, and the tool it runs.
+const pickedOf = (group: Group, input: Json): Member | undefined => {
+  const given = isJsonObject(input) ? input[group.by] : undefined;
+  const picked = Array.isArray(given) ? given : [given ?? group.default[0]];
+
+  return picked.length === 1 &&
+    (group.by === "view" || group.default.length === 1 || given !== undefined)
+    ? group.members.find((member) => member.key === picked[0])
+    : undefined;
+};
+
+/** The tool a listed name or an old one runs, and the card that draws its answer. */
+export const listedTool = (
+  { aliases, tools }: Surface,
+  name: string,
+  input: Json
+): ListedTool | undefined => {
+  const listed = tools.find((tool) => tool.name === name);
+
+  if (listed !== undefined) {
+    const group = GROUPS.find((each) => each.name === name);
+    const member = group === undefined ? undefined : pickedOf(group, input);
+
+    const forCard =
+      group?.by !== "checks" || member === undefined
+        ? asItIs
+        : (result: ToolResult): ToolResult =>
+            result.ok && isJsonObject(result.data)
+              ? { ...result, data: result.data[member.key] ?? null }
+              : result;
+
+    return { card: member?.tool ?? name, forCard, tool: listed };
+  }
+
+  const alias = aliases.get(name);
+
+  return alias === undefined
+    ? undefined
+    : { card: name, forCard: asItIs, tool: aliasTool(name, alias) };
+};
 
 /** A tool as `outbound tools` lists it: its inputs as JSON Schema, as `outbound insight` lists them. */
 export const describeTool = (tool: OutboundTool): Json => ({

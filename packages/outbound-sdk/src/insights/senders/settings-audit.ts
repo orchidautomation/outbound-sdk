@@ -312,7 +312,7 @@ const countChecks = (
 
 export const settingsAudit = defineInsight({
   description:
-    "Risky campaign settings, per campaign and by severity: no sending window, a window that includes the weekend or is too long or too short, no timezone, open or click tracking on, a reply that does not stop the sequence, no daily limit, sends too close together, an end date in the past on an active campaign, and a daily limit too high for the number of senders. Returns the findings per campaign, worst first, and a count per check. Use it before launching a campaign or when deliverability drops. Costs one listing of campaigns, then 1 request per campaign, or 2 when its senders can be listed. A setting the vendor reports nothing for is skipped, except a missing window, timezone or daily limit, which the vendor cannot tell apart from one that is not set.",
+    "Risky campaign settings, per campaign and by severity: no sending window, a window on the weekend or too long or short, no timezone, open or click tracking on, a reply that does not stop the sequence, no daily limit, sends too close together, a past end date on an active campaign, and a daily limit too high for the senders. Returns findings per campaign, worst first, and a count per check. Use it before a launch or when deliverability drops. Costs a campaign listing, then 1 request per campaign, or 2 when its senders can be listed.",
   inputSchema: input,
   key: "settingsAudit",
   cost: (values, price) =>
@@ -377,6 +377,16 @@ export const settingsAudit = defineInsight({
     const flagged = audited
       .filter((campaign) => campaign.findings.length > 0)
       .toSorted(worstFirst);
+
+    if (
+      flagged.some((campaign) =>
+        campaign.findings.some((finding) => finding.check === "no_timezone")
+      )
+    ) {
+      context.note(
+        "A window with no timezone may have one the vendor does not report: the two read the same."
+      );
+    }
 
     const sum = (severity: SettingsSeverity): number =>
       flagged.reduce((all, campaign) => all + countOf(campaign, severity), 0);

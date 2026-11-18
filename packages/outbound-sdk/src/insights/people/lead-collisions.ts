@@ -20,7 +20,7 @@ const input = z.object({
     .boolean()
     .default(false)
     .describe(
-      "Also report a person in two or more campaigns of whom fewer than two memberships are still active, for example one who completed one campaign and is now in another. By default only people active in two or more campaigns at once are reported."
+      "Also report people in two or more campaigns but active in fewer than two, such as one who completed a campaign."
     ),
   max_campaigns: z
     .number()
@@ -29,7 +29,7 @@ const input = z.object({
     .max(200)
     .default(200)
     .describe(
-      "The most campaigns to read. Each costs one request per page of its leads. Defaults to the most allowed, so every campaign in the statuses is read."
+      "The most campaigns to read, each one request per page of its leads. The default reads every campaign in the statuses."
     ),
   max_leads_per_campaign: z
     .number()
@@ -280,7 +280,7 @@ const overallOf = (
 
 export const leadCollisions = defineInsight({
   description:
-    "People who are in two or more campaigns at once, so they get overlapping outreach. Reads the campaigns in the given statuses (active by default) and their leads, matches people by exact email address or LinkedIn profile, and returns each person with their campaigns, channel and tool, most active campaigns first. By default a person counts only when their own status is active in two or more of the campaigns; include_past also reports people who finished, replied to or left one campaign and are in another, counted in totals.pastOverlaps either way. A collision across tools (for example email in one and LinkedIn in another) is marked across_tools; one inside a tool is within_tool. Every campaign in the statuses is read by default. Returns a finding sentence that leads with what was read; when a cap leaves campaigns or leads unread, totals.collisions is null, totals.collisionsFound counts what was found and the finding names each cap to raise, never a bare 0. Costs one request per page of campaigns plus one per page of each campaign's leads.",
+    "People in two or more campaigns at once, who get overlapping outreach. Matches leads by exact email address or LinkedIn profile across the campaigns in the given statuses, and returns each person with their campaigns, channel and tool, marked across_tools or within_tool, most active first. The finding leads with what was read and names any cap to raise; totals.collisions is null when a cap left leads unread. Costs one request per page of campaigns plus one per page of each campaign's leads.",
   inputSchema: input,
   key: "leadCollisions",
   cost: (values, price) =>
@@ -346,6 +346,12 @@ export const leadCollisions = defineInsight({
 
     const overlaps = groupPeople(entries, keysOf).flatMap(toCollision);
     const pastOverlaps = overlaps.filter((each) => each.stillActive < 2).length;
+
+    if (!values.include_past && pastOverlaps > 0) {
+      context.note(
+        `${plural(pastOverlaps, "person is", "people are")} in two or more of the campaigns but active in fewer than two: counted in totals.pastOverlaps, not listed. Pass include_past: true to list them.`
+      );
+    }
 
     const collisions = overlaps
       .filter((each) => values.include_past || each.stillActive >= 2)

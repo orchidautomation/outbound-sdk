@@ -57,7 +57,7 @@ A key in a client's configuration file is stored in plain text on your disk by t
 
 ## Plugins
 
-`outbound mcp` hands your prospects' data to a model, so it runs with [`redact()`](/docs/plugins/redact) unless told not to. Emails, names, companies, LinkedIn URLs, custom fields and message text come back masked, a request for reply text is refused, and `cross_channel_lead` is not offered. Other plugins come from flags or from a config file. Add them after `mcp` in the client's `args`:
+`outbound mcp` hands your prospects' data to a model, so it runs with [`redact()`](/docs/plugins/redact) unless told not to. Emails, names, companies, LinkedIn URLs, custom fields and message text come back masked, a request for reply text is refused, and `person`'s timeline and account views answer with the masked summary. Other plugins come from flags or from a config file. Add them after `mcp` in the client's `args`:
 
 | Flag | What it does |
 | --- | --- |
@@ -65,7 +65,7 @@ A key in a client's configuration file is stored in plain text on your disk by t
 | `--cache <seconds>` | Adds [`cache()`](/docs/plugins/cache): a repeat read within that time makes no vendor request. The cache is in memory and lives as long as the server. |
 | `--max-requests <n>` | Adds [`budget()`](/docs/plugins/budget): the most vendor requests one tool call may make. |
 | `--config <file>` | Loads plugins from a file. See below. |
-| `--tools <names>` | Offers only the tools named, separated by commas, such as `--tools campaign_overview,bounce_watch`. Every tool's description and inputs cost the client's context before any call, about 60 KB for all of them on a real adapter. A name the server cannot offer is refused before it starts. |
+| `--tools <names>` | Offers only the tools named, separated by commas, such as `--tools campaigns,sender_health`; an old name offers the tool it became, with only that view or check. Every tool's description and inputs cost the client's context before any call, under 56 KB for all of them with `--provider all`, which a test holds. A name the server cannot offer is refused before it starts. |
 
 Set `OUTBOUND_REDACT_KEY` in the server's `env` to keep each person's token from one session to the next, for example to compare answers across days. It is a secret of at least 32 characters; see [redact's fixed key](/docs/plugins/redact#a-fixed-key) for how to treat it. Without it, tokens change each time the server starts.
 
@@ -92,7 +92,7 @@ For any other plugin, or for a plugin's options, pass `--config` with the path t
 - The plugins are placed in this order, outermost first: `redact()`, the file's plugins, `cache()` from `--cache`, `budget()` from `--max-requests`, then `identity()`, which the CLI always adds unless the file lists it. To place a cache or a budget elsewhere, list it in the file instead of using its flag.
 - A `redact()` in the file replaces the default one, with the options you gave it. Setting `--no-redact` as well is refused.
 - The file may also export `rateLimitStore`, the store `createOutbound` takes. A vendor's limit covers the whole workspace, so two terminals, or the CLI and an MCP server, on one key slow each other down; with one shared store, such as [`redisRateLimitStore()`](/docs/guides/shared-rate-budget), they spend one budget instead of drawing 429s from each other.
-- The file may also export `leadFields`, the custom fields every tool reads a lead field from where the vendor's own is empty, as each adapter's `leadFields` option takes them. `{ linkedinUrl: ["linkedin_profile", "linkedin_url"] }` gives Instantly leads the LinkedIn profiles an account keeps in custom fields, so `cross_channel_lead` can link them to HeyReach. Without a config file, `OUTBOUND_LEAD_FIELDS` takes the same map as JSON.
+- The file may also export `leadFields`, the custom fields every tool reads a lead field from where the vendor's own is empty, as each adapter's `leadFields` option takes them. `{ linkedinUrl: ["linkedin_profile", "linkedin_url"] }` gives Instantly leads the LinkedIn profiles an account keeps in custom fields, so `person` with view `timeline` can link them to HeyReach. Without a config file, `OUTBOUND_LEAD_FIELDS` takes the same map as JSON.
 - A file that cannot be loaded, has no default export, or exports something other than a list of plugins and a rate limit store stops the command with exit code 1 before the server answers anything.
 
 ### Waits on rate limits
@@ -109,7 +109,7 @@ Without `--max-requests` a tool call still has a cap: the [default of each tool 
 
 ### A time budget per tool call
 
-Most agent hosts give up on a tool call after about a minute and keep nothing, while a read on a slow lane, such as `dropped_replies` on Instantly's emails, can take five. So each tool call has a time budget, 50 seconds by default, counted from when the call arrives. `--time-budget <seconds>` sets another for the server; raise the client's tool timeout with it. A wait on a rate limit that would pass the budget is not started, and a read still under way when it runs out is stopped. An insight then answers with what it read, `meta.complete: false` and a note that names the tool, the budget and how to get the rest: call it again with less to read, or raise `--time-budget on outbound mcp`. A built-in tool returns `isError: true` with `RateLimited` and the same message. Tool calls run one at a time, so a call that waits behind another spends its budget waiting. When the budget had time left and only the vendor's rate window stood in the way, for example right after an earlier call used up Instantly's 20 email reads a minute, the input is fine: the call is answered with `retryable: true`, `error.retryAfterMs`, a message that says when the window frees, and a `next` to call again with the same input then.
+Most agent hosts give up on a tool call after about a minute and keep nothing, while a read on a slow lane, such as `unanswered_replies` on Instantly's emails, can take five. So each tool call has a time budget, 50 seconds by default, counted from when the call arrives. `--time-budget <seconds>` sets another for the server; raise the client's tool timeout with it. A wait on a rate limit that would pass the budget is not started, and a read still under way when it runs out is stopped. An insight then answers with what it read, `meta.complete: false` and a note that names the tool, the budget and how to get the rest: call it again with less to read, or raise `--time-budget on outbound mcp`. A built-in tool returns `isError: true` with `RateLimited` and the same message. Tool calls run one at a time, so a call that waits behind another spends its budget waiting. When the budget had time left and only the vendor's rate window stood in the way, for example right after an earlier call used up Instantly's 20 email reads a minute, the input is fine: the call is answered with `retryable: true`, `error.retryAfterMs`, a message that says when the window frees, and a `next` to call again with the same input then.
 
 A client that sends `_meta.progressToken` with `tools/call` gets `notifications/progress` every 5 seconds while the call runs: `progress` is the seconds so far, `total` the budget in seconds, and `message` says how long the call has waited on rate limits and names the last wait. `ping` is answered while a call runs, and `notifications/cancelled` stops the call it names: it reads nothing more and is not answered.
 
@@ -121,8 +121,8 @@ The protocol is JSON-RPC 2.0, one message per line. The server implements what a
 | --- | --- |
 | `initialize` | The protocol version, `capabilities.tools`, `serverInfo` and `instructions` |
 | `ping` | An empty result |
-| `tools/list` | Every tool: `name`, `description`, `inputSchema` and `annotations.readOnlyHint` |
-| `tools/call` | The tool's result as `content` (one text item of JSON), `structuredContent` and `isError`, with `notifications/progress` first when the call sent a `progressToken` |
+| `tools/list` | Every tool: `name`, `description`, `inputSchema`, `outputSchema` (the answer envelope) and `annotations.readOnlyHint` |
+| `tools/call` | The tool's result once, as `structuredContent`, with a short summary as the `content` text (the whole result as JSON text to a client on a protocol older than `2025-06-18`), and `isError`, with `notifications/progress` first when the call sent a `progressToken` |
 | `notifications/cancelled` | Nothing. The call it names stops and is not answered. |
 | a notification (no `id`) | Nothing. `notifications/initialized` is accepted and ignored. |
 | anything else | Error `-32601`, method not found |
@@ -139,15 +139,33 @@ Messages are read while a tool call runs, and each answer is written when it is 
   ../../_examples/cli-mcp/server.out.txt
 </include>
 
-That is 9 built-in tools and 26 of the 27 insights on the in-memory adapter: `account_summary` matches people by the domain of their email address, which `redact` masks, so it is offered only with `--no-redact`. `person_summary` stays on: it looks up a lead ref by the tokens `redact` wrote for its address, and refuses a bare address or profile URL, whose records come back masked. `lead_collisions` and `suppression_check` match on the tokens `redact` writes, so they stay on. Three things change the list on a real setup:
+`tools/list` does not list every built-in tool and insight on its own. Neighbours are merged into one tool, so a model picks between fewer tools that do not overlap (OUT-168). A merged tool takes `view`, which runs one of what it is made of, or `checks`, which runs several and answers each under `data.<check>`. It also takes every input of what it is made of; one the chosen view does not take is not used, and a note says so.
+
+| Listed tool | Picked by | Made of |
+| --- | --- | --- |
+| `campaigns` | `view`: `list`, `ranking`, `trend` | `campaign_overview`, `campaign_ranking`, `campaign_trend` |
+| `sender_health` | `checks`: `status`, `deliverability`, `warmup`, `domains`, `bounces` | `sender_health`, `deliverability_check`, `warmup_readiness`, `domain_health`, `bounce_watch` |
+| `sender_capacity` | `view`: `capacity`, `load` | `sender_capacity`, `sender_load` |
+| `lead_runway` | `view`: `runway`, `forecast` | `lead_runway`, `pipeline_forecast` |
+| `list_hygiene` | `checks`: `suppression`, `collisions` | `suppression_check`, `lead_collisions` |
+| `copy_review` | `checks`: `audit`, `variants`, `personalization`, `reuse` | `copy_audit`, `variant_test`, `personalization_gaps`, `copy_reuse` |
+| `step_funnel` | `view`: `funnel`, `winners` | `step_funnel`, `winning_steps` |
+| `person` | `view`: `summary`, `timeline`, `account` | `person_summary`, `cross_channel_lead`, `account_summary` |
+| `unanswered_replies` | `include: "thread"` puts each reply's conversation in its item | `dropped_replies`, `thread_context` |
+
+Every other built-in tool and insight is listed as it is, `thread_context` among them. Each listed tool takes `scope`: `provider` and `workspace` read one tool or workspace of `--provider all`, and `tag` reads the campaigns with one tag where the tool can (`client_report`). A scope that names nothing the server reads is refused with what it does read. `initialize` names what the server reads, says once how to read an answer, and points bulk exports to the CLI's `--jsonl` or the SDK.
+
+Every old name still answers until 0.16.0, as it did, with a note in `meta.notes` such as "campaign_overview is an old name kept until 0.16.0: call campaigns with view \"list\" instead." `RENAMED_TOOLS` from `outbound-sdk/cli` maps each old name to how it is called now, and `--tools` takes either. A hint in `next` names tools as they are listed. The SDK's own tools and insights keep their names.
+
+`person` is listed under `redact`: its `timeline` and `account` views match people by email or LinkedIn profile, which `redact` masks, so they answer with the masked `summary` view and a note naming `--no-redact`. `summary` looks up a lead ref by the tokens `redact` wrote, and `list_hygiene` matches on them. Three things change the list on a real setup:
 
 - A real adapter also serves `vendor_read`, because it has [native reads](/docs/native), but only with `--no-redact`: a native read returns the vendor's payload unmasked, so `redact` turns native reads off.
-- `outbound mcp` serves `compare_clients` only with the `clients` plugin from a config file, and `cross_channel_lead` only with `--no-redact`, because `redact` masks the identifiers it matches on. The CLI always installs the `identity` plugin it needs.
-- A built-in tool or an insight whose adapter lacks a capability it needs is left out. On HeyReach that removes `winning_steps` and `campaign_setup`. With `--provider all` a tool one member can serve stays: one that takes a `campaign` answers for that member's campaigns and refuses the others' before any request, and one that reads every campaign, such as `settings_audit`, answers for the one member that serves it, with `meta.complete: false` and a note naming the members it skipped.
+- `outbound mcp` serves `compare_clients` only with the `clients` plugin from a config file. The CLI always installs the `identity` plugin `person` needs.
+- A view or check whose adapter lacks a capability it needs is left out of that tool. On HeyReach that removes `step_funnel` and `campaign_setup`. With `--provider all` one a member can serve stays: one that takes a `campaign` answers for that member's campaigns and refuses the others' before any request, and one that reads every campaign, such as `settings_audit`, answers for the one member that serves it, with `meta.complete: false` and a note naming the members it skipped.
 
-A call to a tool that `redact` left out is answered with a protocol error (`-32602`) whose message names it: "account_summary is left out while the redact plugin is on: it needs what redact masks. Start the server with --no-redact to offer it; personal fields are then not masked." A name no tool has is still "Unknown tool". The same tools are named once in `initialize`: "Left out while redact is on: cross_channel_lead, account_summary. They match people by email or LinkedIn profile, which redact masks. Start the server with --no-redact to offer them; personal fields are then not masked." A tool one member of `--provider all` serves only on its own, such as `vendor_read`, is named the same way, with the `--provider` that offers it. `tools/list` does not list them, and `--tools` refuses one with the same reason before the server starts. `outbound tools` and `outbound insight` list the same tools, from the same catalog, and put each left-out tool's reason in `meta.notes`.
+A call to a tool that is left out is answered with a protocol error (`-32602`) whose message names the reason, and a name no tool has is "Unknown tool". A tool one member of `--provider all` serves only on its own, such as `vendor_read`, is named once in `initialize` with the `--provider` that offers it. `--tools` refuses a left-out tool with the same reason before the server starts. `outbound tools` lists what `tools/list` lists, `outbound tool` runs a listed name or an old one, and `outbound insight` lists the insights by their own names, each left-out tool's reason in `meta.notes`.
 
-The `instructions` string repeats the rule about reply text once for the whole server, then names the plugins that are on and any tools left out. It is a label for the model, not a safeguard. See [untrusted content](/docs/tools/untrusted-content).
+The `instructions` string repeats the rule about reply text once for the whole server. It is a label for the model, not a safeguard. See [untrusted content](/docs/tools/untrusted-content).
 
 ## Calls and errors
 

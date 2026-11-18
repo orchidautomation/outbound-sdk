@@ -131,11 +131,12 @@ test("campaign_setup reports how a campaign is set up to send", async () => {
   assert.ok(result.ok, JSON.stringify(result));
   assert.deepEqual(result.data, {
     campaign: "memory:acme:cmp_founders",
-    daily_limit: 80,
-    daily_new_leads: 30,
-    end_date: null,
-    gap_minutes: 12,
-    plain_text: null,
+    dailyLimit: 80,
+    dailyNewLeads: 30,
+    endDate: null,
+    gapMinutes: 12,
+    plainText: null,
+    provider: "memory",
     schedule: [
       {
         days: [1, 2, 3, 4, 5],
@@ -145,11 +146,12 @@ test("campaign_setup reports how a campaign is set up to send", async () => {
         to: "17:00",
       },
     ],
-    start_date: "2026-09-17",
-    stop_on_auto_reply: false,
-    stop_on_reply: true,
-    track_clicks: false,
-    track_opens: true,
+    startDate: "2026-09-17",
+    stopOnAutoReply: false,
+    stopOnReply: true,
+    trackClicks: false,
+    trackOpens: true,
+    workspaceId: "acme",
   });
   assert.equal(result.meta.provider, "memory");
 });
@@ -158,15 +160,15 @@ test("deliverability_check lists senders with a problem first and computes the w
   const result = await call("deliverability_check");
   assert.ok(result.ok, JSON.stringify(result));
 
-  const { senders, with_problems: withProblems } = result.data as {
+  const { senders, withProblems } = result.data as {
     senders: {
       address: string;
       problems: string[];
-      warmup_spam_rate: number;
-      warmup_score: number;
+      warmupSpamRate: number;
+      warmupScore: number;
       domain: string;
     }[];
-    with_problems: number;
+    withProblems: number;
   };
 
   assert.equal(withProblems, 1);
@@ -174,8 +176,8 @@ test("deliverability_check lists senders with a problem first and computes the w
     senders.map((sender) => [
       sender.address,
       sender.problems,
-      sender.warmup_spam_rate,
-      sender.warmup_score,
+      sender.warmupSpamRate,
+      sender.warmupScore,
     ]),
     [
       [
@@ -226,7 +228,7 @@ test("deliverability_check names a lost sign-in and a block listing, and leaves 
   assert.ok(result?.ok, JSON.stringify(result));
 
   const { senders } = result.data as {
-    senders: { problems: string[]; warmup_spam_rate: number | null }[];
+    senders: { problems: string[]; warmupSpamRate: number | null }[];
   };
 
   assert.deepEqual(senders[0]?.problems, [
@@ -234,7 +236,7 @@ test("deliverability_check names a lost sign-in and a block listing, and leaves 
     "on a block list",
   ]);
   assert.deepEqual(
-    senders.map((sender) => sender.warmup_spam_rate),
+    senders.map((sender) => sender.warmupSpamRate),
     [null, null]
   );
 });
@@ -245,11 +247,13 @@ test("audience_lists reports each saved list and its size", async () => {
   assert.deepEqual(result.data, {
     lists: [
       {
-        created_at: "2026-09-14T09:00:00.000Z",
+        createdAt: "2026-09-14T09:00:00.000Z",
         kind: "leads",
         list: "memory:acme:lst_founders",
         name: "SaaS founders",
+        provider: "memory",
         size: 2,
+        workspaceId: "acme",
       },
     ],
   });

@@ -41,6 +41,54 @@ export const count = (
   return parsed;
 };
 
+const DAY = /^\d{4}-\d{2}-\d{2}$/u;
+
+const DATE_TIME =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/u;
+
+/**
+ * A date flag as an instant. Every date flag takes the same two forms: a
+ * day, YYYY-MM-DD, which is that day's start in UTC, or an ISO 8601 date and
+ * time with its offset. Anything else, `11/10/2026` included, is refused
+ * with the same words.
+ */
+const dateOf = (input: CommandInput, name: string): Date | undefined => {
+  const value = text(input, name);
+
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const date = new Date(
+    DAY.test(value) || DATE_TIME.test(value) ? Date.parse(value) : Number.NaN
+  );
+
+  // A day that does not exist, such as 2026-02-30, rolls over in Date.parse.
+  if (
+    Number.isNaN(date.getTime()) ||
+    (DAY.test(value) && date.toISOString().slice(0, 10) !== value)
+  ) {
+    throw new OutboundError(
+      "Invalid",
+      `--${name} must be a day, YYYY-MM-DD, or an ISO 8601 date and time such as 2026-11-10T09:00:00Z, got "${value}"`
+    );
+  }
+
+  return date;
+};
+
+/** A date flag where a command counts whole days: the UTC day it falls on, YYYY-MM-DD. */
+export const dayFlag = (
+  input: CommandInput,
+  name: string
+): string | undefined => dateOf(input, name)?.toISOString().slice(0, 10);
+
+/** A date flag where a command keeps what is newer: the instant, ISO 8601 UTC. */
+export const instantFlag = (
+  input: CommandInput,
+  name: string
+): string | undefined => dateOf(input, name)?.toISOString();
+
 /** A flag that takes one of a fixed set of words. Anything else is refused, never guessed. */
 export const choice = <Value extends string>(
   input: CommandInput,

@@ -56,9 +56,11 @@ $ outbound replies --by person
         "leadEmail": null,
         "leadRef": "memory:default:lead_1",
         "messages": 1,
+        "provider": "memory",
         "threadIds": [
           "thr_1"
-        ]
+        ],
+        "workspaceId": "default"
       }
     ]
   },

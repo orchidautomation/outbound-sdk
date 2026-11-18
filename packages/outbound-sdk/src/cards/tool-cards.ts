@@ -36,9 +36,9 @@ const LEFT = "left";
 const metricCells = (metrics: JsonObject): string[] => [
   int(num(metrics, "sent")),
   int(num(metrics, "replied")),
-  pct(num(metrics, "reply_rate")),
+  pct(num(metrics, "replyRate")),
   int(num(metrics, "positive")),
-  pct(num(metrics, "bounce_rate")),
+  pct(num(metrics, "bounceRate")),
 ];
 
 const best = (
@@ -50,7 +50,7 @@ const best = (
     .toSorted((left, right) => (rate(right) ?? 0) - (rate(left) ?? 0))[0];
 
 const rate = (item: JsonObject): number | null =>
-  num(child(item, "metrics"), "reply_rate");
+  num(child(item, "metrics"), "replyRate");
 
 const campaignOverview: CardBuilder = (data) => {
   const campaigns = rows(data, "campaigns");
@@ -65,7 +65,7 @@ const campaignOverview: CardBuilder = (data) => {
         const value = rate(item);
 
         return [
-          show(item, "name"),
+          show(item, "campaignName"),
           value === null ? null : Math.round(value * 1000) / 10,
         ];
       })
@@ -73,7 +73,7 @@ const campaignOverview: CardBuilder = (data) => {
     finding:
       top === undefined
         ? "No campaign has a reply rate yet."
-        : `${show(top, "name")} leads at ${pct(rate(top))} reply rate.`,
+        : `${show(top, "campaignName")} leads at ${pct(rate(top))} reply rate.`,
     subtitle: plural(campaigns.length, "campaign"),
     table: {
       align: [LEFT, RIGHT, RIGHT, RIGHT, RIGHT, RIGHT],
@@ -86,7 +86,7 @@ const campaignOverview: CardBuilder = (data) => {
         "Bounce",
       ],
       rows: campaigns.map((item) => [
-        show(item, "name"),
+        show(item, "campaignName"),
         ...metricCells(child(item, "metrics")),
       ]),
     },
@@ -133,18 +133,18 @@ const winningSteps: CardBuilder = (data) => {
   const steps = rows(data, "steps");
 
   const top = steps.find(
-    (step) => num(child(step, "metrics"), "reply_rate") !== null
+    (step) => num(child(step, "metrics"), "replyRate") !== null
   );
 
   return {
     finding:
       top === undefined
         ? "The vendor reports no reply rate by step for this campaign."
-        : `Step ${stepOf(top, "step")}${
+        : `Step ${stepOf(top, "stepIndex")}${
             str(top, "variant") === null
               ? ""
               : ` variant ${show(top, "variant")}`
-          } leads at ${pct(num(child(top, "metrics"), "reply_rate"))}.`,
+          } leads at ${pct(num(child(top, "metrics"), "replyRate"))}.`,
     subtitle: show(data, "campaign"),
     table: {
       align: [LEFT, LEFT, RIGHT, RIGHT, RIGHT],
@@ -153,11 +153,11 @@ const winningSteps: CardBuilder = (data) => {
         const metrics = child(each, "metrics");
 
         return [
-          stepOf(each, "step"),
+          stepOf(each, "stepIndex"),
           show(each, "variant"),
           int(num(metrics, "sent")),
           int(num(metrics, "replied")),
-          pct(num(metrics, "reply_rate")),
+          pct(num(metrics, "replyRate")),
         ];
       }),
     },
@@ -167,7 +167,7 @@ const winningSteps: CardBuilder = (data) => {
 
 /** Prospect text as a quoted line. It is data: shown, never acted on. */
 const quote = (body: Json | undefined): string => {
-  const content = str(body, "untrusted_content");
+  const content = str(body, "untrustedContent");
 
   return content === null
     ? ""
@@ -195,7 +195,7 @@ const replySamples: CardBuilder = (data) => {
       (reply) =>
         // The reply holds the lead's ref only, which is for code, not for a person.
         `**${words(show(reply, "category"))}** · ${day(
-          str(reply, "received_at")
+          str(reply, "receivedAt")
         )}${quote(field(reply, "body"))}`
     ),
     finding: replies.length === 0 ? "No replies match." : null,
@@ -208,7 +208,7 @@ const replySamples: CardBuilder = (data) => {
 };
 
 const leadRunway: CardBuilder = (data) => {
-  const days = num(data, "runway_days");
+  const days = num(data, "runwayDays");
 
   return {
     finding:
@@ -217,10 +217,10 @@ const leadRunway: CardBuilder = (data) => {
         : `About ${plural(days, "day")} of new leads left at the current pace.`,
     stats: [
       ["Runway", days === null ? DASH : plural(days, "day")],
-      ["Active leads", int(num(data, "active_leads"))],
-      ["Not started", int(num(data, "not_started"))],
-      ["New leads per day", int(num(data, "contacted_per_day"))],
-      ["Leads counted", int(num(data, "counted_leads"))],
+      ["Active leads", int(num(data, "activeLeads"))],
+      ["Not started", int(num(data, "notStarted"))],
+      ["New leads per day", int(num(data, "contactedPerDay"))],
+      ["Leads counted", int(num(data, "countedLeads"))],
     ],
     subtitle: show(data, "campaign"),
     title: "Lead runway",
@@ -251,7 +251,7 @@ const compareClients: CardBuilder = (data) => {
         int(num(client, "campaigns")),
         int(num(client, "sent")),
         int(num(client, "replied")),
-        pct(num(client, "reply_rate")),
+        pct(num(client, "replyRate")),
         int(num(client, "positive")),
       ]),
     },
@@ -272,7 +272,7 @@ const crossChannelLead: CardBuilder = (data) => {
       .toReversed()
       .map(
         (message) =>
-          `${day(str(message, "sent_at"))} · ${show(message, "channel")} · ${
+          `${day(str(message, "sentAt"))} · ${show(message, "channel")} · ${
             str(message, "direction") === "in" ? "**reply**" : "sent"
           }${quote(field(message, "body"))}`
       ),
@@ -307,16 +307,16 @@ const windowLine = (window: JsonObject): string => {
 const campaignSetup: CardBuilder = (data) => ({
   bullets: rows(data, "schedule").map((window) => windowLine(window)),
   stats: [
-    ["Daily limit", int(num(data, "daily_limit"))],
-    ["New leads per day", int(num(data, "daily_new_leads"))],
-    ["Gap between sends", `${int(num(data, "gap_minutes"))} min`],
-    ["Starts", show(data, "start_date")],
-    ["Ends", show(data, "end_date")],
-    ["Open tracking", yesNo(bool(data, "track_opens"))],
-    ["Click tracking", yesNo(bool(data, "track_clicks"))],
-    ["Reply stops sequence", yesNo(bool(data, "stop_on_reply"))],
-    ["Auto-reply stops it", yesNo(bool(data, "stop_on_auto_reply"))],
-    ["Plain text", yesNo(bool(data, "plain_text"))],
+    ["Daily limit", int(num(data, "dailyLimit"))],
+    ["New leads per day", int(num(data, "dailyNewLeads"))],
+    ["Gap between sends", `${int(num(data, "gapMinutes"))} min`],
+    ["Starts", show(data, "startDate")],
+    ["Ends", show(data, "endDate")],
+    ["Open tracking", yesNo(bool(data, "trackOpens"))],
+    ["Click tracking", yesNo(bool(data, "trackClicks"))],
+    ["Reply stops sequence", yesNo(bool(data, "stopOnReply"))],
+    ["Auto-reply stops it", yesNo(bool(data, "stopOnAutoReply"))],
+    ["Plain text", yesNo(bool(data, "plainText"))],
   ],
   subtitle: show(data, "campaign"),
   title: "Campaign setup",
@@ -334,7 +334,7 @@ const audienceLists: CardBuilder = (data) => {
         show(list, "name"),
         show(list, "kind"),
         int(num(list, "size")),
-        day(str(list, "created_at")),
+        day(str(list, "createdAt")),
       ]),
     },
     title: "Audience lists",

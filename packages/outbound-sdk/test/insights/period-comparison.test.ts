@@ -451,6 +451,10 @@ test("period_comparison divides a period's replies by messages sent, so a rate n
     weekly?.finding ?? "",
     /^Replies per message sent went from 2% to 2\.7%; /u
   );
+  assert.ok(
+    !result.meta.notes.some((note) => note.includes("by leads contacted")),
+    "no basis note when replies are per message sent"
+  );
 });
 
 test("period_comparison falls back to leads contacted for both periods when a period does not report messages sent", async () => {
@@ -484,5 +488,11 @@ test("period_comparison falls back to leads contacted for both periods when a pe
   assert.match(
     seats?.finding ?? "",
     /^Replies per lead contacted went from 2% to 16%; /u
+  );
+  assert.ok(
+    result.meta.notes.some((note) =>
+      note.startsWith("Some reply rates divide by leads contacted")
+    ),
+    "says why the rates are per lead"
   );
 });

@@ -1,27 +1,29 @@
 [ 'campaign_overview', 'sender_health' ]
-How every campaign is doing: sends, replies, positive replies, bounces and reply rate for each campaign with the given status, or for the one campaign given, over period (the whole history when from and to are left out). One vendor request per campaign. Rates are computed from the counts beside them, and reply_rate_basis names the count replies were divided by. A null means the vendor does not report that count, never 0; metrics is null for a campaign the vendor reported no stats for. meta.complete: false means limit cut the list or a stats read was partial, and meta.notes says so, including the vendor's own notes on the counts.
+How every campaign with the given status is doing, or the one campaign given, over a date range (the whole history when from and to are left out): sends, replies, positive replies, bounces and reply rate. replyRateBasis names the count replies were divided by; metrics is null for a campaign the vendor reported no stats for. One vendor request per campaign. meta.complete: false means the answer covers part of the data, and meta.notes says why.
 {
   "data": {
     "campaigns": [
       {
         "campaign": "memory:acme:cmp_agencies",
+        "campaignName": "Agency owners",
         "channel": "email",
-        "name": "Agency owners",
         "metrics": {
-          "bounce_rate": 0.0505,
+          "bounceRate": 0.0505,
           "bounced": 53,
-          "connections_accepted": null,
-          "connections_sent": null,
+          "connectionsAccepted": null,
+          "connectionsSent": null,
           "contacted": 630,
           "opened": 378,
           "positive": 4,
-          "positive_reply_rate": 0.0063,
+          "positiveReplyRate": 0.0063,
           "replied": 15,
-          "reply_rate": 0.0238,
-          "reply_rate_basis": "contacted",
+          "replyRate": 0.0238,
+          "replyRateBasis": "contacted",
           "sent": 1050
         },
-        "status": "paused"
+        "provider": "memory",
+        "status": "paused",
+        "workspaceId": "acme"
       }
     ],
     "period": {

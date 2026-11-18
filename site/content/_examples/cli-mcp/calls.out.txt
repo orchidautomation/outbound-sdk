@@ -5,42 +5,47 @@ tools/call
   "result": {
     "content": [
       {
-        "text": "{\"data\":{\"checked\":2,\"failing\":0,\"senders\":[{\"address\":\"outreach1@example.com\",\"daily_limit\":40,\"kind\":\"mailbox\",\"name\":\"Outreach One\",\"sender\":\"memory:acme:mbx_1\",\"status\":\"active\",\"warmup_enabled\":true,\"warmup_score\":96}],\"total\":2,\"unhealthy\":0},\"meta\":{\"complete\":false,\"evidence\":\"exact\",\"notes\":[\"Listed 1 sender (limit); more were checked.\"],\"provider\":\"memory\",\"requests\":0,\"computedAt\":\"2026-11-14T12:00:00.000Z\",\"today\":\"2026-11-14\"},\"next\":\"Use deliverability_check for each sender's DNS, sign-in and block list status.\",\"ok\":true}",
+        "text": "{\"data\":{\"status\":{\"campaigns\":[],\"checked\":2,\"failing\":0,\"senders\":[{\"address\":\"outreach1@example.com\",\"dailyLimit\":40,\"kind\":\"mailbox\",\"name\":\"Outreach One\",\"provider\":\"memory\",\"sender\":\"memory:acme:mbx_1\",\"status\":\"active\",\"warmupEnabled\":true,\"warmupScore\":96,\"workspaceId\":\"acme\"}],\"total\":2,\"unhealthy\":0}},\"meta\":{\"complete\":false,\"computedAt\":\"2026-11-14T12:00:00.000Z\",\"evidence\":\"exact\",\"notes\":[\"status: Listed 1 sender (limit); more were checked.\"],\"provider\":\"memory\",\"requests\":0,\"today\":\"2026-11-14\"},\"next\":\"Use sender_health with checks [\\\"deliverability\\\"] for each sender's DNS, sign-in and block list status.\",\"ok\":true}",
         "type": "text"
       }
     ],
     "isError": false,
     "structuredContent": {
       "data": {
-        "checked": 2,
-        "failing": 0,
-        "senders": [
-          {
-            "address": "outreach1@example.com",
-            "daily_limit": 40,
-            "kind": "mailbox",
-            "name": "Outreach One",
-            "sender": "memory:acme:mbx_1",
-            "status": "active",
-            "warmup_enabled": true,
-            "warmup_score": 96
-          }
-        ],
-        "total": 2,
-        "unhealthy": 0
+        "status": {
+          "campaigns": [],
+          "checked": 2,
+          "failing": 0,
+          "senders": [
+            {
+              "address": "outreach1@example.com",
+              "dailyLimit": 40,
+              "kind": "mailbox",
+              "name": "Outreach One",
+              "provider": "memory",
+              "sender": "memory:acme:mbx_1",
+              "status": "active",
+              "warmupEnabled": true,
+              "warmupScore": 96,
+              "workspaceId": "acme"
+            }
+          ],
+          "total": 2,
+          "unhealthy": 0
+        }
       },
       "meta": {
         "complete": false,
+        "computedAt": "2026-11-14T12:00:00.000Z",
         "evidence": "exact",
         "notes": [
-          "Listed 1 sender (limit); more were checked."
+          "status: Listed 1 sender (limit); more were checked."
         ],
         "provider": "memory",
         "requests": 0,
-        "computedAt": "2026-11-14T12:00:00.000Z",
         "today": "2026-11-14"
       },
-      "next": "Use deliverability_check for each sender's DNS, sign-in and block list status.",
+      "next": "Use sender_health with checks [\"deliverability\"] for each sender's DNS, sign-in and block list status.",
       "ok": true
     }
   }
@@ -53,7 +58,7 @@ tools/call that fails: a result with isError, not a protocol error
   "result": {
     "content": [
       {
-        "text": "{\"error\":{\"code\":\"Invalid\",\"message\":\"campaign_overview: \\\"client\\\" is not an input. It takes: campaign, from, limit, status, to\",\"retryable\":false},\"next\":\"Check the input and try again.\",\"ok\":false}",
+        "text": "{\"error\":{\"code\":\"Invalid\",\"message\":\"campaigns: \\\"client\\\" is not an input. It takes: campaign, from, limit, metric, scope, status, to, view\",\"retryable\":false},\"next\":\"Check the input and try again.\",\"ok\":false}",
         "type": "text"
       }
     ],
@@ -61,7 +66,7 @@ tools/call that fails: a result with isError, not a protocol error
     "structuredContent": {
       "error": {
         "code": "Invalid",
-        "message": "campaign_overview: \"client\" is not an input. It takes: campaign, from, limit, status, to",
+        "message": "campaigns: \"client\" is not an input. It takes: campaign, from, limit, metric, scope, status, to, view",
         "retryable": false
       },
       "next": "Check the input and try again.",

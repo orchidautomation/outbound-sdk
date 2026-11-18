@@ -85,7 +85,8 @@ export const checkCap = (cap: number | undefined, setting: string): void => {
 
 const bind = <Input>(
   outbound: OutboundApi,
-  definition: Definition<Input>
+  definition: Definition<Input>,
+  answerNote = true
 ): OutboundTool => ({
   call: async (given, options = {}) => {
     const input = jsonInput(given);
@@ -179,13 +180,19 @@ const bind = <Input>(
         : failure(error, counter.used());
     }
   },
-  description: definition.description,
+  description: answerNote
+    ? `${definition.description} ${TOOL_ANSWER_NOTE}`
+    : definition.description,
   name: definition.name,
   needs: definition.needs,
   // SAFETY: a JSON Schema document is JSON by definition.
   parameters: z.toJSONSchema(definition.inputSchema, { io: "input" }) as Json,
   fields: definition.inputSchema.shape,
 });
+
+// Said in every built-in tool's description, unless a surface says it once.
+const TOOL_ANSWER_NOTE =
+  "meta.complete: false means the answer covers part of the data, and meta.notes says why.";
 
 export const TOOL_NAMES = [
   "campaign_overview",
@@ -224,6 +231,11 @@ export interface ToolsOptions {
    * tool's campaigns.
    */
   readonly members?: readonly OutboundApi[] | undefined;
+  /**
+   * Whether each description ends with how to read `meta.complete`.
+   * Defaults to `true`; `outbound mcp` says it once in its instructions.
+   */
+  readonly answerNote?: boolean | undefined;
 }
 
 interface Redacted {
@@ -376,18 +388,18 @@ export const createTools = (
   checkCap(options.maxRequestsPerToolCall, "maxRequestsPerToolCall");
 
   const all = [
-    bind(outbound, campaignOverview),
-    bind(outbound, campaignTrend),
-    bind(outbound, winningSteps),
-    bind(outbound, senderHealth),
-    bind(outbound, replySamples),
-    bind(outbound, leadRunway),
-    bind(outbound, compareClients),
-    bind(outbound, crossChannelLead),
-    bind(outbound, campaignSetup),
-    bind(outbound, deliverabilityCheck),
-    bind(outbound, audienceLists),
-    bind(outbound, vendorRead),
+    bind(outbound, campaignOverview, options.answerNote),
+    bind(outbound, campaignTrend, options.answerNote),
+    bind(outbound, winningSteps, options.answerNote),
+    bind(outbound, senderHealth, options.answerNote),
+    bind(outbound, replySamples, options.answerNote),
+    bind(outbound, leadRunway, options.answerNote),
+    bind(outbound, compareClients, options.answerNote),
+    bind(outbound, crossChannelLead, options.answerNote),
+    bind(outbound, campaignSetup, options.answerNote),
+    bind(outbound, deliverabilityCheck, options.answerNote),
+    bind(outbound, audienceLists, options.answerNote),
+    bind(outbound, vendorRead, options.answerNote),
   ];
 
   const wanted =

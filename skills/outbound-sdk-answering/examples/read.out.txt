@@ -3,43 +3,47 @@
     "campaigns": [
       {
         "campaign": "memory:acme:cmp_founders",
+        "campaignName": "SaaS founders",
         "channel": "email",
-        "name": "SaaS founders",
         "metrics": {
-          "bounce_rate": 0.02,
+          "bounceRate": 0.02,
           "bounced": 7,
-          "connections_accepted": null,
-          "connections_sent": null,
+          "connectionsAccepted": null,
+          "connectionsSent": null,
           "contacted": 140,
           "opened": null,
           "positive": 7,
-          "positive_reply_rate": 0.05,
+          "positiveReplyRate": 0.05,
           "replied": 14,
-          "reply_rate": 0.1,
-          "reply_rate_basis": "contacted",
+          "replyRate": 0.1,
+          "replyRateBasis": "contacted",
           "sent": 350
         },
-        "status": "active"
+        "provider": "memory",
+        "status": "active",
+        "workspaceId": "acme"
       },
       {
         "campaign": "memory:acme:cmp_agencies",
+        "campaignName": "Agency owners",
         "channel": "email",
-        "name": "Agency owners",
         "metrics": {
-          "bounce_rate": null,
+          "bounceRate": null,
           "bounced": null,
-          "connections_accepted": null,
-          "connections_sent": null,
+          "connectionsAccepted": null,
+          "connectionsSent": null,
           "contacted": 70,
           "opened": null,
           "positive": null,
-          "positive_reply_rate": null,
+          "positiveReplyRate": null,
           "replied": 7,
-          "reply_rate": 0.1,
-          "reply_rate_basis": "contacted",
+          "replyRate": 0.1,
+          "replyRateBasis": "contacted",
           "sent": 210
         },
-        "status": "active"
+        "provider": "memory",
+        "status": "active",
+        "workspaceId": "acme"
       }
     ],
     "period": {

@@ -208,14 +208,14 @@ test("instantly: an address with leads in two campaigns joins each reply to its 
 
   const { data } = result as unknown as {
     data: {
-      people: { lead_email: string; messages: number }[];
-      unique_people: number;
+      people: { leadEmail: string; messages: number }[];
+      uniquePeople: number;
     };
   };
 
-  assert.equal(data.unique_people, 1);
+  assert.equal(data.uniquePeople, 1);
   assert.deepEqual(
-    data.people.map((each) => [each.lead_email, each.messages]),
+    data.people.map((each) => [each.leadEmail, each.messages]),
     [[PERSON, 2]]
   );
 });

@@ -13,6 +13,7 @@ import {
   partialNote,
   ratesAcross,
   readCampaignTotals,
+  noteSentBasis,
   replyBasisAcross,
   totalsOf,
   volumeOf,
@@ -92,7 +93,7 @@ const named = (group: TagGroup): string => group.tag ?? "";
 
 export const tagRollup = defineInsight({
   description:
-    "Results by campaign tag (for example one tag per client, offer or audience): for each tag the campaigns, messages sent, leads contacted, replies, positive replies and bounces, with reply, positive reply and bounce rates and their 95% intervals, sorted by the low end of the reply rate interval. A campaign with two tags counts in both; campaigns with none are grouped under a null tag. Tags under min_sent sends are listed apart. replyRateBasis names what every reply rate divides by, the same for every campaign: leads contacted, or messages sent when a campaign has replies in the range but contacted no new lead in it. A null count is one the vendor does not report; a rate counts only the campaigns that report both its count and what it divides by, and a note names a tag whose rate leaves campaigns out. Costs one listing per status plus one stats request per campaign (one for all of them on a vendor that reports every campaign in one call with every count).",
+    "Results by campaign tag, for example one per client, offer or audience: for each tag the campaigns, messages sent, leads contacted, replies, positive replies and bounces, with reply, positive reply and bounce rates and their 95% intervals, sorted by the low end of the reply rate interval. A campaign with two tags counts in both; untagged campaigns group under a null tag. Costs one listing per status plus one stats request per campaign, or one for all of them on a vendor that reports every campaign in one call.",
   inputSchema: input,
   key: "tagRollup",
   // A tool whose campaigns carry no tags would put every campaign under one
@@ -119,6 +120,7 @@ export const tagRollup = defineInsight({
     }
 
     const basis = replyBasisAcross(entries.map((entry) => entry.counts));
+    noteSentBasis(context, basis);
 
     const grouped = [...members].map(([tag, group]) =>
       groupOf(tag, group, basis)

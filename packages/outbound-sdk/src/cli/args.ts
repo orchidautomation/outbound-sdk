@@ -21,6 +21,7 @@ const GLOBAL_HELP = [
   "  --cache <seconds>        reuse an answer for this long, within this process (for mcp; use a config-file store to persist)",
   "  --max-requests <n>       the most vendor requests one command, or one MCP tool call, may make",
   "",
+  "DATE is a day, YYYY-MM-DD, or an ISO 8601 date and time such as 2026-11-10T09:00:00Z; --from and --to count the UTC day it falls on.",
   "Each adapter reads its own key from the environment, for example INSTANTLY_API_KEY.",
   "OUTBOUND_REDACT_KEY, a secret of at least 32 characters, gives redact the same tokens in every run.",
 ];

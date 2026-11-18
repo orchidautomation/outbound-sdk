@@ -104,8 +104,8 @@ test("campaign_overview reports a cut list in meta.complete and meta.notes", asy
 });
 
 const campaignNames = (result: ToolSuccess) =>
-  (result.data as { campaigns: { name: string }[] }).campaigns.map(
-    (campaign) => campaign.name
+  (result.data as { campaigns: { campaignName: string }[] }).campaigns.map(
+    (campaign) => campaign.campaignName
   );
 
 test("campaign_overview takes one campaign, by id or by name, as every sibling tool does", async () => {

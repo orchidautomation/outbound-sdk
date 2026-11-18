@@ -5,19 +5,19 @@ Usage: outbound <command> [options]
 
   providers
   blocklist [--limit N] [--cursor C] [--jsonl]
-  campaign <id or name> [--stats] [--sequence] [--subsequences] [--settings] [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--by day|total]
+  campaign <id or name> [--stats] [--sequence] [--subsequences] [--settings] [--from DATE] [--to DATE] [--by day|total]
   campaigns [--status active|paused|draft|completed|archived] [--search TEXT] [--limit N] [--cursor C] [--jsonl]
   capabilities
   health <sender id>
   insight [name] [--input JSON] [--card | --slack-text | --slack]  computed answers; no name lists them. --card prints the answer as text, --slack-text as Slack mrkdwn to paste, --slack as a Slack message's JSON
-  leads [--campaign ID|NAME | --list ID|NAME] [--since ISO] [--limit N] [--cursor C] [--jsonl]  --since keeps the leads created since then (a lead updated later is not); with --since, --limit defaults to the whole window up to 2000
+  leads [--campaign ID|NAME | --list ID|NAME] [--since DATE] [--limit N] [--cursor C] [--jsonl]  --since keeps the leads created since then (a lead updated later is not); with --since, --limit defaults to the whole window up to 2000
   lists [--limit N] [--cursor C] [--jsonl]
   limits
   native [name] [--input JSON]   the vendor's own reads; no name lists them
   person <email, LinkedIn URL or lead ref> [--limit N] [--card | --slack-text | --slack]  one person's campaigns across every tool; a lead ref is taken as another command printed it
-  replies [--campaign ID|NAME] [--category positive|negative|neutral|ooo|...] [--since ISO] [--limit N] [--cursor C] [--jsonl] [--bodies] [--by person] [--include-inbox]  one record per message; --by person gives one row per person. --since keeps the replies received since then; --limit defaults to 50, or with --since to the whole window up to 2000. --include-inbox adds conversations outside every campaign (HeyReach)
+  replies [--campaign ID|NAME] [--category positive|negative|neutral|ooo|...] [--since DATE] [--limit N] [--cursor C] [--jsonl] [--bodies] [--by person] [--include-inbox]  one record per message; --by person gives one row per person. --since keeps the replies received since then; --limit defaults to 50, or with --since to the whole window up to 2000. --include-inbox adds conversations outside every campaign (HeyReach)
   senders [--limit N] [--cursor C] [--jsonl]
-  stats [--scope workspace|campaign|sender] [--sender ID] [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--by day|total] [--jsonl]  --scope campaign gives a row per campaign and --scope sender a row per sender, every sender read in batches where the tool allows; --sender reads one sender
+  stats [--scope workspace|campaign|sender] [--sender ID] [--from DATE] [--to DATE] [--by day|total] [--jsonl]  --scope campaign gives a row per campaign and --scope sender a row per sender, every sender read in batches where the tool allows; --sender reads one sender
   tags [--limit N] [--cursor C] [--jsonl]
   thread <id> [--bodies] [--jsonl]
   tool <name> [--input JSON] [--card | --slack-text | --slack]  without --input, a tool that needs input fails with what it takes (exit 2)
@@ -39,6 +39,7 @@ Options:
   --cache <seconds>        reuse an answer for this long, within this process (for mcp; use a config-file store to persist)
   --max-requests <n>       the most vendor requests one command, or one MCP tool call, may make
 
+DATE is a day, YYYY-MM-DD, or an ISO 8601 date and time such as 2026-11-10T09:00:00Z; --from and --to count the UTC day it falls on.
 Each adapter reads its own key from the environment, for example INSTANTLY_API_KEY.
 OUTBOUND_REDACT_KEY, a secret of at least 32 characters, gives redact the same tokens in every run.
 

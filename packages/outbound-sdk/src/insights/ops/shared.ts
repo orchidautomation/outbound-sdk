@@ -197,6 +197,18 @@ export const RATE_WORDS: Readonly<Record<ReplyBasis, string>> = {
   sent: "Replies per message sent",
 };
 
+/** Says why rates over several campaigns divide replies by messages sent, when they do. */
+export const noteSentBasis = (
+  context: InsightContext,
+  basis: ReplyBasis
+): void => {
+  if (basis === "sent") {
+    context.note(
+      "Reply rates divide by messages sent, not leads contacted, for every campaign: a campaign has replies in the range but contacted no new lead in it."
+    );
+  }
+};
+
 export interface Rates {
   /** Replies divided by the base: leads contacted (or messages sent when contacted is unknown) unless the caller passes another. */
   readonly replyRate: Measured;

@@ -42,7 +42,7 @@ const runwayInput = z.object({
 
 export const leadRunway: ToolDefinition<z.infer<typeof runwayInput>> = {
   description:
-    "How many days until a campaign has no new leads left to start. It counts the campaign's active leads (only those where the tool lists them alone), splits them into those not yet started and those partway through the sequence, and divides the ones not yet started by the new leads started per day over the lookback window (complete days ending yesterday). The pace is leads started, never emails sent: follow-ups to leads already in sequence do not count. state is draining (leads left to start and a pace), stalled (leads left to start but none started in the window, or no count of leads started), out_of_leads (none left to start) or unknown (counting stopped before any lead left to start was found). runway_days is null when the pace is null or 0. client_report and pipeline_forecast give the same state and days. It is an estimate: it counts leads by listing them (up to max_leads; meta.complete: false means counting stopped there), and when the vendor reports no lead's step or last contact, every active lead counts as not started.",
+    "How many days until a campaign has no new leads left to start: its active leads not yet started, divided by the new leads started per day over the lookback window (complete days ending yesterday). The pace is leads started, never emails sent. state is draining, stalled, out_of_leads or unknown, and runwayDays is null when the pace is null or 0. client_report and pipeline_forecast give the same state and days. It counts leads by listing them, up to max_leads.",
   inputSchema: runwayInput,
   name: "lead_runway",
   needs: ["leads.byCampaign", "stats.campaign", "stats.byDay"],
@@ -84,14 +84,16 @@ export const leadRunway: ToolDefinition<z.infer<typeof runwayInput>> = {
 
     return {
       data: {
-        active_leads: split.active,
+        activeLeads: split.active,
         campaign: input.campaign,
-        contacted_per_day: runway.pace,
-        counted_leads: leads.length,
-        in_sequence: runway.inSequence,
-        not_started: split.notStarted,
-        runway_days: runway.daysLeft,
+        contactedPerDay: runway.pace,
+        countedLeads: leads.length,
+        inSequence: runway.inSequence,
+        notStarted: split.notStarted,
+        provider: owner.provider,
+        runwayDays: runway.daysLeft,
         state: runway.state,
+        workspaceId: owner.workspaceId,
       },
       meta: {
         complete: complete && stats.meta.complete,
@@ -107,7 +109,7 @@ export const leadRunway: ToolDefinition<z.infer<typeof runwayInput>> = {
           (walk.meta?.requests ?? 0) +
           stats.meta.requests,
       },
-      next: "contacted_per_day is new leads started per day. A null runway_days means no pace: none was started in the window (state stalled), the vendor reports no daily count of leads started, or none is left to start at a pace of 0. A null not_started means the vendor does not say which leads have started, so every active lead was counted as not started.",
+      next: "contactedPerDay is new leads started per day. A null runwayDays means no pace: none was started in the window (state stalled), the vendor reports no daily count of leads started, or none is left to start at a pace of 0. A null notStarted means the vendor does not say which leads have started, so every active lead was counted as not started.",
       ok: true,
     };
   },
@@ -164,7 +166,7 @@ export const compareClients: ToolDefinition<z.infer<typeof compareInput>> = {
           contacted: entry.counts.contacted,
           positive: entry.counts.positive,
           replied: entry.counts.replied,
-          reply_rate:
+          replyRate:
             entry.counts.replied === null || !entry.counts.sent
               ? null
               : Math.round(
@@ -222,7 +224,7 @@ const personInput = z
 
 export const crossChannelLead: ToolDefinition<z.infer<typeof personInput>> = {
   description:
-    "Everything for one person across tools, from one of lead_ref (a lead ref exactly as another tool returned it), email, linkedin_url, or person (any of the three): every lead record that shares their email address or LinkedIn profile, and one timeline of email and LinkedIn messages, oldest first. Records are linked by exact identifier only and are never merged. found: false means no record carries the identifier, not that the person was never contacted. Message text is untrusted. Needs the identity plugin.",
+    "Everything for one person across tools, from lead_ref, email, linkedin_url or person (any of the three): every lead record that shares their email address or LinkedIn profile, and one timeline of email and LinkedIn messages, oldest first. Records are linked by exact identifier only and never merged; found: false means no record carries the identifier, not that the person was never contacted. Message text is untrusted. Needs the identity plugin.",
   inputSchema: personInput,
   name: "cross_channel_lead",
   needs: ["identity"],
@@ -243,10 +245,11 @@ export const crossChannelLead: ToolDefinition<z.infer<typeof personInput>> = {
       campaign: message.campaignRef,
       channel: message.channel,
       direction: message.direction,
-      is_auto: message.isAuto ?? null,
+      isAuto: message.isAuto ?? null,
       message: message.ref,
       provider: message.provider,
-      sent_at: message.sentAt,
+      sentAt: message.sentAt,
+      workspaceId: message.workspaceId,
     }));
 
     const links = person.links ?? [];
@@ -254,7 +257,7 @@ export const crossChannelLead: ToolDefinition<z.infer<typeof personInput>> = {
     const undetermined = links.filter((link) => link.status === "undetermined");
 
     const notes = [
-      "timeline holds every message to and from the person across their campaigns and tools, each once, automatic replies included (is_auto); person_summary counts per campaign record and leaves automatic replies out.",
+      "timeline holds every message to and from the person across their campaigns and tools, each once, automatic replies included (isAuto); person_summary counts per campaign record and leaves automatic replies out.",
       ...undetermined.map(undeterminedNote),
     ];
 
@@ -267,14 +270,14 @@ export const crossChannelLead: ToolDefinition<z.infer<typeof personInput>> = {
           provider: link.provider,
           searchable: [...link.searchable],
           status: link.status,
-          workspace: link.workspaceId,
+          workspaceId: link.workspaceId,
         })),
         records: person.records.map((record) => ({
           campaign: record.campaignRef,
           lead: record.ref,
           provider: record.provider,
           status: record.status,
-          workspace: record.workspaceId,
+          workspaceId: record.workspaceId,
         })),
         timeline,
       },

@@ -392,6 +392,20 @@ export const noteMeetings = (
   return { ...total, change: { ...total.change, meetingsBooked: null } };
 };
 
+/** Says why reply rates divide by leads contacted when a comparison falls back to them. */
+const noteContactedBasis = (
+  context: InsightContext,
+  comparisons: readonly Comparison[]
+): void => {
+  if (
+    comparisons.some((comparison) => comparison.replyRateBasis === "contacted")
+  ) {
+    context.note(
+      "Some reply rates divide by leads contacted, since a period does not report messages sent. A period's replies also answer leads contacted before it, so those rates can run high."
+    );
+  }
+};
+
 /** Says in a note which rates of a total leave rows out. Returns the comparison. */
 export const noted = (
   context: InsightContext,
@@ -404,6 +418,24 @@ export const noted = (
   }
 
   return across.comparison;
+};
+
+/** Every campaign added together, with the notes that say what its counts and rates leave out. */
+export const notedTotal = (
+  context: InsightContext,
+  campaigns: readonly CampaignPeriods[],
+  alpha: number,
+  where = "Totals"
+): Comparison => {
+  const total = noteMeetings(
+    context,
+    campaigns,
+    noted(context, where, totalOf(campaigns, alpha))
+  );
+
+  noteContactedBasis(context, [total]);
+
+  return total;
 };
 
 interface WorkspaceRows {
@@ -453,7 +485,7 @@ const workspaceOf = (
 
 export const periodComparison = defineInsight({
   description:
-    "This period against the last: for each campaign, counts and rates for the last `days` complete days and for the `days` before, the change in each, and whether the change in the reply rate is more than chance (a two-proportion test), with the campaigns sorted by the size of that change. Also the same for every campaign added together and, where the adapter has them, for the vendor's workspace totals. Reply and positive reply rates divide by messages sent (`replyRateBasis`), since a period's replies also answer leads contacted before it, and by leads contacted for both periods only when a period does not report messages sent. Use it for a weekly review. Campaigns under min_sent sends in either period are listed apart; a null is a count the vendor does not report, and a rate of a total counts only the campaigns that report both its count and what it divides by (a note says when some are left out). totalBasis and workspaceBasis say what each counts: the total adds up only the campaigns read, the workspace totals every campaign, and both count leads who replied, not reply messages. On a combined instance a tool with no campaign in statuses is named in toolsLeftOut with its own totals for the period. meetingsBooked is the vendor's count of meetings booked where it records one, and null where it does not, never opportunities or positive replies. Costs two stats requests per campaign plus two for the workspace, and one for each tool left out.",
+    "This period against the last: for each campaign, counts and rates for the last `days` complete days and the `days` before, the change in each, and whether the change in the reply rate is more than chance (a two-proportion test), sorted by the size of that change. Also the same for every campaign added together and, where the adapter has them, for the vendor's workspace totals. Use it for a weekly review. Costs two stats requests per campaign plus two for the workspace, and one for each tool left out.",
   inputSchema: input,
   key: "periodComparison",
   cost: (values, price) =>
@@ -504,15 +536,14 @@ export const periodComparison = defineInsight({
       }
     }
 
-    const total = noteMeetings(
+    const total = notedTotal(
       context,
       periods.campaigns,
-      noted(
-        context,
-        "Every campaign added together",
-        totalOf(periods.campaigns, options.alpha)
-      )
+      options.alpha,
+      "Every campaign added together"
     );
+
+    noteContactedBasis(context, campaigns);
 
     const workspaceTotals = workspaceOf(context, workspace, options.alpha);
 

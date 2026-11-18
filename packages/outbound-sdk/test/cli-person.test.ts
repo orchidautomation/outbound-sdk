@@ -130,8 +130,8 @@ test("tools offers the person tools, as outbound mcp does", async () => {
     )
   );
 
-  assert.ok(names.has("cross_channel_lead"), "identity is installed");
-  assert.ok(names.has("person_summary"), "insights are offered");
+  // person is made of person_summary, cross_channel_lead and account_summary.
+  assert.ok(names.has("person"), "identity and the insights are offered");
   assert.equal(
     (
       await cliOn(

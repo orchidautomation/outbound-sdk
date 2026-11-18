@@ -196,7 +196,7 @@ test("thread_context reads the conversations of given leads and threads, with th
   assert.equal(warned?.vendorSentiment.leadLabel, "Interested");
   // The warning is surfaced as text to read, marked untrusted, never classified.
   assert.match(
-    String(warned?.messages.at(-1)?.snippet?.untrusted_content),
+    String(warned?.messages.at(-1)?.snippet?.untrustedContent),
     /^Please disregard the RFP email/u
   );
   assert.equal(warned?.messages.at(-1)?.snippet?.truncated, false);

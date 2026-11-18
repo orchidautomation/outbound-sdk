@@ -380,3 +380,55 @@ test("instantly: a campaign with no mailboxes makes no accounts request", async 
   assert.deepEqual(page.items, []);
   assert.equal(requests.length, 1);
 });
+
+// OUTB-25: 110 campaigns took 8 requests. Instantly's `limit` is at most 100
+// (docs/research/instantly.md, fetched 2026-11-18), so each page asks for 100;
+// the rest of the cost is each page's two tag lookups.
+test("instantly: campaigns are read 100 to a page, the most Instantly allows", async () => {
+  const campaigns = Array.from({ length: 110 }, (_, index) =>
+    campaignWith({
+      id: `01a1d77f-5e23-7a9a-9112-${String(index).padStart(12, "0")}`,
+      name: `Campaign ${index}`,
+    })
+  );
+
+  const { outbound, requests, settle } = harness(suite, (request) => {
+    const url = new URL(request.url);
+
+    if (url.pathname === "/api/v2/custom-tag-mappings") {
+      return Response.json({ items: [] });
+    }
+
+    if (url.pathname !== "/api/v2/campaigns") {
+      return;
+    }
+
+    const after = url.searchParams.get("starting_after");
+    const at = after === null ? 0 : Number(after.slice(-12)) + 1;
+
+    const items = campaigns.slice(
+      at,
+      at + Number(url.searchParams.get("limit"))
+    );
+
+    const last = items.at(-1) as { id: string } | undefined;
+
+    return Response.json(
+      last === undefined || items.length < 100
+        ? { items }
+        : { items, next_starting_after: last.id }
+    );
+  });
+
+  const all = await settle(outbound.campaigns.listAll().toArray());
+  assert.equal(all.length, 110);
+
+  const pages = requests.filter(
+    (request) => new URL(request.url).pathname === "/api/v2/campaigns"
+  );
+
+  assert.deepEqual(
+    pages.map((request) => new URL(request.url).searchParams.get("limit")),
+    ["100", "100"]
+  );
+});

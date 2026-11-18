@@ -27,13 +27,13 @@ const RIGHT = "right";
 const LEFT = "left";
 
 const warmup = (sender: JsonObject): string => {
-  const score = num(sender, "warmup_score");
+  const score = num(sender, "warmupScore");
 
   if (score !== null) {
     return int(score);
   }
 
-  const enabled = bool(sender, "warmup_enabled");
+  const enabled = bool(sender, "warmupEnabled");
 
   if (enabled === null) {
     return DASH;
@@ -42,23 +42,35 @@ const warmup = (sender: JsonObject): string => {
   return enabled ? "On" : "Off";
 };
 
+/** Each campaign's name by ref, from the answer's top-level `campaigns`. */
+const campaignNames = (data: Json): ReadonlyMap<string, string> =>
+  new Map(
+    rows(data, "campaigns").map((campaign) => [
+      show(campaign, "campaign"),
+      show(campaign, "campaignName"),
+    ])
+  );
+
 /** What a failing sender breaks, in one line. Empty when no impact was read. */
-const impactLine = (sender: JsonObject): string => {
+const impactLine = (
+  sender: JsonObject,
+  names: ReadonlyMap<string, string>
+): string => {
   if (!isJsonObject(field(sender, "impact"))) {
     return "";
   }
 
   const impact = child(sender, "impact");
 
-  const campaigns = rows(impact, "active_campaigns");
-  const count = num(impact, "active_campaign_count");
-  const sent = num(child(impact, "recent_sends"), "sent");
-  const last = str(impact, "last_sent_on");
+  const campaigns = strings(impact, "activeCampaigns");
+  const count = num(impact, "activeCampaignCount");
+  const sent = num(child(impact, "recentSends"), "sent");
+  const last = str(impact, "lastSentOn");
 
   const parts = [
     count === null
       ? "active campaigns unknown"
-      : `${plural(count, "active campaign")}${campaigns.length === 0 ? "" : ` (${campaigns.map((campaign) => show(campaign, "name")).join(", ")})`}`,
+      : `${plural(count, "active campaign")}${campaigns.length === 0 ? "" : ` (${campaigns.map((ref) => names.get(ref) ?? ref).join(", ")})`}`,
     sent === null ? "recent sends unknown" : `${int(sent)} sent in 14 days`,
     ...(last === null ? [] : [`last sent ${last}`]),
   ];
@@ -70,11 +82,14 @@ const impactLine = (sender: JsonObject): string => {
 const who = (sender: JsonObject): string =>
   str(sender, "address") ?? str(sender, "name") ?? "A LinkedIn seat";
 
-const failingBullets = (senders: readonly JsonObject[]): string[] =>
+const failingBullets = (
+  senders: readonly JsonObject[],
+  names: ReadonlyMap<string, string>
+): string[] =>
   senders.flatMap((sender) =>
     isJsonObject(field(sender, "impact"))
       ? [
-          `🔴 **${who(sender)}** (${show(sender, "status")})${impactLine(sender)}`,
+          `🔴 **${who(sender)}** (${show(sender, "status")})${impactLine(sender, names)}`,
         ]
       : []
   );
@@ -93,7 +108,7 @@ export const senderHealth: CardBuilder = (data) => {
   ];
 
   return {
-    bullets: failingBullets(senders),
+    bullets: failingBullets(senders, campaignNames(data)),
     finding: verdict(
       checked,
       unhealthy === 0
@@ -109,7 +124,7 @@ export const senderHealth: CardBuilder = (data) => {
         str(sender, "address") ?? show(sender, "sender"),
         show(sender, "kind"),
         show(sender, "status"),
-        int(num(sender, "daily_limit")),
+        int(num(sender, "dailyLimit")),
         warmup(sender),
       ]),
       // The more count covers every sender checked, not only those in the answer.
@@ -136,11 +151,11 @@ const coverageStats = (data: Json): Stat[] => {
 
   const coverage = child(data, "coverage");
 
-  const byReason = child(coverage, "not_checked_by_reason");
+  const byReason = child(coverage, "notCheckedByReason");
 
   return [
     ["Checked in full", int(num(coverage, "checked"))],
-    ["Not checked", int(num(coverage, "not_checked"))],
+    ["Not checked", int(num(coverage, "notChecked"))],
     ...["cap", "unsupported", "error"].flatMap((reason): Stat[] => {
       const amount = num(byReason, reason) ?? 0;
 
@@ -151,8 +166,9 @@ const coverageStats = (data: Json): Stat[] => {
 
 export const deliverabilityCheck: CardBuilder = (data) => {
   const senders = rows(data, "senders");
-  const broken = num(data, "with_problems") ?? 0;
+  const broken = num(data, "withProblems") ?? 0;
   const screened = num(data, "screened") ?? senders.length;
+  const names = campaignNames(data);
 
   return {
     bullets: senders.flatMap((sender) => {
@@ -161,7 +177,7 @@ export const deliverabilityCheck: CardBuilder = (data) => {
       return problems.length === 0
         ? []
         : [
-            `🔴 **${show(sender, "address")}**: ${problems.join("; ")}${impactLine(sender)}`,
+            `🔴 **${show(sender, "address")}**: ${problems.join("; ")}${impactLine(sender, names)}`,
           ];
     }),
     finding: verdict(
@@ -191,7 +207,7 @@ export const deliverabilityCheck: CardBuilder = (data) => {
               DASH,
               DASH,
               DASH,
-              `not checked (${show(child(sender, "not_checked"), "reason")})`,
+              `not checked (${show(child(sender, "notChecked"), "reason")})`,
               DASH,
             ]
           : [
@@ -201,7 +217,7 @@ export const deliverabilityCheck: CardBuilder = (data) => {
               dns(sender, "dmarc"),
               dns(sender, "mx"),
               yesNo(bool(sender, "connected")),
-              pct(num(sender, "warmup_spam_rate")),
+              pct(num(sender, "warmupSpamRate")),
             ]
       ),
     },

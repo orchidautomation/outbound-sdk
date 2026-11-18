@@ -46,7 +46,7 @@ const input = z.object({
     .enum(METRICS)
     .default("replied")
     .describe(
-      "What a variant is judged on. Replies and positive replies are divided by leads contacted (or sends); opens and clicks by messages delivered (or sends)."
+      "What variants are judged on. Replies divide by leads contacted, opens and clicks by messages delivered, else by sends."
     ),
   min_sent: z
     .number()
@@ -54,7 +54,7 @@ const input = z.object({
     .min(1)
     .default(100)
     .describe(
-      "A variant with a smaller base than this (sends, or leads contacted when the vendor counts those) is not compared."
+      "Smallest base (sends, or leads contacted when counted) a variant needs to be compared."
     ),
 });
 
@@ -101,6 +101,11 @@ export interface VariantTest {
    * tell either way.
    */
   readonly variantStatsReported: boolean | null;
+  /**
+   * The answer in one sentence, including why nothing was compared: no step
+   * stats, no variant rows, or no step with two variants.
+   */
+  readonly finding: string;
   /** Winners first, then steps with no difference yet, then steps with too little data. */
   readonly steps: readonly VariantStepTest[];
   readonly totals: {
@@ -350,6 +355,23 @@ const variantsReported = (
   return reported;
 };
 
+const findingOf = (
+  reported: boolean | null,
+  totals: VariantTest["totals"]
+): string => {
+  if (reported === null) {
+    return "No step stats in this date range, so there is nothing to compare.";
+  }
+
+  if (!reported) {
+    return "The vendor does not report results by variant for this campaign, so there is nothing to compare.";
+  }
+
+  return totals.stepsTested === 0
+    ? "No step has two variants to compare: every step with stats has one variant."
+    : `${plural(totals.winners, "step")} with a real winner out of ${totals.stepsTested} tested.`;
+};
+
 const countOf = (
   steps: readonly VariantStepTest[],
   verdict: VariantVerdict
@@ -357,7 +379,7 @@ const countOf = (
 
 export const variantTest = defineInsight({
   description:
-    "Whether a campaign's A/B winner is real. For each step with two or more variants, compares every variant with the leader by a two-proportion test and returns the variants with rates and 95% intervals, the leader, and a verdict: winner, no_difference_yet or too_little_data, with the p-value and a rough number of sends still needed when there is no verdict. Use it before pausing a variant. Costs 1 request. A null count or rate means the vendor does not report it; an empty list means the vendor does not split step stats by variant (variantStatsReported false) or reported no step stats in the date range (null). Variants of a step are divided by the same base; variants with no base in common are not compared.",
+    "Whether a campaign's A/B winner is real. For each step with two or more variants, tests every variant against the leader by a two-proportion test and returns the rates with 95% intervals, the leader and a verdict: winner, no_difference_yet or too_little_data, with the p-value and a rough number of sends still needed. Use it before pausing a variant. Costs 1 request. A null count or rate is not reported, never 0.",
   inputSchema: input,
   key: "variantTest",
   cost: (_input, price) => price.one("stats"),
@@ -388,17 +410,20 @@ export const variantTest = defineInsight({
 
     const reported = variantsReported(context, rows);
 
+    const totals = {
+      noDifferenceYet: countOf(steps, "no_difference_yet"),
+      stepsTested: steps.length,
+      tooLittleData: countOf(steps, "too_little_data"),
+      winners: countOf(steps, "winner"),
+    };
+
     const result: VariantTest = {
       alpha,
       campaign: refOf(context.outbound, campaign),
+      finding: findingOf(reported, totals),
       metric,
       steps,
-      totals: {
-        noDifferenceYet: countOf(steps, "no_difference_yet"),
-        stepsTested: steps.length,
-        tooLittleData: countOf(steps, "too_little_data"),
-        winners: countOf(steps, "winner"),
-      },
+      totals,
       variantStatsReported: reported,
     };
 

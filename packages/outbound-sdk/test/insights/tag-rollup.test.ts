@@ -112,6 +112,26 @@ test("tag_rollup adds campaigns up per tag, counting a campaign in each of its t
   assert.equal(result.meta.complete, true);
 });
 
+test("tag_rollup divides by messages sent when a campaign contacted no new lead, and says so", async () => {
+  const result = await single({
+    campaigns: [
+      { id: "c1", name: "Fresh", tags: ["client-a"] },
+      { id: "c2", name: "Follow-ups", tags: ["client-b"] },
+    ],
+    stats: [
+      row("c1", "2026-11-03", { contacted: 400, replied: 20, sent: 400 }),
+      row("c2", "2026-11-04", { contacted: 0, replied: 6, sent: 300 }),
+    ],
+  }).insights.tagRollup(NOVEMBER, { now: NOW });
+
+  assert.equal(result.data.replyRateBasis, "sent");
+  assert.ok(
+    result.meta.notes.some((note) =>
+      note.startsWith("Reply rates divide by messages sent")
+    )
+  );
+});
+
 test("tag_rollup moves a tag in or out with min_sent, and follows the range and the statuses", async () => {
   const outbound = single(DATA);
 

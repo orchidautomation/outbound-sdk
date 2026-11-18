@@ -41,6 +41,12 @@ export interface InsightToolsOptions {
    * campaign answers for the one tool that serves it, marked incomplete.
    */
   readonly members?: readonly OutboundApi[] | undefined;
+  /**
+   * Whether each description ends with how to read the answer (`meta.complete`
+   * and `meta.notes`). Defaults to `true`; `outbound mcp` says it once in
+   * its instructions instead.
+   */
+  readonly answerNote?: boolean | undefined;
 }
 
 /** The most an insight tool call may send when no cap is set, whatever its input. */
@@ -280,7 +286,10 @@ const toTool = (
       );
     }
   },
-  description: `${definition.description} ${ANSWER_NOTE}`,
+  description:
+    options.answerNote === false
+      ? definition.description
+      : `${definition.description} ${ANSWER_NOTE}`,
   fields: definition.inputSchema.shape,
   name: definition.name,
   needs: [...definition.needs],
