@@ -89,8 +89,10 @@ export interface TaskScore {
   readonly seconds: number;
   readonly turns: number | null;
   readonly costUsd: number | null;
-  /** 0-3: correct, no forbidden claim, no dead end. */
+  /** Points for correct, no forbidden claim and no dead end. */
   readonly score: number;
+  /** The points it could earn: 3, or 2 when correctness is unscored for want of truth. */
+  readonly outOf: number;
   /** The answer block's counts and flags (and the reviewed campaign's ref), for reading a wrong answer back. */
   readonly answer: unknown;
 }
@@ -147,6 +149,7 @@ export const scoreTask = (
     deadEnds,
     forbidden,
     id: task.id,
+    outOf: correct === null ? 2 : 3,
     persona: task.persona,
     requests: calls.reduce<number>(
       (sum, call) => sum + (call.requests ?? 0),
@@ -302,7 +305,10 @@ export const summarizeAgent = (
     (persona) => {
       const mine = result.tasks.filter((task) => task.persona === persona);
 
-      return `${persona} ${(mine.reduce((sum, task) => sum + task.score, 0) / mine.length).toFixed(1)}/3`;
+      const points = mine.reduce((sum, task) => sum + task.score, 0);
+      const possible = mine.reduce((sum, task) => sum + task.outOf, 0);
+
+      return `${persona} ${((3 * points) / possible).toFixed(1)}/3`;
     }
   );
 
@@ -316,7 +322,7 @@ export const summarizeAgent = (
       "|---|---|---|---|---|---|---|---|---|",
       ...result.tasks.map(
         (task) =>
-          `| ${task.id} | ${task.persona} | ${correctLabel(task)} | ${task.forbidden ?? ""} | ${task.toolCalls}${delta(task, "toolCalls")} | ${task.deadEnds}${delta(task, "deadEnds")} | ${task.requests} | ${Math.round(task.seconds)} | ${task.score}/3 |`
+          `| ${task.id} | ${task.persona} | ${correctLabel(task)} | ${task.forbidden ?? ""} | ${task.toolCalls}${delta(task, "toolCalls")} | ${task.deadEnds}${delta(task, "deadEnds")} | ${task.requests} | ${Math.round(task.seconds)} | ${task.score}/${task.outOf} |`
       ),
     ].join("\n")
   );

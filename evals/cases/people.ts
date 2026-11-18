@@ -61,10 +61,10 @@ export const judgePersonReconcile = (
       );
 };
 
-/** Identifier types every tool holding the person can be searched by. */
+/** Identifier types every tool holding the person carries, which is what a person can be linked by. */
 export const sharedIdentifiers = (timeline: unknown): string[] => {
   const links = list(at(timeline, "data", "links"));
-  const sets = links.map((link) => list(at(link, "searchable")).map(String));
+  const sets = links.map((link) => list(at(link, "identifiers")).map(String));
   const [first = [], ...rest] = sets;
 
   return first.filter((kind) => rest.every((set) => set.includes(kind)));
@@ -96,10 +96,10 @@ export const judgeIdentity = (
   const linked = shared === null ? null : shared.length > 0;
   let canLink: boolean | null = null;
 
-  if (linked === false) {
-    canLink = false;
-  } else if (observed) {
+  if (observed) {
     canLink = true;
+  } else if (linked === false) {
+    canLink = false;
   }
 
   return firstFailure(

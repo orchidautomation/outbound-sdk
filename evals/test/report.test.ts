@@ -304,6 +304,27 @@ test("a task scores correctness, forbidden claims and dead-end calls from the ca
     [false, 2, 3, 0]
   );
   assert.notEqual(bad.forbidden, null);
+  assert.deepEqual([good.outOf, bad.outOf], [3, 3]);
+
+  const unscored = scoreTask(
+    task,
+    'Done.\n```json\n{"owed": 2, "opened": 2, "complete": false}\n```',
+    calls.slice(0, 1),
+    {},
+    facts
+  );
+
+  assert.deepEqual(
+    [unscored.correct, unscored.score, unscored.outOf],
+    [null, 2, 2]
+  );
+  assert.match(
+    summarizeAgent(
+      { commit: "abc1234", model: "m", tasks: [unscored] },
+      undefined
+    ),
+    /agency ops lead 3\.0\/3/u
+  );
 
   const summary = summarizeAgent(
     { commit: "abc1234", model: "m", tasks: [good, bad] },

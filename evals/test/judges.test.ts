@@ -21,6 +21,7 @@ import {
   judgeIdentity,
   judgePersonReconcile,
   linkObserved,
+  sharedIdentifiers,
   judgeRedactParity,
   judgeRepliedSources,
 } from "../cases/people.ts";
@@ -413,13 +414,28 @@ test("a follow-up rule with nothing marked needed is a skip, not a pass", () => 
   assert.equal(judgeFollowUpRule([auto]).status, "skip");
 });
 
-test("people can be linked only when a link was observed; a shared searchable type alone is unknown", () => {
+test("people can be linked when a link was observed, cannot when no identifier is shared, and are unknown otherwise", () => {
   const rows = [{ leadRef: "a" }];
   assert.equal(judgeIdentity(rows, [], ["email"], true).truth?.canLink, true);
   assert.equal(judgeIdentity(rows, [], ["email"], false).truth?.canLink, null);
   assert.equal(
-    judgeIdentity(rows, ["cannot link"], [], true).truth?.canLink,
+    judgeIdentity(rows, ["cannot link"], [], false).truth?.canLink,
     false
+  );
+  assert.equal(
+    judgeIdentity(rows, ["cannot link"], [], true).truth?.canLink,
+    true
+  );
+  assert.deepEqual(
+    sharedIdentifiers({
+      data: {
+        links: [
+          { identifiers: ["email", "linkedin"], searchable: ["email"] },
+          { identifiers: ["linkedin"], searchable: ["linkedin"] },
+        ],
+      },
+    }),
+    ["linkedin"]
   );
   assert.equal(
     linkObserved({
