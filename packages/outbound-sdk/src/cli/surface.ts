@@ -6,12 +6,13 @@
 import { z } from "zod";
 
 import { OutboundError } from "../internal/errors.ts";
-import { isJsonObject, isString, jsonInput, toJson } from "../internal/json.ts";
+import { isJsonObject, isString, jsonInput } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
 import type { OutboundTool, ToolResult } from "../tools/index.ts";
 import type { ToolCallOptions } from "../tools/registry.ts";
-import { DEFAULT_TOOL_REQUESTS, failure, weakest } from "../tools/shared.ts";
+import { DEFAULT_TOOL_REQUESTS, failure } from "../tools/shared.ts";
 import { unansweredReplies } from "./replies-thread.ts";
+import { combined, requestsOf, sharedCapStop } from "./surface-checks.ts";
 import { ALIASES_UNTIL, GROUPS, RENAMED } from "./surface-groups.ts";
 import type { Group } from "./surface-groups.ts";
 import {
@@ -193,66 +194,6 @@ const argsFor = (
   };
 };
 
-const requestsOf = (result: ToolResult): number => result.meta?.requests ?? 0;
-
-/** Several checks' answers as one, each under its own key. */
-const combined = (
-  results: readonly (readonly [string, ToolResult])[]
-): ToolResult => {
-  const answered = results.flatMap(([key, result]) =>
-    result.ok ? [[key, result] as const] : []
-  );
-
-  const requests = results.reduce(
-    (sum, [, result]) => sum + requestsOf(result),
-    0
-  );
-
-  const [firstAnswer] = answered;
-
-  if (firstAnswer === undefined) {
-    const [[, first] = ["", invalid("no check ran")]] = results;
-
-    return first.ok ? first : { ...first, meta: { ...first.meta, requests } };
-  }
-
-  const failed = results.flatMap(([key, result]) =>
-    result.ok ? [] : [`${key} failed: ${result.error.message}`]
-  );
-
-  return {
-    data: Object.fromEntries(
-      results.map(([key, result]) => [
-        key,
-        result.ok
-          ? result.data
-          : toJson({ error: result.error, next: result.next }),
-      ])
-    ),
-    meta: {
-      complete:
-        failed.length === 0 &&
-        answered.every(([, result]) => result.meta.complete),
-      computedAt: answered
-        .map(([, result]) => result.meta.computedAt ?? "")
-        .toSorted()
-        .at(-1),
-      evidence: weakest(answered.map(([, result]) => result.meta.evidence)),
-      notes: [
-        ...failed,
-        ...answered.flatMap(([key, result]) =>
-          result.meta.notes.map((note) => `${key}: ${note}`)
-        ),
-      ],
-      provider: firstAnswer[1].meta.provider,
-      requests,
-      today: firstAnswer[1].meta.today,
-    },
-    next: [...new Set(answered.map(([, result]) => result.next))].join(" "),
-    ok: true,
-  };
-};
-
 interface Built {
   readonly group: Group;
   readonly present: ReadonlyMap<string, OutboundTool>;
@@ -328,6 +269,8 @@ const runChecks = async (
       continue;
     }
 
+    const shared = left !== undefined && spent > 0;
+
     // SAFETY: keys only holds members present here or reached by the fallback.
     // oxlint-disable-next-line no-await-in-loop -- each check spends from what the ones before it left.
     const result = await runMember(
@@ -341,13 +284,23 @@ const runChecks = async (
 
     spent += requestsOf(result);
 
+    const capped =
+      shared && cap !== undefined
+        ? sharedCapStop(
+            result,
+            key,
+            cap,
+            options?.maxRequests ?? scoping.maxRequests
+          )
+        : result;
+
     results.push([
       key,
       own === undefined
-        ? noted(result, [
+        ? noted(capped, [
             `view ${key} needs identifiers the redact plugin masks, so this is the masked ${fallback} view. Start the server with --no-redact for it.`,
           ])
-        : result,
+        : capped,
     ]);
   }
 

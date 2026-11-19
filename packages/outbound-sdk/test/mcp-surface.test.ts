@@ -399,6 +399,28 @@ test("a merged tool's checks share the server's request cap, and a check left no
   );
 });
 
+test("a check stopped by what the checks before it left names the call's cap, not what was left", async () => {
+  const alone = await checked(undefined, ["status"]);
+  const cap = (alone.meta?.requests ?? 0) + 1;
+  const answer = await checked(cap, ["status", "deliverability"]);
+
+  assert.equal(answer.ok, true, JSON.stringify(answer));
+  assert.ok(
+    answer.meta?.notes.includes(
+      `deliverability failed: deliverability stopped at the call's cap of ${cap} requests, which its checks share (maxRequestsPerToolCall).`
+    ),
+    JSON.stringify(answer.meta?.notes)
+  );
+});
+
+test("when no check answers, a merged tool fails as its first check did, with every check's requests", async () => {
+  const answer = await checked(1, ["status", "deliverability"]);
+
+  assert.equal(answer.ok, false, JSON.stringify(answer));
+  assert.equal(answer.error?.code, "RateLimited");
+  assert.equal(answer.meta?.requests, 1);
+});
+
 test("a tool narrowed by --tools defaults to a check it still has", async () => {
   const session = await serve(
     demo(),
