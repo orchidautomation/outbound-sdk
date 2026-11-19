@@ -633,8 +633,10 @@ test("the executable exits quietly when its reader closes the pipe early", async
         reject(new Error("outbound tools did not exit"));
       }, 20_000);
 
-      // Like `head`: read the first chunk, then close the pipe.
-      child.stdout.once("data", () => {
+      // Like `head` that has read all it wants: the pipe is closed before the
+      // output is written, so a write fails with EPIPE whatever the pipe's
+      // buffer size on this system.
+      child.once("spawn", () => {
         child.stdout.destroy();
       });
       child.on("close", (code) => {

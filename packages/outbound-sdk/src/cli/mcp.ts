@@ -348,6 +348,7 @@ const surfaceOf = (outbound: OutboundApi, options: McpServerOptions) => {
   const { aliases, covered, tools } = sharpen(
     createTools(outbound, { ...options, answerNote: false }),
     {
+      maxRequests: options.maxRequestsPerToolCall,
       members,
       provider: outbound.provider,
       workspaceId: outbound.workspaceId,

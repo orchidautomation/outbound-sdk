@@ -136,14 +136,11 @@ const invalid = (message: string): ToolResult =>
 const chosenOf = (
   group: Group,
   keys: readonly string[],
+  defaults: readonly string[],
   given: Json | undefined
 ): readonly string[] | string => {
   const asList = Array.isArray(given) ? given : [given];
-
-  const named =
-    given === undefined || given === null
-      ? group.default.filter((key) => keys.includes(key))
-      : asList;
+  const named = given === undefined || given === null ? defaults : asList;
 
   const wrong = named.find((key) => !isString(key) || !keys.includes(key));
 
@@ -195,14 +192,6 @@ const argsFor = (
           ],
   };
 };
-
-const remaining = (
-  options: ToolCallOptions | undefined,
-  spent: number
-): ToolCallOptions | undefined =>
-  options?.maxRequests === undefined || options.maxRequests === Infinity
-    ? options
-    : { maxRequests: Math.max(1, options.maxRequests - spent) };
 
 const requestsOf = (result: ToolResult): number => result.meta?.requests ?? 0;
 
@@ -293,12 +282,86 @@ const runMember = async (
       ]);
 };
 
+interface CheckCall {
+  readonly rest: JsonObject;
+  readonly scope: Json | undefined;
+  readonly options: ToolCallOptions | undefined;
+}
+
+// One check after another, so the checks share the call's request cap.
+const runChecks = async (
+  scoping: Scoping,
+  { fallback, present }: Built,
+  chosen: readonly string[],
+  { options, rest, scope }: CheckCall
+): Promise<(readonly [string, ToolResult])[]> => {
+  const results: (readonly [string, ToolResult])[] = [];
+  const cap = options?.maxRequests ?? scoping.maxRequests;
+  let spent = 0;
+
+  for (const key of chosen) {
+    const own = present.get(key);
+
+    const tool =
+      own ?? (fallback === undefined ? undefined : present.get(fallback));
+
+    const left =
+      cap === undefined || cap === Infinity ? undefined : cap - spent;
+
+    if (left !== undefined && left <= 0) {
+      results.push([
+        key,
+        failure(
+          new OutboundError(
+            "RateLimited",
+            `${key} was not run: the checks before it spent the call's cap of ${cap} requests.`,
+            { limit: "call", provider: scoping.provider }
+          )
+        ),
+      ]);
+      continue;
+    }
+
+    // SAFETY: keys only holds members present here or reached by the fallback.
+    // oxlint-disable-next-line no-await-in-loop -- each check spends from what the ones before it left.
+    const result = await runMember(
+      scoping,
+      key,
+      tool as OutboundTool,
+      rest,
+      scope,
+      left === undefined ? options : { ...options, maxRequests: left }
+    );
+
+    spent += requestsOf(result);
+
+    results.push([
+      key,
+      own === undefined
+        ? noted(result, [
+            `view ${key} needs identifiers the redact plugin masks, so this is the masked ${fallback} view. Start the server with --no-redact for it.`,
+          ])
+        : result,
+    ]);
+  }
+
+  return results;
+};
+
 const mergedTool = (scoping: Scoping, built: Built): OutboundTool => {
   const { fallback, group, present } = built;
 
   const keys = group.members.flatMap((member) =>
     present.has(member.key) || fallback !== undefined ? [member.key] : []
   );
+
+  // The group's default where this server has it, else its first member here.
+  const listedDefault = group.default.filter((key) => keys.includes(key));
+
+  const defaults =
+    listedDefault.length > 0 || keys[0] === undefined
+      ? listedDefault
+      : [keys[0]];
 
   const properties = mergedProperties(group, present);
   const tools = [...present.values()];
@@ -322,7 +385,7 @@ const mergedTool = (scoping: Scoping, built: Built): OutboundTool => {
       }
 
       const { [group.by]: selected, scope, ...rest } = input;
-      const chosen = chosenOf(group, keys, selected);
+      const chosen = chosenOf(group, keys, defaults, selected);
 
       if (isMessage(chosen)) {
         return invalid(chosen);
@@ -336,38 +399,11 @@ const mergedTool = (scoping: Scoping, built: Built): OutboundTool => {
         );
       }
 
-      const results: (readonly [string, ToolResult])[] = [];
-      let spent = 0;
-
-      // One check after another, so the checks share the call's request cap.
-      for (const key of chosen) {
-        const own = present.get(key);
-
-        const tool =
-          own ?? (fallback === undefined ? undefined : present.get(fallback));
-
-        // SAFETY: keys only holds members present here or reached by the fallback.
-        // oxlint-disable-next-line no-await-in-loop -- each check spends from what the ones before it left.
-        const result = await runMember(
-          scoping,
-          key,
-          tool as OutboundTool,
-          rest,
-          scope,
-          remaining(options, spent)
-        );
-
-        spent += requestsOf(result);
-
-        results.push([
-          key,
-          own === undefined
-            ? noted(result, [
-                `view ${key} needs identifiers the redact plugin masks, so this is the masked ${fallback} view. Start the server with --no-redact for it.`,
-              ])
-            : result,
-        ]);
-      }
+      const results = await runChecks(scoping, built, chosen, {
+        options,
+        rest,
+        scope,
+      });
 
       const [only] = results;
 
@@ -386,7 +422,7 @@ const mergedTool = (scoping: Scoping, built: Built): OutboundTool => {
     parameters: {
       additionalProperties: false,
       properties: {
-        [group.by]: selectorSchema(group, keys),
+        [group.by]: selectorSchema(group, keys, defaults),
         ...properties,
         scope: scopeField(tools.some((tool) => takes(tool, "tag"))),
       },

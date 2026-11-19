@@ -170,6 +170,7 @@ export const listedTools = async (
   const found = await catalog(outbound, caps);
 
   const surface = sharpen(found.tools, {
+    maxRequests: caps.maxRequestsPerToolCall,
     members: () =>
       Promise.resolve(
         found.members.map((member) => ({

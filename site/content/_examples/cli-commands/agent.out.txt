@@ -49,25 +49,27 @@ $ outbound tool winning_steps
 $ outbound tool sender_health --input '{"limit":1}'
 {
   "data": {
-    "campaigns": [],
-    "checked": 2,
-    "failing": 0,
-    "senders": [
-      {
-        "address": "outreach1@example.com",
-        "dailyLimit": 40,
-        "kind": "mailbox",
-        "name": "Outreach One",
-        "provider": "memory",
-        "sender": "memory:default:mbx_1",
-        "status": "active",
-        "warmupEnabled": true,
-        "warmupScore": 96,
-        "workspaceId": "default"
-      }
-    ],
-    "total": 2,
-    "unhealthy": 0
+    "status": {
+      "campaigns": [],
+      "checked": 2,
+      "failing": 0,
+      "senders": [
+        {
+          "address": "outreach1@example.com",
+          "dailyLimit": 40,
+          "kind": "mailbox",
+          "name": "Outreach One",
+          "provider": "memory",
+          "sender": "memory:default:mbx_1",
+          "status": "active",
+          "warmupEnabled": true,
+          "warmupScore": 96,
+          "workspaceId": "default"
+        }
+      ],
+      "total": 2,
+      "unhealthy": 0
+    }
   },
   "meta": {
     "complete": false,

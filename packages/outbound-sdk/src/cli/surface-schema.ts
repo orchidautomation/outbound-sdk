@@ -104,13 +104,17 @@ export const mergedProperties = (
   return merged;
 };
 
-export const selectorSchema = (group: Group, keys: readonly string[]): Json => {
+export const selectorSchema = (
+  group: Group,
+  keys: readonly string[],
+  defaults: readonly string[]
+): Json => {
   const value = { enum: [...keys], type: "string" };
 
   return group.by === "view"
-    ? { ...value, default: group.default[0] ?? keys[0] ?? null }
+    ? { ...value, default: defaults[0] ?? null }
     : {
-        default: group.default.filter((key) => keys.includes(key)),
+        default: [...defaults],
         description: "The checks to run, each answered under data.<check>.",
         items: value,
         type: "array",

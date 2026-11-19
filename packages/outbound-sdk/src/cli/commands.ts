@@ -538,7 +538,10 @@ const COMMAND_TABLE = {
         };
       }
 
-      return drawn(card, forCard(await tool.call(parseInput(given))), input);
+      const result = await tool.call(parseInput(given));
+
+      // One check's own answer only for a card: JSON keeps data.<check>.
+      return drawn(card, wantsCard(input) ? forCard(result) : result, input);
     },
   },
   tools: {

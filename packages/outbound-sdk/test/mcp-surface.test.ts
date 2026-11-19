@@ -16,6 +16,7 @@ import { createOutbound } from "../src/index.ts";
 import type { Adapter, Json } from "../src/index.ts";
 import { demoData, memory } from "../src/memory/index.ts";
 import type { OutboundTool, ToolResult } from "../src/tools/index.ts";
+import { harness } from "./helpers/adapter-suite.ts";
 import { suite as heyreachSuite } from "./heyreach/suite.ts";
 import { suite as instantlySuite } from "./instantly/suite.ts";
 
@@ -340,6 +341,106 @@ test("scope reads one tool of a combined instance, and refuses what the server d
     /This server reads memory:acme only/u
   );
   assert.equal(alone.answer(2).ok, true);
+});
+
+test("a workspace alone that two tools share is refused, not read on the first of them", async () => {
+  const session = await serve(both(), [
+    initialize(),
+    call(1, "client_report", { scope: { workspace: "client-a" } }),
+    call(2, "campaigns", { scope: { workspace: "client-a" } }),
+  ]);
+
+  for (const id of [1, 2]) {
+    assert.match(
+      session.answer(id).error?.message ?? "",
+      /scope names 2 workspaces \(instantly:client-a, heyreach:client-a\): add scope\.provider to pick one/u,
+      String(id)
+    );
+  }
+});
+
+// sender_health's checks on Instantly's fixtures, under a cap or none.
+const checked = async (cap: number | undefined, checks: string[]) => {
+  const { outbound, settle } = harness(instantlySuite);
+
+  const server = createMcpServer(
+    outbound,
+    cap === undefined ? {} : { maxRequestsPerToolCall: cap }
+  );
+
+  await server.handle(initialize());
+
+  const message = call(1, "sender_health", { checks, impact: false });
+
+  const response = (await settle(
+    server.handle(message as unknown as Json)
+  )) as unknown as { result: { structuredContent: Answer } };
+
+  return response.result.structuredContent;
+};
+
+test("a merged tool's checks share the server's request cap, and a check left nothing is not run", async () => {
+  // The cap is exactly what the status check spends alone.
+  const alone = await checked(undefined, ["status"]);
+  const cap = alone.meta?.requests ?? 0;
+
+  assert.equal(alone.ok, true, JSON.stringify(alone));
+  const answer = await checked(cap, ["status", "deliverability"]);
+
+  assert.ok(cap > 0);
+  assert.equal(answer.ok, true, JSON.stringify(answer));
+  assert.equal(answer.meta?.requests, cap);
+  assert.equal(answer.meta?.complete, false);
+  assert.ok(
+    answer.meta?.notes.includes(
+      `deliverability failed: deliverability was not run: the checks before it spent the call's cap of ${cap} requests.`
+    ),
+    JSON.stringify(answer.meta?.notes)
+  );
+});
+
+test("a tool narrowed by --tools defaults to a check it still has", async () => {
+  const session = await serve(
+    demo(),
+    [initialize(), LIST, call(2, "sender_health")],
+    ["--tools", "bounce_watch"]
+  );
+
+  const listed = session
+    .at(1)
+    .result.tools.find((tool) => tool.name === "sender_health");
+
+  assert.deepEqual(listed?.inputSchema.properties["checks"]?.items?.enum, [
+    "bounces",
+  ]);
+
+  const checksField = listed?.inputSchema.properties["checks"] as
+    | { readonly default?: unknown }
+    | undefined;
+
+  assert.deepEqual(checksField?.default, ["bounces"]);
+
+  const answer = session.answer(2);
+
+  assert.equal(answer.ok, true, JSON.stringify(answer));
+  assert.ok(Object.hasOwn(answer.data ?? {}, "bounces"));
+});
+
+test("outbound tool answers one check under data.<check> in JSON, as two checks are", async () => {
+  const out: string[] = [];
+
+  await run(["tool", "sender_health", "--input", '{"checks":["status"]}'], {
+    adapter: demo(),
+    stderr: () => {},
+    stdout: (text) => {
+      out.push(text);
+    },
+  });
+
+  const answer = JSON.parse(out.join("\n")) as Answer;
+
+  assert.equal(answer.ok, true, JSON.stringify(answer));
+  assert.deepEqual(Object.keys(answer.data ?? {}), ["status"]);
 });
 
 test("unanswered_replies with include thread carries each reply's conversation in its item", async () => {

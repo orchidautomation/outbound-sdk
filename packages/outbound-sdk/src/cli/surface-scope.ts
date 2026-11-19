@@ -18,6 +18,8 @@ export interface Scoping {
   readonly workspaceId: string;
   /** Each tool of a combined instance; none on any other. */
   readonly members: () => Promise<readonly ScopeTarget[]>;
+  /** The server's request cap per tool call, which a merged tool's checks share. */
+  readonly maxRequests?: number | undefined;
 }
 
 /** Whether the tool has the input. */
@@ -122,6 +124,11 @@ const onMember = async (
 
   if (only === undefined) {
     return `Nothing this server reads matches scope ${labelsOf(named)}. It reads ${members.map(labelOf).join(", ")}`;
+  }
+
+  // A workspace alone that several tools share names none of them.
+  if (matches.length > 1 && named.provider === undefined) {
+    return `scope names ${matches.length} workspaces (${matches.map(labelOf).join(", ")}): add scope.provider to pick one`;
   }
 
   if (takes(tool, "provider")) {
