@@ -10,7 +10,7 @@ import { isJsonObject, isString, jsonInput, toJson } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
 import type { OutboundTool, ToolResult } from "../tools/index.ts";
 import type { ToolCallOptions } from "../tools/registry.ts";
-import { failure, weakest } from "../tools/shared.ts";
+import { DEFAULT_TOOL_REQUESTS, failure, weakest } from "../tools/shared.ts";
 import { unansweredReplies } from "./replies-thread.ts";
 import { ALIASES_UNTIL, GROUPS, RENAMED } from "./surface-groups.ts";
 import type { Group } from "./surface-groups.ts";
@@ -296,7 +296,13 @@ const runChecks = async (
   { options, rest, scope }: CheckCall
 ): Promise<(readonly [string, ToolResult])[]> => {
   const results: (readonly [string, ToolResult])[] = [];
-  const cap = options?.maxRequests ?? scoping.maxRequests;
+
+  // Checks run together share one cap; a check run alone keeps its own default.
+  const cap =
+    options?.maxRequests ??
+    scoping.maxRequests ??
+    (chosen.length > 1 ? DEFAULT_TOOL_REQUESTS : undefined);
+
   let spent = 0;
 
   for (const key of chosen) {
