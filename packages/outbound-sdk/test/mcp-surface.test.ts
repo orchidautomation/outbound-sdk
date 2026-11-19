@@ -418,6 +418,10 @@ test("when no check answers, a merged tool fails as its first check did, with ev
 
   assert.equal(answer.ok, false, JSON.stringify(answer));
   assert.equal(answer.error?.code, "RateLimited");
+  assert.equal(
+    answer.error?.message,
+    "status stopped at the call's cap of 1 requests, which its checks share (maxRequestsPerToolCall)."
+  );
   assert.equal(answer.meta?.requests, 1);
 });
 

@@ -269,7 +269,7 @@ const runChecks = async (
       continue;
     }
 
-    const shared = left !== undefined && spent > 0;
+    const shared = left !== undefined && chosen.length > 1;
 
     // SAFETY: keys only holds members present here or reached by the fallback.
     // oxlint-disable-next-line no-await-in-loop -- each check spends from what the ones before it left.
