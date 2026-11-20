@@ -349,6 +349,9 @@ interface Linked {
 
 const IDENTIFIER_TYPES: readonly IdentifierType[] = ["email", "linkedin"];
 
+const unreadNote = (count: number): string =>
+  `${plural(count, "lead")} could not be read, so those people carry only what their replies name and uniquePeople may count one person twice.`;
+
 const listedOf = (
   people: readonly LinkedPerson[],
   acrossTools: number | null,
@@ -374,9 +377,9 @@ const listedOf = (
 });
 
 /**
- * The people with their leads' addresses and profiles, joined across tools.
- * Only an instance reading two or more tools reads the leads (one request
- * per lead or page of leads), so one tool's answer costs nothing more.
+ * The people with their leads' addresses and profiles (one request per lead
+ * or page of leads; a batch's leads each count every request so far), joined
+ * across tools when the instance reads two or more.
  */
 const linkedPeople = async (
   outbound: OutboundApi,
@@ -384,11 +387,7 @@ const linkedPeople = async (
 ): Promise<Linked> => {
   const refs = [...new Set(people.flatMap((person) => person.leadRef ?? []))];
 
-  if (
-    outbound.provider !== "combined" ||
-    !outbound.capabilities["leads.get"] ||
-    refs.length === 0
-  ) {
+  if (!outbound.capabilities["leads.get"] || refs.length === 0) {
     return {
       complete: true,
       listed: listedOf(linkPeople(people, new Map()), null, null),
@@ -399,6 +398,12 @@ const linkedPeople = async (
   }
 
   const found = await outbound.leads.getMany(refs);
+
+  // A lead that is gone (NotFound) leaves its row as its replies name it.
+  const unread = found.errors.filter(
+    ({ error }) => error.code !== "NotFound"
+  ).length;
+
   const leads = found.results.map(({ value }) => value);
 
   const linked = linkPeople(
@@ -407,11 +412,23 @@ const linkedPeople = async (
   );
 
   const acrossTools = linked.filter((person) => person.tools.length > 1).length;
+  const { tools } = await identifierCoverage(outbound);
+  const requests = Math.max(0, ...leads.map((lead) => lead.meta.requests));
+
+  // One tool's people carry their addresses and profiles; there is nothing to join.
+  if (tools.length < 2) {
+    return {
+      complete: unread === 0,
+      listed: listedOf(linked, null, null),
+      notes: unread > 0 ? [unreadNote(unread)] : [],
+      people: linked.length,
+      requests,
+    };
+  }
 
   // What each tool's people can be joined by: the identifiers its leads
   // read here carry, and those the vendor itself fills on every lead.
   const observed = leadIdentifierCoverage(leads).tools;
-  const { tools } = await identifierCoverage(outbound);
 
   const carried = tools.map((tool) => {
     const seen = observed.find(
@@ -448,22 +465,14 @@ const linkedPeople = async (
     joinedBy = `No identifier is carried by two tools (${listedTools}), so people in different tools cannot be joined and uniquePeople may count one person twice.`;
   }
 
-  const notes = [
-    ...(found.errors.length > 0
-      ? [
-          `${plural(found.errors.length, "lead")} could not be read, so those people are joined by address only and uniquePeople may count one person twice.`,
-        ]
-      : []),
-    joinedBy,
-  ];
+  const notes = [...(unread > 0 ? [unreadNote(unread)] : []), joinedBy];
 
   return {
-    complete: found.errors.length === 0,
+    complete: unread === 0,
     listed: listedOf(linked, acrossTools, shared),
     notes,
     people: linked.length,
-    // Each lead's meta counts the whole batch's requests so far.
-    requests: Math.max(0, ...leads.map((lead) => lead.meta.requests)),
+    requests,
   };
 };
 

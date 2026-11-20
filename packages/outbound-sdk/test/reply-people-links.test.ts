@@ -140,11 +140,12 @@ test("people with no address or profile in common stay apart, and the note says 
   );
 });
 
-test("one tool reads no lead to answer by person", async () => {
-  const { data, meta } = await byPerson(email());
+test("one tool fills each person's profile from their lead, with nothing to join", async () => {
+  const { data, meta } = await byPerson(linkedin());
 
-  assert.equal(data.uniquePeople, 2);
+  assert.equal(data.uniquePeople, 1);
   assert.equal(data.linkedAcrossTools, null);
   assert.equal(data.linkedBy, null);
-  assert.equal(meta.notes.length, 0);
+  assert.equal(data.people[0]?.linkedinUrl, `${PROFILE}/`);
+  assert.deepEqual(meta.notes, []);
 });
