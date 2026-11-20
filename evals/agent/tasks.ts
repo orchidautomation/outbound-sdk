@@ -52,7 +52,7 @@ const all = (...checks: readonly (boolean | null)[]): boolean | null =>
 export const TASKS: readonly Task[] = [
   {
     answer:
-      '{"owed": <number of conversations that need a reply from us>, "opened": <number you read>, "complete": <true if every reply was checked>}',
+      '{"owed": <number of conversations that need a reply from us, or null if not every conversation was checked>, "opened": <number you read>, "complete": <true if every reply was checked>}',
     cases: [1, 4, 5],
     // Over an incomplete check the found count is a lower bound, as in
     // task 3: "unknown" (null) or at least what was found is right.
