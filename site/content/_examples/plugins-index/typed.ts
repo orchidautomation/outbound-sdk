@@ -19,7 +19,7 @@ const callFirst = async (outbound: Agency): Promise<string[]> => {
 // A function that needs one plugin can name that plugin's extension.
 const waiting = async (
   outbound: Outbound & InsightsExtension
-): Promise<number> => {
+): Promise<number | null> => {
   const { data } = await outbound.insights.droppedReplies({});
 
   return data.totals.dropped;

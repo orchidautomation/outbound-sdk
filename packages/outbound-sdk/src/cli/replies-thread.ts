@@ -15,7 +15,7 @@ import type { OutboundTool, ToolResult } from "../tools/index.ts";
 const INLINE_THREADS = 50;
 
 const DESCRIPTION =
-  'Replies nobody has answered: each conversation whose latest message is a human inbound reply with nothing sent after it and no meeting, oldest wait first, with why it needs a follow-up from fixed rules (never the words). Automatic replies are left out unless include_auto. With include "thread" each item carries its conversation (the newest messages, who wrote last, the meeting the vendor records), so no second call is needed. thread_context reads other conversations by ref.';
+  'Replies nobody has answered: each conversation whose latest message is a human inbound reply with nothing sent after it and no meeting, oldest wait first, with why it needs a follow-up from fixed rules (never the words). Automatic replies are left out unless include_auto. With include "thread" each item carries its conversation (the newest messages, who wrote last, the meeting the vendor records). finding leads with what went unchecked, and totals.dropped is then null, not 0. thread_context reads other conversations by ref.';
 
 const leadOf = (item: Json): string | undefined => {
   const lead = isJsonObject(item) ? item["lead"] : undefined;

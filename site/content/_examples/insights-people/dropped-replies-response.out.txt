@@ -121,12 +121,14 @@
         }
       }
     ],
+    "finding": "2 conversations owed a reply, of 5 conversations checked in full.",
     "olderThanHours": 24,
     "since": "2026-10-31T12:00:00.000Z",
     "totals": {
       "answered": 2,
       "conversations": 5,
       "dropped": 2,
+      "droppedFound": 2,
       "moreRepliesExist": false,
       "notInCampaign": null,
       "repliesRead": 8,

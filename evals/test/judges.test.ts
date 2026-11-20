@@ -96,6 +96,16 @@ verdicts({
     judgeDroppedDefaults(dropped([human], 1)),
     judgeDroppedDefaults(dropped([human, auto], 2)),
   ],
+  "1 no false zero over unchecked conversations": [
+    judgeDroppedDefaults({
+      data: { dropped: [], totals: { dropped: null, unchecked: 3 } },
+      meta: { complete: false },
+    }),
+    judgeDroppedDefaults({
+      data: { dropped: [], totals: { dropped: 0, unchecked: 3 } },
+      meta: { complete: false },
+    }),
+  ],
   "2 positive replies": [
     judgePositiveReplies({ data: { replies: [{ is_auto: false }] } }),
     judgePositiveReplies({ data: { replies: [{ is_auto: true }] } }),

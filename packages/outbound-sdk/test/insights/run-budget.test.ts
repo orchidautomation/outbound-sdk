@@ -110,7 +110,7 @@ test("a budget that stops dropped_replies' conversation reads keeps what it read
   assert.ok(totals.unchecked > 0);
   // A stopped read is never passed off as answered or dropped.
   assert.equal(
-    totals.answered + totals.dropped + totals.tooRecent + totals.unchecked,
+    totals.answered + totals.droppedFound + totals.tooRecent + totals.unchecked,
     totals.conversations
   );
   assert.ok(
