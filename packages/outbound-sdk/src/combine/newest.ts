@@ -107,36 +107,22 @@ export const pageNewestFirst = async <Item extends Dated>(
     spotsOf(query.next, members.length).flatMap((spot) => {
       const member = members[spot.index];
 
-      if (member === undefined) {
-        return [];
-      }
+      return member === undefined
+        ? []
+        : [
+            readPage(member, ctx.forAdapter(member), spot.at).then((page) => {
+              // Stable, so records at one time keep the member's own order.
+              const sorted = page.items.toSorted(
+                (a, b) => timeOf(b) - timeOf(a)
+              );
 
-      const memberCtx = ctx.forAdapter(member);
-      const readMember = () => readPage(member, memberCtx, spot.at);
-
-      // A page whose records wait is read again on the next page, unless
-      // this call still holds it.
-      const fetched =
-        ctx.remember === undefined
-          ? readMember()
-          : ctx.remember(
-              `newest:${spot.index}`,
-              JSON.stringify(spot.at ?? null),
-              readMember
-            );
-
-      return [
-        fetched.then((got) => {
-          // Stable, so records at one time keep the member's own order.
-          const sorted = got.items.toSorted((a, b) => timeOf(b) - timeOf(a));
-
-          return {
-            left: sorted.slice(resumeAt(sorted, spot)),
-            page: { ...got, items: sorted },
-            spot,
-          };
-        }),
-      ];
+              return {
+                left: sorted.slice(resumeAt(sorted, spot)),
+                page: { ...page, items: sorted },
+                spot,
+              };
+            }),
+          ];
     })
   );
 
