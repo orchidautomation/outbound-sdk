@@ -9,12 +9,13 @@ import type { Capped } from "../capped.ts";
 import { defineInsight } from "../define.ts";
 import type { InsightContext } from "../define.ts";
 import { inboxOf } from "../inbox.ts";
-import { check, HOUR, sentByHand } from "./dropped-replies-check.ts";
+import { check, HOUR } from "./dropped-replies-check.ts";
 import type {
   Conversation,
   DroppedReply,
   FoundDropped,
 } from "./dropped-replies-check.ts";
+import { listedAnswers } from "./dropped-replies-listed.ts";
 import { nameOf, readByRef, readCappedFlag } from "./read.ts";
 import { recordsMeetings, threadContext } from "./thread-context.ts";
 import type { ThreadContext } from "./thread-context.ts";
@@ -356,7 +357,7 @@ const readReplies = (
 
 export const droppedReplies = defineInsight({
   description:
-    "Replies from prospects that nobody answered: a reply in a category that needs an answer, with nothing sent after it for longer than older_than_hours. Returns them longest waiting first, with hours waiting, category, campaign and lead, plus who wrote last, any meeting the vendor records and a fixed-rule follow-up assessment. Read the latest message with thread_context before following up. Costs one request per page of replies, one per conversation read in full, and one per lead and campaign it names.",
+    "Replies from prospects that nobody answered: a reply in a category that needs an answer, with nothing sent after it for longer than older_than_hours. Returns them longest waiting first, with hours waiting, category, campaign and lead, plus who wrote last, any meeting the vendor records and a fixed-rule follow-up assessment. Read the latest message with thread_context before following up. Costs one request per page of replies, one per page of the latest message of each conversation where the tool lists that (which settles every answered one), one per remaining conversation read in full, longest waiting first, and one per lead and campaign it names.",
   inputSchema: input,
   key: "droppedReplies",
   cost: (values, price) => {
@@ -364,7 +365,8 @@ export const droppedReplies = defineInsight({
 
     return (
       price.list("replies.list", most) +
-      (price.capabilities["messages.byHand"]
+      (price.capabilities["messages.byHand"] ||
+      price.capabilities["messages.latestOfConversation"]
         ? price.upTo(price.list("messages.list", most))
         : 0) +
       price.upTo(most) *
@@ -433,7 +435,7 @@ export const droppedReplies = defineInsight({
     const sent =
       checkable.length === 0
         ? null
-        : await sentByHand(
+        : await listedAnswers(
             context,
             since,
             values.max_replies ?? WINDOW_REPLIES

@@ -80,7 +80,8 @@ test("under redact, dropped_replies on a combined instance sends no token to the
     reads.seen
       .filter(readsTimeline)
       .map((each) => JSON.parse(each).query.leadId),
-    ["mailtool:agency:person1@example.com", `lntool:agency:${PROFILE}`]
+    // Longest waiting first: the LinkedIn reply has waited 267 hours.
+    [`lntool:agency:${PROFILE}`, "mailtool:agency:person1@example.com"]
   );
   assert.deepEqual(
     reads.seen.filter((each) => each.includes("redacted:")),

@@ -5,6 +5,7 @@ leads.byStatus: off when combined, on for instantly
 leads.engagement: off when combined, on for instantly
 leads.lookupMany: off when combined, on for instantly
 messages.byHand: off when combined, on for instantly
+messages.latestOfConversation: off when combined, on for instantly
 native: off when combined, on for instantly and heyreach
 placementTests.list: off when combined, on for instantly
 replies.inbox: off when combined, on for heyreach
