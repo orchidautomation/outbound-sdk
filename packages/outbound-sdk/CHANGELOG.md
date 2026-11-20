@@ -1,5 +1,66 @@
 # outbound-sdk
 
+## 0.16.0
+
+### Breaking changes
+
+These are minor bumps while the package is below 1.0, but code or scripts that rely on the old behaviour need a change:
+
+- **`outbound mcp` and `createMcpServer` list merged tools** (OUT-168). 36 tools become 23: neighbours answer as one tool picked by `view` or `checks`, such as `campaigns`, `sender_health` and `person`, and `dropped_replies` is now `unanswered_replies`. Every old name still answers as it did until 0.17.0, with a note naming how to call it now; `RENAMED_TOOLS` from `outbound-sdk/cli` maps each one. A client on protocol 2025-06-18 now gets the answer in `structuredContent` and a short summary as the text.
+- **The built-in tools answer in camel case** (OUT-166): `reply_rate` is `replyRate`, `runway_days` is `runwayDays` and so on, with no snake case copies. Tool inputs stay snake case. A failing sender's `impact.activeCampaigns` holds campaign refs only, and each campaign appears once in a top-level `campaigns` list.
+- **`reply_samples` with `by: "person"` counts people for `limit`** (OUT-169), so the same call can read more replies, and spend more requests, than before.
+
+### Minor Changes
+
+- ea0ac54: Polish CLI and tool rough edges from the 0.12.0 user tests (OUT-169).
+
+  - **`reply_samples` with `by: "person"`**: `limit` now counts people, not messages, so `limit: 20` lists 20 people when that many replied. The walk reads on until the next person's reply, up to 10 messages per person asked for, and `meta.notes` says where it stopped. This changes behaviour: the same call can now read more replies, and more requests, than before. `by: "message"` is unchanged.
+  - **`variant_test`** returns a `finding` sentence on every answer. When every step has one variant it says so ("No step has two variants to compare") instead of an empty list with zero totals and nothing else.
+  - **Campaign names**: after an exact name (ignoring case), a name with a word that begins with the text is preferred over one that merely contains it, so `UG` no longer matches `Mug buyers` when `UG founders` exists. The refusal for several matches still lists how many and which, and now says a ref also skips reading every campaign.
+  - **Dates on the CLI**: `--from`, `--to` and `--since` each take a day (`YYYY-MM-DD`) or an ISO 8601 date and time with its offset, and refuse anything else with one message. `--from`/`--to` given a time count the UTC day it falls on. `--since` no longer accepts forms like `11/10/2026`, which `Date.parse` used to read in local time.
+  - **`outbound tools | head`** and any reader that closes the pipe early: the CLI exits 0 quietly instead of printing an unhandled `EPIPE` stack.
+  - **`meta.computedAt`** on an insight is when the answer was finished, not when the run started. With `now` passed (meant for tests) it stays that time.
+- ea0ac54: `outbound mcp` and `createMcpServer` list fewer, smaller tools, and send each result once (OUT-168). **Breaking for MCP clients**: `tools/list` names change, and the result text is now a summary. Every old name keeps working until 0.17.0.
+
+  - Neighbouring tools are merged into one, picked by `view` (one answer) or `checks` (several, each under `data.<check>`): `campaigns` (campaign_overview, campaign_ranking, campaign_trend), `sender_health` (sender_health, deliverability_check, warmup_readiness, domain_health, bounce_watch), `sender_capacity` (sender_capacity, sender_load), `lead_runway` (lead_runway, pipeline_forecast), `list_hygiene` (suppression_check, lead_collisions), `copy_review` (copy_audit, variant_test, personalization_gaps, copy_reuse), `step_funnel` (step_funnel, winning_steps) and `person` (person_summary, cross_channel_lead, account_summary). `dropped_replies` is now `unanswered_replies`, and `include: "thread"` puts each reply's conversation in its item. With `--provider all` and redact, `tools/list` goes from 36 tools and 84,528 bytes to 23 tools and about 55 KB, and a test keeps it under 56,000 bytes.
+  - **Aliases.** A call to any old name runs the tool it was, as it was, with a note in `meta.notes` naming how to call it now. `--tools` and `outbound tool` take old and new names. `RENAMED_TOOLS` from `outbound-sdk/cli` maps each old name to its replacement. The SDK's own tools, insights and CLI insight names are unchanged.
+  - **One copy of each result.** A client on protocol `2025-06-18` gets the answer in `structuredContent` and a short summary as the `content` text; an older client still gets the whole answer as text. Every tool declares the answer envelope as `outputSchema` (`OUTPUT_SCHEMA`).
+  - **scope.** Every listed tool takes `scope: { provider, workspace }`, and `tag` where the tool can read one campaign tag. `initialize` names what the server reads, says once how to read `meta.complete` and `meta.notes` instead of in every description, and points bulk exports to the CLI's `--jsonl` or the SDK.
+  - **person under redact** is always listed: its timeline and account views answer with the masked summary view and a note, instead of the tools being left out.
+  - **Shorter descriptions.** Every tool and insight description is at most 600 characters; caveats that apply to one answer now come as notes on that answer. `createTools` and `insightTools` take `answerNote: false` to leave out the shared sentence on `meta.complete`.
+- ea0ac54: **Breaking: the built-in tools answer in camel case, like insights, and every record they return names its tool and workspace (OUT-166).** Tool inputs stay snake case: snake case goes in, camel case comes out. A stored tool result from an earlier version keeps the old names, and [cards](/docs/cards) read only the new ones.
+
+  Renamed answer fields, old to new:
+
+  - `campaign_overview`: each campaign's `name` is `campaignName`, as in insights. In `metrics` (also in `winning_steps`): `reply_rate` → `replyRate`, `reply_rate_basis` → `replyRateBasis`, `positive_reply_rate` → `positiveReplyRate`, `bounce_rate` → `bounceRate`, `connections_sent` → `connectionsSent`, `connections_accepted` → `connectionsAccepted`.
+  - `winning_steps`: `step_index` → `stepIndex`, `step_number` → `stepNumber`.
+  - `reply_samples`: `unique_people` → `uniquePeople`, `unique_threads` → `uniqueThreads`; each reply's `category_source` → `categorySource`, `is_auto` → `isAuto`, `lead_email` → `leadEmail`, `received_at` → `receivedAt`; each `by: "person"` row's `first_at` → `firstAt`, `last_at` → `lastAt`, `lead_email` → `leadEmail`, `thread_ids` → `threadIds`.
+  - `lead_runway`: `active_leads` → `activeLeads`, `contacted_per_day` → `contactedPerDay`, `counted_leads` → `countedLeads`, `in_sequence` → `inSequence`, `not_started` → `notStarted`, `runway_days` → `runwayDays`.
+  - `compare_clients`: `reply_rate` → `replyRate`.
+  - `cross_channel_lead`: each timeline message's `is_auto` → `isAuto`, `sent_at` → `sentAt`; each record's and link's `workspace` → `workspaceId`.
+  - `campaign_setup`: `daily_limit` → `dailyLimit`, `daily_new_leads` → `dailyNewLeads`, `end_date` → `endDate`, `gap_minutes` → `gapMinutes`, `plain_text` → `plainText`, `start_date` → `startDate`, `stop_on_auto_reply` → `stopOnAutoReply`, `stop_on_reply` → `stopOnReply`, `track_clicks` → `trackClicks`, `track_opens` → `trackOpens`.
+  - `audience_lists`: each list's `created_at` → `createdAt`.
+  - `sender_health`: each sender's `daily_limit` → `dailyLimit`, `warmup_enabled` → `warmupEnabled`, `warmup_score` → `warmupScore`.
+  - `deliverability_check`: `with_problems` → `withProblems`; `coverage.not_checked` → `coverage.notChecked`, `coverage.not_checked_by_reason` → `coverage.notCheckedByReason`; each sender's `not_checked` → `notChecked`, `checked_at` → `checkedAt`, `warmup_inbox` → `warmupInbox`, `warmup_score` → `warmupScore`, `warmup_spam` → `warmupSpam`, `warmup_spam_rate` → `warmupSpamRate`.
+  - A failing sender's `impact` in `sender_health` and `deliverability_check`: `active_campaign_count` → `activeCampaignCount`, `active_campaigns` → `activeCampaigns`, `last_authenticated_at` → `lastAuthenticatedAt`, `last_sent_on` → `lastSentOn`, `recent_sends` → `recentSends`, and the same names as keys of `impact.unknown`.
+  - Reply and message text wrapped as untrusted (`reply_samples`, `cross_channel_lead`, `vendor_read`, and `threadContext`'s `snippet`): `untrusted_content` → `untrustedContent`. The `UntrustedContent` type changes with it.
+
+  **Breaking: a failing sender's campaigns are listed once.** `impact.activeCampaigns` now holds campaign refs only, and each campaign appears once in a new top-level `campaigns` list of `sender_health` and `deliverability_check`, with `campaign`, `campaignName`, `provider` and `workspaceId`. Senders in a shared pool used to repeat the same campaigns under every failing sender.
+
+  **Every record says where it came from.** These rows now carry `provider` and `workspaceId` beside their ref: `campaign_overview` campaigns, `reply_samples` replies and `by: "person"` rows, `sender_health` and `deliverability_check` senders, `audience_lists` lists, `cross_channel_lead` timeline messages, and the `campaign_setup` and `lead_runway` answers. `outbound replies --by person` rows (`ReplyPerson`) carry them too: a person whose replies span two tools is one row, which names the first one's, as `leadRef` does.
+
+  **One step id.** A step is `stepIndex` (from 0) with `stepNumber` (from 1) for display, as the naming rule says. The bare `step` on `winning_steps` rows and on insight steps, `stepFunnel`'s `topStep` and `lastStepEarningPlace`, and `personSummary`'s `lastStep` and `repliedSteps` are still there as deprecated copies; removing them is left to its own change. They were due to go in 0.8.0.
+
+### Patch Changes
+
+- ea0ac54: Shorter descriptions for the ops insights (OUT-168). `client_report`, `period_comparison`, `campaign_diagnosis`, `campaign_ranking`, `channel_mix`, `tag_rollup`, `anomalies` and `pipeline_forecast` each describe themselves in under 600 characters. The caveats they dropped are said in the answer where they apply: `period_comparison` and `client_report` add a note when a reply rate falls back to leads contacted, and `channel_mix` and `tag_rollup` add one when every reply rate divides by messages sent.
+- ea0ac54: Shorter descriptions for the people insights (OUT-168). Each insight's description is now under 600 characters, and each input's description is one short sentence. The caveats that were cut now appear as notes on the answers they apply to:
+
+  - **`dropped_replies`** says how many replies it set aside as outside every campaign (`totals.notInCampaign`) and that `include_inbox: true` checks them.
+  - **`lead_collisions`** says how many people it counted in `totals.pastOverlaps` without listing them while `include_past` is false.
+  - **`suppression_check`** says how many block-list matches it counted in `totals.alreadyStopped` because the lead's status is outside `lead_statuses`.
+- 4d5f972: An MCP tool call that stops because the vendor's rate window is full, with time left in its budget, now says when to call again instead of "do not call again". Right after one tool used up Instantly's 20 email reads a minute, the next tool used to fail at once with `retryable: false` and advice to ask for less. It is now answered with `retryable: true`, `error.retryAfterMs` and a `next` to call again with the same input once the window frees. Every `RateLimited` tool failure also carries `error.limit` (`vendor`, `call` or `run`), so a model can tell the vendor's limit from a cap of its own, such as `--max-requests`, without reading the message.
+
 ## 0.15.0
 
 ### Breaking changes
