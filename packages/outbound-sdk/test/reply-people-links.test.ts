@@ -89,7 +89,8 @@ test("one person's email and LinkedIn replies are one row, joined by the profile
 
   assert.equal(data.uniquePeople, 2);
   assert.equal(data.linkedAcrossTools, 1);
-  assert.deepEqual(data.linkedBy, ["linkedin"]);
+  // Memory fills both on every lead, as a vendor that is searched by them does.
+  assert.deepEqual(data.linkedBy, ["email", "linkedin"]);
 
   const joined = data.people.find((person) => person.leads.length === 2);
   assert.ok(joined !== undefined, JSON.stringify(data.people));
@@ -98,7 +99,9 @@ test("one person's email and LinkedIn replies are one row, joined by the profile
   assert.equal(meta.complete, true);
   assert.ok(
     meta.notes.some((note) =>
-      /1 person replied in two or more tools .* joined by linkedin/u.test(note)
+      /1 person replied in two or more tools .* joined by .*linkedin/u.test(
+        note
+      )
     ),
     JSON.stringify(meta.notes)
   );
@@ -117,7 +120,7 @@ test("under redact the masked profiles still join, since one profile gets one to
   );
 });
 
-test("leads that share no identifier type stay apart, and the answer says they cannot be joined", async () => {
+test("people with no address or profile in common stay apart, and the note says none replied in two tools", async () => {
   const noProfile = memory({
     data: {
       campaigns: [{ id: "l1" }],
@@ -132,7 +135,7 @@ test("leads that share no identifier type stay apart, and the answer says they c
   assert.equal(data.uniquePeople, 3);
   assert.equal(data.linkedAcrossTools, 0);
   assert.ok(
-    meta.notes.some((note) => note.includes("cannot be joined")),
+    meta.notes.some((note) => note.includes("none of these 3 people did")),
     JSON.stringify(meta.notes)
   );
 });

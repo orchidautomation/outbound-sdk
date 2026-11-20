@@ -7,7 +7,10 @@ import {
 } from "../internal/entities.ts";
 import type { Evidence, Reply } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
-import { leadIdentifierCoverage } from "../internal/identifiers.ts";
+import {
+  identifierCoverage,
+  leadIdentifierCoverage,
+} from "../internal/identifiers.ts";
 import type { IdentifierType } from "../internal/identifiers.ts";
 import type { Json } from "../internal/json.ts";
 import { plural } from "../internal/numbers.ts";
@@ -344,6 +347,8 @@ interface Linked {
   readonly requests: number;
 }
 
+const IDENTIFIER_TYPES: readonly IdentifierType[] = ["email", "linkedin"];
+
 const listedOf = (
   people: readonly LinkedPerson[],
   acrossTools: number | null,
@@ -403,21 +408,44 @@ const linkedPeople = async (
 
   const acrossTools = linked.filter((person) => person.tools.length > 1).length;
 
-  const { shared, tools } = leadIdentifierCoverage(leads);
+  // What each tool's people can be joined by: the identifiers its leads
+  // read here carry, and those the vendor itself fills on every lead.
+  const observed = leadIdentifierCoverage(leads).tools;
+  const { tools } = await identifierCoverage(outbound);
+
+  const carried = tools.map((tool) => {
+    const seen = observed.find(
+      (each) =>
+        each.provider === tool.provider && each.workspaceId === tool.workspaceId
+    );
+
+    return {
+      identifiers: IDENTIFIER_TYPES.filter(
+        (type) =>
+          tool.searchable.includes(type) ||
+          (seen?.identifiers.includes(type) ?? false)
+      ),
+      tool: `${tool.provider}:${tool.workspaceId}`,
+    };
+  });
+
+  const shared = IDENTIFIER_TYPES.filter(
+    (type) =>
+      carried.filter((each) => each.identifiers.includes(type)).length > 1
+  );
+
   const by = shared.join(" or ");
 
-  const carried = tools
-    .map(
-      (tool) => `${tool.provider}: ${tool.identifiers.join(" and ") || "none"}`
-    )
+  const listedTools = carried
+    .map((each) => `${each.tool}: ${each.identifiers.join(" and ") || "none"}`)
     .join(", ");
 
-  let joinedBy = `People are joined across tools by ${by} on their leads (${carried}); none of these people replied in two tools.`;
+  let joinedBy = `People are joined across tools by ${by} (${listedTools}), so a person who replied in two tools is one row; none of these ${plural(linked.length, "person", "people")} did.`;
 
   if (acrossTools > 0) {
     joinedBy = `${plural(acrossTools, "person", "people")} replied in two or more tools and ${acrossTools === 1 ? "is one row" : "are one row each"}, joined by ${by} on their leads.`;
   } else if (shared.length === 0) {
-    joinedBy = `No identifier is on the leads of two tools (${carried}), so people in different tools cannot be joined and uniquePeople may count one person twice.`;
+    joinedBy = `No identifier is carried by two tools (${listedTools}), so people in different tools cannot be joined and uniquePeople may count one person twice.`;
   }
 
   const notes = [
@@ -434,10 +462,8 @@ const linkedPeople = async (
     listed: listedOf(linked, acrossTools, shared),
     notes,
     people: linked.length,
-    requests: found.results.reduce(
-      (sum, { value }) => sum + value.meta.requests,
-      0
-    ),
+    // Each lead's meta counts the whole batch's requests so far.
+    requests: Math.max(0, ...leads.map((lead) => lead.meta.requests)),
   };
 };
 
