@@ -239,7 +239,8 @@ test("dropped_replies reports unanswered replies longest waiting first, and coun
     answered: 1,
     // t1, t2, the timeline of l4, t3 and the reply with nothing to read.
     conversations: 5,
-    dropped: 2,
+    dropped: null,
+    droppedFound: 2,
     moreRepliesExist: false,
     notInCampaign: null,
     // The ten inbound messages but the one from October.
@@ -249,12 +250,16 @@ test("dropped_replies reports unanswered replies longest waiting first, and coun
     tooRecent: 1,
     unchecked: 1,
   });
+  assert.equal(
+    data.finding,
+    "1 of 5 conversations could not be checked, so how many are owed is unknown and totals.dropped is null. Found 2 conversations owed a reply among the 4 checked, a lower bound."
+  );
   assert.equal(data.since, "2026-10-31T12:00:00.000Z");
   assert.equal(data.olderThanHours, 24);
   // The reply with nothing to read is unchecked, so the answer is partial, not a clean 2.
   assert.equal(result.meta.complete, false);
   assert.deepEqual(result.meta.notes, [
-    "1 conversation of 5 could not be checked, so dropped counts only the 4 that were. totals.unchecked counts the rest, as neither dropped nor answered.",
+    "1 conversation of 5 could not be checked, so totals.dropped is null and droppedFound counts only the 4 that were. totals.unchecked counts the rest, as neither dropped nor answered.",
   ]);
 });
 
@@ -361,7 +366,7 @@ test("dropped_replies leaves the names null, with a note, when the tool cannot r
   );
   assert.deepEqual(unnamed.meta.notes, [
     "This tool cannot read one lead (leads.get), so name, email and linkedinUrl are null.",
-    "1 conversation of 5 could not be checked, so dropped counts only the 4 that were. totals.unchecked counts the rest, as neither dropped nor answered.",
+    "1 conversation of 5 could not be checked, so totals.dropped is null and droppedFound counts only the 4 that were. totals.unchecked counts the rest, as neither dropped nor answered.",
   ]);
 });
 
@@ -452,6 +457,7 @@ test("dropped_replies finds nothing when there are no replies", async () => {
     answered: 0,
     conversations: 0,
     dropped: 0,
+    droppedFound: 0,
     moreRepliesExist: false,
     notInCampaign: null,
     repliesRead: 0,
@@ -460,6 +466,10 @@ test("dropped_replies finds nothing when there are no replies", async () => {
     tooRecent: 0,
     unchecked: 0,
   });
+  assert.equal(
+    result.data.finding,
+    "0 conversations owed a reply, of 0 conversations checked in full."
+  );
   assert.equal(result.meta.complete, true);
 });
 
@@ -518,7 +528,7 @@ test("dropped_replies falls back to the timeline without threads, and checks not
   assert.equal(blind.meta.complete, false);
   assert.deepEqual(blind.meta.notes, [
     "This tool can read neither a conversation nor a lead's timeline, so no reply could be checked.",
-    "None of the 6 conversations could be checked, so dropped counts none of them. totals.unchecked counts them, as neither dropped nor answered.",
+    "None of the 6 conversations could be checked, so totals.dropped is null and droppedFound counts none of them. totals.unchecked counts them, as neither dropped nor answered.",
   ]);
 
   const noMessages = await single(DATA, {
@@ -535,11 +545,12 @@ test("dropped_replies filters by date itself when the tool cannot", async () => 
 
   // The October reply is read, then left out.
   assert.equal(result.data.totals.repliesRead, 10);
-  assert.equal(result.data.totals.dropped, 2);
+  assert.equal(result.data.totals.dropped, null);
+  assert.equal(result.data.totals.droppedFound, 2);
   assert.equal(result.data.totals.conversations, 5);
   assert.deepEqual(result.meta.notes, [
     "This tool cannot filter replies by date, so the newest replies were read and filtered here.",
-    "1 conversation of 5 could not be checked, so dropped counts only the 4 that were. totals.unchecked counts the rest, as neither dropped nor answered.",
+    "1 conversation of 5 could not be checked, so totals.dropped is null and droppedFound counts only the 4 that were. totals.unchecked counts the rest, as neither dropped nor answered.",
   ]);
 });
 

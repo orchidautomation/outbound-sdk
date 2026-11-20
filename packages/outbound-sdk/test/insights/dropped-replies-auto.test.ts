@@ -184,7 +184,7 @@ test("dropped_replies at its request cap returns what it read, with the stopped 
   assert.ok(data.totals.unchecked > 0);
   assert.equal(
     data.totals.answered +
-      data.totals.dropped +
+      data.totals.droppedFound +
       data.totals.tooRecent +
       data.totals.unchecked,
     data.totals.conversations

@@ -3,8 +3,9 @@
 // of replies, and group it into one row per person, so the CLI and the tools
 // say the same thing about messages and people.
 
-import type { Reply, ReplyCategory } from "./entities.ts";
+import type { Lead, Reply, ReplyCategory } from "./entities.ts";
 import { plural } from "./plural.ts";
+import { profileSlug } from "./url.ts";
 
 type Counted = Pick<Reply, "isAuto" | "leadEmail" | "leadRef" | "threadId">;
 
@@ -222,4 +223,139 @@ export const repliesOfFirstPeople = async <Item extends Grouped>(
   }
 
   return { morePeople: false, replies };
+};
+
+/** One person's rows from `repliesByPerson`, joined across tools. */
+export interface LinkedPerson extends ReplyPerson {
+  /** Their LinkedIn profile, from a lead where one carries it. */
+  readonly linkedinUrl: string | null;
+  /** Every lead joined into this person, in the order first seen. */
+  readonly leads: readonly string[];
+  /** Every tool their replies came from, as `provider:workspaceId`, in the order first seen. */
+  readonly tools: readonly string[];
+}
+
+type Identifiers = Pick<Lead, "email" | "linkedinUrl">;
+
+// An address is compared lowercased and a profile by its slug, so a token
+// that stands in for either (under redact) is compared as written.
+const keysOf = (email: string | null, linkedin: string | null): string[] => [
+  ...(email === null ? [] : [`email:${email.trim().toLowerCase()}`]),
+  ...(linkedin === null
+    ? []
+    : [`linkedin:${profileSlug(linkedin) ?? linkedin.trim().toLowerCase()}`]),
+];
+
+const merged = (
+  first: LinkedPerson,
+  rest: readonly LinkedPerson[]
+): LinkedPerson => {
+  const group = [first, ...rest];
+
+  const all = <Value>(pick: (person: LinkedPerson) => readonly Value[]) => [
+    ...new Set(group.flatMap(pick)),
+  ];
+
+  let { firstAt, lastAt } = first;
+  let automatic: number | null = 0;
+  let messages = 0;
+
+  for (const person of group) {
+    firstAt = earliest(firstAt, person.firstAt);
+    lastAt = latest(lastAt, person.lastAt);
+    automatic =
+      automatic === null || person.automatic === null
+        ? null
+        : automatic + person.automatic;
+    messages += person.messages;
+  }
+
+  return {
+    ...first,
+    automatic,
+    categories: all((person) => person.categories),
+    firstAt,
+    lastAt,
+    leadEmail:
+      group.find((person) => person.leadEmail !== null)?.leadEmail ?? null,
+    leads: all((person) => person.leads),
+    linkedinUrl:
+      group.find((person) => person.linkedinUrl !== null)?.linkedinUrl ?? null,
+    messages,
+    threadIds: all((person) => person.threadIds),
+    tools: all((person) => person.tools),
+  };
+};
+
+/**
+ * The rows of `repliesByPerson` with each lead's address and profile filled
+ * from `leads` (by lead ref), and rows that share either joined into one
+ * person, in the order each person first appears. This is how an email
+ * replier and a LinkedIn replier become one person: a lead in one tool
+ * carries the profile the other tool knows them by.
+ */
+export const linkPeople = (
+  people: readonly ReplyPerson[],
+  leads: ReadonlyMap<string, Identifiers>
+): LinkedPerson[] => {
+  const rows: LinkedPerson[] = people.map((person) => {
+    const lead =
+      person.leadRef === null ? undefined : leads.get(person.leadRef);
+
+    return {
+      ...person,
+      leadEmail: person.leadEmail ?? lead?.email ?? null,
+      leads: person.leadRef === null ? [] : [person.leadRef],
+      linkedinUrl: lead?.linkedinUrl ?? null,
+      tools: [`${person.provider}:${person.workspaceId}`],
+    };
+  });
+
+  // Each row joins the group of the first earlier row it shares a key with,
+  // and groups it bridges are joined too.
+  const parent = rows.map((_, index) => index);
+
+  const root = (index: number): number => {
+    let at = index;
+
+    while (parent[at] !== at) {
+      at = parent[at] ?? at;
+    }
+
+    return at;
+  };
+
+  const owner = new Map<string, number>();
+
+  for (const [index, row] of rows.entries()) {
+    for (const key of keysOf(row.leadEmail, row.linkedinUrl)) {
+      const earlier = owner.get(key);
+
+      if (earlier === undefined) {
+        owner.set(key, index);
+      } else {
+        const [left, right] = [root(earlier), root(index)];
+        parent[Math.max(left, right)] = Math.min(left, right);
+      }
+    }
+  }
+
+  // A group's root is its first row, so each group is in first-seen order.
+  const groups = new Map<
+    number,
+    { readonly first: LinkedPerson; readonly rest: LinkedPerson[] }
+  >();
+
+  for (const [index, row] of rows.entries()) {
+    const at = root(index);
+    const group = groups.get(at);
+
+    if (group === undefined) {
+      groups.set(at, { first: row, rest: [] });
+    } else {
+      group.rest.push(row);
+    }
+  }
+
+  return [...groups.values()].map(({ first, rest }) => merged(first, rest));
 };

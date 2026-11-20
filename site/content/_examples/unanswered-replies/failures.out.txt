@@ -1,7 +1,7 @@
 capped: 3 false [ 'Stopped at 3 replies (max_replies); more exist.' ]
-cannot check: 0 5 [
+cannot check: null 5 [
   "This tool can read neither a conversation nor a lead's timeline, so no reply could be checked.",
-  'None of the 5 conversations could be checked, so dropped counts none of them. totals.unchecked counts them, as neither dropped nor answered.'
+  'None of the 5 conversations could be checked, so totals.dropped is null and droppedFound counts none of them. totals.unchecked counts them, as neither dropped nor answered.'
 ]
 no date filter: [
   'This tool cannot filter replies by date, so the newest replies were read and filtered here.'

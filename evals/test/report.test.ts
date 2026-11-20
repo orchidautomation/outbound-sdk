@@ -133,6 +133,26 @@ test("a listed answer counts as its length where a count was asked for", () => {
   );
 });
 
+test("replies owed over an incomplete check: unknown or at least what was found is right, a false 0 is not", () => {
+  const task = TASKS.find((one) => one.id === 1);
+  assert.ok(task);
+  const unchecked = { "1": { complete: false, owed: 1 } };
+  assert.equal(task.correct({ complete: false, owed: null }, unchecked), true);
+  assert.equal(task.correct({ complete: false, owed: 2 }, unchecked), true);
+  assert.equal(task.correct({ complete: false, owed: 0 }, unchecked), false);
+  assert.equal(task.correct({ complete: true, owed: 1 }, unchecked), false);
+  const none = { "1": { complete: false, owed: 0 } };
+  assert.equal(task.correct({ complete: false, owed: null }, none), true);
+  assert.equal(
+    forbiddenClaim({ complete: false, owed: 0 }, task.incomplete(none)),
+    "gave 0 for something that was not fully checked"
+  );
+  assert.equal(
+    task.correct({ owed: 3 }, { "1": { complete: true, owed: 3 } }),
+    true
+  );
+});
+
 test("a count over a population that was not fully checked is not scored, and unknown runway is not none", () => {
   const task = TASKS.find((one) => one.id === 4);
   assert.ok(task);

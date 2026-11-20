@@ -231,6 +231,7 @@ test("dropped_replies reads the whole window by default and finds the 51st reply
     answered: 29,
     conversations: 31,
     dropped: 1,
+    droppedFound: 1,
     moreRepliesExist: false,
     notInCampaign: null,
     repliesRead: 179,
@@ -276,7 +277,8 @@ test("dropped_replies with the old cap of 50 replies misses the 51st, and the ca
     outbound.insights.droppedReplies({ max_replies: 50 }, { now: NOW })
   );
 
-  assert.equal(result.data.totals.dropped, 0);
+  assert.equal(result.data.totals.dropped, null);
+  assert.equal(result.data.totals.droppedFound, 0);
   assert.equal(result.data.totals.moreRepliesExist, true);
   assert.equal(result.meta.complete, false);
 

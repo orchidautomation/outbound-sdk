@@ -107,7 +107,8 @@ test("a conversation that cannot be read is counted unchecked, with a note", asy
   );
 
   assert.deepEqual(result.data.dropped, []);
-  assert.equal(result.data.totals.dropped, 0);
+  assert.equal(result.data.totals.dropped, null);
+  assert.equal(result.data.totals.droppedFound, 0);
   assert.ok(result.data.totals.unchecked > 0);
   assert.equal(
     result.data.totals.answered + result.data.totals.unchecked,
@@ -138,7 +139,8 @@ test("a request cap stops dropped_replies with what it read, marked incomplete, 
   );
 
   assert.equal(result.meta.complete, false);
-  assert.equal(result.data.totals.dropped, 0);
+  assert.equal(result.data.totals.dropped, null);
+  assert.equal(result.data.totals.droppedFound, 0);
   assert.equal(result.data.totals.answered, 0);
   assert.equal(result.data.totals.unchecked, result.data.totals.conversations);
   assert.ok(

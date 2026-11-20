@@ -52,9 +52,23 @@ const all = (...checks: readonly (boolean | null)[]): boolean | null =>
 export const TASKS: readonly Task[] = [
   {
     answer:
-      '{"owed": <number of conversations that need a reply from us>, "opened": <number you read>, "complete": <true if every reply was checked>}',
+      '{"owed": <number of conversations that need a reply from us, or null if not every conversation was checked>, "opened": <number you read>, "complete": <true if every reply was checked>}',
     cases: [1, 4, 5],
-    correct: (answer, truth) => same(answer, ["owed"], fact(truth, 1, "owed")),
+    // Over an incomplete check the found count is a lower bound, as in
+    // task 3: "unknown" (null) or at least what was found is right.
+    correct: (answer, truth) => {
+      if (fact(truth, 1, "complete") !== false) {
+        return same(answer, ["owed"], fact(truth, 1, "owed"));
+      }
+
+      const owed = at(answer, "owed");
+
+      return (
+        at(answer, "complete") !== true &&
+        (owed === null ||
+          (num(owed) ?? -1) >= (num(fact(truth, 1, "owed")) ?? 0))
+      );
+    },
     id: 1,
     incomplete: (truth) => fact(truth, 1, "complete") === false,
     persona: "agency ops lead",

@@ -75,6 +75,12 @@ const input = z.object({
 export interface DroppedReplies {
   /** Longest waiting first. */
   readonly dropped: readonly DroppedReply[];
+  /**
+   * The answer in one sentence, coverage first: how many conversations went
+   * unchecked or how many replies were left unread, then what was found.
+   * Never "none owed" from part of the data.
+   */
+  readonly finding: string;
   readonly totals: {
     readonly repliesRead: number;
     /** Left out for a category that needs no answer. */
@@ -95,7 +101,14 @@ export interface DroppedReplies {
     /** Conversations the remaining replies belong to: answered, dropped, tooRecent and unchecked add up to it. */
     readonly conversations: number;
     readonly answered: number;
-    readonly dropped: number;
+    /**
+     * Conversations owed a reply, or `null` when any went unchecked or more
+     * replies exist: the check is incomplete and `droppedFound` is only a
+     * lower bound.
+     */
+    readonly dropped: number | null;
+    /** Dropped conversations found among those checked. Checking more never lowers it. */
+    readonly droppedFound: number;
     /** Unanswered, as far as was read, but waiting less than `older_than_hours`. */
     readonly tooRecent: number;
     /** Could not be checked: no thread or lead to read, a read that failed, or no time on the reply. Not counted as dropped. */
@@ -148,6 +161,38 @@ const conversationsOf = (
   }
 
   return [...groups.values()];
+};
+
+/** The finding: what went unchecked or unread first, then what was found. */
+const overallOf = (totals: DroppedReplies["totals"]): string => {
+  const {
+    conversations,
+    droppedFound: found,
+    moreRepliesExist: capped,
+    repliesRead,
+    unchecked,
+  } = totals;
+
+  const owed = `${plural(found, "conversation")} owed a reply`;
+
+  if (unchecked === 0 && !capped) {
+    return `${owed}, of ${plural(conversations, "conversation")} checked in full.`;
+  }
+
+  const gaps = [
+    ...(unchecked > 0
+      ? [
+          `${unchecked} of ${plural(conversations, "conversation")} could not be checked`,
+        ]
+      : []),
+    ...(capped
+      ? [
+          `more replies exist past the ${plural(repliesRead, "reply", "replies")} read`,
+        ]
+      : []),
+  ].join(" and ");
+
+  return `${gaps}, so how many are owed is unknown and totals.dropped is null. Found ${owed} among the ${conversations - unchecked} checked, a lower bound.`;
 };
 
 const refsOf = (refs: readonly (string | null)[]): string[] => [
@@ -416,10 +461,24 @@ export const droppedReplies = defineInsight({
     if (notChecked > 0) {
       context.partial(
         notChecked === owedOrUnknown
-          ? `None of the ${plural(notChecked, "conversation")} could be checked, so dropped counts none of them. totals.unchecked counts them, as neither dropped nor answered.`
-          : `${plural(notChecked, "conversation")} of ${owedOrUnknown} could not be checked, so dropped counts only the ${owedOrUnknown - notChecked} that were. totals.unchecked counts the rest, as neither dropped nor answered.`
+          ? `None of the ${plural(notChecked, "conversation")} could be checked, so totals.dropped is null and droppedFound counts none of them. totals.unchecked counts them, as neither dropped nor answered.`
+          : `${plural(notChecked, "conversation")} of ${owedOrUnknown} could not be checked, so totals.dropped is null and droppedFound counts only the ${owedOrUnknown - notChecked} that were. totals.unchecked counts the rest, as neither dropped nor answered.`
       );
     }
+
+    const totals: DroppedReplies["totals"] = {
+      answered,
+      conversations: owedOrUnknown,
+      dropped: notChecked === 0 && !listed.capped ? dropped.length : null,
+      droppedFound: dropped.length,
+      moreRepliesExist: listed.capped,
+      notInCampaign,
+      repliesRead: read.length,
+      skippedAuto: wanted.length - kept.length + automaticReplies,
+      skippedByCategory: replies.length - wanted.length,
+      tooRecent,
+      unchecked: notChecked,
+    };
 
     const answer: DroppedReplies = {
       dropped: withNames.toSorted(
@@ -427,20 +486,10 @@ export const droppedReplies = defineInsight({
           right.hoursWaiting - left.hoursWaiting ||
           left.reply.localeCompare(right.reply)
       ),
+      finding: overallOf(totals),
       olderThanHours: values.older_than_hours,
       since,
-      totals: {
-        answered,
-        conversations: owedOrUnknown,
-        dropped: dropped.length,
-        moreRepliesExist: listed.capped,
-        notInCampaign,
-        repliesRead: read.length,
-        skippedAuto: wanted.length - kept.length + automaticReplies,
-        skippedByCategory: replies.length - wanted.length,
-        tooRecent,
-        unchecked: notChecked,
-      },
+      totals,
     };
 
     return answer;

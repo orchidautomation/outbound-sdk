@@ -207,6 +207,8 @@ test("reply_samples by person: one row per person", async () => {
 
   assert.deepEqual(result.data, {
     automatic: 0,
+    linkedAcrossTools: null,
+    linkedBy: null,
     people: [
       {
         automatic: 0,
@@ -215,9 +217,12 @@ test("reply_samples by person: one row per person", async () => {
         lastAt: "2026-11-11T10:00:00.000Z",
         lead: "memory:acme:lead_1",
         leadEmail: null,
+        leads: ["memory:acme:lead_1"],
+        linkedinUrl: null,
         messages: 2,
         provider: "memory",
         threadIds: ["thr_1"],
+        tools: ["memory:acme"],
         workspaceId: "acme",
       },
     ],

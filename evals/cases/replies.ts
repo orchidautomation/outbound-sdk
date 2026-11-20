@@ -11,10 +11,17 @@ const latestIsAuto = (item: unknown): boolean =>
 
 const MEETING = /booked|completed|held|scheduled/u;
 
-/** Case 1: no listed conversation is automatic, and totals.dropped counts the ones that need a person. */
+/**
+ * Case 1: no listed conversation is automatic, totals.dropped counts the ones
+ * that need a person, and it is null, never a false 0, while any conversation
+ * went unchecked or more replies were left unread.
+ */
 export const judgeDroppedDefaults = (structured: unknown): Verdict => {
   const items = list(at(structured, "data", "dropped"));
-  const total = num(at(structured, "data", "totals", "dropped"));
+  const totals = at(structured, "data", "totals");
+  const total = num(at(totals, "dropped"));
+  const unchecked = num(at(totals, "unchecked")) ?? 0;
+  const unread = at(totals, "moreRepliesExist") === true;
   const auto = items.filter(latestIsAuto).length;
 
   const needed = items.filter(
@@ -23,16 +30,24 @@ export const judgeDroppedDefaults = (structured: unknown): Verdict => {
 
   const complete = bool(at(structured, "meta", "complete"));
 
+  // owed is what was found: a lower bound when the check is incomplete.
   const truth = {
     complete,
     listed: items.length,
     owed: needed,
-    unchecked: num(at(structured, "data", "totals", "unchecked")),
+    unchecked,
   };
+
+  const partial = unchecked > 0 || unread;
 
   return firstFailure(
     [
-      total === null ? "dropped_replies gave no totals.dropped" : null,
+      total === null && !partial
+        ? "dropped_replies gave no totals.dropped over a full check"
+        : null,
+      total !== null && partial
+        ? `totals.dropped is ${total} while ${unchecked} conversations went unchecked${unread ? " and more replies exist" : ""}`
+        : null,
       auto > 0
         ? `${auto} of ${items.length} listed conversations end in an automatic reply`
         : null,
@@ -40,7 +55,7 @@ export const judgeDroppedDefaults = (structured: unknown): Verdict => {
         ? `totals.dropped is ${total}, but ${needed} listed items have followUp.needed: true`
         : null,
     ],
-    `${plural(items.length, "conversation")} listed, none automatic, totals.dropped matches`,
+    `${plural(items.length, "conversation")} listed, none automatic, totals.dropped ${total === null ? "null over an incomplete check" : "matches"}`,
     truth
   );
 };
