@@ -1,10 +1,10 @@
 $ outbound tools
-[data.items: 38 tools, each with name, description and parameters (its inputs as JSON Schema): campaign_overview, campaign_trend, winning_steps, sender_health, reply_samples, lead_runway, cross_channel_lead, campaign_setup, deliverability_check, audience_lists, person_summary, account_summary, lead_collisions, suppression_check, dropped_replies, hot_leads, thread_context, personalization_gaps, step_funnel, variant_test, copy_audit, copy_preview, copy_reuse, reply_timing, domain_health, sender_capacity, bounce_watch, warmup_readiness, sender_load, settings_audit, campaign_diagnosis, pipeline_forecast, anomalies, period_comparison, campaign_ranking, channel_mix, tag_rollup, client_report]
+[data.items: 23 tools, each with name, description and parameters (its inputs as JSON Schema): campaigns, sender_health, reply_samples, lead_runway, campaign_setup, audience_lists, person, list_hygiene, unanswered_replies, hot_leads, thread_context, step_funnel, copy_review, copy_preview, reply_timing, sender_capacity, settings_audit, campaign_diagnosis, anomalies, period_comparison, channel_mix, tag_rollup, client_report]
 
 $ outbound tool winning_steps
 {
   "data": {
-    "description": "Which step or variant of a campaign drives replies. Returns each step and variant with its sends, replies and reply rate, best first: rank 1 has the highest reply rate. step_index counts steps from 0, step_number from 1 as a person counts (say step_number to a person); step is a deprecated copy of step_index. Counts the vendor tied to no step come last with unattributed: true and rank null; an unattributed row with no counts is left out. A variant whose copy changed mid-campaign mixes old and new wording.",
+    "description": "Which step or variant of a campaign drives replies: each step and variant with its sends, replies and reply rate, best first (rank 1 has the highest rate). stepIndex counts from 0 and stepNumber from 1, as a person counts. Counts the vendor tied to no step come last with unattributed: true and rank null. A variant whose copy changed mid-campaign mixes old and new wording.",
     "name": "winning_steps",
     "parameters": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -49,36 +49,41 @@ $ outbound tool winning_steps
 $ outbound tool sender_health --input '{"limit":1}'
 {
   "data": {
-    "checked": 2,
-    "failing": 0,
-    "senders": [
-      {
-        "address": "outreach1@example.com",
-        "daily_limit": 40,
-        "kind": "mailbox",
-        "name": "Outreach One",
-        "sender": "memory:default:mbx_1",
-        "status": "active",
-        "warmup_enabled": true,
-        "warmup_score": 96
-      }
-    ],
-    "total": 2,
-    "unhealthy": 0
+    "status": {
+      "campaigns": [],
+      "checked": 2,
+      "failing": 0,
+      "senders": [
+        {
+          "address": "outreach1@example.com",
+          "dailyLimit": 40,
+          "kind": "mailbox",
+          "name": "Outreach One",
+          "provider": "memory",
+          "sender": "memory:default:mbx_1",
+          "status": "active",
+          "warmupEnabled": true,
+          "warmupScore": 96,
+          "workspaceId": "default"
+        }
+      ],
+      "total": 2,
+      "unhealthy": 0
+    }
   },
   "meta": {
     "complete": false,
+    "computedAt": "2026-11-14T12:00:00.000Z",
     "evidence": "exact",
     "notes": [
-      "Listed 1 sender (limit); more were checked."
+      "status: Listed 1 sender (limit); more were checked."
     ],
     "provider": "memory",
     "requests": 0,
-    "computedAt": "2026-11-14T12:00:00.000Z",
     "today": "2026-11-14",
     "throttledMs": 0
   },
-  "next": "Use deliverability_check for each sender's DNS, sign-in and block list status.",
+  "next": "Use sender_health with checks [\"deliverability\"] for each sender's DNS, sign-in and block list status.",
   "ok": true
 }
 
@@ -92,7 +97,7 @@ $ outbound tool campaign_trend --input '{"campaign":"cmp_founders","from":"last 
     "requests": 0,
     "throttledMs": 0
   },
-  "next": "Check the input and try again.",
+  "next": "Check the input and try again. campaign_trend is an old name kept until 0.17.0: call campaigns with view \"trend\" instead.",
   "ok": false,
   "error": {
     "code": "Invalid",

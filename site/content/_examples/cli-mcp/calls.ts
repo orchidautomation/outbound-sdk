@@ -27,7 +27,7 @@ await send(
     id: 4,
     jsonrpc: "2.0",
     method: "tools/call",
-    params: { arguments: { client: "acme" }, name: "campaign_overview" },
+    params: { arguments: { client: "acme" }, name: "campaigns" },
   }
 );
 

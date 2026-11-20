@@ -29,6 +29,4 @@ export const statusesInput = (
     .array(campaignStatusSchema)
     .min(1)
     .default([...fallback])
-    .describe(
-      "Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown"
-    );
+    .describe("Only campaigns in these states are read");

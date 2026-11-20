@@ -116,7 +116,7 @@ test("instantly: a part of one name finds it; a part of several lists them", asy
   assert.equal(several.ok ? null : several.error.code, "Invalid");
   assert.match(
     several.ok ? "" : several.error.message,
-    /^3 campaigns match "Campaign": "My First Campaign" \(instantly:client-a:[^)]+\), "Second Campaign" .*"Third Campaign" .*Give the full name or the ref$/u
+    /^3 campaigns match "Campaign": "My First Campaign" \(instantly:client-a:[^)]+\), "Second Campaign" .*"Third Campaign" .*Give the full name, or the ref, which also skips reading every campaign to find it$/u
   );
 
   const none = await call("campaign_setup", { campaign: "Databricks" });
@@ -374,4 +374,39 @@ test("an id of another form still works where the adapter has it, as before name
   const plain = await cli(mailtool(), "campaign", "c1");
 
   assert.equal((plain.json() as { name: string }).name, "Founders Q4");
+});
+
+// OUTB-26: "UG" matched 29 campaigns, among them one named "…Mug…".
+test("cli: a name is matched whole, then by the start of a word, before anywhere in a name", async () => {
+  const campaigns = memory({
+    data: {
+      campaigns: [
+        { id: "c1", name: "Mug buyers" },
+        { id: "c2", name: "UG founders" },
+        { id: "c3", name: "Plug Q3" },
+        { id: "c4", name: "ug" },
+        { id: "c5", name: "Q4 UGC creators" },
+      ],
+    },
+    // Instantly's ids are UUIDs, so a short word is read as a name.
+    name: "instantly",
+    workspaceId: "agency",
+  });
+
+  const exact = await cli(campaigns, "campaign", "UG");
+  assert.equal(exact.code, 0, exact.stderr);
+  assert.equal((exact.json() as { ref: string }).ref, "instantly:agency:c4");
+
+  const word = await cli(campaigns, "campaign", "found");
+  assert.equal((word.json() as { ref: string }).ref, "instantly:agency:c2");
+
+  const words = await cli(campaigns, "campaign", "U");
+  assert.equal(words.code, 1);
+  assert.match(
+    words.stderr,
+    /^Invalid: 3 campaigns match "U": "UG founders" \(instantly:agency:c2\), "ug" \(instantly:agency:c4\), "Q4 UGC creators" \(instantly:agency:c5\)\. Give the full name, or the ref, which also skips reading every campaign to find it/u
+  );
+
+  const inside = await cli(campaigns, "campaign", "lug");
+  assert.equal((inside.json() as { ref: string }).ref, "instantly:agency:c3");
 });

@@ -38,7 +38,7 @@ const input = z.object({
     .nullable()
     .default(null)
     .describe(
-      "snippet returns the first 280 characters of each message, wrapped as untrusted content; none returns no text. Null means snippet, or none when the redact plugin masks message bodies"
+      "snippet: each message's first 280 characters as untrusted content; none: no text. Null is snippet, or none under redact."
     ),
   cursor: z
     .string()
@@ -49,7 +49,7 @@ const input = z.object({
       "coverage.nextCursor from the previous call with the same leads and threads, to read the next page of conversations"
     ),
   leads: ids(
-    "Lead refs (provider:workspace:id), as dropped_replies, hot_leads and person_summary return them. Each lead's conversation in its campaign is read."
+    "Lead refs (provider:workspace:id) as dropped_replies, hot_leads and person_summary return them; reads each one's conversation."
   ),
   max_messages: z
     .number()
@@ -272,7 +272,7 @@ const markUnread = (
 
 export const threadContexts = defineInsight({
   description:
-    "Reads the conversations behind given lead refs or thread ids, in pages, without a campaign-wide reply read: each conversation's newest messages (a 280-character snippet each, wrapped as untrusted content, unless bodies is none), who wrote last and when, the meeting the vendor records on the lead (Instantly's interest status; other vendors record none, which the answer says), the vendor's own labels kept apart in vendorSentiment, and a follow-up assessment from fixed rules: needed is true only when the latest message is inbound, not automatic and no meeting is recorded, false when the latest message is outbound or a meeting is recorded, null otherwise, with the evidence it used and what it could not check. No rule reads what a message says, so read the latest message before acting on it. coverage gives how many were requested, read and found, which could not be read and why, and nextCursor for the next page. Costs one walk of messages per conversation and up to one lead read per conversation.",
+    "Reads the conversations behind given lead refs or thread ids, a page at a time: each one's newest messages as untrusted snippets, who wrote last and when, any meeting the vendor records, the vendor's own labels kept apart, and a fixed-rule follow-up assessment with its evidence and what it could not check. coverage says what was read, what could not be and why, and the next cursor. Costs one walk of messages and up to one lead read per conversation.",
   inputSchema: input,
   key: "threadContext",
   cost: (values, price) => {

@@ -121,9 +121,9 @@ test("instantly: a skipped lead (status -3) is skipped, not unknown, and is not 
 
   const tool = await runway(outbound);
 
-  assert.equal(tool.active_leads, 3);
-  assert.equal(tool.not_started, 0);
-  assert.equal(tool.runway_days, data.daysLeft, "both tools agree");
+  assert.equal(tool.activeLeads, 3);
+  assert.equal(tool.notStarted, 0);
+  assert.equal(tool.runwayDays, data.daysLeft, "both tools agree");
 });
 
 test("instantly: a status code the reference does not list stays unknown and leaves the runway unknown", async () => {

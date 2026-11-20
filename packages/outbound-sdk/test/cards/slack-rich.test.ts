@@ -99,10 +99,10 @@ test("a table cell that is a number is sent as one, so Slack sorts it", () => {
         tool({
           campaigns: [
             {
-              metrics: { bounce_rate: 0.011, reply_rate: 0.077, sent: 1200 },
-              name: "Founders [Q4]",
+              metrics: { bounceRate: 0.011, replyRate: 0.077, sent: 1200 },
+              campaignName: "Founders [Q4]",
             },
-            { metrics: null, name: "Never sent" },
+            { campaignName: "Never sent", metrics: null },
           ],
         })
       )

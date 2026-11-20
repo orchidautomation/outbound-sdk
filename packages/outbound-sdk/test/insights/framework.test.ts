@@ -396,9 +396,10 @@ test("insight tools ride along with the built-in tools through `extra`, on OpenA
     tools: { name: string }[];
   };
 
+  // Listed merged: person_summary as person, campaign_overview as campaigns.
   const names = new Set(served.map((tool) => tool.name));
-  assert.ok(names.has("person_summary"));
-  assert.ok(names.has("campaign_overview"));
+  assert.ok(names.has("person"));
+  assert.ok(names.has("campaigns"));
 });
 
 test("the CLI lists the insights and runs one", async () => {
@@ -445,4 +446,39 @@ test("the CLI lists the insights and runs one", async () => {
   const unknown = await cli("insight", "nope");
   assert.equal(unknown.code, 1);
   assert.match(unknown.text, /Invalid: There is no insight "nope"/u);
+});
+
+// OUTB-26: a 5-minute run said it was computed when it started.
+test("meta.computedAt is when the answer was finished, not when the run started", async () => {
+  let readAt = 0;
+
+  const slow = defineInsight({
+    description: "Waits, then answers, for the framework tests.",
+    inputSchema: z.object({}),
+    key: "slow",
+    name: "slow",
+    needs: [],
+    next: "Nothing.",
+    run: async () => {
+      await new Promise((resolve) => {
+        setTimeout(resolve, 30);
+      });
+      readAt = Date.now();
+
+      return { done: true };
+    },
+  });
+
+  const started = Date.now();
+
+  const result = await runInsight(
+    createOutbound({ adapter: memory() }),
+    slow,
+    {}
+  );
+
+  const computedAt = Date.parse(result.meta.computedAt);
+
+  assert.ok(computedAt >= readAt, "after the last read");
+  assert.ok(computedAt - started >= 25, "not the start time");
 });

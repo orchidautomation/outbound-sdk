@@ -1,12 +1,12 @@
 9 tools
 {
-  description: 'How every campaign is doing: sends, repl...',
+  description: 'How every campaign with the given status...',
   name: 'campaign_overview',
   parameters: '(JSON Schema)',
   strict: false,
   type: 'function'
 }
 [ 'function', 'type' ] campaign_overview
-{"data":{"campaigns":[{"campaign":"memory:acme:cmp_agencies","channel":"email","name":"Agency owners","metrics":{"bounce_rate":0.0505,"bounced":53,"connections_accepted":null,"connections_sent":null,"contacted":630,"opened":378,"positive":4,"positive_reply_rate":0.0063,"replied":15,"reply_rate":0.0238,"reply_rate_basis":"contacted","sent":1050},"status":"paused"}],"period":{"from":null,"to":null}},"meta":{"complete":true,"evidence":"exact","notes":[],"provider":"memory","requests":0,"computedAt":"2026-11-14T12:00:00.000Z","today":"2026-11-14"},"next":"Use campaign_trend for one campaign over time, or winning_steps to see which step drives replies.","ok":true}
+{"data":{"campaigns":[{"campaign":"memory:acme:cmp_agencies","campaignName":"Agency owners","channel":"email","metrics":{"bounceRate":0.0505,"bounced":53,"connectionsAccepted":null,"connectionsSent":null,"contacted":630,"opened":378,"positive":4,"positiveReplyRate":0.0063,"replied":15,"replyRate":0.0238,"replyRateBasis":"contacted","sent":1050},"provider":"memory","status":"paused","workspaceId":"acme"}],"period":{"from":null,"to":null}},"meta":{"complete":true,"evidence":"exact","notes":[],"provider":"memory","requests":0,"computedAt":"2026-11-14T12:00:00.000Z","today":"2026-11-14"},"next":"Use campaign_trend for one campaign over time, or winning_steps to see which step drives replies.","ok":true}
 {"error":{"code":"Invalid","message":"Unknown tool drop_database","retryable":false},"next":"Call one of the listed tools with a JSON object.","ok":false}
 {"error":{"code":"Invalid","message":"The arguments are not valid JSON","retryable":false},"next":"Call one of the listed tools with a JSON object.","ok":false}

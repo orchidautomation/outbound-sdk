@@ -21,4 +21,5 @@ Read 10 leads in 3 campaigns. 0 had no address and no profile to match on.
 
 Read 5 block list entries and 10 leads. 1 entries are of a kind that cannot be matched to a lead, such as a company name.
 
+Note: 1 lead on the block list is in a state outside lead_statuses, such as unsubscribed, bounced, replied or completed, so it is counted in totals.alreadyStopped, not as a violation.
 Note: 1 of the block entries read name a company or another kind of entry no lead can be matched on, so they were not checked.

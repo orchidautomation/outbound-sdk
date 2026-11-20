@@ -5,10 +5,11 @@ import type { OutboundApi } from "../internal/outbound/api.ts";
 import type { InsightToolCaps } from "./config.ts";
 import { createMcpServer } from "./mcp.ts";
 import type { McpServerOptions } from "./mcp.ts";
-import { catalog } from "./offered.ts";
+import { catalog, offerOn } from "./offered.ts";
 import type { ThrottleTotal } from "./progress.ts";
 import { serveStdio } from "./stdio.ts";
 import { didYouMean } from "./suggest.ts";
+import { GROUPS, RENAMED } from "./surface-groups.ts";
 import { toolCallScope } from "./tool-call.ts";
 import { packageVersion } from "./version.ts";
 
@@ -33,6 +34,29 @@ export const namedTools = (
   }
 
   return new Set(names);
+};
+
+/** `--tools` with each listed name as the built-in tools and insights it is made of. */
+export const memberNames = (
+  wanted: ReadonlySet<string> | undefined
+): Set<string> | undefined => {
+  if (wanted === undefined) {
+    return undefined;
+  }
+
+  const renamedFrom = new Map<string, string>(
+    Object.entries(RENAMED).map(([old, now]) => [now, old])
+  );
+
+  return new Set(
+    [...wanted].flatMap((name) => {
+      const group = GROUPS.find((each) => each.name === name);
+
+      return group === undefined
+        ? [renamedFrom.get(name) ?? name]
+        : group.members.map((member) => member.tool);
+    })
+  );
 };
 
 /** `--time-budget`, in whole seconds. */
@@ -81,15 +105,26 @@ export const serve = async (
   const scope = toolCallScope();
   const outbound = scope.over(given);
 
+  const named = memberNames(wanted);
+
   const { leftOut, offered, tools, turnOn } = await catalog(
     outbound,
     caps,
     unmasked,
-    wanted
+    named
   );
 
+  // A name counts when any tool it is made of is on offer.
   for (const name of wanted ?? []) {
-    const why = leftOut[name];
+    const parts = [...(memberNames(new Set([name])) ?? [])];
+
+    if (parts.some((part) => offered.includes(part))) {
+      continue;
+    }
+
+    const why = parts
+      .map((part) => leftOut[part])
+      .find((each) => each !== undefined);
 
     if (why !== undefined) {
       throw new OutboundError("Unsupported", `--tools: ${why}`, {
@@ -97,12 +132,10 @@ export const serve = async (
       });
     }
 
-    if (!offered.includes(name)) {
-      throw new OutboundError(
-        "Invalid",
-        `--tools: "${name}" is not a tool this server can offer.${didYouMean(name, [...offered, ...Object.keys(leftOut)])} Run "outbound tools" to list them`
-      );
-    }
+    throw new OutboundError(
+      "Invalid",
+      `--tools: "${name}" is not a tool this server can offer.${didYouMean(name, [...GROUPS.map((group) => group.name), ...offered, ...Object.keys(leftOut)])} Run "outbound tools" to list them`
+    );
   }
 
   const server = createMcpServer(outbound, {
@@ -116,6 +149,11 @@ export const serve = async (
     throttled: io.throttled,
     timeBudgetMs,
     timeBudgetSetting: "--time-budget on outbound mcp",
+    toolsOn: async (instance) => {
+      const served = await offerOn(instance, caps);
+
+      return served.tools;
+    },
     version: packageVersion(),
   });
 

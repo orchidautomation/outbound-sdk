@@ -32,7 +32,7 @@ const input = z.object({
     .min(1)
     .default(100)
     .describe(
-      "The smallest base (sends, or leads contacted when the vendor counts those) a campaign needs to count in the spread, and a piece of copy needs to be named the best."
+      "Smallest base (sends, or leads contacted when counted) a campaign needs to count in the spread, and a copy to be named best."
     ),
   statuses: statusesInput(["active", "paused", "completed"]),
 });
@@ -325,7 +325,7 @@ const readPlacements = async (
 
 export const copyReuse = defineInsight({
   description:
-    "How the same piece of copy performs in different campaigns. Reads each campaign's sequence and step stats, matches variants by the hash of their subject and body, and returns every piece of copy used in two or more campaigns with its totals, its reply rate per campaign and the spread between its best and worst campaign, plus the copy with the highest pooled reply rate. Use it to tell a copy problem from an audience problem. Every rate is divided by the same base, leads contacted when every campaign counts them and messages sent otherwise; campaigns with no base in common are listed but not compared. Costs 2 requests per campaign plus the campaign listing. A null count means the vendor does not report it for that variant; it is never 0.",
+    "How the same piece of copy performs in different campaigns. Matches variants by the hash of their subject and body and returns every piece of copy used in two or more campaigns with its totals, its reply rate per campaign and the spread between its best and worst campaign, plus the copy with the highest pooled reply rate. Use it to tell a copy problem from an audience problem. Every rate divides by one base, named in basis. Costs the campaign listing plus 2 requests per campaign. A null count is not reported, never 0.",
   inputSchema: input,
   key: "copyReuse",
   cost: (values, price) =>

@@ -2,6 +2,7 @@
   "data": {
     "alpha": 0.05,
     "campaign": "memory:acme:founders",
+    "finding": "1 step with a real winner out of 2 tested.",
     "metric": "replied",
     "steps": [
       {

@@ -6,7 +6,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { run } from "../src/cli/index.ts";
+import { RENAMED_TOOLS, run } from "../src/cli/index.ts";
 import { combine } from "../src/combine/index.ts";
 import type { Adapter } from "../src/index.ts";
 import { fixtureHandler } from "./helpers/adapter-suite.ts";
@@ -102,15 +102,15 @@ test("--provider all offers every tool one of its tools serves, under redact, as
     listedBy(both()),
   ]);
 
-  // 0.12.0 dropped these six beside HeyReach, and person_summary under redact.
+  // 0.12.0 dropped these beside HeyReach (variant_test, copy_reuse and
+  // winning_steps now answer as copy_review and step_funnel), and
+  // person_summary (now person) under redact.
   for (const name of [
     "step_funnel",
-    "variant_test",
-    "copy_reuse",
+    "copy_review",
     "settings_audit",
-    "winning_steps",
     "campaign_setup",
-    "person_summary",
+    "person",
   ]) {
     assert.ok(combined.includes(name), name);
   }
@@ -225,10 +225,14 @@ test("outbound tools, outbound insight and tools/list read one catalog, and name
     const insightNames = items(insight).map((each) => each.name);
 
     assert.deepEqual(toolNames, listed);
-    assert.deepEqual(
-      insightNames,
-      toolNames.filter((name) => insightNames.includes(name))
-    );
+
+    // Every insight is listed, or answered by the listed tool it became.
+    for (const name of insightNames) {
+      const becomes = RENAMED_TOOLS[name]?.split(" ")[0] ?? name;
+
+      assert.ok(toolNames.includes(becomes), name);
+    }
+
     assert.equal(insightNames.length > 0, true);
     assert.equal(tools.requests + insight.requests, 0);
   }
@@ -277,17 +281,27 @@ test("a tool only one member serves on its own is named with the --provider that
     [INITIALIZE, call(1, "vendor_read", {})]
   );
 
-  const { instructions } = (
-    JSON.parse(session.out[0] ?? "") as { result: { instructions: string } }
-  ).result;
+  // Answers are written as they finish, so each is found by its id.
+  const byId = (id: number) =>
+    session.out
+      .map(
+        (line) =>
+          JSON.parse(line) as {
+            id: number;
+            result: { instructions: string };
+            error: { message: string };
+          }
+      )
+      .find((each) => each.id === id);
+
+  const { instructions } = byId(0)?.result ?? { instructions: "" };
 
   assert.match(
     instructions,
     / Left out of this server: [a-z_, ]*vendor_read[a-z_, ]*\. A call to one returns the reason\./u
   );
   assert.match(
-    (JSON.parse(session.out[1] ?? "") as { error: { message: string } }).error
-      .message,
+    byId(1)?.error.message ?? "",
     /^vendor_read is not available: it needs native, which this instance does not offer\. Run it with --provider instantly to read instantly on its own\.$/u
   );
 });

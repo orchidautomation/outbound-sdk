@@ -208,7 +208,7 @@ const missingOf = (
 
 export const personalizationGaps = defineInsight({
   description:
-    "Leads in one campaign who will get broken copy because a merge variable has no value for them. Reads the campaign's sequence, finds every {{variable}}, {variable} and %variable% in subjects and bodies, and checks each lead for a value: first name, last name, company, title, email, or a custom field of the same name without regard to case, spaces, underscores or hyphens. Returns the variables with the steps that use them, how many leads each one affects, and the leads missing at least one. A variable with a fallback such as {{firstName|there}} is not a gap. A variable the tool fills from the sending account, such as Instantly's {{accountSignature}}, is marked sender: true and left out of unknownVariables; any other variable no lead has is listed as unknown. Neither is counted against leads. Costs one request for the sequence plus one per page of leads.",
+    "Leads in one campaign who will get broken copy because a merge variable has no value for them. Finds every {{variable}}, {variable} and %variable% in the sequence and checks each lead's name, company, title, email and custom fields, matched without regard to case or separators. Returns the variables with the steps that use them, how many leads each affects, and the leads missing one. A variable with a fallback is not a gap; one the tool fills from the sender is marked sender. Costs one request for the sequence plus one per page of leads.",
   inputSchema: input,
   key: "personalizationGaps",
   cost: (values, price) =>

@@ -37,7 +37,7 @@ const input = z.object({
     .max(1)
     .default(0)
     .describe(
-      `A step earns its place when the low end of its reply rate interval is above this and it has at least ${MIN_REPLIES} replies. 0 asks only that the rate is reliably above zero.`
+      `The bar the low end of a step's reply rate interval must clear, with ${MIN_REPLIES} or more replies. 0 means above zero.`
     ),
 });
 
@@ -84,13 +84,13 @@ export interface StepFunnel {
   readonly topStepIndex: number | null;
   /** `topStepIndex` counted from 1, as a person counts. */
   readonly topStepNumber: number | null;
-  /** @deprecated Use `topStepIndex` (the same value, counted from 0) or `topStepNumber`. Removed in 0.8.0. */
+  /** @deprecated Use `topStepIndex` (the same value, counted from 0) or `topStepNumber`. Removed in 0.15.0. */
   readonly topStep: number | null;
   /** The last step that earns its place (see `earnsPlace`), counted from 0. `null` when none does. */
   readonly lastStepEarningPlaceIndex: number | null;
   /** `lastStepEarningPlaceIndex` counted from 1, as a person counts. */
   readonly lastStepEarningPlaceNumber: number | null;
-  /** @deprecated Use `lastStepEarningPlaceIndex` (the same value, counted from 0) or `lastStepEarningPlaceNumber`. Removed in 0.8.0. */
+  /** @deprecated Use `lastStepEarningPlaceIndex` (the same value, counted from 0) or `lastStepEarningPlaceNumber`. Removed in 0.15.0. */
   readonly lastStepEarningPlace: number | null;
   readonly steps: readonly FunnelStep[];
   readonly totals: {
@@ -252,7 +252,7 @@ const unattributedOf = (rows: readonly MetricRow[]) => {
 
 export const stepFunnel = defineInsight({
   description:
-    "Where a campaign's replies come from: one row per sequence step with its action, delay, sends, replies, reply rate with a 95% interval, its share of all replies and how far sends fell from the step before, plus rows per variant when the vendor splits them. Each step has stepIndex (counted from 0) and stepNumber (counted from 1, as a person counts); step is a deprecated copy of stepIndex. Names the step with the most replies and the last step that still earns its place; a step needs at least 5 replies to earn it. Use it to decide whether to cut or rewrite follow-ups. Costs 2 requests. A null count means the vendor does not report it; it is never 0.",
+    "Where a campaign's replies come from: one row per sequence step with its action, delay, sends, replies, reply rate with a 95% interval, share of all replies and the drop in sends from the step before, plus rows per variant when the vendor splits them. stepIndex counts from 0, stepNumber from 1. Names the step with the most replies and the last step that still earns its place. Use it to decide whether to cut or rewrite follow-ups. Costs 2 requests. A null count is not reported, never 0.",
   inputSchema: input,
   key: "stepFunnel",
   cost: (_input, price) => price.one("sequence.get") + price.one("stats"),

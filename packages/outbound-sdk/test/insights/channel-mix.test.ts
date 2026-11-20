@@ -129,6 +129,30 @@ test("channel_mix adds campaigns up per channel and tests the difference in repl
   );
   assert.equal(result.meta.complete, true);
   assert.equal(result.meta.provider, "combined");
+  assert.ok(
+    !result.meta.notes.some((note) => note.includes("by messages sent")),
+    "no basis note when replies are per lead"
+  );
+});
+
+test("channel_mix divides by messages sent when a campaign contacted no new lead, and says so", async () => {
+  const result = await single({
+    campaigns: [
+      { id: "m1", name: "Fresh" },
+      { id: "m2", name: "Follow-ups" },
+    ],
+    stats: [
+      row("m1", "2026-11-03", { contacted: 400, replied: 20, sent: 400 }),
+      row("m2", "2026-11-04", { contacted: 0, replied: 6, sent: 300 }),
+    ],
+  }).insights.channelMix(NOVEMBER, { now: NOW });
+
+  assert.equal(result.data.replyRateBasis, "sent");
+  assert.ok(
+    result.meta.notes.includes(
+      "Reply rates divide by messages sent, not leads contacted, for every campaign: a campaign has replies in the range but contacted no new lead in it."
+    )
+  );
 });
 
 test("channel_mix holds the difference to the alpha it is given, and counts the whole history without a range", async () => {

@@ -30,7 +30,7 @@ const input = z.object({
     .max(1000)
     .default(1000)
     .describe(
-      "The most senders to read for the workspace, and for each campaign. A listing costs 1 request per 100 senders, and on Instantly a campaign's listing costs 2 per 100 mailboxes in the workspace."
+      "Most senders to read, for the workspace and each campaign: 1 request per 100 (Instantly campaigns: 2 per 100 mailboxes)."
     ),
   statuses: statusesInput(["active"]),
 });
@@ -125,7 +125,7 @@ const riskOf = (
 
 export const senderLoad = defineInsight({
   description:
-    "Senders that are overused or unused: the senders attached to more campaigns than allowed, the active senders attached to no campaign, and the campaigns that run on a single sender, on none, or on a sender that is not active. Use it when sends are uneven or before adding a campaign. Costs one listing of senders and of campaigns, then one listing of each campaign's senders. Only campaigns in the given statuses are counted, so a sender used only by a paused campaign shows as unused unless paused is included.",
+    "Senders that are overused or unused: the senders attached to more campaigns than allowed, the active senders attached to no campaign, and the campaigns that run on a single sender, on none, or on a sender that is not active. Use it when sends are uneven or before adding a campaign. Costs a sender and a campaign listing, then one listing of each campaign's senders. Only campaigns in the given statuses count, so a sender used only by a paused campaign shows as unused unless paused is included.",
   inputSchema: input,
   key: "senderLoad",
   cost: (values, price) =>

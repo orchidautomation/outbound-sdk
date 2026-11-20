@@ -529,3 +529,28 @@ test("variant_test tells a date range with no rows from a vendor that does not s
   assert.equal(whole.data.variantStatsReported, true);
   assert.equal(whole.data.steps.length, 1);
 });
+
+// OUTB-26: one variant per step gave steps: [], zero totals and no finding.
+test("variant_test says when no step has two variants to compare", async () => {
+  const singleVariant = await withRows(DATA, [
+    row(0, "A", { replied: 9, sent: 900 }),
+    row(1, "A", { replied: 3, sent: 800 }),
+  ]).insights.variantTest({ campaign: ref("c1") }, { now: NOW });
+
+  assert.deepEqual(singleVariant.data.steps, []);
+  assert.equal(singleVariant.data.variantStatsReported, true);
+  assert.equal(
+    singleVariant.data.finding,
+    "No step has two variants to compare: every step with stats has one variant."
+  );
+
+  const tested = await withRows(DATA, REPLY_ROWS).insights.variantTest(
+    { campaign: ref("c1") },
+    { now: NOW }
+  );
+
+  assert.equal(
+    tested.data.finding,
+    "2 steps with a real winner out of 5 tested."
+  );
+});

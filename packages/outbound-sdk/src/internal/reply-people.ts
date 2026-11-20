@@ -74,6 +74,13 @@ export const describeReplyCounts = (counts: ReplyCounts): string =>
 /** One person's replies, from `repliesByPerson`. */
 export interface ReplyPerson {
   /**
+   * The tool and workspace of the lead in `leadRef`, or of the first reply
+   * where there is no lead. A person whose replies span two tools is grouped
+   * by address into one row, which names the first one's.
+   */
+  readonly provider: string;
+  readonly workspaceId: string;
+  /**
    * The lead who sent them. `null` for replies with no lead: those are
    * grouped by thread instead, one row per thread. A person in two
    * campaigns is two leads; this is the first one's.
@@ -95,7 +102,14 @@ export interface ReplyPerson {
 
 type Grouped = Pick<
   Reply,
-  "category" | "isAuto" | "leadEmail" | "leadRef" | "sentAt" | "threadId"
+  | "category"
+  | "isAuto"
+  | "leadEmail"
+  | "leadRef"
+  | "provider"
+  | "sentAt"
+  | "threadId"
+  | "workspaceId"
 >;
 
 const keyOf = (reply: Grouped, index: number): string => {
@@ -124,6 +138,8 @@ const latest = (a: string | null, b: string | null): string | null =>
   a === null || (b !== null && b > a) ? b : a;
 
 interface Row {
+  readonly provider: string;
+  readonly workspaceId: string;
   readonly leadRef: string | null;
   readonly leadEmail: string | null;
   readonly replies: Pick<Reply, "isAuto">[];
@@ -150,8 +166,10 @@ export const repliesByPerson = (replies: readonly Grouped[]): ReplyPerson[] => {
       lastAt: reply.sentAt,
       leadEmail: reply.leadEmail ?? null,
       leadRef: reply.leadRef,
+      provider: reply.provider,
       replies: [],
       threadIds: [],
+      workspaceId: reply.workspaceId,
     };
 
     row.replies.push(reply);
@@ -170,6 +188,38 @@ export const repliesByPerson = (replies: readonly Grouped[]): ReplyPerson[] => {
     leadEmail: row.leadEmail,
     leadRef: row.leadRef,
     messages: row.replies.length,
+    provider: row.provider,
     threadIds: row.threadIds,
+    workspaceId: row.workspaceId,
   }));
+};
+
+/**
+ * The replies a walk gives from its first `people` people, by the same key
+ * as `repliesByPerson`, and whether a reply from another person came after
+ * them. The walk stops at that reply, so a listed person's older replies
+ * past it are not read.
+ */
+export const repliesOfFirstPeople = async <Item extends Grouped>(
+  walk: AsyncIterable<Item>,
+  people: number
+): Promise<{ readonly replies: Item[]; readonly morePeople: boolean }> => {
+  const replies: Item[] = [];
+  const seen = new Set<string>();
+
+  for await (const reply of walk) {
+    const key = keyOf(reply, replies.length);
+
+    if (!seen.has(key)) {
+      if (seen.size >= people) {
+        return { morePeople: true, replies };
+      }
+
+      seen.add(key);
+    }
+
+    replies.push(reply);
+  }
+
+  return { morePeople: false, replies };
 };

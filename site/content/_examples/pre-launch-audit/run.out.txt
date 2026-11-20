@@ -23,3 +23,6 @@ Settings: 6 findings
   [medium] Open tracking is on, a deliverability risk.
   [low] A sending window includes Saturday or Sunday.
   [low] A sending window has no timezone.
+
+Read this before relying on the audit:
+  - A window with no timezone may have one the vendor does not report: the two read the same.

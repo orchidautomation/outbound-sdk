@@ -16,12 +16,7 @@ import { rankCampaigns } from "./campaign-ranking.ts";
 import type { RankedCampaign } from "./campaign-ranking.ts";
 import { readRunways, runwayActions } from "./client-runway.ts";
 import type { ActionItem, LeadRunway } from "./client-runway.ts";
-import {
-  noteMeetings,
-  noted,
-  readPeriods,
-  totalOf,
-} from "./period-comparison.ts";
+import { notedTotal, readPeriods } from "./period-comparison.ts";
 import type { CampaignPeriods, Comparison } from "./period-comparison.ts";
 import {
   campaignsBasis,
@@ -99,7 +94,7 @@ const input = z.object({
     .max(50_000)
     .default(5000)
     .describe(
-      "The most leads to read per active campaign, for leads left. Where the tool lists active leads alone (leads.byStatus), only those are read."
+      "The most leads to read per active campaign, for leads left. Only its active leads where the tool lists them alone."
     ),
   min_baseline_points: z
     .number()
@@ -118,7 +113,7 @@ const input = z.object({
     .min(1)
     .optional()
     .describe(
-      "Read only one tool of a combined instance: its provider (instantly) or provider:workspace. Leave out for every tool."
+      "Read one tool of a combined instance: its provider (instantly) or provider:workspace. Leave out for every tool."
     ),
   runway_days: z
     .number()
@@ -132,7 +127,7 @@ const input = z.object({
     .min(1)
     .optional()
     .describe(
-      "Read only the campaigns with this tag, for example one client's. Unusual days are then left out, since they are workspace-wide."
+      "Read only the campaigns with this tag, such as one client's. Leaves out unusual days, which are workspace-wide."
     ),
 });
 
@@ -415,7 +410,7 @@ const scopedTo = async (
 
 export const clientReport = defineInsight({
   description:
-    "One report for one client or workspace over the last `days` complete days: totals and the change from the period before, the best and worst campaigns by the low end of the interval of the reply rate, campaigns with a bounce problem, unusual days, active campaigns running out of leads (none left to start, or running out within runway_days at the recent pace of new leads started) and, apart, stalled ones (leads left to start but none started in the period), campaigns with many skipped leads (loaded, then never sent to by the tool: over max_skipped_share of the campaign's leads, 5% by default, and at least min_skipped, 100), which usually means a block list or a duplicate rule keeps out leads meant to be sent to, and a short list of action items in plain language, each naming the campaign and the number behind it, with the campaigns that need leads in one item at the end. `remaining` counts leads not yet started; leads partway through the sequence are `inSequence`. Pass provider to read one tool of a combined instance, and tag for one client's campaigns. totalsBasis says what the totals count, and on a combined instance a tool with no campaign in statuses is named in toolsLeftOut with its own totals for the period, one stats request each. Reply rates divide by messages sent (`replyRateBasis`), since a period's replies also answer leads contacted before it, and by leads contacted for both periods only when a period does not report messages sent. Use it for a weekly client update. A section the adapter cannot serve is null and named in `leftOut`, and a null count is one the vendor does not report: totals.current.meetingsBooked is null where the tool records no meetings, never opportunities or positive replies. Costs two stats requests per campaign, one for the workspace, and for each active campaign one more plus its pages of leads, its active leads only where the tool lists them alone (leads.byStatus). Where the tool counts skipped leads, each campaign also costs one progress read: on Instantly the report and the pages of leads not contacted, usually 2 requests and at most 51. On Instantly a stats read is 2 requests, since it also reads the campaign's tracking settings, so each active campaign costs about 9.",
+    "One report for one client or workspace over the last `days` complete days, in one call: totals and the change from the period before, the best and worst campaigns by reply rate, bounce problems, unusual days, every active campaign out of leads or running out within runway_days (7 by default), stalled ones, campaigns with many skipped leads, and action items naming the campaign and the number behind it. On a combined instance it reads every tool and names one it left out in toolsLeftOut; pass provider or tag to narrow it. Costs about 9 requests per active campaign on Instantly.",
   inputSchema: input,
   key: "clientReport",
   cost: (values, price) => {
@@ -495,11 +490,7 @@ export const clientReport = defineInsight({
 
     const left = await toolsLeftOut(context, listed.skipped, periods.current);
 
-    const totals = noteMeetings(
-      context,
-      periods.campaigns,
-      noted(context, "Totals", totalOf(periods.campaigns, options.alpha))
-    );
+    const totals = notedTotal(context, periods.campaigns, options.alpha);
 
     // Campaigns are ranked on the base the totals use.
     const ranking = rankCampaigns(

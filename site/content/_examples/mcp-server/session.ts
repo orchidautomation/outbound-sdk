@@ -44,9 +44,10 @@ await show(
   ["id", "jsonrpc", "result", "tools", "name"]
 );
 
-await show("tools/call campaign_overview", {
+// The answer is structuredContent; its text is a short summary of it.
+await show("tools/call campaigns", {
   id: 3,
   jsonrpc: "2.0",
   method: "tools/call",
-  params: { arguments: { status: "active" }, name: "campaign_overview" },
+  params: { arguments: { status: "active", view: "list" }, name: "campaigns" },
 });

@@ -191,8 +191,10 @@ const rowOf = (
     address: sender.address,
     checked: health !== undefined,
     problems,
+    provider: sender.provider,
     sender: sender.ref,
     status: sender.status,
+    workspaceId: sender.workspaceId,
   };
 
   if (health === undefined) {
@@ -200,7 +202,7 @@ const rowOf = (
       problems,
       row: {
         ...base,
-        not_checked: {
+        notChecked: {
           detail: unchecked?.detail ?? null,
           reason: unchecked?.reason ?? null,
         },
@@ -213,14 +215,14 @@ const rowOf = (
     row: {
       ...base,
       blacklisted: health.blacklisted,
-      checked_at: health.checkedAt,
+      checkedAt: health.checkedAt,
       connected: health.connected,
       dns: { ...health.dns },
       domain: health.domain,
-      warmup_inbox: health.warmup?.inbox ?? null,
-      warmup_score: health.warmup?.score ?? null,
-      warmup_spam: health.warmup?.spam ?? null,
-      warmup_spam_rate: spamRate(health),
+      warmupInbox: health.warmup?.inbox ?? null,
+      warmupScore: health.warmup?.score ?? null,
+      warmupSpam: health.warmup?.spam ?? null,
+      warmupSpamRate: spamRate(health),
     },
   };
 };
@@ -250,7 +252,7 @@ const coverageNotes = (
               : []
         ).join(
           ", "
-        )}). Those were screened from the sender list for status and warmup only; with_problems counts what that found. coverage and each row's not_checked say why.`,
+        )}). Those were screened from the sender list for status and warmup only; withProblems counts what that found. coverage and each row's notChecked say why.`,
       ]
     : []),
   ...(complete
@@ -261,7 +263,7 @@ const coverageNotes = (
 ];
 
 export const deliverabilityCheck: ToolDefinition<z.infer<typeof checkInput>> = {
-  description: `Whether each sender can deliver: its DNS records (SPF, DKIM, DMARC, MX), whether the vendor can still sign in, block list status and how much warmup mail landed in spam (warmup_spam_rate is warmup_spam of warmup_spam plus warmup_inbox, and checked_at is when the vendor last checked). Every sender (up to ${SCREENED_AT_MOST}) is screened from the sender list, then checked in full: all of them where the vendor reads health a page at a time, otherwise up to max_checked, problems first. coverage counts the senders checked and not checked, and why (cap, unsupported, error); each listed row says whether it was checked. A disconnected or failing sender carries impact: the active campaigns it sends for, what it sent in the last 14 days, the day it last sent and its last successful sign-in, each null with a reason in impact.unknown where the vendor does not report it. senders lists up to limit senders: problems first, then those not checked, then healthy ones; healthy counts every checked sender with no problem. meta.complete: false means a sender was not checked, or limit left out a sender with a problem or not checked, and meta.notes says which. Use it when bounces rise or replies drop. A null means the vendor does not report that check, never that it passed.`,
+  description: `Whether each sender can deliver: DNS records (SPF, DKIM, DMARC, MX), whether the vendor can still sign in, block list status and the share of warmup mail in spam (warmupSpamRate, as of checkedAt). Every sender (up to ${SCREENED_AT_MOST}) is screened, then checked in full where the vendor reads health a page at a time, else up to max_checked, problems first; coverage says what was not checked and why. A failing sender carries impact, with campaigns listed once in campaigns. A null means the vendor does not report that check, never that it passed.`,
   inputSchema: checkInput,
   name: "deliverability_check",
   needs: ["senders.health"],
@@ -341,11 +343,12 @@ export const deliverabilityCheck: ToolDefinition<z.infer<typeof checkInput>> = {
 
     return {
       data: {
+        campaigns: [...impacts.campaigns],
         checked: checks.health.size,
         coverage: {
           checked: checks.health.size,
-          not_checked: checks.unchecked.size,
-          not_checked_by_reason: byReason,
+          notChecked: checks.unchecked.size,
+          notCheckedByReason: byReason,
           screened: listed.length,
           senders: complete ? listed.length : null,
         },
@@ -354,7 +357,7 @@ export const deliverabilityCheck: ToolDefinition<z.infer<typeof checkInput>> = {
         screened: listed.length,
         senders: ordered.slice(0, input.limit).map((entry) => entry.row),
         total: complete ? listed.length : null,
-        with_problems: rows.filter((entry) => entry.problems.length > 0).length,
+        withProblems: rows.filter((entry) => entry.problems.length > 0).length,
       },
       meta: {
         complete:

@@ -114,7 +114,9 @@ test("replies --by person: one row per person, with their message count", async 
       leadEmail: null,
       leadRef: "memory:acme:lead_1",
       messages: 2,
+      provider: "memory",
       threadIds: ["thr_1"],
+      workspaceId: "acme",
     },
   ]);
 });
@@ -186,13 +188,13 @@ test("reply_samples: says each record is a message and counts unique people and 
 
   const data = result.data as {
     replies: unknown[];
-    unique_people: number | null;
-    unique_threads: number | null;
+    uniquePeople: number | null;
+    uniqueThreads: number | null;
   };
 
   assert.equal(data.replies.length, 3);
-  assert.equal(data.unique_people, 2);
-  assert.equal(data.unique_threads, 2);
+  assert.equal(data.uniquePeople, 2);
+  assert.equal(data.uniqueThreads, 2);
 });
 
 test("reply_samples by person: one row per person", async () => {
@@ -209,20 +211,22 @@ test("reply_samples by person: one row per person", async () => {
       {
         automatic: 0,
         categories: ["positive"],
-        first_at: "2026-11-10T09:00:00.000Z",
-        last_at: "2026-11-11T10:00:00.000Z",
+        firstAt: "2026-11-10T09:00:00.000Z",
+        lastAt: "2026-11-11T10:00:00.000Z",
         lead: "memory:acme:lead_1",
-        lead_email: null,
+        leadEmail: null,
         messages: 2,
-        thread_ids: ["thr_1"],
+        provider: "memory",
+        threadIds: ["thr_1"],
+        workspaceId: "acme",
       },
     ],
-    unique_people: 1,
-    unique_threads: 1,
+    uniquePeople: 1,
+    uniqueThreads: 1,
   });
 });
 
-test("reply_samples: unique_people is null, not a guess, when a reply has no lead", async () => {
+test("reply_samples: uniquePeople is null, not a guess, when a reply has no lead", async () => {
   const result = await replySamples([
     ...ONE_PERSON_TWICE,
     reply("msg_4", undefined, "thr_3", "2026-11-13T09:00:00.000Z"),
@@ -231,12 +235,12 @@ test("reply_samples: unique_people is null, not a guess, when a reply has no lea
   assert.ok(result.ok);
 
   const data = result.data as {
-    unique_people: unknown;
-    unique_threads: unknown;
+    uniquePeople: unknown;
+    uniqueThreads: unknown;
   };
 
-  assert.equal(data.unique_people, null);
-  assert.equal(data.unique_threads, 3);
+  assert.equal(data.uniquePeople, null);
+  assert.equal(data.uniqueThreads, 3);
 });
 
 // OUT-146: Instantly labelled four automatic replies positive. A positive
@@ -300,4 +304,58 @@ test("reply_samples: an unknown by is refused", async () => {
   const result = await replySamples(ONE_PERSON_TWICE).call({ by: "thread" });
 
   assert.equal(result.ok, false);
+});
+
+// OUTB-24: by person, limit 20 gave 12 people, since limit counted messages.
+const THREE_PEOPLE_TWICE = ["lead_1", "lead_2", "lead_3"].flatMap(
+  (lead, index) => [
+    reply(
+      `msg_${index}a`,
+      lead,
+      `thr_${index}`,
+      `2026-11-1${index}T09:00:00.000Z`
+    ),
+    reply(
+      `msg_${index}b`,
+      lead,
+      `thr_${index}`,
+      `2026-11-1${index}T10:00:00.000Z`
+    ),
+  ]
+);
+
+test("reply_samples by person: limit counts people, not messages", async () => {
+  const tool = replySamples(THREE_PEOPLE_TWICE);
+  const all = await tool.call({ by: "person", limit: 3 });
+
+  assert.ok(all.ok);
+
+  const { people } = all.data as { people: { messages: number }[] };
+  assert.deepEqual(
+    people.map((person) => person.messages),
+    [2, 2, 2],
+    "three people, each with both messages, from a limit of 3"
+  );
+  assert.equal(all.meta.complete, true);
+  assert.deepEqual(all.meta.notes, []);
+
+  const two = await tool.call({ by: "person", limit: 2 });
+
+  assert.ok(two.ok);
+  assert.equal((two.data as { people: unknown[] }).people.length, 2);
+  assert.equal(two.meta.complete, false);
+  assert.match(
+    String(two.meta.notes),
+    /Stopped at 2 people \(limit\); more people replied/u
+  );
+
+  const messages = await tool.call({ limit: 3 });
+
+  assert.ok(messages.ok);
+  assert.equal(
+    (messages.data as { replies: unknown[] }).replies.length,
+    3,
+    "by message, limit still counts messages"
+  );
+  assert.match(String(messages.meta.notes), /Stopped at 3 replies \(limit\)/u);
 });

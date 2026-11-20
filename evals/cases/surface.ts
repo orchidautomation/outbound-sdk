@@ -219,8 +219,8 @@ export const judgeProvenance = (
   );
 };
 
-/** The tools/list budget until OUT-168 agrees a figure. */
-export const LIST_BUDGET_BYTES = 40_000;
+/** The tools/list budget OUT-168 agreed, the ceiling test/mcp-surface.test.ts holds. */
+export const LIST_BUDGET_BYTES = 56_000;
 
 /** Case 32: tools/list stays small, and a result is not sent twice. */
 export const judgeSurfaceSize = (

@@ -31,7 +31,7 @@ const input = z.object({
     .string()
     .min(3)
     .describe(
-      "The company's domain, for example acme.com, or an email address whose domain is used"
+      "The company's domain (acme.com) or an email at it. Matched by email domain, so a LinkedIn-only lead is not found."
     ),
   max_campaigns: z
     .number()
@@ -386,7 +386,7 @@ const lastReplyOf = (
 
 export const accountSummary = defineInsight({
   description:
-    "Everyone at one company across campaigns and tools, from the company's domain or any email address at it: each person with their name, title, campaigns, status, interest label and open, click and reply counts, plus totals and who replied most recently. Where the tool can search leads by domain (leads.byDomain) it finds them wherever they are; otherwise it reads leads in order up to max_leads, and finding says when that left the company possibly unread. People are matched by exact email domain, so a lead with only a LinkedIn profile is not found, and an email provider domain such as gmail.com is refused unless allow_free_domains is true. A record the vendor labels out-of-office or bounced is marked autoReplied and its replies do not count as the person replying. Costs one request per page of leads read (max_leads sets the ceiling); totals.moreLeadsExist is true when that ceiling left leads unread. A count the vendor does not report is null.",
+    "Everyone at one company across campaigns and tools, from its domain or an email address at it: each person with their name, title, campaigns, status, interest label and open, click and reply counts, plus totals and who replied most recently. The finding says when part of the company may be unread. Costs one request per page of leads read, up to max_leads.",
   inputSchema: input,
   key: "accountSummary",
   // Every address is masked, so no lead's domain can be read. A hash keeps

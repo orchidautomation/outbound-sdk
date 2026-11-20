@@ -125,6 +125,10 @@ test("client_report composes totals, best and worst campaigns, bounce problems, 
   });
   assert.equal(result.data.replyRateBasis, "sent");
   assert.equal(result.data.totals.replyRateBasis, "sent");
+  assert.ok(
+    !result.meta.notes.some((note) => note.includes("by leads contacted")),
+    "no basis note when replies are per message sent"
+  );
   assert.equal(result.data.totals.change.replyRate, -0.0052);
   assert.equal(result.data.totals.change.sent, 20);
   // 31 of 920 against 35 of 900: z = -0.59, p = 0.55.
@@ -593,5 +597,11 @@ test("client_report divides by leads contacted when the vendor reports no messag
     result.data.actions.find((each) => each.kind === "review_campaign")
       ?.action ?? "",
     /fewest replies per lead contacted/u
+  );
+  assert.ok(
+    result.meta.notes.some((note) =>
+      note.startsWith("Some reply rates divide by leads contacted")
+    ),
+    "says why the rates are per lead"
   );
 });

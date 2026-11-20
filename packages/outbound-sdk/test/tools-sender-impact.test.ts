@@ -192,11 +192,11 @@ interface Row {
   readonly address: string | null;
   readonly checked?: boolean;
   readonly impact?: {
-    readonly active_campaign_count: number | null;
-    readonly active_campaigns: { campaign: string; name: string }[] | null;
-    readonly last_authenticated_at: string | null;
-    readonly last_sent_on: string | null;
-    readonly recent_sends: { sent: number | null } | null;
+    readonly activeCampaignCount: number | null;
+    readonly activeCampaigns: string[] | null;
+    readonly lastAuthenticatedAt: string | null;
+    readonly lastSentOn: string | null;
+    readonly recentSends: { sent: number | null } | null;
     readonly unknown: Record<string, string>;
   };
 }
@@ -210,16 +210,26 @@ test("deliverability_check checks every Instantly mailbox by default and ties ea
   const result = await settle(call(outbound, "deliverability_check"));
 
   const data = result.data as unknown as {
+    campaigns: Record<string, unknown>[];
     coverage: Record<string, unknown>;
     failing: number;
     senders: Row[];
   };
 
   assert.deepEqual(unrouted, []);
+  // The 7 failing mailboxes share one campaign, so it is listed once.
+  assert.deepEqual(data.campaigns, [
+    {
+      campaign: `instantly:client-a:${ACTIVE_CAMPAIGN}`,
+      campaignName: "Active campaign",
+      provider: "instantly",
+      workspaceId: "client-a",
+    },
+  ]);
   assert.deepEqual(data.coverage, {
     checked: 303,
-    not_checked: 0,
-    not_checked_by_reason: { cap: 0, error: 0, unsupported: 0 },
+    notChecked: 0,
+    notCheckedByReason: { cap: 0, error: 0, unsupported: 0 },
     screened: 303,
     senders: 303,
   });
@@ -259,18 +269,15 @@ test("deliverability_check checks every Instantly mailbox by default and ties ea
 
   for (const row of failing) {
     assert.equal(row.checked, true);
-    assert.equal(row.impact?.active_campaign_count, 1);
-    assert.deepEqual(row.impact?.active_campaigns, [
-      {
-        campaign: `instantly:client-a:${ACTIVE_CAMPAIGN}`,
-        name: "Active campaign",
-      },
+    assert.equal(row.impact?.activeCampaignCount, 1);
+    assert.deepEqual(row.impact?.activeCampaigns, [
+      `instantly:client-a:${ACTIVE_CAMPAIGN}`,
     ]);
-    assert.equal(row.impact?.recent_sends?.sent, 55);
-    assert.equal(row.impact?.last_sent_on, dayAgo(9));
-    assert.equal(row.impact?.last_authenticated_at, null);
+    assert.equal(row.impact?.recentSends?.sent, 55);
+    assert.equal(row.impact?.lastSentOn, dayAgo(9));
+    assert.equal(row.impact?.lastAuthenticatedAt, null);
     assert.match(
-      row.impact?.unknown.last_authenticated_at ?? "",
+      row.impact?.unknown.lastAuthenticatedAt ?? "",
       /no time of the last successful sign-in/u
     );
   }
@@ -301,10 +308,10 @@ test("sender_health counts failing mailboxes past the first 200 and leaves unrep
   assert.ok(first.every((row) => failingAddresses.has(row.address ?? "")));
 
   for (const row of first) {
-    assert.equal(row.impact?.recent_sends?.sent, null);
-    assert.equal(row.impact?.last_sent_on, null);
+    assert.equal(row.impact?.recentSends?.sent, null);
+    assert.equal(row.impact?.lastSentOn, null);
     assert.match(
-      row.impact?.unknown.recent_sends ?? "",
+      row.impact?.unknown.recentSends ?? "",
       /^Unknown: the vendor returned no daily sends/u
     );
   }
@@ -331,8 +338,8 @@ test("sender_health ties all 20 failing mailboxes to their sends in one daily re
 
   const tied = data.senders.filter((row) => row.impact);
   assert.equal(tied.length, 20);
-  assert.ok(tied.every((row) => row.impact?.recent_sends?.sent === 55));
-  assert.ok(tied.every((row) => row.impact?.active_campaign_count === 1));
+  assert.ok(tied.every((row) => row.impact?.recentSends?.sent === 55));
+  assert.ok(tied.every((row) => row.impact?.activeCampaignCount === 1));
 
   const daily = requests.filter(
     (request) =>
@@ -356,26 +363,26 @@ test("deliverability_check names the senders it did not check and why when a cap
   const data = result.data as unknown as {
     coverage: {
       checked: number;
-      not_checked: number;
-      not_checked_by_reason: Record<string, number>;
+      notChecked: number;
+      notCheckedByReason: Record<string, number>;
     };
-    senders: (Row & { not_checked?: { reason: string } })[];
+    senders: (Row & { notChecked?: { reason: string } })[];
   };
 
   assert.equal(data.coverage.checked, 150);
-  assert.equal(data.coverage.not_checked, 153);
-  assert.equal(data.coverage.not_checked_by_reason.cap, 153);
+  assert.equal(data.coverage.notChecked, 153);
+  assert.equal(data.coverage.notCheckedByReason.cap, 153);
   assert.equal(result.meta.complete, false);
 
   const unchecked = data.senders.filter((row) => row.checked === false);
   assert.ok(unchecked.length > 0);
-  assert.ok(unchecked.every((row) => row.not_checked?.reason === "cap"));
+  assert.ok(unchecked.every((row) => row.notChecked?.reason === "cap"));
   // The failing mailboxes sit past the first 150, so they were not checked
   // in full, but the sender list's status still flags and ties them.
   assert.ok(
     data.senders
       .filter((row) => failingAddresses.has(row.address ?? ""))
-      .every((row) => row.impact?.active_campaign_count === 1)
+      .every((row) => row.impact?.activeCampaignCount === 1)
   );
 });
 
@@ -418,21 +425,21 @@ test("on HeyReach a disconnected LinkedIn seat is checked one at a time and its 
   const result = await settle(call(outbound, "deliverability_check"));
 
   const data = result.data as unknown as {
-    coverage: { checked: number; not_checked: number; screened: number };
+    coverage: { checked: number; notChecked: number; screened: number };
     failing: number;
     senders: (Row & { sender: string })[];
   };
 
   assert.deepEqual(unrouted, []);
   assert.equal(data.coverage.checked, data.coverage.screened);
-  assert.equal(data.coverage.not_checked, 0);
+  assert.equal(data.coverage.notChecked, 0);
   assert.ok(data.failing >= 1);
 
   const seat = data.senders.find((row) => row.sender.endsWith(":1101"));
   assert.ok(seat?.impact, JSON.stringify(data.senders));
-  assert.equal(seat.impact.last_authenticated_at, null);
-  assert.ok(seat.impact.unknown.last_authenticated_at);
-  assert.ok(Array.isArray(seat.impact.active_campaigns));
+  assert.equal(seat.impact.lastAuthenticatedAt, null);
+  assert.ok(seat.impact.unknown.lastAuthenticatedAt);
+  assert.ok(Array.isArray(seat.impact.activeCampaigns));
 });
 
 test("impact says why it read nothing where the adapter cannot list a sender's campaigns or stats, and stops at 10 failing senders", async () => {
@@ -461,15 +468,15 @@ test("impact says why it read nothing where the adapter cannot list a sender's c
   );
 
   const [first] = data.senders;
-  assert.equal(first?.impact?.active_campaigns, null);
-  assert.equal(first?.impact?.active_campaign_count, null);
-  assert.equal(first?.impact?.recent_sends, null);
+  assert.equal(first?.impact?.activeCampaigns, null);
+  assert.equal(first?.impact?.activeCampaignCount, null);
+  assert.equal(first?.impact?.recentSends, null);
   assert.match(
-    first?.impact?.unknown.active_campaigns ?? "",
+    first?.impact?.unknown.activeCampaigns ?? "",
     /cannot list a sender's campaigns/u
   );
   assert.match(
-    first?.impact?.unknown.recent_sends ?? "",
+    first?.impact?.unknown.recentSends ?? "",
     /no daily stats for a sender/u
   );
 });
@@ -486,17 +493,14 @@ test("impact keeps the call alive when a read fails or the request cap is reache
   const result = await settle(call(outbound, "sender_health"));
   const [first] = (result.data as unknown as { senders: Row[] }).senders;
 
-  assert.equal(first?.impact?.active_campaigns, null);
+  assert.equal(first?.impact?.activeCampaigns, null);
   assert.match(
-    first?.impact?.unknown.active_campaigns ?? "",
+    first?.impact?.unknown.activeCampaigns ?? "",
     /^Not read: listing its campaigns failed/u
   );
-  assert.equal(first?.impact?.recent_sends?.sent, 0);
-  assert.equal(first?.impact?.last_sent_on, null);
-  assert.match(
-    first?.impact?.unknown.last_sent_on ?? "",
-    /^Nothing sent from/u
-  );
+  assert.equal(first?.impact?.recentSends?.sent, 0);
+  assert.equal(first?.impact?.lastSentOn, null);
+  assert.match(first?.impact?.unknown.lastSentOn ?? "", /^Nothing sent from/u);
 
   const capped = harness(suite, workspace(sentEarlier));
 

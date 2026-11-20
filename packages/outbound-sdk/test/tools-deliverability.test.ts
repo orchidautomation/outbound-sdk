@@ -22,7 +22,7 @@ interface Result {
     problems: string[];
   }[];
   readonly total: number | null;
-  readonly with_problems: number;
+  readonly withProblems: number;
 }
 
 const check = async (
@@ -126,7 +126,7 @@ test("deliverability_check finds a disconnected sender past limit in a campaign 
     "Instantly checks every mailbox a page at a time"
   );
   assert.equal(data.senders.length, 25, "limit lists 25, problems first");
-  assert.ok(data.with_problems >= 1);
+  assert.ok(data.withProblems >= 1);
 
   const [first] = data.senders;
   assert.equal(
@@ -162,7 +162,7 @@ test("deliverability_check counts problems on senders it screened but did not ch
   const { complete, data, notes } = await check(outbound, { max_checked: 2 });
 
   assert.equal(
-    data.with_problems,
+    data.withProblems,
     5,
     "three disconnected, one failing, one at warmup 0"
   );
@@ -186,7 +186,7 @@ test("deliverability_check never reports no problems on a partial check without 
     max_checked: 3,
   });
 
-  assert.equal(data.with_problems, 0);
+  assert.equal(data.withProblems, 0);
   assert.equal(complete, false);
   assert.match(notes, /Checked 3 of 12 senders in full/u);
 });
@@ -199,7 +199,7 @@ test("deliverability_check says all were checked, with no note, when limit cover
   assert.equal(complete, true);
   assert.equal(data.checked, 4);
   assert.equal(data.total, 4);
-  assert.equal(data.with_problems, 0);
+  assert.equal(data.withProblems, 0);
   assert.equal(notes, "");
   assert.match(next, /^Use sender_health/u);
 });

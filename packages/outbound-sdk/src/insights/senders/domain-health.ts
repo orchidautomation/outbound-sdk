@@ -45,7 +45,7 @@ const input = z.object({
     .max(500)
     .optional()
     .describe(
-      `The most senders to check. Leave out for ${SCREENED_AT_MOST} where the vendor reads health a page at a time (a few requests per 100 senders), or ${CHECKED_ONE_BY_ONE} where each sender costs 1 to 3 requests.`
+      `Most senders to check. Default ${SCREENED_AT_MOST} where health reads in pages, else ${CHECKED_ONE_BY_ONE} at 1 to 3 requests each.`
     ),
   max_spam_rate: z
     .number()
@@ -268,7 +268,7 @@ const seatRank = (seat: LinkedinSeat): number => {
 
 export const domainHealth = defineInsight({
   description:
-    "Deliverability per sending domain: for each domain its mailboxes, which DNS records (SPF, DKIM, DMARC, MX) fail, how many mailboxes are disconnected or on a block list, the share of warmup emails landing in spam pooled over its mailboxes, and a risk level with the reasons, worst domain first. LinkedIn seats are listed apart with their connection state. Use it before scaling volume or when replies drop. Every sender is checked where the vendor reads health a page at a time (Instantly: about 3 requests per 100 senders); otherwise up to 50 by default, at 1 to 3 requests each. A null count or rate means the vendor does not report it; a domain with no DNS record reported has the risk `unknown`, not `low`.",
+    "Deliverability per sending domain, worst first: each domain's mailboxes, failing DNS records (SPF, DKIM, DMARC, MX), mailboxes disconnected or on a block list, the share of warmup emails landing in spam, and a risk level with its reasons. LinkedIn seats are listed apart with their connection state. Use it before scaling volume or when replies drop. Costs about 3 requests per 100 senders where the vendor reads health in pages (Instantly), else 1 to 3 per sender. A null count or rate is not reported, never 0.",
   inputSchema: input,
   key: "domainHealth",
   cost: (values, price) => {

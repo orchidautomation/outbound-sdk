@@ -148,7 +148,7 @@ test("--help lists each command's options, and each one listed is taken", async 
   assert.equal(leads.code, 0);
   assert.match(
     leads.out,
-    /^Usage: outbound leads \[--campaign ID\|NAME \| --list ID\|NAME\] \[--since ISO\] \[--limit N\] \[--cursor C\] \[--jsonl\] /mu
+    /^Usage: outbound leads \[--campaign ID\|NAME \| --list ID\|NAME\] \[--since DATE\] \[--limit N\] \[--cursor C\] \[--jsonl\] /mu
   );
   assert.match(leads.out, /--provider <id>/u);
 });
@@ -240,4 +240,66 @@ test("records print without raw unless --raw asks for it", async () => {
 
   assert.ok(!tags.out.includes('"raw"'));
   assert.equal((await cli("help")).out.includes("--raw"), true);
+});
+
+// OUTB-26: --from took only a day and --since only an ISO time, each refused
+// in its own words.
+test("every date option takes a day or an ISO date and time, and refuses anything else alike", async () => {
+  const day = await cli(
+    "stats",
+    "--from",
+    "2026-10-01",
+    "--to",
+    "2026-10-07",
+    "--compact"
+  );
+
+  const time = await cli(
+    "stats",
+    "--from",
+    "2026-10-01T09:30:00Z",
+    "--to",
+    "2026-10-07T23:00:00+00:00",
+    "--compact"
+  );
+
+  assert.equal(day.code, 0, day.err);
+  assert.equal(time.code, 0, time.err);
+  assert.deepEqual(JSON.parse(time.out).data, JSON.parse(day.out).data);
+
+  const sinceDay = await cli("replies", "--since", "2026-10-01", "--compact");
+
+  const sinceTime = await cli(
+    "replies",
+    "--since",
+    "2026-10-01T00:00:00Z",
+    "--compact"
+  );
+
+  assert.equal(sinceDay.code, 0, sinceDay.err);
+  assert.deepEqual(
+    JSON.parse(sinceDay.out).data,
+    JSON.parse(sinceTime.out).data
+  );
+
+  for (const [command, flag, value] of [
+    ["stats", "--from", "11/10/2026"],
+    ["stats", "--to", "2026-02-30"],
+    ["campaign", "--from", "yesterday"],
+    ["replies", "--since", "11/10/2026"],
+    ["leads", "--since", "2026-10-01T09:30"],
+  ] as const) {
+    const args =
+      command === "campaign"
+        ? [command, "cmp_founders", "--stats", flag, value]
+        : [command, flag, value];
+
+    const result = await cli(...args, "--compact");
+
+    assert.equal(result.code, 1, args.join(" "));
+    assert.equal(
+      result.err,
+      `Invalid: ${flag} must be a day, YYYY-MM-DD, or an ISO 8601 date and time such as 2026-11-10T09:00:00Z, got "${value}"`
+    );
+  }
 });

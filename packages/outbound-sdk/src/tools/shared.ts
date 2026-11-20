@@ -95,7 +95,7 @@ export interface ToolDefinition<Input = never> {
 
 /** Wraps reply and message text so a model treats it as data, not instructions. */
 export interface UntrustedContent {
-  readonly untrusted_content: string;
+  readonly untrustedContent: string;
   readonly truncated: boolean;
   readonly note: string;
 }
@@ -128,7 +128,7 @@ export const untrusted = (
     : {
         note: UNTRUSTED_NOTE,
         truncated: text.length > maxChars,
-        untrusted_content: text.slice(0, maxChars),
+        untrustedContent: text.slice(0, maxChars),
       };
 
 const round = (value: number | null): number | null =>
@@ -141,13 +141,13 @@ export interface MetricSummary {
   readonly positive: number | null;
   readonly opened: number | null;
   readonly bounced: number | null;
-  readonly connections_sent: number | null;
-  readonly connections_accepted: number | null;
-  readonly reply_rate: number | null;
+  readonly connectionsSent: number | null;
+  readonly connectionsAccepted: number | null;
+  readonly replyRate: number | null;
   /** Which count the reply rate was divided by: `contacted` or `sent`. */
-  readonly reply_rate_basis: string | null;
-  readonly positive_reply_rate: number | null;
-  readonly bounce_rate: number | null;
+  readonly replyRateBasis: string | null;
+  readonly positiveReplyRate: number | null;
+  readonly bounceRate: number | null;
 }
 
 /** The counts an agent usually wants, with rates computed from them. */
@@ -155,17 +155,17 @@ export const summarize = (row: MetricRow): MetricSummary => {
   const rates = computeRates(row);
 
   return {
-    bounce_rate: round(rates.bounceRate.value),
+    bounceRate: round(rates.bounceRate.value),
     bounced: row.bounced,
-    connections_accepted: row.connectionsAccepted,
-    connections_sent: row.connectionsSent,
+    connectionsAccepted: row.connectionsAccepted,
+    connectionsSent: row.connectionsSent,
     contacted: row.contacted,
     opened: row.opened,
     positive: row.positive,
-    positive_reply_rate: round(rates.positiveReplyRate.value),
+    positiveReplyRate: round(rates.positiveReplyRate.value),
     replied: row.replied,
-    reply_rate: round(rates.replyRate.value),
-    reply_rate_basis: rates.replyRate.basis,
+    replyRate: round(rates.replyRate.value),
+    replyRateBasis: rates.replyRate.basis,
     sent: row.sent,
   };
 };

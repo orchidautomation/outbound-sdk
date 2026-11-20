@@ -9,7 +9,7 @@ export interface StepPosition {
   readonly stepIndex: number;
   /** Counted from 1, as a person counts: the first email is step 1. */
   readonly stepNumber: number;
-  /** @deprecated Use `stepIndex` (the same value, counted from 0) or `stepNumber` (counted from 1). Removed in 0.8.0. */
+  /** @deprecated Use `stepIndex` (the same value, counted from 0) or `stepNumber` (counted from 1). Removed in 0.15.0. */
   readonly step: number;
 }
 

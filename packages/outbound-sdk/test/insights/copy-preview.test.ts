@@ -136,6 +136,10 @@ test("copy_preview shows each variant as written and as the lead with the most v
     variables: 7,
     variants: 3,
   });
+  assert.deepEqual(result.meta.notes, [
+    "Left as written: accountSignature, Sender_City, content2. The lead has no value and the copy no fallback, or the sending tool fills it at send time, such as a signature.",
+    "Spintax such as {Hi|Hello} is shown as written, not resolved.",
+  ]);
   assert.equal(result.meta.complete, true);
 });
 
@@ -173,7 +177,9 @@ test("copy_preview reads no lead when the copy has no variables", async () => {
     bodyText: "No variables.",
     subject: "Hi",
   });
-  assert.match(result.meta.notes.join(" "), /no lead was read/u);
+  assert.deepEqual(result.meta.notes, [
+    "The copy uses no variables, so no lead was read.",
+  ]);
 });
 
 test("copy_preview shows the copy as written when the campaign has no leads", async () => {

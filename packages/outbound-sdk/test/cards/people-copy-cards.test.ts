@@ -570,6 +570,7 @@ test("step_funnel charts replies by step and repeats the insight's finding", () 
 const tested = (reported: boolean | null): VariantTest => ({
   alpha: 0.05,
   campaign: "c1",
+  finding: "1 step with a real winner out of 2 tested.",
   metric: "replied",
   steps: [
     {
@@ -631,6 +632,24 @@ test("variant_test stars the leader and says why", () => {
   includes(
     read(cardFor("variant_test", insight(tested(null)))),
     "No step stats in this date range."
+  );
+  includes(
+    read(
+      cardFor(
+        "variant_test",
+        insight({
+          ...tested(true),
+          steps: [],
+          totals: {
+            noDifferenceYet: 0,
+            stepsTested: 0,
+            tooLittleData: 0,
+            winners: 0,
+          },
+        })
+      )
+    ),
+    "No step has two variants to compare."
   );
 });
 

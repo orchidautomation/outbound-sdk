@@ -20,7 +20,16 @@ import type { Json, JsonObject } from "../internal/json.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
 import { createTools } from "../tools/index.ts";
 import type { OutboundTool, ToolResult, ToolsOptions } from "../tools/index.ts";
+import {
+  ANSWERS,
+  describeAliases,
+  describeBound,
+  membersFor,
+  OUTPUT_SCHEMA,
+  summaryOf,
+} from "./mcp-answers.ts";
 import type { ThrottleTotal } from "./progress.ts";
+import { aliasTool, sharpen, withNewNames } from "./surface.ts";
 import {
   DEFAULT_TIME_BUDGET_MS,
   toolCalls,
@@ -68,6 +77,13 @@ export interface McpServerOptions extends ToolsOptions {
   readonly scope?: ToolCallScope | undefined;
   /** Replaces the clock and timers. Meant for tests. */
   readonly runtime?: Partial<Pick<Runtime, "now" | "timer">> | undefined;
+  /**
+   * The tools of one tool of a combined instance, for a call whose `scope`
+   * names it. Defaults to the built-in tools on that instance.
+   */
+  readonly toolsOn?:
+    | ((instance: OutboundApi) => Promise<readonly OutboundTool[]>)
+    | undefined;
 }
 
 /** Sends a message the server starts, such as a progress notification. */
@@ -252,12 +268,27 @@ const initialized = (
   };
 };
 
+// The input schema without `$schema`, which MCP does not use.
+const inputOf = (tool: OutboundTool): Json => {
+  if (!isJsonObject(tool.parameters)) {
+    return tool.parameters;
+  }
+
+  const { $schema: _dialect, ...schema } = tool.parameters;
+
+  return schema;
+};
+
 const listed = (tool: OutboundTool): JsonObject => ({
   annotations: { readOnlyHint: true },
   description: tool.description,
-  inputSchema: tool.parameters,
+  inputSchema: inputOf(tool),
   name: tool.name,
+  outputSchema: OUTPUT_SCHEMA,
 });
+
+/** The first protocol version that carries `structuredContent` and `outputSchema`. */
+const STRUCTURED_SINCE = "2025-06-18";
 
 // The instance tools read through, under the scope that holds each call to
 // its time budget, and the calls run in it.
@@ -309,15 +340,70 @@ const cancelledId = (params: Json | undefined): RequestId | undefined => {
   return isString(id) || isNumber(id) ? id : undefined;
 };
 
+// The listed tools, every name a call may use (old ones too), and the
+// instructions that describe them.
+const surfaceOf = (outbound: OutboundApi, options: McpServerOptions) => {
+  const members = membersFor(outbound, options);
+
+  const { aliases, covered, tools } = sharpen(
+    createTools(outbound, { ...options, answerNote: false }),
+    {
+      maxRequests: options.maxRequestsPerToolCall,
+      members,
+      provider: outbound.provider,
+      workspaceId: outbound.workspaceId,
+    }
+  );
+
+  const byName = new Map([
+    ...[...aliases].map(
+      ([name, alias]) => [name, aliasTool(name, alias)] as const
+    ),
+    ...tools.map((tool) => [tool.name, tool] as const),
+  ]);
+
+  // A tool whose view a listed one answers masked is not left out.
+  const leftOut = Object.fromEntries(
+    Object.entries(options.leftOut ?? {}).filter(([name]) => !covered.has(name))
+  );
+
+  const instructionsFor = async (): Promise<string> =>
+    `${INSTRUCTIONS} ${describeBound(await members(), outbound)} ${ANSWERS} ${describePlugins(outbound)}${describeAliases([...aliases.keys()])}${withNewNames(describeLeftOut(outbound, leftOut))}`;
+
+  return { byName, instructionsFor, tools };
+};
+
+// A tool's answer as tools/call sends it: once, with a summary as text for a
+// client that reads structuredContent.
+const sentOnce = (
+  name: string,
+  outcome: ToolResult,
+  structured: boolean
+): JsonObject => {
+  const answer = toJson(outcome);
+
+  return {
+    content: [
+      {
+        text: structured ? summaryOf(name, outcome) : JSON.stringify(outcome),
+        type: "text",
+      },
+    ],
+    isError: !outcome.ok,
+    structuredContent: isJsonObject(answer) ? answer : {},
+  };
+};
+
 export const createMcpServer = (
   given: OutboundApi,
   options: McpServerOptions = {}
 ): McpServer => {
   const { calls, outbound } = servedOn(given, options);
-  const tools = createTools(outbound, options);
-  const byName = new Map(tools.map((tool) => [tool.name, tool]));
-  const instructions = `${INSTRUCTIONS} ${describePlugins(outbound)}${describeLeftOut(outbound, options.leftOut)}`;
+  const { byName, instructionsFor, tools } = surfaceOf(outbound, options);
+
   const budget = budgetOf(outbound);
+  // Set by initialize: whether the client reads structuredContent.
+  let structured = false;
 
   const callTool = async (
     id: RequestId,
@@ -352,13 +438,7 @@ export const createMcpServer = (
       return undefined;
     }
 
-    const structured = toJson(outcome);
-
-    return result(id, {
-      content: [{ text: JSON.stringify(outcome), type: "text" }],
-      isError: !outcome.ok,
-      structuredContent: isJsonObject(structured) ? structured : {},
-    });
+    return result(id, sentOnce(tool.name, outcome, structured));
   };
 
   const handle = async (
@@ -389,10 +469,17 @@ export const createMcpServer = (
 
     switch (method) {
       case "initialize": {
-        return result(
-          id,
-          initialized(message.params, instructions, options.version)
+        const answer = initialized(
+          message.params,
+          await instructionsFor(),
+          options.version
         );
+
+        structured =
+          isString(answer["protocolVersion"]) &&
+          answer["protocolVersion"] >= STRUCTURED_SINCE;
+
+        return result(id, answer);
       }
 
       case "ping": {

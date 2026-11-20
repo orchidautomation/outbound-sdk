@@ -25,7 +25,7 @@ const input = z.object({
     .max(200)
     .default(50)
     .describe(
-      "The most active campaigns to read. Each costs one read of its settings and one listing of its senders, plus 1 request when the vendor has no workspace totals."
+      "Most active campaigns to read. Each costs a settings read and a sender listing, plus 1 without workspace totals."
     ),
   max_senders: z
     .number()
@@ -34,13 +34,13 @@ const input = z.object({
     .max(1000)
     .default(1000)
     .describe(
-      "The most senders to read for the workspace, and for each campaign. A listing costs 1 request per 100 senders, and on Instantly a campaign's listing costs 2 per 100 mailboxes in the workspace."
+      "Most senders to read, for the workspace and each campaign: 1 request per 100 (Instantly campaigns: 2 per 100 mailboxes)."
     ),
   split_uncounted: z
     .boolean()
     .default(false)
     .describe(
-      "Read the stats of each inactive or unlimited sender (1 request each) so utilization can leave their sends out. Off, utilization is null whenever such a sender exists."
+      "Read each inactive or unlimited sender's stats (1 request each) so utilization can leave their sends out."
     ),
 });
 
@@ -231,7 +231,7 @@ const findingOf = (
 
 export const senderCapacity = defineInsight({
   description:
-    "Whether the senders can send what the campaigns ask: total daily capacity (the daily limits of active senders added up), the total daily ask of active campaigns, the average messages sent per day over the last days, utilization, and the campaigns whose own senders cannot cover their daily limit. Use it before adding campaigns or when sends fall short. Costs one listing of senders and of active campaigns, then up to 2 requests per campaign and 1 for daily stats, plus 1 per inactive or unlimited sender with split_uncounted. Utilization counts only the sends of the senders in capacity. A null means the vendor does not report the number; a sender or campaign with no reported limit is counted apart, never as 0.",
+    "Whether the senders can send what the campaigns ask: daily capacity (the daily limits of active senders added up), the daily ask of active campaigns, average sends per day over recent days, utilization, and the campaigns whose own senders cannot cover their daily limit. Use it before adding campaigns or when sends fall short. Costs a sender and an active campaign listing, up to 2 requests per campaign and 1 for daily stats. A null is not reported; a missing limit is counted apart, never as 0.",
   inputSchema: input,
   key: "senderCapacity",
   cost: (values, price) => {

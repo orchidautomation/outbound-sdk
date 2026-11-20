@@ -129,17 +129,27 @@ test("reports capabilities and caveats, and runs a tool", async () => {
   assert.equal(capabilities.provider, "memory");
   assert.equal(capabilities.capabilities["leads.list"], true);
   const tools = (await cli("tools")).items() as { name: string }[];
-  assert.ok(tools.some((tool) => tool.name === "campaign_overview"));
+  assert.ok(tools.some((tool) => tool.name === "campaigns"));
+
+  // An old name still runs the tool it was, with a note naming what replaced it.
+  const old = (
+    await cli("tool", "campaign_overview", "--input", '{"status":"paused"}')
+  ).json() as { meta: { notes: string[] } };
+
+  assert.match(
+    old.meta.notes[0] ?? "",
+    /^campaign_overview is an old name kept until 0\.17\.0: call campaigns with view "list" instead\.$/u
+  );
 
   const result = (
-    await cli("tool", "campaign_overview", "--input", '{"status":"paused"}')
+    await cli("tool", "campaigns", "--input", '{"status":"paused"}')
   ).json() as {
     ok: boolean;
-    data: { campaigns: { name: string }[] };
+    data: { campaigns: { campaignName: string }[] };
   };
 
   assert.equal(result.ok, true);
-  assert.equal(result.data.campaigns[0]?.name, "Agency owners");
+  assert.equal(result.data.campaigns[0]?.campaignName, "Agency owners");
 });
 
 test("tools lists each tool's inputs, and a tool that needs input fails with them when given none", async () => {
@@ -161,14 +171,19 @@ test("tools lists each tool's inputs, and a tool that needs input fails with the
     assert.equal(tool.parameters.type, "object", tool.name);
   }
 
-  const deliverability = tools.find(
-    (tool) => tool.name === "deliverability_check"
-  );
+  // A merged tool takes what each of its checks takes, the checks and a scope.
+  const senders = tools.find((tool) => tool.name === "sender_health");
 
-  assert.deepEqual(
-    Object.keys(deliverability?.parameters.properties ?? {}).toSorted(),
-    ["campaign", "limit", "max_checked"]
-  );
+  for (const name of [
+    "checks",
+    "campaign",
+    "impact",
+    "limit",
+    "max_checked",
+    "scope",
+  ]) {
+    assert.ok(Object.hasOwn(senders?.parameters.properties ?? {}, name), name);
+  }
 
   // lead_runway requires `campaign`: with no --input it fails with what it
   // takes, and exits 2 so a script cannot read it as an answer.
@@ -420,7 +435,20 @@ test("the MCP server lists read-only tools and runs one", async () => {
     }[];
   }>(list);
 
-  assert.equal(tools.length, 9);
+  // The built-in tools, merged: campaigns, step_funnel and sender_health
+  // stand for the seven they were made of (OUT-168).
+  assert.deepEqual(
+    tools.map((tool) => tool.name),
+    [
+      "campaigns",
+      "step_funnel",
+      "sender_health",
+      "reply_samples",
+      "lead_runway",
+      "campaign_setup",
+      "audience_lists",
+    ]
+  );
   assert.ok(
     tools.every(
       (tool) =>
@@ -584,6 +612,42 @@ test("the executable serves MCP over stdio until stdin closes", async () => {
     lines.map((line) => line.id),
     [1, 2]
   );
+});
+
+// OUTB-26: `outbound tools | head` printed an unhandled EPIPE stack.
+test("the executable exits quietly when its reader closes the pipe early", async () => {
+  const result = await new Promise<{ code: number | null; stderr: string }>(
+    (resolve, reject) => {
+      const child = spawn(process.execPath, [bin, "tools"], {
+        env: { ...process.env, OUTBOUND_SDK_PROVIDER: "memory" },
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+
+      let stderr = "";
+      child.stderr.on("data", (chunk: Buffer) => {
+        stderr += chunk.toString();
+      });
+
+      const timer = setTimeout(() => {
+        child.kill();
+        reject(new Error("outbound tools did not exit"));
+      }, 20_000);
+
+      // Like `head` that has read all it wants: the pipe is closed before the
+      // output is written, so a write fails with EPIPE whatever the pipe's
+      // buffer size on this system.
+      child.once("spawn", () => {
+        child.stdout.destroy();
+      });
+      child.on("close", (code) => {
+        clearTimeout(timer);
+        resolve({ code, stderr });
+      });
+    }
+  );
+
+  assert.equal(result.stderr, "");
+  assert.equal(result.code, 0);
 });
 
 test("the executable exits 1 and writes the reason to stderr for a wrong command", async () => {

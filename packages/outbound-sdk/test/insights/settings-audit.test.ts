@@ -7,6 +7,9 @@ import { pair, ref, refused } from "./senders-helpers.ts";
 
 const WEEKDAYS = [1, 2, 3, 4, 5];
 
+const TIMEZONE_NOTE =
+  "A window with no timezone may have one the vendor does not report: the two read the same.";
+
 // NOW is 2026-11-14.
 const DATA: MemoryData = {
   campaigns: [
@@ -222,7 +225,7 @@ test("settings_audit lists each campaign's risky settings, the most serious firs
     withFindings: 3,
   });
   assert.equal(result.meta.complete, true);
-  assert.deepEqual(result.meta.notes, []);
+  assert.deepEqual(result.meta.notes, [TIMEZONE_NOTE]);
 });
 
 test("settings_audit skips a setting the vendor does not report", async () => {
@@ -331,6 +334,7 @@ test("settings_audit leaves the sender comparison out when a campaign's senders 
   assert.equal(result.data.totals.high, 2);
   assert.deepEqual(result.meta.notes, [
     "The daily limit was not compared with the sender count: the adapter cannot list a campaign's senders.",
+    TIMEZONE_NOTE,
   ]);
 });
 

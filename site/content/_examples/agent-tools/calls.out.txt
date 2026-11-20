@@ -1,5 +1,5 @@
 13 tools; the first one:
-{"description":"How every campaign is doing: sends, replies, positive replies, bounces and reply rate for each campaign with the given status, or for the one campaign given, over period (the whole history when from and to are left out). One vendor request per campaign. Rates are computed from the counts beside them, and reply_rate_basis names the count replies were divided by. A null means the vendor does not report that count, never 0; metrics is null for a campaign the vendor reported no stats for. meta.complete: false means limit cut the list or a stats read was partial, and meta.notes says so, including the vendor's own notes on the counts.","name":"campaign_overview","parameters":"(JSON Schema)","strict":false,"type":"function"}
+{"description":"How every campaign with the given status is doing, or the one campaign given, over a date range (the whole history when from and to are left out): sends, replies, positive replies, bounces and reply rate. replyRateBasis names the count replies were divided by; metrics is null for a campaign the vendor reported no stats for. One vendor request per campaign. meta.complete: false means the answer covers part of the data, and meta.notes says why.","name":"campaign_overview","parameters":"(JSON Schema)","strict":false,"type":"function"}
 function, type
 
 winning_steps {"campaign":"cmp_founders"}
@@ -9,45 +9,45 @@ winning_steps {"campaign":"cmp_founders"}
     "steps": [
       {
         "metrics": {
-          "bounce_rate": null,
+          "bounceRate": null,
           "bounced": null,
-          "connections_accepted": null,
-          "connections_sent": null,
+          "connectionsAccepted": null,
+          "connectionsSent": null,
           "contacted": null,
           "opened": null,
           "positive": null,
-          "positive_reply_rate": null,
+          "positiveReplyRate": null,
           "replied": 10,
-          "reply_rate": 0.0476,
-          "reply_rate_basis": "sent",
+          "replyRate": 0.0476,
+          "replyRateBasis": "sent",
           "sent": 210
         },
         "rank": 1,
         "step": 1,
-        "step_index": 1,
-        "step_number": 2,
+        "stepIndex": 1,
+        "stepNumber": 2,
         "unattributed": false,
         "variant": null
       },
       {
         "metrics": {
-          "bounce_rate": null,
+          "bounceRate": null,
           "bounced": null,
-          "connections_accepted": null,
-          "connections_sent": null,
+          "connectionsAccepted": null,
+          "connectionsSent": null,
           "contacted": null,
           "opened": null,
           "positive": null,
-          "positive_reply_rate": null,
+          "positiveReplyRate": null,
           "replied": 4,
-          "reply_rate": 0.0286,
-          "reply_rate_basis": "sent",
+          "replyRate": 0.0286,
+          "replyRateBasis": "sent",
           "sent": 140
         },
         "rank": 2,
         "step": 0,
-        "step_index": 0,
-        "step_number": 1,
+        "stepIndex": 0,
+        "stepNumber": 1,
         "unattributed": false,
         "variant": null
       }

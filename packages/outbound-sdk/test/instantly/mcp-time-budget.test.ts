@@ -444,3 +444,41 @@ test("a call that finds the email lane used up by the call before says when to c
     /^The vendor's rate limit is used up for now\. Call again with the same input in \d+s\.$/u
   );
 });
+
+test("a call through the listed surface keeps when to call again: reply_samples with a scope after dropped_replies (OUT-168)", async () => {
+  const unanswered = JSON.stringify({
+    id: 2,
+    jsonrpc: "2.0",
+    method: "tools/call",
+    params: {
+      arguments: { scope: { provider: "instantly" } },
+      name: "reply_samples",
+    },
+  });
+
+  const ran = await mcp(["--time-budget", "50"], () =>
+    given(droppedReplies(1), unanswered)()
+  );
+
+  assert.equal(ran.code, 0, ran.err);
+
+  const content = answerTo(ran.lines, 2)?.message.result?.structuredContent as
+    | {
+        readonly ok: boolean;
+        readonly error?: {
+          readonly limit?: string;
+          readonly retryable: boolean;
+          readonly retryAfterMs?: number;
+        };
+        readonly next?: string;
+      }
+    | undefined;
+
+  assert.equal(content?.ok, false, JSON.stringify(content));
+  assert.equal(content?.error?.retryable, true);
+  assert.equal(typeof content?.error?.retryAfterMs, "number");
+  assert.match(
+    content?.next ?? "",
+    /Call again with the same input in \d+s\./u
+  );
+});

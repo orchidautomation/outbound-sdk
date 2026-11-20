@@ -31,7 +31,7 @@ const input = z.object({
     .nullable()
     .default(null)
     .describe(
-      "A campaign ref (provider:workspace:id) to rank the leads of. Null ranks every lead the tool lists."
+      "A campaign ref (provider:workspace:id) to rank the leads of; an unknown one is refused. Null ranks every lead."
     ),
   count_cap: z
     .number()
@@ -55,7 +55,7 @@ const input = z.object({
     .max(20_000)
     .default(2000)
     .describe(
-      "The most leads a lead listing reads: the leads labelled positive where the tool filters by interest, and the lead list itself where it cannot or include_engagement_only is true. A vendor request returns about 50 to 100 leads. The leads behind replies within recency_days are read on top."
+      "The most leads each lead listing reads (about 50 to 100 per request). Leads that replied within recency_days come on top."
     ),
   max_replies: z
     .number()
@@ -64,34 +64,34 @@ const input = z.object({
     .max(20_000)
     .default(1000)
     .describe(
-      "The most replies within recency_days to read: a safety ceiling, not a sample. A vendor request returns about 100 replies."
+      "The most replies within recency_days to read, a safety ceiling rather than a sample (about 100 per request)."
     ),
   max_age_days: z
     .number()
     .min(1)
     .default(90)
     .describe(
-      "A positive interest label earns its full points while the last reply is within recency_days, fading evenly to none at this many days, and a lead whose last reply is older ranks after every lead with a fresher one. A label with no reply time keeps its points."
+      "A positive label fades from full points at recency_days to none at this age (full without a reply time); older ranks last."
     ),
   include_engagement_only: z
     .boolean()
     .default(false)
     .describe(
-      "Also walk the lead list up to max_leads, to rank leads whose only signal is opens or clicks. Where the tool cannot filter leads by interest the list is walked anyway."
+      "Also walk the lead list for open- or click-only leads; it is walked anyway without an interest filter or with extra positive_labels."
     ),
   positive_labels: positiveLabelsField,
   read_threads: z
     .boolean()
     .default(false)
     .describe(
-      "Set to true to read each returned lead's conversation (one walk of messages each, up to limit) for who wrote last and a follow-up assessment. false leaves followUp.needed null with basis not_read; thread_context reads them later."
+      "Read each returned lead's conversation (one walk each) for who wrote last and a follow-up; false leaves followUp.needed null."
     ),
   recency_days: z
     .number()
     .min(1)
     .default(14)
     .describe(
-      "A reply today earns the full recency points, fading evenly to none after this many days"
+      "Replies within this many days are read and counted; recency points fade from full today to none at this age."
     ),
   weight_click: weight(5, "Points for each click, up to count_cap"),
   weight_interest: weight(50, "Points for carrying a positive interest label"),
@@ -400,7 +400,7 @@ const staleOf = (
 export const hotLeads = defineInsight({
   partialOnCap: true,
   description:
-    "Who to call first: leads ranked by a score built from a positive interest label, replies, clicks, opens and how recent the last reply is. Every score comes with its parts, and the weights are inputs. Candidates come from the signal: every reply within recency_days (up to max_replies, a safety ceiling, so complete means complete for the window) and, where the tool filters leads by interest (leads.byInterest), the leads it labels positive, up to max_leads. Leads behind those replies that no listing read are then looked up, many addresses in one request where the tool can (leads.lookupMany), otherwise one request each for the newest limit of them; one that cannot be read is counted in totals.unreadable. Where the tool cannot filter by interest, positive_labels names a label beyond Interested, Meeting Booked, Meeting Completed and Won, or include_engagement_only is true, the lead list is walked too, up to max_leads, for leads whose only signal is opens or clicks; totals.moreLeadsExist says that cap left leads unread. A reply read in the window fills a lead's reply count and last reply time when its record reports less. A positive label keeps its points while the last reply is within recency_days and fades to nothing at max_age_days, and a lead whose last reply is older than that is listed after every fresher one (totals.stale). A lead with no label and no engagement data is left out and counted in totals.withoutData, never scored 0; unsubscribed and bounced leads are left out too. Give a campaign ref to rank one campaign (an unknown one is refused with NotFound), or none to rank every lead. A lead the vendor labels out-of-office or bounced earns no reply or recency points, and so does a lead whose every reply in the window is flagged automatic (isAuto, from the vendor or a fixed rule); both are counted in totals.autoReplied. A lead labelled negative (not interested, wrong person, unsubscribed, do not contact) earns no points at all and is listed after every lead with a score above 0 while limit leaves room; its reason names the label. While the redact plugin masks email addresses, which a reply can name its lead by, the lead behind a reply is read through the plugin, which puts the address back on the call and masks the answer; a token it no longer remembers is not looked up, which a note says, and the answer is marked incomplete. A part that is null means the vendor does not report that signal. The score ranks the vendor's signals and is not a verdict that a reply is owed. Each lead carries meeting (what the vendor records on the lead, Instantly only) and vendorSentiment (the vendor's labels, kept apart); with read_threads each returned lead's conversation is also read, one walk of messages each, and the lead carries activity (the latest message, who sent it and when), meeting (what the vendor records on the lead, Instantly only), vendorSentiment (the vendor's labels, kept apart) and followUp, a fixed-rule assessment whose needed is true only when the latest message is inbound, not automatic and no meeting is recorded, with its evidence and what it could not check. No rule reads what a message says.",
+    "Who to call first: leads ranked by a score from a positive interest label, replies, clicks, opens and how recent the last reply is. Candidates are the replies within recency_days and the leads the tool labels positive. Each lead carries its score parts (null where the vendor does not report a signal) and a reason. Leads labelled negative score 0 and come last. With read_threads each lead also says who wrote last and gets a fixed-rule follow-up assessment. Costs one request per page of replies and leads, plus lookups for leads that replied but were not listed.",
   inputSchema: input,
   key: "hotLeads",
   cost: (values, price) => {

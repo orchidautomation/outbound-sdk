@@ -188,8 +188,8 @@ test("charts stay inside what Slack draws", () => {
     "campaign_overview",
     tool({
       campaigns: Array.from({ length: 26 }, (_, index) => ({
-        metrics: { reply_rate: index / 100 },
-        name:
+        metrics: { replyRate: index / 100 },
+        campaignName:
           index < 3
             ? "The same long campaign name, repeated"
             : `Campaign ${index}`,

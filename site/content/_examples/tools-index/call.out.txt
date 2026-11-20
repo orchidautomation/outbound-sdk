@@ -3,23 +3,25 @@
     "campaigns": [
       {
         "campaign": "memory:acme:cmp_founders",
+        "campaignName": "Q4 SaaS founders",
         "channel": "email",
-        "name": "Q4 SaaS founders",
         "metrics": {
-          "bounce_rate": 0.0201,
+          "bounceRate": 0.0201,
           "bounced": 19,
-          "connections_accepted": null,
-          "connections_sent": null,
+          "connectionsAccepted": null,
+          "connectionsSent": null,
           "contacted": 630,
           "opened": 516,
           "positive": 19,
-          "positive_reply_rate": 0.0302,
+          "positiveReplyRate": 0.0302,
           "replied": 32,
-          "reply_rate": 0.0508,
-          "reply_rate_basis": "contacted",
+          "replyRate": 0.0508,
+          "replyRateBasis": "contacted",
           "sent": 943
         },
-        "status": "active"
+        "provider": "memory",
+        "status": "active",
+        "workspaceId": "acme"
       }
     ],
     "period": {

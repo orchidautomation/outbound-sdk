@@ -42,9 +42,14 @@ test("--tools offers only the built-in tools and insights it names, in a smaller
   const every = await listed([]);
   const two = await listed(["--tools", "campaign_overview, bounce_watch"]);
 
-  assert.ok(every.names.length > 20);
-  assert.deepEqual(two.names, ["campaign_overview", "bounce_watch"]);
+  assert.ok(every.names.length > 15);
+  // An old name offers the listed tool it became, with only its own view or check.
+  assert.deepEqual(two.names, ["campaigns", "sender_health"]);
   assert.ok(two.bytes * 5 < every.bytes, `${two.bytes} of ${every.bytes}`);
+
+  const listedNames = await listed(["--tools", "campaigns,unanswered_replies"]);
+
+  assert.deepEqual(listedNames.names, ["campaigns", "unanswered_replies"]);
 });
 
 const nextOf = (out: readonly string[]): string =>

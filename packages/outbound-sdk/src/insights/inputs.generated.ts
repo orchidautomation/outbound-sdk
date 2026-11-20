@@ -53,7 +53,7 @@ export interface InsightInputs {
     readonly allow_free_domains?: boolean | undefined;
 
     /**
-     * The company's domain, for example acme.com, or an email address whose domain is used
+     * The company's domain (acme.com) or an email at it. Matched by email domain, so a LinkedIn-only lead is not found.
      *
      * At least 3 characters. Required.
      */
@@ -83,14 +83,14 @@ export interface InsightInputs {
   /** The input of `leadCollisions` (the `lead_collisions` tool). */
   readonly leadCollisions: {
     /**
-     * Also report a person in two or more campaigns of whom fewer than two memberships are still active, for example one who completed one campaign and is now in another. By default only people active in two or more campaigns at once are reported.
+     * Also report people in two or more campaigns but active in fewer than two, such as one who completed a campaign.
      *
      * Defaults to `false`.
      */
     readonly include_past?: boolean | undefined;
 
     /**
-     * The most campaigns to read. Each costs one request per page of its leads. Defaults to the most allowed, so every campaign in the statuses is read.
+     * The most campaigns to read, each one request per page of its leads. The default reads every campaign in the statuses.
      *
      * A whole number from 1 to 200. Defaults to `200`.
      */
@@ -104,7 +104,7 @@ export interface InsightInputs {
     readonly max_leads_per_campaign?: number | undefined;
 
     /**
-     * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
+     * Only campaigns in these states are read
      *
      * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active"]`.
      */
@@ -115,7 +115,7 @@ export interface InsightInputs {
   /** The input of `suppressionCheck` (the `suppression_check` tool). */
   readonly suppressionCheck: {
     /**
-     * Only a matching lead in one of these states is a violation: active, paused, unknown (not yet started, or the tool does not say), completed, skipped (the tool decided never to send), replied, bounced or unsubscribed. Other matches are counted in totals.alreadyStopped. Defaults to the leads still being sent to.
+     * Lead states that make a match a violation; other matches count in totals.alreadyStopped. Defaults to leads still being sent to.
      *
      * At least 1 item. Each one of `active`, `bounced`, `completed`, `paused`, `replied`, `skipped`, `unknown`, `unsubscribed`. Defaults to `["active","paused","unknown"]`.
      */
@@ -133,14 +133,14 @@ export interface InsightInputs {
       | undefined;
 
     /**
-     * The most block list entries to read. A vendor request returns about 50 to 100. A lead on an entry past this cap is not found, so violations is null when entries are left unread.
+     * The most block list entries to read (about 50 to 100 per request); with entries left unread, violations is null.
      *
      * A whole number from 1 to 100,000. Defaults to `10000`.
      */
     readonly max_block_entries?: number | undefined;
 
     /**
-     * The most campaigns to check. Each costs one request per page of its leads. Defaults to the most allowed, so every campaign in the statuses is checked.
+     * The most campaigns to check, each one request per page of its leads. The default checks every campaign in the statuses.
      *
      * A whole number from 1 to 200. Defaults to `200`.
      */
@@ -154,7 +154,7 @@ export interface InsightInputs {
     readonly max_leads_per_campaign?: number | undefined;
 
     /**
-     * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
+     * Only campaigns in these states are read
      *
      * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active"]`.
      */
@@ -182,14 +182,14 @@ export interface InsightInputs {
       | undefined;
 
     /**
-     * Set to true to also check replies flagged automatic, by the vendor or by a fixed rule, and to list conversations whose latest message is an automatic reply
+     * Also check replies flagged automatic (by the vendor or a fixed rule) and list conversations ending in an automatic reply.
      *
      * Defaults to `false`.
      */
     readonly include_auto?: boolean | undefined;
 
     /**
-     * Set to true to also check replies in conversations that belong to no campaign, such as a LinkedIn account's own messages on HeyReach. false sets them aside and counts them in totals.notInCampaign.
+     * Also check replies outside every campaign, such as HeyReach inbox messages. false counts them in totals.notInCampaign.
      *
      * Defaults to `false`.
      */
@@ -219,7 +219,7 @@ export interface InsightInputs {
   /** The input of `hotLeads` (the `hot_leads` tool). */
   readonly hotLeads: {
     /**
-     * A campaign ref (provider:workspace:id) to rank the leads of. Null ranks every lead the tool lists.
+     * A campaign ref (provider:workspace:id) to rank the leads of; an unknown one is refused. Null ranks every lead.
      *
      * Not empty. Defaults to `null`.
      */
@@ -240,28 +240,28 @@ export interface InsightInputs {
     readonly limit?: number | undefined;
 
     /**
-     * The most leads a lead listing reads: the leads labelled positive where the tool filters by interest, and the lead list itself where it cannot or include_engagement_only is true. A vendor request returns about 50 to 100 leads. The leads behind replies within recency_days are read on top.
+     * The most leads each lead listing reads (about 50 to 100 per request). Leads that replied within recency_days come on top.
      *
      * A whole number from 1 to 20,000. Defaults to `2000`.
      */
     readonly max_leads?: number | undefined;
 
     /**
-     * The most replies within recency_days to read: a safety ceiling, not a sample. A vendor request returns about 100 replies.
+     * The most replies within recency_days to read, a safety ceiling rather than a sample (about 100 per request).
      *
      * A whole number from 1 to 20,000. Defaults to `1000`.
      */
     readonly max_replies?: number | undefined;
 
     /**
-     * A positive interest label earns its full points while the last reply is within recency_days, fading evenly to none at this many days, and a lead whose last reply is older ranks after every lead with a fresher one. A label with no reply time keeps its points.
+     * A positive label fades from full points at recency_days to none at this age (full without a reply time); older ranks last.
      *
      * A number, 1 or more. Defaults to `90`.
      */
     readonly max_age_days?: number | undefined;
 
     /**
-     * Also walk the lead list up to max_leads, to rank leads whose only signal is opens or clicks. Where the tool cannot filter leads by interest the list is walked anyway.
+     * Also walk the lead list for open- or click-only leads; it is walked anyway without an interest filter or with extra positive_labels.
      *
      * Defaults to `false`.
      */
@@ -275,14 +275,14 @@ export interface InsightInputs {
     readonly positive_labels?: string[] | undefined;
 
     /**
-     * Set to true to read each returned lead's conversation (one walk of messages each, up to limit) for who wrote last and a follow-up assessment. false leaves followUp.needed null with basis not_read; thread_context reads them later.
+     * Read each returned lead's conversation (one walk each) for who wrote last and a follow-up; false leaves followUp.needed null.
      *
      * Defaults to `false`.
      */
     readonly read_threads?: boolean | undefined;
 
     /**
-     * A reply today earns the full recency points, fading evenly to none after this many days
+     * Replies within this many days are read and counted; recency points fade from full today to none at this age.
      *
      * A number, 1 or more. Defaults to `14`.
      */
@@ -326,7 +326,7 @@ export interface InsightInputs {
   /** The input of `threadContext` (the `thread_context` tool). */
   readonly threadContext: {
     /**
-     * snippet returns the first 280 characters of each message, wrapped as untrusted content; none returns no text. Null means snippet, or none when the redact plugin masks message bodies
+     * snippet: each message's first 280 characters as untrusted content; none: no text. Null is snippet, or none under redact.
      *
      * Defaults to `null`.
      */
@@ -340,7 +340,7 @@ export interface InsightInputs {
     readonly cursor?: string | null | undefined;
 
     /**
-     * Lead refs (provider:workspace:id), as dropped_replies, hot_leads and person_summary return them. Each lead's conversation in its campaign is read.
+     * Lead refs (provider:workspace:id) as dropped_replies, hot_leads and person_summary return them; reads each one's conversation.
      *
      * Defaults to `[]`.
      */
@@ -414,7 +414,7 @@ export interface InsightInputs {
     readonly to?: string | null | undefined;
 
     /**
-     * A step earns its place when the low end of its reply rate interval is above this and it has at least 5 replies. 0 asks only that the rate is reliably above zero.
+     * The bar the low end of a step's reply rate interval must clear, with 5 or more replies. 0 means above zero.
      *
      * A number from 0 to 1. Defaults to `0`.
      */
@@ -451,14 +451,14 @@ export interface InsightInputs {
     readonly to?: string | null | undefined;
 
     /**
-     * What a variant is judged on. Replies and positive replies are divided by leads contacted (or sends); opens and clicks by messages delivered (or sends).
+     * What variants are judged on. Replies divide by leads contacted, opens and clicks by messages delivered, else by sends.
      *
      * Defaults to `"replied"`.
      */
     readonly metric?: "replied" | "positive" | "opened" | "clicked" | undefined;
 
     /**
-     * A variant with a smaller base than this (sends, or leads contacted when the vendor counts those) is not compared.
+     * Smallest base (sends, or leads contacted when counted) a variant needs to be compared.
      *
      * A whole number from 1 to 9,007,199,254,740,991. Defaults to `100`.
      */
@@ -523,7 +523,7 @@ export interface InsightInputs {
     readonly max_subject_chars?: number | undefined;
 
     /**
-     * How many leads' rendered copy to audit when a subject or body is mostly variables, such as {{body_1}} filled from a custom field. The leads that fill the most of those variables are used. 0 audits the copy as stored only.
+     * Leads' rendered copy to audit when copy is mostly variables; the leads filling the most are used. 0 audits stored copy only.
      *
      * A whole number from 0 to 20. Defaults to `3`.
      */
@@ -569,14 +569,14 @@ export interface InsightInputs {
     readonly max_campaigns?: number | undefined;
 
     /**
-     * The smallest base (sends, or leads contacted when the vendor counts those) a campaign needs to count in the spread, and a piece of copy needs to be named the best.
+     * Smallest base (sends, or leads contacted when counted) a campaign needs to count in the spread, and a copy to be named best.
      *
      * A whole number from 1 to 9,007,199,254,740,991. Defaults to `100`.
      */
     readonly min_sent?: number | undefined;
 
     /**
-     * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
+     * Only campaigns in these states are read
      *
      * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active","paused","completed"]`.
      */
@@ -594,14 +594,14 @@ export interface InsightInputs {
     readonly campaign?: string | null | undefined;
 
     /**
-     * Count replies flagged automatic (isAuto true), such as out-of-office messages and autoresponders. false leaves them out of every figure and counts them in counts.autoReplies.
+     * Count replies flagged automatic, such as out-of-office. false leaves them out and counts them in counts.autoReplies.
      *
      * Defaults to `false`.
      */
     readonly include_auto?: boolean | undefined;
 
     /**
-     * Also time conversations that belong to no campaign, such as a LinkedIn account's own messages on HeyReach. false leaves their messages out of every figure and counts them in counts.notInCampaign.
+     * Also time conversations outside every campaign, such as a HeyReach seat's own. false counts them in counts.notInCampaign.
      *
      * Defaults to `false`.
      */
@@ -631,7 +631,7 @@ export interface InsightInputs {
   /** The input of `domainHealth` (the `domain_health` tool). */
   readonly domainHealth: {
     /**
-     * The most senders to check. Leave out for 500 where the vendor reads health a page at a time (a few requests per 100 senders), or 50 where each sender costs 1 to 3 requests.
+     * Most senders to check. Default 500 where health reads in pages, else 50 at 1 to 3 requests each.
      *
      * A whole number from 1 to 500. Defaults to `null`.
      */
@@ -654,21 +654,21 @@ export interface InsightInputs {
     readonly days?: number | undefined;
 
     /**
-     * The most active campaigns to read. Each costs one read of its settings and one listing of its senders, plus 1 request when the vendor has no workspace totals.
+     * Most active campaigns to read. Each costs a settings read and a sender listing, plus 1 without workspace totals.
      *
      * A whole number from 1 to 200. Defaults to `50`.
      */
     readonly max_campaigns?: number | undefined;
 
     /**
-     * The most senders to read for the workspace, and for each campaign. A listing costs 1 request per 100 senders, and on Instantly a campaign's listing costs 2 per 100 mailboxes in the workspace.
+     * Most senders to read, for the workspace and each campaign: 1 request per 100 (Instantly campaigns: 2 per 100 mailboxes).
      *
      * A whole number from 1 to 1000. Defaults to `1000`.
      */
     readonly max_senders?: number | undefined;
 
     /**
-     * Read the stats of each inactive or unlimited sender (1 request each) so utilization can leave their sends out. Off, utilization is null whenever such a sender exists.
+     * Read each inactive or unlimited sender's stats (1 request each) so utilization can leave their sends out.
      *
      * Defaults to `false`.
      */
@@ -726,7 +726,7 @@ export interface InsightInputs {
     readonly min_sent?: number | undefined;
 
     /**
-     * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
+     * Only campaigns in these states are read
      *
      * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active"]`.
      */
@@ -781,14 +781,14 @@ export interface InsightInputs {
     readonly max_campaigns_per_sender?: number | undefined;
 
     /**
-     * The most senders to read for the workspace, and for each campaign. A listing costs 1 request per 100 senders, and on Instantly a campaign's listing costs 2 per 100 mailboxes in the workspace.
+     * Most senders to read, for the workspace and each campaign: 1 request per 100 (Instantly campaigns: 2 per 100 mailboxes).
      *
      * A whole number from 1 to 1000. Defaults to `1000`.
      */
     readonly max_senders?: number | undefined;
 
     /**
-     * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
+     * Only campaigns in these states are read
      *
      * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active"]`.
      */
@@ -841,7 +841,7 @@ export interface InsightInputs {
     readonly min_window_hours?: number | undefined;
 
     /**
-     * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
+     * Only campaigns in these states are read
      *
      * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active"]`.
      */
@@ -989,7 +989,7 @@ export interface InsightInputs {
     readonly baseline_days?: number | undefined;
 
     /**
-     * A campaign ref. null checks the whole workspace.
+     * A campaign ref. null checks the whole workspace, which needs workspace stats.
      *
      * At least 3 characters. Defaults to `null`.
      */
@@ -1021,7 +1021,7 @@ export interface InsightInputs {
       | undefined;
 
     /**
-     * A day is judged only when its count or its baseline mean reaches this many, so one reply on a quiet day is not flagged. 0 judges every day.
+     * A day is judged only when its count or baseline mean reaches this, so one reply on a quiet day is not flagged. 0 judges all.
      *
      * A whole number from 0 to 9,007,199,254,740,991. Defaults to `3`.
      */
@@ -1051,7 +1051,7 @@ export interface InsightInputs {
     readonly max_campaigns?: number | undefined;
 
     /**
-     * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
+     * Only campaigns in these states are read
      *
      * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active"]`.
      */
@@ -1104,7 +1104,7 @@ export interface InsightInputs {
     readonly max_campaigns?: number | undefined;
 
     /**
-     * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
+     * Only campaigns in these states are read
      *
      * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active"]`.
      */
@@ -1154,7 +1154,7 @@ export interface InsightInputs {
     readonly max_campaigns?: number | undefined;
 
     /**
-     * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
+     * Only campaigns in these states are read
      *
      * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active","paused","completed"]`.
      */
@@ -1193,7 +1193,7 @@ export interface InsightInputs {
     readonly max_campaigns?: number | undefined;
 
     /**
-     * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
+     * Only campaigns in these states are read
      *
      * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active"]`.
      */
@@ -1218,7 +1218,7 @@ export interface InsightInputs {
     readonly max_campaigns?: number | undefined;
 
     /**
-     * Only campaigns in one of these states are read: active, paused, completed, draft, archived or unknown
+     * Only campaigns in these states are read
      *
      * At least 1 item. Each one of `active`, `archived`, `completed`, `draft`, `paused`, `unknown`. Defaults to `["active"]`.
      */
@@ -1283,7 +1283,7 @@ export interface InsightInputs {
     readonly min_skipped?: number | undefined;
 
     /**
-     * The most leads to read per active campaign, for leads left. Where the tool lists active leads alone (leads.byStatus), only those are read.
+     * The most leads to read per active campaign, for leads left. Only its active leads where the tool lists them alone.
      *
      * A whole number from 1 to 50,000. Defaults to `5000`.
      */
@@ -1304,7 +1304,7 @@ export interface InsightInputs {
     readonly min_sent?: number | undefined;
 
     /**
-     * Read only one tool of a combined instance: its provider (instantly) or provider:workspace. Leave out for every tool.
+     * Read one tool of a combined instance: its provider (instantly) or provider:workspace. Leave out for every tool.
      *
      * Not empty. Defaults to `null`.
      */
@@ -1318,7 +1318,7 @@ export interface InsightInputs {
     readonly runway_days?: number | undefined;
 
     /**
-     * Read only the campaigns with this tag, for example one client's. Unusual days are then left out, since they are workspace-wide.
+     * Read only the campaigns with this tag, such as one client's. Leaves out unusual days, which are workspace-wide.
      *
      * Not empty. Defaults to `null`.
      */

@@ -40,7 +40,7 @@ export interface InsightMeta {
   /** What the reader should know before trusting the numbers. */
   readonly notes: readonly string[];
   readonly provider: string;
-  /** When the insight was computed, ISO 8601 UTC. */
+  /** When the insight finished computing its answer, ISO 8601 UTC. */
   readonly computedAt: string;
 }
 
@@ -553,7 +553,8 @@ const execute = async <Key extends string, Input, Data, Given>(
     insight: spec.name,
     meta: {
       ...tracker.meta(),
-      computedAt: new Date(now).toISOString(),
+      // When the answer was finished, not when the run started.
+      computedAt: new Date(options.now ?? Date.now()).toISOString(),
       provider: outbound.provider,
     },
   };

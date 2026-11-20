@@ -69,12 +69,19 @@ const listed = (matches: readonly Named[]): string => {
     : shown;
 };
 
+/** Whether one of the words of `name` begins with `wanted`, so "ug" finds "UG founders" but not "Mug". */
+const wordStarts = (name: string, wanted: string): boolean =>
+  name.startsWith(wanted) ||
+  name.split(/[^\p{L}\p{N}]+/u).some((word) => word.startsWith(wanted));
+
 /**
  * What `value` names among `records`: the record whose id it is, by its ref;
- * else the record whose name it is, ignoring case and outer spaces, or the
- * only one whose name contains it; else `undefined`. Two or more that match,
- * such as one id in two tools of a combined instance, are refused with the
- * candidates, never guessed.
+ * else the record whose name it is, ignoring case and outer spaces; else the
+ * only one with a word that begins with it; else the only one whose name
+ * contains it; else `undefined`. Each kind of match is tried only when the
+ * one before found nothing. Two or more that match, such as one id in two
+ * tools of a combined instance, are refused with the candidates, never
+ * guessed.
  */
 const pick = (
   records: readonly Named[],
@@ -86,14 +93,16 @@ const pick = (
   const byId = records.filter((record) => record.sourceId === value);
   const exact = records.filter((record) => nameOf(record) === wanted);
 
+  const words = records.filter((record) => wordStarts(nameOf(record), wanted));
+
   const matches =
-    [byId, exact].find((found) => found.length > 0) ??
+    [byId, exact, words].find((found) => found.length > 0) ??
     records.filter((record) => nameOf(record).includes(wanted));
 
   if (matches.length > 1) {
     throw new OutboundError(
       "Invalid",
-      `${matches.length} ${what}s match "${value}": ${listed(matches)}. Give the full name or the ref`
+      `${matches.length} ${what}s match "${value}": ${listed(matches)}. Give the full name, or the ref, which also skips reading every ${what} to find it`
     );
   }
 

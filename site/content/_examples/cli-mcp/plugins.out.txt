@@ -1,18 +1,18 @@
 $ outbound mcp
-  plugins:      Plugins on: redact, identity. redact masks personal fields such as emails and names, and reply text is not available.
-  left out:     cross_channel_lead, account_summary. They match people by email or LinkedIn profile, which redact masks. Start the server with --no-redact to offer them; personal fields are then not masked.
-  tools:        36
+  plugins:      This server reads memory:default. Every answer is { ok, data, meta, next }, in structuredContent with a short summary as text. meta.complete: false means the answer covers part of the data and meta.notes says why; a null count is one the vendor does not report, never 0. Every tool takes scope: { provider, workspace } to read one tool or workspace of what this server reads, and tag where a tool can read one campaign tag. These tools answer questions; for bulk rows (every lead, message or daily stat) use the CLI's --jsonl output or the SDK. Plugins on: redact, identity. redact masks personal fields such as emails and names, and reply text is not available. Old names, the CLI's insight names among them, still answer until 0.17.0, each with a note naming the tool to call now: dropped_replies, campaign_overview, campaign_ranking, campaign_trend, deliverability_check, warmup_readiness, domain_health, bounce_watch, sender_load, pipeline_forecast, suppression_check, lead_collisions, copy_audit, variant_test, personalization_gaps, copy_reuse, winning_steps, person_summary, cross_channel_lead, account_summary.
+  left out:     none
+  tools:        23
   reply text:   refused (Reading reply bodies is not available: the redact plugin turned it off (messages.body))
 
 $ outbound mcp --no-redact
-  plugins:      Plugins on: identity. Personal fields such as emails and names are not masked.
+  plugins:      This server reads memory:default. Every answer is { ok, data, meta, next }, in structuredContent with a short summary as text. meta.complete: false means the answer covers part of the data and meta.notes says why; a null count is one the vendor does not report, never 0. Every tool takes scope: { provider, workspace } to read one tool or workspace of what this server reads, and tag where a tool can read one campaign tag. These tools answer questions; for bulk rows (every lead, message or daily stat) use the CLI's --jsonl output or the SDK. Plugins on: identity. Personal fields such as emails and names are not masked. Old names, the CLI's insight names among them, still answer until 0.17.0, each with a note naming the tool to call now: dropped_replies, campaign_overview, campaign_ranking, campaign_trend, deliverability_check, warmup_readiness, domain_health, bounce_watch, sender_load, pipeline_forecast, suppression_check, lead_collisions, copy_audit, variant_test, personalization_gaps, copy_reuse, winning_steps, person_summary, cross_channel_lead, account_summary.
   left out:     none
-  tools:        38
+  tools:        23
   reply text:   returned
 
 $ outbound mcp --config outbound.config.ts --cache 300 --max-requests 50
-  plugins:      Plugins on: redact, clients, cache, budget, identity. redact masks personal fields such as emails and names, and reply text is not available.
-  left out:     cross_channel_lead, account_summary. They match people by email or LinkedIn profile, which redact masks. Start the server with --no-redact to offer them; personal fields are then not masked.
-  tools:        37
+  plugins:      This server reads memory:default. Every answer is { ok, data, meta, next }, in structuredContent with a short summary as text. meta.complete: false means the answer covers part of the data and meta.notes says why; a null count is one the vendor does not report, never 0. Every tool takes scope: { provider, workspace } to read one tool or workspace of what this server reads, and tag where a tool can read one campaign tag. These tools answer questions; for bulk rows (every lead, message or daily stat) use the CLI's --jsonl output or the SDK. Plugins on: redact, clients, cache, budget, identity. redact masks personal fields such as emails and names, and reply text is not available. Old names, the CLI's insight names among them, still answer until 0.17.0, each with a note naming the tool to call now: dropped_replies, campaign_overview, campaign_ranking, campaign_trend, deliverability_check, warmup_readiness, domain_health, bounce_watch, sender_load, pipeline_forecast, suppression_check, lead_collisions, copy_audit, variant_test, personalization_gaps, copy_reuse, winning_steps, person_summary, cross_channel_lead, account_summary.
+  left out:     none
+  tools:        24
   reply text:   refused (Reading reply bodies is not available: the redact plugin turned it off (messages.body))
 

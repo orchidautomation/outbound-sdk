@@ -40,7 +40,9 @@ const input = z.object({
     .min(3)
     .nullable()
     .default(null)
-    .describe("A campaign ref. null checks the whole workspace."),
+    .describe(
+      "A campaign ref. null checks the whole workspace, which needs workspace stats."
+    ),
   days: z
     .number()
     .int()
@@ -59,7 +61,7 @@ const input = z.object({
     .min(0)
     .default(MIN_COUNT)
     .describe(
-      "A day is judged only when its count or its baseline mean reaches this many, so one reply on a quiet day is not flagged. 0 judges every day."
+      "A day is judged only when its count or baseline mean reaches this, so one reply on a quiet day is not flagged. 0 judges all."
     ),
   min_baseline_points: z
     .number()
@@ -267,7 +269,7 @@ export const findAnomalies = (
 
 export const anomalies = defineInsight({
   description:
-    "Days that broke from trend, for one campaign or the whole workspace: each of the last `days` complete days is held to the `baseline_days` before it, and a daily count `threshold` standard deviations or more from that baseline's mean is returned, newest first, with the metric, the value, the baseline mean, the z-score, the direction and how it was judged. When every baseline day has the same count there is no standard deviation: a day with another count is returned with a null z-score and judgedBy flat_baseline. Use it to spot a sending outage, a bounce spike or a reply surge. A day is judged only when its count or its baseline mean reaches min_count (3 by default), so a single reply on a quiet day is not flagged. Days the vendor has no count for are skipped, never read as zero. With no campaign it reads workspace stats, so it then also needs stats.workspace. Costs one stats request.",
+    "Days that broke from trend, for one campaign or the whole workspace: each of the last `days` complete days is held to the `baseline_days` before it, and a daily count `threshold` standard deviations or more from the baseline mean is returned, newest first, with its value, the baseline mean, the z-score, the direction and how it was judged. Use it to spot a sending outage, a bounce spike or a reply surge. Days the vendor has no count for are skipped, never read as zero. Costs one stats request.",
   inputSchema: input,
   key: "anomalies",
   cost: (_input, price) => price.one("stats"),

@@ -137,10 +137,9 @@ test("outbound mcp leaves out the insights redact keeps from matching, and no hi
 
   assert.ok(names.includes("hot_leads"), names.join(", "));
   // It looks a lead ref up by the tokens redact can put back.
-  assert.ok(names.includes("person_summary"), names.join(", "));
+  assert.ok(names.includes("person"), names.join(", "));
   // They match people on redact's keyed tokens.
-  assert.ok(names.includes("lead_collisions"), names.join(", "));
-  assert.ok(names.includes("suppression_check"), names.join(", "));
+  assert.ok(names.includes("list_hygiene"), names.join(", "));
   assert.deepEqual(
     names.filter((name) => left.includes(name)),
     []
@@ -166,31 +165,48 @@ const personCall = (id: number, name: string) => ({
   params: { arguments: { person: "person1@example.com" }, name },
 });
 
-test("outbound mcp answers a call to a tool redact left out by naming redact and --no-redact", async () => {
+const byRef = (id: number, name: string) => ({
+  id,
+  jsonrpc: "2.0",
+  method: "tools/call",
+  params: { arguments: { lead_ref: "memory:acme:lead_1" }, name },
+});
+
+test("outbound mcp answers a tool redact masks with the masked person view, naming --no-redact", async () => {
   const session = await outbound(
     ["mcp"],
     [
-      personCall(1, "account_summary"),
-      personCall(2, "cross_channel_lead"),
+      byRef(1, "account_summary"),
+      byRef(2, "cross_channel_lead"),
       personCall(3, "no_such_tool"),
     ]
   );
 
-  const errors = session.responses.map(
-    (response) => response.error as { code: number; message: string }
-  );
+  const byId = (id: number) =>
+    session.responses.find((response) => response.id === id) as {
+      result?: {
+        structuredContent: { ok: boolean; meta: { notes: string[] } };
+      };
+      error?: { message: string };
+    };
 
-  assert.equal(errors[0]?.code, -32_602);
-  assert.equal(
-    errors[0]?.message,
-    "account_summary is left out while the redact plugin is on: it needs what redact masks. Start the server with --no-redact to offer it; personal fields are then not masked."
-  );
-  assert.match(
-    errors[1]?.message ?? "",
-    /^cross_channel_lead is left out while the redact plugin is on/u
-  );
+  // Each old name answers through person's masked summary view (OUT-168).
+  for (const [index, name] of [
+    "account_summary",
+    "cross_channel_lead",
+  ].entries()) {
+    const answer = byId(index + 1).result?.structuredContent;
+
+    assert.equal(answer?.ok, true, JSON.stringify(answer));
+    assert.match(
+      answer?.meta.notes.join(" ") ?? "",
+      /needs identifiers the redact plugin masks, so this is the masked summary view\. Start the server with --no-redact for it\./u,
+      name
+    );
+  }
+
   // A name no tool has is still unknown.
-  assert.equal(errors[2]?.message, "Unknown tool: no_such_tool");
+  assert.equal(byId(3).error?.message, "Unknown tool: no_such_tool");
 
   // Without redact the same call is answered.
   const open = await outbound(
@@ -208,21 +224,22 @@ test("outbound mcp answers a call to a tool redact left out by naming redact and
 test("outbound mcp names the tools redact left out in its instructions, and --no-redact names none", async () => {
   const masked = instructionsOf(await outbound(["mcp"], [initialize]));
 
-  assert.match(
-    masked,
-    / Left out while redact is on: (?<names>[a-z_, ]+)\. They match people by email or LinkedIn profile, which redact masks\. Start the server with --no-redact to offer them; personal fields are then not masked\.$/u
-  );
+  // person still lists its timeline and account views and answers them
+  // with the masked summary, so nothing is left out here (OUT-168).
+  assert.doesNotMatch(masked, /Left out/u);
 
-  for (const name of ["account_summary", "cross_channel_lead"]) {
-    assert.ok(masked.includes(name), name);
-  }
+  // They are named only as old names that still answer.
+  const [listed = "", old = ""] = masked.split(" Old names, ");
 
   for (const name of [
+    "account_summary",
+    "cross_channel_lead",
     "person_summary",
     "lead_collisions",
     "suppression_check",
   ]) {
-    assert.ok(!masked.includes(name), name);
+    assert.ok(!listed.includes(name), name);
+    assert.ok(old.includes(name), name);
   }
 
   // The memory adapter has no native reads, so vendor_read is not named.
@@ -330,7 +347,7 @@ test("--no-redact serves records unmasked, and reply text on request", async () 
     /Plugins on: identity\. Personal fields .* are not masked/u
   );
   assert.equal(callResult(session, 2).ok, true);
-  assert.match(JSON.stringify(callResult(session, 2)), /untrusted_content/u);
+  assert.match(JSON.stringify(callResult(session, 2)), /untrustedContent/u);
 });
 
 test("other commands are unmasked unless --redact is set", async () => {

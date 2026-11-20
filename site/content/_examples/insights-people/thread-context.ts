@@ -17,7 +17,7 @@ for (const thread of data.threads) {
 
   for (const message of thread.messages) {
     console.log(
-      `  ${message.direction} ${message.sentAt}: ${message.snippet?.untrusted_content ?? ""}`
+      `  ${message.direction} ${message.sentAt}: ${message.snippet?.untrustedContent ?? ""}`
     );
   }
 }

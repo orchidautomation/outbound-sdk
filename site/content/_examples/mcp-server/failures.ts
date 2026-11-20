@@ -31,14 +31,15 @@ const call = async (
 
 // 1. A tool's own failure is a result with isError: true, so the model can
 //    read the reason and try again. It is not a protocol error.
-await call("bad input", "campaign_trend", {
+await call("bad input", "campaigns", {
+  view: "trend",
   campaign: "cmp_founders",
   from: "last week",
   to: "2026-11-13",
 });
 
 // 2. An argument the tool does not take is reported, never dropped.
-await call("unknown argument", "campaign_overview", { client: "acme" });
+await call("unknown argument", "campaigns", { client: "acme" });
 
 // 3. A campaign that does not exist.
 await call("no such campaign", "campaign_setup", { campaign: "nope" });
