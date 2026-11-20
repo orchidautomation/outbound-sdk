@@ -5,6 +5,7 @@
 //
 //   npm run eval:agent                       every task, scored on the newest live invariant truth
 //   npm run eval:agent -- --tasks 1,4 --model sonnet --checkout <worktree>
+//   npm run eval:agent -- --checkout <worktree> --truth ~/outbound-evals/<stamp>.invariants.json
 //
 // Each run writes ~/outbound-evals/<stamp>.agent.{json,md}. Exit 75 when
 // another run holds the lock.
@@ -75,6 +76,48 @@ export const truthFor = (
   }
 
   return {};
+};
+
+/**
+ * The truth of one layer-1 run named with `--truth`, at whatever commit it
+ * ran, so both sides of a before-and-after are scored against the same
+ * workspace. It must be a live run from the last 24 hours that recorded
+ * truth; anything else is refused rather than scored against a guess.
+ */
+export const truthFile = (
+  file: string,
+  now: number
+): {
+  readonly commit: string | null;
+  readonly truth: Record<string, Truth>;
+} => {
+  let run: unknown;
+
+  try {
+    run = parsed(readFileSync(file, "utf-8"));
+  } catch {
+    throw new Error(`--truth ${path.basename(file)} cannot be read`);
+  }
+
+  const started = Date.parse(text(at(run, "startedAt")) ?? "");
+  const truth = at(run, "truth");
+
+  if (at(run, "layer") !== "invariants" || at(run, "mode") !== "live") {
+    throw new Error(`--truth ${path.basename(file)} is not a live layer-1 run`);
+  }
+
+  if (!(now - started < 86_400_000)) {
+    throw new Error(`--truth ${path.basename(file)} is older than 24 hours`);
+  }
+
+  if (!isRecord(truth) || Object.keys(truth).length === 0) {
+    throw new Error(`--truth ${path.basename(file)} recorded no truth`);
+  }
+
+  return {
+    commit: text(at(run, "commit")),
+    truth: truth as Record<string, Truth>,
+  };
 };
 
 export interface TaskScore {
@@ -283,6 +326,7 @@ export const summarizeAgent = (
     readonly tasks: readonly TaskScore[];
     readonly model: string | null;
     readonly commit: string | null;
+    readonly truthCommit?: string | null;
   },
   previous: unknown
 ): string => {
@@ -314,7 +358,7 @@ export const summarizeAgent = (
 
   return assertCountsOnly(
     [
-      `### Eval agent tasks (${result.model ?? "model ?"}${result.commit === null ? "" : ` at ${result.commit}`})`,
+      `### Eval agent tasks (${result.model ?? "model ?"}${result.commit === null ? "" : ` at ${result.commit}`}${result.truthCommit === undefined || result.truthCommit === result.commit ? "" : `, truth at ${result.truthCommit ?? "?"}`})`,
       "",
       `Per persona: ${personas.join(", ")}. Dead-end calls ${result.tasks.reduce((sum, task) => sum + task.deadEnds, 0)}, tool calls ${result.tasks.reduce((sum, task) => sum + task.toolCalls, 0)}.`,
       "",
@@ -335,6 +379,7 @@ const main = async (): Promise<number> => {
       model: { type: "string" },
       out: { type: "string" },
       tasks: { type: "string" },
+      truth: { type: "string" },
     },
   });
 
@@ -350,6 +395,11 @@ const main = async (): Promise<number> => {
     values.tasks === undefined
       ? undefined
       : new Set(values.tasks.split(",").map(Number));
+
+  const given =
+    values.truth === undefined
+      ? undefined
+      : truthFile(path.resolve(values.truth), Date.now());
 
   let release: () => void;
 
@@ -368,7 +418,7 @@ const main = async (): Promise<number> => {
   const work = mkdtempSync(path.join(tmpdir(), "outbound-evals-"));
 
   try {
-    const truth = truthFor(out, Date.now(), commitOf(checkout));
+    const truth = given?.truth ?? truthFor(out, Date.now(), commitOf(checkout));
     const bin = path.join(checkout, "packages/outbound-sdk/src/cli/bin.ts");
     const config = path.join(work, "mcp.json");
     writeFileSync(
@@ -409,6 +459,7 @@ const main = async (): Promise<number> => {
       startedAt: new Date().toISOString(),
       tasks: scores,
       truthCases: Object.keys(truth),
+      truthCommit: given === undefined ? commitOf(checkout) : given.commit,
     };
 
     const name = `${stamp(Date.now())}.agent`;

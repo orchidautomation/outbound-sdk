@@ -7,7 +7,7 @@ The spec is section 3 of the sharp-edges plan for OUT-145; this suite is OUT-170
 ## Two layers
 
 1. **Invariants** (`evals/run.ts`, deterministic, no model). 32 cases drive `outbound mcp --provider all` over stdio, the CLI and the SDK with fixed inputs, and assert an invariant on the raw output. Each case passes, fails or skips with a reason in counts and tool names. A failing case linked to a P1 issue makes the run **red** (exit 1). The cases also record ground truth for layer 2, such as the replies owed, the block-list violations with caps raised, or the campaigns running out of leads this week.
-2. **Persona tasks** (`evals/agent/run.ts`). A model gets only the default MCP server and one persona prompt per task (7 tasks), and must end with a fixed JSON block. Each task is scored against the truth of the newest live layer-1 run at the same commit on correctness, forbidden claims (a definite answer such as `complete: true` or a count of 0 where the source said `complete: false`) and path quality: dead-end calls (`Unsupported`, `Invalid`, a JSON-RPC error, a tool not in tools/list), tool calls, vendor requests and wall time. A task scores 0-3 (correct, no forbidden claim, no dead end), or 0-2 when its correctness is unscored, and each persona gets its points over the points possible, scaled to 3. Forbidden claims are decided by fixed rules only; no model judge runs yet. Task 2 (client-call prep) covers the whole workspace rather than one tag, so its truth comes from the same `client_report` call as case 9 and costs no second report. A task is left unscored ("no truth") rather than scored against a guess: when its case has no truth at that commit, when the report did not check every campaign (tasks 2 and 4), when a tool has no workspace totals (task 5), or when no link between an email and a LinkedIn person was observed and the tools carry a shared identifier type (task 7). Task 3 is still scored over an incomplete check, because its truth is then a lower bound: at least the violations found, with `complete: false`.
+2. **Persona tasks** (`evals/agent/run.ts`). A model gets only the default MCP server and one persona prompt per task (7 tasks), and must end with a fixed JSON block. Each task is scored against the truth of the newest live layer-1 run at the same commit (or the one run `--truth` names, for a before-and-after) on correctness, forbidden claims (a definite answer such as `complete: true` or a count of 0 where the source said `complete: false`) and path quality: dead-end calls (`Unsupported`, `Invalid`, a JSON-RPC error, a tool not in tools/list), tool calls, vendor requests and wall time. A task scores 0-3 (correct, no forbidden claim, no dead end), or 0-2 when its correctness is unscored, and each persona gets its points over the points possible, scaled to 3. Forbidden claims are decided by fixed rules only; no model judge runs yet. Task 2 (client-call prep) covers the whole workspace rather than one tag, so its truth comes from the same `client_report` call as case 9 and costs no second report. A task is left unscored ("no truth") rather than scored against a guess: when its case has no truth at that commit, when the report did not check every campaign (tasks 2 and 4), when a tool has no workspace totals (task 5), or when no link between an email and a LinkedIn person was observed and the tools carry a shared identifier type (task 7). Task 3 is still scored over an incomplete check, because its truth is then a lower bound: at least the violations found, with `complete: false`.
 
 ## Commands
 
@@ -15,11 +15,11 @@ The spec is section 3 of the sharp-edges plan for OUT-145; this suite is OUT-170
 | --- | --- |
 | `npm run eval` | Layer 1 offline: fixtures replayed through injected fetch, on a virtual clock fixed at 2026-11-18 12:00 UTC. About a second, no network, no keys. |
 | `LIVE_TESTS=1 npm run eval` | Layer 1 live against every provider whose key is set, read-only. Writes `~/outbound-evals/<stamp>.invariants.{json,md}`. |
-| `npm run eval:agent` | Layer 2 live with `claude -p` (model `sonnet` unless `--model` names another). Writes `~/outbound-evals/<stamp>.agent.{json,md}`. Run layer 1 live first on the same checkout: tasks are scored on the newest run at that commit from the last 24 hours, never on another commit's. |
+| `npm run eval:agent` | Layer 2 live with `claude -p` (model `sonnet` unless `--model` names another). Writes `~/outbound-evals/<stamp>.agent.{json,md}`. Run layer 1 live first on the same checkout: tasks are scored on the newest run at that commit from the last 24 hours, or on the one run `--truth <file>` names. |
 | `evals/nightly.sh` | Both layers live, then the two summaries as one comment on OUT-145. `EVAL_POST=0` skips the comment. |
 | `npm test` | Includes `evals/test/`: every judge with an accepted and a rejected case, and the whole offline suite held to `evals/offline-expected.json`. |
 
-Flags: `--cases 1,4,9` and `--tasks 1,4` pick cases or tasks; `--max-requests N` sets the run's vendor request budget (default 4,000); `--out <dir>` writes results elsewhere; `--checkout <path>` runs another worktree's CLI and MCP server (see below).
+Flags: `--cases 1,4,9` and `--tasks 1,4` pick cases or tasks; `--max-requests N` sets the run's vendor request budget (default 4,000); `--out <dir>` writes results elsewhere; `--checkout <path>` runs another worktree's CLI and MCP server, and `--truth <file>` scores layer 2 on one named layer-1 run (see below).
 
 When a fix or a regression changes an offline verdict, `npm test` fails on `offline-expected.json`. Record the new verdicts with `UPDATE_EVALS=1 npm test` and read the diff before committing. Offline verdicts reflect the fixtures as much as the code: cases 3-5 skip offline because no fixture conversation is dropped, and case 27 fails offline because the fixtures' daily rows are not one coherent workspace.
 
@@ -31,16 +31,33 @@ When a fix or a regression changes an offline verdict, `npm test` fails on `offl
 - **Nothing stored on our side.** Results stay on the machine that ran them. The markdown summary, which is the only thing posted, is refused before writing or posting if it matches an email address, a LinkedIn or other URL, a redact token or a vendor id (`evals/report.ts`). The JSON keeps counts and campaign refs, never a person.
 - **Default configuration.** Live, the server is exactly `outbound mcp --provider all`: redact on, no key, a 50 s time budget. Cases 21 and 22 read with `--no-redact` because the person tools need real identifiers, and they keep only counts. Offline, each call gets a 3,600 s budget on the virtual clock so the fixtures are read in full. Case 19 sets its own 60 s budget.
 
-## Before and after a branch (OUT-168)
+## Before and after a branch (OUT-168, OUT-180)
 
-To compare a branch with main, run both layers against each worktree from one checkout that has this folder, and compare the two agent summaries. Each one shows the change in tool calls and dead ends per task since the previous run:
+To compare a branch with main, run both sides from one checkout that has this folder, and score both sides' agent passes against **one** layer-1 truth. Workspaces change by the hour, so two truth runs half an hour apart can disagree on a task the branch never touches, and that drift would read as a regression.
 
 ```sh
-LIVE_TESTS=1 npm run eval -- --checkout ../main-worktree && npm run eval:agent -- --checkout ../main-worktree
-LIVE_TESTS=1 npm run eval -- --checkout ../branch-worktree && npm run eval:agent -- --checkout ../branch-worktree
+# 1. Layer 1 on each side, back to back: the invariant verdicts for each side.
+LIVE_TESTS=1 npm run eval -- --checkout ../main-worktree
+LIVE_TESTS=1 npm run eval -- --checkout ../branch-worktree
+# 2. Pick one of those two runs as the truth (see below), then alternate the agent passes.
+TRUTH=~/outbound-evals/<stamp>.invariants.json
+for pass in 1 2 3; do
+  npm run eval:agent -- --checkout ../main-worktree --truth "$TRUTH"
+  npm run eval:agent -- --checkout ../branch-worktree --truth "$TRUTH"
+done
 ```
 
-`--checkout` points the live server and CLI at `<path>/packages/outbound-sdk/src/cli/bin.ts`. The cases and tasks stay this checkout's, so both sides are measured by the same suite. Run the two sides back to back, because the workspaces change overnight.
+Which run is the truth:
+
+- **Main's, by default.** Truth is a fact about the workspace (the campaigns running out of leads, the violations found with caps raised), and main is the reference.
+- **The branch's, when the branch changes how a case measures its truth**: the tool the case reads, or the case itself. Case 1's `owed` comes from `dropped_replies`, so a branch that lets it check more conversations records a better lower bound than main can. Say in the PR which run you picked and why.
+- Never each side's own run. That is what `truthFor` does without `--truth` (the newest live run at the checkout's commit), which is fine for one side alone and wrong for a comparison.
+
+`--truth` refuses a file that is not a live layer-1 run, is older than 24 hours or recorded no truth, and exits with the reason before any pass starts, rather than leave every task unscored without saying so. The agent summary names the truth's commit when it differs from the side's own.
+
+With one truth, a task whose tools the branch does not change scores the same on both sides whenever the agents' answers match. A difference left there is the agents', not the workspace's.
+
+`--checkout` points the live server and CLI at `<path>/packages/outbound-sdk/src/cli/bin.ts`. The cases and tasks stay this checkout's, so both sides are measured by the same suite.
 
 ## Scheduling on Brandon's Mac (not installed)
 

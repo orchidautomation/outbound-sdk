@@ -11,6 +11,7 @@ import {
   keptAnswer,
   scoreTask,
   summarizeAgent,
+  truthFile,
   truthFor,
 } from "../agent/run.ts";
 import { answerBlock, forbiddenClaim, TASKS } from "../agent/tasks.ts";
@@ -240,6 +241,57 @@ test("truth comes from the newest live run at the evaluated commit, never filled
     });
     assert.deepEqual(truthFor(dir, now, "ccc"), {});
     assert.deepEqual(truthFor(dir, now, null), {});
+  } finally {
+    rmSync(dir, { force: true, recursive: true });
+  }
+});
+
+test("--truth scores against one named live run at any commit, and refuses one that cannot be truth", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "evals-truth-file-"));
+  const now = Date.parse("2026-11-18T20:00:00Z");
+
+  const write = (name: string, run: Readonly<Record<string, unknown>>) => {
+    const file = path.join(dir, `${name}.invariants.json`);
+    writeFileSync(
+      file,
+      JSON.stringify({
+        commit: "aaa",
+        layer: "invariants",
+        mode: "live",
+        startedAt: "2026-11-18T19:00:00Z",
+        truth: { "9": { outOfLeads: 19 } },
+        ...run,
+      })
+    );
+
+    return file;
+  };
+
+  try {
+    assert.deepEqual(truthFile(write("main", {}), now), {
+      commit: "aaa",
+      truth: { "9": { outOfLeads: 19 } },
+    });
+
+    const refused: readonly [
+      string,
+      Readonly<Record<string, unknown>>,
+      RegExp,
+    ][] = [
+      ["offline", { mode: "offline" }, /not a live layer-1 run/u],
+      ["agent", { layer: "agent" }, /not a live layer-1 run/u],
+      ["stale", { startedAt: "2026-11-17T19:00:00Z" }, /older than 24 hours/u],
+      ["empty", { truth: {} }, /recorded no truth/u],
+    ];
+
+    for (const [name, run, reason] of refused) {
+      assert.throws(() => truthFile(write(name, run), now), reason);
+    }
+
+    assert.throws(
+      () => truthFile(path.join(dir, "missing.invariants.json"), now),
+      /cannot be read/u
+    );
   } finally {
     rmSync(dir, { force: true, recursive: true });
   }
