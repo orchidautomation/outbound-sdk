@@ -308,9 +308,11 @@ test("dropped_replies on Instantly reads each waiting person's lead and campaign
 
   assert.deepEqual(unrouted, []);
   assert.equal(result.data.dropped.length, 3);
-  // One lookup per reply page for the leads' ids (OUT-149), then one read of
-  // each waiting lead by that id.
-  assert.equal(paths.filter((path) => path === "/api/v2/leads/list").length, 2);
+  // One lookup for the leads' ids per page of emails listed (OUT-149): two
+  // of replies, then one of the latest email of each conversation, which
+  // ends at a page that is not full. Then one read of each waiting lead by
+  // that id.
+  assert.equal(paths.filter((path) => path === "/api/v2/leads/list").length, 3);
   assert.equal(
     paths.filter((path) => /^\/api\/v2\/leads\/[0-9a-f-]+$/u.test(path)).length,
     3

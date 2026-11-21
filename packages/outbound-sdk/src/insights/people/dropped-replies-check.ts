@@ -1,5 +1,5 @@
 // dropped_replies' checks: whether anything was sent after each conversation's
-// replies, from the messages sent by hand or a full read of the conversation.
+// replies, from one listing of answers or a full read of the conversation.
 
 import type { Message, Reply } from "../../internal/entities.ts";
 import { OutboundError } from "../../internal/errors.ts";
@@ -8,6 +8,7 @@ import { noun } from "../../internal/plural.ts";
 import type { InsightContext } from "../define.ts";
 import { isCapStop } from "../run-cap.ts";
 import { round } from "../stats.ts";
+import type { ListedAnswers } from "./dropped-replies-listed.ts";
 import { activityOf, waited } from "./thread-context.ts";
 import type { LabelledReply, ThreadContext } from "./thread-context.ts";
 
@@ -37,8 +38,13 @@ export interface DroppedReply extends Partial<ThreadContext> {
   readonly hoursWaiting: number;
   /** Replies in the conversation since the last message sent to the person. */
   readonly unansweredReplies: number;
-  /** Whether the conversation was read by its thread or by the lead's timeline. */
-  readonly checkedBy: "thread" | "timeline";
+  /**
+   * Whether the conversation was read in full by its thread or by the lead's
+   * timeline, or settled from its latest message alone (`latest`) when the
+   * budget left no read for it: that message is the person's reply, so
+   * nothing was sent after it, and `hoursWaiting` counts from it.
+   */
+  readonly checkedBy: "thread" | "timeline" | "latest";
   /** What was found, with the latest message and any meeting the vendor records. */
   readonly finding: string;
 }
@@ -80,7 +86,7 @@ const unanswered = (
 
 const toDropped = (
   open: readonly Reply[],
-  by: "thread" | "timeline",
+  by: DroppedReply["checkedBy"],
   now: number,
   messages: readonly Message[]
 ): FoundDropped[] => {
@@ -120,60 +126,7 @@ const toDropped = (
   ];
 };
 
-interface SentByHand {
-  readonly messages: readonly Message[];
-  /** `false` when the listing stopped at its max with more left. */
-  readonly whole: boolean;
-}
-
-/**
- * The messages sent by hand since `since`, up to `max`, where the tool can
- * list them by date on its side: one request per page. `null` where it
- * cannot. Only an answer is read from them, so stopping at `max` leaves the
- * rest to be read by thread and loses nothing.
- */
-export const sentByHand = async (
-  context: InsightContext,
-  since: string,
-  max: number
-): Promise<SentByHand | null> => {
-  const { capabilities, messages } = context.outbound;
-
-  if (
-    !capabilities["messages.byHand"] ||
-    capabilities["messages.since"] !== "server"
-  ) {
-    return null;
-  }
-
-  // Its cost is counted, but a stop at `max` does not make the answer partial.
-  // A request cap that stops it leaves every conversation to be read in full.
-  const walk = messages.listAll({ byHand: true, max, since });
-
-  const [found] = await context.each(
-    [walk],
-    async (each) => await each.toArray(),
-    "listings of the messages sent by hand"
-  );
-
-  if (found === undefined) {
-    return null;
-  }
-
-  if (walk.meta !== undefined) {
-    context.one({ meta: walk.meta });
-  }
-
-  if (walk.truncated) {
-    context.note(
-      `The messages sent by hand stopped at ${max}, so each conversation they did not settle was read in full.`
-    );
-  }
-
-  return { messages: found, whole: !walk.truncated };
-};
-
-/** The messages sent by hand in one conversation: its thread, or its lead. */
+/** The listed messages of one conversation: its thread, or its lead. */
 const answersIn = (
   conversation: Conversation,
   sent: readonly Message[]
@@ -200,16 +153,26 @@ interface Checked {
   unread: number;
 }
 
+const waitingSince = (conversation: Conversation): number =>
+  Math.min(
+    ...conversation.replies.flatMap((each) =>
+      each.sentAt === null ? [] : [Date.parse(each.sentAt)]
+    )
+  );
+
 /**
- * Reads each conversation in full. A failed read leaves it unchecked, with
- * why; a request cap leaves out the conversations it stopped.
+ * Reads each conversation in full, longest waiting first, so a read the
+ * budget stops still covers the oldest. A failed read leaves it unchecked,
+ * with why; a request cap leaves out the conversations it stopped.
  */
 const readFully = async (
   context: InsightContext,
   conversations: readonly Checkable[]
 ) =>
   await context.each(
-    conversations,
+    conversations.toSorted(
+      (left, right) => waitingSince(left) - waitingSince(right)
+    ),
     async (conversation) => {
       try {
         const read = await (conversation.by === "thread"
@@ -233,16 +196,80 @@ const readFully = async (
   );
 
 /**
- * Settles each conversation as answered, too recent or dropped. An answer
- * sent by hand after the replies settles one without reading it, and so does
+ * Settles the conversations the budget left unread whose latest listed
+ * message is the person's reply, newer than every reply listed: nothing was
+ * sent after it. Only that reply is taken as open, so `hoursWaiting` is a
+ * lower bound, and one waiting less than `olderThanHours` is left unread,
+ * since an older reply may still be owed. The rule that a reply within a
+ * minute of a send is automatic needs the full read, so it is not applied.
+ */
+const settleByLatest = (
+  context: InsightContext,
+  unread: readonly Checkable[],
+  latest: readonly Message[],
+  olderThanHours: number,
+  includeAuto: boolean
+) => {
+  const settled = new Set<Checkable>();
+  const dropped: FoundDropped[] = [];
+
+  for (const conversation of unread) {
+    const [last] = answersIn(conversation, latest).toSorted((left, right) =>
+      (right.sentAt ?? "").localeCompare(left.sentAt ?? "")
+    );
+
+    const [newest] = conversation.replies.toSorted((left, right) =>
+      (right.sentAt ?? "").localeCompare(left.sentAt ?? "")
+    );
+
+    if (
+      last === undefined ||
+      newest === undefined ||
+      last.direction !== "in" ||
+      last.sentAt === null ||
+      newest.sentAt === null ||
+      Date.parse(last.sentAt) < Date.parse(newest.sentAt)
+    ) {
+      continue;
+    }
+
+    const found = toDropped([newest], "latest", context.now, [last]);
+
+    // An automatic latest reply, or one too recent while an older reply may
+    // be owed, needs the full read.
+    if (
+      (!includeAuto && last.isAuto === true) ||
+      !found.every((each) => each.hoursWaiting >= olderThanHours)
+    ) {
+      continue;
+    }
+
+    dropped.push(...found);
+    settled.add(conversation);
+  }
+
+  if (dropped.length > 0) {
+    context.note(
+      `${plural(dropped.length, "conversation")} ${noun(dropped.length, "was", "were")} settled from ${noun(dropped.length, "its", "their")} latest message, not read in full, because the rate budget ran out (checkedBy latest): that message is the person's reply, so nothing was sent after it. hoursWaiting counts from that reply, a lower bound, and the rule that a reply within a minute of a send is automatic was not applied. Read ${noun(dropped.length, "it", "them")} with thread_context before following up.`
+    );
+  }
+
+  return { dropped, settled };
+};
+
+/**
+ * Settles each conversation as answered, too recent or dropped. A listed
+ * message sent after the replies settles one without reading it, and so does
  * an open reply too recent to count, unless the listing stopped at its max
- * and its answer may lie past the stop. The rest are read in full, since a
- * campaign send after the reply counts as an answer too.
+ * and its answer may lie past the stop. The rest are read in full, longest
+ * waiting first, so a read the budget stops still covers the oldest: with
+ * only the messages sent by hand listed, a campaign send after the reply
+ * counts as an answer too.
  */
 export const check = async (
   context: InsightContext,
   checkable: readonly Checkable[],
-  sent: SentByHand | null,
+  sent: ListedAnswers | null,
   olderThanHours: number,
   includeAuto: boolean
 ): Promise<Checked> => {
@@ -303,13 +330,42 @@ export const check = async (
         });
 
   const threads = await readFully(context, toRead);
-  const stopped = toRead.length - threads.length;
 
-  const reasons = new Set<string>(
-    stopped > 0 ? ["the request cap stopped the read"] : []
+  const unreadOnes = toRead.filter(
+    (conversation) =>
+      !threads.some(
+        (each) => each.conversation === conversation && each.failed === null
+      )
   );
 
-  checked.unread += stopped;
+  const byLatest = settleByLatest(
+    context,
+    unreadOnes,
+    sent?.latest ?? [],
+    olderThanHours,
+    includeAuto
+  );
+
+  checked.dropped.push(...byLatest.dropped);
+
+  const failedOf = new Map(
+    threads.flatMap(({ conversation, failed }) =>
+      failed === null ? [] : [[conversation, failed] as const]
+    )
+  );
+
+  const remaining = unreadOnes.filter(
+    (conversation) => !byLatest.settled.has(conversation)
+  );
+
+  const reasons = new Set(
+    remaining.map(
+      (conversation) =>
+        failedOf.get(conversation) ?? "the request cap stopped the read"
+    )
+  );
+
+  checked.unread += remaining.length;
 
   for (const { conversation, failed, messages } of threads) {
     if (failed === null) {
@@ -324,12 +380,19 @@ export const check = async (
         true,
         endsAutomatic ? conversation.replies.length : 0
       );
-    } else {
-      checked.unread += 1;
-      reasons.add(failed);
     }
   }
 
+  noteChecked(context, checked, reasons);
+
+  return checked;
+};
+
+const noteChecked = (
+  context: InsightContext,
+  checked: Checked,
+  reasons: ReadonlySet<string>
+): void => {
   if (checked.automatic > 0) {
     context.note(
       `${plural(checked.automatic, "conversation")} ended in an automatic reply once read in full (such as one within a minute of the email it answers), so ${noun(checked.automatic, "its", "their")} ${plural(checked.automaticReplies, "reply", "replies")} ${noun(checked.automaticReplies, "is", "are")} counted in totals.skippedAuto, not as dropped. Pass include_auto: true to list them.`
@@ -341,6 +404,4 @@ export const check = async (
       `${plural(checked.unread, "conversation")} could not be read, so ${noun(checked.unread, "it is", "they are")} counted in totals.unchecked, not as dropped (${[...reasons].join("; ")}).`
     );
   }
-
-  return checked;
 };

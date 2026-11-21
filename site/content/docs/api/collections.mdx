@@ -79,6 +79,7 @@ Some vendors have no endpoint that lists every lead. Their adapters walk the cam
 | `leadId` | `string` |  |
 | `threadId` | `string`, the `threadId` of an earlier message | `messages.byThread` |
 | `byHand` | `true`: only the messages a person sent by hand, not the ones a campaign sent | `messages.byHand` |
+| `latestOfConversation` | `true`: only the latest message of each conversation that holds a reply, sent or received | `messages.latestOfConversation` |
 | `since`, `until` | ISO 8601 date or timestamp, inclusive | `messages.since` |
 | `include: ["body"]` |  | `messages.body` |
 

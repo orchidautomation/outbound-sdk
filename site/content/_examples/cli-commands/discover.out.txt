@@ -134,6 +134,7 @@ $ outbound capabilities
       "messages.body": "full",
       "messages.byHand": false,
       "messages.byThread": true,
+      "messages.latestOfConversation": false,
       "messages.list": true,
       "messages.since": "server",
       "native": false,

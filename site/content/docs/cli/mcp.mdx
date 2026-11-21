@@ -155,7 +155,7 @@ Messages are read while a tool call runs, and each answer is written when it is 
 
 Every other built-in tool and insight is listed as it is, `thread_context` among them. Each listed tool takes `scope`: `provider` and `workspace` read one tool or workspace of `--provider all`, and `tag` reads the campaigns with one tag where the tool can (`client_report`). A scope that names nothing the server reads is refused with what it does read. `initialize` names what the server reads, says once how to read an answer, and points bulk exports to the CLI's `--jsonl` or the SDK.
 
-Every old name still answers until 0.17.0, as it did, with a note in `meta.notes` such as "campaign_overview is an old name kept until 0.17.0: call campaigns with view \"list\" instead." `RENAMED_TOOLS` from `outbound-sdk/cli` maps each old name to how it is called now, and `--tools` takes either. A hint in `next` names tools as they are listed. The SDK's own tools and insights keep their names.
+Every old name still answers until 0.18.0, as it did, with a note in `meta.notes` such as "campaign_overview is an old name kept until 0.18.0: call campaigns with view \"list\" instead." `RENAMED_TOOLS` from `outbound-sdk/cli` maps each old name to how it is called now, and `--tools` takes either. A hint in `next` names tools as they are listed. The SDK's own tools and insights keep their names.
 
 `person` is listed under `redact`: its `timeline` and `account` views match people by email or LinkedIn profile, which `redact` masks, so they answer with the masked `summary` view and a note naming `--no-redact`. `summary` looks up a lead ref by the tokens `redact` wrote, and `list_hygiene` matches on them. Three things change the list on a real setup:
 

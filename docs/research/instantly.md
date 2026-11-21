@@ -774,3 +774,33 @@ Daily rows do not state a timezone, and the range parameters say "Date-only valu
 
 - The adapter already asks for 100 a page (`PAGE_SIZE`), so nothing changed. A campaign page costs three requests: the page, `/custom-tag-mappings` for its campaigns and `/custom-tags` for the tags they name. 110 campaigns are two pages, six requests, plus a request for each further page of tag mappings and the empty page after the last when Instantly sends a next marker on a short last page (seen on tags, "Live run, 2026-11-14"). That accounts for OUTB-25's 8 requests. Stopping campaign walks at a short page would save the empty one, but the listing fixtures model short pages with more after them and the docs say nothing on how a list ends, so it was left as it is. Turning off the `tags` capability makes it one request a page.
 - Workspace label: every Instantly record names its workspace in `organization`, but the adapter builds refs before any response and `GET /api/v2/workspaces/current` is a request of its own. Deriving the label from either would also change every ref made with the label `default`, so the label stays `INSTANTLY_WORKSPACE_ID`, then `default`. Instantly ids are UUIDs, so two workspaces' records do not share a ref even with the same label; only the `workspaceId` column cannot tell them apart.
+
+## The emails lane and conversation checks, 2026-11-20 (OUT-179)
+
+Fetched 2026-11-20: the OpenAPI spec at `https://api.instantly.ai/openapi/api_v2.json` (`info.version` 2.0.0), operation `GET /api/v2/emails` (reference page `https://developer.instantly.ai/api-reference/email/list-email`). What it says, unchanged from section 5 except where noted:
+
+- "**Rate Limit:** This endpoint has a rate limit of 20 requests per minute, unlike other API endpoints." No rate-limit or Retry-After header is documented for it.
+- `latest_of_thread` (boolean): "Whether to only return the latest email in each thread." Section 5 lists the name; this is its whole description.
+- `email_type` is `received`, `sent` or `manual`; `min_timestamp_created` and `max_timestamp_created` take ISO timestamps; `search` takes `thread:<id>`; `limit` is 1 to 100.
+
+Seen live the same day, read-only, on one workspace (counts only):
+
+| Query, 14 days | Rows | Pages | What the rows are |
+| --- | --- | --- | --- |
+| `email_type=received` | 148 to 149 | 3 (100, 48, then 0) | every reply, in 137 threads |
+| `latest_of_thread=true` | 600+ | 6+ | one per thread a campaign sent in; 596 of the first 600 a campaign send |
+| `email_type=received&latest_of_thread=true` | 141 to 142 | 2 full, then 0 | one per thread holding a reply (all 137), whoever sent last: 30 campaign sends (`ue_type` 1), 13 sent by hand (3), 99 replies (2) |
+
+So with `email_type=received`, `latest_of_thread` selects the threads that hold a received email and answers each one's latest email in either direction. A full read of 7 of those threads (`search=thread:<id>`; 4 ending in a send, 3 in a reply) gave the same latest email every time. No row was scheduled (`ue_type` 4). The adapter maps it to `messages.listAll({ latestOfConversation: true })`, so `dropped_replies` settles every answered conversation from one listing instead of one read each.
+
+Every `/emails` listing, a thread read included, sends `next_starting_after` on its last page and answers an empty page after it. The latest listing and thread reads stop at a page that is not full, so a conversation read costs one request instead of two.
+
+The lane in practice, measured from one process with nothing else on the Mac reading (another reader of the same workspace elsewhere cannot be ruled out):
+
+- A burst of 25 requests at one a second after 70 s of quiet: 11 answered 200, then 14 answered 429.
+- One request per 6.2 s (9.7 a minute) after 75 s of quiet: 18 of 20 answered 200; the 9th and the 19th answered 429.
+- No 429 carried a rate-limit or Retry-After header.
+
+So about 10 reads a minute get through, half the documented 20. The adapter's default share of 0.5 keeps to 10 a minute, and a 429 halves that. Within the MCP server's 50 s time budget a call has about ten emails-lane reads.
+
+Where they went before this change (main at dc90cb1, `unanswered_replies` over `--provider all`, logged by path and page size only): the first page of replies, then the second page of 48 read again 7 times, and the call stopped at 34 requests and 6 to 9 s with `unchecked: 18` of 18. The combined listing gives replies newest first across tools; HeyReach's inbox pages held 0 to 4 replies each, so Instantly's waiting page was read again for every HeyReach page. A combined walk now holds a page it must read again for the rest of that call (`ctx.remember`), so that listing costs 3 lane requests.

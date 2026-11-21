@@ -6,8 +6,10 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { cardFor } from "../../src/cards/index.ts";
+import { combine } from "../../src/combine/index.ts";
 import { createOutbound, MemoryRateLimitStore } from "../../src/index.ts";
 import { insights } from "../../src/insights/index.ts";
+import { memory } from "../../src/memory/index.ts";
 import { fixtureHandler } from "../helpers/adapter-suite.ts";
 import { createClock } from "../helpers/clock.ts";
 import { createFetch, json } from "../helpers/http.ts";
@@ -113,7 +115,33 @@ const leadOf = (address: string) => ({
   last_name: "Sample",
 });
 
-const workspace = (padding = 0) => {
+// The latest email of each thread with a reply, as GET /emails answers it
+// with latest_of_thread (seen live 2026-11-20). "unanswered" leaves the
+// answers out, as if nobody had answered any reply.
+const latestOfThreads = (unanswered: boolean) => {
+  const latest = new Map<string, (typeof REPLIES)[number]>();
+
+  for (const each of unanswered ? REPLIES : [...REPLIES, ...ANSWERS]) {
+    const known = latest.get(each.thread_id);
+
+    if (
+      known === undefined ||
+      known.timestamp_created < each.timestamp_created
+    ) {
+      latest.set(each.thread_id, each);
+    }
+  }
+
+  return [...latest.values()];
+};
+
+type Listing = "byHand" | "latest" | "latest-unanswered";
+
+const workspace = (
+  padding = 0,
+  listing: Listing = "byHand",
+  besideLinkedIn = false
+) => {
   const clock = createClock();
   const unrouted: string[] = [];
   const fixtures = fixtureHandler([instantly], unrouted);
@@ -140,6 +168,18 @@ const workspace = (padding = 0) => {
     }
 
     const type = url.searchParams.get("email_type");
+
+    if (
+      type === "received" &&
+      url.searchParams.get("latest_of_thread") === "true"
+    ) {
+      const rows = latestOfThreads(listing === "latest-unanswered");
+
+      // Instantly sends a cursor on the last page too (seen live).
+      return url.searchParams.get("starting_after") === null
+        ? json({ items: rows.slice(0, 100), next_starting_after: "l2" })
+        : json({ items: rows.slice(100), next_starting_after: "l3" });
+    }
 
     if (type === "received") {
       return url.searchParams.get("starting_after") === null
@@ -174,15 +214,37 @@ const workspace = (padding = 0) => {
 
     const thread = url.searchParams.get("search")?.replace(/^thread:/u, "");
 
+    // With a cursor on its last page too, as Instantly sends: a page that is
+    // not full ends the read, so each conversation costs one request.
     return json({
-      items: [...REPLIES, ...ANSWERS].filter(
-        (each) => each.thread_id === thread
-      ),
+      items: [
+        ...REPLIES,
+        ...(listing === "latest-unanswered" ? [] : ANSWERS),
+      ].filter((each) => each.thread_id === thread),
+      next_starting_after: url.searchParams.get("starting_after") ?? "t2",
     });
   });
 
+  const made = instantly.make();
+
+  const adapter =
+    listing === "byHand"
+      ? {
+          ...made,
+          capabilities: {
+            ...made.capabilities,
+            "messages.latestOfConversation": false,
+          },
+        }
+      : made;
+
   const outbound = createOutbound({
-    adapter: instantly.make(),
+    adapter: besideLinkedIn
+      ? combine([
+          adapter,
+          memory({ data: {}, name: "lntool", workspaceId: "agency" }),
+        ])
+      : adapter,
     fetch: http.fetch,
     plugins: [insights()],
     rateLimitStore: new MemoryRateLimitStore(),
@@ -300,7 +362,11 @@ test("dropped_replies without messages.byHand reads every conversation and gives
   const plain = createOutbound({
     adapter: {
       ...adapter,
-      capabilities: { ...adapter.capabilities, "messages.byHand": false },
+      capabilities: {
+        ...adapter.capabilities,
+        "messages.byHand": false,
+        "messages.latestOfConversation": false,
+      },
     },
     fetch: http.fetch,
     plugins: [insights()],
@@ -370,4 +436,111 @@ test("dropped_replies whose listing of messages sent by hand stops at max does n
   assert.equal(result.data.totals.answered, 29);
   assert.equal(result.data.totals.tooRecent, 2);
   assert.equal(threadReads(urlsOf(http.requests)).length, 22);
+});
+
+test("dropped_replies on Instantly settles every answered conversation from the latest email of each, and reads only the one waiting", async () => {
+  const { clock, http, outbound, unrouted } = workspace(0, "latest");
+  const byHand = workspace();
+
+  const result = await clock.settle(
+    outbound.insights.droppedReplies({}, { now: NOW })
+  );
+
+  const listed = await byHand.clock.settle(
+    byHand.outbound.insights.droppedReplies({}, { now: NOW })
+  );
+
+  const emails = urlsOf(http.requests).filter(
+    (url) => url.pathname === "/api/v2/emails"
+  );
+
+  assert.deepEqual(unrouted, []);
+  assert.deepEqual(result.data.dropped, listed.data.dropped);
+  assert.deepEqual(result.data.totals, listed.data.totals);
+  assert.equal(result.meta.complete, true);
+  assert.deepEqual(
+    emails.map((url) => [
+      url.searchParams.get("email_type"),
+      url.searchParams.get("latest_of_thread"),
+    ]),
+    [
+      ["received", null],
+      ["received", null],
+      ["received", "true"],
+      ["received", "true"],
+      [null, null],
+    ]
+  );
+  assert.deepEqual(threadReads(urlsOf(http.requests)), ["thread:thread-50"]);
+});
+
+test("dropped_replies whose budget stops the reads reads the longest waiting first and settles the rest from their latest email", async () => {
+  const whole = workspace(0, "latest-unanswered");
+
+  await whole.clock.settle(
+    whole.outbound.insights.droppedReplies({}, { now: NOW })
+  );
+
+  const listing = whole.http.requests.findIndex(
+    (request) => new URL(request.url).searchParams.get("search") !== null
+  );
+
+  const capped = workspace(0, "latest-unanswered");
+
+  const result = await capped.clock.settle(
+    capped.outbound.insights.droppedReplies(
+      {},
+      { maxRequests: listing + 6, now: NOW }
+    )
+  );
+
+  const read = threadReads(urlsOf(capped.http.requests));
+
+  // Thread n's reply is 3 + n hours old, so the longest waiting human
+  // replies are the highest-numbered threads.
+  const longestWaiting = REPLIES.flatMap((reply, index) =>
+    STATUS[kindAt(index)] === 1 && kindAt(index) !== "recent"
+      ? [`thread:${reply.thread_id}`]
+      : []
+  ).toReversed();
+
+  assert.ok(read.length > 0 && read.length < 30, `${read.length} read`);
+  assert.deepEqual(read, longestWaiting.slice(0, read.length));
+
+  // Every unread one ends in the person's reply, so nothing was sent after it.
+  const by = (checkedBy: string) =>
+    result.data.dropped.filter((each) => each.checkedBy === checkedBy).length;
+
+  assert.equal(result.data.dropped.length, 30);
+  // A read the cap stopped before its lead lookup is settled from the
+  // latest email too, so at most every thread read was settled by it.
+  assert.ok(by("thread") <= read.length, `${by("thread")} by thread`);
+  assert.equal(by("thread") + by("latest"), 30);
+  assert.ok(by("latest") >= 30 - read.length);
+  assert.equal(result.data.totals.unchecked, 0);
+  assert.equal(result.data.totals.tooRecent, 1);
+  assert.ok(
+    result.meta.notes.some((note) =>
+      note.includes("settled from their latest message, not read in full")
+    ),
+    JSON.stringify(result.meta.notes)
+  );
+});
+
+test("dropped_replies on Instantly beside a tool with no such listing still settles Instantly's answered conversations from it", async () => {
+  const { clock, http, outbound, unrouted } = workspace(0, "latest", true);
+
+  const result = await clock.settle(
+    outbound.insights.droppedReplies({}, { now: NOW })
+  );
+
+  assert.equal(outbound.capabilities["messages.latestOfConversation"], false);
+  assert.deepEqual(unrouted, []);
+  assert.deepEqual(
+    result.data.dropped.map((each) => each.reply),
+    ["instantly:client-a:reply-50"]
+  );
+  assert.equal(result.data.totals.answered, 29);
+  assert.equal(result.data.totals.dropped, 1);
+  assert.deepEqual(threadReads(urlsOf(http.requests)), ["thread:thread-50"]);
 });

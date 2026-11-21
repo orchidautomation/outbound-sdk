@@ -67,6 +67,8 @@ export interface Capabilities {
   "messages.byThread": boolean;
   /** Only the messages a person sent by hand, not the ones a campaign sent. */
   "messages.byHand": boolean;
+  /** Only the latest message of each conversation that holds a reply, whoever sent it: one listing settles which conversations were answered. */
+  "messages.latestOfConversation": boolean;
   "replies.list": boolean;
   /** Reply categories come from the vendor, or are not available. */
   "replies.category": "vendor" | false;
@@ -149,6 +151,7 @@ export const NO_CAPABILITIES: Capabilities = {
   "messages.body": false,
   "messages.byHand": false,
   "messages.byThread": false,
+  "messages.latestOfConversation": false,
   "messages.list": false,
   "messages.since": false,
   native: false,

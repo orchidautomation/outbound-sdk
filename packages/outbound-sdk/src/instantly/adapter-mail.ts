@@ -123,6 +123,17 @@ const nextCursor = (
         lead: lead?.address ?? null,
       };
 
+/** The lead ids of a page's emails: the timeline's own lead, or one lookup for the page. */
+const leadIdsOf = async (
+  client: InstantlyClient,
+  ctx: AdapterContext,
+  lead: TimelineLead | undefined,
+  sent: readonly JsonObject[]
+): Promise<LeadIds> =>
+  lead?.id === undefined
+    ? await leadIdsFor(client, ctx, sent)
+    : oneLead(lead.address, lead.campaign ?? null, lead.id);
+
 interface EmailPage {
   readonly items: JsonObject[];
   readonly next: Json | undefined;
@@ -140,17 +151,25 @@ const listEmails = async (
   const threadId = "threadId" in query ? query.threadId : undefined;
   const byHand = "byHand" in query && query.byHand === true;
   const sentByHand = byHand ? "manual" : undefined;
+
+  // With email_type=received, latest_of_thread answers the latest email of
+  // each thread holding a reply, sent or received (seen live 2026-11-20).
+  const latest =
+    "latestOfConversation" in query && query.latestOfConversation === true;
+
   const lead = await timelineLead(client, ctx, leadId, cursor);
+  const limit = pageSize(query.limit);
 
   const envelope = listEnvelope(
     await client.get(ctx, "/emails", {
       lane: EMAILS_LANE,
       query: {
         campaign_id: query.campaignId ?? lead?.campaign,
-        email_type: received ? "received" : sentByHand,
+        email_type: received || latest ? "received" : sentByHand,
         is_unread: "unread" in query ? query.unread : undefined,
+        latest_of_thread: latest ? true : undefined,
         lead: lead?.address,
-        limit: pageSize(query.limit),
+        limit,
         max_timestamp_created: query.until,
         min_timestamp_created: query.since,
         search: threadId === undefined ? undefined : `thread:${threadId}`,
@@ -173,11 +192,14 @@ const listEmails = async (
           sent.map(async (item) => await withFullBody(client, ctx, item))
         )
       : sent,
-    leadIds:
-      lead?.id === undefined
-        ? await leadIdsFor(client, ctx, sent)
-        : oneLead(lead.address, lead.campaign ?? null, lead.id),
-    next: nextCursor(envelope.next, lead),
+    leadIds: await leadIdsOf(client, ctx, lead, sent),
+    // A cursor comes on the last page too, so a page of one conversation or
+    // of the latest emails that is not full ends it, saving a request on the
+    // lane for each conversation read.
+    next:
+      (latest || threadId !== undefined) && envelope.items.length < limit
+        ? undefined
+        : nextCursor(envelope.next, lead),
   };
 };
 

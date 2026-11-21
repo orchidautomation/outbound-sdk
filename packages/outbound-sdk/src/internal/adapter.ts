@@ -61,6 +61,16 @@ export interface AdapterContext {
    * `meta.notes`.
    */
   readonly note: (text: string) => void;
+  /**
+   * Gives what `read` gave last in this call for `slot` when `token` is the
+   * same, else reads again. One value per slot, held only while the call
+   * runs, so a page a combined listing must read again costs no request.
+   */
+  readonly remember?: <Value>(
+    slot: string,
+    token: string,
+    read: () => Promise<Value>
+  ) => Promise<Value>;
 }
 
 /** One page from the vendor. `next` is whatever the adapter needs to continue. */
@@ -121,6 +131,8 @@ export interface MessageQuery extends PageQuery, TimeRange {
   readonly threadId?: string | undefined;
   /** `true` for the messages a person sent by hand only. */
   readonly byHand?: true | undefined;
+  /** `true` for only the latest message of each conversation that holds a reply. */
+  readonly latestOfConversation?: true | undefined;
   /** Bodies are expensive on some vendors, so they are fetched only on request. */
   readonly includeBody: boolean;
 }

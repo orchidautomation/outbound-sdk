@@ -74,6 +74,14 @@ const credentialKey = (adapter: Adapter): string =>
     ? `${adapter.name}:${adapter.workspaceId}`
     : `${adapter.name}:${sha256Hex(adapter.secrets.join("\u001F")).slice(0, 24)}`;
 
+interface Held {
+  readonly token: string;
+  readonly value: Promise<unknown>;
+}
+
+/** What each call's adapters asked to remember, dropped with the call. */
+const remembered = new WeakMap<CallState, Map<string, Held>>();
+
 export class RequestEngine {
   readonly #runtime: Runtime;
   readonly #store: RateLimitStore;
@@ -157,6 +165,27 @@ export class RequestEngine {
   ): AdapterContext {
     return {
       forAdapter: (other) => this.contextFor(other, state, notes),
+      remember: async (slot, token, read) => {
+        const held = remembered.get(state) ?? new Map<string, Held>();
+        remembered.set(state, held);
+        const last = held.get(slot);
+
+        if (last?.token === token) {
+          // SAFETY: a slot names one read of one adapter, so the value held
+          // under it came from a read of the same type.
+          return (await last.value) as Awaited<ReturnType<typeof read>>;
+        }
+
+        const value = read();
+        held.set(slot, { token, value });
+
+        try {
+          return await value;
+        } catch (error) {
+          held.delete(slot);
+          throw error;
+        }
+      },
       note: (text) => {
         if (!notes.includes(text)) {
           notes.push(text);

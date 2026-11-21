@@ -640,3 +640,68 @@ test("a reply given out and then deleted between pages makes none repeat or go m
     "instantly:default:g",
   ]);
 });
+
+test("one walk across tools reads a waiting tool's page once, not again for each page of the other", async () => {
+  // Seen live on 2026-11-20: HeyReach handed out its inbox a few replies, or
+  // none, per page, and each of those pages read Instantly's second page of
+  // replies again, until Instantly's emails lane (about 10 reads a minute)
+  // was spent before dropped_replies read a single conversation.
+  const email: MemoryMessage[] = Array.from({ length: 150 }, (_, index) => ({
+    campaignId: uuid(1),
+    direction: "in",
+    id: `e${index + 1}`,
+    sentAt: new Date(Date.UTC(2026, 10, 16, 12) - index * 60_000).toISOString(),
+  }));
+
+  const linkedin: MemoryMessage[] = Array.from({ length: 12 }, (_, index) => ({
+    campaignId: "300010",
+    direction: "in",
+    id: `k${index + 1}`,
+    sentAt: new Date(
+      Date.UTC(2026, 10, 16, 12) - index * 600_000 - 30_000
+    ).toISOString(),
+  }));
+
+  const emailTool = memory({
+    data: { campaigns: EMAIL_CAMPAIGNS, messages: email },
+    name: "instantly",
+    pageSize: 100,
+    workspaceId: "default",
+  });
+
+  const pagesRead: string[] = [];
+  const { listReplies } = emailTool;
+  assert.ok(listReplies !== undefined);
+
+  const counted: Adapter = {
+    ...emailTool,
+    listReplies: async (query, ctx) => {
+      pagesRead.push(JSON.stringify(query.next ?? null));
+
+      return await listReplies(query, ctx);
+    },
+  };
+
+  const outbound = createOutbound({
+    adapter: combine([
+      counted,
+      memory({
+        data: { campaigns: LINKEDIN_CAMPAIGNS, messages: linkedin },
+        name: "heyreach",
+        pageSize: 1,
+        workspaceId: "default",
+      }),
+    ]),
+  });
+
+  const refs = await outbound.replies.listAll().toArray();
+
+  assert.equal(refs.length, 162, "every reply once");
+  assert.equal(new Set(refs.map((reply) => reply.ref)).size, 162);
+  assert.equal(
+    pagesRead.length,
+    new Set(pagesRead).size,
+    `${pagesRead.length} reads`
+  );
+  assert.equal(pagesRead.length, 2);
+});

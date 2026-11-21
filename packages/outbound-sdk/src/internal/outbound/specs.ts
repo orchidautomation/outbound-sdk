@@ -329,6 +329,7 @@ export const messageList = (core: Core): ListSpec<Message, MessageFilters> => ({
     byHand: true,
     campaignId: true,
     include: true,
+    latestOfConversation: true,
     leadId: true,
     since: true,
     threadId: true,
@@ -343,6 +344,14 @@ export const messageList = (core: Core): ListSpec<Message, MessageFilters> => ({
         core.gate,
         "messages.byHand",
         "Listing only the messages sent by hand"
+      );
+    }
+
+    if (filters.latestOfConversation !== undefined) {
+      requireCapability(
+        core.gate,
+        "messages.latestOfConversation",
+        "Listing only the latest message of each conversation"
       );
     }
 
@@ -370,6 +379,7 @@ export const messageList = (core: Core): ListSpec<Message, MessageFilters> => ({
       byHand: filters.byHand,
       campaignId: filters.campaignId,
       include: filters.include,
+      latestOfConversation: filters.latestOfConversation,
       leadId: filters.leadId,
       threadId: filters.threadId,
       ...normalizeRange(filters),
@@ -382,6 +392,7 @@ export const messageList = (core: Core): ListSpec<Message, MessageFilters> => ({
       byHand: filters.byHand,
       campaignId: filters.campaignId,
       includeBody: wantsBody(filters.include),
+      latestOfConversation: filters.latestOfConversation,
       leadId: filters.leadId,
       since: filters.since,
       threadId: filters.threadId,

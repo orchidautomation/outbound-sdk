@@ -97,14 +97,26 @@ const scopedOrAcross = <
     memberCtx: AdapterContext,
     query: Query
   ) => Promise<Page<Item>>,
-  across: Across<Item>
+  across: Across<Item>,
+  kind: string
 ): Promise<Page<Item>> => {
   if (query.campaignId === undefined) {
     // Every member is read side by side and merged, so a cap on the walk
     // shares its room among them instead of the first member taking it all.
-    return across(members, ctx, query, (member, memberCtx, next) =>
-      read(member, memberCtx, { ...query, next })
-    );
+    // A member's page whose records wait for another member's is read again
+    // on the next page; within one call it comes from the call's memory.
+    return across(members, ctx, query, (member, memberCtx, next) => {
+      const scoped = { ...query, next };
+      const fresh = () => read(member, memberCtx, scoped);
+
+      return ctx.remember === undefined
+        ? fresh()
+        : ctx.remember(
+            `${kind}:${member.name}:${member.workspaceId}`,
+            JSON.stringify(scoped),
+            fresh
+          );
+    });
   }
 
   // A campaign lives in exactly one member, so the listing goes straight there.
@@ -173,7 +185,7 @@ const lists = (members: readonly Adapter[]): Lists => ({
       );
     }
 
-    return scopedOrAcross(members, ctx, query, readLeads, takeInTurn);
+    return scopedOrAcross(members, ctx, query, readLeads, takeInTurn, "leads");
   },
   // One workspace per member, named by its label. No request is made.
   listWorkspaces: () =>
@@ -250,7 +262,8 @@ const messageLists = (members: readonly Adapter[]): MessageLists => ({
 
         return member.listMessages({ ...scoped, leadId: lead?.id }, memberCtx);
       },
-      pageNewestFirst
+      pageNewestFirst,
+      "messages"
     );
   },
   listReplies: (query, ctx) =>
@@ -265,7 +278,8 @@ const messageLists = (members: readonly Adapter[]): MessageLists => ({
 
         return member.listReplies(scoped, memberCtx);
       },
-      pageNewestFirst
+      pageNewestFirst,
+      "replies"
     ),
   listSenderHealth: (query, ctx) =>
     scopedOrAcross(
@@ -279,7 +293,8 @@ const messageLists = (members: readonly Adapter[]): MessageLists => ({
 
         return member.listSenderHealth(scoped, memberCtx);
       },
-      takeInTurn
+      takeInTurn,
+      "senderHealth"
     ),
   listSenders: (query, ctx) =>
     scopedOrAcross(
@@ -293,7 +308,8 @@ const messageLists = (members: readonly Adapter[]): MessageLists => ({
 
         return member.listSenders(scoped, memberCtx);
       },
-      takeInTurn
+      takeInTurn,
+      "senders"
     ),
 });
 

@@ -12,6 +12,10 @@
 
 - Messages sent by hand (byHand) are read with email_type=manual on GET /emails, which the reference names but does not describe, and only emails with ue_type 3 (Sent) are kept: a campaign send is ue_type 1. Not run against a live workspace.
 
+- The latest message of each conversation holding a reply (latestOfConversation) is GET /emails with email_type=received and latest_of_thread=true. The reference describes latest_of_thread only as "Whether to only return the latest email in each thread". Seen live on 2026-11-20: over 14 days it answered one row for each of the 137 threads with a received email, 43 of them a send (ue_type 1 or 3) and the rest a reply, in as many pages as the replies, and a full read of 7 of those threads (4 ending in a send, 3 in a reply) gave the same latest email. Without email_type it lists every thread a campaign sent in, about 600 a fortnight there. That listing and a read of one conversation end at a page that is not full, which saves the empty last page on the emails lane.
+
+- GET /emails is documented at 20 requests a minute. Measured live on 2026-11-20 from one process, with nothing else on the machine reading: 11 of a burst of 25 succeeded, and at one request per 6.2 s, 18 of 20; no 429 carried a rate-limit or Retry-After header. The adapter keeps to its share of the documented 20, halved after a 429.
+
 - An email's step and a lead's last step are ids of the form sequence_step_variant, each counted from 0 (seen live, not documented); any other form gives a null step. Step analytics count steps from 0 too, and can hold a row with no step for counts Instantly could not tie to one.
 
 - Whether reply_count includes automatic replies is not documented; replied uses the unique reply count and repliedAuto the unique automatic count.

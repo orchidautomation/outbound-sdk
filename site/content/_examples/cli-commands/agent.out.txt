@@ -97,7 +97,7 @@ $ outbound tool campaign_trend --input '{"campaign":"cmp_founders","from":"last 
     "requests": 0,
     "throttledMs": 0
   },
-  "next": "Check the input and try again. campaign_trend is an old name kept until 0.17.0: call campaigns with view \"trend\" instead.",
+  "next": "Check the input and try again. campaign_trend is an old name kept until 0.18.0: call campaigns with view \"trend\" instead.",
   "ok": false,
   "error": {
     "code": "Invalid",
