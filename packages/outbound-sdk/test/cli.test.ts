@@ -138,7 +138,7 @@ test("reports capabilities and caveats, and runs a tool", async () => {
 
   assert.match(
     old.meta.notes[0] ?? "",
-    /^campaign_overview is an old name kept until 0\.17\.0: call campaigns with view "list" instead\.$/u
+    /^campaign_overview is an old name kept until 0\.18\.0: call campaigns with view "list" instead\.$/u
   );
 
   const result = (
