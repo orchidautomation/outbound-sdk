@@ -34,6 +34,17 @@ export default defineConfig({
   // The guides moved under /docs; keep the old addresses working.
   redirects: [
     { from: "/guides/:slug*", status: 308, to: "/docs/guides/:slug*" },
+    // Guides renamed to the question they answer.
+    {
+      from: "/docs/guides/sync-to-database",
+      status: 308,
+      to: "/docs/guides/instantly-to-bigquery-snowflake-postgres",
+    },
+    {
+      from: "/docs/guides/mcp-server",
+      status: 308,
+      to: "/docs/guides/claude-mcp-server",
+    },
   ],
   theme: { accent: "#e11d48" },
   title: "outbound-sdk",

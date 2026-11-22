@@ -1,0 +1,65 @@
+---
+title: "Smartlead API pagination: offset and limit, up to 100 a page, and endpoints with none"
+description: How each Smartlead API list pages (offset and limit, a cursor, or not at all), the page size each allows, how to know you reached the end, and how outbound-sdk walks every page for you. The Smartlead adapter is unverified.
+sidebar:
+  label: Smartlead pagination
+related:
+  - /docs/api/pagination
+  - /docs/adapters/smartlead
+  - /docs/coverage/smartlead
+  - /docs/guides/export-replies
+---
+
+**Most Smartlead API lists page with `offset` and `limit` query parameters, up to 100 records a page; you stop when you have `total_leads` records or a page comes back shorter than `limit`. The campaign list has no pagination at all and returns every campaign at once, the master inbox pages 20 at a time with the offset in a POST body, and the lead search uses a cursor.** outbound-sdk knows which list does what: `listAll()` walks every page under Smartlead's rate limit, and `listPages()` hands you each page with a cursor to resume from.
+
+<Callout type="warning" title="The Smartlead adapter is unverified">
+  It has never been run against a live Smartlead account: it is written from
+  Smartlead's public documentation and tested offline. Smartlead's reference
+  pages contradict each other in places; the repository's research note records
+  which page was followed and why. See [what is verified](/docs/status).
+</Callout>
+
+<include>../../_snippets/status.mdx</include>
+
+## How each list pages
+
+From Smartlead's [API reference](https://api.smartlead.ai) and help center, fetched 2026-11-14 and recorded in the repository's research note:
+
+| List | Paging | Most per page | End of the list |
+| --- | --- | --- | --- |
+| `GET /campaigns/` | none | every campaign | one response |
+| `GET /campaigns/{id}/leads` | `offset`, `limit` | 100 | `total_leads` reached, or a short page |
+| `GET /email-accounts/` | `offset`, `limit` | 100 | a short page; no total |
+| `GET /campaigns/{id}/statistics` | `offset`, `limit` | 1,000 | `total_stats` reached |
+| `GET /campaigns/all-leads-activities` | `offset`, `limit` | 1,000 | `hasMore` is false; its own limit of 10 requests a minute |
+| `POST /master-inbox/inbox-replies` | `offset`, `limit` in the body | 20 | a short page |
+| `POST /campaigns/{id}/leads/filter` (admin key) | cursor: send `lastSeenEclmId` back as `lastSeenLeadId` | 100 | no cursor |
+
+- `total_leads` is a string in the newer example and a number in the older one; read both.
+- No list documents a sort order you can rely on for paging, except the lead search (by lead map id) and the master inbox (newest reply first by default).
+
+## Walk every page with outbound-sdk
+
+<include meta='title="pages.ts"'>
+  ../../_examples/smartlead-pagination/pages.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/smartlead-pagination/pages.out.txt
+</include>
+
+The fetch answers from Smartlead's documented examples in `fixtures/smartlead/`, so the counts are made up; `routes.ts`, below, lists what it answers. The log shows the campaigns read once, the lead categories read to name each lead's label, and the campaign's leads read until `total_leads` was reached. A Smartlead key goes in the query string, as Smartlead requires; the SDK keeps it out of every log and error.
+
+To stop and resume, page by hand: `listPages()` gives each page and a cursor, and a cursor saved to disk resumes the walk later. See [pagination](/docs/api/pagination).
+
+## Every lead in the workspace
+
+Smartlead has no endpoint that lists every lead. `outbound.leads.listAll()` walks the campaigns and reads each one's leads, so a lead in no campaign is never returned and a person in two campaigns comes back twice. See [what stays `no`](/docs/adapters#what-stays-no-and-why).
+
+## The fixture routes
+
+The sample's `fetch` answers these requests from `fixtures/`. See [running a vendor's real adapter offline](/docs/samples#running-a-vendors-real-adapter-offline).
+
+<include meta='title="routes.ts"'>
+  ../../_examples/smartlead-pagination/routes.ts
+</include>

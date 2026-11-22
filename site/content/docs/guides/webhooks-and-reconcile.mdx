@@ -8,7 +8,7 @@ related:
   - /docs/webhooks/verification
   - /docs/webhooks/events
   - /docs/plugins/reconcile
-  - /docs/guides/sync-to-database
+  - /docs/guides/instantly-to-bigquery-snowflake-postgres
 ---
 
 A webhook can arrive twice, late or not at all. Code that counts replies from webhooks alone drifts from what the vendor shows. This guide builds the two halves that keep it honest:
@@ -154,7 +154,7 @@ Three more things to know before trusting the report:
 
 - **It lists every message in the window**, sent and received. If you subscribe to replies only, every sent message appears in `missingEvents`. Filter the list by `direction` for the kind you subscribe to.
 - **It does not filter your events by the window.** Pass the events from the same window you ask the vendor for. An event from before `since` is reported as unmatched.
-- **It reports and stops.** Fetching a missed reply is a call you make: `outbound.replies.list({ since })`, or the sync in [the database guide](/docs/guides/sync-to-database).
+- **It reports and stops.** Fetching a missed reply is a call you make: `outbound.replies.list({ since })`, or the sync in [the database guide](/docs/guides/instantly-to-bigquery-snowflake-postgres).
 
 ## Point it at your vendor
 

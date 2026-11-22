@@ -1,0 +1,59 @@
+---
+title: "Instantly API rate limits: 100 a second, 6,000 a minute, and 20 a minute on emails"
+description: Instantly's documented API V2 rate limits, the stricter limit on listing emails and replies, what a 429 looks like, what was measured on a live workspace, and how outbound-sdk keeps every read inside them.
+sidebar:
+  label: Instantly rate limits
+related:
+  - /docs/rate-limits
+  - /docs/adapters/instantly
+  - /docs/guides/shared-rate-budget
+  - /docs/guides/unanswered-replies
+---
+
+**Instantly's API V2 allows 100 requests a second and 6,000 a minute per workspace, and either limit blocks a request. Listing emails, which is how replies are read (`GET /api/v2/emails`), has its own limit of 20 requests a minute, so at 100 emails a page you can read at most 2,000 emails a minute. Over a limit Instantly answers `429` with no `Retry-After` header.** outbound-sdk declares all of these, keeps each process to half of them by default, and waits out a 429 for you, so you write no sleep or retry loop.
+
+<include>../../_snippets/status.mdx</include>
+
+## The limits, from Instantly's documentation
+
+From Instantly's [API V2 reference](https://developer.instantly.ai/), fetched 2026-11-14 and recorded in the repository's research note:
+
+| Limit | Applies to |
+| --- | --- |
+| 100 requests a second | every endpoint, per workspace |
+| 6,000 requests a minute | every endpoint, per workspace |
+| 20 requests a minute | `GET /api/v2/emails`: listing emails and replies |
+| 500 requests per 30 days | `POST /lead-labels/ai-reply-label` |
+| 100 calls a day, 200 pages a day | the two local business search endpoints |
+
+- **No rate-limit headers** are documented, and no `Retry-After` comes with a 429 on the general API.
+- **The emails limit's scope is not stated.** Two processes reading one workspace slowed each other down in a test on 2026-11-16, so the SDK treats it as shared by every process and key on the workspace. That is inferred, not documented.
+- **A page holds at most 100 records** on the lists the SDK reads.
+
+## What was measured
+
+On one live workspace, read-only:
+
+- **2026-11-14:** 300 reads fired at once all succeeded with no 429: 1,505 requests in 30 seconds.
+- **2026-11-20:** about 10 email listings a minute got through from one process, half the documented 20. That is the SDK's default share; another reader of the same workspace could not be ruled out.
+
+One workspace, so treat these as one data point. See [what is verified](/docs/status).
+
+## Stay inside them with outbound-sdk
+
+Every request goes through one engine that knows these windows. `outbound.limits()` shows the budget it keeps, without making a request:
+
+<include meta='title="limits.ts"'>
+  ../../_examples/rate-limits/limits.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/rate-limits/limits.out.txt
+</include>
+
+The `emails` lane is the 20-a-minute limit at the default share of one half. What that means in practice:
+
+- **Replies are slow to read in bulk.** About 1,000 emails a minute at the default share. An insight that reads conversations, such as [unanswered replies](/docs/guides/unanswered-replies), gets about ten email reads inside the MCP server's 50-second budget, and reads the longest-waiting first.
+- **Several processes on one key** each keep their own budget unless they share a store. Two workers at half each together reach Instantly's full limit and draw 429s. [Share one budget with Redis](/docs/guides/shared-rate-budget).
+- **On a 429** the lane pauses for one slot of its window (3 seconds on 20 a minute, since there is no `Retry-After`), the rate halves, and the request is retried. See [rate limits](/docs/rate-limits) for the full rule and [retries](/docs/retries) for the bounds.
+- **To use more of the limit,** set `share` on `createOutbound` (`1` is the whole published limit). Only do that when nothing else reads the workspace.

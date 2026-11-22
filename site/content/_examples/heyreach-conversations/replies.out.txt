@@ -1,0 +1,9 @@
+heyreach:default:274079 4101:2-ExampleConversationId1== unknown (null)
+heyreach:default:274079 4101:2-ExampleConversationId2== unknown (null)
+6 requests:
+  POST /api/public/campaign/GetAll {"limit":100,"offset":0}
+  POST /api/public/campaign/GetAll {"limit":100,"offset":2}
+  POST /api/public/inbox/GetConversationsV3 {"filters":{"campaignIds":[274079]},"limit":100}
+  POST /api/public/inbox/GetConversationsV3 {"filters":{"campaignIds":[274079]},"limit":100,"cursor":"ExampleCursorPage2"}
+  POST /api/public/inbox/GetConversationsV3 {"filters":{"campaignIds":[274080]},"limit":100}
+  POST /api/public/inbox/GetConversationsV3 {"filters":{"campaignIds":[274081]},"limit":100}

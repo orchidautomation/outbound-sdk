@@ -1,5 +1,5 @@
 ---
-title: List the replies nobody answered, longest waiting first, from a scheduled job
+title: "Find unanswered positive replies across every campaign and client"
 description: One function that reads recent replies, checks each conversation for a message sent afterwards, and returns the ones still waiting as text, plus what it could not check. It lists replies and sends nothing.
 sidebar:
   label: Unanswered replies
@@ -8,6 +8,8 @@ related:
   - /docs/guides/person-across-email-and-linkedin
   - /docs/guides/hot-leads-call-list
 ---
+
+**To find the positive replies nobody has answered, list the replies since a date, keep the ones that need an answer, and check each conversation for a message sent after the reply. outbound-sdk's `droppedReplies` insight does that in one call, across every campaign and, behind a combined instance, every client and tool: Instantly, Smartlead, HeyReach and EmailBison. It returns the waiting replies longest first and says which conversations it could not check.**
 
 A prospect replies "yes, send me pricing" and nobody answers, because the reply sat in a shared inbox over a weekend. `droppedReplies` finds those. It reads the replies since a date, keeps the categories that need an answer, reads each conversation, and reports a reply as dropped when nothing was sent after it and it has waited longer than a number of hours you choose. The list comes back longest waiting first.
 
@@ -19,7 +21,7 @@ It only lists. It does not answer, assign or mark anything, in the SDK or in the
 
 - Node 22 or later.
 - The code below runs on the in-memory adapter, so it needs no vendor key. Each sample on this page is a file in the repository that the test suite runs; the output shown is what it printed.
-- For real data: an Instantly, Smartlead or HeyReach API key. A read-only key is enough. No method of the SDK writes to a vendor.
+- For real data: an Instantly, Smartlead, HeyReach or EmailBison API key. A read-only key is enough. No method of the SDK writes to a vendor.
 - A scheduler you already run. The SDK schedules nothing.
 
 ## What you get

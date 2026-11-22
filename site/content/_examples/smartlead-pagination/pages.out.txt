@@ -1,0 +1,7 @@
+2 campaigns
+3 leads in campaign 372
+4 requests:
+  GET /api/v1/campaigns/?include_tags=true
+  GET /api/v1/leads/fetch-categories
+  GET /api/v1/campaigns/372/leads?limit=100&offset=0
+  GET /api/v1/campaigns/372/leads?limit=100&offset=2

@@ -32,3 +32,11 @@ The in-memory adapter declares every capability. A real vendor does not. Each gu
 <include meta='title="as-vendor.ts"'>../_examples/_shared/as-vendor.ts</include>
 
 That run shows which calls a vendor's adapter would refuse as `Unsupported`. It still says nothing about the vendor's data.
+
+## Running a vendor's real adapter offline
+
+A few pages run a vendor's real adapter instead, with a `fetch` that answers from the repository's `fixtures/<vendor>/` files: payloads built from the vendor's documented examples, with every value made up. That shows the requests the adapter sends and how it maps the documented fields. It does not show what the vendor's live API returns, which can differ from its examples.
+
+<include meta='title="fixture-fetch.ts"'>
+  ../_examples/_shared/fixture-fetch.ts
+</include>
