@@ -1,0 +1,113 @@
+---
+title: Keep vendor keys in Executor and call the tools from its CLI or MCP endpoint
+description: An Executor app that runs outbound-sdk's read-only tools over Instantly, Smartlead, HeyReach and EmailBison. Executor holds each API key, and the app's code never sees it.
+sidebar:
+  label: Executor
+related:
+  - /docs/guides/mcp-server
+  - /docs/guides/agent-tools
+  - /docs/adapters/combine
+  - /docs/plugins/redact
+---
+
+[Executor](https://executor.sh) connects your accounts to your agents through one MCP endpoint and one `executor` command. It keeps the credentials. An app you deploy to it declares which accounts it needs, and Executor hands each tool call those accounts.
+
+Executor has no way to read a stored key back out, by design. So outbound-sdk cannot fetch a key from it into `INSTANTLY_API_KEY`. The SDK runs inside Executor instead, as an app. This guide shows that app: it offers outbound-sdk's agent tools for Instantly, Smartlead, HeyReach and EmailBison, and you call them with `executor call` from a shell or from any agent connected to Executor.
+
+<include>../../_snippets/status.mdx</include>
+
+## What is verified
+
+- The app in [`examples/executor-outbound`](https://github.com/orchidautomation/outbound-sdk/tree/main/examples/executor-outbound) was deployed to a local Executor 2.0.0-beta.67, built with the `apps` framework 0.0.1-beta.143 and outbound-sdk 0.17.0.
+- With a made-up key linked for each vendor, a tool call reached all four vendors from inside Executor, and each one answered 401. An EmailBison account pointing at a host the provider does not declare was refused by Executor before anything was sent.
+- It has not been run with real keys yet. The app is not run by this site's tests. The sample on this page is.
+
+## How it fits together
+
+- **Executor** stores each account, shows the connect form, and sends requests. The app declares a provider per vendor, with the hosts its key may go to and where in the request the key goes. App code gets a handle in place of the key. Executor's network swaps in the real key only on a request to a declared host, in the declared place, and refuses any other request that carries the handle.
+- **outbound-sdk** does the reading. Each tool call builds an instance over the caller's linked accounts, sends every request through Executor's `ctx.fetch`, and masks personal fields with [`redact`](/docs/plugins/redact), as `outbound mcp` does.
+- **Nothing is stored on our side**, and every tool only reads.
+
+| Vendor     | Host the key may go to | Where the key goes             |
+| ---------- | ---------------------- | ------------------------------ |
+| Instantly  | `api.instantly.ai`     | `Authorization: Bearer` header |
+| Smartlead  | `server.smartlead.ai`  | `api_key` query parameter      |
+| HeyReach   | `api.heyreach.io`      | `X-API-KEY` header             |
+| EmailBison | `*.emailbison.com`     | `Authorization: Bearer` header |
+
+Every vendor is a `.many()` requirement, so you can link any number of accounts on each, including none. An agency links one account per client workspace. A caller who links two vendors, or two clients, gets one combined instance ([combine](/docs/adapters/combine)), and every record keeps its own `provider` and `workspaceId`.
+
+## The part that uses outbound-sdk
+
+This file knows nothing about Executor. It turns the accounts a call received into an instance, and the instance into tools. The app deploys the same file. The test suite checks that the two copies match byte for byte.
+
+<include meta='title="outbound.ts"'>
+  ../../_examples/executor/outbound.ts
+</include>
+
+The **Client** field on each account is your label for that client, such as `acme`. It becomes the `workspaceId` on every record. Without it, the label is the vendor and the account's position, such as `instantly-1`.
+
+## What a tool call does
+
+This sample plays Executor's part. It passes four linked accounts whose keys are handles, and a `fetch` that records each request and answers 401. Every vendor answered 401 the same way when the app ran in a local Executor with made-up keys.
+
+<include meta='title="run.ts"'>../../_examples/executor/run.ts</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/executor/run.out.txt
+</include>
+
+- **Nothing linked** gives no instance. The app answers with an `Unauthorized` result that says to link an account, and sends no request.
+- **34 tools** are the built-in tools and the [insights](/docs/insights) the four vendors can serve together. Each is its own Executor tool, `tools.outbound.<name>`. `outbound mcp` merges some neighbours into one tool, so it lists fewer.
+- **One call reads every linked account**, and each vendor gets its key in its own place, as the table above says.
+
+## Deploy it
+
+You need Executor 2 (`npm i -g executor@beta`) running locally, or a sign-in to hosted Executor with `executor login`.
+
+1. Read the framework version your Executor runs. The app's `package.json` must name exactly that version:
+
+   ```sh
+   executor apps framework
+   ```
+
+2. Put that version in `package.json` next to `index.ts` and `outbound.ts`:
+
+   ```json
+   {
+     "name": "outbound",
+     "private": true,
+     "type": "module",
+     "dependencies": { "apps": "0.0.1-beta.143", "outbound-sdk": "0.17.0" }
+   }
+   ```
+
+3. Create the app and deploy its first commit:
+
+   ```sh
+   executor apps create --name "Outbound" --files ./executor-outbound
+   executor apps source --app <app-id> | jq -r .revision.commit
+   executor apps deploy --app <app-id> --commit <commit>
+   ```
+
+4. Link your accounts on the app's **Accounts** tab in Executor. You enter each key in Executor's own form, never in chat or in a file.
+
+## Call the tools
+
+From a shell:
+
+```sh
+executor search "campaign overview" --namespace outbound
+executor call tools.outbound.campaign_overview --input '{}'
+executor call tools.outbound.reply_samples --input '{"category":"positive"}' > replies.json
+```
+
+Each command prints JSON. The tool's own answer is under `execution.value.value`, in the same envelope the [agent tools](/docs/guides/agent-tools) return: a failure is `ok: false` with an error `code` and a `next` step. From an agent, connect it to Executor's MCP endpoint (`claude mcp add executor -- executor mcp` for Claude Code) and it finds the same tools with `search`.
+
+## Limits and failure cases
+
+- **A white-labeled EmailBison URL** outside `emailbison.com` is refused. Executor says the EmailBison credentials cannot be sent to that host. Add your host to the provider's `hosts` in `index.ts`, deploy, and reconnect the account.
+- **A refused request is retried.** The SDK sees Executor's refusal as a network failure, so it retries before it reports `Provider`, and the result says `retryable: true`. Fix the host. Calling again does not help.
+- **One failing account fails the call.** With several accounts linked, a bad key on one makes a tool that reads all of them answer `Unauthorized`. Unlink or reconnect that account.
+- **The rate budget lasts one call.** Each tool call builds a new instance, so the SDK's [rate budget](/docs/rate-limits) starts fresh every call. Calls made at the same moment do not share one budget.
+- **Executor is in beta.** An app pins the framework version it was built with. A newer Executor may need a new `apps` version in `package.json`.
