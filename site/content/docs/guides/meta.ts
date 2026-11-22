@@ -16,6 +16,7 @@ export default defineMeta({
     "sender-capacity",
     "mcp-server",
     "agent-tools",
+    "executor",
     "reply-text-for-llm",
     "sync-to-database",
     "duckdb",

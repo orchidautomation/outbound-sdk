@@ -26,6 +26,7 @@ The documentation is at [outbound-sdk.dev](https://outbound-sdk.dev). It is buil
 - [AI tools](https://outbound-sdk.dev/docs/tools), the [CLI](https://outbound-sdk.dev/docs/cli) and its [MCP server](https://outbound-sdk.dev/docs/cli/mcp), and [webhooks](https://outbound-sdk.dev/docs/webhooks)
 - [Guides](https://outbound-sdk.dev/docs/guides): complete tasks, end to end
 - [An eve agent](examples/eve-outbound-desk/README.md) built on the SDK: an agency's Slack desk with weekly client reports
+- [An Executor app](examples/executor-outbound/README.md): outbound-sdk's read-only tools inside [Executor](https://executor.sh), which holds the Instantly, Smartlead, HeyReach and EmailBison keys, called with `executor call` or over MCP
 - [A MotherDuck data dive](examples/motherduck-data-dive/README.md): every client's campaigns, leads, replies and daily stats loaded into DuckDB or MotherDuck, with a SQL report
 - [What is verified](https://outbound-sdk.dev/docs/status)
 - For contributors: [architecture](docs/architecture.md), [engineering guardrails](docs/engineering-guardrails.md) and [adding an adapter](docs/new-adapter.md), and [changing and publishing the documentation site](docs/site.md)

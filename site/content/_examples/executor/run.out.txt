@@ -1,0 +1,17 @@
+nothing linked: undefined
+34 tools, for example:
+  campaign_overview
+  campaign_trend
+  winning_steps
+  sender_health
+  reply_samples
+  lead_runway
+
+campaign_overview {}
+ok: false, Unauthorized, retryable: false, requests: 4
+
+what left the app, and where the key went:
+  GET https://api.instantly.ai/api/v2/campaigns  key in header authorization
+  GET https://server.smartlead.ai/api/v1/campaigns/  key in query api_key
+  POST https://api.heyreach.io/api/public/campaign/GetAll  key in header x-api-key
+  GET https://send.emailbison.com/api/campaigns  key in header authorization

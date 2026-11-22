@@ -1,0 +1,17 @@
+{
+  "name": "outbound",
+  "version": "0.0.0",
+  "private": true,
+  "description": "An Executor app that offers outbound-sdk's read-only tools for Instantly, Smartlead, HeyReach and EmailBison, with Executor holding the API keys.",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "apps": "0.0.1-beta.143",
+    "outbound-sdk": "0.17.0"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}

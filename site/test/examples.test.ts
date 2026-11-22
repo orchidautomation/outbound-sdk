@@ -162,3 +162,19 @@ test("every included example exists, and every example is included", () => {
     assert.ok(used.has(file), `${label(file)} is not shown on any page`);
   }
 });
+
+// A standalone app under examples/ deploys a file the site also shows. The
+// site's copy is the one that is run, so the two must not drift apart.
+const SHARED_WITH_APPS = [
+  ["examples/executor-outbound/outbound.ts", "executor/outbound.ts"],
+] as const;
+
+test("a file an example app shares with the site is the same in both", () => {
+  for (const [app, sample] of SHARED_WITH_APPS) {
+    assert.equal(
+      readFileSync(path.join(ROOT, app), "utf-8"),
+      readFileSync(path.join(EXAMPLES, sample), "utf-8"),
+      `${app} and site/content/_examples/${sample} differ. Copy one over the other`
+    );
+  }
+});
