@@ -43,6 +43,14 @@ const staticDir = ({ home, html }) => {
   roots.push(root);
   writeFileSync(path.join(root, "sitemap.xml"), sitemap(home));
   writeFileSync(path.join(root, "index.html"), html);
+  writeFileSync(
+    path.join(root, "llms-full.txt"),
+    `# Docs\n\n> One line.\n\n# Intro\nSource: ${SITE}/docs\n\nText.\n`
+  );
+  writeFileSync(
+    path.join(root, "llms.txt"),
+    `# Docs\n\n## Docs\n\n- [Intro](${SITE}/docs): Start.\n\n## Agent resources\n\n- [llms-full.txt](${SITE}/llms-full.txt): Every page.\n`
+  );
 
   return root;
 };
@@ -67,7 +75,18 @@ test("dates the home page entry and leaves the others alone", () => {
     }),
   });
 
-  assert.deepEqual(postbuild(root), [`sitemap.xml: <lastmod> for ${SITE}/`]);
+  assert.deepEqual(postbuild(root), [
+    `sitemap.xml: <lastmod> for ${SITE}/`,
+    "llms-full/: 1 section file(s), linked from llms.txt",
+  ]);
+  assert.match(
+    readFileSync(path.join(root, "llms-full", "docs.txt"), "utf-8"),
+    /^# Docs: Docs section\n/u
+  );
+  assert.match(
+    readFileSync(path.join(root, "llms.txt"), "utf-8"),
+    /\[llms-full\/docs\.txt\]/u
+  );
 
   const xml = readFileSync(path.join(root, "sitemap.xml"), "utf-8");
 
@@ -88,7 +107,9 @@ test("changes nothing when the home page has no date", () => {
     html: page({ "@type": "WebPage" }),
   });
 
-  assert.deepEqual(postbuild(root), []);
+  assert.deepEqual(postbuild(root), [
+    "llms-full/: 1 section file(s), linked from llms.txt",
+  ]);
   assert.equal(
     readFileSync(path.join(root, "sitemap.xml"), "utf-8"),
     sitemap(`  <url><loc>${SITE}/</loc></url>`)

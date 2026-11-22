@@ -12,7 +12,7 @@ The site at [outbound-sdk.dev](https://outbound-sdk.dev) is built from `site/` w
 | `site/content/_snippets/status.mdx` | The preview notice the guides include |
 | `site/blume.config.ts` | Title, banner, tabs, the text of `llms.txt`, the Vercel adapter |
 | `site/test/` | The tests that run the samples and hold the site's claims to the code |
-| `scripts/site-postbuild.mjs` | Runs after `blume build`: dates the home page in the sitemap, which Blume leaves undated because it is a custom page |
+| `scripts/site-postbuild.mjs` | Runs after `blume build`: dates the home page in the sitemap, which Blume leaves undated because it is a custom page, and splits `llms-full.txt` into one file per docs section under `llms-full/` (`scripts/site-llms-sections.mjs`), linked from `llms.txt`. A section over 256 KB is cut into numbered parts |
 | `scripts/examples-loader.mjs` | Lets a sample import `outbound-sdk` from source, refuses the network, fixes the clock |
 
 `site/` is not an npm workspace. It has its own `package.json` and lockfile, so installing the SDK does not install the site's dependencies.

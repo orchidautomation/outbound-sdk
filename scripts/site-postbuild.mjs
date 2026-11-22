@@ -7,10 +7,16 @@
 //   <lastmod>. The page itself carries a JSON-LD dateModified from git
 //   (pages/index.astro); this copies that date into the sitemap entry.
 //
+// - llms-full.txt is one file of every page. This writes one file per docs
+//   section under llms-full/ and links them from llms.txt (see
+//   site-llms-sections.mjs).
+//
 //   node scripts/site-postbuild.mjs [static dir]
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
+
+import { linkSections, splitSections } from "./site-llms-sections.mjs";
 
 /** The JSON-LD `dateModified` of a built page, or null when it has none. */
 export const pageDateModified = (html) => {
@@ -52,7 +58,30 @@ export const withLastmod = (xml, loc, isoDate) => {
   );
 };
 
-/** Date the home page's sitemap entry. Returns what it changed. */
+/** Write llms-full/<section>.txt and link them from llms.txt. */
+const writeSections = (staticDir) => {
+  const full = readFileSync(path.join(staticDir, "llms-full.txt"), "utf-8");
+  const indexFile = path.join(staticDir, "llms.txt");
+  const index = readFileSync(indexFile, "utf-8");
+
+  const { origin } = new URL(full.match(/^Source: (?<url>\S+)$/mu).groups.url);
+
+  const files = splitSections({ full, index, origin });
+  const dir = path.join(staticDir, "llms-full");
+
+  rmSync(dir, { force: true, recursive: true });
+  mkdirSync(dir);
+
+  for (const { name, text } of files) {
+    writeFileSync(path.join(dir, name), text);
+  }
+
+  writeFileSync(indexFile, linkSections({ files, index, origin }));
+
+  return `llms-full/: ${files.length} section file(s), linked from llms.txt`;
+};
+
+/** Date the home page's sitemap entry and split llms-full.txt. */
 export const postbuild = (staticDir) => {
   const sitemapFile = path.join(staticDir, "sitemap.xml");
   const sitemap = readFileSync(sitemapFile, "utf-8");
@@ -74,6 +103,8 @@ export const postbuild = (staticDir) => {
       changed.push(`sitemap.xml: <lastmod> for ${home}`);
     }
   }
+
+  changed.push(writeSections(staticDir));
 
   return changed;
 };
