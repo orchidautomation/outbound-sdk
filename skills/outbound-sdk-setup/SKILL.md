@@ -5,7 +5,7 @@ description: Set up outbound-sdk in a project and connect it to an agent, either
 
 # Setting up outbound-sdk and its MCP server
 
-outbound-sdk is a read-only TypeScript SDK over Instantly, Smartlead and HeyReach. `outbound mcp` serves its tools to an agent client over stdio. It stores nothing and calls no model, and the vendor key stays in the environment of the process the client starts.
+outbound-sdk is a read-only TypeScript SDK over Instantly, Smartlead, HeyReach and EmailBison. `outbound mcp` serves its tools to an agent client over stdio. It stores nothing and calls no model, and the vendor key stays in the environment of the process the client starts.
 
 Before you start, confirm what the user has. Do not assume a working key.
 

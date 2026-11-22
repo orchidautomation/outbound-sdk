@@ -12,6 +12,7 @@ The site at [outbound-sdk.dev](https://outbound-sdk.dev) is built from `site/` w
 | `site/content/_snippets/status.mdx` | The preview notice the guides include |
 | `site/blume.config.ts` | Title, banner, tabs, the text of `llms.txt`, the Vercel adapter |
 | `site/test/` | The tests that run the samples and hold the site's claims to the code |
+| `scripts/site-postbuild.mjs` | Runs after `blume build`: dates the home page in the sitemap, which Blume leaves undated because it is a custom page |
 | `scripts/examples-loader.mjs` | Lets a sample import `outbound-sdk` from source, refuses the network, fixes the clock |
 
 `site/` is not an npm workspace. It has its own `package.json` and lockfile, so installing the SDK does not install the site's dependencies.
@@ -93,6 +94,7 @@ curl -s https://outbound-sdk.dev/version.txt     # the commit it was built from
 Things to know:
 
 - **Publish from a commit that passed `npm run check`,** from a clean checkout. `npm run build` runs `scripts/site-version.mjs` first, which writes the commit, whether the checkout had uncommitted changes, and the build time to `site/public/version.txt` (git-ignored), so the live `/version.txt` says what is deployed. If it reads `dirty true`, deploy again from a clean checkout. Compare its commit with `git rev-parse origin/main` to see whether the site is behind.
+- **Build from a full clone.** Every page's "Last updated" date, its JSON-LD `dateModified` and its sitemap `<lastmod>` come from the last commit that changed its file (`lastModified: "git"` in `blume.config.ts`; the home page dates itself in `pages/index.astro`). In a shallow clone the dates drop out and Blume warns `BLUME_SHALLOW_GIT_HISTORY`; run `git fetch --unshallow`. CI's site job checks out full history for the same reason.
 - **The Vercel project must stay disconnected from Git.** Connected, Vercel builds every pushed branch from the repository root and puts a failing check on pull requests that have nothing to do with the site. If `vercel link` connects it, run `vercel git disconnect --yes`.
 - **A preview is behind Vercel's login.** Read one with `vercel curl /docs --deployment <url>`.
 - **The domain** `outbound-sdk.dev` and `www.outbound-sdk.dev` are attached to the project. Nothing needs doing per deploy.

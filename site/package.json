@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "blume dev",
-    "build": "node ../scripts/site-version.mjs public && blume build",
+    "build": "node ../scripts/site-version.mjs public && blume build && node ../scripts/site-postbuild.mjs",
     "doctor": "blume doctor",
     "validate": "blume validate"
   },

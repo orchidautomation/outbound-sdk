@@ -1,11 +1,11 @@
 ---
 name: outbound-sdk-answering
-description: Answer questions about cold email and LinkedIn outreach (how campaigns are doing, which step or variant wins, sender health, deliverability, bounces, replies, lead runway, hot leads, client reports) by calling outbound-sdk's read-only tools and insights, then report the numbers honestly. Use when outbound-sdk tools are available (the `outbound` MCP server, the `outbound` CLI, or `createTools` in code), or when a project reads Instantly, Smartlead or HeyReach through outbound-sdk.
+description: Answer questions about cold email and LinkedIn outreach (how campaigns are doing, which step or variant wins, sender health, deliverability, bounces, replies, lead runway, hot leads, client reports) by calling outbound-sdk's read-only tools and insights, then report the numbers honestly. Use when outbound-sdk tools are available (the `outbound` MCP server, the `outbound` CLI, or `createTools` in code), or when a project reads Instantly, Smartlead, HeyReach or EmailBison through outbound-sdk.
 ---
 
 # Answering outreach questions with outbound-sdk
 
-outbound-sdk reads campaigns, senders, leads, replies and stats from Instantly, Smartlead and HeyReach through one API. Every tool only reads. Nothing you call sends, pauses, edits or deletes anything, and no tool runs an AI model: the numbers are counts the vendor reported and arithmetic on them. Your job is to pick the right tool, then say what the numbers are and how far they can be trusted.
+outbound-sdk reads campaigns, senders, leads, replies and stats from Instantly, Smartlead, HeyReach and EmailBison through one API. Every tool only reads. Nothing you call sends, pauses, edits or deletes anything, and no tool runs an AI model: the numbers are counts the vendor reported and arithmetic on them. Your job is to pick the right tool, then say what the numbers are and how far they can be trusted.
 
 ## The tools you have
 
