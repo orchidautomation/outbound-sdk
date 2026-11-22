@@ -1,0 +1,114 @@
+---
+title: "Reply metrics defined: how each sequencer counts"
+description: How Instantly, Smartlead, HeyReach and EmailBison each count replies, positive replies and automatic replies, what each API returns, which number each dashboard divides by, and how outbound-sdk maps them to one definition.
+sidebar:
+  label: Reply metrics defined
+related:
+  - /docs/api/stats
+  - /docs/api/records
+  - /docs/adapters
+  - /docs/status
+---
+
+**Each sequencer counts replies differently, so their reply rates are not comparable as shown.** Instantly's dashboard divides replies by emails sent, Smartlead's divides replies by leads who opened, and their positive reply rates are a share of replies, not of people contacted. outbound-sdk reads each vendor's own counts, keeps people apart from messages and automatic replies apart from human ones where the vendor allows it, and computes every rate over the same base, which it names.
+
+This page sets the four vendors side by side. Every statement about a vendor comes from that vendor's own documentation, fetched on 2026-11-22 (links in [Sources](#sources)), or from the repository's research notes in [`docs/research/`](https://github.com/orchidautomation/outbound-sdk/tree/main/docs/research), which record what was read and what a live read-only run showed. Where a vendor does not say, this page says so. It makes no claim about how accurate any vendor's labels are.
+
+Instantly and HeyReach are `beta` in outbound-sdk; Smartlead and EmailBison are `unverified`, written from their documentation and tested offline only. See [what is verified](/docs/status).
+
+## Side by side
+
+|  | Instantly | Smartlead | HeyReach | EmailBison |
+| --- | --- | --- | --- | --- |
+| Channel | email | email | LinkedIn | email |
+| Reply rate in the vendor's app | replies ÷ total emails sent | replies ÷ unique leads who opened; ÷ unique leads contacted when open tracking is off or the campaign is plain text | not defined in the API reference; the API returns `messageReplyRate` as a fraction | no definition found in the API reference |
+| Positive reply rate in the vendor's app | opportunities ÷ replies | positive replies ÷ replies | not defined | not defined |
+| What makes a reply "positive" | the lead's interest status is Interested, Meeting Booked, Meeting Completed, Closed or a custom positive label (an "opportunity") | the lead's current category has positive sentiment | the lead's auto-tag is Interested | the reply's `interested` flag |
+| Positive is a property of | the lead | the lead, per campaign | the lead, workspace-wide | the reply |
+| Automatic replies | included in reply rate by default; a per-browser setting leaves them out; counted apart in the API | out-of-office replies can be ignored per reply, or left out per campaign; counted apart only in dated windows | Generic auto-tag covers out-of-office and neutral replies; no separate count | a per-campaign setting decides whether stats include them; a reply carries `automated_reply` |
+| outbound-sdk maturity | beta | unverified | beta | unverified |
+
+## Instantly
+
+**Dashboard.** Instantly's analytics help page defines reply rate as "replies / total sent" and positive reply rate as "opportunities / replies", and offers an "Include auto-replies" setting for the reply rate. Its reply-rate troubleshooting page adds that automatic replies "are included in reply rate metrics by default", that unchecking the setting "applies across all campaigns on your current device/browser", and that "replies to subsequence emails are not included in the reply rate metric".
+
+**Positive.** Instantly counts an opportunity for a lead marked Interested, Booked meeting, Completed meeting, Closed or a positive custom status, and its opportunities page says they "include all historical data for leads that were ever marked as positive, even if their status was later changed". A lead's status is `lt_interest_status` in the API: `1` Interested, `2` Meeting Booked, `3` Meeting Completed, `4` Won, `0` Out of Office, and negative numbers for Not Interested, Wrong Person, Lost and No Show, or a custom label's number.
+
+**API fields** (OpenAPI 2.0.0):
+
+| Field | Instantly's description |
+| --- | --- |
+| `reply_count` | "The total number of replies received (if a lead replies multiple times, each reply is counted)" |
+| `reply_count_unique` | "The number of unique replies (first reply per lead). Excludes automatic replies." |
+| `reply_count_automatic` | "The total number of automatic replies received (e.g., out-of-office)" |
+| `reply_count_automatic_unique` | "The number of unique leads that sent automatic replies" |
+| `total_interested` | "The total number of interested opportunities created", on the analytics overview only |
+| `total_opportunities` | "The total number of unique opportunities created" |
+| `i_status` on an email | "Indicates the interest status of the email"; values not listed. Seen live with the lead interest numbers. |
+| `is_auto_reply` on an email | "Indicates if the email is an auto-reply"; documented, but no email in the live run carried it |
+
+**What the research found.** A recorded parity case on one live campaign (2026-11-15) showed `reply_count` 2 and `reply_count_automatic` 11 while the dashboard's "Replies" showed 13: the dashboard adds human and automatic reply messages ([research note](https://github.com/orchidautomation/outbound-sdk/blob/main/docs/research/instantly.md)). Whether a lead's `email_reply_count` includes automatic replies is not documented and not settled.
+
+## Smartlead
+
+**Dashboard.** Smartlead's "What do the campaign dashboard metrics mean?" says: "Reply rate uses opens, not sends. When open tracking is on, it is replies ÷ unique leads who opened. If open tracking is off, or the campaign is sent as plain text, reply rate is replies ÷ unique leads contacted." Positive replies "counts leads whose current lead category is positive ... It follows the category, so changing a lead's category changes the count", and "Positive reply rate is positive replies ÷ replies. It is not a share of emails sent."
+
+**Positive.** A lead has one category per campaign. Categories come from `GET /leads/fetch-categories`, each with a `sentiment_type` of `positive`, `negative` or `null`; custom categories can be added, so the ids are not fixed. A campaign's `campaign_lead_stats.interested` is, in Smartlead's words, "the number of leads who have been marked with a positive sentiment category in the campaign".
+
+**Automatic replies.** An out-of-office reply can be marked and ignored from reply metrics in the master inbox, and a campaign can "Exclude OOO from metrics". In the API, a campaign's dated analytics return `reply_count`, `total_reply_count` and `non_ooo_reply_count`; the campaign totals have no automatic-reply count.
+
+**API fields.** `reply_count` "indicates the total number of direct replies received in response to the email campaign per sequence. It only includes replies that are received within the context of the email campaign and excludes threaded replies or responses that are done in the master inbox" (help article 122). Whether it counts people or messages is not stated; the [metric glossary](https://github.com/orchidautomation/outbound-sdk/blob/main/docs/metric-glossary.md) marks it unverified. Workspace analytics return `positive_replied`, and per-step analytics `positive_reply_count`.
+
+## HeyReach
+
+**Replies.** HeyReach's `GetOverallStats` returns `totalMessageReplies`, `totalInmailReplies`, `messageReplyRate` and `inMailReplyRate`, with rates as fractions between 0 and 1. The API reference does not say what the rates divide by, or whether replies count people or messages. HeyReach's campaign analytics shows the funnel "Contacted → Accepted → Replied → Interested".
+
+**Positive.** HeyReach's Auto-Tag help page: a lead is tagged from its first reply to a campaign message, InMail or voice note, 15 minutes after it arrives, as **Interested**, **Not Interested** or **Generic** ("the reply does not signal a clear intent (e.g., an out-of-office or a neutral response)"). "Replies from conversations started outside of a campaign ... do not trigger auto-tagging." A lead holds one auto-tag at a time, workspace-wide, and "the most recently generated auto-tag within the workspace is always the one displayed". The help page lists `GetOverallStats` among the endpoints with auto-tag data; the API reference does not show the field. A live read-only run (2026-11-14) saw `autoTaggedInterested` and `totalAutoTagged` on those stats ([research note](https://github.com/orchidautomation/outbound-sdk/blob/main/docs/research/heyreach.md)).
+
+**Conversations.** Replies live in inbox conversations. HeyReach documents a `campaignId` on each `GetConversationsV3` item, but a live run (2026-11-17) found none on any conversation; filtering by campaign does work, which is how outbound-sdk tells campaign replies from other inbox messages.
+
+## EmailBison
+
+**Replies.** EmailBison's campaign stats return `unique_replies_per_contact` and `interested` (counts as strings), and `sequence_step_stats` rows with `unique_replies` and `interested`. The API reference gives no definition of a reply rate. A reply record carries `interested` and `automated_reply` booleans, and the reply list filters by `status`: "One of interested, automated_reply, not_automated_reply".
+
+**Automatic replies.** The [research note](https://github.com/orchidautomation/outbound-sdk/blob/main/docs/research/emailbison.md) records, from EmailBison's developer documentation, that its "Contact Replied" webhook does not fire for an automatic reply when a campaign's "Include auto replies in stats" setting is off. So whether a campaign's reply counts include automatic replies depends on that campaign, and no API field reports the setting.
+
+**Positive.** The reply's own `interested` flag, and on a sender `interested_leads_count`. EmailBison does not document what sets the flag.
+
+## How outbound-sdk maps them
+
+| SDK field | Instantly | Smartlead | HeyReach | EmailBison |
+| --- | --- | --- | --- | --- |
+| `replied` (people) | `reply_count_unique` | `reply_count`; in a window `non_ooo_reply_count` (unit unverified) | `totalMessageReplies` + `totalInmailReplies` (unit unverified) | `unique_replies_per_contact` |
+| `repliedAuto` | `reply_count_automatic_unique` | in a window, `total_reply_count` minus `non_ooo_reply_count` | `null` | `null` |
+| `repliedTotal` (messages) | `reply_count` | `null` | `null` | `null` |
+| `positive` | `total_interested`, overview only | `campaign_lead_stats.interested`; `positive_replied`; per step `positive_reply_count` | `autoTaggedInterested`, seen live only | `interested` |
+| Reply `category` from | the email's `i_status` | the lead's category | the lead's newest auto-tag | the reply's `interested` and `automated_reply` |
+| Reply `categorySource` | `vendor` | `lead` | `lead` | `vendor` |
+| Reply `isAuto` from | `is_auto_reply` when present, else fixed rules (`isAutoSource: "rule"`) | an Out Of Office lead category, else fixed rules | not set | `automated_reply`, else fixed rules |
+
+The [metric glossary](https://github.com/orchidautomation/outbound-sdk/blob/main/docs/metric-glossary.md) lists every count for every adapter, and a test holds it to each adapter's source. Each [adapter page](/docs/adapters) records the rest.
+
+## The definitions outbound-sdk uses
+
+These hold on every adapter. The full list is on [stats](/docs/api/stats#the-counts).
+
+- **`replied`** counts people who replied, each once however many replies they sent. Automatic replies are in `repliedAuto` where the vendor separates them.
+- **`repliedTotal`** counts reply messages from people, every reply counted. Only Instantly fills it today.
+- **`positive`** counts people the vendor marked positive, in the vendor's own terms above. It is not a meeting: meetings are `meetingsBooked`.
+- **A count the vendor does not report is `null`, never `0`.** HeyReach and EmailBison report no automatic-reply count, so `repliedAuto` is `null` there, not "nobody auto-replied". See [null is not zero](/docs/api/records#null-is-not-zero).
+- **Reply rate** is `replied ÷ contacted`, or `÷ sent` when `contacted` is missing. **Positive reply rate** is `positive ÷ contacted`, or `÷ sent`. Every rate carries its `basis`, the count it was divided by. See [rates](/docs/api/stats#rates).
+- **A reply's `category`** is `positive`, `negative`, `neutral`, `ooo`, `bounce`, `unsubscribe` or `unknown`, and `categorySource` says who decided it: `vendor` when the vendor labelled the message, `lead` when it is the label of the lead who sent it, `rule` for a fixed rule. A model never decides it.
+
+So outbound-sdk's positive reply rate is a share of people contacted, while Instantly's and Smartlead's dashboards show a share of replies. Divide `positive` by `replied` yourself to compare with a dashboard, and check which base each vendor used for `replied`.
+
+## Sources
+
+Vendor documentation, fetched 2026-11-22:
+
+- Instantly: [OpenAPI spec](https://api.instantly.ai/openapi/api_v2.json) (`info.version` 2.0.0); [Analytics & Report](https://help.instantly.ai/en/articles/6602310-analytics-report); [Opportunities in Campaign Analytics](https://help.instantly.ai/en/articles/9160456-opportunities-in-campaign-analytics); [Reply Rate Discrepancy](https://help.instantly.ai/en/articles/13925113-reply-rate-discrepancy).
+- Smartlead: [What do the campaign dashboard metrics mean?](https://helpcenter.smartlead.ai/en/articles/100-what-do-the-campaign-dashboard-metrics-mean); [How to replicate the UI Campaign Analytics using the API](https://helpcenter.smartlead.ai/en/articles/122-how-to-replicate-the-ui-campaign-analytics-using-the-api); [Lead Categories](https://helpcenter.smartlead.ai/en/articles/51-lead-categories); [How to mark an out-of-office reply in Master Inbox](https://helpcenter.smartlead.ai/en/articles/95-how-to-mark-an-out-of-office-reply-in-master-inbox).
+- HeyReach: [Get Overall Stats](https://docs.heyreach.io/hey-reach-api/analytics/get-overall-stats); [Auto-Tag: Automatic lead classification](https://help.heyreach.io/en/articles/14957953-auto-tag-automatic-lead-classification-in-heyreach); [Campaign analytics overview](https://help.heyreach.io/en/articles/9903249-campaign-analytics-overview).
+- EmailBison: [API reference](https://dedi.emailbison.com/api/reference); [Getting Replies and Campaign Emails For a Lead](https://docs.emailbison.com/master-inbox/fetching-replies).
+
+Repository research notes, each with its own fetch dates and live-run findings: [Instantly](https://github.com/orchidautomation/outbound-sdk/blob/main/docs/research/instantly.md), [Smartlead](https://github.com/orchidautomation/outbound-sdk/blob/main/docs/research/smartlead.md), [HeyReach](https://github.com/orchidautomation/outbound-sdk/blob/main/docs/research/heyreach.md), [EmailBison](https://github.com/orchidautomation/outbound-sdk/blob/main/docs/research/emailbison.md).

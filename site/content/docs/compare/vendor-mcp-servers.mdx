@@ -1,0 +1,47 @@
+---
+title: outbound-sdk vs the vendors' own MCP servers
+description: Which of Instantly, Smartlead, HeyReach and EmailBison publish an MCP server, what each can do, and when the local, read-only outbound mcp server across all four is the better fit.
+sidebar:
+  label: vs vendor MCP servers
+related:
+  - /docs/compare
+  - /docs/cli/mcp
+  - /docs/guides/mcp-server
+  - /docs/tools
+---
+
+**Use a vendor's own MCP server when you want an assistant to act in that one tool, and want it hosted. Use `outbound mcp` when you want an assistant to read across several of these tools or several client workspaces, with no way to change anything and personal data masked by default.** Three of the four vendors publish a server today; each covers its own tool only.
+
+## What the vendors publish
+
+From each vendor's own documentation, read on 2026-11-22:
+
+| Vendor | Server | What it can do | Source |
+| --- | --- | --- | --- |
+| Instantly | Hosted at `mcp.instantly.ai`, with an API key | "Every API endpoint is available as a tool", reads and writes: creating, activating and pausing campaigns, managing leads, replying to and forwarding emails | [Instantly MCP introduction](https://developer.instantly.ai/mcp/introduction), [available tools](https://developer.instantly.ai/mcp/tools) |
+| Smartlead | Hosted at `mcp.smartlead.ai`, over Server-Sent Events, with the API key in the URL | "Manage campaigns, retrieve insights, and perform diagnostics"; the page does not list its tools | [Smartlead MCP Server](https://helpcenter.smartlead.ai/en/articles/300-smartlead-mcp-server) |
+| HeyReach | Hosted at `mcp.heyreach.io/mcp`, by sign-in or an MCP API key, on plans that include MCP access | Review campaigns and results, manage leads and lists, "read and answer conversations", and control senders, in the workspaces you pick (a key covers one workspace) | [HeyReach MCP connector](https://docs.heyreach.io/mcp/mcp-connector) |
+| EmailBison | None found in its [documentation index](https://docs.emailbison.com/llms.txt) or on its [developer page](https://emailbison.com/developers) |  |  |
+
+These descriptions are the vendors' own; outbound-sdk has not tested these servers. Check the vendor's page for what they do today.
+
+## What `outbound mcp` is
+
+[`outbound mcp`](/docs/cli/mcp) is a Model Context Protocol server in the outbound-sdk package. An MCP client such as Claude Code, Claude Desktop or Cursor starts it on your machine over stdio.
+
+- **Local.** Nothing is hosted. The vendor keys stay in the environment of the process your client starts.
+- **Read-only.** Every tool only reads, and each is listed with `readOnlyHint: true`. The server has no tool that could send, pause or edit.
+- **Across vendors.** With `--provider all` (the default), it serves every provider whose key is set behind one instance, and every record keeps its own `provider` and `workspaceId`.
+- **Computed answers, not only endpoints.** Besides reads, it serves the [insights](/docs/insights): a weekly client report, unanswered replies, sender health and more, each with a note on how far to trust the numbers.
+- **Masks personal data by default.** It runs with [`redact`](/docs/plugins/redact) unless you start it with `--no-redact`.
+- **Maturity.** Instantly and HeyReach are `beta`; Smartlead and EmailBison are `unverified`, never run against a live account. See [what is verified](/docs/status).
+
+## When to use the vendor's server instead
+
+- **You want the assistant to do things:** launch or pause a campaign, add leads, reply to a lead. `outbound mcp` cannot, by design.
+- **You use one vendor** and want every endpoint it has, the day it ships.
+- **You want nothing to install.** The vendors' servers are hosted; `outbound mcp` needs Node 22 or later on the machine that runs the client.
+- **You use a hosted assistant** that connects to remote MCP servers only. `outbound mcp` speaks stdio and is not hosted.
+- **You rely on Smartlead or EmailBison numbers.** Those adapters are unverified; the vendor's own server reads its own API.
+
+Both can run side by side: an assistant can read across tools through `outbound mcp` and act in one tool through that vendor's server.
