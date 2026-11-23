@@ -4,7 +4,7 @@
 // minor release (OUT-168).
 
 /** The release that stops answering the old names. */
-export const ALIASES_UNTIL = "0.18.0";
+export const ALIASES_UNTIL = "0.19.0";
 
 export interface Member {
   /** The value of `view` or one of `checks`. */
