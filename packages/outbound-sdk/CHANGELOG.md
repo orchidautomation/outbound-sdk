@@ -1,11 +1,54 @@
 # outbound-sdk
 
+## 0.19.0
+
+### Breaking changes
+
+- **The MCP and `outbound tool` names that 0.16.0 merged no longer answer (OUT-198).** A `tools/call` or `outbound tool` with an old name, such as `campaign_overview` or `dropped_replies`, is an unknown tool; call the listed tool with its `view` or `checks`, as listed below. `RENAMED_TOOLS` is no longer exported from `outbound-sdk/cli`.
+- **`replies.list({ includeInbox: true })` is `Unsupported` where `replies.inbox` is `false` (OUT-197).** Instantly, Smartlead and EmailBison now refuse it, `outbound replies --include-inbox` included, before any request. Leave it out on those tools.
+
+### Minor Changes
+
+- ca6e15e: `replies.list({ includeInbox: true })` is refused as `Unsupported` before any request on an adapter whose `replies.inbox` capability is `false` (OUT-197). Instantly, Smartlead and EmailBison sent the read anyway and ignored the flag. **Breaking** for a caller that passed `includeInbox: true` there, `outbound replies --include-inbox` included: leave it out on those tools.
+
+  - A combined instance now has `replies.inbox` when any member has it, as `messages.byThread` does, and asks only those members for replies outside every campaign. `unanswered_replies` asks for them only where the tool has them.
+  - The shared adapter suite now checks every narrowing capability (`leads.byDomain`, `leads.byInterest`, `leads.byStatus`, `leads.lookup`, `leads.lookupMany`, `messages.byHand`, `messages.latestOfConversation`, `replies.inbox`, `senders.healthList`, `stats.bySenders`) on every adapter that declares it false. `replies.inbox` was the only one that let a request through.
+- ea4317b: Insight answers say more truthfully what they rest on (OUT-196).
+
+  - `InsightMeta.stale` is `true` when any read behind the answer was an older answer the failover plugin served because the vendor was down, as `ResultMeta.stale` says on that read. A listing walk's `meta.stale` now stays `true` once any of its pages was stale, not only when the last one was.
+  - `leadCollisions` and `suppressionCheck` give `totals.collisions` and `totals.violations` of `null`, not 0, when no campaign is in the statuses asked for while others exist (`campaignsRead: 0`, `meta.complete: false`). Their `finding` then says that nothing was checked and how to check the others. A missing count is `null`, never 0.
+  - The type docs no longer read as if `lead_runway` were an insight. It is an AI tool (`outbound-sdk/tools`, `outbound mcp`), so `listInsights()` does not list it; `pipelineForecast` and `clientReport` give the same runway state and days.
+- 812ae1b: **Breaking for MCP clients and `outbound tool`: the tool names that 0.16.0 merged no longer answer (OUT-198).** 0.18.0 said they would answer until 0.19.0.
+
+  - A `tools/call` or `outbound tool` with an old name is now an unknown tool. Call the listed tool instead: `campaign_overview`, `campaign_ranking` and `campaign_trend` are `campaigns` with `view` `list`, `ranking` or `trend`; `deliverability_check`, `warmup_readiness`, `domain_health` and `bounce_watch` are `sender_health` with `checks` `deliverability`, `warmup`, `domains` or `bounces`; `sender_load` is `sender_capacity` with view `load`; `pipeline_forecast` is `lead_runway` with view `forecast`; `suppression_check` and `lead_collisions` are `list_hygiene` with checks `suppression` or `collisions`; `copy_audit`, `variant_test`, `personalization_gaps` and `copy_reuse` are `copy_review` with checks `audit`, `variants`, `personalization` or `reuse`; `winning_steps` is `step_funnel` with view `winners`; `person_summary`, `cross_channel_lead` and `account_summary` are `person` with view `summary`, `timeline` or `account`; `dropped_replies` is `unanswered_replies`.
+  - `RENAMED_TOOLS` is no longer exported from `outbound-sdk/cli`. `initialize` now says, once, which listed tool answers each of those names (such as `bounce_watch is sender_health with checks ["bounces"]`), so an agent that knows a CLI insight name is not stuck, but a call by that name is refused.
+  - `--tools` still takes one of those names, to offer the listed tool with only that view or check. The SDK's own tools (`createTools`), the insights and `outbound insight` keep their names.
+- fd5a795: Read bounces and HeyReach auto-replies with fixed rules, and keep the rules' own verdict beside the vendor's flag (OUT-195).
+
+  - Messages and replies carry `rule: { autoReply, bounce, reason }`, the fixed rules' verdict, on every adapter that reads received mail. It is kept even when the vendor's flag decides `isAuto`, so a reply the vendor calls a person but a rule calls an out-of-office can be found.
+  - New bounce rules: a `mailer-daemon@` or `postmaster@` sender, an `Undeliverable:` or `Delivery Status Notification` subject, and a body such as "could not be delivered" or an SMTP code like `550 5.1.1`. A bounce still sets `isAuto`.
+  - HeyReach messages and replies now get `isAuto`, `isAutoSource: "rule"` and `leftCompany` from the fixed rules. HeyReach flags no message as automatic, and its Generic auto-tag mixes an out-of-office with neutral answers.
+  - `detectAutoReply`, `detectBounce` and `AUTO_REPLY_WITHIN_MS` are exported, so a caller can run the same rules on its own text.
+- 1124a20: A scoped `sync.run` says what of the inbox it left out (OUT-203). HeyReach inbox conversations tied to no campaign cannot be matched to a campaign scope, because a conversation does not name its campaign (checked against HeyReach's docs and live on 2026-11-23). A scoped sync of `replies` or `messages` on a tool with such an inbox now notes that they were left out, and `scope.inboxLeftOut` is `null`, an unknown count; it is `0` where the tool has no inbox or the collection has none.
+- 906bb68: `sync.run` takes the campaign scope, and `resolveScope` is public (OUT-202).
+
+  - `outbound.sync.run(collection, { tag | campaign_name | campaign_ids, onPage })` syncs only the scope's campaigns, found before any per-campaign read as every insight finds them. Each campaign keeps its own checkpoint, keyed by its ref, and `maxPages` counts pages across them. The result's `scope` says how the campaigns were found and what each synced. Senders shared by several campaigns are handed out once per run.
+  - `resolveScope(outbound, scope)` from `outbound-sdk` returns the campaigns a scope covers, with `meta.tools` saying for each tool whether they were read by id, filtered by the vendor, or matched here.
+  - A tag where campaigns carry no tags is `Unsupported`, and a malformed scope, an empty one for `resolveScope`, or a scope with `campaignId` `Invalid`, before any request.
+  - `CampaignScopeInput`, `ResolvedScope`, `ResolvedScopeMeta`, `ScopeTool`, `ScopeFilter`, `SyncScopeResult` and `SyncCampaignResult` are exported.
+
+### Patch Changes
+
+- 56652cd: A custom insight's input type takes the campaign scope (OUT-204). `defineInsight` already added `campaign_ids`, `tag` and `campaign_name` to the schema at run time, but not to the type, so `runInsight(outbound, definition, { tag: "client-a" })` failed with TS2345 for an input schema of `z.object({})`. It type-checks now, and a scope key of the wrong type is still refused. The scope's keys are exported as `CampaignScopeInput`.
+- 63c25a8: HeyReach: a campaign HeyReach lists but can no longer open no longer fails every reply and message listing (OUT-206). HeyReach answers 400 "The campaign you are trying to open does not exist." for a conversation filter naming such a campaign, alone or with others. The adapter now leaves that campaign out of its walk over the workspace's campaigns, and out of the filter that sets apart the inbox's own conversations. Any other 400 still fails the call.
+- c8f4a5d: A scoped insight keeps `evidence: "exact"` again when its tag or name was matched on our side (OUT-205). Where the vendor cannot filter its campaign listing, the listing is read whole and the scope's fixed rule picks the campaigns, so `clientReport({ days: 7, tag: "client-a" })` on `memory` with `demoData()` answers `exact`, as in 0.17.0, not `derived`. The note still says the listing was filtered here. A read that is derived for its own reason still makes the answer `derived`.
+
 ## 0.18.0
 
 ### Minor Changes
 
 - 6b840ea: Filter campaign listings by name and tag (OUT-199). `campaigns.list` and `campaigns.listAll` take `name` (campaigns whose name contains the text, ignoring case) and `tag` (campaigns that carry the tag, ignoring case). Two new capabilities say who filters: `campaigns.byName` and `campaigns.byTag`, each `server`, `client` or `false`.
-  
+
   - Instantly filters both on its side: `search` for the name, and `tag_ids` after looking the tag up by name.
   - HeyReach filters the name with `keyword`. Its campaigns carry no tags, so `tag` throws `Unsupported` before any request.
   - EmailBison filters the tag with `tag_ids[]`; the name is matched after the listing.
@@ -13,7 +56,7 @@
   - Instantly campaign listings no longer drop tags: a page of 100 campaigns whose tag assignments filled a page lost the rest (5 of 110 campaigns live), because Instantly's next page of assignments came back empty. Such a page is now read again in halves.
   - The wrapper checks every campaign against both filters whatever the vendor did, so a looser vendor search never widens the answer. An empty `name` or `tag` is refused with `Invalid`.
 - 325c86d: A campaign scope on every insight (OUT-200). Each insight takes `campaign_ids`, `tag` and `campaign_name` (an exact name, a glob with `*` and `?`, or `/regex/`), and reads only the campaigns matching every one given, together with its own filters such as `statuses`.
-  
+
   - The scope is applied before any per-campaign read. Ids are read by id with no listing; a tag or a name is sent to the vendor where it filters its listing (`campaigns.byTag`, `campaigns.byName`), and matched after the listing elsewhere. `meta.notes` says how many campaigns matched and which side filtered.
   - A tag where campaigns carry no tags, such as HeyReach, is refused as `Unsupported` before any request. A malformed scope is `Invalid`.
   - Under a scope no other campaign's rows are read: a `campaign` outside it is refused, replies, senders and leads are read per campaign, and workspace totals are the scope's campaigns added up, each with a note.
