@@ -9,11 +9,11 @@ import { OutboundError } from "../internal/errors.ts";
 import { unknownKey } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
 import type { ListAll, OutboundApi } from "../internal/outbound/api.ts";
+import type { CampaignScope } from "../internal/scope/rule.ts";
 import { namesCampaign } from "../tools/by-name.ts";
 import { inputProblem } from "../tools/input-problem.ts";
 import type { InsightCost } from "./cost.ts";
 import { scopeCost } from "./scope-campaigns.ts";
-import type { CampaignScope } from "./scope.ts";
 
 /** What the redact plugin masks on an instance. */
 export interface Masking {

@@ -17,13 +17,14 @@ import type {
   StatsResult,
   TopLevelStatsOptions,
 } from "../internal/outbound/api.ts";
-import { outsideScope, scopeCampaigns } from "./scope-campaigns.ts";
-import type { ScopeReads } from "./scope-campaigns.ts";
+import { scopeCampaigns } from "../internal/scope/campaigns.ts";
+import type { ScopeReads } from "../internal/scope/campaigns.ts";
+import { admits, namesId } from "../internal/scope/rule.ts";
+import type { CampaignScope } from "../internal/scope/rule.ts";
+import { outsideScope } from "./scope-campaigns.ts";
 import { after, FanWalk, kept, listOf } from "./scope-walks.ts";
-import { admits, namesId } from "./scope.ts";
-import type { CampaignScope } from "./scope.ts";
 
-export type { ScopeReads } from "./scope-campaigns.ts";
+export type { ScopeReads } from "../internal/scope/campaigns.ts";
 
 interface State {
   readonly outbound: OutboundApi;

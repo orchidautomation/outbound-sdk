@@ -9,10 +9,12 @@ export { memoryCheckpointStore, sync } from "./plugin.ts";
 export type {
   Checkpoint,
   CheckpointStore,
+  SyncCampaignResult,
   SyncCollection,
   SyncExtension,
   SyncFilter,
   SyncOptions,
   SyncPluginOptions,
   SyncResult,
-} from "./plugin.ts";
+  SyncScopeResult,
+} from "./types.ts";

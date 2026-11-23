@@ -188,6 +188,17 @@ export type {
 
 export { makeRef, parseRef } from "./internal/ref.ts";
 
+export { resolveScope } from "./internal/scope/resolve.ts";
+
+export type {
+  ResolvedScope,
+  ResolvedScopeMeta,
+} from "./internal/scope/resolve.ts";
+
+export type { ScopeFilter, ScopeTool } from "./internal/scope/campaigns.ts";
+
+export type { CampaignScopeInput } from "./internal/scope/rule.ts";
+
 export { profileSlug } from "./internal/url.ts";
 
 export type { RefParts } from "./internal/ref.ts";
