@@ -35,7 +35,7 @@ import { runCap } from "./run-cap.ts";
 import type { CapOptions, RunCap } from "./run-cap.ts";
 import { refuseTagless } from "./scope-campaigns.ts";
 import { SCOPE_INPUTS, scopeOf } from "./scope.ts";
-import type { CampaignScope } from "./scope.ts";
+import type { CampaignScope, CampaignScopeInput } from "./scope.ts";
 import { scopedOutbound } from "./scoped-reads.ts";
 import { capNote, readsOf, stopNote } from "./tracked-reads.ts";
 import type { Cap } from "./tracked-reads.ts";
@@ -434,19 +434,33 @@ const execute = async <Key extends string, Input, Data, Given>(
 };
 
 /**
+ * What a caller writes: the insight's own input and the campaign scope. An
+ * empty `z.object({})` takes a `Record<string, never>`, which would refuse
+ * the scope's keys, so only the scope is added to it.
+ */
+export type WithScope<Given> = (string extends keyof Given ? unknown : Given) &
+  CampaignScopeInput;
+
+/**
  * Defines an insight. The key, the input type and the data type are kept as
- * written, so `outbound.insights` is typed from the definitions.
+ * written, so `outbound.insights` is typed from the definitions. What a
+ * caller writes also takes the campaign scope, which every insight accepts.
  */
 export const defineInsight = <const Key extends string, Input, Data, Given>(
   given: InsightSpec<Key, Input, Data, Given>
-): InsightDefinition<Key, Input, Data, Given> => {
-  const spec: InsightSpec<Key, Input, Data, Given> = {
+): InsightDefinition<Key, Input, Data, WithScope<Given>> => {
+  const spec: InsightSpec<Key, Input, Data, WithScope<Given>> = {
     ...given,
     // SAFETY: the scope's fields are optional, so every input the insight's own schema takes is still taken, and its parsed values keep their types.
     // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- zod's extend gives a new object type that does not overlap the declared Input generic, which the scope's optional fields leave unchanged
     inputSchema: given.inputSchema.extend(
       SCOPE_INPUTS
-    ) as unknown as InsightSpec<Key, Input, Data, Given>["inputSchema"],
+    ) as unknown as InsightSpec<
+      Key,
+      Input,
+      Data,
+      WithScope<Given>
+    >["inputSchema"],
   };
 
   return {
