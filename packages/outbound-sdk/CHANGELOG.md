@@ -1,5 +1,23 @@
 # outbound-sdk
 
+## 0.22.0
+
+### Minor Changes
+
+- 9442aba: `anomalies` with `campaign: null` runs on an adapter without `stats.workspace` when it has daily stats per campaign (OUT-219). It lists every campaign, whatever its state, up to 500, reads each one's days and adds them up. `meta.evidence` is `derived`, a note says the days are campaigns added up, and `meta.requests` and the cost estimate count the listing and each campaign's read. A listing stopped at 500 makes the answer `complete: false`. With neither workspace nor campaign stats it is still `Unsupported` before any request. An insight's `needsFor` now also receives the instance's capabilities.
+  
+  The `person_summary` docs say why it refuses under the `redact` plugin, and how that differs from the `person` tool's masked view (OUT-220).
+- 303d9af: A new capability, `stats.byStepDay`, gates a step's stats by day: `campaign(id).stats({ scope: "step", by: "day" })` (OUT-216).
+  
+  - An adapter that declares it, such as the memory adapter or your own adapter over stored history, serves a row per step and day. Every vendor adapter declares it `false`, because Instantly, Smartlead and EmailBison report step counts only as totals over a range and HeyReach has no step stats, so the read is `Unsupported` before any request, now from the capability check instead of from inside the adapter.
+  - `step_funnel` takes `by_day`, which adds `days`: each day's sends and replies per step, for one more request. It is refused before any request where the adapter lacks `stats.byStepDay`. Without `by_day`, `days` is `null`.
+  - **Type change:** `StepFunnel` has a new required field, `days` (`FunnelDay[] | null`). Code that builds a `StepFunnel` by hand, such as a test fixture or a card, must add `days: null`.
+  - The Smartlead and EmailBison pages say that neither vendor has a daily read that keeps campaigns apart, so daily stats for every campaign cost one request per campaign (OUT-217).
+
+### Patch Changes
+
+- 980b54d: The memory adapter applies every filter it is declared with (OUT-218). Declared through `capabilities`, `leads.byInterest` keeps only positive leads, `leads.lookupMany` only the listed addresses, `messages.byHand` only outbound messages seeded `byHand: true` (a new `MemoryMessage` field), and `messages.latestOfConversation` only the latest message of each conversation that holds a reply. Before, they were ignored, so an insight such as `hot_leads` over memory data saw records a vendor that filters would have left out. A contract test runs every filter capability against the memory adapter.
+
 ## 0.21.1
 
 ### Patch Changes
