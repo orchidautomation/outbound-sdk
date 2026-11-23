@@ -36,6 +36,7 @@
   - `resolveScope(outbound, scope)` from `outbound-sdk` returns the campaigns a scope covers, with `meta.tools` saying for each tool whether they were read by id, filtered by the vendor, or matched here.
   - A tag where campaigns carry no tags is `Unsupported`, and a malformed scope, an empty one for `resolveScope`, or a scope with `campaignId` `Invalid`, before any request.
   - `CampaignScopeInput`, `ResolvedScope`, `ResolvedScopeMeta`, `ScopeTool`, `ScopeFilter`, `SyncScopeResult` and `SyncCampaignResult` are exported.
+  - **Moving a per-campaign sync to a scope starts those campaigns over (OUT-210).** A checkpoint is keyed by the `campaignId` as given, and a scope gives each campaign's ref (`provider:workspace:id`). A campaign you synced with its bare vendor id, as `campaignId: "12345"`, has no checkpoint under its ref, so the first scoped run walks it again from the start and `onPage` gets its records again: upsert by `ref`, as for any replayed page. A campaign you synced with its ref as `campaignId` keeps its checkpoint. Unscoped runs keep theirs.
 
 ### Patch Changes
 
