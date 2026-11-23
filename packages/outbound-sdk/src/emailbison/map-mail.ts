@@ -6,7 +6,7 @@
 // a thread). Their ids are separate counters, so a sent email's id is
 // prefixed `scheduled-`.
 
-import { detectAutoReply } from "../internal/auto-reply.ts";
+import { readReply, ruleSaysAuto } from "../internal/auto-reply.ts";
 import type { Message, Reply, ReplyCategory } from "../internal/entities.ts";
 import {
   emailAddress,
@@ -105,8 +105,8 @@ export const toReply = (
   const read = flag(raw.read);
   const vendor = flag(raw.automated_reply);
 
-  // When EmailBison does not say, a fixed rule reads the sender, subject and body.
-  const verdict = detectAutoReply({
+  // When EmailBison does not say, the fixed rules read the sender, subject and body.
+  const { leftCompany, rule } = readReply({
     body: bodyOf(raw),
     from: text(raw.from_email_address),
     subject: text(raw.subject) ?? text(raw.email_subject),
@@ -117,9 +117,10 @@ export const toReply = (
     category,
     categorySource: category === "unknown" ? null : "vendor",
     direction: "in",
-    isAuto: vendor ?? verdict.isAuto,
+    isAuto: vendor ?? ruleSaysAuto(rule),
     isAutoSource: vendor === null ? "rule" : "vendor",
-    leftCompany: verdict.leftCompany,
+    leftCompany,
+    rule,
     unread: read === null ? null : !read,
   };
 };

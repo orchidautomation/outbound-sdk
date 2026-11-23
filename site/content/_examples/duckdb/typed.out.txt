@@ -1,4 +1,4 @@
-exported 3 replies with 25 columns
+exported 3 replies with 26 columns
 a few columns and their types:
   {"column_name":"leftCompany","data_type":"BOOLEAN"}
   {"column_name":"ref","data_type":"VARCHAR"}

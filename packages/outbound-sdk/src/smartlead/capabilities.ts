@@ -134,6 +134,7 @@ export const fields: FieldDeclaration = {
     // Read only by the Instantly adapter, whose emails name their lead by address.
     leadEmail: false,
     isAutoSource: false,
+    rule: false,
     url: false,
     variantKey: false,
   },
@@ -165,6 +166,7 @@ export const fields: FieldDeclaration = {
     isAuto: "derived",
     isAutoSource: "derived",
     leftCompany: "derived",
+    rule: "derived",
     // The master inbox does not say which step a reply answers.
     stepIndex: false,
     url: false,

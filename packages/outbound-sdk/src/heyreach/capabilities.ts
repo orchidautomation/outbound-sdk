@@ -132,8 +132,10 @@ export const fields: FieldDeclaration = {
     bodyHtml: false,
     // Read only by the Instantly adapter, whose emails name their lead by address.
     leadEmail: false,
-    isAuto: false,
-    isAutoSource: false,
+    // HeyReach flags no message as automatic: the fixed rules read the lead's messages.
+    isAuto: "derived",
+    isAutoSource: "derived",
+    rule: "derived",
     stepIndex: false,
     // HeyReach documents no link to a Unibox conversation.
     url: false,
@@ -170,9 +172,11 @@ export const fields: FieldDeclaration = {
     // The lead's newest auto-tag, not a label on the message.
     category: "derived",
     categorySource: "derived",
-    isAuto: false,
-    isAutoSource: false,
-    leftCompany: false,
+    // The fixed rules read the message text and an InMail's subject.
+    isAuto: "derived",
+    isAutoSource: "derived",
+    leftCompany: "derived",
+    rule: "derived",
     stepIndex: false,
     url: false,
     variantKey: false,

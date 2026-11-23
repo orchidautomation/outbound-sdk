@@ -1,7 +1,7 @@
 // Instantly leads, messages and replies -> normalized entities. Pure
 // functions, no I/O. Field names follow the API V2 reference.
 
-import { detectAutoReply } from "../internal/auto-reply.ts";
+import { readReply, ruleSaysAuto } from "../internal/auto-reply.ts";
 import type {
   Lead,
   LeadEngagement,
@@ -325,7 +325,7 @@ const rawBody = (raw: JsonObject): string | null =>
  * missing. An Out of Office `i_status` is the vendor saying so.
  */
 const autoOf = (raw: JsonObject, mapped: ReplyCategory | undefined) => {
-  const verdict = detectAutoReply({
+  const { leftCompany, rule } = readReply({
     body: rawBody(raw),
     from: text(raw.from_address_email),
     subject: text(raw.subject),
@@ -335,9 +335,10 @@ const autoOf = (raw: JsonObject, mapped: ReplyCategory | undefined) => {
     oneOrZero(raw.is_auto_reply) ?? (mapped === "ooo" ? true : null);
 
   return {
-    isAuto: vendor ?? verdict.isAuto,
+    isAuto: vendor ?? ruleSaysAuto(rule),
     isAutoSource: vendor === null ? ("rule" as const) : ("vendor" as const),
-    leftCompany: verdict.leftCompany,
+    leftCompany,
+    rule,
   };
 };
 
@@ -354,7 +355,7 @@ export const toMessage = (
     };
   }
 
-  const { isAuto, isAutoSource } = autoOf(
+  const { isAuto, isAutoSource, rule } = autoOf(
     raw,
     category(raw.i_status, NO_LABELS)
   );
@@ -364,6 +365,7 @@ export const toMessage = (
     direction: "in",
     isAuto,
     isAutoSource,
+    rule,
   };
 };
 
