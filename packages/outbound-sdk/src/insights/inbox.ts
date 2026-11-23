@@ -26,13 +26,7 @@ export const inboxOf = (
     let separates = known.get(key);
 
     if (separates === undefined) {
-      try {
-        separates = outbound.workspace(key).capabilities["replies.inbox"];
-      } catch {
-        // Not a member of a combined instance: its tool is this one.
-        separates = false;
-      }
-
+      separates = outbound.workspace(key).capabilities["replies.inbox"];
       known.set(key, separates);
     }
 
