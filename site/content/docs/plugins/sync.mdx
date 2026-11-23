@@ -138,6 +138,23 @@ To mean every campaign of the workspace, use `campaign_name: "*"`. It is a glob 
 
 Why a status filter and not an order option such as `campaignOrder: "active-first"` on a run of the whole workspace: a run of the whole workspace follows the vendor's own listing and keeps the vendor's cursor in one checkpoint. Instantly's leads, for one, are not listed campaign by campaign at all. Reordering it would change every adapter's walk and orphan every saved cursor. And not a whole-workspace `resolved`: `run` checks only a `resolved`'s provider and workspace, so it cannot know that a list covers every campaign, and could not safely add the inbox or drive deletion marking. A status filter is applied by the SDK itself, keeps the per-campaign checkpoints scoped runs already use, and adds one key. A status run is a scoped run: replies and messages tied to no campaign are left out, as `inboxLeftOut` says. A campaign synced before only by a run of the whole workspace starts over on its first status run, because that run's checkpoint covers the workspace, not the campaign.
 
+## After a per-campaign back-fill
+
+The first run of the whole workspace after a back-fill campaign by campaign reads everything again. Its checkpoint covers the workspace, not any campaign, so it starts with no `since`. This is deliberate, and nothing seeds it from the campaigns' checkpoints:
+
+- Marking deleted records needs a run that saw every record. A run that started from the campaigns' high-water marks would read only what is newer, so a record missing from it would not mean the record was deleted. The first run of the whole workspace is the one that reads everything.
+- Replies and messages tied to no campaign, such as HeyReach's inbox conversations, were never read by the back-fill. On HeyReach they can't be read apart from the campaigns: the inbox is the unfiltered conversation listing less the conversations that belong to a campaign, so reading it reads every conversation in the workspace anyway.
+- Skipping campaigns the back-fill already covered would hand a caller a run that looks like the whole workspace without having read it.
+
+What it costs is one more full read. On a live HeyReach workspace with 19 campaigns (2026-11-23), the back-fill and the first run of the whole workspace cost about the same:
+
+| Collection | Back-fill (`campaign_name: "*"`) | First run of the whole workspace | Next run of the whole workspace |
+| --- | --- | --- | --- |
+| `replies` | 21 requests, 67 records | 21 requests, 67 records | 20 requests, 0 records |
+| `messages` | 21 requests, 413 records | 27 requests, 907 records, inbox included | 22 requests, 0 records |
+
+So if you need a run of the whole workspace for deletion marking or the inbox, run it first, or instead of a campaign-by-campaign back-fill. Use scoped runs for what only they give: one client's campaigns, or active campaigns first. Runs after the first one read only what is newer, as any run does.
+
 ## The store
 
 A checkpoint store is three async functions. A checkpoint is a small JSON object with up to four strings: `cursor`, `since`, `startedAt` and, for one campaign's checkpoint, `campaignRef`, the campaign's ref, so a store can keep one row per campaign.
