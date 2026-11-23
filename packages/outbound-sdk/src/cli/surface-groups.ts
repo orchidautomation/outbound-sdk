@@ -1,7 +1,7 @@
 // The tools `outbound mcp` lists: neighbouring tools and insights merged into
 // one tool each, picked by `view` (one answer) or `checks` (several
 // answers in one call) (OUT-168). The names they merged stopped answering
-// in 0.18.0.
+// in 0.19.0.
 
 export interface Member {
   /** The value of `view` or one of `checks`. */

@@ -1,6 +1,6 @@
 // The MCP surface: merged tools picked by view or checks, a scope on every
 // tool, each result sent once, and a ceiling on what tools/list costs a model
-// before its first call (OUT-168). The old names stopped answering in 0.18.0.
+// before its first call (OUT-168). The old names stopped answering in 0.19.0.
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -23,7 +23,7 @@ import { suite as instantlySuite } from "./instantly/suite.ts";
  */
 const TOOLS_LIST_CEILING = 56_000;
 
-/** The tool names the merged tools replaced, which answered until 0.18.0. */
+/** The tool names the merged tools replaced, which answered until 0.19.0. */
 const OLD_NAMES = [
   "campaign_overview",
   "campaign_ranking",
@@ -212,7 +212,7 @@ test("each result is sent once: a summary as text beside structuredContent, or t
   );
 });
 
-test("an old name from before 0.18.0 is an unknown tool, and the tool it became answers", async () => {
+test("an old name from before 0.19.0 is an unknown tool, and the tool it became answers", async () => {
   const session = await serve(
     demo(),
     [
