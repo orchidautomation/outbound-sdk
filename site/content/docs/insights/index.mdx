@@ -344,7 +344,7 @@ outbound insight client_report --input '{}'
 
 ## Define your own
 
-`defineInsight` takes a name, a description, a Zod object for the input, the capabilities it needs and a `run` function. `runInsight` runs it with the same input checking, capability check and `meta` as the built-in ones, and keeps its typed answer. A definition's `execute` method is the untyped form the tool list uses.
+`defineInsight` takes a name, a description, a Zod object for the input, the capabilities it needs and a `run` function. `runInsight` runs it with the same input checking, capability check and `meta` as the built-in ones, and keeps its typed answer. It takes the [campaign scope](#campaign-scope) too, in its input type as well as at run time, so `runInsight(outbound, definition, { tag: "client-a" })` type-checks even for an input schema of `z.object({})`. The scope's keys are the `CampaignScopeInput` type. A definition's `execute` method is the untyped form the tool list uses.
 
 <include meta='title="define.ts"'>
   ../../_examples/insights-index/define.ts

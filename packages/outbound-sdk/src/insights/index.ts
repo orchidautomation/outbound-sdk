@@ -19,6 +19,8 @@ export type { InsightCost, Price } from "./cost.ts";
 
 export type { InsightInputs } from "./inputs.generated.ts";
 
+export type { CampaignScopeInput } from "./scope.ts";
+
 export { INSIGHT_TOOL_CEILING, insightTools, membersOf } from "./tools.ts";
 
 export type { InsightToolsOptions } from "./tools.ts";
@@ -32,6 +34,7 @@ export type {
   InsightMeta,
   InsightResult,
   RunOptions,
+  WithScope,
 } from "./define.ts";
 
 export { INSIGHTS } from "./registry.ts";

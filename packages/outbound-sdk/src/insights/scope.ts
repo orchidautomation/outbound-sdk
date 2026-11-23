@@ -135,15 +135,19 @@ export const nameRule = (text: string, insight: string): NameRule => {
   };
 };
 
-interface ScopeInput {
-  readonly campaign_ids?: readonly string[] | undefined;
+/** The campaign scope as a caller writes it, which every insight takes on top of its own input. */
+export interface CampaignScopeInput {
+  /** Read only these campaigns, by ref or vendor id, 1 to 500. */
+  readonly campaign_ids?: string[] | undefined;
+  /** Read only the campaigns whose whole name matches: an exact name, a glob, or `/regex/`. */
   readonly campaign_name?: string | undefined;
+  /** Read only the campaigns that carry this tag, ignoring case. */
   readonly tag?: string | undefined;
 }
 
 /** The scope an insight's parsed input asks for, or `null` for the whole workspace. */
 export const scopeOf = (
-  input: ScopeInput,
+  input: CampaignScopeInput,
   insight: string
 ): CampaignScope | null => {
   const { campaign_ids: ids, campaign_name: name, tag } = input;
