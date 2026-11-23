@@ -44,6 +44,7 @@ Every insight returns the same three parts: its tool name in `insight`, the answ
 | `meta.evidence` | `exact` only when every read behind the answer was exact. Otherwise the weakest of them: `sampled`, then `derived`. |
 | `meta.notes` | What to know before trusting the numbers: which cap was reached, or a part that was skipped because the adapter cannot read it. |
 | `meta.computedAt` | When the insight ran, ISO 8601 UTC. |
+| `meta.stale` | `true` when a read behind the answer was an older answer the [failover](/docs/plugins/failover) plugin served because the vendor was down, as `ResultMeta.stale` says on that read. |
 | `meta.provider` | The adapter's name. |
 
 Pass `meta.notes` on with the numbers. An answer cut short by a cap looks like a whole answer unless you say so.

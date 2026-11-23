@@ -37,6 +37,12 @@ export interface InsightMeta {
   readonly requests: number;
   /** `false` when the answer covers part of the data: a cap stopped a read early, or a record could not be checked. */
   readonly complete: boolean;
+  /**
+   * `true` when any read behind the answer was an older answer served
+   * because the vendor was down (`ResultMeta.stale`, set by the failover
+   * plugin). Each such read's own `meta.fetchedAt` says when it was fetched.
+   */
+  readonly stale: boolean;
   /** What the reader should know before trusting the numbers. */
   readonly notes: readonly string[];
   readonly provider: string;
@@ -273,6 +279,7 @@ const track = (cap: RunCap, now: number, partialOnCap: boolean): Tracker => {
   let requests = 0;
   let evidence: Evidence = "exact";
   let complete = true;
+  let stale = false;
   let absorbed = false;
 
   // What stopped the read when a request cap did and the read may keep what it got.
@@ -298,6 +305,7 @@ const track = (cap: RunCap, now: number, partialOnCap: boolean): Tracker => {
     }
 
     requests += meta.requests;
+    stale ||= meta.stale;
     evidence = RANK[meta.evidence] > RANK[evidence] ? meta.evidence : evidence;
 
     for (const text of meta.notes) {
@@ -373,6 +381,7 @@ const track = (cap: RunCap, now: number, partialOnCap: boolean): Tracker => {
       evidence,
       notes: [...notes],
       requests: Math.max(requests, cap.used()),
+      stale,
     }),
   };
 };

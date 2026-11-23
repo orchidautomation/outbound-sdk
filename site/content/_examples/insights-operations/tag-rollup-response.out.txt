@@ -110,6 +110,7 @@
       "Tag saas: bounce rate (1 of 2) counts only the campaigns that report both the count and what it is divided by. The others are left out of the rate, not counted as 0."
     ],
     "requests": 0,
+    "stale": false,
     "computedAt": "2026-11-14T12:00:00.000Z",
     "provider": "memory"
   }

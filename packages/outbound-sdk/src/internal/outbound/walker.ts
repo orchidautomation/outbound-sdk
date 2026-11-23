@@ -53,7 +53,11 @@ export class PageWalker<Item> implements ListAll<Item> {
     for (;;) {
       // oxlint-disable-next-line no-await-in-loop -- each page needs the previous page's cursor.
       const fetched = await fetchPage(this.#cursor, state);
-      this.#meta = fetched.page.meta;
+      // One page served stale makes the walk stale, whichever page came last.
+      this.#meta =
+        this.#meta?.stale === true
+          ? { ...fetched.page.meta, stale: true }
+          : fetched.page.meta;
 
       for (const item of fetched.page.items) {
         const key = keyOf(item);

@@ -71,7 +71,8 @@ export interface PipelineForecast extends CampaignLabel {
   /**
    * `draining`, `stalled` (leads left to start but no pace), `out_of_leads`
    * (none left to start) or `unknown` (the leads left were not all counted).
-   * `lead_runway` returns the same state. Always set by the insight;
+   * The `lead_runway` tool (an AI tool from `outbound-sdk/tools` and `outbound mcp`,
+   * not an insight) returns the same state. Always set by the insight;
    * optional so a value built by hand stays valid.
    */
   readonly runwayState?: RunwayState;
@@ -79,7 +80,7 @@ export interface PipelineForecast extends CampaignLabel {
    * `notStarted` (or `remaining` when that is `null`) divided by
    * `dailyContactRate`. `null` when the pace is `null` or 0, or the leads
    * left are unknown (the cap stopped the read, or a lead's status is
-   * unknown). `lead_runway` returns the same figure as `runway_days`.
+   * unknown). The `lead_runway` tool returns the same figure as `runwayDays`.
    */
   readonly daysLeft: number | null;
   /** The campaign's reply rate so far, over its whole history. */

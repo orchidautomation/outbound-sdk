@@ -181,6 +181,7 @@ $ outbound insight channel_mix --input '{"max_campaigns":5}'
     "evidence": "exact",
     "notes": [],
     "requests": 0,
+    "stale": false,
     "computedAt": "2026-11-14T12:00:00.000Z",
     "provider": "memory",
     "throttledMs": 0,
