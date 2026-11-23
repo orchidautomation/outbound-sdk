@@ -1,7 +1,4 @@
 scope: [ 'Q4 SaaS founders' ] [ { campaigns: 1, filter: 'here', tool: 'memory:agency' } ] exact
-page: [
-  'memory:agency:cmp_founders',
-  'memory:agency:cmp_founders',
-  'memory:agency:cmp_founders'
-]
-run: 3 [ [ 'Q4 SaaS founders', 3 ] ]
+page: memory:agency:cmp_founders 3
+leads: memory:agency:cmp_founders 2
+run: 3 [ [ 'Q4 SaaS founders', 3 ] ] 2 0

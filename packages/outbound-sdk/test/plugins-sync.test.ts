@@ -60,6 +60,7 @@ test("sync walks every page, hands each to onPage, and records when it finished"
     collection: "campaigns",
     complete: true,
     filter: "none",
+    inboxLeftOut: 0,
     notes: [],
     pages: 3,
     records: 5,

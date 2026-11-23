@@ -1,5 +1,5 @@
 import { createOutbound, resolveScope } from "outbound-sdk";
-import type { Message } from "outbound-sdk";
+import type { Lead, Message } from "outbound-sdk";
 import { demoData, memory } from "outbound-sdk/memory";
 import { memoryCheckpointStore, sync } from "outbound-sdk/sync";
 
@@ -9,28 +9,35 @@ const outbound = createOutbound({
 });
 
 // Which campaigns one client's scope covers, and how they were found.
-const { campaigns, meta } = await resolveScope(outbound, { tag: "client-a" });
+const resolved = await resolveScope(outbound, { tag: "client-a" });
 
 console.log(
   "scope:",
-  campaigns.map((campaign) => campaign.name),
-  meta.tools,
-  meta.evidence
+  resolved.campaigns.map((campaign) => campaign.name),
+  resolved.meta.tools,
+  resolved.meta.evidence
 );
 
-// Sync that client's messages only. Each campaign keeps its own checkpoint.
-const result = await outbound.sync.run<Message>("messages", {
-  onPage: (items) => {
-    console.log(
-      "page:",
-      items.map((item) => item.campaignRef)
-    );
+// Sync that client's messages, then its leads, with the scope found once.
+// Each campaign keeps its own checkpoint, and each page names its campaign.
+const messages = await outbound.sync.run<Message>("messages", {
+  onPage: (items, page) => {
+    console.log("page:", page.campaignRef, items.length);
   },
-  tag: "client-a",
+  resolved,
+});
+
+const leads = await outbound.sync.run<Lead>("leads", {
+  onPage: (items, page) => {
+    console.log("leads:", page.campaignRef, items.length);
+  },
+  resolved,
 });
 
 console.log(
   "run:",
-  result.records,
-  result.scope?.campaigns.map((each) => [each.name, each.records])
+  messages.records,
+  messages.scope?.campaigns.map((each) => [each.name, each.records]),
+  leads.records,
+  messages.inboxLeftOut
 );

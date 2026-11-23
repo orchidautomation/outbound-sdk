@@ -3,9 +3,9 @@
 // checkpoint, so nothing of another campaign is read.
 
 import type { Entity } from "../internal/entities-account.ts";
-import { findScope } from "../internal/scope/resolve.ts";
+import type { OutboundApi } from "../internal/outbound/api.ts";
 import type { ResolvedScope } from "../internal/scope/resolve.ts";
-import type { CampaignScope } from "../internal/scope/rule.ts";
+import { inboxLeftOut } from "./inbox.ts";
 import type {
   SyncCampaignResult,
   SyncCollection,
@@ -56,39 +56,30 @@ const sumOf = (
   return total;
 };
 
-const INBOX_NOTE =
-  "Replies tied to no campaign (HeyReach inbox conversations) belong to no campaign scope, so they were left out. A conversation does not name its campaign, so it cannot be matched to the scope, and counting them would read every campaign's conversations, so inboxLeftOut is null.";
-
-/** What of the inbox a scoped run of this collection leaves out: `null` when unknown. */
-const inboxOf = (
-  outbound: Parameters<typeof findScope>[0],
-  collection: SyncCollection
-): number | null =>
-  (collection === "replies" || collection === "messages") &&
-  outbound.capabilities["replies.inbox"]
-    ? null
-    : 0;
-
 /** The campaigns collection under a scope: the scope's campaigns, as one page. */
 const scopeListing = async <Item extends Entity>(
   resolved: ResolvedScope,
-  options: SyncOptions<Item>
+  options: SyncOptions<Item>,
+  requests: number
 ): Promise<SyncResult> => {
   const { campaigns, meta } = resolved;
 
   if (campaigns.length > 0) {
     // SAFETY: the caller named Item for the campaigns collection, whose records these are.
-    await options.onPage(campaigns as readonly Item[]);
+    await options.onPage(campaigns as readonly Item[], {
+      campaignRef: undefined,
+    });
   }
 
   return {
     collection: "campaigns",
     complete: true,
     filter: "none",
+    inboxLeftOut: 0,
     notes: meta.notes,
     pages: campaigns.length > 0 ? 1 : 0,
     records: campaigns.length,
-    requests: meta.requests,
+    requests,
     resumed: false,
     scope: {
       campaigns: campaigns.map((campaign) => ({
@@ -106,26 +97,30 @@ const scopeListing = async <Item extends Entity>(
   };
 };
 
+/**
+ * Syncs each campaign of a resolved scope. `requests` is what finding the
+ * campaigns cost this run: `0` for a scope resolved before it.
+ */
 export const runScoped = async <Item extends Entity>(
   runOne: RunOne,
-  outbound: Parameters<typeof findScope>[0],
+  outbound: Pick<OutboundApi, "capabilities">,
   collection: SyncCollection,
   options: SyncOptions<Item>,
-  scope: CampaignScope
+  resolved: ResolvedScope,
+  requests: number
 ): Promise<SyncResult> => {
-  const resolved = await findScope(outbound, scope, "sync");
   const { meta } = resolved;
 
   if (collection === "campaigns") {
-    return await scopeListing(resolved, options);
+    return await scopeListing(resolved, options, requests);
   }
 
   // A sender of several campaigns is handed out once per run.
   const handed = new Set<string>();
 
-  const onPage = (items: readonly Item[]): void | Promise<void> => {
+  const onPage: SyncOptions<Item>["onPage"] = (items, page) => {
     if (collection !== "senders") {
-      return options.onPage(items);
+      return options.onPage(items, page);
     }
 
     const fresh = items.filter((item) => !handed.has(item.ref));
@@ -134,7 +129,7 @@ export const runScoped = async <Item extends Entity>(
       handed.add(item.ref);
     }
 
-    return fresh.length > 0 ? options.onPage(fresh) : undefined;
+    return fresh.length > 0 ? options.onPage(fresh, page) : undefined;
   };
 
   const results: SyncResult[] = [];
@@ -179,24 +174,25 @@ export const runScoped = async <Item extends Entity>(
   const sum = (of: (result: SyncResult) => number): number =>
     sumOf(results, of);
 
-  const inboxLeftOut = inboxOf(outbound, collection);
+  const inbox = inboxLeftOut(outbound, collection, true);
 
   return {
     collection,
     complete: campaigns.every((campaign) => campaign.complete),
     filter: weakest(results),
+    inboxLeftOut: inbox.count,
     notes: [
       ...new Set([
         ...meta.notes,
         ...results.flatMap((result) => result.notes),
-        ...(inboxLeftOut === null ? [INBOX_NOTE] : []),
+        ...inbox.notes,
       ]),
     ],
     pages: sum((result) => result.pages),
     records: sum((result) => result.records),
-    requests: meta.requests + sum((result) => result.requests),
+    requests: requests + sum((result) => result.requests),
     resumed: results.some((result) => result.resumed),
-    scope: { campaigns, inboxLeftOut, meta },
+    scope: { campaigns, inboxLeftOut: inbox.count, meta },
     since: earliest(results),
     throttledMs: sum((result) => result.throttledMs),
   };

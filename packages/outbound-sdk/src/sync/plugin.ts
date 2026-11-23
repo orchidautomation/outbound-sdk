@@ -13,8 +13,12 @@ import type {
   OutboundApi,
 } from "../internal/outbound/api.ts";
 import type { OutboundPlugin } from "../internal/outbound/plugins.ts";
+import { makeRef, parseRef } from "../internal/ref.ts";
+import { findScope } from "../internal/scope/resolve.ts";
+import type { ResolvedScope } from "../internal/scope/resolve.ts";
 import { parseScope } from "../internal/scope/rule.ts";
 import { stableId } from "../internal/sha256.ts";
+import { inboxLeftOut } from "./inbox.ts";
 import { runScoped } from "./scoped.ts";
 import type {
   Checkpoint,
@@ -63,6 +67,29 @@ const assertCollection = (outbound: OutboundApi, collection: string): void => {
       { provider: outbound.provider }
     );
   }
+};
+
+/** A resolved scope this instance found, so its campaigns are this instance's. */
+const assertResolved = (
+  outbound: OutboundApi,
+  resolved: ResolvedScope | undefined
+): ResolvedScope => {
+  const meta = resolved?.meta;
+
+  const mine =
+    Array.isArray(resolved?.campaigns) &&
+    meta?.provider === outbound.provider &&
+    meta.workspaceId === outbound.workspaceId;
+
+  if (resolved === undefined || !mine) {
+    throw new OutboundError(
+      "Invalid",
+      `sync: resolved must be what resolveScope returned for this instance (${outbound.provider}:${outbound.workspaceId}), not ${meta === undefined ? "something else" : `one of ${meta.provider}:${meta.workspaceId}`}`,
+      { provider: outbound.provider }
+    );
+  }
+
+  return resolved;
 };
 
 interface Walk {
@@ -139,6 +166,24 @@ const keyFor = (
 ): string =>
   `outbound-sync:${stableId(outbound.provider, outbound.workspaceId, collection, campaignId)}`;
 
+/**
+ * The campaign a run covers, as a ref: a bare vendor id is qualified. None
+ * for `campaigns`, which is listed whole whatever `campaignId` says.
+ */
+const campaignRefOf = (
+  outbound: OutboundApi,
+  collection: SyncCollection,
+  campaignId: string | undefined
+): string | undefined => {
+  if (campaignId === undefined || collection === "campaigns") {
+    return undefined;
+  }
+
+  return parseRef(campaignId) === null
+    ? makeRef(outbound.provider, outbound.workspaceId, campaignId)
+    : campaignId;
+};
+
 const overlapped = (
   since: string | undefined,
   overlapMs: number
@@ -155,6 +200,10 @@ const runSync = async <Item extends Entity>(
   const { now, outbound, overlapMs, store } = runner;
   assertCollection(outbound, collection);
   const key = keyFor(outbound, collection, options.campaignId);
+
+  const campaignRef = campaignRefOf(outbound, collection, options.campaignId);
+
+  const named = campaignRef === undefined ? {} : { campaignRef };
   const previous = (await store.get(key)) ?? {};
   const startedAt = previous.startedAt ?? new Date(now()).toISOString();
 
@@ -172,18 +221,21 @@ const runSync = async <Item extends Entity>(
   let lastCursor = previous.cursor;
 
   const flush = async (): Promise<void> => {
-    await options.onPage(page);
+    await options.onPage(page, { campaignRef });
     records += page.length;
     pages += 1;
     page = [];
     lastCursor = iterator.cursor;
     // Saved after the page is handled, so a crash replays it and never skips it.
     await store.set(key, {
+      ...named,
       cursor: lastCursor,
       since: previous.since,
       startedAt,
     });
   };
+
+  const inbox = inboxLeftOut(outbound, collection, campaignRef !== undefined);
 
   const result = (complete: boolean): SyncResult => {
     const requests = iterator.meta?.requests ?? 0;
@@ -192,12 +244,15 @@ const runSync = async <Item extends Entity>(
       collection,
       complete,
       filter: walk.filter,
-      notes:
-        walk.filter === "client"
+      inboxLeftOut: inbox.count,
+      notes: [
+        ...(walk.filter === "client"
           ? [
               `${outbound.provider} cannot filter ${collection} by date, so this run read every record (${requests} requests) and kept the ${records} created since ${walk.since ?? ""}. A record created earlier and changed since is not read again: reset the checkpoint on a schedule to pick those up.`,
             ]
-          : [],
+          : []),
+        ...inbox.notes,
+      ],
       pages,
       records,
       requests,
@@ -226,7 +281,7 @@ const runSync = async <Item extends Entity>(
   }
 
   // The run finished: the next one starts from when this one began.
-  await store.set(key, { since: startedAt });
+  await store.set(key, { ...named, since: startedAt });
 
   return result(true);
 };
@@ -254,25 +309,38 @@ export const sync = (
         run: async (collection, runOptions) => {
           assertCollection(outbound, collection);
           const scope = parseScope(runOptions, "sync");
+          const { resolved } = runOptions;
 
-          if (scope === null) {
+          if (scope === null && resolved === undefined) {
             return await runSync(runner, collection, runOptions);
           }
 
-          if (runOptions.campaignId !== undefined) {
+          const given = [
+            runOptions.campaignId === undefined ? [] : ["campaignId"],
+            scope === null ? [] : ["a campaign scope"],
+            resolved === undefined ? [] : ["resolved"],
+          ].flat();
+
+          if (given.length > 1) {
             throw new OutboundError(
               "Invalid",
-              "sync: give campaignId or a campaign scope (campaign_ids, tag, campaign_name), not both",
+              `sync: give campaignId or a campaign scope (campaign_ids, tag, campaign_name) or resolved, one only, not ${given.join(" and ")}`,
               { provider: outbound.provider }
             );
           }
+
+          const found =
+            resolved === undefined && scope !== null
+              ? await findScope(outbound, scope, "sync")
+              : assertResolved(outbound, resolved);
 
           return await runScoped(
             (each, perCampaign) => runSync(runner, each, perCampaign),
             outbound,
             collection,
             runOptions,
-            scope
+            found,
+            found === resolved ? 0 : found.meta.requests
           );
         },
       },

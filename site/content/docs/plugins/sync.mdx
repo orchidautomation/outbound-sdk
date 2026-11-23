@@ -40,9 +40,10 @@ Run 1 stopped at `maxPages` and left a cursor. Run 2 resumed from it and finishe
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `collection` | `"campaigns" \| "leads" \| "messages" \| "replies" \| "senders"` | required | What to walk. |
-| `onPage` | `(items) => void \| Promise<void>` | required | Receives each page. The checkpoint moves only after it resolves. |
+| `onPage` | `(items, page) => void \| Promise<void>` | required | Receives each page, and `page.campaignRef`: the ref of the campaign it was read for, `undefined` for a page of the whole workspace. The checkpoint moves only after it resolves. |
 | `campaignId` | `string` | none | Sync one campaign's records. Not used for `campaigns`. It has its own checkpoint. Not with a campaign scope. |
 | `campaign_ids`, `tag`, `campaign_name` | as on [insights](/docs/insights#campaign-scope) | none | Sync only the campaigns of a [campaign scope](#campaign-scope). |
+| `resolved` | what `resolveScope` returned | none | Sync the campaigns of a scope found once, so a run per collection does not find them again. Not with `campaignId` or a scope. |
 | `maxPages` | `number` | none | Stop after this many pages. The next run resumes from the checkpoint. |
 | `limit` | `number` | the adapter's | Records per page, as a hint the adapter may clamp. |
 
@@ -65,6 +66,7 @@ A `SyncResult` has:
 | `since` | The lower bound this run asked for: a creation time, so a record created before it and changed since is not read. `undefined` on a first run, and for a collection that cannot be filtered by date. |
 | `complete` | `false` when the run stopped at `maxPages` with more to read. |
 | `requests`, `throttledMs` | The vendor requests this run made and the milliseconds it waited for the rate budget. |
+| `inboxLeftOut` | Replies and messages tied to no campaign, such as HeyReach's inbox conversations, that the run did not reach: `null` with a note when some were left out, because counting them would read the whole inbox, and `0` where the tool has no such inbox or the run reached it. A run of the whole workspace leaves out only replies, because it reads them as `replies.list` does, without `includeInbox`; sync `messages` to get the inbox's conversations. A campaign's run, or one under a scope, leaves out both. |
 | `filter` | Who applied `since`: `"server"` the vendor, so only newer records were read; `"client"` the SDK, after reading every record, so the run cost as much as a full one; `"none"` when no date filter applied. |
 | `scope` | Under a campaign scope: `meta`, how its campaigns were found, as `resolveScope` returns it, and `campaigns`, each campaign's `campaignRef`, `name`, `records`, `pages` and `complete`. `since` is then the earliest lower bound of any campaign. |
 | `notes` | What to know about the run. A `"client"` run says what it cost, for example "instantly cannot filter leads by date, so this run read every record (2295 requests) and kept the 7 created since …". |
@@ -91,9 +93,12 @@ So plan two cadences: incremental runs as often as you need new records, and a `
 
 - `campaigns` under a scope is the scope's campaigns, as one page.
 - `senders` hands out a sender of several campaigns once per run.
-- Replies and messages tied to no campaign, such as HeyReach's inbox conversations, are not reached: a conversation does not name its campaign, so it cannot be matched to the scope. `scope.inboxLeftOut` is `null` with a note where the tool has such an inbox, because counting it would read every campaign's conversations, and `0` where it has none.
+- Replies and messages tied to no campaign, such as HeyReach's inbox conversations, are not reached: a conversation does not name its campaign, so it cannot be matched to the scope. `inboxLeftOut`, and `scope.inboxLeftOut` with it, is `null` with a note where the tool has such an inbox, because counting it would read every campaign's conversations, and `0` where it has none.
 - A tag where campaigns carry no tags, such as HeyReach's, is `Unsupported`, and a malformed scope or one given with `campaignId` `Invalid`, before any request.
 - `reset(collection, campaignRef)` forgets one campaign's checkpoint.
+- A campaign synced before with its bare vendor id as `campaignId` has its checkpoint under that id, not its ref, so the first scoped run walks it again from the start.
+
+To sync several collections of one scope, find its campaigns once with `resolveScope` and pass them as `resolved`. The runs then make no request to find them, their `requests` leave out what finding them cost, and their `scope.meta` is the one you passed. A `resolved` that another provider or workspace returned is `Invalid`, before any request.
 
 `resolveScope(outbound, scope)` from `outbound-sdk` returns the same campaigns, every state, for a caller that reads them itself. Its `meta` gives the requests made, the `evidence`, the scope in words, `notes`, and `tools`: for each tool, how many campaigns matched and its `filter`, which is `id` (read by id), `vendor` (the vendor's listing filter), `here` (a whole listing matched here, still `exact`), `both`, or `none` (a tool whose campaigns carry no tags).
 
@@ -105,7 +110,7 @@ So plan two cadences: incremental runs as often as you need new records, and a `
 
 ## The store
 
-A checkpoint store is three async functions. A checkpoint is a small JSON object with up to three strings: `cursor`, `since` and `startedAt`.
+A checkpoint store is three async functions. A checkpoint is a small JSON object with up to four strings: `cursor`, `since`, `startedAt` and, for one campaign's checkpoint, `campaignRef`, the campaign's ref, so a store can keep one row per campaign.
 
 | Function | Called |
 | --- | --- |
