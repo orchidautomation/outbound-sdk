@@ -271,7 +271,7 @@ export const REPLY_CASES: readonly Case[] = [
     issue: "OUT-146",
     p1: true,
     run: async (ctx) => {
-      const outcome = await ctx.mcp().call("dropped_replies");
+      const outcome = await ctx.mcp().call("unanswered_replies");
 
       return outcome.isError
         ? fail(`dropped_replies answered ${codeOf(outcome)}`)

@@ -195,7 +195,7 @@ const timelineOf = async (ctx: Context) => {
         lead,
         timeline: await ctx
           .mcp(UNMASKED)
-          .call("cross_channel_lead", { lead_ref: lead }),
+          .call("person", { lead_ref: lead, view: "timeline" }),
       };
 };
 
@@ -216,7 +216,7 @@ export const PEOPLE_CASES: readonly Case[] = [
 
       const summary = await ctx
         .mcp(UNMASKED)
-        .call("person_summary", { lead_ref: found.lead });
+        .call("person", { lead_ref: found.lead, view: "summary" });
 
       if (summary.isError || found.timeline.isError) {
         return fail(

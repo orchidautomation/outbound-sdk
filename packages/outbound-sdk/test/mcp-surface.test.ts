@@ -1,19 +1,15 @@
 // The MCP surface: merged tools picked by view or checks, a scope on every
-// tool, old names kept as aliases, each result sent once, and a ceiling on
-// what tools/list costs a model before its first call (OUT-168).
+// tool, each result sent once, and a ceiling on what tools/list costs a model
+// before its first call (OUT-168). The old names stopped answering in 0.18.0.
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import {
-  createMcpServer,
-  OUTPUT_SCHEMA,
-  RENAMED_TOOLS,
-  run,
-} from "../src/cli/index.ts";
+import { createMcpServer, OUTPUT_SCHEMA, run } from "../src/cli/index.ts";
 import { combine } from "../src/combine/index.ts";
 import { createOutbound } from "../src/index.ts";
 import type { Adapter, Json } from "../src/index.ts";
+import { insights } from "../src/insights/index.ts";
 import { demoData, memory } from "../src/memory/index.ts";
 import type { OutboundTool, ToolResult } from "../src/tools/index.ts";
 import { harness } from "./helpers/adapter-suite.ts";
@@ -26,6 +22,30 @@ import { suite as instantlySuite } from "./instantly/suite.ts";
  * before OUT-168. Raise it only with a reason in the pull request.
  */
 const TOOLS_LIST_CEILING = 56_000;
+
+/** The tool names the merged tools replaced, which answered until 0.18.0. */
+const OLD_NAMES = [
+  "campaign_overview",
+  "campaign_ranking",
+  "campaign_trend",
+  "deliverability_check",
+  "warmup_readiness",
+  "domain_health",
+  "bounce_watch",
+  "sender_load",
+  "pipeline_forecast",
+  "suppression_check",
+  "lead_collisions",
+  "copy_audit",
+  "variant_test",
+  "personalization_gaps",
+  "copy_reuse",
+  "winning_steps",
+  "person_summary",
+  "cross_channel_lead",
+  "account_summary",
+  "dropped_replies",
+];
 
 /** The longest a listed tool's description may be. */
 const DESCRIPTION_CEILING = 600;
@@ -116,6 +136,7 @@ const serve = async (
         content: { text: string }[];
         structuredContent: Answer;
       };
+      error?: { readonly message: string };
     };
 
   return {
@@ -146,7 +167,7 @@ test("tools/list stays under its byte ceiling, every tool short, with a scope an
     // No description repeats how to read an answer: initialize says it once.
     assert.doesNotMatch(tool.description, /meta\.complete/u, tool.name);
     // No old name is listed, nor named in a description.
-    assert.equal(Object.hasOwn(RENAMED_TOOLS, tool.name), false, tool.name);
+    assert.equal(OLD_NAMES.includes(tool.name), false, tool.name);
   }
 
   const { instructions } = session.at(0).result;
@@ -157,16 +178,8 @@ test("tools/list stays under its byte ceiling, every tool short, with a scope an
     /This server reads instantly:client-a and heyreach:client-a together; scope\.provider reads one\./u
   );
   assert.match(instructions, /use the CLI's --jsonl output or the SDK/u);
-  // An old or CLI insight name is named once, so calling it is not a guess.
-  assert.match(instructions, /still answer until 0\.18\.0/u);
-
-  for (const name of [
-    "dropped_replies",
-    "warmup_readiness",
-    "campaign_ranking",
-  ]) {
-    assert.ok(instructions.includes(name), name);
-  }
+  // No old name is offered any more.
+  assert.doesNotMatch(instructions, /old name|still answer/u);
 });
 
 test("the size check fails a list over the ceiling", () => {
@@ -199,39 +212,35 @@ test("each result is sent once: a summary as text beside structuredContent, or t
   );
 });
 
-test("every old name still answers as it did, with a note naming what replaced it", async () => {
-  const names = Object.keys(RENAMED_TOOLS);
-
+test("an old name from before 0.18.0 is an unknown tool, and the tool it became answers", async () => {
   const session = await serve(
     demo(),
     [
       initialize(),
-      LIST,
-      ...names.map((name, index) =>
+      ...OLD_NAMES.map((name, index) =>
         call(
-          index + 2,
+          index + 1,
           name,
           name === "account_summary" ? { domain: "example.com" } : {}
         )
       ),
+      call(OLD_NAMES.length + 1, "sender_health", { checks: ["bounces"] }),
     ],
     ["--no-redact"]
   );
 
-  const listed = new Set(session.at(1).result.tools.map((tool) => tool.name));
-
-  for (const [index, name] of names.entries()) {
-    const answer = session.answer(index + 2);
-    const said = answer.ok ? answer.meta?.notes.join(" ") : answer.next;
-
-    assert.ok(
-      said?.includes(
-        `${name} is an old name kept until 0.18.0: call ${RENAMED_TOOLS[name]} instead.`
-      ),
-      `${name}: ${said ?? ""}`
+  for (const [index, name] of OLD_NAMES.entries()) {
+    assert.equal(
+      session.at(index + 1).error?.message,
+      `Unknown tool: ${name}`,
+      name
     );
-    assert.ok(listed.has(RENAMED_TOOLS[name]?.split(" ")[0] ?? ""), name);
   }
+
+  const listed = session.answer(OLD_NAMES.length + 1);
+
+  assert.equal(listed.ok, true, JSON.stringify(listed));
+  assert.doesNotMatch(listed.meta?.notes.join(" ") ?? "", /old name/u);
 });
 
 test("a hint names tools as they are listed, never by an old name", async () => {
@@ -241,10 +250,7 @@ test("a hint names tools as they are listed, never by an old name", async () => 
     call(2, "sender_health", { checks: ["bounces"] }),
   ]);
 
-  const old = new RegExp(
-    `\\b(?:${Object.keys(RENAMED_TOOLS).join("|")})\\b`,
-    "u"
-  );
+  const old = new RegExp(`\\b(?:${OLD_NAMES.join("|")})\\b`, "u");
 
   for (const id of [1, 2]) {
     assert.doesNotMatch(JSON.stringify(session.answer(id)), old);
@@ -257,14 +263,19 @@ test("a view runs one tool, and checks run several in one answer, each under its
   const session = await serve(demo(), [
     initialize(),
     call(1, "campaigns", { metric: "reply_rate", view: "ranking" }),
-    call(2, "campaign_ranking", { metric: "reply_rate" }),
     call(3, "sender_health", { checks: ["status", "warmup"] }),
     call(4, "sender_health", { checks: ["status", "nope"] }),
     call(5, "campaigns", { view: "list", min_sent: 5 }),
     call(6, "campaigns", { nonsense: 1 }),
   ]);
 
-  assert.deepEqual(session.answer(1).data, session.answer(2).data);
+  // The view answers as the insight it runs does.
+  const ranking = await createOutbound({
+    adapter: demo(),
+    plugins: [insights()],
+  }).insights.campaignRanking({ metric: "reply_rate" });
+
+  assert.deepEqual(session.answer(1).data, ranking.data);
 
   const checks = session.answer(3);
 
@@ -505,7 +516,6 @@ test("person is listed under redact, and a view that needs identifiers answers w
     initialize(),
     LIST,
     call(2, "person", { lead_ref: "memory:acme:lead_1", view: "timeline" }),
-    call(3, "cross_channel_lead", { lead_ref: "memory:acme:lead_1" }),
   ]);
 
   const person = session
@@ -525,15 +535,6 @@ test("person is listed under redact, and a view that needs identifiers answers w
     answer.meta?.notes[0] ?? "",
     /^view timeline needs identifiers the redact plugin masks, so this is the masked summary view\./u
   );
-
-  // The old name of a covered view answers through it, not as an unknown tool.
-  const old = session.answer(3);
-
-  assert.equal(old.ok, true, JSON.stringify(old));
-  assert.deepEqual(old.meta?.notes.slice(0, 2), [
-    `cross_channel_lead is an old name kept until 0.18.0: call ${RENAMED_TOOLS["cross_channel_lead"]} instead.`,
-    answer.meta?.notes[0],
-  ]);
 });
 
 test("scope refuses a malformed scope, and passes provider and tag to a tool that takes them", async () => {

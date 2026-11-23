@@ -65,7 +65,7 @@ A key in a client's configuration file is stored in plain text on your disk by t
 | `--cache <seconds>` | Adds [`cache()`](/docs/plugins/cache): a repeat read within that time makes no vendor request. The cache is in memory and lives as long as the server. |
 | `--max-requests <n>` | Adds [`budget()`](/docs/plugins/budget): the most vendor requests one tool call may make. |
 | `--config <file>` | Loads plugins from a file. See below. |
-| `--tools <names>` | Offers only the tools named, separated by commas, such as `--tools campaigns,sender_health`; an old name offers the tool it became, with only that view or check. Every tool's description and inputs cost the client's context before any call, under 56 KB for all of them with `--provider all`, which a test holds. A name the server cannot offer is refused before it starts. |
+| `--tools <names>` | Offers only the tools named, separated by commas, such as `--tools campaigns,sender_health`; a name from the last column of the table below offers the listed tool with only that view or check. Every tool's description and inputs cost the client's context before any call, under 56 KB for all of them with `--provider all`, which a test holds. A name the server cannot offer is refused before it starts. |
 
 Set `OUTBOUND_REDACT_KEY` in the server's `env` to keep each person's token from one session to the next, for example to compare answers across days. It is a secret of at least 32 characters; see [redact's fixed key](/docs/plugins/redact#a-fixed-key) for how to treat it. Without it, tokens change each time the server starts.
 
@@ -155,7 +155,7 @@ Messages are read while a tool call runs, and each answer is written when it is 
 
 Every other built-in tool and insight is listed as it is, `thread_context` among them. Each listed tool takes `scope`: `provider` and `workspace` read one tool or workspace of `--provider all`, and `tag` reads the campaigns with one tag where the tool can (`client_report`). A scope that names nothing the server reads is refused with what it does read. `initialize` names what the server reads, says once how to read an answer, and points bulk exports to the CLI's `--jsonl` or the SDK.
 
-Every old name still answers until 0.18.0, as it did, with a note in `meta.notes` such as "campaign_overview is an old name kept until 0.18.0: call campaigns with view \"list\" instead." `RENAMED_TOOLS` from `outbound-sdk/cli` maps each old name to how it is called now, and `--tools` takes either. A hint in `next` names tools as they are listed. The SDK's own tools and insights keep their names.
+The names in the last column stopped answering on `tools/call` and `outbound tool` in 0.18.0: a call to one is an unknown tool. Call the listed tool with its `view` or `checks` instead; `initialize` says once which listed tool answers each of them. `--tools` still takes one of them to offer the listed tool with only that view or check. A hint in `next` names tools as they are listed. The SDK's own tools and insights keep their names.
 
 `person` is listed under `redact`: its `timeline` and `account` views match people by email or LinkedIn profile, which `redact` masks, so they answer with the masked `summary` view and a note naming `--no-redact`. `summary` looks up a lead ref by the tokens `redact` wrote, and `list_hygiene` matches on them. Three things change the list on a real setup:
 

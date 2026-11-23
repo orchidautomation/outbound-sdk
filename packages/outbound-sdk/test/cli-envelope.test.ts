@@ -67,7 +67,7 @@ const COMMANDS: string[][] = [
   ["limits"],
   ["tools"],
   ["native"],
-  ["tool", "campaign_overview", "--input", "{}"],
+  ["tool", "campaigns", "--input", "{}"],
   ["insight"],
   ["insight", "step_funnel", "--input", '{"campaign":"cmp_founders"}'],
   ["person", "person1@example.com"],
@@ -194,12 +194,7 @@ test("an unknown thread, campaign, sender, or leads scope fails with NotFound in
 
 test("the envelope carries a tool's meta.complete and meta.notes, and its failure as ok: false", async () => {
   const cut = (
-    await cli([
-      "tool",
-      "campaign_overview",
-      "--input",
-      '{"limit":1,"status":"active"}',
-    ])
+    await cli(["tool", "campaigns", "--input", '{"limit":1,"status":"active"}'])
   ).json() as Envelope;
 
   assert.equal(cut.ok, true);
@@ -209,9 +204,9 @@ test("the envelope carries a tool's meta.complete and meta.notes, and its failur
 
   const failed = await cli([
     "tool",
-    "campaign_trend",
+    "campaigns",
     "--input",
-    '{"campaign":"cmp_nope"}',
+    '{"view":"trend","campaign":"cmp_nope"}',
   ]);
 
   const answer = failed.json() as Envelope;

@@ -10,7 +10,13 @@ import type { Case, Verdict } from "../case.ts";
 import { fail, firstFailure, pass, skip } from "../case.ts";
 import type { Context } from "../context.ts";
 import { at, bool, isRecord, list, num, text } from "../json.ts";
-import { activeCampaigns, codeOf, dayBefore, plural } from "../shared.ts";
+import {
+  activeCampaigns,
+  callCheck,
+  codeOf,
+  dayBefore,
+  plural,
+} from "../shared.ts";
 
 /** Case 25: an incremental sync says who filtered and what it cost. */
 export const judgeSync = (
@@ -458,7 +464,9 @@ export const DATA_CASES: readonly Case[] = [
       const campaigns = await activeCampaigns(ctx);
 
       for (const campaign of campaigns.slice(0, 3)) {
-        const outcome = await ctx.mcp().call("variant_test", { campaign });
+        const outcome = await callCheck(ctx, "copy_review", "variants", {
+          campaign,
+        });
 
         if (!outcome.isError) {
           answers.push(outcome.structured);

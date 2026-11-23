@@ -514,10 +514,10 @@ const COMMAND_TABLE = {
 
         throw new OutboundError(
           "Invalid",
-          `Unknown tool "${name}".${didYouMean(name, [
-            ...offered.map((each) => each.name),
-            ...catalogued.surface.aliases.keys(),
-          ])} Run "outbound tools" to list them`
+          `Unknown tool "${name}".${didYouMean(
+            name,
+            offered.map((each) => each.name)
+          )} Run "outbound tools" to list them`
         );
       }
 

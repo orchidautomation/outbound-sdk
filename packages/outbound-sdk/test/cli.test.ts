@@ -131,16 +131,6 @@ test("reports capabilities and caveats, and runs a tool", async () => {
   const tools = (await cli("tools")).items() as { name: string }[];
   assert.ok(tools.some((tool) => tool.name === "campaigns"));
 
-  // An old name still runs the tool it was, with a note naming what replaced it.
-  const old = (
-    await cli("tool", "campaign_overview", "--input", '{"status":"paused"}')
-  ).json() as { meta: { notes: string[] } };
-
-  assert.match(
-    old.meta.notes[0] ?? "",
-    /^campaign_overview is an old name kept until 0\.18\.0: call campaigns with view "list" instead\.$/u
-  );
-
   const result = (
     await cli("tool", "campaigns", "--input", '{"status":"paused"}')
   ).json() as {
@@ -215,7 +205,7 @@ test("tools lists each tool's inputs, and a tool that needs input fails with the
   );
 
   // A tool that needs no input still runs on none.
-  const ran = (await cli("tool", "campaign_overview")).json() as {
+  const ran = (await cli("tool", "campaigns")).json() as {
     ok: boolean;
   };
 
@@ -295,9 +285,9 @@ test("a flag that takes a fixed word refuses any other, in one line that names t
 test("a tool that answers ok: false prints its result and exits 1, like an insight", async () => {
   const failed = await cli(
     "tool",
-    "campaign_trend",
+    "campaigns",
     "--input",
-    '{"campaign":"cmp_founders","from":"yesterday","to":"2026-10-31"}'
+    '{"view":"trend","campaign":"cmp_founders","from":"yesterday","to":"2026-10-31"}'
   );
 
   assert.equal(failed.code, 1);
@@ -460,7 +450,7 @@ test("the MCP server lists read-only tools and runs one", async () => {
     id: "b",
     jsonrpc: "2.0",
     method: "tools/call",
-    params: { arguments: { status: "active" }, name: "campaign_overview" },
+    params: { arguments: { status: "active" }, name: "campaigns" },
   });
 
   const result = resultOf<{
@@ -481,8 +471,8 @@ test("the MCP server lists read-only tools and runs one", async () => {
     jsonrpc: "2.0",
     method: "tools/call",
     params: {
-      arguments: { campaign: "x", from: "bad", to: "bad" },
-      name: "campaign_trend",
+      arguments: { campaign: "x", from: "bad", to: "bad", view: "trend" },
+      name: "campaigns",
     },
   });
 

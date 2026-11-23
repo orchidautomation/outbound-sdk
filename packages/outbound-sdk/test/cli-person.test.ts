@@ -137,7 +137,7 @@ test("tools offers the person tools, as outbound mcp does", async () => {
       await cliOn(
         twoTools(),
         "tool",
-        "person_summary",
+        "person",
         "--input",
         '{"person":"nobody@example.com"}'
       )

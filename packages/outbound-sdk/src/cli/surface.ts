@@ -1,7 +1,7 @@
 // The tool set `outbound mcp` lists, made from the built-in tools and the
 // insights: neighbours merged into one tool picked by `view` or `checks`,
-// a `scope` input on every tool, and every old name kept as an alias that
-// says what replaced it (OUT-168).
+// and a `scope` input on every tool (OUT-168). The tools keep their own
+// names inside, so every hint is rewritten to name tools as they are listed.
 
 import { z } from "zod";
 
@@ -13,7 +13,7 @@ import type { ToolCallOptions } from "../tools/registry.ts";
 import { DEFAULT_TOOL_REQUESTS, failure } from "../tools/shared.ts";
 import { unansweredReplies } from "./replies-thread.ts";
 import { combined, requestsOf, sharedCapStop } from "./surface-checks.ts";
-import { ALIASES_UNTIL, GROUPS, RENAMED } from "./surface-groups.ts";
+import { GROUPS, RENAMED } from "./surface-groups.ts";
 import type { Group } from "./surface-groups.ts";
 import {
   mergedProperties,
@@ -26,22 +26,15 @@ import type { Scoping } from "./surface-scope.ts";
 
 export type { Scoping } from "./surface-scope.ts";
 
-export interface Alias {
-  /** The tool the old name runs, as it ran before. */
-  readonly tool: OutboundTool;
-  /** What the old name became, as a model calls it. */
-  readonly becomes: string;
-}
-
 export interface Surface {
   readonly tools: readonly OutboundTool[];
-  /** Every old name still answered, by name. */
-  readonly aliases: ReadonlyMap<string, Alias>;
   /** Tools left out here whose view a listed tool still answers, masked. */
   readonly covered: ReadonlySet<string>;
+  /** Each built-in tool or insight answered only inside a listed tool, with how it is called there. */
+  readonly merged: ReadonlyMap<string, string>;
 }
 
-/** How an old name is called now, such as `campaigns with view "ranking"`. */
+/** How a tool's own name is called as listed, such as `campaigns with view "ranking"`. */
 const callsFor = (): Map<string, string> => {
   const calls = new Map<string, string>(Object.entries(RENAMED));
 
@@ -63,13 +56,9 @@ const callsFor = (): Map<string, string> => {
 
 const CALLS = callsFor();
 
-/** Every old tool name `outbound mcp` still answers, with how it is called now. */
-export const RENAMED_TOOLS: Readonly<Record<string, string>> =
-  Object.fromEntries(CALLS);
-
 const OLD_NAME = new RegExp(`\\b(?:${[...CALLS.keys()].join("|")})\\b`, "gu");
 
-/** The text with every old tool name replaced by how it is called now. */
+/** The text with every tool's own name replaced by how it is called as listed. */
 export const withNewNames = (text: string): string =>
   text.replaceAll(OLD_NAME, (name) => CALLS.get(name) ?? name);
 
@@ -91,9 +80,8 @@ const renamedNext = (value: Json): Json => {
   );
 };
 
-// Every hint names tools as listed. A listed tool's own refusal does too; an
-// old name's keeps its words, as it answered before.
-const listedNames = (result: ToolResult, asListed = true): ToolResult => {
+// Every hint names tools as listed, and so does a listed tool's own refusal.
+const listedNames = (result: ToolResult): ToolResult => {
   if (result.ok) {
     return {
       ...result,
@@ -102,13 +90,9 @@ const listedNames = (result: ToolResult, asListed = true): ToolResult => {
     };
   }
 
-  const message = asListed
-    ? withNewNames(result.error.message)
-    : result.error.message;
-
   return {
     ...result,
-    error: { ...result.error, message },
+    error: { ...result.error, message: withNewNames(result.error.message) },
     next: withNewNames(result.next),
   };
 };
@@ -419,19 +403,6 @@ const scopedTool = (scoping: Scoping, tool: OutboundTool): OutboundTool => ({
     : tool.parameters,
 });
 
-const aliasNote = (name: string, becomes: string): string =>
-  `${name} is an old name kept until ${ALIASES_UNTIL}: call ${becomes} instead.`;
-
-/** An old name: the tool it ran, as it ran, with a note naming what replaced it. */
-export const aliasTool = (name: string, alias: Alias): OutboundTool => ({
-  ...alias.tool,
-  call: async (given, options) =>
-    noted(listedNames(await alias.tool.call(given, options), false), [
-      aliasNote(name, alias.becomes),
-    ]),
-  name,
-});
-
 /**
  * The listed tools for a set of built-in tools and insights. A tool in no
  * group is listed as it is; a group is listed when any of its members is.
@@ -498,36 +469,11 @@ export const sharpen = (
     return absorbed.has(tool.name) ? [] : [scopedTool(scoping, tool)];
   });
 
-  const aliases = new Map<string, Alias>(
-    [...CALLS].flatMap(([name, becomes]) => {
-      const tool = byName.get(name);
-
-      return tool === undefined ? [] : [[name, { becomes, tool }] as const];
-    })
-  );
-
-  // A covered old name answers through the view that covers it, masked.
-  for (const group of GROUPS) {
-    const tool = merged.get(group.name);
-
-    for (const member of group.members) {
-      if (tool !== undefined && covered.has(member.tool)) {
-        aliases.set(member.tool, {
-          becomes: CALLS.get(member.tool) ?? group.name,
-          tool: {
-            ...tool,
-            call: (given, options) => {
-              const input = jsonInput(given ?? {});
-
-              return isJsonObject(input)
-                ? tool.call({ ...input, [group.by]: member.key }, options)
-                : tool.call(given, options);
-            },
-          },
-        });
-      }
-    }
-  }
-
-  return { aliases, covered, tools };
+  return {
+    covered,
+    merged: new Map(
+      [...CALLS].filter(([name]) => byName.has(name) || covered.has(name))
+    ),
+    tools,
+  };
 };

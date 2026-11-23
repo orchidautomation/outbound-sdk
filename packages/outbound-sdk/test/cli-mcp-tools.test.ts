@@ -64,15 +64,15 @@ test("an insight --tools offers names no insight it left out in next", async () 
     id: 2,
     jsonrpc: "2.0",
     method: "tools/call",
-    params: { arguments: {}, name: "bounce_watch" },
+    params: { arguments: { checks: ["bounces"] }, name: "sender_health" },
   };
 
   const every = await serve([], [call]);
   const only = await serve(["--tools", "bounce_watch"], [call]);
 
-  // Without --tools, bounce_watch points to its siblings.
-  assert.match(nextOf(every.out), /domain_health|settings_audit/u);
-  assert.doesNotMatch(nextOf(only.out), /domain_health|settings_audit/u);
+  // Without --tools, the bounces check points to its siblings.
+  assert.match(nextOf(every.out), /checks \["domains"\]|settings_audit/u);
+  assert.doesNotMatch(nextOf(only.out), /checks \["domains"\]|settings_audit/u);
 });
 
 test("--tools refuses a name it cannot offer, with the closest one, before serving", async () => {

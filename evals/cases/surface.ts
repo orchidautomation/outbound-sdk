@@ -406,10 +406,7 @@ export const SURFACE_CASES: readonly Case[] = [
       const mcp = ctx.mcp();
 
       const rows = [
-        ...itemsOf(
-          await mcp.call("campaign_overview", { limit: 50 }),
-          "campaigns"
-        ),
+        ...itemsOf(await mcp.call("campaigns", { limit: 50 }), "campaigns"),
         ...itemsOf(await mcp.call("reply_samples"), "replies"),
         ...itemsOf(await mcp.call("period_comparison"), "campaigns"),
       ];

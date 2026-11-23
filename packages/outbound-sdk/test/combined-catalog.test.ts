@@ -6,7 +6,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { RENAMED_TOOLS, run } from "../src/cli/index.ts";
+import { run } from "../src/cli/index.ts";
 import { combine } from "../src/combine/index.ts";
 import type { Adapter } from "../src/index.ts";
 import { fixtureHandler } from "./helpers/adapter-suite.ts";
@@ -18,6 +18,25 @@ const INSTANTLY_CAMPAIGN =
   "instantly:client-a:01a1d77f-5e23-7a9a-9112-a6f7089f329f";
 
 const HEYREACH_CAMPAIGN = "heyreach:client-a:274079";
+
+/** The listed tool that answers an insight under another name. */
+const MERGED_INTO: Readonly<Record<string, string>> = {
+  account_summary: "person",
+  bounce_watch: "sender_health",
+  campaign_ranking: "campaigns",
+  copy_audit: "copy_review",
+  copy_reuse: "copy_review",
+  domain_health: "sender_health",
+  dropped_replies: "unanswered_replies",
+  lead_collisions: "list_hygiene",
+  person_summary: "person",
+  personalization_gaps: "copy_review",
+  pipeline_forecast: "lead_runway",
+  sender_load: "sender_capacity",
+  suppression_check: "list_hygiene",
+  variant_test: "copy_review",
+  warmup_readiness: "sender_health",
+};
 
 const both = (): Adapter =>
   combine([instantlySuite.make(), heyreachSuite.make()]);
@@ -129,7 +148,7 @@ test("a tool one member lacks refuses a campaign of that member before any reque
     ["mcp"],
     [
       call(1, "step_funnel", { campaign: HEYREACH_CAMPAIGN }),
-      call(2, "winning_steps", { campaign: HEYREACH_CAMPAIGN }),
+      call(2, "step_funnel", { campaign: HEYREACH_CAMPAIGN, view: "winners" }),
       call(3, "campaign_setup", { campaign: HEYREACH_CAMPAIGN }),
     ]
   );
@@ -150,7 +169,7 @@ test("a tool one member lacks refuses a campaign of that member before any reque
   );
   assert.match(
     steps?.error?.message ?? "",
-    /^winning_steps is not available for this campaign: the heyreach adapter does not support stats\.byStep$/u
+    /^step_funnel with view "winners" is not available for this campaign: the heyreach adapter does not support stats\.byStep$/u
   );
   assert.match(
     setup?.error?.message ?? "",
@@ -228,7 +247,7 @@ test("outbound tools, outbound insight and tools/list read one catalog, and name
 
     // Every insight is listed, or answered by the listed tool it became.
     for (const name of insightNames) {
-      const becomes = RENAMED_TOOLS[name]?.split(" ")[0] ?? name;
+      const becomes = MERGED_INTO[name] ?? name;
 
       assert.ok(toolNames.includes(becomes), name);
     }
