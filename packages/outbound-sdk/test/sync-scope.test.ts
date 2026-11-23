@@ -363,6 +363,18 @@ test("each checkpoint and each page name their campaign by ref (OUT-208)", async
   assert.deepEqual([...new Set(told)], [undefined]);
   assert.ok(written.length > 0);
   assert.ok(written.every((each) => !("campaignRef" in each)));
+
+  // campaigns is listed whole, so a campaignId names no campaign there.
+  told.length = 0;
+
+  await outbound.sync.run("campaigns", {
+    campaignId: "c2",
+    onPage: (_items, page) => {
+      told.push(page.campaignRef);
+    },
+  });
+
+  assert.deepEqual([...new Set(told)], [undefined]);
 });
 
 test("a scope resolved once syncs every collection without finding it again (OUT-209)", async () => {

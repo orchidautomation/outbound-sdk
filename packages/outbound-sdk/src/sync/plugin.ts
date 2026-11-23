@@ -166,14 +166,23 @@ const keyFor = (
 ): string =>
   `outbound-sync:${stableId(outbound.provider, outbound.workspaceId, collection, campaignId)}`;
 
-/** The campaign a run covers, as a ref: a bare vendor id is qualified. */
+/**
+ * The campaign a run covers, as a ref: a bare vendor id is qualified. None
+ * for `campaigns`, which is listed whole whatever `campaignId` says.
+ */
 const campaignRefOf = (
   outbound: OutboundApi,
+  collection: SyncCollection,
   campaignId: string | undefined
-): string | undefined =>
-  campaignId === undefined || parseRef(campaignId) !== null
-    ? campaignId
-    : makeRef(outbound.provider, outbound.workspaceId, campaignId);
+): string | undefined => {
+  if (campaignId === undefined || collection === "campaigns") {
+    return undefined;
+  }
+
+  return parseRef(campaignId) === null
+    ? makeRef(outbound.provider, outbound.workspaceId, campaignId)
+    : campaignId;
+};
 
 const overlapped = (
   since: string | undefined,
@@ -191,7 +200,9 @@ const runSync = async <Item extends Entity>(
   const { now, outbound, overlapMs, store } = runner;
   assertCollection(outbound, collection);
   const key = keyFor(outbound, collection, options.campaignId);
-  const campaignRef = campaignRefOf(outbound, options.campaignId);
+
+  const campaignRef = campaignRefOf(outbound, collection, options.campaignId);
+
   const named = campaignRef === undefined ? {} : { campaignRef };
   const previous = (await store.get(key)) ?? {};
   const startedAt = previous.startedAt ?? new Date(now()).toISOString();
