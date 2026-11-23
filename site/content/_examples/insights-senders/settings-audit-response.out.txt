@@ -113,6 +113,7 @@
       "A window with no timezone may have one the vendor does not report: the two read the same."
     ],
     "requests": 0,
+    "stale": false,
     "computedAt": "2026-11-14T12:00:00.000Z",
     "provider": "memory"
   }

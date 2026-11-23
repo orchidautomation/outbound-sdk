@@ -337,8 +337,14 @@ const checkLeads = (
 const findingOf = (
   violations: readonly SuppressionViolation[],
   campaigns: number,
-  gaps: readonly Gap[]
+  gaps: readonly Gap[],
+  noneInStatuses: string | null
 ): string => {
+  // Nothing was checked, and the reason says why.
+  if (noneInStatuses !== null) {
+    return noneInStatuses;
+  }
+
   const incomplete = gapsSentence(gaps);
   const inCampaigns = new Set(violations.map((each) => each.campaign)).size;
 
@@ -447,7 +453,12 @@ export const suppressionCheck = defineInsight({
     );
 
     const answer: SuppressionCheck = {
-      finding: findingOf(violations, campaigns.length, gaps),
+      finding: findingOf(
+        violations,
+        campaigns.length,
+        gaps,
+        listedCampaigns.noneInStatuses
+      ),
       byCampaign: byCampaign.toSorted(
         (left, right) =>
           right.violations - left.violations ||
@@ -468,7 +479,10 @@ export const suppressionCheck = defineInsight({
         moreBlockEntriesExist: listed.capped,
         moreCampaignsExist: listedCampaigns.capped,
         moreLeadsExist: campaignsWithMoreLeads > 0,
-        violations: gaps.length === 0 ? violations.length : null,
+        violations:
+          gaps.length === 0 && listedCampaigns.noneInStatuses === null
+            ? violations.length
+            : null,
         violationsFound: violations.length,
       },
       violations: violations.toSorted(activeFirst),

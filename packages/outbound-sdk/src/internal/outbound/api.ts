@@ -83,7 +83,7 @@ export interface ListAllOptions extends ListOptions {
 export interface ListAll<Item> extends AsyncIterable<Item> {
   /** The cursor after the last page fetched. `undefined` before the first page and at the end. */
   readonly cursor: string | undefined;
-  /** The meta of the last page fetched. */
+  /** The meta of the last page fetched, with `stale` `true` once any page was stale. */
   readonly meta: ResultMeta | undefined;
   /** `true` once `max` stopped the walk while more records existed. */
   readonly truncated: boolean;

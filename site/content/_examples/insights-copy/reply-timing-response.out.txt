@@ -358,6 +358,7 @@
       "7 of 7 replies carry no auto flag, so an automatic one among them is counted as a reply. A fast median can be auto-replies."
     ],
     "requests": 0,
+    "stale": false,
     "computedAt": "2026-11-14T12:00:00.000Z",
     "provider": "memory"
   }

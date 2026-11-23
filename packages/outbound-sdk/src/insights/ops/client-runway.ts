@@ -27,7 +27,8 @@ export interface LeadRunway extends CampaignLabel {
    * `draining`: leads left to start run out within `runway_days` at the
    * recent pace. `out_of_leads`: none is left to start. `stalled`: some are
    * left to start but none was started in the period, or the vendor reports
-   * no count of leads started. The same state lead_runway gives.
+   * no count of leads started. The same state the `lead_runway` tool (an AI
+   * tool from `outbound-sdk/tools`, not an insight) gives.
    */
   readonly state: Exclude<RunwayState, "unknown">;
   /** Active leads not yet started. Those partway through the sequence are `inSequence`. */
