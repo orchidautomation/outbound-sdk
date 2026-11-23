@@ -40,7 +40,7 @@ A value is `false` or something truthy, so `if (outbound.capabilities["leads.lis
 
 ## Every key
 
-`CAPABILITY_KEYS` is the list of all 56. `Capabilities` is the type of the map, and `CapabilityKey` the type of a key.
+`CAPABILITY_KEYS` is the list of all 58. `Capabilities` is the type of the map, and `CapabilityKey` the type of a key.
 
 ### Campaigns and sequences
 
@@ -96,10 +96,12 @@ Listing campaigns and reading one need no key. Every adapter can.
 | `messages.byHand` | boolean | The `byHand` filter on messages: only the ones a person sent by hand, not by a campaign |
 | `messages.latestOfConversation` | boolean | The `latestOfConversation` filter on messages: only the latest message of each conversation that holds a reply, sent or received |
 | `messages.since` | `server`, `client`, `false` | The `since` and `until` filters on messages |
+| `messages.byCampaign` | `server`, `client`, `false` | Nothing is refused. Who applies `campaignId` on messages: `server` the vendor, so one campaign's read lists only its messages; `client` the SDK, after reading every campaign's. A scoped [sync](/docs/plugins/sync) of a `client` collection reads it once and splits it by campaign. |
 | `messages.body` | `full`, `sampled`, `false` | `include: ["body"]` on messages and on replies |
 | `replies.list` | boolean | `replies.list` and `campaign(id).replies` |
 | `replies.category` | `vendor`, `false` | The `category` filter on replies |
 | `replies.since` | `server`, `client`, `false` | The `since` and `until` filters on replies |
+| `replies.byCampaign` | `server`, `client`, `false` | Nothing is refused. Who applies `campaignId` on replies, graded as `messages.byCampaign` |
 | `replies.unread` | `server`, `client`, `false` | The `unread` filter on replies |
 | `replies.inbox` | boolean | `replies.list({ includeInbox: true })`. `true` when the vendor's inbox also holds conversations in no campaign: their replies are left out of `replies.list` unless you pass `includeInbox: true`, and their messages carry a `null` `campaignRef` |
 

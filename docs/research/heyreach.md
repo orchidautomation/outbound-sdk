@@ -373,20 +373,7 @@ HeyReach publishes no API changelog. Inferred from differences between the two d
 
 1. Rate-limit scope (key vs workspace vs organization), 429 headers, `Retry-After`.
 2. `GetAll` campaign item field names (list schema and GetById example disagree on the `exclude*` fields; whether the list returns `organizationUnitId` and the two extra `progressStats` counters).
-3. Default `limit` (10 per MCP schemas) and whether an over-max limit is clamped or rejected (`PAGING_OUT_OF_RANGE` is documented only on voice endpoints). Max for `GetLeadsFromCampaign`, `GetAllWebhooks`, org lists.
-4. V2 conversations deep-paging ceiling; whether list items carry the full `messages[]` thread.
-5. Message `sender` value for the lead side; whether REST returns `type`/`messageId`/voice fields.
-6. Auto-tag `name` strings in the API; auto-tag fields in `GetLeadsFromList`, `GetChatroom`, stats.
-7. Webhook payloads for every event except `voice_note_received`; integer `campaign.status` mapping; retries; signing (none found); how `customHeaders` are set via API.
-8. Whether `LEAD_FINISHED_SEQUENCE_WITHOUT_REPLYING` and `LEAD_AUTO_TAGGED_*` are accepted by REST `CreateWebhook`.
 
-### Inbox conversations under a campaign scope (OUT-203)
+## Filtering messages and replies by campaign (2026-11-23, for OUT-212)
 
-Question: can a conversation tied to no campaign (the inbox) be attributed to a campaign of a scope, so a scoped sync could include it?
-
-- `POST /inbox/GetConversationsV3` still documents `items[].campaignId`, "omitted entirely when the conversation is not tied to a campaign" (https://docs.heyreach.io/hey-reach-api/inbox/get-conversations-v-3.md, fetched 2026-11-23). Live on 2026-11-23, an unfiltered page of 100 of 260 conversations had `campaignId` on none of them, as on 2026-11-17. So the conversation itself does not say.
-- 13 of those 100 carried a `correspondentProfile.autoTags[].campaignId`. That is the campaign whose auto-tag classified the lead, not the conversation's campaign: the campaign conversations are already reached by the `campaignIds` filter, and an inbox conversation with such a lead is still, by HeyReach's own filter, in no campaign.
-- `POST /campaign/GetCampaignsForLead` lists every campaign a lead is in (https://docs.heyreach.io/hey-reach-api/campaigns/get-campaigns-for-lead.md, fetched 2026-11-23). Membership says the person is a lead there, not that a direct conversation with them belongs to that campaign, and a lead in two clients' campaigns would be claimed by both.
-- `GET /inbox/GetChatroom` names no campaign (above).
-
-Decision: an inbox conversation cannot be attributed to a campaign by a fixed rule, so a scoped sync of replies or messages on HeyReach leaves the inbox out and says so in its notes, with `scope.inboxLeftOut: null`. Counting them would need the unfiltered `totalCount` less every campaign's, other clients' campaigns included, so the count stays unknown.
+Fetched 2026-11-23: https://docs.heyreach.io/hey-reach-api/inbox/get-conversations-v-3.md. `POST /inbox/GetConversationsV3` takes `filters.campaignIds` (`long[]`). Messages and replies both come from conversations, so `messages.byCampaign` and `replies.byCampaign` are both `server`. A conversation still does not name its campaign (see the inbox section above), which is why an unscoped read walks campaign by campaign.

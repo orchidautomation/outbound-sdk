@@ -18,7 +18,7 @@
 
 - STOPPED maps to paused. A lead's status BLOCKED, which Smartlead describes as bounced or on the block list, sets bounced and leaves progress unknown. A block-listed lead that was never sent to is therefore counted as bounced too: no documented lead field tells the two apart (email_stats.is_bounced and last_sent_time appear only on a reference page whose shape conflicts with the others), and the block list itself takes entries from bounces. Read from the documentation on 2026-11-16 only. unsubscribed is is_unsubscribed. replied is email_stats.is_replied, which only leads.get carries, so a listed lead's replied is null.
 
-- Messages come from GET /campaigns/all-leads-activities (10 requests per 60 s, no campaign filter, pages of leads): campaign(id).messages reads the whole feed, and thread_replies is not read.
+- Messages come from GET /campaigns/all-leads-activities (10 requests per 60 s, no campaign filter, pages of leads): campaign(id).messages reads the whole feed, and thread_replies is not read. A scoped sync of messages reads the feed once and splits it by campaign.
 
 - senderRef is null on feed and history messages (mailbox named by address). leadRef on replies and thread messages needs lead.id or lead_id on the thread; documented examples show an address only.
 

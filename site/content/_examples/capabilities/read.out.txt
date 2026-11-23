@@ -1,4 +1,4 @@
-56 keys
+58 keys
 campaigns.settings   instantly true | smartlead true | heyreach false
 leads.list           instantly true | smartlead true | heyreach true
 leads.since          instantly client | smartlead client | heyreach server

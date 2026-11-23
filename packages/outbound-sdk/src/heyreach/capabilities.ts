@@ -64,6 +64,8 @@ export const capabilities: CapabilityDeclaration = {
   "messages.body": "full",
   // GET /inbox/GetChatroom/{accountId}/{conversationId}.
   "messages.byThread": true,
+  // filters.campaignIds on POST /inbox/GetConversationsV3.
+  "messages.byCampaign": "server",
   "messages.list": true,
   // GetConversationsV3 bounds conversations by the time of their newest
   // message (`from`); the adapter then drops the older messages inside them.
@@ -76,6 +78,8 @@ export const capabilities: CapabilityDeclaration = {
   // GetConversationsV3 lists the sender's whole LinkedIn inbox, and a
   // conversation names no campaign: only the `campaignIds` filter tells.
   "replies.inbox": true,
+  // filters.campaignIds on POST /inbox/GetConversationsV3.
+  "replies.byCampaign": "server",
   "replies.list": true,
   "replies.since": "server",
   // GET /campaign/GetById names the campaign's account ids; the account list

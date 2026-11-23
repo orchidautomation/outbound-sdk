@@ -93,11 +93,15 @@ export const capabilities: CapabilityDeclaration = {
   "messages.byHand": true,
   "messages.byThread": true,
   "messages.latestOfConversation": true,
+  // campaign_id on GET /api/v2/emails.
+  "messages.byCampaign": "server",
   "messages.list": true,
   "messages.since": "server",
   // Every read endpoint with no normalized form is in the native catalog.
   native: true,
   "replies.category": "vendor",
+  // campaign_id on GET /api/v2/emails?email_type=received.
+  "replies.byCampaign": "server",
   "replies.list": true,
   // GET /emails takes is_unread.
   "replies.unread": "server",
