@@ -76,7 +76,7 @@ const inputFor = (
 };
 
 // The same six campaigns alone, or beside a tool whose campaigns carry no tags.
-const SHAPES = {
+const TOOLS = {
   alone: (seen: string[]) => recording(metered(world(6, 5)), seen),
   combined: (seen: string[]) =>
     combine([
@@ -89,7 +89,7 @@ const SHAPES = {
     ]),
 };
 
-for (const [shape, scope] of [
+for (const [setup, scope] of [
   ["alone", { tag: "even" }],
   ["alone", { campaign_ids: ["c1", "memory:agency:c3", "c5"] }],
   ["alone", { campaign_name: "/campaign c[135]/i" }],
@@ -97,10 +97,10 @@ for (const [shape, scope] of [
   ["combined", { campaign_ids: ["memory:agency:c1", "c3", "c5", "c9"] }],
   ["combined", { campaign_name: "Campaign C1" }],
 ] as const) {
-  test(`every insight answers under ${JSON.stringify(scope)} on a tool ${shape}, and reads no campaign outside it`, async () => {
+  test(`every insight answers under ${JSON.stringify(scope)} on a tool ${setup}, and reads no campaign outside it`, async () => {
     for (const { name, parameters } of listInsights()) {
       const seen: string[] = [];
-      const outbound = instance(SHAPES[shape](seen));
+      const outbound = instance(TOOLS[setup](seen));
 
       // oxlint-disable-next-line no-await-in-loop -- one insight at a time, each on its own record of reads
       const answer = await runInsightByName(
