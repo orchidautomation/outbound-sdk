@@ -1,5 +1,25 @@
 # outbound-sdk
 
+## 0.18.0
+
+### Minor Changes
+
+- 6b840ea: Filter campaign listings by name and tag (OUT-199). `campaigns.list` and `campaigns.listAll` take `name` (campaigns whose name contains the text, ignoring case) and `tag` (campaigns that carry the tag, ignoring case). Two new capabilities say who filters: `campaigns.byName` and `campaigns.byTag`, each `server`, `client` or `false`.
+  
+  - Instantly filters both on its side: `search` for the name, and `tag_ids` after looking the tag up by name.
+  - HeyReach filters the name with `keyword`. Its campaigns carry no tags, so `tag` throws `Unsupported` before any request.
+  - EmailBison filters the tag with `tag_ids[]`; the name is matched after the listing.
+  - Smartlead returns every campaign in one listing, which is then filtered.
+  - Instantly campaign listings no longer drop tags: a page of 100 campaigns whose tag assignments filled a page lost the rest (5 of 110 campaigns live), because Instantly's next page of assignments came back empty. Such a page is now read again in halves.
+  - The wrapper checks every campaign against both filters whatever the vendor did, so a looser vendor search never widens the answer. An empty `name` or `tag` is refused with `Invalid`.
+- 325c86d: A campaign scope on every insight (OUT-200). Each insight takes `campaign_ids`, `tag` and `campaign_name` (an exact name, a glob with `*` and `?`, or `/regex/`), and reads only the campaigns matching every one given, together with its own filters such as `statuses`.
+  
+  - The scope is applied before any per-campaign read. Ids are read by id with no listing; a tag or a name is sent to the vendor where it filters its listing (`campaigns.byTag`, `campaigns.byName`), and matched after the listing elsewhere. `meta.notes` says how many campaigns matched and which side filtered.
+  - A tag where campaigns carry no tags, such as HeyReach, is refused as `Unsupported` before any request. A malformed scope is `Invalid`.
+  - Under a scope no other campaign's rows are read: a `campaign` outside it is refused, replies, senders and leads are read per campaign, and workspace totals are the scope's campaigns added up, each with a note.
+  - `client_report`'s own `tag` input is now this scope's `tag`, and `campaign_ids` and `campaign_name` narrow it too.
+  - `outbound insight` takes `--campaign-ids`, `--tag` and `--campaign-name`. On `outbound mcp` the three are keys of each insight's `scope`, not inputs of their own.
+
 ## 0.17.0
 
 ### Minor Changes

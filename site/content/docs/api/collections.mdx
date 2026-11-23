@@ -43,6 +43,18 @@ A filter the adapter cannot serve is refused with `Unsupported` before any reque
 | --- | --- | --- |
 | `status` | `"active"`, `"paused"`, `"draft"`, `"completed"`, `"archived"` or `"unknown"` | `campaigns.status` |
 | `senderId` | `string` | `campaigns.bySender` |
+| `name` | `string`: campaigns whose name contains it, ignoring case | `campaigns.byName` |
+| `tag` | `string`: campaigns that carry this tag, ignoring case | `campaigns.byTag` |
+
+The wrapper checks every campaign against `name` and `tag` itself, so a vendor search that matches more loosely never widens the answer. With `server` the vendor filters first, so other campaigns are not listed: Instantly (`search`, `tag_ids`), HeyReach (`keyword`) and EmailBison (`tag_ids`). With `client` the listing is read and filtered after.
+
+<include meta='title="filter-campaigns.ts"'>
+  ../../_examples/api-collections/filter-campaigns.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/api-collections/filter-campaigns.out.txt
+</include>
 
 `campaigns.list` and `campaigns.get` need no capability. Every adapter has them.
 

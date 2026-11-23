@@ -90,6 +90,17 @@ export interface CampaignQuery extends PageQuery {
   readonly status?: CampaignStatus | undefined;
   /** Only the campaigns this sender is attached to. */
   readonly senderId?: string | undefined;
+  /**
+   * Only the campaigns whose name contains this text, ignoring case. A
+   * `server` adapter sends it to the vendor; the wrapper checks every
+   * record either way.
+   */
+  readonly name?: string | undefined;
+  /**
+   * Only the campaigns with this tag, ignoring case. A `server` adapter
+   * sends it to the vendor; the wrapper checks every record either way.
+   */
+  readonly tag?: string | undefined;
 }
 
 export interface SenderQuery extends PageQuery {

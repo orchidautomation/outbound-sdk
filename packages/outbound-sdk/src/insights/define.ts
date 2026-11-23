@@ -6,9 +6,8 @@
 import type { ZodObject, ZodType } from "zod";
 
 import type { CapabilityKey } from "../internal/capabilities.ts";
-import type { Evidence, Lead, MetricRow } from "../internal/entities.ts";
-import { OutboundError } from "../internal/errors.ts";
-import { toJson, unknownKey } from "../internal/json.ts";
+import type { Evidence, MetricRow } from "../internal/entities.ts";
+import { toJson } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
 import type {
   ListAll,
@@ -23,10 +22,21 @@ import {
   routedByCampaign,
   withCampaign,
 } from "../tools/by-name.ts";
-import { inputProblem } from "../tools/input-problem.ts";
+import {
+  COMBINED,
+  prepare,
+  priced,
+  refuseUnsupported,
+  someMemberServes,
+} from "./checks.ts";
+import type { Lacks, MaskedOut } from "./checks.ts";
 import type { InsightCost } from "./cost.ts";
 import { runCap } from "./run-cap.ts";
 import type { CapOptions, RunCap } from "./run-cap.ts";
+import { refuseTagless } from "./scope-campaigns.ts";
+import { SCOPE_INPUTS, scopeOf } from "./scope.ts";
+import type { CampaignScope } from "./scope.ts";
+import { scopedOutbound } from "./scoped-reads.ts";
 import { capNote, readsOf, stopNote } from "./tracked-reads.ts";
 import type { Cap } from "./tracked-reads.ts";
 
@@ -50,62 +60,9 @@ export interface InsightMeta {
   readonly computedAt: string;
 }
 
-/** What the redact plugin masks on an instance. */
-export interface Masking {
-  readonly fields: readonly string[];
-  readonly strategy: "hash" | "mask";
-  /** The token the plugin writes in place of a value in a masked field. */
-  readonly hash?: ((value: string) => string) | undefined;
-  /**
-   * What a token the plugin wrote stands for, `email` or `linkedin`, or
-   * `null` when it cannot put the value back on a call to the vendor.
-   */
-  readonly resolves?:
-    | ((token: string) => "email" | "linkedin" | null)
-    | undefined;
-  /** The leads behind address tokens, read through the plugin and returned masked. */
-  readonly leadsByToken?:
-    | ((tokens: readonly string[], campaign: string | null) => ListAll<Lead>)
-    | undefined;
-}
+export { maskedOutBy, maskingOf } from "./checks.ts";
 
-/**
- * Says why an insight cannot answer with these fields masked, for example
- * `email addresses, which it matches people by`, or `null` when it can.
- */
-export type MaskedOut = (masking: Masking) => string | null;
-
-/**
- * Names what this adapter does not report that the insight needs, for
- * example `campaign tags`, or `null` when it reports it.
- */
-export type Lacks = (outbound: OutboundApi) => string | null;
-
-interface Redacted {
-  readonly redacted: Masking;
-}
-
-// The redact plugin says what it masks on the instance. Told apart by shape,
-// so the insights do not import that plugin.
-const isRedacted = (
-  outbound: OutboundApi
-): outbound is OutboundApi & Redacted => "redacted" in outbound;
-
-/** What the redact plugin masks here, or `null` without it. */
-export const maskingOf = (outbound: OutboundApi): Masking | null =>
-  isRedacted(outbound) ? outbound.redacted : null;
-
-/** Why the entry cannot answer under this instance's redact plugin, or `null`. */
-export const maskedOutBy = (
-  outbound: OutboundApi,
-  entry: Pick<InsightEntry, "maskedOut">
-): string | null => {
-  const masking = maskingOf(outbound);
-
-  return masking === null || entry.maskedOut === undefined
-    ? null
-    : entry.maskedOut(masking);
-};
+export type { Lacks, MaskedOut, Masking } from "./checks.ts";
 
 export type { Cap } from "./tracked-reads.ts";
 
@@ -158,6 +115,11 @@ export interface InsightContext {
    * read. A run whose least cost for that many is over its cap stops there.
    */
   readonly campaignsFound: (count: number) => void;
+  /**
+   * The campaign scope the input asks for, or `null` for the whole
+   * workspace. `outbound` already reads only what it covers.
+   */
+  readonly scope: CampaignScope | null;
 }
 
 export interface RunOptions extends CapOptions {
@@ -350,6 +312,7 @@ const track = (cap: RunCap, now: number, partialOnCap: boolean): Tracker => {
     context: {
       ...readsOf({ kept: keptWhen(partialOnCap), partial, seen, stopped }),
       campaignsFound: cap.campaignsFound,
+      scope: null,
       note,
       now,
       one: (item) => {
@@ -386,130 +349,6 @@ const track = (cap: RunCap, now: number, partialOnCap: boolean): Tracker => {
   };
 };
 
-const missing = (
-  outbound: OutboundApi,
-  needs: readonly CapabilityKey[]
-): CapabilityKey[] =>
-  needs.filter((key) => outbound.capabilities[key] === false);
-
-const prepare = <Key extends string, Input, Data, Given>(
-  outbound: OutboundApi,
-  spec: InsightSpec<Key, Input, Data, Given>,
-  input: Json | undefined
-): Input => {
-  // A misspelt or unsupported filter is refused. Dropping it would let the
-  // insight quietly answer a wider question than the one asked.
-  const stray = unknownKey(Object.keys(spec.inputSchema.shape), input);
-
-  if (stray !== undefined) {
-    throw new OutboundError("Invalid", `${spec.name}: ${stray}`, {
-      provider: outbound.provider,
-    });
-  }
-
-  const parsed = spec.inputSchema.safeParse(input ?? {});
-
-  if (!parsed.success) {
-    const [issue] = parsed.error.issues;
-
-    throw new OutboundError(
-      "Invalid",
-      `${spec.name}: ${inputProblem(input, issue)}`,
-      { provider: outbound.provider }
-    );
-  }
-
-  const blocked = maskedOutBy(outbound, spec);
-
-  if (blocked !== null) {
-    throw new OutboundError(
-      "Unsupported",
-      `${spec.name} is not available while the redact plugin masks ${blocked}`,
-      { provider: outbound.provider }
-    );
-  }
-
-  return parsed.data;
-};
-
-/** Refuses the run when the adapter lacks what the insight or this input needs. */
-const refuseUnsupported = <Key extends string, Input, Data, Given>(
-  outbound: OutboundApi,
-  spec: InsightSpec<Key, Input, Data, Given>,
-  input: Input
-): void => {
-  const lacked = spec.lacks?.(outbound) ?? null;
-
-  if (lacked !== null) {
-    throw new OutboundError(
-      "Unsupported",
-      `${spec.name} is not available: the ${outbound.provider} adapter does not report ${lacked}`,
-      { provider: outbound.provider }
-    );
-  }
-
-  const absent = missing(outbound, spec.needs);
-  // What only this input needs is named apart, so the caller knows another input may work.
-  const forInput = missing(outbound, spec.needsFor?.(input) ?? []);
-
-  if (absent.length > 0 || forInput.length > 0) {
-    throw new OutboundError(
-      "Unsupported",
-      `${spec.name} is not available${absent.length > 0 ? "" : " for this input"}: the ${outbound.provider} adapter does not support ${[...new Set([...absent, ...forInput])].join(", ")}`,
-      { provider: outbound.provider }
-    );
-  }
-};
-
-const COMBINED = "combined";
-
-/** Whether any tool of a combined instance can serve the insight. Its workspaces are its tools, listed with no request. */
-const someMemberServes = async <Key extends string, Input, Data, Given>(
-  outbound: OutboundApi,
-  spec: InsightSpec<Key, Input, Data, Given>,
-  input: Input
-): Promise<boolean> => {
-  const { items } = await outbound.workspaces.list();
-
-  return items.some((tool) => {
-    try {
-      refuseUnsupported(
-        outbound.workspace(`${tool.provider}:${tool.workspaceId}`),
-        spec,
-        input
-      );
-
-      return true;
-    } catch (error) {
-      if (OutboundError.is(error) && error.code === "Unsupported") {
-        return false;
-      }
-
-      throw error;
-    }
-  });
-};
-
-/** The most campaigns a name is looked up among, for the cost of the lookup. */
-const NAMED_AMONG = 1000;
-
-/** The spec, its cost raised by the campaign listing a campaign given by name needs. */
-const priced = <Key extends string, Input, Data, Given>(
-  outbound: OutboundApi,
-  spec: InsightSpec<Key, Input, Data, Given>,
-  input: Input
-): InsightSpec<Key, Input, Data, Given> => {
-  const { cost } = spec;
-
-  return cost === undefined || !namesCampaign(outbound, input)
-    ? spec
-    : {
-        ...spec,
-        cost: (values, price) =>
-          cost(values, price) + price.list("campaigns.list", NAMED_AMONG),
-      };
-};
-
 const execute = async <Key extends string, Input, Data, Given>(
   outbound: OutboundApi,
   spec: InsightSpec<Key, Input, Data, Given>,
@@ -529,24 +368,49 @@ const execute = async <Key extends string, Input, Data, Given>(
     refuseUnsupported(target, spec, checked);
   }
 
-  const cap = runCap(target, priced(target, spec, checked), checked, options);
+  // SAFETY: every insight's schema carries the scope's fields, added by defineInsight.
+  const scope = scopeOf(checked as never, spec.name);
+
+  await refuseTagless(target, spec.name, scope);
+
+  const cap = runCap(
+    target,
+    priced(target, spec, checked, scope),
+    checked,
+    options
+  );
+
   const now = options.now ?? Date.now();
   const tracker = track(cap, now, spec.partialOnCap !== false);
+
+  const reading =
+    scope === null
+      ? tracker.context.outbound
+      : scopedOutbound(tracker.context.outbound, scope, {
+          all: tracker.strictAll,
+          insight: spec.name,
+          note: tracker.context.note,
+          now,
+          one: tracker.context.one,
+        });
 
   // A campaign given by name is looked up first, counted like any other read.
   // A name found among part of the campaigns could be another's, so the
   // lookup fails at a cap even where the insight keeps a partial answer.
-  const data = await withCampaign(tracker.context.outbound, checked, (walk) =>
+  const data = await withCampaign(reading, checked, (walk) =>
     tracker.strictAll(walk)
   )
     .then((resolved) => {
-      const member = routedByCampaign(tracker.context.outbound, resolved);
+      const member = routedByCampaign(reading, resolved);
 
       if (later) {
         refuseUnsupported(member, spec, resolved);
       }
 
-      return spec.run({ ...tracker.context, outbound: member }, resolved);
+      return spec.run(
+        { ...tracker.context, outbound: member, scope },
+        resolved
+      );
     })
     .catch(cap.failed);
 
@@ -574,15 +438,26 @@ const execute = async <Key extends string, Input, Data, Given>(
  * written, so `outbound.insights` is typed from the definitions.
  */
 export const defineInsight = <const Key extends string, Input, Data, Given>(
-  spec: InsightSpec<Key, Input, Data, Given>
-): InsightDefinition<Key, Input, Data, Given> => ({
-  ...spec,
-  execute: async (outbound, input, options) => {
-    const result = await execute(outbound, spec, input, options);
+  given: InsightSpec<Key, Input, Data, Given>
+): InsightDefinition<Key, Input, Data, Given> => {
+  const spec: InsightSpec<Key, Input, Data, Given> = {
+    ...given,
+    // SAFETY: the scope's fields are optional, so every input the insight's own schema takes is still taken, and its parsed values keep their types.
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- zod's extend gives a new object type that does not overlap the declared Input generic, which the scope's optional fields leave unchanged
+    inputSchema: given.inputSchema.extend(
+      SCOPE_INPUTS
+    ) as unknown as InsightSpec<Key, Input, Data, Given>["inputSchema"],
+  };
 
-    return { ...result, data: toJson(result.data) };
-  },
-});
+  return {
+    ...spec,
+    execute: async (outbound, input, options) => {
+      const result = await execute(outbound, spec, input, options);
+
+      return { ...result, data: toJson(result.data) };
+    },
+  };
+};
 
 /** Checks the input and the capabilities, then runs one insight, keeping its typed answer. */
 export const runInsight = <Key extends string, Input, Data, Given>(

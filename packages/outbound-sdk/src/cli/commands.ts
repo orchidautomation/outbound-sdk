@@ -28,6 +28,7 @@ import {
   count,
   dayFlag,
   instantFlag,
+  insightInputOf,
   parseInput,
   REPLIES_BY,
   required,
@@ -92,7 +93,7 @@ const runInsight: Command = async (outbound, input) => {
 
   refuseLeftOut(outbound, offered, name);
 
-  const insightInput = parseInput(text(input, "input"));
+  const insightInput = insightInputOf(input);
 
   // A card is drawn from the tool form of the answer.
   const [asTool] = wantsCard(input)
@@ -285,8 +286,16 @@ const COMMAND_TABLE = {
       asJson(await outbound.sender(required(input, 0, "a sender id")).health()),
   },
   insight: {
-    flags: ["card", "input", "slack", "slack-text"],
-    help: "insight [name] [--input JSON] [--card | --slack-text | --slack]  computed answers; no name lists them. --card prints the answer as text, --slack-text as Slack mrkdwn to paste, --slack as a Slack message's JSON",
+    flags: [
+      "campaign-ids",
+      "campaign-name",
+      "card",
+      "input",
+      "slack",
+      "slack-text",
+      "tag",
+    ],
+    help: "insight [name] [--input JSON] [--campaign-ids ID,ID] [--tag TAG] [--campaign-name NAME|GLOB|/REGEX/] [--card | --slack-text | --slack]  computed answers; no name lists them. The campaign flags read only the campaigns matching every one given. --card prints the answer as text, --slack-text as Slack mrkdwn to paste, --slack as a Slack message's JSON",
     run: runInsight,
   },
   leads: {

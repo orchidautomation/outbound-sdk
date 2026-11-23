@@ -31,7 +31,7 @@ Notes on the count:
 | `GET` | `/api/blacklisted-emails/{blacklisted_email_id}` | Get blacklisted email | native | `blacklistedEmail` |
 | `DELETE` | `/api/blacklisted-emails/{blacklisted_email_id}` | Remove blacklisted email | write |  |
 | `GET` | `/api/campaign-events/stats` | Breakdown of events by date | native | `campaignEventStats` |
-| `GET` | `/api/campaigns` | List campaigns | normalized | `campaigns.list`, `campaigns.status` |
+| `GET` | `/api/campaigns` | List campaigns | normalized | `campaigns.list`, `campaigns.status`, `campaigns.byTag` |
 | `POST` | `/api/campaigns` | Create a campaign | write |  |
 | `DELETE` | `/api/campaigns/bulk` | Bulk delete campaigns by ID | write |  |
 | `GET` | `/api/campaigns/schedule/available-timezones` | View all available schedule timezones | native | `scheduleTimezones` |

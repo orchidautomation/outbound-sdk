@@ -97,7 +97,7 @@ $ outbound tool campaign_trend --input '{"campaign":"cmp_founders","from":"last 
     "requests": 0,
     "throttledMs": 0
   },
-  "next": "Check the input and try again. campaign_trend is an old name kept until 0.18.0: call campaigns with view \"trend\" instead.",
+  "next": "Check the input and try again. campaign_trend is an old name kept until 0.19.0: call campaigns with view \"trend\" instead.",
   "ok": false,
   "error": {
     "code": "Invalid",
@@ -195,7 +195,7 @@ $ outbound insight channel_mix --input '{"days":30}'
   "data": null,
   "error": {
     "code": "Invalid",
-    "message": "channel_mix: \"days\" is not an input. It takes: alpha, from, max_campaigns, statuses, to"
+    "message": "channel_mix: \"days\" is not an input. It takes: alpha, campaign_ids, campaign_name, from, max_campaigns, statuses, tag, to"
   },
   "meta": {
     "complete": false,
@@ -206,6 +206,6 @@ $ outbound insight channel_mix --input '{"days":30}'
   },
   "ok": false
 }
-Invalid: channel_mix: "days" is not an input. It takes: alpha, from, max_campaigns, statuses, to
+Invalid: channel_mix: "days" is not an input. It takes: alpha, campaign_ids, campaign_name, from, max_campaigns, statuses, tag, to
 (exit code 1)
 

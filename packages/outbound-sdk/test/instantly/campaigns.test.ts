@@ -81,6 +81,56 @@ test("instantly: a full page of tag names is followed to the next", async () => 
   );
 });
 
+test("instantly: a full page of tag assignments is read again in halves, not by its marker", async () => {
+  const second = "01a1d77f-5e23-7a9a-9112-a6f7089f3290";
+
+  const filler = Array.from({ length: 100 }, (_, index) => ({
+    resource_id: `other-${index}`,
+    tag_id: "01a1d77f-5e57-7861-bab6-41dac7e7804a",
+  }));
+
+  const { outbound, requests, settle } = harness(suite, (request) => {
+    const url = new URL(request.url);
+
+    if (url.pathname !== "/api/v2/custom-tag-mappings") {
+      return;
+    }
+
+    const ids = url.searchParams.get("resource_ids")?.split(",") ?? [];
+
+    // A full page whose marker leads to an empty page, as seen live.
+    if (ids.length > 1) {
+      return url.searchParams.has("starting_after")
+        ? Response.json({ items: [] })
+        : Response.json({ items: filler, next_starting_after: "other-99" });
+    }
+
+    return Response.json({
+      items: [
+        {
+          resource_id: ids[0],
+          tag_id:
+            ids[0] === second
+              ? "01a1d77f-5e57-7861-bab6-41dac7e7804c"
+              : "01a1d77f-5e57-7861-bab6-41dac7e7804a",
+        },
+      ],
+    });
+  });
+
+  const page = await settle(outbound.campaigns.list());
+
+  assert.deepEqual(
+    page.items.map((campaign) => campaign.tags),
+    [["Important"], ["Agency"]],
+    "each half fits a page, so no assignment is lost"
+  );
+  assert.equal(
+    requests.filter((request) => pathOf(request).endsWith("mappings")).length,
+    3
+  );
+});
+
 test("instantly: one campaign carries its tags too", async () => {
   const { outbound, requests, settle } = harness(suite);
   const campaign = await settle(outbound.campaigns.get(CAMPAIGN));
@@ -149,8 +199,8 @@ test("instantly: more tag assignments than the adapter reads is an error, not mi
   assert.equal(
     requests.filter((request) => request.url.includes("/custom-tag-mappings"))
       .length,
-    10,
-    "ten pages of assignments are read before giving up"
+    11,
+    "the full page of both campaigns is split, then ten pages of the first campaign's own are read before giving up"
   );
 });
 

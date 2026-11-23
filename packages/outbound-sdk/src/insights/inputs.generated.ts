@@ -42,6 +42,27 @@ export interface InsightInputs {
      * Defaults to `null`.
      */
     readonly person?: string | undefined;
+
+    /**
+     * Read only these campaigns, by ref or vendor id. With tag or campaign_name, a campaign must match every one given
+     *
+     * At least 1 item. Defaults to `null`.
+     */
+    readonly campaign_ids?: string[] | undefined;
+
+    /**
+     * Read only the campaigns whose whole name matches, ignoring case: an exact name (Acme Q4), a glob with * and ? (Acme*), or /regex/ with flags i, m, s or u
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly campaign_name?: string | undefined;
+
+    /**
+     * Read only the campaigns that carry this tag, ignoring case, such as one client's. Unsupported where campaigns carry no tags
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly tag?: string | undefined;
   };
   /** The input of `accountSummary` (the `account_summary` tool). */
   readonly accountSummary: {
@@ -79,6 +100,27 @@ export interface InsightInputs {
      * Defaults to `["Interested","Meeting Booked","Meeting Completed"]`.
      */
     readonly positive_labels?: string[] | undefined;
+
+    /**
+     * Read only these campaigns, by ref or vendor id. With tag or campaign_name, a campaign must match every one given
+     *
+     * At least 1 item. Defaults to `null`.
+     */
+    readonly campaign_ids?: string[] | undefined;
+
+    /**
+     * Read only the campaigns whose whole name matches, ignoring case: an exact name (Acme Q4), a glob with * and ? (Acme*), or /regex/ with flags i, m, s or u
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly campaign_name?: string | undefined;
+
+    /**
+     * Read only the campaigns that carry this tag, ignoring case, such as one client's. Unsupported where campaigns carry no tags
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly tag?: string | undefined;
   };
   /** The input of `leadCollisions` (the `lead_collisions` tool). */
   readonly leadCollisions: {
@@ -111,6 +153,27 @@ export interface InsightInputs {
     readonly statuses?:
       | ("active" | "archived" | "completed" | "draft" | "paused" | "unknown")[]
       | undefined;
+
+    /**
+     * Read only these campaigns, by ref or vendor id. With tag or campaign_name, a campaign must match every one given
+     *
+     * At least 1 item. Defaults to `null`.
+     */
+    readonly campaign_ids?: string[] | undefined;
+
+    /**
+     * Read only the campaigns whose whole name matches, ignoring case: an exact name (Acme Q4), a glob with * and ? (Acme*), or /regex/ with flags i, m, s or u
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly campaign_name?: string | undefined;
+
+    /**
+     * Read only the campaigns that carry this tag, ignoring case, such as one client's. Unsupported where campaigns carry no tags
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly tag?: string | undefined;
   };
   /** The input of `suppressionCheck` (the `suppression_check` tool). */
   readonly suppressionCheck: {
@@ -161,6 +224,27 @@ export interface InsightInputs {
     readonly statuses?:
       | ("active" | "archived" | "completed" | "draft" | "paused" | "unknown")[]
       | undefined;
+
+    /**
+     * Read only these campaigns, by ref or vendor id. With tag or campaign_name, a campaign must match every one given
+     *
+     * At least 1 item. Defaults to `null`.
+     */
+    readonly campaign_ids?: string[] | undefined;
+
+    /**
+     * Read only the campaigns whose whole name matches, ignoring case: an exact name (Acme Q4), a glob with * and ? (Acme*), or /regex/ with flags i, m, s or u
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly campaign_name?: string | undefined;
+
+    /**
+     * Read only the campaigns that carry this tag, ignoring case, such as one client's. Unsupported where campaigns carry no tags
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly tag?: string | undefined;
   };
   /** The input of `droppedReplies` (the `dropped_replies` tool). */
   readonly droppedReplies: {
@@ -215,6 +299,27 @@ export interface InsightInputs {
      * An ISO 8601 date and time with an offset, or an ISO 8601 date, `YYYY-MM-DD`. Defaults to `null`.
      */
     readonly since?: string | null | undefined;
+
+    /**
+     * Read only these campaigns, by ref or vendor id. With tag or campaign_name, a campaign must match every one given
+     *
+     * At least 1 item. Defaults to `null`.
+     */
+    readonly campaign_ids?: string[] | undefined;
+
+    /**
+     * Read only the campaigns whose whole name matches, ignoring case: an exact name (Acme Q4), a glob with * and ? (Acme*), or /regex/ with flags i, m, s or u
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly campaign_name?: string | undefined;
+
+    /**
+     * Read only the campaigns that carry this tag, ignoring case, such as one client's. Unsupported where campaigns carry no tags
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly tag?: string | undefined;
   };
   /** The input of `hotLeads` (the `hot_leads` tool). */
   readonly hotLeads: {
@@ -322,6 +427,27 @@ export interface InsightInputs {
      * A number, 0 or more. Defaults to `10`.
      */
     readonly weight_reply?: number | undefined;
+
+    /**
+     * Read only these campaigns, by ref or vendor id. With tag or campaign_name, a campaign must match every one given
+     *
+     * At least 1 item. Defaults to `null`.
+     */
+    readonly campaign_ids?: string[] | undefined;
+
+    /**
+     * Read only the campaigns whose whole name matches, ignoring case: an exact name (Acme Q4), a glob with * and ? (Acme*), or /regex/ with flags i, m, s or u
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly campaign_name?: string | undefined;
+
+    /**
+     * Read only the campaigns that carry this tag, ignoring case, such as one client's. Unsupported where campaigns carry no tags
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly tag?: string | undefined;
   };
   /** The input of `threadContext` (the `thread_context` tool). */
   readonly threadContext: {
@@ -366,6 +492,27 @@ export interface InsightInputs {
      * Defaults to `[]`.
      */
     readonly threads?: string[] | undefined;
+
+    /**
+     * Read only these campaigns, by ref or vendor id. With tag or campaign_name, a campaign must match every one given
+     *
+     * At least 1 item. Defaults to `null`.
+     */
+    readonly campaign_ids?: string[] | undefined;
+
+    /**
+     * Read only the campaigns whose whole name matches, ignoring case: an exact name (Acme Q4), a glob with * and ? (Acme*), or /regex/ with flags i, m, s or u
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly campaign_name?: string | undefined;
+
+    /**
+     * Read only the campaigns that carry this tag, ignoring case, such as one client's. Unsupported where campaigns carry no tags
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly tag?: string | undefined;
   };
   /** The input of `personalizationGaps` (the `personalization_gaps` tool). */
   readonly personalizationGaps: {
@@ -389,6 +536,27 @@ export interface InsightInputs {
      * A whole number from 1 to 20,000. Defaults to `500`.
      */
     readonly max_leads?: number | undefined;
+
+    /**
+     * Read only these campaigns, by ref or vendor id. With tag or campaign_name, a campaign must match every one given
+     *
+     * At least 1 item. Defaults to `null`.
+     */
+    readonly campaign_ids?: string[] | undefined;
+
+    /**
+     * Read only the campaigns whose whole name matches, ignoring case: an exact name (Acme Q4), a glob with * and ? (Acme*), or /regex/ with flags i, m, s or u
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly campaign_name?: string | undefined;
+
+    /**
+     * Read only the campaigns that carry this tag, ignoring case, such as one client's. Unsupported where campaigns carry no tags
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly tag?: string | undefined;
   };
   /** The input of `stepFunnel` (the `step_funnel` tool). */
   readonly stepFunnel: {
@@ -419,6 +587,27 @@ export interface InsightInputs {
      * A number from 0 to 1. Defaults to `0`.
      */
     readonly min_reply_rate?: number | undefined;
+
+    /**
+     * Read only these campaigns, by ref or vendor id. With tag or campaign_name, a campaign must match every one given
+     *
+     * At least 1 item. Defaults to `null`.
+     */
+    readonly campaign_ids?: string[] | undefined;
+
+    /**
+     * Read only the campaigns whose whole name matches, ignoring case: an exact name (Acme Q4), a glob with * and ? (Acme*), or /regex/ with flags i, m, s or u
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly campaign_name?: string | undefined;
+
+    /**
+     * Read only the campaigns that carry this tag, ignoring case, such as one client's. Unsupported where campaigns carry no tags
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly tag?: string | undefined;
   };
   /** The input of `variantTest` (the `variant_test` tool). */
   readonly variantTest: {
@@ -463,6 +652,27 @@ export interface InsightInputs {
      * A whole number from 1 to 9,007,199,254,740,991. Defaults to `100`.
      */
     readonly min_sent?: number | undefined;
+
+    /**
+     * Read only these campaigns, by ref or vendor id. With tag or campaign_name, a campaign must match every one given
+     *
+     * At least 1 item. Defaults to `null`.
+     */
+    readonly campaign_ids?: string[] | undefined;
+
+    /**
+     * Read only the campaigns whose whole name matches, ignoring case: an exact name (Acme Q4), a glob with * and ? (Acme*), or /regex/ with flags i, m, s or u
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly campaign_name?: string | undefined;
+
+    /**
+     * Read only the campaigns that carry this tag, ignoring case, such as one client's. Unsupported where campaigns carry no tags
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly tag?: string | undefined;
   };
   /** The input of `copyAudit` (the `copy_audit` tool). */
   readonly copyAudit: {
@@ -535,6 +745,27 @@ export interface InsightInputs {
      * Defaults to `["100% free","act now","buy now","cash bonus","click here","double your","earn money","free trial","guarantee","limited time","no obligation","risk-free","urgent","winner"]`.
      */
     readonly spam_words?: string[] | undefined;
+
+    /**
+     * Read only these campaigns, by ref or vendor id. With tag or campaign_name, a campaign must match every one given
+     *
+     * At least 1 item. Defaults to `null`.
+     */
+    readonly campaign_ids?: string[] | undefined;
+
+    /**
+     * Read only the campaigns whose whole name matches, ignoring case: an exact name (Acme Q4), a glob with * and ? (Acme*), or /regex/ with flags i, m, s or u
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly campaign_name?: string | undefined;
+
+    /**
+     * Read only the campaigns that carry this tag, ignoring case, such as one client's. Unsupported where campaigns carry no tags
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly tag?: string | undefined;
   };
   /** The input of `copyPreview` (the `copy_preview` tool). */
   readonly copyPreview: {
@@ -558,6 +789,27 @@ export interface InsightInputs {
      * A whole number from 1 to 1000. Defaults to `100`.
      */
     readonly max_leads?: number | undefined;
+
+    /**
+     * Read only these campaigns, by ref or vendor id. With tag or campaign_name, a campaign must match every one given
+     *
+     * At least 1 item. Defaults to `null`.
+     */
+    readonly campaign_ids?: string[] | undefined;
+
+    /**
+     * Read only the campaigns whose whole name matches, ignoring case: an exact name (Acme Q4), a glob with * and ? (Acme*), or /regex/ with flags i, m, s or u
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly campaign_name?: string | undefined;
+
+    /**
+     * Read only the campaigns that carry this tag, ignoring case, such as one client's. Unsupported where campaigns carry no tags
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly tag?: string | undefined;
   };
   /** The input of `copyReuse` (the `copy_reuse` tool). */
   readonly copyReuse: {
@@ -583,6 +835,27 @@ export interface InsightInputs {
     readonly statuses?:
       | ("active" | "archived" | "completed" | "draft" | "paused" | "unknown")[]
       | undefined;
+
+    /**
+     * Read only these campaigns, by ref or vendor id. With tag or campaign_name, a campaign must match every one given
+     *
+     * At least 1 item. Defaults to `null`.
+     */
+    readonly campaign_ids?: string[] | undefined;
+
+    /**
+     * Read only the campaigns whose whole name matches, ignoring case: an exact name (Acme Q4), a glob with * and ? (Acme*), or /regex/ with flags i, m, s or u
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly campaign_name?: string | undefined;
+
+    /**
+     * Read only the campaigns that carry this tag, ignoring case, such as one client's. Unsupported where campaigns carry no tags
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly tag?: string | undefined;
   };
   /** The input of `replyTiming` (the `reply_timing` tool). */
   readonly replyTiming: {
@@ -627,6 +900,27 @@ export interface InsightInputs {
      * A whole number from -720 to 840. Defaults to `0`.
      */
     readonly timezone_offset_minutes?: number | undefined;
+
+    /**
+     * Read only these campaigns, by ref or vendor id. With tag or campaign_name, a campaign must match every one given
+     *
+     * At least 1 item. Defaults to `null`.
+     */
+    readonly campaign_ids?: string[] | undefined;
+
+    /**
+     * Read only the campaigns whose whole name matches, ignoring case: an exact name (Acme Q4), a glob with * and ? (Acme*), or /regex/ with flags i, m, s or u
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly campaign_name?: string | undefined;
+
+    /**
+     * Read only the campaigns that carry this tag, ignoring case, such as one client's. Unsupported where campaigns carry no tags
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly tag?: string | undefined;
   };
   /** The input of `domainHealth` (the `domain_health` tool). */
   readonly domainHealth: {
@@ -643,6 +937,27 @@ export interface InsightInputs {
      * A number from 0 to 1. Defaults to `0.1`.
      */
     readonly max_spam_rate?: number | undefined;
+
+    /**
+     * Read only these campaigns, by ref or vendor id. With tag or campaign_name, a campaign must match every one given
+     *
+     * At least 1 item. Defaults to `null`.
+     */
+    readonly campaign_ids?: string[] | undefined;
+
+    /**
+     * Read only the campaigns whose whole name matches, ignoring case: an exact name (Acme Q4), a glob with * and ? (Acme*), or /regex/ with flags i, m, s or u
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly campaign_name?: string | undefined;
+
+    /**
+     * Read only the campaigns that carry this tag, ignoring case, such as one client's. Unsupported where campaigns carry no tags
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly tag?: string | undefined;
   };
   /** The input of `senderCapacity` (the `sender_capacity` tool). */
   readonly senderCapacity: {
@@ -673,6 +988,27 @@ export interface InsightInputs {
      * Defaults to `false`.
      */
     readonly split_uncounted?: boolean | undefined;
+
+    /**
+     * Read only these campaigns, by ref or vendor id. With tag or campaign_name, a campaign must match every one given
+     *
+     * At least 1 item. Defaults to `null`.
+     */
+    readonly campaign_ids?: string[] | undefined;
+
+    /**
+     * Read only the campaigns whose whole name matches, ignoring case: an exact name (Acme Q4), a glob with * and ? (Acme*), or /regex/ with flags i, m, s or u
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly campaign_name?: string | undefined;
+
+    /**
+     * Read only the campaigns that carry this tag, ignoring case, such as one client's. Unsupported where campaigns carry no tags
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly tag?: string | undefined;
   };
   /** The input of `bounceWatch` (the `bounce_watch` tool). */
   readonly bounceWatch: {
@@ -733,6 +1069,27 @@ export interface InsightInputs {
     readonly statuses?:
       | ("active" | "archived" | "completed" | "draft" | "paused" | "unknown")[]
       | undefined;
+
+    /**
+     * Read only these campaigns, by ref or vendor id. With tag or campaign_name, a campaign must match every one given
+     *
+     * At least 1 item. Defaults to `null`.
+     */
+    readonly campaign_ids?: string[] | undefined;
+
+    /**
+     * Read only the campaigns whose whole name matches, ignoring case: an exact name (Acme Q4), a glob with * and ? (Acme*), or /regex/ with flags i, m, s or u
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly campaign_name?: string | undefined;
+
+    /**
+     * Read only the campaigns that carry this tag, ignoring case, such as one client's. Unsupported where campaigns carry no tags
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly tag?: string | undefined;
   };
   /** The input of `warmupReadiness` (the `warmup_readiness` tool). */
   readonly warmupReadiness: {
@@ -763,6 +1120,27 @@ export interface InsightInputs {
      * A number from 0 to 100. Defaults to `90`.
      */
     readonly min_score?: number | undefined;
+
+    /**
+     * Read only these campaigns, by ref or vendor id. With tag or campaign_name, a campaign must match every one given
+     *
+     * At least 1 item. Defaults to `null`.
+     */
+    readonly campaign_ids?: string[] | undefined;
+
+    /**
+     * Read only the campaigns whose whole name matches, ignoring case: an exact name (Acme Q4), a glob with * and ? (Acme*), or /regex/ with flags i, m, s or u
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly campaign_name?: string | undefined;
+
+    /**
+     * Read only the campaigns that carry this tag, ignoring case, such as one client's. Unsupported where campaigns carry no tags
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly tag?: string | undefined;
   };
   /** The input of `senderLoad` (the `sender_load` tool). */
   readonly senderLoad: {
@@ -795,6 +1173,27 @@ export interface InsightInputs {
     readonly statuses?:
       | ("active" | "archived" | "completed" | "draft" | "paused" | "unknown")[]
       | undefined;
+
+    /**
+     * Read only these campaigns, by ref or vendor id. With tag or campaign_name, a campaign must match every one given
+     *
+     * At least 1 item. Defaults to `null`.
+     */
+    readonly campaign_ids?: string[] | undefined;
+
+    /**
+     * Read only the campaigns whose whole name matches, ignoring case: an exact name (Acme Q4), a glob with * and ? (Acme*), or /regex/ with flags i, m, s or u
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly campaign_name?: string | undefined;
+
+    /**
+     * Read only the campaigns that carry this tag, ignoring case, such as one client's. Unsupported where campaigns carry no tags
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly tag?: string | undefined;
   };
   /** The input of `settingsAudit` (the `settings_audit` tool). */
   readonly settingsAudit: {
@@ -848,6 +1247,27 @@ export interface InsightInputs {
     readonly statuses?:
       | ("active" | "archived" | "completed" | "draft" | "paused" | "unknown")[]
       | undefined;
+
+    /**
+     * Read only these campaigns, by ref or vendor id. With tag or campaign_name, a campaign must match every one given
+     *
+     * At least 1 item. Defaults to `null`.
+     */
+    readonly campaign_ids?: string[] | undefined;
+
+    /**
+     * Read only the campaigns whose whole name matches, ignoring case: an exact name (Acme Q4), a glob with * and ? (Acme*), or /regex/ with flags i, m, s or u
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly campaign_name?: string | undefined;
+
+    /**
+     * Read only the campaigns that carry this tag, ignoring case, such as one client's. Unsupported where campaigns carry no tags
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly tag?: string | undefined;
   };
   /** The input of `campaignDiagnosis` (the `campaign_diagnosis` tool). */
   readonly campaignDiagnosis: {
@@ -955,6 +1375,27 @@ export interface InsightInputs {
      * A number from 0 to 168. Defaults to `20`.
      */
     readonly min_weekly_hours?: number | undefined;
+
+    /**
+     * Read only these campaigns, by ref or vendor id. With tag or campaign_name, a campaign must match every one given
+     *
+     * At least 1 item. Defaults to `null`.
+     */
+    readonly campaign_ids?: string[] | undefined;
+
+    /**
+     * Read only the campaigns whose whole name matches, ignoring case: an exact name (Acme Q4), a glob with * and ? (Acme*), or /regex/ with flags i, m, s or u
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly campaign_name?: string | undefined;
+
+    /**
+     * Read only the campaigns that carry this tag, ignoring case, such as one client's. Unsupported where campaigns carry no tags
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly tag?: string | undefined;
   };
   /** The input of `pipelineForecast` (the `pipeline_forecast` tool). */
   readonly pipelineForecast: {
@@ -978,6 +1419,27 @@ export interface InsightInputs {
      * A whole number from 1 to 50,000. Defaults to `2000`.
      */
     readonly max_leads?: number | undefined;
+
+    /**
+     * Read only these campaigns, by ref or vendor id. With tag or campaign_name, a campaign must match every one given
+     *
+     * At least 1 item. Defaults to `null`.
+     */
+    readonly campaign_ids?: string[] | undefined;
+
+    /**
+     * Read only the campaigns whose whole name matches, ignoring case: an exact name (Acme Q4), a glob with * and ? (Acme*), or /regex/ with flags i, m, s or u
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly campaign_name?: string | undefined;
+
+    /**
+     * Read only the campaigns that carry this tag, ignoring case, such as one client's. Unsupported where campaigns carry no tags
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly tag?: string | undefined;
   };
   /** The input of `anomalies` (the `anomalies` tool). */
   readonly anomalies: {
@@ -1040,6 +1502,27 @@ export interface InsightInputs {
      * A number, more than 0. Defaults to `2.5`.
      */
     readonly threshold?: number | undefined;
+
+    /**
+     * Read only these campaigns, by ref or vendor id. With tag or campaign_name, a campaign must match every one given
+     *
+     * At least 1 item. Defaults to `null`.
+     */
+    readonly campaign_ids?: string[] | undefined;
+
+    /**
+     * Read only the campaigns whose whole name matches, ignoring case: an exact name (Acme Q4), a glob with * and ? (Acme*), or /regex/ with flags i, m, s or u
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly campaign_name?: string | undefined;
+
+    /**
+     * Read only the campaigns that carry this tag, ignoring case, such as one client's. Unsupported where campaigns carry no tags
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly tag?: string | undefined;
   };
   /** The input of `periodComparison` (the `period_comparison` tool). */
   readonly periodComparison: {
@@ -1079,6 +1562,27 @@ export interface InsightInputs {
      * A whole number from 0 to 9,007,199,254,740,991. Defaults to `50`.
      */
     readonly min_sent?: number | undefined;
+
+    /**
+     * Read only these campaigns, by ref or vendor id. With tag or campaign_name, a campaign must match every one given
+     *
+     * At least 1 item. Defaults to `null`.
+     */
+    readonly campaign_ids?: string[] | undefined;
+
+    /**
+     * Read only the campaigns whose whole name matches, ignoring case: an exact name (Acme Q4), a glob with * and ? (Acme*), or /regex/ with flags i, m, s or u
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly campaign_name?: string | undefined;
+
+    /**
+     * Read only the campaigns that carry this tag, ignoring case, such as one client's. Unsupported where campaigns carry no tags
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly tag?: string | undefined;
   };
   /** The input of `campaignRanking` (the `campaign_ranking` tool). */
   readonly campaignRanking: {
@@ -1129,6 +1633,27 @@ export interface InsightInputs {
      * A whole number from 0 to 9,007,199,254,740,991. Defaults to `50`.
      */
     readonly min_sent?: number | undefined;
+
+    /**
+     * Read only these campaigns, by ref or vendor id. With tag or campaign_name, a campaign must match every one given
+     *
+     * At least 1 item. Defaults to `null`.
+     */
+    readonly campaign_ids?: string[] | undefined;
+
+    /**
+     * Read only the campaigns whose whole name matches, ignoring case: an exact name (Acme Q4), a glob with * and ? (Acme*), or /regex/ with flags i, m, s or u
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly campaign_name?: string | undefined;
+
+    /**
+     * Read only the campaigns that carry this tag, ignoring case, such as one client's. Unsupported where campaigns carry no tags
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly tag?: string | undefined;
   };
   /** The input of `channelMix` (the `channel_mix` tool). */
   readonly channelMix: {
@@ -1168,6 +1693,27 @@ export interface InsightInputs {
      * A number, more than 0 and less than 1. Defaults to `0.05`.
      */
     readonly alpha?: number | undefined;
+
+    /**
+     * Read only these campaigns, by ref or vendor id. With tag or campaign_name, a campaign must match every one given
+     *
+     * At least 1 item. Defaults to `null`.
+     */
+    readonly campaign_ids?: string[] | undefined;
+
+    /**
+     * Read only the campaigns whose whole name matches, ignoring case: an exact name (Acme Q4), a glob with * and ? (Acme*), or /regex/ with flags i, m, s or u
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly campaign_name?: string | undefined;
+
+    /**
+     * Read only the campaigns that carry this tag, ignoring case, such as one client's. Unsupported where campaigns carry no tags
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly tag?: string | undefined;
   };
   /** The input of `tagRollup` (the `tag_rollup` tool). */
   readonly tagRollup: {
@@ -1207,6 +1753,27 @@ export interface InsightInputs {
      * A whole number from 0 to 9,007,199,254,740,991. Defaults to `50`.
      */
     readonly min_sent?: number | undefined;
+
+    /**
+     * Read only these campaigns, by ref or vendor id. With tag or campaign_name, a campaign must match every one given
+     *
+     * At least 1 item. Defaults to `null`.
+     */
+    readonly campaign_ids?: string[] | undefined;
+
+    /**
+     * Read only the campaigns whose whole name matches, ignoring case: an exact name (Acme Q4), a glob with * and ? (Acme*), or /regex/ with flags i, m, s or u
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly campaign_name?: string | undefined;
+
+    /**
+     * Read only the campaigns that carry this tag, ignoring case, such as one client's. Unsupported where campaigns carry no tags
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly tag?: string | undefined;
   };
   /** The input of `clientReport` (the `client_report` tool). */
   readonly clientReport: {
@@ -1318,7 +1885,21 @@ export interface InsightInputs {
     readonly runway_days?: number | undefined;
 
     /**
-     * Read only the campaigns with this tag, such as one client's. Leaves out unusual days, which are workspace-wide.
+     * Read only these campaigns, by ref or vendor id. With tag or campaign_name, a campaign must match every one given
+     *
+     * At least 1 item. Defaults to `null`.
+     */
+    readonly campaign_ids?: string[] | undefined;
+
+    /**
+     * Read only the campaigns whose whole name matches, ignoring case: an exact name (Acme Q4), a glob with * and ? (Acme*), or /regex/ with flags i, m, s or u
+     *
+     * Not empty. Defaults to `null`.
+     */
+    readonly campaign_name?: string | undefined;
+
+    /**
+     * Read only the campaigns that carry this tag, ignoring case, such as one client's. Unsupported where campaigns carry no tags
      *
      * Not empty. Defaults to `null`.
      */

@@ -139,6 +139,10 @@ export interface CampaignFilters {
   readonly status?: CampaignStatus | undefined;
   /** Only the campaigns this sender is attached to. */
   readonly senderId?: string | undefined;
+  /** Only the campaigns whose name contains this text, ignoring case: `acme` finds `ACME - Q4`. Needs `campaigns.byName`. */
+  readonly name?: string | undefined;
+  /** Only the campaigns with this tag, matched whole and ignoring case. Needs `campaigns.byTag`. */
+  readonly tag?: string | undefined;
 }
 
 export interface SenderFilters {
