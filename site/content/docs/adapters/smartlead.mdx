@@ -47,10 +47,11 @@ The module also exports `envVars` (the two variable names) and `PROVIDER` (`"sma
 
 ## What it can and cannot do
 
-Against the [table](/docs/adapters#what-each-adapter-can-do), Smartlead lacks two capabilities besides `deletionDetection`, and applies four filters on the client:
+Against the [table](/docs/adapters#what-each-adapter-can-do), Smartlead lacks three capabilities besides `deletionDetection`, and applies four filters on the client:
 
 | Capability | Value | Why |
 | --- | --- | --- |
+| `stats.byStepDay` | `no` | `GET /campaigns/{id}/sequence-analytics` returns totals over a window, not days. |
 | `leads.engagement` | `no` | No JSON response documents per-lead open or reply counts. `lead.engagement` is `null`. |
 | `lists.leads` | `no` | No endpoint returns the leads of a saved lead list. |
 | `campaigns.status` | `client` | `GET /campaigns/` has no status filter and returns every campaign at once. |
@@ -58,6 +59,8 @@ Against the [table](/docs/adapters#what-each-adapter-can-do), Smartlead lacks tw
 | `events.verify` | `signature` | Smartlead signs webhooks once you turn signing on for the webhook. |
 
 `leads.lookup` works by email only. No endpoint finds a lead by LinkedIn profile, so that lookup returns nothing and sends no request.
+
+Daily stats for every campaign cost one request per campaign. `GET /analytics/day-wise-overall-stats` takes several `campaign_ids` but adds them into one row per day, and `GET /analytics/campaign/overall-stats` keeps the campaigns apart but has no days. So `stats({ scope: "campaign", by: "day" })` with no `scopeId` is `Unsupported` before any request: read each campaign with `campaign(id).stats({ by: "day" })`. This is a limit of Smartlead's API, checked against its documentation on 2026-11-23.
 
 ## Rate limits
 

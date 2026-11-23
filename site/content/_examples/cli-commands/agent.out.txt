@@ -56,6 +56,11 @@ $ outbound tool step_funnel
           ],
           "description": "Last day counted, YYYY-MM-DD. null for up to today."
         },
+        "by_day": {
+          "default": false,
+          "description": "Per-day step counts (stats.byStepDay) (view funnel)",
+          "type": "boolean"
+        },
         "min_reply_rate": {
           "default": 0,
           "description": "The bar the low end of a step's reply rate interval must clear, with 5 or more replies. 0 means above zero. (view funnel)",

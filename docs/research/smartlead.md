@@ -369,11 +369,9 @@ Smartlead publishes no API changelog (`/changelog` returns 404). Dated or clearl
 7. Whether `COMPLETED` is still a campaign status and whether `DRAFTED` is ever spelled `DRAFT`.
 8. `total_leads` / `total_stats` type (string vs number).
 
-## Filtering messages and replies by campaign (2026-11-23, for OUT-212)
+## Step stats by day, and daily stats for every campaign (2026-11-23, for OUT-216 and OUT-217)
 
-Fetched 2026-11-23: https://api.smartlead.ai/llms-full.txt, the pages relied on:
+Fetched 2026-11-23: https://api.smartlead.ai/llms-full.txt (the pages it carries for `analytics/day-wise-stats`, `analytics/campaign-performance`, `analytics/followup-reply-rate`, `campaign-statistics/sequence-analytics` and `campaign-statistics/get-by-date-range`).
 
-- https://api.smartlead.ai/api-reference/campaigns/all-leads-activities and its duplicate https://api.smartlead.ai/api-reference/leads/activities: `GET /campaigns/all-leads-activities` takes `api_key`, `offset`, `limit` (1 to 1000), `event_time_from` and `event_time_to`, and nothing else. It "retrieves lead activities across ALL campaigns". There is no campaign parameter, so `messages.byCampaign` is `client`: the adapter keeps the rows whose `campaign_id` is the campaign asked for, after reading the whole feed. A scoped sync of messages reads the feed once and splits it by campaign.
-- https://api.smartlead.ai/api-reference/inbox/get-messages: `POST /master-inbox/inbox-replies` takes `filters.campaignId` ("number or array", "Filter by campaign ID(s)"). So `replies.byCampaign` is `server`.
-
-Nothing was checked live: there is no Smartlead key.
+- **Steps.** `GET /campaigns/{campaign_id}/sequence-analytics` takes `start_date`, `end_date` and `time_zone` ("used to bucket the dates") and returns one entry per step with `total_stats` and a per-variant breakdown: totals over the window, no days. `GET /analytics/campaign/follow-up-reply-rate` returns one rate. No read gives a step's counts by day, so `stats.byStepDay` is `false`.
+- **Every campaign by day.** `GET /analytics/day-wise-overall-stats` takes comma-separated `campaign_ids` and `client_ids`, but its documented response is `data.day_wise_stats[]` of `{ date, sent, opened, replied, bounced }` with no campaign id: the campaigns are added together. `GET /analytics/campaign/overall-stats` has a row per campaign (`campaign_wise_performance`) but for the whole window. No read keeps campaigns apart day by day, so daily stats for every campaign cost one request per campaign, and `stats.allCampaigns` stays `partial` (it grades the counts of the per-campaign totals, not days). A read of `campaign/overall-stats` per day would cost one request a day for every campaign, with that endpoint's fewer counts; the adapter does not do that.

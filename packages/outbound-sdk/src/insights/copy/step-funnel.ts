@@ -11,6 +11,7 @@ import { rate, total } from "../stats.ts";
 import { stepAt, stepLabel } from "../step.ts";
 import type { StepPosition } from "../step.ts";
 import {
+  groupBy,
   measure,
   perLead,
   rangeOf,
@@ -31,6 +32,10 @@ const input = z.object({
       "The campaign's ref, for example `instantly:acme:abc123`, or its name"
     ),
   ...rangeFields,
+  by_day: z
+    .boolean()
+    .default(false)
+    .describe("Per-day step counts (stats.byStepDay)"),
   min_reply_rate: z
     .number()
     .min(0)
@@ -76,8 +81,28 @@ export interface FunnelStep extends StepPosition {
   readonly variants: readonly FunnelVariant[];
 }
 
+/** One step's counts on one day. */
+export interface FunnelDayStep {
+  /** Counted from 0. */
+  readonly stepIndex: number;
+  /** Counted from 1, as a person counts. */
+  readonly stepNumber: number;
+  readonly sent: number | null;
+  readonly replies: number | null;
+}
+
+/** The funnel of one day: what each step sent and got back that day. */
+export interface FunnelDay {
+  /** `YYYY-MM-DD`. */
+  readonly date: string;
+  /** Oldest step first. A step with no row that day is left out, never shown as 0. */
+  readonly steps: readonly FunnelDayStep[];
+}
+
 export interface StepFunnel {
   readonly campaign: string;
+  /** Each day's funnel, oldest first, when `by_day` asked for it. `null` otherwise. */
+  readonly days: readonly FunnelDay[] | null;
   /** What the numbers say, in one or two sentences. */
   readonly finding: string;
   /** The step with the most replies, counted from 0. `null` when no step has a reply. */
@@ -244,6 +269,28 @@ const describe = (
     : `${lead} ${sentence(stepLabel(last.stepIndex, length))} is the last whose reply rate is reliably above the bar; the ${later.length === 1 ? "1 later step" : `${later.length} later steps`} sent ${total(later.map((step) => step.sent))} messages for ${total(later.map((step) => step.replies)) ?? "an unknown number of"} replies.`;
 };
 
+/** Day by day, the rows of each step added up (variants into their step). */
+const daysOf = (rows: readonly MetricRow[]): FunnelDay[] => {
+  const byDate = groupBy(
+    rows.filter((row) => row.date !== null && row.stepIndex !== null),
+    (row) => row.date ?? ""
+  );
+
+  return [...byDate]
+    .map(([date, group]) => ({
+      date,
+      steps: [...splitStats(group).steps]
+        .toSorted(([left], [right]) => left - right)
+        .map(([index, stats]) => ({
+          replies: stats.total?.replied ?? null,
+          sent: stats.total?.sent ?? null,
+          stepIndex: index,
+          stepNumber: index + 1,
+        })),
+    }))
+    .toSorted((left, right) => left.date.localeCompare(right.date));
+};
+
 const unattributedOf = (rows: readonly MetricRow[]) => {
   const counts = sumRows(rows);
 
@@ -252,20 +299,37 @@ const unattributedOf = (rows: readonly MetricRow[]) => {
 
 export const stepFunnel = defineInsight({
   description:
-    "Where a campaign's replies come from: one row per sequence step with its action, delay, sends, replies, reply rate with a 95% interval, share of all replies and the drop in sends from the step before, plus rows per variant when the vendor splits them. stepIndex counts from 0, stepNumber from 1. Names the step with the most replies and the last step that still earns its place. Use it to decide whether to cut or rewrite follow-ups. Costs 2 requests. A null count is not reported, never 0.",
+    "Where a campaign's replies come from: one row per sequence step with its action, delay, sends, replies, reply rate with a 95% interval, share of all replies and the drop in sends from the step before, plus rows per variant when the vendor splits them. stepIndex counts from 0, stepNumber from 1. Names the step with the most replies and the last step that still earns its place. Use it to decide whether to cut or rewrite follow-ups. Costs 2 requests. With by_day it also returns each day's sends and replies per step, for one more request, on an adapter with step stats by day. A null count is not reported, never 0.",
   inputSchema: input,
   key: "stepFunnel",
-  cost: (_input, price) => price.one("sequence.get") + price.one("stats"),
+  cost: (values, price) =>
+    price.one("sequence.get") + (values.by_day ? 2 : 1) * price.one("stats"),
   name: "step_funnel",
   needs: ["sequence", "stats.byStep"],
+  needsFor: ({ by_day: byDay }) => (byDay ? ["stats.byStepDay"] : []),
   next: "Use variant_test on the same campaign to see whether a step's A/B winner is real, or copy_audit to check the copy of a weak step.",
-  run: async (context, { campaign, from, min_reply_rate: bar, to }) => {
+  run: async (
+    context,
+    { by_day: byDay, campaign, from, min_reply_rate: bar, to }
+  ) => {
     const handle = context.outbound.campaign(campaign);
     const sequence = context.one(await handle.sequence());
 
     const rows = context.rows(
       await handle.stats({ ...rangeOf(from, to), scope: "step" })
     );
+
+    const days = byDay
+      ? daysOf(
+          context.rows(
+            await handle.stats({
+              ...rangeOf(from, to),
+              by: "day",
+              scope: "step",
+            })
+          )
+        )
+      : null;
 
     const split = splitStats(rows);
 
@@ -304,6 +368,7 @@ export const stepFunnel = defineInsight({
 
     const funnel: StepFunnel = {
       campaign: refOf(context.outbound, campaign),
+      days,
       finding: describe(steps, top, last, allReplies),
       lastStepEarningPlace: last?.stepIndex ?? null,
       lastStepEarningPlaceIndex: last?.stepIndex ?? null,

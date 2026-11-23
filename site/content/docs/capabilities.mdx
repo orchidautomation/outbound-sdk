@@ -40,7 +40,7 @@ A value is `false` or something truthy, so `if (outbound.capabilities["leads.lis
 
 ## Every key
 
-`CAPABILITY_KEYS` is the list of all 58. `Capabilities` is the type of the map, and `CapabilityKey` the type of a key.
+`CAPABILITY_KEYS` is the list of all 59. `Capabilities` is the type of the map, and `CapabilityKey` the type of a key.
 
 ### Campaigns and sequences
 
@@ -115,6 +115,7 @@ Listing campaigns and reading one need no key. Every adapter can.
 | `stats.campaign` | `exact`, `derived`, `false` | `campaign(id).stats()` |
 | `stats.allCampaigns` | `full`, `partial`, `false` | `stats({ scope: "campaign" })` with no `scopeId`: a row per campaign in one call. `full` when each row has every count the read of one campaign has, `partial` when the vendor's report has fewer. |
 | `stats.byStep` | `exact`, `derived`, `false` | `campaign(id).stats({ scope: "step" })` |
+| `stats.byStepDay` | `exact`, `derived`, `false` | `campaign(id).stats({ scope: "step", by: "day" })`: a row per step and day. Needs `stats.byStep` and `stats.byDay` as well. No vendor adapter declares it: Instantly, Smartlead and EmailBison report step counts as totals over a range. A custom adapter over stored history can. |
 | `stats.bySender` | `exact`, `derived`, `false` | `sender(id).stats()` |
 | `stats.bySenders` | `exact`, `derived`, `false` | `stats({ scope: "sender", scopeIds })`: several senders' rows in one call, a few requests in all instead of a few per sender. Needs `stats.bySender` as well. |
 | `stats.byDay` | `exact`, `derived`, `false` | `by: "day"` on any of the four, in addition to the scope's own key |

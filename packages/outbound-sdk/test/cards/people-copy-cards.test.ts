@@ -545,6 +545,7 @@ const step = (index: number, replies: number | null) => ({
 test("step_funnel charts replies by step and repeats the insight's finding", () => {
   const funnel: StepFunnel = {
     campaign: "c1",
+    days: null,
     finding: "Step 1 brings 92% of replies.",
     lastStepEarningPlace: 0,
     lastStepEarningPlaceIndex: 0,

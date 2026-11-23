@@ -307,7 +307,7 @@ const readCounts = async (
     if (query.by === "day") {
       throw unsupported(
         client,
-        "Smartlead reports step and mailbox analytics as totals only"
+        "Smartlead reports mailbox analytics as totals only"
       );
     }
 

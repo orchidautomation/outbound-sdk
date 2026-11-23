@@ -107,6 +107,8 @@ export const capabilities: CapabilityDeclaration = {
   // address. The per-campaign mailbox endpoint documents no response.
   "stats.bySender": "exact",
   "stats.byStep": "exact",
+  // GET /campaigns/{id}/sequence-analytics returns totals over a window.
+  "stats.byStepDay": false,
   // GET /analytics/campaign/overall-stats: a row per campaign, totals only.
   // Partial: it has no clicks and no unsubscribes.
   "stats.allCampaigns": "partial",

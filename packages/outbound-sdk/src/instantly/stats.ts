@@ -183,16 +183,6 @@ export const readStats = async (
   }
 
   if (query.scope === "step") {
-    if (query.by === "day") {
-      throw new OutboundError(
-        "Unsupported",
-        "Instantly reports step analytics as totals only",
-        {
-          provider: identity.provider,
-        }
-      );
-    }
-
     const steps = await client.getRows(ctx, "/campaigns/analytics/steps", {
       query: { ...range(query), campaign_id: query.scopeId },
     });

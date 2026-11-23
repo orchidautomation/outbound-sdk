@@ -184,3 +184,10 @@ Sources, read 2026-11-17: `https://docs.emailbison.com/master-inbox/overview.md`
 ## Filtering messages and replies by campaign (2026-11-23, for OUT-212)
 
 Fetched 2026-11-23: https://dedi.emailbison.com/api/reference.openapi. `GET /api/scheduled-emails` takes `campaign_ids` ("Campaign IDs to filter by."), and `GET /api/replies` takes `campaign_id` ("The ID of the campaign."). So `messages.byCampaign` and `replies.byCampaign` are both `server`. Nothing was checked live.
+
+## Step stats by day, and daily stats for every campaign (2026-11-23, for OUT-216 and OUT-217)
+
+Fetched 2026-11-23: https://dedi.emailbison.com/api/reference.openapi (https://docs.emailbison.com/api-reference/openapi.json returned an empty body that day).
+
+- **Steps.** `POST /api/campaigns/{campaign_id}/stats` returns `sequence_step_stats[]` as totals between its required `start_date` and `end_date`. No read gives a step's counts by day, so `stats.byStepDay` is `false`.
+- **Every campaign by day.** `GET /api/campaign-events/stats` ("Breakdown of events by date") takes `campaign_ids` and `sender_email_ids` arrays, but returns one series per event label (`Replied`, `Sent`, ...) of `[day, count]` pairs with no campaign id: the campaigns are added together. `GET /api/campaigns/{campaign_id}/line-area-chart-stats` reads one campaign. `GET /api/events` lists raw events, up to 10 days, with cursor pagination; counting them is not a stats read. So daily stats for every campaign cost one request per campaign, and `stats.allCampaigns` stays `false`.

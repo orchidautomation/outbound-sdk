@@ -54,12 +54,15 @@ Against the [table](/docs/adapters#what-each-adapter-can-do), EmailBison lacks t
 | `lists.leads` | `no` | No read returns the leads of a lead list. |
 | `sequence.subsequences` | `no` | EmailBison has no follow-up sequences. |
 | `stats.allCampaigns` | `no` | No read has a row per campaign for a date range. |
+| `stats.byStepDay` | `no` | A step's counts are totals between the summary's two dates, not days. |
 | `placementTests.list` | `no` | EmailBison has no inbox placement tests. |
 | `campaigns.status` | `client` | The status filter takes 11 vendor values, and one SDK status covers several. |
 | `leads.since`, `messages.since`, `replies.since` | `client` | The SDK filters on the time after fetching and marks the result `derived`. |
 | `events.verify` | `secret` | EmailBison's signing scheme is undocumented. Put a secret in the webhook URL. |
 
 `leads.lookup` works by email only: `GET /api/leads/{lead_id}` takes the address in place of the id. No read finds a lead by LinkedIn profile, so that lookup returns nothing and sends no request.
+
+Daily stats for every campaign cost one request per campaign. `GET /api/campaign-events/stats` takes several `campaign_ids` but returns one daily series for them all, and `GET /api/campaigns/{id}/line-area-chart-stats` reads one campaign. Read each campaign with `campaign(id).stats({ by: "day" })`. This is a limit of EmailBison's API, checked against its documentation on 2026-11-23.
 
 ## Rate limits
 

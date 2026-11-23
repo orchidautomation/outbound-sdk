@@ -160,6 +160,7 @@ $ outbound capabilities
       "stats.bySender": "exact",
       "stats.bySenders": false,
       "stats.byStep": "exact",
+      "stats.byStepDay": "exact",
       "stats.allCampaigns": "full",
       "stats.campaign": "exact",
       "stats.workspace": "exact",

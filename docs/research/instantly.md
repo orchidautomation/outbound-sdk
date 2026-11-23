@@ -351,6 +351,6 @@ Re-read on 2026-11-14 from `https://api.instantly.ai/openapi/api_v2.json` (`info
 
 - `GET /api/v2/custom-tags`, cursor-paged: `id`, `label`, `description`. Tags apply to accounts, campaigns and workspaces.
 
-## Filtering messages and replies by campaign (2026-11-23, for OUT-212)
+## Step stats by day (2026-11-23, for OUT-216)
 
-Fetched 2026-11-23: https://developer.instantly.ai/api-reference/email/list-email.md. `GET /api/v2/emails` takes `campaign_id`, "The ID of the campaign to filter emails by". Replies are the same list with `email_type=received`. So `messages.byCampaign` and `replies.byCampaign` are both `server`.
+Fetched 2026-11-23: https://api.instantly.ai/openapi/api_v2.json. `GET /api/v2/campaigns/analytics/steps` takes `campaign_id`, `start_date`, `end_date` and `include_opportunities_count`, and returns one row per `step` and `variant` with no date field: totals over the range. The daily read, `GET /api/v2/campaigns/analytics/daily`, takes no step. So `stats.byStepDay` is `false`. One request per day with `start_date` equal to `end_date` would give days, at one request a day; the adapter does not do that. `GET /api/v2/subsequences/{id}/analytics/steps` is the same shape for a subsequence.
