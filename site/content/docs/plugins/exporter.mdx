@@ -45,7 +45,7 @@ It returns `{ rows, columns }`.
 | `.jsonl` | One JSON object per line with exactly the listed columns. A missing field is `null`. | None |
 | `RowWriter` | A JSON object with exactly the listed columns, in order, as for `.jsonl`. `columns` and `includeRaw` apply to it as they do to a file. A missing field is `null`. | Up to you |
 
-Without `record` or `columns`, the columns come from the first record only. A later record with a field the first one lacked does not get a column, so a file of HeyReach replies and one of Instantly replies have different columns (HeyReach replies carry no `leftCompany`). Pass `record` when the file goes into a table.
+Without `record` or `columns`, the columns come from the first record only. A later record with a field the first one lacked does not get a column, so a file of HeyReach replies and one of Instantly replies have different columns (HeyReach replies carry no `leadEmail`). Pass `record` when the file goes into a table.
 
 ## A stable schema
 
