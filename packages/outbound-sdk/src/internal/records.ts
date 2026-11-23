@@ -21,6 +21,7 @@ export {
   outboundEventSchema,
   recipientMailProviderSchema,
   replyCategorySchema,
+  replyRuleSchema,
   replySchema,
   SCHEMA_VERSION,
   senderSchema,

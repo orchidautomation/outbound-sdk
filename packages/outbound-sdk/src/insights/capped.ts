@@ -115,14 +115,17 @@ const noneMatched = (
   wanted: readonly CampaignStatus[],
   others: readonly Campaign[],
   more: boolean
-): void => {
+): string | null => {
   const counted = othersCounted(others, more);
 
-  if (counted !== undefined) {
-    context.partial(
-      `No campaign is ${either(wanted)}, so nothing was checked (${counted}). Pass statuses to check the others.`
-    );
+  if (counted === undefined) {
+    return null;
   }
+
+  const reason = `No campaign is ${either(wanted)}, so nothing was checked (${counted}). Pass statuses to check the others.`;
+  context.partial(reason);
+
+  return reason;
 };
 
 /** A tool of a combined instance none of whose campaigns was read, because none is in the states asked for. */
@@ -138,6 +141,12 @@ export interface SkippedTool {
 /** The campaigns read, and the tools of a combined instance left out because none of theirs is in the states asked for. */
 export interface CampaignsListed extends Capped<Campaign> {
   readonly skipped: readonly SkippedTool[];
+  /**
+   * Why nothing was checked when no campaign is in the states asked for but
+   * other campaigns exist, or could not be counted; `null` otherwise. The
+   * answer is then incomplete, so a total over the campaigns is unknown.
+   */
+  readonly noneInStatuses: string | null;
 }
 
 /**
@@ -158,24 +167,26 @@ const countOthers = async (
   context: InsightContext,
   wanted: readonly CampaignStatus[],
   every: readonly Campaign[] | undefined
-): Promise<void> => {
+): Promise<string | null> => {
   if (every !== undefined) {
-    noneMatched(context, wanted, every, false);
-
-    return;
+    return noneMatched(context, wanted, every, false);
   }
 
   const page = await settledPage(context.outbound.campaigns.list());
 
   if (page === null) {
-    context.partial(
-      `No campaign is ${either(wanted)}, so nothing was checked; a request cap stopped the count of the others.`
-    );
+    const reason = `No campaign is ${either(wanted)}, so nothing was checked; a request cap stopped the count of the others.`;
+    context.partial(reason);
 
-    return;
+    return reason;
   }
 
-  noneMatched(context, wanted, context.page(page), page.cursor !== undefined);
+  return noneMatched(
+    context,
+    wanted,
+    context.page(page),
+    page.cursor !== undefined
+  );
 };
 
 /**
@@ -393,13 +404,15 @@ export const readCampaignsIn = async (
 
   context.campaignsFound(read.items.length);
 
-  if (read.items.length === 0 && !read.capped) {
-    await countOthers(context, wanted, read.every);
-  }
+  const noneInStatuses =
+    read.items.length === 0 && !read.capped
+      ? await countOthers(context, wanted, read.every)
+      : null;
 
   return {
     capped: read.capped,
     items: read.items,
+    noneInStatuses,
     skipped: read.skipped ?? [],
   };
 };

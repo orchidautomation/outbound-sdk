@@ -458,6 +458,14 @@ export const replyList = (core: Core): ListSpec<Reply, ReplyFilters> => ({
   prepare: (filters) => {
     requireCapability(core.gate, "replies.list", "Listing replies");
 
+    if (filters.includeInbox === true) {
+      requireCapability(
+        core.gate,
+        "replies.inbox",
+        "Listing replies in conversations that belong to no campaign"
+      );
+    }
+
     if (filters.category !== undefined) {
       requireCapability(
         core.gate,

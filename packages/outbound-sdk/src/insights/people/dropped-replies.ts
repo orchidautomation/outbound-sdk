@@ -336,16 +336,18 @@ const readReplies = (
     );
   }
 
-  // Replies outside every campaign are read too, so they can be counted
-  // when they are set aside. A tool with no such inbox reads the same either
-  // way, and on a combined instance each tool that has one includes it.
+  // Replies outside every campaign are read too, where the tool has them,
+  // so they can be counted when they are set aside. On a combined instance
+  // each tool that has them includes them.
+  const includeInbox = outbound.capabilities["replies.inbox"] || undefined;
+
   return readCappedFlag(
     context,
     (cap) =>
       outbound.replies.listAll(
         filtered
-          ? { includeInbox: true, max: cap, since }
-          : { includeInbox: true, max: cap }
+          ? { includeInbox, max: cap, since }
+          : { includeInbox, max: cap }
       ),
     given ?? WINDOW_REPLIES,
     "replies",

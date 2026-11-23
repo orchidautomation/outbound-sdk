@@ -50,10 +50,10 @@ const lines = (file: string) =>
 
 test("export with record writes every field of the record, null where a vendor leaves it out", async () => {
   const items = await replies();
-  // HeyReach replies carry no leadEmail, isAutoSource or leftCompany.
+  // HeyReach replies carry no leadEmail: LinkedIn has no address.
   const heyreachReply = items.find((each) => each.provider === "heyreach");
   assert.ok(heyreachReply);
-  assert.equal("leftCompany" in heyreachReply, false);
+  assert.equal("leadEmail" in heyreachReply, false);
 
   const outbound = createOutbound({
     adapter: instantlySuite.make(),
@@ -68,7 +68,7 @@ test("export with record writes every field of the record, null where a vendor l
   });
 
   assert.deepEqual(result.columns, recordColumns("reply"));
-  assert.ok(result.columns.includes("leftCompany"));
+  assert.ok(result.columns.includes("leadEmail"));
   assert.equal(result.columns.includes("raw"), false);
 
   for (const row of lines(file)) {
@@ -76,15 +76,14 @@ test("export with record writes every field of the record, null where a vendor l
   }
 
   const heyreachRow = lines(file).find((row) => row.provider === "heyreach");
-  assert.equal(heyreachRow?.leftCompany, null);
-  assert.equal(heyreachRow?.isAutoSource, null);
+  assert.equal(heyreachRow?.leadEmail, null);
 
   // Without record the columns follow the first record, so they drift.
   const inferred = await outbound.export(items.toReversed(), {
     to: path.join(dir, "inferred.jsonl"),
   });
 
-  assert.equal(inferred.columns.includes("leftCompany"), false);
+  assert.equal(inferred.columns.includes("leadEmail"), false);
 });
 
 test("an empty export with record still writes the record's CSV header", async () => {

@@ -1,7 +1,7 @@
 // Smartlead activity, message-history and master-inbox payloads -> messages
 // and replies. Pure functions, no I/O.
 
-import { detectAutoReply } from "../internal/auto-reply.ts";
+import { readReply, ruleSaysAuto } from "../internal/auto-reply.ts";
 import type { Message, Reply, ReplyCategory } from "../internal/entities.ts";
 import { replyCategorySchema } from "../internal/entities.ts";
 import {
@@ -314,8 +314,8 @@ export const toInboxReplies = (
 
   return parts.map((part) => {
     // Smartlead's only automatic-reply signal is the Out Of Office category;
-    // otherwise a fixed rule reads the subject and body.
-    const verdict = detectAutoReply({
+    // otherwise the fixed rules read the subject and body.
+    const { leftCompany, rule } = readReply({
       body: part.body,
       from: null,
       subject: part.subject,
@@ -329,9 +329,10 @@ export const toInboxReplies = (
       // The category is the lead's, not one message's.
       categorySource: category === undefined ? null : "lead",
       direction: "in",
-      isAuto: vendor || verdict.isAuto,
+      isAuto: vendor || ruleSaysAuto(rule),
       isAutoSource: vendor ? "vendor" : "rule",
-      leftCompany: verdict.leftCompany,
+      leftCompany,
+      rule,
       // `is_read` is the thread's.
       unread: read === null ? null : !read,
     };

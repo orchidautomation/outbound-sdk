@@ -190,7 +190,7 @@ One message sent or received.
 | `url` | URL, `null`, or absent | Opens the conversation in the vendor's app, built only from a scheme the vendor documents or that was checked live. Instantly links to the thread in its Unibox; HeyReach, Smartlead and EmailBison document no such link, so it is `null`, and their field coverage says so. |
 | `stepIndex` | integer or `null` | The sequence step that sent it. |
 | `variantKey` | `string` or `null` | The variant that sent it. |
-| `isAuto`, `isAutoSource` | as on a `Reply`, or absent | On a received message, where the adapter can tell: Instantly and the memory adapter. |
+| `isAuto`, `isAutoSource`, `rule` | as on a `Reply`, or absent | On a received message, where the adapter can tell: Instantly, HeyReach and the memory adapter. |
 
 ## Reply
 
@@ -201,7 +201,8 @@ A received message with a category. A `Reply` is one message, not one person: a 
 | `category` | `"positive"`, `"negative"`, `"neutral"`, `"ooo"`, `"bounce"`, `"unsubscribe"`, `"unknown"` |  |
 | `categorySource` | `"vendor"`, `"lead"`, `"rule"` or `null` | Who decided the category: `vendor` when the vendor labelled this reply, `lead` when it is the vendor's label for the lead who sent it, `rule` for a fixed rule. `null` when it is `unknown`. Never a model. |
 | `isAuto` | boolean or `null` | `true` for an auto-reply, `null` when neither the vendor nor a fixed rule says. |
-| `isAutoSource` | `"vendor"`, `"rule"`, `null`, or absent | Who decided `isAuto`: `vendor` for the vendor's own flag, `rule` for a fixed rule on the sender's address, the subject, a canned phrase, or a reply within a minute of the send it answers. Never a model. |
+| `isAutoSource` | `"vendor"`, `"rule"`, `null`, or absent | Who decided `isAuto`: `vendor` for the vendor's own flag, `rule` for a fixed rule on the sender's address, the subject, a canned phrase, or a reply within a minute of the send it answers. A bounce notice counts as automatic. Never a model. |
+| `rule` | object, `null`, or absent | The fixed rules' own verdict, kept even when the vendor's flag decided `isAuto`: `autoReply` (an out-of-office, autoresponder or "left the company" notice), `bounce` (a delivery failure from `mailer-daemon@` or `postmaster@`, an `Undeliverable:` subject, or an SMTP code such as `550 5.1.1`), and `reason`, the rule that matched. The same rules run on their own as `detectAutoReply` and `detectBounce`. |
 | `leftCompany` | boolean, `null`, or absent | `true` when the reply says the person left the company or the contact changed, for example "your contact with Acme has changed". |
 | `unread` | boolean or `null` | `true` while the reply, or the thread it is in, is unread in the vendor's inbox. |
 

@@ -311,6 +311,33 @@ export type AutoSource = z.infer<typeof autoSourceSchema>;
  */
 const isAutoSource = autoSourceSchema.nullable().optional();
 
+/**
+ * The fixed rules' own verdict on a received message (`detectAutoReply` and
+ * `detectBounce`), kept apart from `isAuto` so it is still there when the
+ * vendor flagged the message. `reason` names the rule that matched:
+ * `bounce_sender`, `bounce_subject` or `bounce_body` when `bounce`, otherwise
+ * `machine_sender`, `automatic_subject`, `automatic_body`, `left_company` or
+ * `answered_at_once`; `null` when none did. Absent or `null` where no rule ran.
+ */
+export const replyRuleSchema = z.object({
+  autoReply: z.boolean(),
+  bounce: z.boolean(),
+  reason: z
+    .enum([
+      "answered_at_once",
+      "automatic_body",
+      "automatic_subject",
+      "bounce_body",
+      "bounce_sender",
+      "bounce_subject",
+      "left_company",
+      "machine_sender",
+    ])
+    .nullable(),
+});
+
+const rule = replyRuleSchema.nullable().optional();
+
 export const messageSchema = z.object({
   ...messageFields,
   direction: z.enum(["in", "out"]),
@@ -320,6 +347,7 @@ export const messageSchema = z.object({
    */
   isAuto: z.boolean().nullable().optional(),
   isAutoSource,
+  rule,
 });
 
 export type Message = z.infer<typeof messageSchema>;
@@ -342,6 +370,7 @@ export const replySchema = z.object({
   /** `true` for an auto-reply, `null` when neither the vendor nor a fixed rule says. */
   isAuto: z.boolean().nullable(),
   isAutoSource,
+  rule,
   /**
    * `true` when the reply says the person left the company or that the
    * contact changed ("is no longer with", "your contact with Acme has

@@ -123,6 +123,7 @@ export const fields: FieldDeclaration = {
     // Read only by the Instantly adapter, whose emails name their lead by address.
     leadEmail: false,
     isAutoSource: false,
+    rule: false,
     stepIndex: false,
     // No link to one master inbox conversation is documented.
     url: false,
@@ -153,6 +154,7 @@ export const fields: FieldDeclaration = {
     leadEmail: false,
     // A fixed rule reads the sender, subject and body when automated_reply is missing.
     leftCompany: "derived",
+    rule: "derived",
     stepIndex: false,
     url: false,
     variantKey: false,

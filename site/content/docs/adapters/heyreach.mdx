@@ -57,6 +57,8 @@ HeyReach is the adapter with the most `no` in the [table](/docs/adapters#what-ea
 
 A reply's `category` is its lead's. HeyReach classifies a lead from its first campaign reply (Interested, Not Interested or Generic) and keeps the result on the lead, with no link to a message. Every reply in a conversation takes the lead's newest label and carries `categorySource: "lead"`. The API reference does not list the label names; any other name is `unknown`.
 
+HeyReach flags no message as automatic, and its Generic label covers an out-of-office and a neutral answer alike. So `isAuto` on the lead's messages comes from the fixed rules on the message text and an InMail's subject, with `isAutoSource: "rule"`, and `leftCompany` says when the message reports the person left. LinkedIn has no sender address and no bounce.
+
 ## Rate limits
 
 The adapter declares two windows: 15 requests per 2 seconds and 300 per minute. The 300 is documented. The burst limit is not: it was read from the live API's 429 response on 2026-11-14. The organization API has a lane of its own at 300 per minute.

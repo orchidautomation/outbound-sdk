@@ -180,6 +180,7 @@ Whether the `messages[]` embedded in a V2/V3 list item is the full thread or a r
 - Exposed via `correspondentProfile.autoTags[].name` (V3), the `latestAutoTagNames` filter, and webhook events. The exact `name` strings returned by the API are not listed in the API docs (UNVERIFIED).
 - Manual lead `tags` (free text, workspace-defined) are separate.
 - Simple reply detection without tags: `leadMessageStatus == "MessageReply"` on campaign leads, or `lastMessageSender != "ME"` on conversations.
+- No automatic-reply flag. A `GetConversationsV3` message item carries only `createdAt`, `body`, `subject`, `postLink`, `isInMail` and `sender` (https://docs.heyreach.io/hey-reach-api/inbox/get-conversations-v-3.md, fetched 2026-11-23). The Auto-Tag article puts an out-of-office under **Generic** with other neutral replies (https://help.heyreach.io/en/articles/14957953-auto-tag-automatic-lead-classification-in-heyreach, fetched 2026-11-23), so the adapter reads the lead's messages with the fixed auto-reply rules instead (OUT-195).
 
 ## 7. Analytics
 
@@ -378,61 +379,3 @@ HeyReach publishes no API changelog. Inferred from differences between the two d
 12. Stats date semantics: which timezone buckets days (keys are UTC midnight), inclusivity of `endDate`.
 13. Plan gating for the public API as a whole (not stated on the docs site).
 14. OpenAPI types are unreliable (generated from placeholder examples).
-
-## Sources (all fetched 2026-11-14)
-
-- https://docs.heyreach.io/llms.txt (and /llms-full.txt, identical) — saved as `sources/docs-llms.txt`
-
-## A conversation names no campaign (2026-11-17, for OUT-121's release rerun)
-
-Sources, fetched 2026-11-17:
-
-- https://docs.heyreach.io/hey-reach-api/inbox/get-conversations-v-3.md. Unchanged since 2026-11-16: the response schema lists `campaignId` (integer, "required") on every item, the example carries `"campaignId": 12345`, and the page says "`items[].campaignId` is omitted entirely when the conversation is not tied to a campaign." `filters.campaignIds` is a `long[]`, and `from`/`to` bound `lastMessageAt`.
-
-Seen live on 2026-11-17, read-only, on the workspace of the release rerun (18 campaigns):
-
-- **No conversation carries `campaignId`.** 0 of 258 unfiltered conversations had the key, and 0 of 150 when filtered with `campaignIds: [<one campaign>]`. Every item had the same 14 keys either way: `id`, `read`, `groupChat`, `blockedByMe`, `blockedByParticipant`, `lastMessageAt`, `lastMessageText`, `lastMessageType`, `lastMessageSender`, `totalMessages`, `linkedInAccountId`, `correspondentProfile`, `linkedInAccount`, `messages`. So OUT-124's `campaignOf` found no campaign anywhere, and unfiltered `replies` returned 0.
-- **The filter does know.** Filtering one campaign at a time returned 150 conversations, each in exactly one campaign, and their union equalled one request with all 18 ids in `campaignIds`. Those 150 held 67 replies (5 campaigns); the other 108 held 241, which is the 308 of `--include-inbox`.
-- **Nothing else tells them apart.** Message keys, `correspondentProfile` keys and `linkedInAccount` keys were the same in both groups. `correspondentProfile.autoTags[].campaignId` was set on 28 of the 150 campaign conversations, always the right campaign, and on none of the others, so it covers too few to use. `correspondentProfile.id` was absent on all 258, though the schema lists it.
-- `filters.campaignIds: []` is no filter (258).
-
-What the adapter does with it:
-
-- A listing without a campaign reads the campaigns first (`POST /campaign/GetAll`, every page; `POST /campaign/GetCampaignsForLead` for one lead's timeline, where a 404 is no campaigns), then each campaign's conversations with `campaignIds: [id]`, one campaign after the other. A message's `campaignRef` is that campaign. That is one request per campaign even when it has none: 20 requests for `replies` on this workspace (1 + 18 + 1 second page) against 3 before.
-- When the inbox is wanted (`includeInbox`, and every `messages.list`), the unfiltered listing follows. For each of its pages one more request lists the conversations in any campaign whose `lastMessageAt` lies between that page's oldest and newest (both listings sort by that time), and those are dropped, so a campaign conversation never comes twice and the rest have a `null` `campaignRef`.
-- A chatroom read still names no campaign.
-
-Live through the CLI built from the fix: `replies` 67 from 5 campaigns (20 requests); `replies --include-inbox` 308 = 67 with a campaign + 241 without (26 requests). `dropped_replies` read 45 replies in its window, set 40 aside as not in a campaign, found 2 dropped; `reply_timing` paired 25 of 27; `hot_leads` read 5 replies (it read 0 before).
-
-## Combined listings and pages out of time order (2026-11-17)
-
-Not a vendor fact, recorded here because HeyReach triggers it. `replies --by person --limit 2000 --provider all` with no `--since` ran for over 15 minutes. A request log showed HeyReach done after 3 requests and then Instantly's `GET /api/v2/emails` re-read with the same `starting_after` every 6 seconds. The combined instance gives out a member's records newest first and held back those older than the last record of a page with more to come; a page holding an older record before that last one was re-read forever. HeyReach's pages are never in time order, because a conversation lists its messages oldest first. Each member's page is now put in time order first, so the walk always moves on. The same read now ends in 68 s and 60 requests, at the 2,000 cap.
-
-## Meeting status and thread context (2026-11-17, for OUT-139)
-
-Fetched 2026-11-17: https://docs.heyreach.io/openapi.json, https://docs.heyreach.io/hey-reach-api/inbox/get-conversations-v-3.md, https://help.heyreach.io/en/articles/14957953-auto-tag-automatic-lead-classification-in-heyreach.
-
-- No meeting or booking field anywhere in the spec. `fields.lead.meeting` is `false`.
-- The auto-tag (Interested, Not Interested, Generic) stays the lead's `interest`. Lead tags (`correspondentProfile.tags`, `POST /lead/GetTags`) are free text a workspace writes; they stay in `tags`, and the follow-up assessment lists them under `unchecked` ("were not interpreted") rather than reading one as a meeting.
-- A conversation's messages carry `createdAt` and `sender` ("ME" for the account), no per-message preview; `lastMessageText` is the conversation's only short text. GetConversationsV3 returns up to 100 conversations with their messages, but cannot filter by a list of conversation ids.
-- The help article says GetChatroom carries auto-tags; the spec's GetChatroom schema has no `autoTags`. They disagree.
-
-## Conversation links (OUT-140, 2026-11-17)
-
-Sources, read 2026-11-17: `https://docs.heyreach.io/llms.txt`, `https://docs.heyreach.io/hey-reach-api/inbox/get-chatroom.md`, `https://docs.heyreach.io/hey-reach-api/inbox/get-conversations-v-3.md`, and `https://help.heyreach.io/en/articles/9877943-unibox-screen-overview`. None documents a URL that opens one Unibox conversation, and the webhook payload (section on webhooks above) carries `conversation_id` but no link.
-
-Read-only, live, on 2026-11-17: the string values of `POST /inbox/GetConversationsV2` items that are URLs were only `correspondentProfile.profileUrl`, `correspondentProfile.imageUrl`, `correspondentProfile.companyUrl` and `linkedInAccount.profileUrl`. The scheme could not be checked in a browser (computer use was off on the Mac), so a message's and reply's `url` is null and the field coverage says `false`.
-
-## A lead ref given where a person is asked for (2026-11-17, for OUT-138)
-
-Fetched 2026-11-17: https://docs.heyreach.io/openapi.json (`info.version` 1.0.0, 105 paths). `POST /api/public/lead/GetLead` still takes `{ profileUrl }` (`type: string, format: uri`, required) and nothing else, so a lead is named by its profile URL and this adapter's lead and message refs are `heyreach:<workspace>:<profile URL>`.
-
-Seen live on 2026-11-17 (read-only): a `leadRef` from `replies --by person` had that shape, and `person_summary` given it found the person. It worked only because the profile URL inside the ref was matched as a LinkedIn profile; a HeyReach ref given to an instance that reads only Instantly was searched there by profile rather than refused. Now a ref is recognised first, its profile URL is used with no request, and a ref of a tool the instance does not read is `Invalid` before any request.
-
-## A failing LinkedIn account's impact (OUT-142)
-
-Fetched 2026-11-17 from `https://docs.heyreach.io/hey-reach-api/linked-in-accounts/get-all.md`, `https://docs.heyreach.io/hey-reach-api/linked-in-accounts/get-by-id.md`, `https://docs.heyreach.io/hey-reach-api/linked-in-accounts/get-account-status.md` and `https://docs.heyreach.io/llms.txt`.
-
-- `POST /li_account/GetAll` and `GET /li_account/GetById` return `id`, `emailAddress`, `firstName`, `lastName`, `isActive`, `activeCampaigns` (a count), `authIsValid`, `isValidNavigator`, `isValidRecruiter`, `profileUrl`, the four cooldown flags and `accountLimits`. None is a time.
-- `GET /li_account/GetAccountStatus/{accountId}` returns `accountId`, `status`, `failureReason`, `profile`, `salesNavigator.authenticated` and `recruiter.authenticated`, "Cached for 10 seconds". No time of the last successful sign-in.
-- So a failing account's `last_authenticated_at` is null with a reason, its active campaigns come from `campaigns.bySender` (`POST /campaign/GetAll` with `accountIds`), and its recent sends from the per-account daily stats. HeyReach has no batched health read: health stays one `GetAccountStatus` per account, so `senders.healthList` is false.

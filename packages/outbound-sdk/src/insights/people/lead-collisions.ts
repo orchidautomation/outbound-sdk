@@ -263,6 +263,11 @@ const overallOf = (
 
   const people = `${plural(found, "person is", "people are")} ${where}`;
 
+  // Nothing was read, and the reason says why.
+  if (incomplete !== null && campaigns === 0) {
+    return incomplete;
+  }
+
   if (incomplete === null && campaigns === 0) {
     return `Nobody is ${where}: no campaign in those statuses was found to read.`;
   }
@@ -333,16 +338,19 @@ export const leadCollisions = defineInsight({
       (each) => each.capped
     ).length;
 
-    const incomplete = gapsSentence(
-      campaignGaps({
-        campaigns: campaigns.length,
-        campaignsCut: wasCutShort(campaigns),
-        leadsCut: perCampaign.filter((each) => each.cut).length,
-        campaignsWithMoreLeads,
-        maxLeads: values.max_leads_per_campaign,
-        moreCampaignsExist: campaignsRead.capped,
-      })
-    );
+    // No campaign in the statuses while others exist: nothing was checked.
+    const incomplete =
+      campaignsRead.noneInStatuses ??
+      gapsSentence(
+        campaignGaps({
+          campaigns: campaigns.length,
+          campaignsCut: wasCutShort(campaigns),
+          leadsCut: perCampaign.filter((each) => each.cut).length,
+          campaignsWithMoreLeads,
+          maxLeads: values.max_leads_per_campaign,
+          moreCampaignsExist: campaignsRead.capped,
+        })
+      );
 
     const overlaps = groupPeople(entries, keysOf).flatMap(toCollision);
     const pastOverlaps = overlaps.filter((each) => each.stillActive < 2).length;
