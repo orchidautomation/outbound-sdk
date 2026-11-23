@@ -41,6 +41,12 @@ export const TAG_PAGES = 10;
 
 export const capabilities: CapabilityDeclaration = {
   blocklist: true,
+  // GET /campaigns?search=, which matched any part of a name, ignoring case,
+  // in a live read on 2026-11-23.
+  "campaigns.byName": "server",
+  // GET /custom-tags?search= finds the tag's id, then GET
+  // /campaigns?tag_ids= lists only the campaigns that carry it.
+  "campaigns.byTag": "server",
   // GET /account-campaign-mappings/{email}.
   "campaigns.bySender": true,
   // GET /campaigns/analytics for one id: leads_count and completed_count;
@@ -187,7 +193,13 @@ export const costs = {
   // The campaign, its tag assignments, then the tags' names.
   "campaigns.get": { perPage: 3 },
   // The campaigns, their tag assignments, then the tags' names.
-  "campaigns.list": { pageSize: PAGE_SIZE, perPage: 3, perWalk: 1 },
+  // A page whose tag assignments fill a page reads them again in halves.
+  "campaigns.list": {
+    pageSize: PAGE_SIZE,
+    perPage: 3,
+    perPageAtMost: 5,
+    perWalk: 1,
+  },
   // The per-campaign report, asked for one campaign, then the leads not
   // contacted, to count the skipped ones: usually one page, at most
   // SKIPPED_PAGES_AT_MOST.
@@ -250,7 +262,7 @@ export const caveats: readonly string[] = [
   "Daily analytics rows do not state their timezone. They are read as UTC days: the range parameters are documented as UTC midnight, and seen live on 2026-11-18 every day's replies over 14 days, for the workspace's campaigns and for 25 mailboxes, matched received emails grouped by UTC day and not by a US timezone. Campaign daily rows leave out a day with no activity; mailbox daily rows list every day.",
   'meetingsBooked is total_meeting_booked, which only the analytics overview reports (one campaign\'s total and the workspace total): Instantly counts leads moved to Meeting Booked in the range. Rows of stats({ scope: "campaign" }) for every campaign, daily, step and mailbox rows have it null.',
   "Campaign tags need two more reads (custom-tag-mappings, then custom-tags) and so a key that can read both; an all:read key can. Turn the tags capability off to skip them: campaign tags are then empty.",
-  "A page of campaigns reads at most 10 pages of 100 tag assignments. A page with more assignments than that is refused with a Provider error, not returned with tags missing.",
+  "A page of campaigns whose tag assignments fill a page of 100 is read again in halves, down to one campaign, whose assignments are read up to 10 pages of 100. A campaign with more than that is refused with a Provider error, not returned with tags missing.",
   "A step's delay is documented as the wait before the next email, so a step's delayDays is the delay of the step before it; the first step of a campaign waits 0 and the first step of a subsequence waits its pre_delay.",
   "A campaign's settings, sequence and senders each read the whole campaign object. A sending window's days are assumed to be numbered 0 for Sunday to 6 for Saturday; the documentation only shows the keys 0 to 6.",
   "A campaign's senders are found by reading every mailbox and keeping those named in the campaign's email_list or carrying a tag in its email_tag_list, at two requests per page of mailboxes. A campaign that names tags only is filtered by Instantly.",

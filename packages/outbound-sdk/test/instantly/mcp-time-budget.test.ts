@@ -129,7 +129,7 @@ const droppedReplies = (id: number, progressToken?: number | string) =>
     params: {
       _meta: { progressToken },
       arguments: { since: "2025-12-01" },
-      name: "dropped_replies",
+      name: "unanswered_replies",
     },
   });
 
@@ -211,7 +211,7 @@ test("ping is answered at once while a long tool call is still running", async (
 });
 
 const TIME_NOTE =
-  /dropped_replies stopped at its time budget of 60s: what it had not read would not have been read in time, so the answer leaves it out\. Call it again with less to read, such as fewer campaigns or a shorter range, or raise --time-budget on outbound mcp/u;
+  /unanswered_replies stopped at its time budget of 60s: what it had not read would not have been read in time, so the answer leaves it out\. Call it again with less to read, such as fewer campaigns or a shorter range, or raise --time-budget on outbound mcp/u;
 
 test("a call that runs out its time budget returns by then with what it read, marked incomplete", async () => {
   const ran = await mcp(["--time-budget", "60"], () =>
@@ -445,7 +445,7 @@ test("a call that finds the email lane used up by the call before says when to c
   );
 });
 
-test("a call through the listed surface keeps when to call again: reply_samples with a scope after dropped_replies (OUT-168)", async () => {
+test("a call through the listed surface keeps when to call again: reply_samples with a scope after unanswered_replies (OUT-168)", async () => {
   const unanswered = JSON.stringify({
     id: 2,
     jsonrpc: "2.0",

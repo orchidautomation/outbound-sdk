@@ -127,7 +127,7 @@ test("client_report reads one tool of a combined instance, or one tag", async ()
   assert.equal(tagged.data.anomalies, null, "unusual days are workspace-wide");
   assert.ok(
     tagged.data.leftOut.includes(
-      "Unusual days: they are workspace-wide, so a tag leaves them out."
+      "Unusual days: they are workspace-wide, so a campaign scope leaves them out."
     )
   );
 

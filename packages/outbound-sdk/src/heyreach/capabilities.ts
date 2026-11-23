@@ -22,8 +22,13 @@ export const LIST_LEADS_PAGE_SIZE = 1000;
 export const capabilities: CapabilityDeclaration = {
   // POST /blacklist/GetLeads, then POST /blacklist/GetCompanies.
   blocklist: true,
+  // POST /campaign/GetAll takes a `keyword`, which matched any part of a
+  // name, ignoring case, in a live read on 2026-11-23.
+  "campaigns.byName": "server",
   // POST /campaign/GetAll takes an `accountIds` array.
   "campaigns.bySender": true,
+  // HeyReach campaigns carry no tags.
+  "campaigns.byTag": false,
   // GET /campaign/GetById carries progressStats.
   "campaigns.progress": true,
   // A campaign's schedule can only be written (POST /campaign/UpdateSchedule).

@@ -23,8 +23,8 @@ const report = async <Answer>(
 // 1. A key the insight does not take. The types refuse it, and so does the
 //    call: dropping it would quietly rank every campaign.
 await report("unknown key", () =>
-  // @ts-expect-error -- `tag` is not an input of campaignRanking
-  outbound.insights.campaignRanking({ tag: "saas" })
+  // @ts-expect-error -- `label` is not an input of campaignRanking
+  outbound.insights.campaignRanking({ label: "saas" })
 );
 
 // 2. A value of the wrong type.

@@ -560,7 +560,7 @@ test("scope refuses a malformed scope, and passes provider and tag to a tool tha
   );
   assert.match(
     session.answer(2).error?.message ?? "",
-    /scope takes provider, workspace and tag, not nope/u
+    /scope takes provider, workspace, campaign_ids, campaign_name and tag, not nope/u
   );
   assert.match(
     session.answer(3).error?.message ?? "",
@@ -571,6 +571,53 @@ test("scope refuses a malformed scope, and passes provider and tag to a tool tha
     session.answer(5).error?.code,
     "Invalid",
     JSON.stringify(session.answer(5))
+  );
+});
+
+test("scope carries a campaign scope to a tool that takes one, listed once under scope", async () => {
+  const session = await serve(demo(), [
+    initialize(),
+    LIST,
+    call(2, "client_report", { scope: { campaign_name: "q4*" } }),
+    call(3, "client_report", {
+      scope: { campaign_ids: ["memory:acme:nosuch"], tag: "client-a" },
+    }),
+    call(4, "client_report", { scope: { campaign_ids: "c1" } }),
+    call(5, "campaigns", { scope: { campaign_name: "q4*" }, view: "list" }),
+  ]);
+
+  const report = session
+    .at(1)
+    .result.tools.find((tool) => tool.name === "client_report");
+
+  const properties = report?.inputSchema.properties ?? {};
+
+  assert.equal(Object.hasOwn(properties, "tag"), false);
+  assert.equal(Object.hasOwn(properties, "campaign_ids"), false);
+  assert.deepEqual(
+    (properties["scope"] as { propertyNames?: { enum?: string[] } })
+      .propertyNames?.enum,
+    ["provider", "workspace", "campaign_ids", "campaign_name", "tag"]
+  );
+
+  const named = session.answer(2);
+
+  assert.equal(named.ok, true, JSON.stringify(named));
+  assert.match(
+    named.meta?.notes.join(" ") ?? "",
+    /Campaign scope \(name q4\*\): 1 campaign of memory:acme match/u
+  );
+  assert.match(
+    session.answer(3).meta?.notes.join(" ") ?? "",
+    /0 campaigns of memory:acme match/u
+  );
+  assert.match(
+    session.answer(4).error?.message ?? "",
+    /scope\.campaign_ids must be a non-empty list of campaign ids/u
+  );
+  assert.match(
+    session.answer(5).error?.message ?? "",
+    /cannot read by campaign name, so scope\.campaign_name cannot be used/u
   );
 });
 

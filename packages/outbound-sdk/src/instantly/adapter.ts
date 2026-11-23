@@ -20,7 +20,7 @@ import {
 import type { Json, JsonObject } from "../internal/json.ts";
 import { accountReaders } from "./adapter-account.ts";
 import { mailReaders } from "./adapter-mail.ts";
-import { TAG_PAGES } from "./capabilities.ts";
+import { PAGE_SIZE, TAG_PAGES } from "./capabilities.ts";
 import type { InstantlyClient } from "./client.ts";
 import { toLead } from "./map-lead.ts";
 import type { ListEnvelope } from "./map.ts";
@@ -51,6 +51,58 @@ type Readers = Pick<
 const texts = (items: readonly JsonObject[], key: string): string[] =>
   items.flatMap((item) => text(item[key]) ?? []);
 
+const MAPPINGS = "/custom-tag-mappings";
+
+/**
+ * The tag assignments of the campaigns `ids`. Asked for 100 campaigns,
+ * Instantly answered a full page of 100 assignments and then an empty
+ * second page, where reading the same campaigns 20 at a time found 105
+ * (seen live on 2026-11-23). So a full page is not followed by its marker:
+ * the campaigns are read again as two halves until each half fits a page.
+ * Only one campaign's own assignments are followed page by page.
+ */
+const mappingsOf = async (
+  client: InstantlyClient,
+  ctx: AdapterContext,
+  ids: readonly string[]
+): Promise<JsonObject[]> => {
+  const filters = { resource_ids: ids.join(",") };
+
+  const envelope = await listPage(
+    client,
+    ctx,
+    MAPPINGS,
+    { limit: PAGE_SIZE },
+    filters
+  );
+
+  if (envelope.items.length < PAGE_SIZE) {
+    return envelope.items;
+  }
+
+  if (ids.length === 1) {
+    if (envelope.next === undefined) {
+      return envelope.items;
+    }
+
+    const rest = await readLookup(
+      client,
+      ctx,
+      { filters, pages: TAG_PAGES - 1, path: MAPPINGS },
+      envelope.next
+    );
+
+    return [...envelope.items, ...rest];
+  }
+
+  const half = Math.ceil(ids.length / 2);
+
+  return [
+    ...(await mappingsOf(client, ctx, ids.slice(0, half))),
+    ...(await mappingsOf(client, ctx, ids.slice(half))),
+  ];
+};
+
 /**
  * The tag names of each campaign, by campaign id. A tag is tied to a campaign
  * by a mapping record, and the mapping holds the tag's id, not its name.
@@ -66,11 +118,7 @@ const campaignTags = async (
     return tags;
   }
 
-  const mappings = await readLookup(client, ctx, {
-    filters: { resource_ids: ids.join(",") },
-    pages: TAG_PAGES,
-    path: "/custom-tag-mappings",
-  });
+  const mappings = await mappingsOf(client, ctx, ids);
 
   if (mappings.length === 0) {
     return tags;
@@ -94,6 +142,28 @@ const campaignTags = async (
   }
 
   return tags;
+};
+
+/**
+ * The ids of the tags named `label`, ignoring case. `search` finds the tags
+ * whose label holds the text, so the exact ones are kept here.
+ */
+const tagIdsOf = async (
+  client: InstantlyClient,
+  ctx: AdapterContext,
+  label: string
+): Promise<string[]> => {
+  const found = await readLookup(client, ctx, {
+    filters: { search: label },
+    pages: TAG_PAGES,
+    path: "/custom-tags",
+  });
+
+  const wanted = label.toLowerCase();
+
+  return found.flatMap((tag) =>
+    text(tag.label)?.toLowerCase() === wanted ? (text(tag.id) ?? []) : []
+  );
 };
 
 // `GET /account-campaign-mappings/{email}`: the campaigns a mailbox is used
@@ -155,9 +225,21 @@ const listCampaigns = async (
     });
   }
 
+  const tagIds =
+    query.tag === undefined
+      ? undefined
+      : await tagIdsOf(client, ctx, query.tag);
+
+  // No tag has that name, so no campaign carries it.
+  if (tagIds?.length === 0) {
+    return { items: [] };
+  }
+
   const page = await listPage(client, ctx, "/campaigns", query, {
+    search: query.name,
     status:
       query.status === undefined ? undefined : campaignStatusCode(query.status),
+    tag_ids: tagIds?.join(","),
   });
 
   const tags = await campaignTags(client, ctx, texts(page.items, "id"));

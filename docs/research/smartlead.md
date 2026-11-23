@@ -36,7 +36,7 @@ Everything below marks which source a claim rests on. **Envelope shapes for seve
 ### List campaigns: `GET /campaigns/`
 
 - Params: `client_id` (number), `include_tags` (boolean, default false).
-- **No pagination.** Returns every campaign, newest first. No server-side status filter.
+- **No pagination.** Returns every campaign, newest first. No server-side status filter, and no name or tag filter either (re-read 2026-11-23, https://api.smartlead.ai/api-reference/campaigns/get-all), so `campaigns.byName` and `campaigns.byTag` are `client`: the wrapper filters the one listing (OUT-199). `client_id` filters by Smartlead client, which the SDK does not expose.
 - Envelope: **bare array** (the docs stress "direct array of campaign objects (not wrapped)").
 - Fields: `id`, `user_id`, `created_at`, `updated_at`, `status`, `name`, `track_settings` (array), `scheduler_cron_value` (`tz`, `days`, `startHour`, `endHour`), `min_time_btwn_emails`, `max_leads_per_day`, `stop_lead_settings`, `schedule_start_time`, `enable_ai_esp_matching`, `send_as_plain_text`, `follow_up_percentage`, `unsubscribe_text`, `parent_campaign_id` (non-null means this is a subsequence), `client_id`, `tags[]` (`tag_id`, `tag_name`, `tag_color`; only with `include_tags=true`).
 

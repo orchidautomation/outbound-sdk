@@ -37,7 +37,12 @@ export const capabilities: CapabilityDeclaration = {
   blocklist: true,
   // GET /campaigns/{id}: schedule, caps, tracking and stop rules.
   // GET /email-accounts/{id}/?fetch_campaigns=true names the campaign ids.
+  // GET /campaigns/ has no name or tag filter and returns every campaign in
+  // one response, with its tags under include_tags=true, so the wrapper
+  // keeps the matching ones.
+  "campaigns.byName": "client",
   "campaigns.bySender": true,
+  "campaigns.byTag": "client",
   // GET /campaigns/{id}/analytics carries campaign_lead_stats.
   "campaigns.progress": true,
   "campaigns.settings": true,

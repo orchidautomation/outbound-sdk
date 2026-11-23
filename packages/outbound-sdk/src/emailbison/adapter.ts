@@ -9,6 +9,7 @@ import type {
 } from "../internal/adapter.ts";
 import type { Lead } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
+import { text } from "../internal/json.ts";
 import { mapPage } from "../internal/page.ts";
 import { accountReaders } from "./account.ts";
 import type { EmailBisonClient } from "./client.ts";
@@ -41,6 +42,25 @@ type Readers = Pick<
 >;
 
 const segment = (id: string): string => encodeURIComponent(id);
+
+/**
+ * The ids of the tags named `name`, ignoring case, from GET /api/tags, which
+ * answers every tag at once.
+ */
+const tagIdsOf = async (
+  client: EmailBisonClient,
+  ctx: AdapterContext,
+  name: string
+): Promise<string[]> => {
+  const path = "/api/tags";
+  const wanted = name.toLowerCase();
+
+  return client
+    .rows(await client.get(ctx, path), path)
+    .flatMap((row) =>
+      text(row.name)?.toLowerCase() === wanted ? (text(row.id) ?? []) : []
+    );
+};
 
 // GET /api/leads/{lead_id} takes the address in place of the id. A lead is
 // one record per workspace, so a lookup returns it once, with no campaign.
@@ -147,8 +167,21 @@ export const readers = (client: EmailBisonClient): Readers => {
         return mapPage(page, (row) => toCampaign(identity, row));
       }
 
+      const tagIds =
+        query.tag === undefined
+          ? undefined
+          : await tagIdsOf(client, ctx, query.tag);
+
+      // No tag has that name, so no campaign carries it.
+      if (tagIds?.length === 0) {
+        return { items: [] };
+      }
+
       return mapPage(
-        await client.page(ctx, "/api/campaigns", query.next, { cursor: true }),
+        await client.page(ctx, "/api/campaigns", query.next, {
+          cursor: true,
+          query: { "tag_ids[]": tagIds },
+        }),
         (row) => toCampaign(identity, row)
       );
     },

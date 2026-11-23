@@ -80,7 +80,7 @@ To make a campaign read cost 1 request, turn the tag reads off with `capabilitie
 
 The tracking settings decide whether an open or click count is `null`; see [opens and clicks that were not measured](/docs/api/stats#opens-and-clicks-that-were-not-measured). The listing reads at most 10 pages; past that, or when a settings read fails, the counts are left as Instantly sent them.
 
-A page of campaigns reads at most 10 pages of 100 tag assignments. A page with more than that is refused with a `Provider` error, not returned with tags missing.
+A page of campaigns whose tag assignments fill a page of 100 is read again in halves, down to one campaign, whose assignments are read up to 10 pages of 100. A campaign with more than that is refused with a `Provider` error, not returned with tags missing.
 
 ## Vendor behavior that affects your code
 

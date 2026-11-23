@@ -303,3 +303,47 @@ test("every date option takes a day or an ISO date and time, and refuses anythin
     );
   }
 });
+
+test("insight takes the campaign scope as flags, merged into --input, and a key given twice is refused", async () => {
+  const tagged = await cli(
+    "insight",
+    "campaign_ranking",
+    "--tag",
+    "client-a",
+    "--input",
+    '{"statuses":["active","paused"]}'
+  );
+
+  assert.equal(tagged.code, 0, tagged.err);
+  assert.match(
+    tagged.out,
+    /Campaign scope \(tag client-a\): 1 campaign of memory:acme match/u
+  );
+
+  const named = await cli(
+    "insight",
+    "campaign_ranking",
+    "--campaign-ids",
+    "nosuch, memory:acme:other",
+    "--campaign-name",
+    "Q4*"
+  );
+
+  assert.equal(named.code, 0, named.err);
+  assert.match(named.out, /2 campaign ids and name Q4\*\): 0 campaigns/u);
+
+  const twice = await cli(
+    "insight",
+    "campaign_ranking",
+    "--tag",
+    "client-a",
+    "--input",
+    '{"tag":"client-b"}'
+  );
+
+  assert.equal(twice.code, 1);
+  assert.equal(
+    twice.err,
+    "Invalid: tag is given in --input and as --tag: give it once"
+  );
+});

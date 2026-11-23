@@ -9,7 +9,7 @@ Usage: outbound <command> [options]
   campaigns [--status active|paused|draft|completed|archived] [--search TEXT] [--limit N] [--cursor C] [--jsonl]
   capabilities
   health <sender id>
-  insight [name] [--input JSON] [--card | --slack-text | --slack]  computed answers; no name lists them. --card prints the answer as text, --slack-text as Slack mrkdwn to paste, --slack as a Slack message's JSON
+  insight [name] [--input JSON] [--campaign-ids ID,ID] [--tag TAG] [--campaign-name NAME|GLOB|/REGEX/] [--card | --slack-text | --slack]  computed answers; no name lists them. The campaign flags read only the campaigns matching every one given. --card prints the answer as text, --slack-text as Slack mrkdwn to paste, --slack as a Slack message's JSON
   leads [--campaign ID|NAME | --list ID|NAME] [--since DATE] [--limit N] [--cursor C] [--jsonl]  --since keeps the leads created since then (a lead updated later is not); with --since, --limit defaults to the whole window up to 2000
   lists [--limit N] [--cursor C] [--jsonl]
   limits

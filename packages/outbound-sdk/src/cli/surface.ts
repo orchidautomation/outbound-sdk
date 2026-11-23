@@ -21,7 +21,12 @@ import {
   requiredOf,
   selectorSchema,
 } from "./surface-schema.ts";
-import { scopeField, scoped, takes } from "./surface-scope.ts";
+import {
+  scopeField,
+  scoped,
+  takesCampaigns,
+  unscoped,
+} from "./surface-scope.ts";
 import type { Scoping } from "./surface-scope.ts";
 
 export type { Scoping } from "./surface-scope.ts";
@@ -308,7 +313,7 @@ const mergedTool = (scoping: Scoping, built: Built): OutboundTool => {
 
   const properties = mergedProperties(group, present);
   const tools = [...present.values()];
-  const owned = new Set(Object.keys(properties));
+  const owned = new Set(Object.keys(unscoped(properties)));
 
   // Required only when every member requires it.
   let required = tools[0] === undefined ? [] : [...requiredOf(tools[0])];
@@ -366,8 +371,8 @@ const mergedTool = (scoping: Scoping, built: Built): OutboundTool => {
       additionalProperties: false,
       properties: {
         [group.by]: selectorSchema(group, keys, defaults),
-        ...properties,
-        scope: scopeField(tools.some((tool) => takes(tool, "tag"))),
+        ...unscoped(properties),
+        scope: scopeField(tools.some(takesCampaigns)),
       },
       required,
       type: "object",
@@ -396,8 +401,8 @@ const scopedTool = (scoping: Scoping, tool: OutboundTool): OutboundTool => ({
     ? {
         ...tool.parameters,
         properties: {
-          ...propertiesOf(tool),
-          scope: scopeField(takes(tool, "tag")),
+          ...unscoped(propertiesOf(tool)),
+          scope: scopeField(takesCampaigns(tool)),
         },
       }
     : tool.parameters,
