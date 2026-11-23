@@ -290,6 +290,55 @@ const inboxPage = async (
   };
 };
 
+// HeyReach can list a campaign it can no longer open: GetAll returns it, but
+// a conversation filter naming it, alone or with others, answers 400 "The
+// campaign you are trying to open does not exist." (seen live 2026-11-23, on
+// a draft that GetById answers 404 for). Such a campaign has no conversation.
+const GONE = /campaign you are trying to open does not exist/iu;
+
+const isGone = (error: unknown): boolean =>
+  OutboundError.is(error) && error.status === 400 && GONE.test(error.message);
+
+// One page of the campaign the walk is at, and where the walk goes next. A
+// campaign HeyReach cannot open is left out of the walk, so the inbox's
+// filter does not name it either.
+const campaignPage = async (
+  client: HeyReachClient,
+  ctx: AdapterContext,
+  query: ConversationQuery,
+  walk: Walk,
+  campaignId: string
+): Promise<{ readonly items: readonly Listed[]; readonly walk: Walk }> => {
+  try {
+    const page = await campaignConversations(client, ctx, {
+      ...query,
+      campaignId,
+      next: walk.cursor,
+    });
+
+    return {
+      items: page.items,
+      walk:
+        page.next === undefined
+          ? { ...walk, at: walk.at + 1, cursor: undefined }
+          : { ...walk, cursor: text(page.next) ?? undefined },
+    };
+  } catch (error) {
+    if (!isGone(error)) {
+      throw error;
+    }
+
+    return {
+      items: [],
+      walk: {
+        ...walk,
+        campaigns: walk.campaigns.filter((_, index) => index !== walk.at),
+        cursor: undefined,
+      },
+    };
+  }
+};
+
 /**
  * One page of every campaign's conversations, one campaign after the other,
  * then with `inbox` one page of the conversations that belong to none.
@@ -314,22 +363,13 @@ export const everyConversation = async (
       : { items: [], next: undefined };
   }
 
-  const page = await campaignConversations(client, ctx, {
-    ...query,
-    campaignId,
-    next: walk.cursor,
-  });
-
-  const after: Walk =
-    page.next === undefined
-      ? { ...walk, at: walk.at + 1, cursor: undefined }
-      : { ...walk, cursor: text(page.next) ?? undefined };
+  const after = await campaignPage(client, ctx, query, walk, campaignId);
 
   return {
-    items: page.items,
+    items: after.items,
     next:
-      after.at >= after.campaigns.length && !inbox
+      after.walk.at >= after.walk.campaigns.length && !inbox
         ? undefined
-        : walkCursor(after),
+        : walkCursor(after.walk),
   };
 };
