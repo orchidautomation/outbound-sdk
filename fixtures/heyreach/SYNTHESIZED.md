@@ -26,6 +26,10 @@ All personal data is replaced with fakes (Alex/Sam Example, person1@example.com,
 
 - webhook.message_sent.THIRD_PARTY.json: anonymised sample published by a third party (outreachmagic.io docs), trimmed by them; NOT an official payload. The real payload very likely has more keys (compare webhook.voice_note_received.json).
 
+## Seen live
+
+- error.400.campaign-gone.json: the body, verbatim, of GetConversationsV3 filtered by a campaign that campaign/GetAll still lists but GetById answers 404 for (2026-11-23). A filter naming it among other campaigns answers the same.
+
 ## No fixture possible
 
 - Webhook payloads for connection_request_sent, connection_request_accepted, message_reply_received, every_message_reply_received, inmail_sent, inmail_reply_received, follow_sent, liked_post, viewed_profile, campaign_completed and lead_tag_updated: HeyReach publishes neither a schema nor an example. Not invented here.

@@ -173,6 +173,12 @@ One conversation with all messages. Same shape as a V2 item, minus `lastMessageT
 
 Whether the `messages[]` embedded in a V2/V3 list item is the full thread or a recent subset is not stated.
 
+### A listed campaign that cannot be opened (seen live 2026-11-23)
+
+- `campaign/GetAll` can list a campaign (here a DRAFT, never started) that `campaign/GetById` answers 404 for: "There is no campaign with provided id."
+- `inbox/GetConversationsV3` with that id in `filters.campaignIds`, alone or among others, answers 400 `{"errorMessage":"The campaign you are trying to open does not exist."}`. The same filter without it answers 200.
+- Not in the API reference (https://docs.heyreach.io/hey-reach-api/inbox/get-conversations-v-3.md, fetched 2026-11-23), which documents no 400 body. The adapter leaves such a campaign out of its walk and out of the inbox filter (OUT-206).
+
 ### Reply classification
 
 - No sentiment/category field on messages.
@@ -373,9 +379,3 @@ HeyReach publishes no API changelog. Inferred from differences between the two d
 6. Auto-tag `name` strings in the API; auto-tag fields in `GetLeadsFromList`, `GetChatroom`, stats.
 7. Webhook payloads for every event except `voice_note_received`; integer `campaign.status` mapping; retries; signing (none found); how `customHeaders` are set via API.
 8. Whether `LEAD_FINISHED_SEQUENCE_WITHOUT_REPLYING` and `LEAD_AUTO_TAGGED_*` are accepted by REST `CreateWebhook`.
-9. `INMAIL` and `LIKE_POST` sequence payload schemas; meaning of `accountLimits` `Limit` vs `Max`.
-10. `GetAccountStatus.status` enum; meanings of campaign statuses; `totalMessageStarted` definition.
-11. Whether the organization key works on normal endpoints; what `organizationUnitId` is.
-12. Stats date semantics: which timezone buckets days (keys are UTC midnight), inclusivity of `endDate`.
-13. Plan gating for the public API as a whole (not stated on the docs site).
-14. OpenAPI types are unreliable (generated from placeholder examples).
