@@ -3,7 +3,7 @@
 
 import type { ZodObject, ZodType } from "zod";
 
-import type { CapabilityKey } from "../internal/capabilities.ts";
+import type { Capabilities, CapabilityKey } from "../internal/capabilities.ts";
 import type { Lead } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
 import { unknownKey } from "../internal/json.ts";
@@ -51,7 +51,9 @@ export interface Checkable<Input, Given> {
   readonly name: string;
   readonly inputSchema: ZodObject & ZodType<Input, Given>;
   readonly needs: readonly CapabilityKey[];
-  readonly needsFor?: ((input: Input) => readonly CapabilityKey[]) | undefined;
+  readonly needsFor?:
+    | ((input: Input, capabilities: Capabilities) => readonly CapabilityKey[])
+    | undefined;
   readonly maskedOut?: MaskedOut | undefined;
   readonly lacks?: Lacks | undefined;
   readonly cost?: InsightCost<Input> | undefined;
@@ -146,8 +148,12 @@ export const refuseUnsupported = <Input, Given>(
   }
 
   const absent = missing(outbound, spec.needs);
+
   // What only this input needs is named apart, so the caller knows another input may work.
-  const forInput = missing(outbound, spec.needsFor?.(input) ?? []);
+  const forInput = missing(
+    outbound,
+    spec.needsFor?.(input, outbound.capabilities) ?? []
+  );
 
   if (absent.length > 0 || forInput.length > 0) {
     throw new OutboundError(

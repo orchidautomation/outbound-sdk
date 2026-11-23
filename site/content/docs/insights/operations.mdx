@@ -189,9 +189,9 @@ Days that broke from trend, for one campaign or the whole workspace.
 - `anomalies`: newest first, each with `date`, `metric`, `value`, `baselineMean`, `baselinePoints`, `zScore`, `judgedBy`, `direction` (`above` or `below`) and a `finding` sentence. `judgedBy` is `z_score` for a day `threshold` standard deviations or more from the baseline mean. It is `flat_baseline` for a day that differs from a baseline whose days all had the same count: there is no standard deviation then, so `zScore` is `null`.
 - `metrics`: for each metric, `daysWithData`, `daysTested`, `testable`, and the `reason` when no day could be tested.
 
-- **Needs:** `stats.byDay`, and `stats.workspace` with `campaign: null` or `stats.campaign` with a campaign. On an adapter without `stats.workspace` the workspace call is refused as `Unsupported` before any request, with "not available for this input" in the message: pass a campaign there.
-- **Costs:** one stats request.
-- **Notes it can add:** none of its own.
+- **Needs:** `stats.byDay`, and `stats.workspace` with `campaign: null` or `stats.campaign` with a campaign. On an adapter without `stats.workspace`, such as one over stored history or one with daily stats per campaign only, `campaign: null` lists every campaign, whatever its state, reads each one's days and adds them up: `meta.evidence` is `derived` and a note says so. Without `stats.campaign` either, it is refused as `Unsupported` before any request.
+- **Costs:** one stats request. Without workspace stats, the campaign listing and one stats request per campaign, up to 500 campaigns; `meta.requests` and the cost estimate count every one.
+- **Notes it can add:** that each day is the campaigns read added up, so a lead in two campaigns counts in both; that the listing stopped at 500 campaigns, and the answer is then `complete: false`.
 - **Does not:** read a day the vendor has no count for as zero. Such days are skipped. A day is tested only when its baseline has at least `min_baseline_points` days. Against a flat baseline `threshold` does not apply: any other count is flagged, however small the difference. A break that lasts becomes part of its own baseline, so only its first days are flagged.
 
 <include meta='title="anomalies.ts"'>
@@ -207,6 +207,17 @@ Days that broke from trend, for one campaign or the whole workspace.
   </include>
   <include meta='title="anomalies-response.ts"'>
     ../../_examples/insights-operations/anomalies-response.ts
+  </include>
+</CodeGroup>
+
+Without workspace stats, the same call adds up the campaigns:
+
+<CodeGroup>
+  <include meta='title="anomalies-campaigns.ts"'>
+    ../../_examples/insights-operations/anomalies-campaigns.ts
+  </include>
+  <include lang="text" meta='title="Output"'>
+    ../../_examples/insights-operations/anomalies-campaigns.out.txt
   </include>
 </CodeGroup>
 

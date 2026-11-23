@@ -311,16 +311,20 @@ test("anomalies has nothing to test without data, and is refused without stats b
       await single(DATA, { "stats.byDay": false }).insights.anomalies({}),
     unsupported("stats.byDay")
   );
-  // The whole workspace is read from workspace stats: refused by the insight
-  // itself, before any request, with the way out.
+  // Without workspace stats the whole workspace is every campaign added up,
+  // so with neither it is refused by the insight itself, before any request.
   const noWorkspace = single(DATA, { "stats.workspace": false });
 
   await assert.rejects(
-    async () => await noWorkspace.insights.anomalies({}),
+    async () =>
+      await single(DATA, {
+        "stats.campaign": false,
+        "stats.workspace": false,
+      }).insights.anomalies({}),
     (error) =>
       error instanceof Error &&
       error.message ===
-        "anomalies is not available for this input: the memory adapter does not support stats.workspace"
+        "anomalies is not available for this input: the memory adapter does not support stats.campaign"
   );
 
   // A campaign is still served there.
