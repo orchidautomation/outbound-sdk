@@ -122,4 +122,12 @@ export interface SyncScopeResult {
   readonly meta: ResolvedScopeMeta;
   /** Each campaign of the scope, in the order synced. */
   readonly campaigns: readonly SyncCampaignResult[];
+  /**
+   * Replies and messages tied to no campaign, such as HeyReach inbox
+   * conversations, which a campaign scope cannot reach, so they were left
+   * out: `0` where the tool has no such inbox or the collection has none,
+   * `null` where it has one and counting it would mean reading every
+   * campaign's conversations, other clients' included.
+   */
+  readonly inboxLeftOut: number | null;
 }

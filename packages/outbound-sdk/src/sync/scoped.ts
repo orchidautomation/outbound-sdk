@@ -56,6 +56,19 @@ const sumOf = (
   return total;
 };
 
+const INBOX_NOTE =
+  "Replies tied to no campaign (HeyReach inbox conversations) belong to no campaign scope, so they were left out. A conversation does not name its campaign, so it cannot be matched to the scope, and counting them would read every campaign's conversations, so inboxLeftOut is null.";
+
+/** What of the inbox a scoped run of this collection leaves out: `null` when unknown. */
+const inboxOf = (
+  outbound: Parameters<typeof findScope>[0],
+  collection: SyncCollection
+): number | null =>
+  (collection === "replies" || collection === "messages") &&
+  outbound.capabilities["replies.inbox"]
+    ? null
+    : 0;
+
 /** The campaigns collection under a scope: the scope's campaigns, as one page. */
 const scopeListing = async <Item extends Entity>(
   resolved: ResolvedScope,
@@ -85,6 +98,7 @@ const scopeListing = async <Item extends Entity>(
         pages: 1,
         records: 1,
       })),
+      inboxLeftOut: 0,
       meta,
     },
     since: undefined,
@@ -165,18 +179,24 @@ export const runScoped = async <Item extends Entity>(
   const sum = (of: (result: SyncResult) => number): number =>
     sumOf(results, of);
 
+  const inboxLeftOut = inboxOf(outbound, collection);
+
   return {
     collection,
     complete: campaigns.every((campaign) => campaign.complete),
     filter: weakest(results),
     notes: [
-      ...new Set([...meta.notes, ...results.flatMap((result) => result.notes)]),
+      ...new Set([
+        ...meta.notes,
+        ...results.flatMap((result) => result.notes),
+        ...(inboxLeftOut === null ? [INBOX_NOTE] : []),
+      ]),
     ],
     pages: sum((result) => result.pages),
     records: sum((result) => result.records),
     requests: meta.requests + sum((result) => result.requests),
     resumed: results.some((result) => result.resumed),
-    scope: { campaigns, meta },
+    scope: { campaigns, inboxLeftOut, meta },
     since: earliest(results),
     throttledMs: sum((result) => result.throttledMs),
   };

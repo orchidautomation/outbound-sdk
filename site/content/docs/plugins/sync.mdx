@@ -91,6 +91,7 @@ So plan two cadences: incremental runs as often as you need new records, and a `
 
 - `campaigns` under a scope is the scope's campaigns, as one page.
 - `senders` hands out a sender of several campaigns once per run.
+- Replies and messages tied to no campaign, such as HeyReach's inbox conversations, are not reached: a conversation does not name its campaign, so it cannot be matched to the scope. `scope.inboxLeftOut` is `null` with a note where the tool has such an inbox, because counting it would read every campaign's conversations, and `0` where it has none.
 - A tag where campaigns carry no tags, such as HeyReach's, is `Unsupported`, and a malformed scope or one given with `campaignId` `Invalid`, before any request.
 - `reset(collection, campaignRef)` forgets one campaign's checkpoint.
 
