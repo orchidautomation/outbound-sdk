@@ -98,7 +98,21 @@ So plan two cadences: incremental runs as often as you need new records, and a `
 - `reset(collection, campaignRef)` forgets one campaign's checkpoint.
 - A campaign synced before with its bare vendor id as `campaignId` has its checkpoint under that id, not its ref, so the first scoped run walks it again from the start.
 
-To sync several collections of one scope, find its campaigns once with `resolveScope` and pass them as `resolved`. The runs then make no request to find them, their `requests` leave out what finding them cost, and their `scope.meta` is the one you passed. A `resolved` that another provider or workspace returned is `Invalid`, before any request.
+To sync several collections of one scope, find its campaigns once with `resolveScope` and pass them as `resolved`. The runs then make no request to find them, their `requests` leave out what finding them cost, and their `scope.meta` is the one you passed.
+
+`run` accepts a `resolved` when its `campaigns` is an array and its `meta.provider` and `meta.workspaceId` are this instance's. Nothing else is checked, and the campaigns are not looked up again, so a list you filtered or reordered is synced as it is. A `resolved` of another provider or workspace, or one with no `campaigns` list, is `Invalid`, before any request.
+
+Campaigns sync in the order of `resolved.campaigns`, one after another, and `scope.campaigns` lists them in that order. With a scope given to `run` directly, the order is the one `resolveScope` returns. To choose it, such as active campaigns first, reorder the list and pass it as `resolved`. With `maxPages`, the campaigns first in the list are the ones read first.
+
+To mean every campaign of the workspace, use `campaign_name: "*"`. It is a glob that matches any name, a campaign with no name included, and it is the supported way to ask for all campaigns, in `run` and `resolveScope` alike. A run with it is still a scoped run: each campaign has its own checkpoint, and replies and messages tied to no campaign are left out, as `inboxLeftOut` says.
+
+<include meta='title="every-campaign.ts"'>
+  ../../_examples/plugins-sync/every-campaign.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/plugins-sync/every-campaign.out.txt
+</include>
 
 `resolveScope(outbound, scope)` from `outbound-sdk` returns the same campaigns, every state, for a caller that reads them itself. Its `meta` gives the requests made, the `evidence`, the scope in words, `notes`, and `tools`: for each tool, how many campaigns matched and its `filter`, which is `id` (read by id), `vendor` (the vendor's listing filter), `here` (a whole listing matched here, still `exact`), `both`, or `none` (a tool whose campaigns carry no tags).
 

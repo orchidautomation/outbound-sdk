@@ -109,7 +109,7 @@ export const nameRule = (text: string, insight: string): NameRule => {
 export interface CampaignScopeInput {
   /** Read only these campaigns, by ref or vendor id, 1 to 500. */
   readonly campaign_ids?: string[] | undefined;
-  /** Read only the campaigns whose whole name matches: an exact name, a glob, or `/regex/`. */
+  /** Read only the campaigns whose whole name matches: an exact name, a glob, or `/regex/`. `*` is every campaign. */
   readonly campaign_name?: string | undefined;
   /** Read only the campaigns that carry this tag, ignoring case. */
   readonly tag?: string | undefined;
