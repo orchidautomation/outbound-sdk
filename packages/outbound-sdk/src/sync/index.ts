@@ -14,6 +14,7 @@ export type {
   SyncExtension,
   SyncFilter,
   SyncOptions,
+  SyncPage,
   SyncPluginOptions,
   SyncResult,
   SyncScopeResult,

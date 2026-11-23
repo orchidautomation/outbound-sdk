@@ -11,9 +11,10 @@ import {
   OutboundError,
   resolveScope,
 } from "../src/index.ts";
-import type { Adapter, Message, Sender } from "../src/index.ts";
+import type { Adapter, Lead, Message, Sender } from "../src/index.ts";
 import { memory } from "../src/memory/index.ts";
 import { memoryCheckpointStore, sync } from "../src/sync/index.ts";
+import type { Checkpoint, CheckpointStore } from "../src/sync/index.ts";
 import { createFetch, json } from "./helpers/http.ts";
 import { metered, NOW, world } from "./insights/metered.ts";
 
@@ -52,11 +53,14 @@ const spied = (adapter: Adapter, named: string[], calls: string[]): Adapter =>
     })
   ) as unknown as Adapter;
 
-const instance = (data = world(6, 5), adapter = metered(data)) => {
+const instance = (
+  data = world(6, 5),
+  adapter = metered(data),
+  checkpoints = memoryCheckpointStore()
+) => {
   const named: string[] = [];
   const calls: string[] = [];
   const http = createFetch(() => json({}));
-  const checkpoints = memoryCheckpointStore();
 
   const outbound = createOutbound({
     adapter: spied(adapter, named, calls),
@@ -282,4 +286,152 @@ test("resolveScope returns the scope's campaigns and how they were found", async
       error.code === "Invalid" &&
       /at least one of campaign_ids, tag and campaign_name/u.test(error.message)
   );
+});
+
+/** A memory store that records every checkpoint it is given. */
+const recording = (): {
+  readonly store: CheckpointStore;
+  readonly written: Checkpoint[];
+} => {
+  const inner = memoryCheckpointStore();
+  const written: Checkpoint[] = [];
+
+  return {
+    store: {
+      ...inner,
+      set: (key, checkpoint) => {
+        written.push(checkpoint);
+
+        return inner.set(key, checkpoint);
+      },
+    },
+    written,
+  };
+};
+
+test("each checkpoint and each page name their campaign by ref (OUT-208)", async () => {
+  const { store, written } = recording();
+  const { outbound } = instance(world(6, 5), undefined, store);
+  const told: (string | undefined)[] = [];
+  const mismatched: string[] = [];
+
+  await outbound.sync.run<Message>("messages", {
+    onPage: (items, page) => {
+      told.push(page.campaignRef);
+      mismatched.push(
+        ...items
+          .filter((item) => item.campaignRef !== page.campaignRef)
+          .map((item) => item.ref)
+      );
+    },
+    tag: "even",
+  });
+
+  const scoped = ["c1", "c3", "c5"].map((id) => `memory:agency:${id}`);
+
+  assert.deepEqual([...new Set(told)].toSorted(), scoped);
+  assert.deepEqual(mismatched, []);
+  assert.deepEqual(
+    [...new Set(written.map((each) => each.campaignRef))].toSorted(),
+    scoped
+  );
+
+  // A bare vendor id is named by its ref; the workspace's checkpoint by none.
+  written.length = 0;
+  told.length = 0;
+
+  await outbound.sync.run<Lead>("leads", {
+    campaignId: "c2",
+    onPage: (_items, page) => {
+      told.push(page.campaignRef);
+    },
+  });
+
+  assert.deepEqual([...new Set(told)], ["memory:agency:c2"]);
+  assert.ok(written.length > 0);
+  assert.ok(written.every((each) => each.campaignRef === "memory:agency:c2"));
+
+  written.length = 0;
+  told.length = 0;
+
+  await outbound.sync.run<Lead>("leads", {
+    onPage: (_items, page) => {
+      told.push(page.campaignRef);
+    },
+  });
+
+  assert.deepEqual([...new Set(told)], [undefined]);
+  assert.ok(written.length > 0);
+  assert.ok(written.every((each) => !("campaignRef" in each)));
+});
+
+test("a scope resolved once syncs every collection without finding it again (OUT-209)", async () => {
+  const { calls, http, outbound } = instance();
+  const resolved = await resolveScope(outbound, { tag: "even" });
+
+  assert.equal(calls.filter((call) => call === "listCampaigns").length, 1);
+
+  const before = http.requests.length;
+  const seen: string[] = [];
+
+  const messages = await outbound.sync.run<Message>("messages", {
+    onPage: (items) => {
+      seen.push(...items.map((item) => short(item.campaignRef) ?? ""));
+    },
+    resolved,
+  });
+
+  const leads = await outbound.sync.run("leads", {
+    onPage: () => {},
+    resolved,
+  });
+
+  assert.equal(calls.filter((call) => call === "listCampaigns").length, 1);
+  assert.deepEqual([...new Set(seen)].toSorted(), ["c1", "c3", "c5"]);
+  assert.equal(messages.records, 24);
+  assert.equal(leads.records, 15);
+  assert.equal(
+    messages.requests + leads.requests,
+    http.requests.length - before,
+    "the requests that found the scope are not counted again"
+  );
+  assert.equal(messages.scope?.meta, resolved.meta);
+});
+
+test("a resolved scope of another instance, or given with a scope or campaignId, is refused before any request", async () => {
+  const other = createOutbound({
+    adapter: memory({ data: world(6, 5), workspaceId: "other" }),
+  });
+
+  const foreign = await resolveScope(other, { tag: "even" });
+  const { outbound: mine } = instance();
+  const own = await resolveScope(mine, { tag: "even" });
+
+  for (const [options, message] of [
+    [
+      { resolved: foreign },
+      /for this instance \(memory:agency\), not one of memory:other/u,
+    ],
+    [
+      { resolved: {} },
+      /for this instance \(memory:agency\), not something else/u,
+    ],
+    [{ resolved: own, tag: "even" }, /not a campaign scope and resolved/u],
+    [{ campaignId: "c1", resolved: own }, /not campaignId and resolved/u],
+  ] as const) {
+    const { http, outbound } = instance();
+
+    await assert.rejects(
+      outbound.sync.run("messages", {
+        ...(options as object),
+        onPage: () => {},
+      }),
+      (error) =>
+        OutboundError.is(error) &&
+        error.code === "Invalid" &&
+        message.test(error.message),
+      JSON.stringify(Object.keys(options))
+    );
+    assert.equal(http.requests.length, 0);
+  }
 });
