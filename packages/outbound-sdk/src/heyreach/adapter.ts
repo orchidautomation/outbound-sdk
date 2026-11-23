@@ -182,6 +182,10 @@ export const readers = (client: HeyReachClient): Readers => {
         body.accountIds = [numericId(client, query.senderId, "account")];
       }
 
+      if (query.name !== undefined) {
+        body.keyword = query.name;
+      }
+
       const envelope = listEnvelope(
         await client.post(ctx, "/campaign/GetAll", body),
         offset,

@@ -110,7 +110,7 @@ Of the 268 endpoints, 22 are used by normalized reads, 105 are in the native cat
 | `DELETE` | `/block-lists-entries/{id}` | Delete block list entry | write |  |
 | `GET` | `/block-lists-entries/{id}` | Get block list entry | native | `blocklistEntry` |
 | `PATCH` | `/block-lists-entries/{id}` | Patch block list entry | write |  |
-| `GET` | `/campaigns` | List campaigns | normalized | `campaigns.list`, `campaigns.status` |
+| `GET` | `/campaigns` | List campaigns | normalized | `campaigns.list`, `campaigns.status`, `campaigns.byName`, `campaigns.byTag` |
 | `POST` | `/campaigns` | Create campaign | write |  |
 | `GET` | `/campaigns/analytics` | Get campaign(s) analytics | native | `campaignAnalytics` |
 | `GET` | `/campaigns/analytics/daily` | Get daily campaign analytics | normalized | `stats.byDay` |

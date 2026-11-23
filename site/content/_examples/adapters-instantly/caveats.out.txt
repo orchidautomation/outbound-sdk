@@ -28,7 +28,7 @@
 
 - Campaign tags need two more reads (custom-tag-mappings, then custom-tags) and so a key that can read both; an all:read key can. Turn the tags capability off to skip them: campaign tags are then empty.
 
-- A page of campaigns reads at most 10 pages of 100 tag assignments. A page with more assignments than that is refused with a Provider error, not returned with tags missing.
+- A page of campaigns whose tag assignments fill a page of 100 is read again in halves, down to one campaign, whose assignments are read up to 10 pages of 100. A campaign with more than that is refused with a Provider error, not returned with tags missing.
 
 - A step's delay is documented as the wait before the next email, so a step's delayDays is the delay of the step before it; the first step of a campaign waits 0 and the first step of a subsequence waits its pre_delay.
 

@@ -32,7 +32,7 @@ Five reads stay in the native catalog and are also used by a normalized read. Lo
 | `POST` | `/campaign/Create` | Creates a campaign | write |  |
 | `POST` | `/campaign/CreateCampaignFromTemplate` | Creates a campaign from another campaign | write |  |
 | `POST` | `/campaign/CreateV2` | Creates a campaign with voice message versions | write |  |
-| `POST` | `/campaign/GetAll` | Campaigns, filtered by status, sender or name | normalized | `campaigns.list`, `campaigns.status` |
+| `POST` | `/campaign/GetAll` | Campaigns, filtered by status, sender or name | normalized | `campaigns.list`, `campaigns.status`, `campaigns.byName` |
 | `GET` | `/campaign/GetById` | One campaign with its progress counts and sender ids | normalized | `campaigns.get`, `campaigns.progress`, `senders.byCampaign` |
 | `GET` | `/campaign/GetCampaignSequence` | A campaign's sequence tree | normalized | `sequence` |
 | `GET` | `/campaign/GetCampaignSequenceV2` | A campaign's sequence tree with voice message versions | native | `campaignSequenceV2` |

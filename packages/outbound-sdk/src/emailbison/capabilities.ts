@@ -23,8 +23,14 @@ export const PAGE_SIZE = 15;
 export const capabilities: CapabilityDeclaration = {
   // GET /api/blacklisted-emails, then GET /api/blacklisted-domains.
   blocklist: true,
+  // GET /api/campaigns documents a `search` but not what it matches, so the
+  // wrapper keeps the campaigns whose name holds the text.
+  "campaigns.byName": "client",
   // GET /api/sender-emails/{id}/campaigns.
   "campaigns.bySender": true,
+  // GET /api/tags finds the tag's id, then GET /api/campaigns?tag_ids[]=
+  // lists only the campaigns that carry it.
+  "campaigns.byTag": "server",
   // GET /api/campaigns/{id} for the caps and tracking, then
   // GET /api/campaigns/{id}/schedule for the sending window.
   "campaigns.settings": true,
