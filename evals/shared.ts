@@ -24,23 +24,47 @@ export const droppedItems = async (
   readonly items: readonly unknown[];
 }> => {
   const mcp = ctx.mcp();
-  const defaults = await mcp.call("dropped_replies");
+  const defaults = await mcp.call("unanswered_replies");
   const items = itemsOf(defaults, "dropped");
 
   if (items.length > 0) {
     return { items, outcome: defaults };
   }
 
-  const wide = await mcp.call("dropped_replies", { ...WIDE_DROPPED });
+  const wide = await mcp.call("unanswered_replies", { ...WIDE_DROPPED });
 
   return { items: itemsOf(wide, "dropped"), outcome: wide };
+};
+
+/**
+ * One check of a merged tool such as `list_hygiene`, with that check's
+ * answer under `data`, as the tool it runs gives it.
+ */
+export const callCheck = async (
+  ctx: Context,
+  tool: string,
+  check: string,
+  args: Readonly<Record<string, number | string>> = {}
+): Promise<CallOutcome> => {
+  const outcome = await ctx.mcp().call(tool, { ...args, checks: [check] });
+  const data = at(outcome.structured, "data", check);
+
+  return outcome.isError || data === undefined
+    ? outcome
+    : {
+        ...outcome,
+        structured: {
+          ...(outcome.structured as Record<string, unknown>),
+          data,
+        },
+      };
 };
 
 /** Active campaign refs, largest by messages sent first. */
 export const activeCampaigns = async (
   ctx: Context
 ): Promise<readonly string[]> => {
-  const overview = await ctx.mcp().call("campaign_overview", { limit: 50 });
+  const overview = await ctx.mcp().call("campaigns", { limit: 50 });
 
   return itemsOf(overview, "campaigns")
     .map((row) => ({

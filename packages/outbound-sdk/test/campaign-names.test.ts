@@ -287,11 +287,11 @@ test("cli: an unknown command, option, tool or native read suggests the closest"
     "nothing close, so no suggestion"
   );
 
-  const tool = await cli(mailtool(), "tool", "winning_step");
+  const tool = await cli(mailtool(), "tool", "step_funnl");
 
   assert.match(
     tool.stderr,
-    /Unknown tool "winning_step"\. Did you mean "winning_steps"\?/u
+    /Unknown tool "step_funnl"\. Did you mean "step_funnel"\?/u
   );
 
   // The name is checked before any request, so a real adapter needs no network here.

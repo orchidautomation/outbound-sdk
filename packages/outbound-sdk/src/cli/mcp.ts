@@ -22,14 +22,14 @@ import { createTools } from "../tools/index.ts";
 import type { OutboundTool, ToolResult, ToolsOptions } from "../tools/index.ts";
 import {
   ANSWERS,
-  describeAliases,
   describeBound,
+  describeMerged,
   membersFor,
   OUTPUT_SCHEMA,
   summaryOf,
 } from "./mcp-answers.ts";
 import type { ThrottleTotal } from "./progress.ts";
-import { aliasTool, sharpen, withNewNames } from "./surface.ts";
+import { sharpen, withNewNames } from "./surface.ts";
 import {
   DEFAULT_TIME_BUDGET_MS,
   toolCalls,
@@ -345,7 +345,7 @@ const cancelledId = (params: Json | undefined): RequestId | undefined => {
 const surfaceOf = (outbound: OutboundApi, options: McpServerOptions) => {
   const members = membersFor(outbound, options);
 
-  const { aliases, covered, tools } = sharpen(
+  const { covered, merged, tools } = sharpen(
     createTools(outbound, { ...options, answerNote: false }),
     {
       maxRequests: options.maxRequestsPerToolCall,
@@ -355,12 +355,7 @@ const surfaceOf = (outbound: OutboundApi, options: McpServerOptions) => {
     }
   );
 
-  const byName = new Map([
-    ...[...aliases].map(
-      ([name, alias]) => [name, aliasTool(name, alias)] as const
-    ),
-    ...tools.map((tool) => [tool.name, tool] as const),
-  ]);
+  const byName = new Map(tools.map((tool) => [tool.name, tool] as const));
 
   // A tool whose view a listed one answers masked is not left out.
   const leftOut = Object.fromEntries(
@@ -368,7 +363,7 @@ const surfaceOf = (outbound: OutboundApi, options: McpServerOptions) => {
   );
 
   const instructionsFor = async (): Promise<string> =>
-    `${INSTRUCTIONS} ${describeBound(await members(), outbound)} ${ANSWERS} ${describePlugins(outbound)}${describeAliases([...aliases.keys()])}${withNewNames(describeLeftOut(outbound, leftOut))}`;
+    `${INSTRUCTIONS} ${describeBound(await members(), outbound)} ${ANSWERS} ${describePlugins(outbound)}${describeMerged(merged)}${withNewNames(describeLeftOut(outbound, leftOut))}`;
 
   return { byName, instructionsFor, tools };
 };

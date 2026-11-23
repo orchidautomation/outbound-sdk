@@ -4,7 +4,7 @@ import type { Case, Verdict } from "../case.ts";
 import { fail, firstFailure, pass, skip } from "../case.ts";
 import type { Context } from "../context.ts";
 import { at, bool, list, num, text } from "../json.ts";
-import { codeOf, dayBefore, itemsOf, plural } from "../shared.ts";
+import { callCheck, codeOf, dayBefore, itemsOf, plural } from "../shared.ts";
 
 /** A finding that says what it did not check. */
 const QUALIFIED =
@@ -152,17 +152,17 @@ const cappedRun = (structured: unknown, count: string): CappedRun => ({
 const capped = async (
   ctx: Context,
   tool: string,
+  check: string,
   count: string,
   raised: Record<string, number>
 ): Promise<Verdict> => {
-  const mcp = ctx.mcp();
-  const defaults = await mcp.call(tool);
+  const defaults = await callCheck(ctx, "list_hygiene", check);
 
   if (defaults.isError) {
     return fail(`${tool} answered ${codeOf(defaults)}`);
   }
 
-  const more = await mcp.call(tool, raised);
+  const more = await callCheck(ctx, "list_hygiene", check, raised);
 
   if (more.isError) {
     return fail(`${tool} with raised caps answered ${codeOf(more)}`);
@@ -219,7 +219,7 @@ export const COVERAGE_CASES: readonly Case[] = [
     issue: "OUT-148",
     p1: true,
     run: (ctx) =>
-      capped(ctx, "suppression_check", "violations", {
+      capped(ctx, "suppression_check", "suppression", "violations", {
         max_block_entries: 20_000,
         max_leads_per_campaign: 2000,
       }),
@@ -230,7 +230,7 @@ export const COVERAGE_CASES: readonly Case[] = [
     issue: "OUT-148",
     p1: true,
     run: (ctx) =>
-      capped(ctx, "lead_collisions", "collisions", {
+      capped(ctx, "lead_collisions", "collisions", "collisions", {
         max_leads_per_campaign: 2000,
       }),
     title: "lead_collisions, defaults vs raised caps",
@@ -326,7 +326,7 @@ export const COVERAGE_CASES: readonly Case[] = [
       const answers = [];
 
       for (const status of STATUSES) {
-        const outcome = await ctx.mcp().call("campaign_overview", { status });
+        const outcome = await ctx.mcp().call("campaigns", { status });
 
         if (!outcome.isError) {
           answers.push({

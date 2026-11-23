@@ -7,7 +7,6 @@ import type { JsonObject } from "../internal/json.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
 import { createTools } from "../tools/index.ts";
 import type { OutboundTool, ToolResult } from "../tools/index.ts";
-import { ALIASES_UNTIL } from "./surface-groups.ts";
 import type { ScopeTarget } from "./surface-scope.ts";
 
 // Said once here rather than in every tool's description.
@@ -91,11 +90,11 @@ export const describeBound = (
     ? `This server reads ${labelOf(outbound)}.`
     : `This server reads ${members.map(labelOf).join(" and ")} together; scope.provider reads one.`;
 
-/** The old names a call may still use, said once so a CLI insight name is not a dead end. */
-export const describeAliases = (names: readonly string[]): string =>
-  names.length === 0
+/** Where the CLI's insight names are answered here, said once so such a name is not a dead end. */
+export const describeMerged = (merged: ReadonlyMap<string, string>): string =>
+  merged.size === 0
     ? ""
-    : ` Old names, the CLI's insight names among them, still answer until ${ALIASES_UNTIL}, each with a note naming the tool to call now: ${names.join(", ")}.`;
+    : ` A CLI insight or tool name not listed here is answered by a listed tool: ${[...merged].map(([name, call]) => `${name} is ${call}`).join("; ")}.`;
 
 /** What a tool result says as text: a short summary, the answer itself being structured. */
 export const summaryOf = (name: string, outcome: ToolResult): string => {

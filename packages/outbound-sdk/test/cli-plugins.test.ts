@@ -165,19 +165,23 @@ const personCall = (id: number, name: string) => ({
   params: { arguments: { person: "person1@example.com" }, name },
 });
 
-const byRef = (id: number, name: string) => ({
+/** A call to one view of `person` about one lead. */
+const personView = (id: number, view: string) => ({
   id,
   jsonrpc: "2.0",
   method: "tools/call",
-  params: { arguments: { lead_ref: "memory:acme:lead_1" }, name },
+  params: {
+    arguments: { lead_ref: "memory:acme:lead_1", view },
+    name: "person",
+  },
 });
 
 test("outbound mcp answers a tool redact masks with the masked person view, naming --no-redact", async () => {
   const session = await outbound(
     ["mcp"],
     [
-      byRef(1, "account_summary"),
-      byRef(2, "cross_channel_lead"),
+      personView(1, "account"),
+      personView(2, "timeline"),
       personCall(3, "no_such_tool"),
     ]
   );
@@ -190,11 +194,8 @@ test("outbound mcp answers a tool redact masks with the masked person view, nami
       error?: { message: string };
     };
 
-  // Each old name answers through person's masked summary view (OUT-168).
-  for (const [index, name] of [
-    "account_summary",
-    "cross_channel_lead",
-  ].entries()) {
+  // Each view that needs identifiers answers with person's masked summary view (OUT-168).
+  for (const [index, name] of ["account", "timeline"].entries()) {
     const answer = byId(index + 1).result?.structuredContent;
 
     assert.equal(answer?.ok, true, JSON.stringify(answer));
@@ -211,7 +212,7 @@ test("outbound mcp answers a tool redact masks with the masked person view, nami
   // Without redact the same call is answered.
   const open = await outbound(
     ["mcp", "--no-redact"],
-    [personCall(1, "person_summary")]
+    [personCall(1, "person")]
   );
 
   assert.equal(
@@ -228,8 +229,10 @@ test("outbound mcp names the tools redact left out in its instructions, and --no
   // with the masked summary, so nothing is left out here (OUT-168).
   assert.doesNotMatch(masked, /Left out/u);
 
-  // They are named only as old names that still answer.
-  const [listed = "", old = ""] = masked.split(" Old names, ");
+  // The tools person and list_hygiene merged are named only as answered by a listed tool.
+  const [listed = "", merged = ""] = masked.split(
+    " A CLI insight or tool name not listed here is answered by a listed tool: "
+  );
 
   for (const name of [
     "account_summary",
@@ -239,7 +242,7 @@ test("outbound mcp names the tools redact left out in its instructions, and --no
     "suppression_check",
   ]) {
     assert.ok(!listed.includes(name), name);
-    assert.ok(old.includes(name), name);
+    assert.ok(merged.includes(`${name} is `), name);
   }
 
   // The memory adapter has no native reads, so vendor_read is not named.

@@ -14,7 +14,7 @@ import type { InsightToolCaps, PluginFlags } from "./config.ts";
 import { Answer } from "./envelope.ts";
 import { GROUPS } from "./surface-groups.ts";
 import type { Group, Member } from "./surface-groups.ts";
-import { aliasTool, sharpen } from "./surface.ts";
+import { sharpen } from "./surface.ts";
 import type { Surface } from "./surface.ts";
 
 // How a tool redact left out is turned on. Only `outbound mcp` passes the
@@ -161,7 +161,7 @@ export const offeredTools = async (
   flags: PluginFlags
 ): Promise<Catalog> => await catalog(outbound, insightToolCaps(flags, false));
 
-/** The catalog as `outbound mcp` lists it: merged tools, and the old names. */
+/** The catalog as `outbound mcp` lists it: merged tools. */
 export const listedTools = async (
   outbound: OutboundApi,
   flags: PluginFlags
@@ -211,34 +211,30 @@ const pickedOf = (group: Group, input: Json): Member | undefined => {
     : undefined;
 };
 
-/** The tool a listed name or an old one runs, and the card that draws its answer. */
+/** The tool a listed name runs, and the card that draws its answer. */
 export const listedTool = (
-  { aliases, tools }: Surface,
+  { tools }: Surface,
   name: string,
   input: Json
 ): ListedTool | undefined => {
   const listed = tools.find((tool) => tool.name === name);
 
-  if (listed !== undefined) {
-    const group = GROUPS.find((each) => each.name === name);
-    const member = group === undefined ? undefined : pickedOf(group, input);
-
-    const forCard =
-      group?.by !== "checks" || member === undefined
-        ? asItIs
-        : (result: ToolResult): ToolResult =>
-            result.ok && isJsonObject(result.data)
-              ? { ...result, data: result.data[member.key] ?? null }
-              : result;
-
-    return { card: member?.tool ?? name, forCard, tool: listed };
+  if (listed === undefined) {
+    return undefined;
   }
 
-  const alias = aliases.get(name);
+  const group = GROUPS.find((each) => each.name === name);
+  const member = group === undefined ? undefined : pickedOf(group, input);
 
-  return alias === undefined
-    ? undefined
-    : { card: name, forCard: asItIs, tool: aliasTool(name, alias) };
+  const forCard =
+    group?.by !== "checks" || member === undefined
+      ? asItIs
+      : (result: ToolResult): ToolResult =>
+          result.ok && isJsonObject(result.data)
+            ? { ...result, data: result.data[member.key] ?? null }
+            : result;
+
+  return { card: member?.tool ?? name, forCard, tool: listed };
 };
 
 /** A tool as `outbound tools` lists it: its inputs as JSON Schema, as `outbound insight` lists them. */

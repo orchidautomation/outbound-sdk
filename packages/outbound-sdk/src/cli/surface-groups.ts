@@ -1,10 +1,7 @@
 // The tools `outbound mcp` lists: neighbouring tools and insights merged into
 // one tool each, picked by `view` (one answer) or `checks` (several
-// answers in one call). Every merged name keeps working as an alias for one
-// minor release (OUT-168).
-
-/** The release that stops answering the old names. */
-export const ALIASES_UNTIL = "0.19.0";
+// answers in one call) (OUT-168). The names they merged stopped answering
+// in 0.19.0.
 
 export interface Member {
   /** The value of `view` or one of `checks`. */

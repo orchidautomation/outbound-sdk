@@ -1,32 +1,85 @@
 $ outbound tools
 [data.items: 23 tools, each with name, description and parameters (its inputs as JSON Schema): campaigns, sender_health, reply_samples, lead_runway, campaign_setup, audience_lists, person, list_hygiene, unanswered_replies, hot_leads, thread_context, step_funnel, copy_review, copy_preview, reply_timing, sender_capacity, settings_audit, campaign_diagnosis, anomalies, period_comparison, channel_mix, tag_rollup, client_report]
 
-$ outbound tool winning_steps
+$ outbound tool step_funnel
 {
   "data": {
-    "description": "Which step or variant of a campaign drives replies: each step and variant with its sends, replies and reply rate, best first (rank 1 has the highest rate). stepIndex counts from 0 and stepNumber from 1, as a person counts. Counts the vendor tied to no step come last with unattributed: true and rank null. A variant whose copy changed mid-campaign mixes old and new wording.",
-    "name": "winning_steps",
+    "description": "Where one campaign's replies come from. view funnel: one row per sequence step with sends, replies, reply rate with a 95% interval, share of replies and drop-off, and the last step that still earns its place. view winners: each step and variant ranked by reply rate. stepNumber counts from 1, as a person counts.",
+    "name": "step_funnel",
     "parameters": {
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "type": "object",
+      "additionalProperties": false,
       "properties": {
+        "view": {
+          "enum": [
+            "funnel",
+            "winners"
+          ],
+          "type": "string",
+          "default": "funnel"
+        },
         "campaign": {
           "type": "string",
           "minLength": 1,
-          "description": "The campaign's ref, id or name"
+          "description": "The campaign's ref, for example `instantly:acme:abc123`, or its name"
         },
         "from": {
-          "type": "string",
-          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          ],
+          "description": "First day counted, YYYY-MM-DD. null for the whole history."
         },
         "to": {
-          "type": "string",
-          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          ],
+          "description": "Last day counted, YYYY-MM-DD. null for up to today."
+        },
+        "min_reply_rate": {
+          "default": 0,
+          "description": "The bar the low end of a step's reply rate interval must clear, with 5 or more replies. 0 means above zero. (view funnel)",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "scope": {
+          "propertyNames": {
+            "enum": [
+              "provider",
+              "workspace",
+              "campaign_ids",
+              "campaign_name",
+              "tag"
+            ]
+          },
+          "type": "object"
         }
       },
       "required": [
         "campaign"
-      ]
+      ],
+      "type": "object"
     }
   },
   "meta": {
@@ -36,11 +89,11 @@ $ outbound tool winning_steps
     "requests": 0,
     "throttledMs": 0
   },
-  "next": "Run outbound tool winning_steps --input '<JSON>' with the inputs data.parameters lists.",
+  "next": "Run outbound tool step_funnel --input '<JSON>' with the inputs data.parameters lists.",
   "ok": false,
   "error": {
     "code": "InputRequired",
-    "message": "winning_steps needs --input. data.parameters lists what it takes",
+    "message": "step_funnel needs --input. data.parameters lists what it takes",
     "retryable": false
   }
 }
@@ -87,7 +140,7 @@ $ outbound tool sender_health --input '{"limit":1}'
   "ok": true
 }
 
-$ outbound tool campaign_trend --input '{"campaign":"cmp_founders","from":"last month"}'
+$ outbound tool campaigns --input '{"view":"trend","campaign":"cmp_founders","from":"last month"}'
 {
   "data": null,
   "meta": {
@@ -97,11 +150,11 @@ $ outbound tool campaign_trend --input '{"campaign":"cmp_founders","from":"last 
     "requests": 0,
     "throttledMs": 0
   },
-  "next": "Check the input and try again. campaign_trend is an old name kept until 0.19.0: call campaigns with view \"trend\" instead.",
+  "next": "Check the input and try again.",
   "ok": false,
   "error": {
     "code": "Invalid",
-    "message": "campaign_trend: from Use YYYY-MM-DD",
+    "message": "campaigns with view \"trend\": from Use YYYY-MM-DD",
     "retryable": false
   }
 }

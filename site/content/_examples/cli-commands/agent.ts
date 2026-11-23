@@ -17,16 +17,16 @@ await outboundSummary(
 );
 
 // A tool that needs input, given none, fails with what it takes and exits 2.
-await outbound("tool", "winning_steps");
+await outbound("tool", "step_funnel");
 
 await outbound("tool", "sender_health", "--input", '{"limit":1}');
 
 // A tool that fails prints its result in the envelope and exits 1.
 await outbound(
   "tool",
-  "campaign_trend",
+  "campaigns",
   "--input",
-  '{"campaign":"cmp_founders","from":"last month"}'
+  '{"view":"trend","campaign":"cmp_founders","from":"last month"}'
 );
 
 await outboundSummary(
