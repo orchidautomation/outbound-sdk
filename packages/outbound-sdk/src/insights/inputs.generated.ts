@@ -1458,7 +1458,7 @@ export interface InsightInputs {
     readonly baseline_days?: number | undefined;
 
     /**
-     * A campaign ref. null checks the whole workspace, which needs workspace stats.
+     * A campaign ref; null for the workspace
      *
      * At least 3 characters. Defaults to `null`.
      */

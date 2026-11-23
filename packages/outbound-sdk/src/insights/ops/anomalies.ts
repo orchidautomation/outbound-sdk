@@ -2,10 +2,14 @@
 
 import { z } from "zod";
 
+import { plural } from "../../internal/numbers.ts";
+import type { StatsResult } from "../../internal/outbound/api.ts";
+import { readCapped } from "../capped.ts";
 import { defineInsight } from "../define.ts";
+import type { InsightContext } from "../define.ts";
 import { refOf } from "../ref.ts";
 import { mean, round, spoken, zScore } from "../stats.ts";
-import { descending, lastDays, readDaily, shiftDay } from "./shared.ts";
+import { daysOf, descending, lastDays, readDaily, shiftDay } from "./shared.ts";
 import type { DayCounts, DayRange } from "./shared.ts";
 
 const metricSchema = z.enum([
@@ -27,6 +31,9 @@ export type AnomalyMetric = z.infer<typeof metricSchema>;
  */
 export const MIN_COUNT = 3;
 
+/** The most campaigns added up for the workspace on an adapter without workspace stats. */
+export const MAX_CAMPAIGNS = 500;
+
 const input = z.object({
   baseline_days: z
     .number()
@@ -40,9 +47,7 @@ const input = z.object({
     .min(3)
     .nullable()
     .default(null)
-    .describe(
-      "A campaign ref. null checks the whole workspace, which needs workspace stats."
-    ),
+    .describe("A campaign ref; null for the workspace"),
   days: z
     .number()
     .int()
@@ -242,6 +247,56 @@ const scanMetric = (
   };
 };
 
+/**
+ * The workspace's days on an adapter with no workspace stats: every campaign
+ * listed, up to `MAX_CAMPAIGNS`, each read by day, added up. The answer is `derived`,
+ * and its requests are the listing's and each campaign's.
+ */
+const campaignDays = async (
+  context: InsightContext,
+  range: DayRange
+): Promise<DayCounts[]> => {
+  const { outbound } = context;
+
+  const listed = await readCapped(
+    context,
+    (room) => outbound.campaigns.listAll({ max: room }),
+    { input: null, max: MAX_CAMPAIGNS, what: "campaigns" }
+  );
+
+  const results = await context.each(
+    listed.items,
+    async (campaign) =>
+      await outbound
+        .campaign(campaign.ref)
+        .stats({ by: "day", from: range.from, to: range.to }),
+    "campaigns"
+  );
+
+  const metas = results.map((result) => result.meta);
+
+  const added: StatsResult = {
+    meta: {
+      complete: metas.every((meta) => meta.complete),
+      evidence: "derived",
+      fetchedAt: metas[0]?.fetchedAt ?? new Date(context.now).toISOString(),
+      notes: [...new Set(metas.flatMap((meta) => meta.notes))],
+      provider: outbound.provider,
+      requests: metas.reduce((sum, meta) => sum + meta.requests, 0),
+      stale: metas.some((meta) => meta.stale),
+      throttledMs: metas.reduce((sum, meta) => sum + meta.throttledMs, 0),
+      workspaceId: outbound.workspaceId,
+    },
+    rows: results.flatMap((result) => result.rows),
+  };
+
+  context.note(
+    `The adapter has no workspace stats, so each day is the ${plural(results.length, "campaign")} read added up, a lead in two of them counted in both${listed.capped ? ", not every campaign" : ""}.`
+  );
+
+  return daysOf(context.rows(added));
+};
+
 /** How far a day broke, for sorting. A break from a flat baseline has no z-score and sorts first. */
 const sizeOf = (anomaly: Anomaly): number =>
   anomaly.zScore === null ? Number.POSITIVE_INFINITY : Math.abs(anomaly.zScore);
@@ -269,23 +324,39 @@ export const findAnomalies = (
 
 export const anomalies = defineInsight({
   description:
-    "Days that broke from trend, for one campaign or the whole workspace: each of the last `days` complete days is held to the `baseline_days` before it, and a daily count `threshold` standard deviations or more from the baseline mean is returned, newest first, with its value, the baseline mean, the z-score, the direction and how it was judged. Use it to spot a sending outage, a bounce spike or a reply surge. Days the vendor has no count for are skipped, never read as zero. Costs one stats request.",
+    "Days that broke from trend, for one campaign or the whole workspace: each of the last `days` complete days is held to the `baseline_days` before it, and a daily count `threshold` standard deviations or more from the baseline mean is returned, newest first, with its value, the baseline mean, the z-score, the direction and how it was judged. Use it to spot an outage, a bounce spike or a reply surge. Days the vendor has no count for are skipped, never read as zero. Costs a stats request; without workspace stats, one per campaign.",
   inputSchema: input,
   key: "anomalies",
-  cost: (_input, price) => price.one("stats"),
+  cost: (values, price) =>
+    values.campaign === null && price.capabilities["stats.workspace"] === false
+      ? price.list("campaigns.list", MAX_CAMPAIGNS) +
+        price.campaigns(MAX_CAMPAIGNS) * price.one("stats")
+      : price.one("stats"),
   name: "anomalies",
   needs: ["stats.byDay"],
-  // The whole workspace is read from workspace stats, a campaign from its own.
-  needsFor: (options) =>
-    options.campaign === null ? ["stats.workspace"] : ["stats.campaign"],
+  // The whole workspace is read from workspace stats where the adapter has
+  // them, otherwise from every campaign's; a campaign from its own.
+  needsFor: (options, capabilities) =>
+    options.campaign === null && capabilities["stats.workspace"] !== false
+      ? ["stats.workspace"]
+      : ["stats.campaign"],
   next: "Use campaign_diagnosis on the campaign, or bounce_watch when the break is in bounces.",
   run: async (context, options) => {
     const period = lastDays(context.now, options.days);
 
-    const series = await readDaily(context, options.campaign, {
+    const range = {
       from: shiftDay(period.from, -options.baseline_days),
       to: period.to,
-    });
+    };
+
+    // Under a campaign scope the workspace's stats are already the scope's
+    // campaigns added up.
+    const series =
+      options.campaign === null &&
+      context.scope === null &&
+      context.outbound.capabilities["stats.workspace"] === false
+        ? await campaignDays(context, range)
+        : await readDaily(context, options.campaign, range);
 
     const answer: Anomalies = {
       ...findAnomalies(series, {

@@ -5,7 +5,7 @@
 
 import type { ZodObject, ZodType } from "zod";
 
-import type { CapabilityKey } from "../internal/capabilities.ts";
+import type { Capabilities, CapabilityKey } from "../internal/capabilities.ts";
 import type { Evidence, MetricRow } from "../internal/entities.ts";
 import { toJson } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
@@ -172,9 +172,13 @@ export interface InsightSpec<Key extends string, Input, Data, Given = Input> {
   readonly needs: readonly CapabilityKey[];
   /**
    * Capabilities this input needs on top of `needs`, when what is read
-   * depends on the input. Checked before any request, like `needs`.
+   * depends on the input, and on what the adapter can do where the
+   * insight has more than one way to read it. Checked before any request,
+   * like `needs`.
    */
-  readonly needsFor?: ((input: Input) => readonly CapabilityKey[]) | undefined;
+  readonly needsFor?:
+    | ((input: Input, capabilities: Capabilities) => readonly CapabilityKey[])
+    | undefined;
   readonly next: string;
   /**
    * What makes the insight unable to answer under the redact plugin, for an

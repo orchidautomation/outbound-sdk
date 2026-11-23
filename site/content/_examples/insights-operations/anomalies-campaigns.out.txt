@@ -1,0 +1,5 @@
+workspace, evidence derived
+The adapter has no workspace stats, so each day is the 5 campaigns read added up, a lead in two of them counted in both.
+above: bounced was 16 on 2026-11-11, against an average of 4 over the 14 days with data before it (z = 11.6).
+below: replied was 7 on 2026-11-08, against an average of 9.8 over the 14 days with data before it (z = -3.5).
+below: replied was 7 on 2026-11-07, against 10 on each of the 14 days with data before it (a flat baseline has no z-score: any other count is flagged).

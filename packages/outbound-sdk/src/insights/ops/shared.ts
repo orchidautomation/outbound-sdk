@@ -4,7 +4,11 @@
 
 import { z } from "zod";
 
-import type { Campaign, CampaignStatus } from "../../internal/entities.ts";
+import type {
+  Campaign,
+  CampaignStatus,
+  MetricRow,
+} from "../../internal/entities.ts";
 import { sumMeasured } from "../../internal/metrics.ts";
 import type { MetricCounts } from "../../internal/metrics.ts";
 import { campaignsReadOf, either, readCampaignsIn } from "../capped.ts";
@@ -540,12 +544,17 @@ export const readDaily = async (
 ): Promise<DayCounts[]> => {
   const options = { by: "day", from: range.from, to: range.to } as const;
 
-  const rows = context.rows(
-    campaign === null
-      ? await context.outbound.stats(options)
-      : await context.outbound.campaign(campaign).stats(options)
+  return daysOf(
+    context.rows(
+      campaign === null
+        ? await context.outbound.stats(options)
+        : await context.outbound.campaign(campaign).stats(options)
+    )
   );
+};
 
+/** Rows by day, those of the same day added together, oldest first. */
+export const daysOf = (rows: readonly MetricRow[]): DayCounts[] => {
   const days = new Map<string, MetricCounts[]>();
 
   for (const row of rows) {
