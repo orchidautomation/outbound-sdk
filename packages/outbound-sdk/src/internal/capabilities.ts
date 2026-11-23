@@ -104,6 +104,11 @@ export interface Capabilities {
   "stats.allCampaigns": "full" | "partial" | false;
   "stats.byDay": StatGrade;
   "stats.byStep": StatGrade;
+  /**
+   * A step's rows day by day: `stats({ scope: "step", by: "day" })`, a row
+   * per step (and variant) and day. Graded like `stats.byStep`.
+   */
+  "stats.byStepDay": StatGrade;
   "stats.bySender": StatGrade;
   /**
    * Several senders in one read: `stats({ scope: "sender", scopeIds })`,
@@ -189,6 +194,7 @@ export const NO_CAPABILITIES: Capabilities = {
   "stats.bySender": false,
   "stats.bySenders": false,
   "stats.byStep": false,
+  "stats.byStepDay": false,
   "stats.allCampaigns": false,
   "stats.campaign": false,
   "stats.workspace": false,

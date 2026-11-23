@@ -36,6 +36,7 @@ Where a campaign's replies come from, one row per sequence step.
 | `campaign` | required | a campaign ref | The campaign to read. |
 | `from` | `null` | `YYYY-MM-DD` or `null` | First day counted. `null` for the whole history. |
 | `to` | `null` | `YYYY-MM-DD` or `null` | Last day counted. `null` for up to today. |
+| `by_day` | `false` | boolean | Also return each day's funnel in `days`. Needs `stats.byStepDay` and costs one more request. |
 | `min_reply_rate` | 0 | 0 to 1 | A step earns its place when the low end of its reply rate interval is above this and it has at least 5 replies. 0 asks only that the rate is reliably above zero. |
 
 `data` (`StepFunnel`):
@@ -46,9 +47,10 @@ Where a campaign's replies come from, one row per sequence step.
 - `steps`: one entry per step, with `stepIndex` (counted from 0), `stepNumber` (counted from 1, as a sentence or card counts), `action`, `delayDays`, `inSequence`, `sent`, `replies`, `rates.replyRate` (`count`, `of`, `rate`, `low`, `high` and `basis`), `shareOfReplies`, `sentDrop` and `sentDropRate` (how far sends fell from the step before), `earnsPlace`, and `variants` (empty when the vendor does not split step stats by variant).
 - `totals`: `sent` and `replies`.
 - `unattributed`: counts the vendor tied to no step (`rows`, `sent`, `replies`). They are in no step's row.
+- `days`: with `by_day`, one entry per day, oldest first, each with `date` and `steps` (`stepIndex`, `stepNumber`, `sent`, `replies`, variants added into their step). A step with no row that day is left out, never shown as 0. `null` without `by_day`.
 
-- **Needs:** `sequence`, `stats.byStep`.
-- **Costs:** 2 requests.
+- **Needs:** `sequence`, `stats.byStep`. With `by_day`, `stats.byStepDay` as well: no vendor adapter declares it, because Instantly, Smartlead and EmailBison report step counts only as totals over a range, so the run is refused as `Unsupported` before any request. An adapter over stored history can declare it.
+- **Costs:** 2 requests, 3 with `by_day`.
 - **Notes it can add:** some counts are tied to no step by the vendor and are reported as unattributed.
 - **Does not:** call a step reliably above the bar on fewer than 5 replies. Its `earnsPlace` is then `null` and the finding says there are too few replies to tell. A step at or under the bar is `false` at any count. It does not tell you why a step is weak either. A step whose stats name it but which the sequence no longer has is listed with `inSequence: false`. A `null` count means the vendor does not report it.
 
@@ -65,6 +67,15 @@ Where a campaign's replies come from, one row per sequence step.
   </include>
   <include meta='title="step-funnel-response.ts"'>
     ../../_examples/insights-copy/step-funnel-response.ts
+  </include>
+</CodeGroup>
+
+<CodeGroup>
+  <include meta='title="step-funnel-days.ts"'>
+    ../../_examples/insights-copy/step-funnel-days.ts
+  </include>
+  <include lang="text" meta='title="Output"'>
+    ../../_examples/insights-copy/step-funnel-days.out.txt
   </include>
 </CodeGroup>
 

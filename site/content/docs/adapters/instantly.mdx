@@ -41,10 +41,11 @@ The module also exports `envVars` (the two variable names), `PROVIDER` (`"instan
 
 ## What it can and cannot do
 
-Instantly declares every capability in the [table](/docs/adapters#what-each-adapter-can-do) except `deletionDetection`. Three values are weaker than the best case:
+Instantly declares every capability in the [table](/docs/adapters#what-each-adapter-can-do) except `deletionDetection` and `stats.byStepDay`. Three values are weaker than the best case:
 
 | Capability | Value | Why |
 | --- | --- | --- |
+| `stats.byStepDay` | `no` | `GET /campaigns/analytics/steps` returns totals over a range, with no date on a row. |
 | `leads.since` | `client` | `POST /leads/list` has no date filter, so the SDK filters after fetching and marks the result `derived`. |
 | `stats.bySender` | `derived` | Per-mailbox numbers exist by day only. A total is summed by the adapter. |
 | `events.verify` | `secret` | Instantly does not sign webhooks. |

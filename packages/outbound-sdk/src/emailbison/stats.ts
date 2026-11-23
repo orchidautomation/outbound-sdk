@@ -184,14 +184,6 @@ export const readStats = async (
   };
 
   if (query.by === "day") {
-    if (query.scope === "step") {
-      throw new OutboundError(
-        "Unsupported",
-        "EmailBison reports a step's counts as totals only",
-        { provider }
-      );
-    }
-
     const days = await readDaily(client, ctx, scope, rangeOf(query, true, now));
 
     return query.scope === "campaign"

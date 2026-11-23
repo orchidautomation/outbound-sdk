@@ -88,6 +88,8 @@ export const capabilities: CapabilityDeclaration = {
   "stats.bySender": "exact",
   // sequence_step_stats of POST /api/campaigns/{id}/stats.
   "stats.byStep": "exact",
+  // sequence_step_stats are totals between the summary's two dates.
+  "stats.byStepDay": false,
   "stats.campaign": "exact",
   "stats.workspace": "exact",
   tags: true,

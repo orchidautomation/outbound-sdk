@@ -378,9 +378,6 @@ HeyReach publishes no API changelog. Inferred from differences between the two d
 
 ## A webhook event's message (2026-11-23)
 
-Fetched 2026-11-23: https://docs.heyreach.io/hey-reach-api/webhooks/create-webhook.md (the `VOICE_NOTE_RECEIVED` payload) and https://docs.heyreach.io/hey-reach-api/inbox/get-conversations-v-3.md.
+## Step stats by day (2026-11-23, for OUT-216)
 
-- The payload "carries no audio, no duration and no message id". It does carry `conversation_id` ("the conversation that holds the voice note") and `recent_messages`: "exactly one element", with `creation_time` ("when the voice note was sent"), `message` ("the message's text body. It does not hold the transcript"), `is_reply` (always `true`) and `message_type` (`Voice`). The docs point to `GetChatroom` with `conversation_id` as `conversationId`, so it is the conversation id the REST API uses.
-- A REST message has `createdAt`, `body`, `subject`, `postLink`, `isInMail` and `sender` (`ME` or `CORRESPONDENT`), and no id. The adapter's message id hashes the conversation id, `createdAt`, `sender` and `body`.
-- So a webhook event's `messageRef` is built from the same four values: `conversation_id`, `creation_time`, `CORRESPONDENT` for a reply (`is_reply`) or `ME` otherwise, and `message`. Both examples give times to the second (`2026-11-10T09:14:03Z`, `2026-07-29T12:00:19Z`), and both are normalized to the same ISO form.
-- Not checked live: that a voice note's REST `body` equals the webhook's `message`, and that the two times are always equal to the second. No delivery was captured. The third-party `message_sent` example has no `conversation_id`, so its `messageRef` is `null`.
+Fetched 2026-11-23: https://docs.heyreach.io/openapi.json. The stats endpoints are still by workspace, campaign, account and day; none is by step. `stats.byStep` and `stats.byStepDay` are `false`.

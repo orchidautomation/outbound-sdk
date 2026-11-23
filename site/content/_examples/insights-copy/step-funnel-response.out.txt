@@ -1,6 +1,7 @@
 {
   "data": {
     "campaign": "memory:acme:founders",
+    "days": null,
     "finding": "Step 1 (of 3) brings the most replies: 60 of 77. Step 2 (of 3) is the last whose reply rate is reliably above the bar; the 1 later step sent 600 messages for 1 replies.",
     "lastStepEarningPlace": 1,
     "lastStepEarningPlaceIndex": 1,

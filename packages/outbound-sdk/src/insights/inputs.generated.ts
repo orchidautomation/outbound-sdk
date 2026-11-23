@@ -582,6 +582,13 @@ export interface InsightInputs {
     readonly to?: string | null | undefined;
 
     /**
+     * Per-day step counts (stats.byStepDay)
+     *
+     * Defaults to `false`.
+     */
+    readonly by_day?: boolean | undefined;
+
+    /**
      * The bar the low end of a step's reply rate interval must clear, with 5 or more replies. 0 means above zero.
      *
      * A number from 0 to 1. Defaults to `0`.

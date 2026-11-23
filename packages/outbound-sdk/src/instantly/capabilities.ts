@@ -120,6 +120,8 @@ export const capabilities: CapabilityDeclaration = {
   // GET /accounts/analytics/daily names up to 200 mailboxes in one read.
   "stats.bySenders": "derived",
   "stats.byStep": "exact",
+  // GET /campaigns/analytics/steps has no date per row: totals over a range.
+  "stats.byStepDay": false,
   // GET /campaigns/analytics with no id: a row per campaign, totals only.
   // Partial: it has no count of interested leads and no total of opens.
   "stats.allCampaigns": "partial",

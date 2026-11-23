@@ -70,6 +70,19 @@ const everySenderId = async (
   return [...ids];
 };
 
+/** Rows by day need `stats.byDay`, and a step's need `stats.byStepDay` as well. */
+const requireDays = (core: Core, scope: MetricScope): void => {
+  requireCapability(core.gate, "stats.byDay", "Reading stats by day");
+
+  if (scope === "step") {
+    requireCapability(
+      core.gate,
+      "stats.byStepDay",
+      "Reading a step's stats by day"
+    );
+  }
+};
+
 /**
  * Counts for a scope, as totals or one row per day. Async, so a refused
  * input or capability rejects like every other failure of the call.
@@ -130,7 +143,7 @@ export const readStats = async (
   }
 
   if (by === "day") {
-    requireCapability(core.gate, "stats.byDay", "Reading stats by day");
+    requireDays(core, scope);
   }
 
   return await perform(core, "stats", options, async (state) => {

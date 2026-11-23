@@ -98,6 +98,7 @@ export const capabilities: CapabilityDeclaration = {
   // GetOverallStats filtered to one account id.
   "stats.bySender": "exact",
   "stats.byStep": false,
+  "stats.byStepDay": false,
   // POST /stats/GetOverallStatsByCampaign: the counts of GetOverallStats,
   // a row per campaign.
   "stats.allCampaigns": "full",
