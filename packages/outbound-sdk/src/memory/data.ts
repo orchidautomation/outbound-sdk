@@ -129,6 +129,8 @@ export interface MemoryMessage {
   readonly threadId?: string;
   readonly subject?: string;
   readonly body?: string;
+  /** Outbound only: a person sent it by hand, not the campaign. */
+  readonly byHand?: boolean;
   /** Inbound only. */
   readonly category?: ReplyCategory;
   /** Inbound only. */

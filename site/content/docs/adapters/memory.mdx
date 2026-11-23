@@ -35,7 +35,7 @@ Every array in `MemoryData` is optional, and on most seed types only `id` is req
 | `campaigns` | `MemoryCampaign` | `steps` (each a `MemoryStep` with `MemoryVariant`s) become the sequence. `settings` is a `MemorySettings`. `subsequences` are `MemorySubsequence`s. |
 | `senders` | `MemorySender` | A sender with a `linkedinUrl` is a LinkedIn account, otherwise a mailbox. `campaignIds` attaches it to campaigns. `health` is a `MemoryHealth`. |
 | `leads` | `MemoryLead` | `campaignId` puts the lead in a campaign, `listIds` on saved lists. `engagement` is partial: counts you leave out are `null`. |
-| `messages` | `MemoryMessage` | `direction` and `sentAt` are required. An inbound message is also a reply; `category` and `isAuto` apply to inbound only. |
+| `messages` | `MemoryMessage` | `direction` and `sentAt` are required. An inbound message is also a reply; `category` and `isAuto` apply to inbound only, `byHand` (sent by a person, not the campaign) to outbound only. |
 | `stats` | `MemoryStats` | One row per day. See below. |
 | `lists` | `MemoryList` | `size` is counted from the leads whose `listIds` name the list. |
 | `blocklist` | `MemoryBlockEntry` | `kind` defaults to `email` when the value has an `@`, else `domain`. |
@@ -80,6 +80,16 @@ Pass `capabilities` to turn single capabilities off or to weaken a filter from `
 
 <include lang="text" meta='title="Output"'>
   ../../_examples/adapters-memory/limited.out.txt
+</include>
+
+It works the other way too. Every filter the adapter is declared with applies, including the ones it leaves off by default (`leads.byInterest`, `leads.lookupMany`, `messages.byHand`, `messages.latestOfConversation`): turn one on and the adapter filters as a vendor that has it would, so code written against that vendor sees the same records. A test runs every filter capability against this adapter to hold it to that.
+
+<include meta='title="wider.ts"'>
+  ../../_examples/adapters-memory/wider.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/adapters-memory/wider.out.txt
 </include>
 
 To get one vendor's whole declaration, pass that adapter's own `capabilities`: `instantly({ apiKey: "not-used" }).capabilities`. The guides on this site do that to show which calls each vendor's adapter would refuse. It proves what the adapter refuses. It does not prove what the vendor's API returns.
