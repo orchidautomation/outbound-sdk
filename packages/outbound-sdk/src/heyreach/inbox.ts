@@ -18,8 +18,8 @@ import type {
   AdapterContext,
   TimeRange,
 } from "../internal/adapter.ts";
-import type { Message, Reply } from "../internal/entities.ts";
 import { readReply, ruleSaysAuto } from "../internal/auto-reply.ts";
+import type { Message, Reply } from "../internal/entities.ts";
 import { OutboundError } from "../internal/errors.ts";
 import { field, flag, objects, text, timestamp } from "../internal/json.ts";
 import type { JsonObject } from "../internal/json.ts";
