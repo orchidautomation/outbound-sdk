@@ -4,7 +4,8 @@
 
 import { z } from "zod";
 
-import type { Campaign } from "../entities.ts";
+import { campaignStatusSchema } from "../entities.ts";
+import type { Campaign, CampaignStatus } from "../entities.ts";
 import { OutboundError } from "../errors.ts";
 import { parseRef } from "../ref.ts";
 
@@ -30,6 +31,8 @@ export interface CampaignScope {
   readonly ids: readonly string[] | undefined;
   readonly tag: string | undefined;
   readonly name: NameRule | undefined;
+  /** Only campaigns in these statuses. Only sync.run and resolveScope take it. */
+  readonly statuses?: readonly CampaignStatus[] | undefined;
 }
 
 const REGEX = /^\/(?<source>.+)\/(?<flags>[imsu]*)$/su;
@@ -115,6 +118,15 @@ export interface CampaignScopeInput {
   readonly tag?: string | undefined;
 }
 
+/**
+ * The scope sync.run and resolveScope take: the insights' scope, and
+ * `statuses`, which an insight takes as its own input where it has one.
+ */
+export interface ResolveScopeInput extends CampaignScopeInput {
+  /** Read only the campaigns in these statuses, such as `["active"]`. */
+  readonly statuses?: readonly CampaignStatus[] | undefined;
+}
+
 /** The scope an insight's parsed input asks for, or `null` for the whole workspace. */
 export const scopeOf = (
   input: CampaignScopeInput,
@@ -163,7 +175,10 @@ export const SCOPE_INPUTS = {
 
 export const SCOPE_KEYS = Object.keys(SCOPE_INPUTS);
 
-const SCOPE_OBJECT = z.object(SCOPE_INPUTS);
+const SCOPE_OBJECT = z.object({
+  ...SCOPE_INPUTS,
+  statuses: z.array(campaignStatusSchema).min(1).optional(),
+});
 
 /**
  * The scope a caller wrote outside a schema, as sync.run and resolveScope
@@ -171,12 +186,13 @@ const SCOPE_OBJECT = z.object(SCOPE_INPUTS);
  * `Invalid` before any request. `null` when no part is given.
  */
 export const parseScope = (
-  input: CampaignScopeInput,
+  input: ResolveScopeInput,
   label: string
 ): CampaignScope | null => {
   const parsed = SCOPE_OBJECT.safeParse({
     campaign_ids: input.campaign_ids,
     campaign_name: input.campaign_name,
+    statuses: input.statuses,
     tag: input.tag,
   });
 
@@ -189,7 +205,19 @@ export const parseScope = (
     );
   }
 
-  return scopeOf(parsed.data, label);
+  const { statuses } = parsed.data;
+  const scope = scopeOf(parsed.data, label);
+
+  if (statuses === undefined) {
+    return scope;
+  }
+
+  return {
+    ids: scope?.ids,
+    name: scope?.name,
+    statuses: [...new Set(statuses)],
+    tag: scope?.tag,
+  };
 };
 
 /** An id and the vendor id inside it, so a ref and a bare id match each other. */
@@ -220,7 +248,8 @@ export const admits = (scope: CampaignScope, campaign: Campaign): boolean => {
       namesId(scope, campaign.sourceId)) &&
     (tag === undefined ||
       campaign.tags.some((each) => each.toLowerCase() === tag)) &&
-    (scope.name === undefined || scope.name.test(campaign.name ?? ""))
+    (scope.name === undefined || scope.name.test(campaign.name ?? "")) &&
+    (scope.statuses === undefined || scope.statuses.includes(campaign.status))
   );
 };
 
@@ -232,6 +261,9 @@ export const describeScope = (scope: CampaignScope): string =>
       : `${scope.ids.length} campaign id${scope.ids.length === 1 ? "" : "s"}`,
     scope.tag === undefined ? undefined : `tag ${scope.tag}`,
     scope.name === undefined ? undefined : `name ${scope.name.text}`,
+    scope.statuses === undefined
+      ? undefined
+      : `status ${scope.statuses.join(" or ")}`,
   ]
     .filter((part) => part !== undefined)
     .join(" and ");

@@ -119,6 +119,7 @@ const howListed = (outbound: OutboundApi, scope: CampaignScope): Listed => {
   }
 
   const whole =
+    scope.statuses === undefined &&
     (scope.tag === undefined || vendor.includes("tag")) &&
     (scope.name === undefined ||
       (vendor.includes("name") && scope.name.kind === "exact"));

@@ -197,7 +197,10 @@ export type {
 
 export type { ScopeFilter, ScopeTool } from "./internal/scope/campaigns.ts";
 
-export type { CampaignScopeInput } from "./internal/scope/rule.ts";
+export type {
+  CampaignScopeInput,
+  ResolveScopeInput,
+} from "./internal/scope/rule.ts";
 
 export { profileSlug } from "./internal/url.ts";
 

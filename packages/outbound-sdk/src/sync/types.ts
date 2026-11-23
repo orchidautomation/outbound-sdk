@@ -5,7 +5,7 @@ import type {
   ResolvedScope,
   ResolvedScopeMeta,
 } from "../internal/scope/resolve.ts";
-import type { CampaignScopeInput } from "../internal/scope/rule.ts";
+import type { ResolveScopeInput } from "../internal/scope/rule.ts";
 
 export interface Checkpoint {
   /** Where an unfinished run stopped. Absent between runs. */
@@ -45,13 +45,13 @@ export type SyncCollection =
   | "senders";
 
 /**
- * `campaign_ids`, `tag` and `campaign_name` sync only the campaigns of a
- * campaign scope, found as every insight finds them, before any
- * per-campaign read. Each campaign keeps its own checkpoint, under its ref.
+ * `campaign_ids`, `tag`, `campaign_name` and `statuses` sync only the
+ * campaigns of a campaign scope, found as every insight finds them, before
+ * any per-campaign read. Each campaign keeps its own checkpoint, under its ref.
  */
 export interface SyncOptions<
   Item extends Entity = Entity,
-> extends CampaignScopeInput {
+> extends ResolveScopeInput {
   /** Sync one campaign's records only. Not with a campaign scope. */
   readonly campaignId?: string | undefined;
   /**

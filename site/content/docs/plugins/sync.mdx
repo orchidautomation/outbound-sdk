@@ -43,6 +43,7 @@ Run 1 stopped at `maxPages` and left a cursor. Run 2 resumed from it and finishe
 | `onPage` | `(items, page) => void \| Promise<void>` | required | Receives each page, and `page.campaignRef`: the ref of the campaign it was read for, `undefined` for a page of the whole workspace. The checkpoint moves only after it resolves. |
 | `campaignId` | `string` | none | Sync one campaign's records. Not used for `campaigns`. It has its own checkpoint. Not with a campaign scope. |
 | `campaign_ids`, `tag`, `campaign_name` | as on [insights](/docs/insights#campaign-scope) | none | Sync only the campaigns of a [campaign scope](#campaign-scope). |
+| `statuses` | campaign statuses, such as `["active"]` | none | Sync only the campaigns in these statuses, alone or with the other scope keys. See [active campaigns first](#active-campaigns-first). |
 | `resolved` | what `resolveScope` returned | none | Sync the campaigns of a scope found once, so a run per collection does not find them again. Not with `campaignId` or a scope. |
 | `maxPages` | `number` | none | Stop after this many pages. The next run resumes from the checkpoint. |
 | `limit` | `number` | the adapter's | Records per page, as a hint the adapter may clamp. |
@@ -107,6 +108,20 @@ To sync several collections of one scope, find its campaigns once with `resolveS
 <include lang="text" meta='title="Output"'>
   ../../_examples/plugins-sync/scope.out.txt
 </include>
+
+## Active campaigns first
+
+`statuses` narrows a scope to campaigns in those statuses, matched here over the campaign listing, alone or with `campaign_ids`, `tag` and `campaign_name`. `resolveScope` takes it too. To back-fill active campaigns before the rest, run `statuses: ["active"]`, then the other statuses. Every campaign is read once, under the same ref-keyed checkpoint any scoped run of it uses, so a campaign already synced by a scope or by `resolved` carries on from where it was. An empty list or an unknown status, or `statuses` with `campaignId` or `resolved`, is `Invalid` before any request.
+
+<include meta='title="statuses.ts"'>
+  ../../_examples/plugins-sync/statuses.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/plugins-sync/statuses.out.txt
+</include>
+
+Why a status filter and not an order option such as `campaignOrder: "active-first"` on a run of the whole workspace: a run of the whole workspace follows the vendor's own listing and keeps the vendor's cursor in one checkpoint. Instantly's leads, for one, are not listed campaign by campaign at all. Reordering it would change every adapter's walk and orphan every saved cursor. And not a whole-workspace `resolved`: `run` checks only a `resolved`'s provider and workspace, so it cannot know that a list covers every campaign, and could not safely add the inbox or drive deletion marking. A status filter is applied by the SDK itself, keeps the per-campaign checkpoints scoped runs already use, and adds one key. A status run is a scoped run: replies and messages tied to no campaign are left out, as `inboxLeftOut` says. A campaign synced before only by a run of the whole workspace starts over on its first status run, because that run's checkpoint covers the workspace, not the campaign.
 
 ## The store
 
