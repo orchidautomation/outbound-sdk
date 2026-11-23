@@ -262,6 +262,28 @@ const PROBES: Partial<Record<CapabilityKey, Probe>> = {
   workspaces: (outbound) => outbound.workspaces.list(),
 };
 
+// One call per capability that only narrows or widens a read, for an
+// adapter that declares it false: the call must throw Unsupported before any
+// request leaves. An adapter that declares it is held to it by its own tests.
+const REFUSALS: Partial<Record<CapabilityKey, Probe>> = {
+  "leads.byDomain": (outbound) => outbound.leads.list({ domain: "example.com" }),
+  "leads.byInterest": (outbound, ids) =>
+    leadsOf(outbound, ids).list({ interest: "positive" }),
+  "leads.byStatus": (outbound, ids) =>
+    outbound.campaign(ids.campaign).leads.list({ status: "active" }),
+  "leads.lookup": (outbound) =>
+    outbound.leads.list({ email: "person@example.com" }),
+  "leads.lookupMany": (outbound) =>
+    outbound.leads.list({ emails: ["person@example.com"] }),
+  "messages.byHand": (outbound) => outbound.messages.list({ byHand: true }),
+  "messages.latestOfConversation": (outbound) =>
+    outbound.messages.list({ latestOfConversation: true }),
+  "replies.inbox": (outbound) => outbound.replies.list({ includeInbox: true }),
+  "senders.healthList": (outbound) => outbound.senderHealth.list(),
+  "stats.bySenders": (outbound, ids) =>
+    outbound.stats({ scope: "sender", scopeIds: [ids.sender ?? "missing"] }),
+};
+
 type Listed = Record<string, unknown> & { readonly ref: string };
 
 const LISTINGS: Record<
@@ -383,6 +405,21 @@ const capabilityTests = (suite: AdapterSuite): void => {
           [],
           "only documented endpoints with fixtures are called"
         );
+      });
+    }
+  }
+
+  for (const key of CAPABILITY_KEYS) {
+    const refusal = REFUSALS[key];
+
+    if (refusal !== undefined && declared[key] === false) {
+      test(`${suite.provider}: a read that needs ${key} is refused as Unsupported before any request`, async () => {
+        const { outbound, requests } = harness(suite);
+        await assert.rejects(
+          async () => await refusal(outbound, suite.ids),
+          (error) => OutboundError.is(error) && error.code === "Unsupported"
+        );
+        assert.equal(requests.length, 0);
       });
     }
   }

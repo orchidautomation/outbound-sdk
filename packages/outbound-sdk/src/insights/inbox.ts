@@ -9,9 +9,8 @@ interface FromTool {
 }
 
 /**
- * Whether the tool a record came from has conversations in no campaign. A
- * combined instance holds each key only when every tool does, so each tool
- * answers for its own records.
+ * Whether the tool a record came from has conversations in no campaign. On a
+ * combined instance each tool answers for its own records.
  */
 export const inboxOf = (
   outbound: OutboundApi
@@ -19,8 +18,8 @@ export const inboxOf = (
   const known = new Map<string, boolean>();
 
   return (record) => {
-    if (outbound.capabilities["replies.inbox"]) {
-      return true;
+    if (outbound.provider !== "combined") {
+      return outbound.capabilities["replies.inbox"];
     }
 
     const key = `${record.provider}:${record.workspaceId}`;

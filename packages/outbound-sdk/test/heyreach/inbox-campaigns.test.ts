@@ -255,7 +255,8 @@ const combinedInstance = () => {
     share: 1,
   });
 
-  assert.equal(outbound.capabilities["replies.inbox"], false);
+  // One member's inbox holds conversations in no campaign, so the combined instance lists them from that member.
+  assert.equal(outbound.capabilities["replies.inbox"], true);
 
   return { clock, outbound };
 };

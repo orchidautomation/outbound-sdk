@@ -204,6 +204,9 @@ const lists = (members: readonly Adapter[]): Lists => ({
 const readsThreads = (member: Adapter): boolean =>
   resolveCapabilities(member.capabilities)["messages.byThread"];
 
+const hasInbox = (member: Adapter): boolean =>
+  resolveCapabilities(member.capabilities)["replies.inbox"];
+
 // A thread id is the vendor's own and names no member, so each member that
 // reads threads is asked for it, side by side. One that cannot take the id,
 // such as a HeyReach member given an Instantly thread, holds no such thread.
@@ -276,7 +279,14 @@ const messageLists = (members: readonly Adapter[]): MessageLists => ({
           throw missing(member, "listReplies");
         }
 
-        return member.listReplies(scoped, memberCtx);
+        // Only a member whose inbox holds conversations in no campaign is asked for them.
+        return member.listReplies(
+          {
+            ...scoped,
+            includeInbox: hasInbox(member) ? scoped.includeInbox : undefined,
+          },
+          memberCtx
+        );
       },
       pageNewestFirst,
       "replies"
@@ -432,6 +442,8 @@ export const combine = (members: readonly Adapter[]): Adapter => {
       ...intersectCapabilities(first ?? resolveCapabilities(), ...rest),
       // A thread id names no member, so every member that reads threads is asked.
       "messages.byThread": members.some(readsThreads),
+      // Replies outside every campaign are listed from each member that has them.
+      "replies.inbox": members.some(hasInbox),
       // A native read belongs to one vendor; reach it through workspace(id).
       native: false,
       // A combined instance always knows its workspaces: they are its members.
