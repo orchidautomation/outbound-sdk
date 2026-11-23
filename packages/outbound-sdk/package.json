@@ -27,6 +27,7 @@
     "outbound-sdk": "./dist/cli/bin.js"
   },
   "files": [
+    "CHANGELOG.md",
     "dist"
   ],
   "type": "module",

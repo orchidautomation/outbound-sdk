@@ -57,7 +57,10 @@ export interface SyncOptions<
   /**
    * The scope's campaigns as `resolveScope` returned them, so runs of
    * several collections find them once. Not with `campaignId` or a
-   * campaign scope.
+   * campaign scope. Accepted when `campaigns` is an array and
+   * `meta.provider` and `meta.workspaceId` are this instance's; nothing else
+   * is checked. Its campaigns sync in the order they are listed, so a
+   * caller can reorder them, such as active ones first.
    */
   readonly resolved?: ResolvedScope | undefined;
   /** Receives each page. The checkpoint moves only after it resolves. */
