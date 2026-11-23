@@ -177,7 +177,8 @@ Whether the `messages[]` embedded in a V2/V3 list item is the full thread or a r
 
 - `campaign/GetAll` can list a campaign (here a DRAFT, never started) that `campaign/GetById` answers 404 for: "There is no campaign with provided id."
 - `inbox/GetConversationsV3` with that id in `filters.campaignIds`, alone or among others, answers 400 `{"errorMessage":"The campaign you are trying to open does not exist."}`. The same filter without it answers 200.
-- Not in the API reference (https://docs.heyreach.io/hey-reach-api/inbox/get-conversations-v-3.md, fetched 2026-11-23), which documents no 400 body. The adapter leaves such a campaign out of its walk and out of the inbox filter (OUT-206).
+- The API reference now lists it among the 400s with body `{ "errorMessage": "..." }`: "The campaign you are trying to open does not exist." (https://docs.heyreach.io/hey-reach-api/inbox/get-conversations-v-3.md, fetched 2026-11-23, Errors section). An earlier fetch the same day showed no 400 body.
+- The adapter leaves such a campaign out of its walk and out of the inbox filter (OUT-206). Reading one campaign's conversations for it is `NotFound` (status 400), as `campaign/GetById` is, and a scoped sync skips the campaign with a note naming its ref (OUT-221).
 
 ### Reply classification
 

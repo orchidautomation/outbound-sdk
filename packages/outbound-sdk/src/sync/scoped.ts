@@ -3,6 +3,7 @@
 // checkpoint, so nothing of another campaign is read.
 
 import type { Entity } from "../internal/entities-account.ts";
+import { OutboundError } from "../internal/errors.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
 import type { ResolvedScope } from "../internal/scope/resolve.ts";
 import { inboxLeftOut } from "./inbox.ts";
@@ -56,6 +57,26 @@ const sumOf = (
   return total;
 };
 
+/**
+ * A campaign's run, or `null` when the tool lists the campaign but answers
+ * `NotFound` to reading it, such as a HeyReach draft it cannot open.
+ */
+const skipMissing = async <Item extends Entity>(
+  runOne: RunOne,
+  collection: SyncCollection,
+  options: SyncOptions<Item>
+): Promise<SyncResult | null> => {
+  try {
+    return await runOne(collection, options);
+  } catch (error) {
+    if (OutboundError.is(error) && error.code === "NotFound") {
+      return null;
+    }
+
+    throw error;
+  }
+};
+
 /** The campaigns collection under a scope: the scope's campaigns, as one page. */
 const scopeListing = async <Item extends Entity>(
   resolved: ResolvedScope,
@@ -103,7 +124,7 @@ const scopeListing = async <Item extends Entity>(
  */
 export const runScoped = async <Item extends Entity>(
   runOne: RunOne,
-  outbound: Pick<OutboundApi, "capabilities">,
+  outbound: Pick<OutboundApi, "capabilities" | "provider">,
   collection: SyncCollection,
   options: SyncOptions<Item>,
   resolved: ResolvedScope,
@@ -134,6 +155,7 @@ export const runScoped = async <Item extends Entity>(
 
   const results: SyncResult[] = [];
   const campaigns: SyncCampaignResult[] = [];
+  const skipped: string[] = [];
   let pagesLeft = options.maxPages;
 
   for (const campaign of resolved.campaigns) {
@@ -153,12 +175,24 @@ export const runScoped = async <Item extends Entity>(
     }
 
     // oxlint-disable-next-line no-await-in-loop -- one campaign after another, each with its own checkpoint
-    const result = await runOne(collection, {
+    const result = await skipMissing(runOne, collection, {
       campaignId: campaign.ref,
       limit: options.limit,
       maxPages: pagesLeft,
       onPage,
     });
+
+    if (result === null) {
+      skipped.push(campaign.ref);
+      campaigns.push({
+        campaignRef: campaign.ref,
+        complete: true,
+        name: campaign.name,
+        pages: 0,
+        records: 0,
+      });
+      continue;
+    }
 
     results.push(result);
     pagesLeft = pagesLeft === undefined ? undefined : pagesLeft - result.pages;
@@ -185,6 +219,11 @@ export const runScoped = async <Item extends Entity>(
       ...new Set([
         ...meta.notes,
         ...results.flatMap((result) => result.notes),
+        ...(skipped.length === 0
+          ? []
+          : [
+              `${outbound.provider} lists ${skipped.length === 1 ? "a campaign" : `${skipped.length} campaigns`} it cannot open, so ${skipped.length === 1 ? "it was" : "they were"} skipped: ${skipped.join(", ")}.`,
+            ]),
         ...inbox.notes,
       ]),
     ],
