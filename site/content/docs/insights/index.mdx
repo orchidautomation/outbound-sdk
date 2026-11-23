@@ -176,6 +176,30 @@ An insight that needs a capability the adapter lacks, or a field its records nev
 
 Each `@ts-expect-error` marks a line the compiler rejects. Without the comment, the sample would not type-check. Input names are snake case (`max_campaigns`) because the same schema serves the agent tool and the CLI.
 
+## Campaign scope
+
+Every insight takes three more inputs that say which campaigns of the workspace it may read, such as one client's in an agency workspace:
+
+| Input | Reads only the campaigns |
+| --- | --- |
+| `campaign_ids` | With these ids, each a `ref` or the vendor's id, up to 500. They are read one by one, with no campaign listing. |
+| `tag` | That carry this tag, ignoring case. Refused as `Unsupported` before any request where campaigns carry no tags (`campaigns.byTag` is `false`, such as HeyReach). |
+| `campaign_name` | Whose whole name matches, ignoring case: an exact name (`Acme Q4`), a glob with `*` and `?` (`Acme*`), or `/regex/` with flags `i`, `m`, `s` or `u`. A regex ignores case only with `i`. |
+
+Given together, a campaign must match every one, and the insight's own filters, such as `statuses`, narrow it further. The scope is applied once the campaigns are found and before any per-campaign read. Where the vendor can filter its listing, by tag or by name (`campaigns.byTag` or `campaigns.byName` is `server`), it is asked to. Elsewhere the listing is read and filtered here. Either way `meta.notes` says how many campaigns matched and which side filtered. A malformed scope, such as an empty list or a regex that does not compile, is refused as `Invalid` before any request.
+
+Under a scope an insight never reads another campaign's rows. A `campaign` input outside the scope is refused. Replies, senders and leads are read campaign by campaign. Replies that belong to no campaign are left out, and so are reads that only exist for the whole workspace, such as `client_report`'s unusual days. Workspace totals are the scope's campaigns added up, as `derived`, so a lead in two of them counts in both. Each of these says so in `meta.notes`.
+
+<include meta='title="campaign-scope.ts"'>
+  ../../_examples/insights-index/campaign-scope.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/insights-index/campaign-scope.out.txt
+</include>
+
+The CLI takes the same scope as `--campaign-ids`, `--tag` and `--campaign-name` on `outbound insight`, and `outbound mcp` takes it under each tool's `scope`.
+
 ## Names
 
 The same word means the same thing in every insight.

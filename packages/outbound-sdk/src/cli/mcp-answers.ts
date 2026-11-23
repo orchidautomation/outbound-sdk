@@ -12,7 +12,7 @@ import type { ScopeTarget } from "./surface-scope.ts";
 
 // Said once here rather than in every tool's description.
 export const ANSWERS =
-  "Every answer is { ok, data, meta, next }, in structuredContent with a short summary as text. meta.complete: false means the answer covers part of the data and meta.notes says why; a null count is one the vendor does not report, never 0. Every tool takes scope: { provider, workspace } to read one tool or workspace of what this server reads, and tag where a tool can read one campaign tag. These tools answer questions; for bulk rows (every lead, message or daily stat) use the CLI's --jsonl output or the SDK.";
+  "Every answer is { ok, data, meta, next }, in structuredContent with a short summary as text. meta.complete: false means the answer covers part of the data and meta.notes says why; a null count is one the vendor does not report, never 0. Every tool takes scope: { provider, workspace } to read one tool or workspace of what this server reads. Where a tool lists them, scope.campaign_ids, scope.tag and scope.campaign_name (an exact name, a glob with * and ?, or /regex/) read only the campaigns matching every one given. These tools answer questions; for bulk rows (every lead, message or daily stat) use the CLI's --jsonl output or the SDK.";
 
 /** The result schema every tool declares: the answer envelope. */
 export const OUTPUT_SCHEMA: JsonObject = {

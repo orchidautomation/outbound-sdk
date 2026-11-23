@@ -1,5 +1,6 @@
-// The `scope` input every listed tool takes: one provider, one workspace or
-// one campaign tag of what the server reads.
+// The `scope` input every listed tool takes: one provider or workspace of
+// what the server reads and, on a tool that takes a campaign scope, which of
+// its campaigns: by id, tag or name.
 
 import { isJsonObject, isString } from "../internal/json.ts";
 import type { Json, JsonObject } from "../internal/json.ts";
@@ -31,19 +32,49 @@ export const takes = (tool: OutboundTool, name: string): boolean => {
   return isJsonObject(properties) && Object.hasOwn(properties, name);
 };
 
-// Kept small, since every tool lists it: initialize says what it does.
-export const scopeField = (tagged: boolean): Json => {
-  const names = tagged
-    ? ["provider", "tag", "workspace"]
-    : ["provider", "workspace"];
+/** A tool's campaign scope inputs, listed once under `scope` instead of on their own. */
+export const CAMPAIGN_KEYS = ["campaign_ids", "campaign_name", "tag"] as const;
 
-  return {
-    properties: Object.fromEntries(
-      names.map((name) => [name, { type: "string" }])
-    ),
-    type: "object",
-  };
-};
+const CAMPAIGN_BY = {
+  campaign_ids: "id",
+  campaign_name: "name",
+  tag: "tag",
+} as const satisfies Record<(typeof CAMPAIGN_KEYS)[number], string>;
+
+const SCOPE_KEYS: readonly string[] = [
+  "provider",
+  "workspace",
+  ...CAMPAIGN_KEYS,
+];
+
+const isCampaignKey = (name: string): name is (typeof CAMPAIGN_KEYS)[number] =>
+  Object.hasOwn(CAMPAIGN_BY, name);
+
+/** Whether the tool takes a campaign scope. */
+export const takesCampaigns = (tool: OutboundTool): boolean =>
+  CAMPAIGN_KEYS.some((key) => takes(tool, key));
+
+/** `properties` without the campaign scope inputs that `scope` lists. */
+export const unscoped = (
+  properties: Readonly<Record<string, Json>>
+): Record<string, Json> =>
+  Object.fromEntries(
+    Object.entries(properties).filter(([name]) => !isCampaignKey(name))
+  );
+
+// Kept small, since every tool lists it: initialize says what each key
+// takes. A tool with a campaign scope lists only the keys' names, which keeps
+// tools/list under its ceiling.
+export const scopeField = (campaigns: boolean): Json =>
+  campaigns
+    ? { propertyNames: { enum: [...SCOPE_KEYS] }, type: "object" }
+    : {
+        properties: {
+          provider: { type: "string" },
+          workspace: { type: "string" },
+        },
+        type: "object",
+      };
 
 const labelOf = (target: {
   readonly provider: string;
@@ -72,31 +103,56 @@ const textOf = (
 interface Named {
   readonly provider: string | undefined;
   readonly workspace: string | undefined;
-  readonly tag: string | undefined;
+  /** The campaign scope inputs given, passed on to the tool as they are. */
+  readonly campaigns: JsonObject;
 }
+
+const isIdList = (value: Json): boolean =>
+  Array.isArray(value) &&
+  value.length > 0 &&
+  value.every((each) => isString(each) && each.trim() !== "");
 
 // What `scope` names, or why it cannot be read.
 const namedBy = (name: string, scope: JsonObject): Named | string => {
-  const stray = Object.keys(scope).find(
-    (key) => !["provider", "tag", "workspace"].includes(key)
-  );
+  const stray = Object.keys(scope).find((key) => !SCOPE_KEYS.includes(key));
 
   if (stray !== undefined) {
-    return `${name}: scope takes provider, workspace and tag, not ${stray}`;
+    return `${name}: scope takes ${SCOPE_KEYS.slice(0, -1).join(", ")} and tag, not ${stray}`;
   }
 
   const provider = textOf(scope["provider"], "provider");
   const workspace = textOf(scope["workspace"], "workspace");
+  const campaignName = textOf(scope["campaign_name"], "campaign_name");
   const tag = textOf(scope["tag"], "tag");
 
-  for (const problem of [provider, workspace, tag]) {
+  for (const problem of [provider, workspace, campaignName, tag]) {
     if (problem instanceof Error) {
       return `${name}: ${problem.message}`;
     }
   }
 
+  const ids = scope["campaign_ids"];
+
+  if (ids !== undefined && ids !== null && !isIdList(ids)) {
+    return `${name}: scope.campaign_ids must be a non-empty list of campaign ids`;
+  }
+
+  const campaigns: Record<string, Json> = {};
+
+  if (ids !== undefined && ids !== null) {
+    campaigns["campaign_ids"] = ids;
+  }
+
+  if (campaignName !== undefined && !(campaignName instanceof Error)) {
+    campaigns["campaign_name"] = campaignName;
+  }
+
+  if (tag !== undefined && !(tag instanceof Error)) {
+    campaigns["tag"] = tag;
+  }
+
   // SAFETY: each was checked above to be a string or undefined.
-  return { provider, tag, workspace } as Named;
+  return { campaigns, provider, workspace } as Named;
 };
 
 const isRefusal = (value: Named | string): value is string =>
@@ -156,7 +212,8 @@ const onMember = async (
 
 /**
  * The tool and input that read only what `scope` names, or why it cannot.
- * A tool with its own `provider` or `tag` input is given the scope there;
+ * A tool with its own `provider` input, or its own campaign scope inputs,
+ * is given the scope there;
  * any other is run on the one tool of a combined instance the scope names.
  */
 export const scoped = async (
@@ -170,7 +227,7 @@ export const scoped = async (
   }
 
   if (!isJsonObject(scope)) {
-    return `${tool.name}: scope must be an object with provider, workspace or tag`;
+    return `${tool.name}: scope must be an object with ${SCOPE_KEYS.join(", ")}`;
   }
 
   const named = namedBy(tool.name, scope);
@@ -179,11 +236,15 @@ export const scoped = async (
     return named;
   }
 
-  if (named.tag !== undefined && !takes(tool, "tag")) {
-    return `${tool.name} cannot read by campaign tag, so scope.tag cannot be used with it`;
+  const untaken = CAMPAIGN_KEYS.find(
+    (key) => Object.hasOwn(named.campaigns, key) && !takes(tool, key)
+  );
+
+  if (untaken !== undefined) {
+    return `${tool.name} cannot read by campaign ${CAMPAIGN_BY[untaken]}, so scope.${untaken} cannot be used with it`;
   }
 
-  const given = named.tag === undefined ? args : { ...args, tag: named.tag };
+  const given = { ...args, ...named.campaigns };
 
   if (named.provider === undefined && named.workspace === undefined) {
     return { args: given, notes: [], tool };

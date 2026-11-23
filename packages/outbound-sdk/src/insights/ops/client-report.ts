@@ -4,7 +4,7 @@
 import { z } from "zod";
 
 import { OutboundError } from "../../internal/errors.ts";
-import { count as formatCount, plural } from "../../internal/numbers.ts";
+import { count as formatCount } from "../../internal/numbers.ts";
 import { either, readCampaignsIn } from "../capped.ts";
 import type { CampaignsRead } from "../capped.ts";
 import { defineInsight } from "../define.ts";
@@ -121,13 +121,6 @@ const input = z.object({
     .default(7)
     .describe(
       "A campaign with this many days of leads left or fewer is flagged"
-    ),
-  tag: z
-    .string()
-    .min(1)
-    .optional()
-    .describe(
-      "Read only the campaigns with this tag, such as one client's. Leaves out unusual days, which are workspace-wide."
     ),
 });
 
@@ -337,12 +330,12 @@ const leftOutOf = (parts: {
   readonly anomalies: unknown;
   readonly runways: unknown;
   readonly skipped: unknown;
-  readonly tagged: boolean;
+  readonly scoped: boolean;
 }): string[] => [
   ...(parts.anomalies === null
     ? [
-        parts.tagged
-          ? "Unusual days: they are workspace-wide, so a tag leaves them out."
+        parts.scoped
+          ? "Unusual days: they are workspace-wide, so a campaign scope leaves them out."
           : "Unusual days: the adapter has no workspace stats by day.",
       ]
     : []),
@@ -410,7 +403,7 @@ const scopedTo = async (
 
 export const clientReport = defineInsight({
   description:
-    "One report for one client or workspace over the last `days` complete days, in one call: totals and the change from the period before, the best and worst campaigns by reply rate, bounce problems, unusual days, every active campaign out of leads or running out within runway_days (7 by default), stalled ones, campaigns with many skipped leads, and action items naming the campaign and the number behind it. On a combined instance it reads every tool and names one it left out in toolsLeftOut; pass provider or tag to narrow it. Costs about 9 requests per active campaign on Instantly.",
+    "One report for one client or workspace over the last `days` complete days, in one call: totals and the change from the period before, the best and worst campaigns by reply rate, bounce problems, unusual days, every active campaign out of leads or running out within runway_days (7 by default), stalled ones, campaigns with many skipped leads, and action items naming the campaign and the number behind it. On a combined instance it reads every tool and names one it left out in toolsLeftOut; a provider or campaign scope narrows it. Costs about 9 requests per active campaign on Instantly.",
   inputSchema: input,
   key: "clientReport",
   cost: (values, price) => {
@@ -442,18 +435,7 @@ export const clientReport = defineInsight({
   next: "Use campaign_diagnosis on a campaign an action item names, with from and to set to this report's `period`, or period_comparison for every campaign's change.",
   run: async (given, options) => {
     const context = await scopedTo(given, options.provider);
-    const { tag } = options;
-
-    if (
-      tag !== undefined &&
-      context.outbound.fields.campaign["tags"] === false
-    ) {
-      throw new OutboundError(
-        "Unsupported",
-        `client_report: the ${context.outbound.provider} adapter reports no campaign tags, so tag cannot be used`,
-        { provider: context.outbound.provider }
-      );
-    }
+    const scoped = given.scope !== null;
 
     const listed = await readCampaignsIn(
       context,
@@ -461,32 +443,16 @@ export const clientReport = defineInsight({
       options.max_campaigns
     );
 
-    const items =
-      tag === undefined
-        ? listed.items
-        : listed.items.filter((campaign) => campaign.tags.includes(tag));
+    // Read before the campaigns, so a request cap that stops them part way leaves the unusual days in the report. They are workspace-wide, so a campaign scope leaves them out.
+    const anomalies = scoped
+      ? null
+      : await readAnomalies(
+          context,
+          lastDays(context.now, options.days),
+          options
+        );
 
-    if (tag !== undefined && items.length === 0 && listed.items.length > 0) {
-      context.note(
-        `None of the ${plural(listed.items.length, "campaign")} read carries the tag ${tag}, so the report covers no campaign.`
-      );
-    }
-
-    // Read before the campaigns, so a request cap that stops them part way leaves the unusual days in the report. They are workspace-wide, so a tag leaves them out.
-    const anomalies =
-      tag === undefined
-        ? await readAnomalies(
-            context,
-            lastDays(context.now, options.days),
-            options
-          )
-        : null;
-
-    const periods = await readPeriods(
-      context,
-      { ...listed, items },
-      options.days
-    );
+    const periods = await readPeriods(context, listed, options.days);
 
     const left = await toolsLeftOut(context, listed.skipped, periods.current);
 
@@ -528,7 +494,7 @@ export const clientReport = defineInsight({
       anomalies: sections.anomalies,
       runways,
       skipped: manySkippedLeads,
-      tagged: tag !== undefined,
+      scoped,
     });
 
     for (const section of leftOut) {

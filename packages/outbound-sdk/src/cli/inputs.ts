@@ -2,7 +2,7 @@
 // walk options every listing shares.
 
 import { OutboundError } from "../internal/errors.ts";
-import { parseJson } from "../internal/json.ts";
+import { isJsonObject, parseJson } from "../internal/json.ts";
 import type { Json } from "../internal/json.ts";
 import type { OutboundApi } from "../internal/outbound/api.ts";
 
@@ -169,6 +169,54 @@ export const parseInput = (source: string | undefined): Json => {
   }
 
   return parsed;
+};
+
+/**
+ * An insight's input: --input, with the campaign scope that --campaign-ids
+ * (comma separated), --tag and --campaign-name give. A scope key given both
+ * ways is refused rather than one quietly winning.
+ */
+export const insightInputOf = (input: CommandInput): Json => {
+  const given = parseInput(text(input, "input"));
+  const ids = text(input, "campaign-ids");
+  const scope: [string, Json][] = [];
+
+  if (ids !== undefined) {
+    scope.push(["campaign_ids", ids.split(",").map((id) => id.trim())]);
+  }
+
+  for (const [key, flag] of [
+    ["campaign_name", "campaign-name"],
+    ["tag", "tag"],
+  ] as const) {
+    const value = text(input, flag);
+
+    if (value !== undefined) {
+      scope.push([key, value]);
+    }
+  }
+
+  if (scope.length === 0) {
+    return given;
+  }
+
+  if (!isJsonObject(given)) {
+    throw new OutboundError(
+      "Invalid",
+      "--input must be a JSON object to take --campaign-ids, --tag or --campaign-name"
+    );
+  }
+
+  const twice = scope.find(([key]) => Object.hasOwn(given, key));
+
+  if (twice !== undefined) {
+    throw new OutboundError(
+      "Invalid",
+      `${twice[0]} is given in --input and as --${twice[0].replace("_", "-")}: give it once`
+    );
+  }
+
+  return { ...given, ...Object.fromEntries(scope) };
 };
 
 export const required = (
