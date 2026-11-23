@@ -266,7 +266,8 @@ const PROBES: Partial<Record<CapabilityKey, Probe>> = {
 // adapter that declares it false: the call must throw Unsupported before any
 // request leaves. An adapter that declares it is held to it by its own tests.
 const REFUSALS: Partial<Record<CapabilityKey, Probe>> = {
-  "leads.byDomain": (outbound) => outbound.leads.list({ domain: "example.com" }),
+  "leads.byDomain": (outbound) =>
+    outbound.leads.list({ domain: "example.com" }),
   "leads.byInterest": (outbound, ids) =>
     leadsOf(outbound, ids).list({ interest: "positive" }),
   "leads.byStatus": (outbound, ids) =>
