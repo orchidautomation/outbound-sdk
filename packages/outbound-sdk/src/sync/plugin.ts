@@ -256,7 +256,7 @@ export const sync = (
           if (given.length > 1) {
             throw new OutboundError(
               "Invalid",
-              `sync: give campaignId or a campaign scope (campaign_ids, tag, campaign_name) or resolved, one only, not ${given.join(" and ")}`,
+              `sync: give campaignId or a campaign scope (campaign_ids, tag, campaign_name, statuses) or resolved, one only, not ${given.join(" and ")}`,
               { provider: outbound.provider }
             );
           }

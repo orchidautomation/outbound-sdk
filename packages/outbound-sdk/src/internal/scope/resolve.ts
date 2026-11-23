@@ -7,7 +7,7 @@ import type { OutboundApi, ResultMeta } from "../outbound/api.ts";
 import { refuseTagless, scopeCampaigns } from "./campaigns.ts";
 import type { ScopeTool } from "./campaigns.ts";
 import { describeScope, parseScope } from "./rule.ts";
-import type { CampaignScope, CampaignScopeInput } from "./rule.ts";
+import type { CampaignScope, ResolveScopeInput } from "./rule.ts";
 
 export interface ResolvedScopeMeta {
   readonly provider: string;
@@ -98,6 +98,7 @@ export const findScope = async (
  * The campaigns a campaign scope covers, every state, found as an insight
  * finds them: ids read by id with no listing, a tag or name sent to the
  * vendor where it filters its listing and matched here otherwise. A
+ * `statuses` keeps only the campaigns in those statuses, matched here. A
  * malformed scope, or one with no part given, is `Invalid`, and a tag where
  * campaigns carry no tags `Unsupported`, before any request.
  *
@@ -107,14 +108,14 @@ export const findScope = async (
  */
 export const resolveScope = async (
   outbound: OutboundApi,
-  input: CampaignScopeInput
+  input: ResolveScopeInput
 ): Promise<ResolvedScope> => {
   const scope = parseScope(input, "resolveScope");
 
   if (scope === null) {
     throw new OutboundError(
       "Invalid",
-      "resolveScope: give at least one of campaign_ids, tag and campaign_name",
+      "resolveScope: give at least one of campaign_ids, tag and campaign_name, or statuses",
       { provider: outbound.provider }
     );
   }
