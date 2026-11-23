@@ -1,4 +1,4 @@
-unknown key: Invalid: campaign_ranking: "tag" is not an input. It takes: from, max_campaigns, metric, min_sent, statuses, to
+unknown key: Invalid: campaign_ranking: "label" is not an input. It takes: campaign_ids, campaign_name, from, max_campaigns, metric, min_sent, statuses, tag, to
 wrong type: Invalid: campaign_ranking: min_sent Invalid input: expected number, received string
 out of range: Invalid: campaign_ranking: max_campaigns Too big: expected number to be <=200
 missing: Invalid: pipeline_forecast: `campaign` is required

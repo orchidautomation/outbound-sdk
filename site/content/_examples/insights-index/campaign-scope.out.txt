@@ -1,0 +1,7 @@
+tag: Q4 SaaS founders
+  Campaign scope (tag client-a): 1 campaign of memory:agency match. The vendor cannot filter its campaign listing by this scope, so the listing was read and filtered here, before any per-campaign read.
+name: Agency owners
+  Campaign scope (name agency*): 1 campaign of memory:agency match. The vendor cannot filter its campaign listing by this scope, so the listing was read and filtered here, before any per-campaign read.
+ids and tag: Agency owners
+  Campaign scope (2 campaign ids and tag client-b): 1 campaign of memory:agency match, read by id with no campaign listing.
+tagless: Unsupported: campaign_ranking: the memory adapter's campaigns carry no tags, so the campaign scope cannot use tag. Use campaign_name or campaign_ids

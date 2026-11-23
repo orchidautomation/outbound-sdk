@@ -70,6 +70,7 @@ The output shows what the CLI does with the demo data. It does not show what a v
 | `--bodies` | `replies`, `thread` | Include message text. Left out by default. |
 | `--include-inbox` | `replies` | Also list replies in conversations that belong to no campaign, such as a LinkedIn account's own messages on HeyReach. Left out by default. |
 | `--input <json>` | `tool`, `insight`, `native` | The input, as a JSON object in one argument. Defaults to `{}`. |
+| `--campaign-ids <id,id>`, `--tag <tag>`, `--campaign-name <pattern>` | `insight` | The [campaign scope](/docs/insights#campaign-scope): only the campaigns with these ids (comma separated), this tag, or a name matching the pattern (an exact name, a glob with `*` and `?`, or `/regex/`). Given together, a campaign must match every one. Each is added to `--input`; a key given in both is refused as `Invalid`. |
 | `--card` | `tool`, `insight`, `person` | Print the answer as a [card](/docs/cards) in plain text, for a person to read. Not JSON and not in the envelope. |
 | `--slack-text` | `tool`, `insight`, `person` | Print the card as text in Slack's mrkdwn, ready to paste into the message composer. Not in the envelope. |
 | `--slack` | `tool`, `insight`, `person` | Print the card as a Slack message's JSON alone, `{ text, blocks }`, not in the envelope, ready for `chat.postMessage` or an incoming webhook. Pass one of `--card`, `--slack-text` and `--slack`. |
