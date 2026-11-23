@@ -349,8 +349,11 @@ export const anomalies = defineInsight({
       to: period.to,
     };
 
+    // Under a campaign scope the workspace's stats are already the scope's
+    // campaigns added up.
     const series =
       options.campaign === null &&
+      context.scope === null &&
       context.outbound.capabilities["stats.workspace"] === false
         ? await campaignDays(context, range)
         : await readDaily(context, options.campaign, range);
