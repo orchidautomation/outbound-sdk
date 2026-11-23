@@ -194,7 +194,7 @@ $ outbound insight channel_mix --input '{"days":30}'
   "data": null,
   "error": {
     "code": "Invalid",
-    "message": "channel_mix: \"days\" is not an input. It takes: alpha, from, max_campaigns, statuses, to"
+    "message": "channel_mix: \"days\" is not an input. It takes: alpha, campaign_ids, campaign_name, from, max_campaigns, statuses, tag, to"
   },
   "meta": {
     "complete": false,
@@ -205,6 +205,6 @@ $ outbound insight channel_mix --input '{"days":30}'
   },
   "ok": false
 }
-Invalid: channel_mix: "days" is not an input. It takes: alpha, from, max_campaigns, statuses, to
+Invalid: channel_mix: "days" is not an input. It takes: alpha, campaign_ids, campaign_name, from, max_campaigns, statuses, tag, to
 (exit code 1)
 
