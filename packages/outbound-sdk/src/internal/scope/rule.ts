@@ -1,45 +1,15 @@
-// The campaign scope every insight takes: which campaigns of the workspace
+// The campaign scope every insight and sync.run take: which campaigns of the workspace
 // it may read, such as one client's in an agency workspace. A campaign is in
 // scope when it matches every part given: its id, its tag and its name.
 
 import { z } from "zod";
 
-import type { Campaign } from "../internal/entities.ts";
-import { OutboundError } from "../internal/errors.ts";
-import { parseRef } from "../internal/ref.ts";
+import type { Campaign } from "../entities.ts";
+import { OutboundError } from "../errors.ts";
+import { parseRef } from "../ref.ts";
 
 /** The most campaign ids one scope names. */
 export const MAX_SCOPE_IDS = 500;
-
-/** The scope's inputs, added to every insight's own. */
-export const SCOPE_INPUTS = {
-  campaign_ids: z
-    .array(z.string().trim().min(1))
-    .min(1)
-    .max(MAX_SCOPE_IDS)
-    .optional()
-    .describe(
-      "Read only these campaigns, by ref or vendor id. With tag or campaign_name, a campaign must match every one given"
-    ),
-  campaign_name: z
-    .string()
-    .trim()
-    .min(1)
-    .optional()
-    .describe(
-      "Read only the campaigns whose whole name matches, ignoring case: an exact name (Acme Q4), a glob with * and ? (Acme*), or /regex/ with flags i, m, s or u"
-    ),
-  tag: z
-    .string()
-    .trim()
-    .min(1)
-    .optional()
-    .describe(
-      "Read only the campaigns that carry this tag, ignoring case, such as one client's. Unsupported where campaigns carry no tags"
-    ),
-};
-
-export const SCOPE_KEYS = Object.keys(SCOPE_INPUTS);
 
 /** How a `campaign_name` is matched. */
 export interface NameRule {
@@ -161,6 +131,65 @@ export const scopeOf = (
     name: name === undefined ? undefined : nameRule(name, insight),
     tag,
   };
+};
+
+/** The scope's inputs, added to every insight's own. */
+export const SCOPE_INPUTS = {
+  campaign_ids: z
+    .array(z.string().trim().min(1))
+    .min(1)
+    .max(MAX_SCOPE_IDS)
+    .optional()
+    .describe(
+      "Read only these campaigns, by ref or vendor id. With tag or campaign_name, a campaign must match every one given"
+    ),
+  campaign_name: z
+    .string()
+    .trim()
+    .min(1)
+    .optional()
+    .describe(
+      "Read only the campaigns whose whole name matches, ignoring case: an exact name (Acme Q4), a glob with * and ? (Acme*), or /regex/ with flags i, m, s or u"
+    ),
+  tag: z
+    .string()
+    .trim()
+    .min(1)
+    .optional()
+    .describe(
+      "Read only the campaigns that carry this tag, ignoring case, such as one client's. Unsupported where campaigns carry no tags"
+    ),
+};
+
+export const SCOPE_KEYS = Object.keys(SCOPE_INPUTS);
+
+const SCOPE_OBJECT = z.object(SCOPE_INPUTS);
+
+/**
+ * The scope a caller wrote outside a schema, as sync.run and resolveScope
+ * take it: checked as an insight's scope inputs are, and refused as
+ * `Invalid` before any request. `null` when no part is given.
+ */
+export const parseScope = (
+  input: CampaignScopeInput,
+  label: string
+): CampaignScope | null => {
+  const parsed = SCOPE_OBJECT.safeParse({
+    campaign_ids: input.campaign_ids,
+    campaign_name: input.campaign_name,
+    tag: input.tag,
+  });
+
+  if (!parsed.success) {
+    const [issue] = parsed.error.issues;
+
+    throw new OutboundError(
+      "Invalid",
+      `${label}: ${issue?.path.join(".") ?? "scope"}: ${issue?.message ?? "not a valid campaign scope"}`
+    );
+  }
+
+  return scopeOf(parsed.data, label);
 };
 
 /** An id and the vendor id inside it, so a ref and a bare id match each other. */

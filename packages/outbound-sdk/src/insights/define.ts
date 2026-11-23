@@ -17,6 +17,12 @@ import type {
   StatsResult,
   WithMeta,
 } from "../internal/outbound/api.ts";
+import { refuseTagless } from "../internal/scope/campaigns.ts";
+import { SCOPE_INPUTS, scopeOf } from "../internal/scope/rule.ts";
+import type {
+  CampaignScope,
+  CampaignScopeInput,
+} from "../internal/scope/rule.ts";
 import {
   namesCampaign,
   routedByCampaign,
@@ -33,9 +39,6 @@ import type { Lacks, MaskedOut } from "./checks.ts";
 import type { InsightCost } from "./cost.ts";
 import { runCap } from "./run-cap.ts";
 import type { CapOptions, RunCap } from "./run-cap.ts";
-import { refuseTagless } from "./scope-campaigns.ts";
-import { SCOPE_INPUTS, scopeOf } from "./scope.ts";
-import type { CampaignScope, CampaignScopeInput } from "./scope.ts";
 import { scopedOutbound } from "./scoped-reads.ts";
 import { capNote, readsOf, stopNote } from "./tracked-reads.ts";
 import type { Cap } from "./tracked-reads.ts";

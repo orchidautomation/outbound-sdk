@@ -13,22 +13,19 @@ import type {
   OutboundApi,
 } from "../internal/outbound/api.ts";
 import type { OutboundPlugin } from "../internal/outbound/plugins.ts";
+import { parseScope } from "../internal/scope/rule.ts";
 import { stableId } from "../internal/sha256.ts";
-
-export interface Checkpoint {
-  /** Where an unfinished run stopped. Absent between runs. */
-  readonly cursor?: string | undefined;
-  /** The start time of the last run that finished, ISO 8601 UTC. */
-  readonly since?: string | undefined;
-  /** When the unfinished run started, kept so it can become `since`. */
-  readonly startedAt?: string | undefined;
-}
-
-export interface CheckpointStore {
-  readonly get: (key: string) => Promise<Checkpoint | undefined>;
-  readonly set: (key: string, checkpoint: Checkpoint) => Promise<void>;
-  readonly delete: (key: string) => Promise<void>;
-}
+import { runScoped } from "./scoped.ts";
+import type {
+  Checkpoint,
+  CheckpointStore,
+  SyncCollection,
+  SyncExtension,
+  SyncFilter,
+  SyncOptions,
+  SyncPluginOptions,
+  SyncResult,
+} from "./types.ts";
 
 /** A checkpoint store in this process's memory, for tests and one-off scripts. */
 export const memoryCheckpointStore = (): CheckpointStore => {
@@ -48,81 +45,6 @@ export const memoryCheckpointStore = (): CheckpointStore => {
     },
   };
 };
-
-export type SyncCollection =
-  | "campaigns"
-  | "leads"
-  | "messages"
-  | "replies"
-  | "senders";
-
-export interface SyncOptions<Item extends Entity = Entity> {
-  /** Sync one campaign's records only. */
-  readonly campaignId?: string | undefined;
-  /** Receives each page. The checkpoint moves only after it resolves. */
-  readonly onPage: (items: readonly Item[]) => void | Promise<void>;
-  /** Stop after this many pages; the next run resumes from the checkpoint. */
-  readonly maxPages?: number | undefined;
-  /** Records per page. */
-  readonly limit?: number | undefined;
-}
-
-export interface SyncResult {
-  readonly collection: SyncCollection;
-  readonly records: number;
-  readonly pages: number;
-  /** `true` when this run continued one that had not finished. */
-  readonly resumed: boolean;
-  /**
-   * The lower bound this run asked for, when the collection can filter by
-   * date. It is a creation time: a record created before it and changed
-   * since is not read again.
-   */
-  readonly since: string | undefined;
-  /** `false` when the run stopped at `maxPages` with more to read. */
-  readonly complete: boolean;
-  /** Vendor requests this run made. */
-  readonly requests: number;
-  /** Milliseconds this run waited for the rate budget. */
-  readonly throttledMs: number;
-  /**
-   * Who applied `since`: `server` the vendor, so only newer records were
-   * read; `client` the SDK, after reading every record, so the run cost a
-   * full walk; `none` when no date filter applied (a first run, or a
-   * collection with no date).
-   */
-  readonly filter: SyncFilter;
-  /** What to know about this run, such as a date filter that cost a full walk. */
-  readonly notes: readonly string[];
-}
-
-export type SyncFilter = "client" | "none" | "server";
-
-export interface SyncPluginOptions {
-  readonly checkpoints: CheckpointStore;
-  /**
-   * How far each run reaches back before the last one, in minutes, because
-   * new records can land mid-listing. Defaults to 5.
-   */
-  readonly overlapMinutes?: number | undefined;
-  /** The clock, for tests. */
-  readonly now?: (() => number) | undefined;
-}
-
-export interface SyncExtension {
-  readonly sync: {
-    // The item type follows the collection at the call site.
-    readonly run: <Item extends Entity = Entity>(
-      collection: SyncCollection,
-      options: SyncOptions<Item>
-    ) => Promise<SyncResult>;
-    /** Forgets a collection's checkpoint, so the next run starts over. */
-    readonly reset: (
-      collection: SyncCollection,
-      campaignId?: string
-    ) => Promise<void>;
-  };
-}
 
 const COLLECTIONS: readonly string[] = [
   "campaigns",
@@ -329,8 +251,30 @@ export const sync = (
             keyFor(outbound, collection, campaignId)
           );
         },
-        run: (collection, runOptions) =>
-          runSync(runner, collection, runOptions),
+        run: async (collection, runOptions) => {
+          assertCollection(outbound, collection);
+          const scope = parseScope(runOptions, "sync");
+
+          if (scope === null) {
+            return await runSync(runner, collection, runOptions);
+          }
+
+          if (runOptions.campaignId !== undefined) {
+            throw new OutboundError(
+              "Invalid",
+              "sync: give campaignId or a campaign scope (campaign_ids, tag, campaign_name), not both",
+              { provider: outbound.provider }
+            );
+          }
+
+          return await runScoped(
+            (each, perCampaign) => runSync(runner, each, perCampaign),
+            outbound,
+            collection,
+            runOptions,
+            scope
+          );
+        },
       },
     };
   },
