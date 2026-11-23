@@ -13,6 +13,7 @@ import type {
   TimeRange,
 } from "../adapter.ts";
 import type { Capabilities } from "../capabilities.ts";
+import type { Campaign } from "../entities.ts";
 import {
   idFor,
   optionalId,
@@ -94,6 +95,29 @@ const filterByTime = <Item>(
   };
 };
 
+/**
+ * Whether the campaign passes the filters the wrapper checks itself: the
+ * status where the vendor cannot filter by it, and the name and the tag
+ * always, so a vendor search that matches more loosely never widens the
+ * answer.
+ */
+const keepsCampaign = (
+  campaign: Campaign,
+  query: CampaignQuery,
+  byStatus: boolean
+): boolean => {
+  const name = query.name?.toLowerCase();
+  const tag = query.tag?.toLowerCase();
+
+  return (
+    (!byStatus || campaign.status === query.status) &&
+    (name === undefined ||
+      (campaign.name ?? "").toLowerCase().includes(name)) &&
+    (tag === undefined ||
+      campaign.tags.some((each) => each.toLowerCase() === tag))
+  );
+};
+
 const listCampaigns = async (
   target: DispatchTarget,
   query: CampaignQuery
@@ -103,19 +127,29 @@ const listCampaigns = async (
     target.ctx
   );
 
-  if (
-    target.capabilities["campaigns.status"] !== "client" ||
-    query.status === undefined
-  ) {
+  const { capabilities } = target;
+
+  const byStatus =
+    capabilities["campaigns.status"] === "client" && query.status !== undefined;
+
+  if (!byStatus && query.name === undefined && query.tag === undefined) {
     return output(page);
   }
 
+  const derived =
+    byStatus ||
+    (query.name !== undefined &&
+      capabilities["campaigns.byName"] === "client") ||
+    (query.tag !== undefined && capabilities["campaigns.byTag"] === "client");
+
   return output(
     {
-      items: page.items.filter((campaign) => campaign.status === query.status),
+      items: page.items.filter((campaign) =>
+        keepsCampaign(campaign, query, byStatus)
+      ),
       next: page.next,
     },
-    true
+    derived
   );
 };
 

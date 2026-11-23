@@ -41,6 +41,12 @@ export const TAG_PAGES = 10;
 
 export const capabilities: CapabilityDeclaration = {
   blocklist: true,
+  // GET /campaigns?search=, which matched any part of a name, ignoring case,
+  // in a live read on 2026-11-23.
+  "campaigns.byName": "server",
+  // GET /custom-tags?search= finds the tag's id, then GET
+  // /campaigns?tag_ids= lists only the campaigns that carry it.
+  "campaigns.byTag": "server",
   // GET /account-campaign-mappings/{email}.
   "campaigns.bySender": true,
   // GET /campaigns/analytics for one id: leads_count and completed_count;
@@ -187,7 +193,13 @@ export const costs = {
   // The campaign, its tag assignments, then the tags' names.
   "campaigns.get": { perPage: 3 },
   // The campaigns, their tag assignments, then the tags' names.
-  "campaigns.list": { pageSize: PAGE_SIZE, perPage: 3, perWalk: 1 },
+  // A page whose tag assignments fill a page reads them again in halves.
+  "campaigns.list": {
+    pageSize: PAGE_SIZE,
+    perPage: 3,
+    perPageAtMost: 5,
+    perWalk: 1,
+  },
   // The per-campaign report, asked for one campaign, then the leads not
   // contacted, to count the skipped ones: usually one page, at most
   // SKIPPED_PAGES_AT_MOST.

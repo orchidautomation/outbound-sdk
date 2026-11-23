@@ -53,7 +53,9 @@ export interface MemoryOptions {
 
 const FULL_CAPABILITIES: CapabilityDeclaration = {
   blocklist: true,
+  "campaigns.byName": "client",
   "campaigns.bySender": true,
+  "campaigns.byTag": "client",
   "campaigns.progress": true,
   "campaigns.settings": true,
   "campaigns.status": "server",

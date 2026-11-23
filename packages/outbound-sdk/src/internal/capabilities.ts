@@ -13,6 +13,10 @@ export type StatGrade = "derived" | "exact" | false;
 export interface Capabilities {
   /** Filter campaigns by status. */
   "campaigns.status": FilterGrade;
+  /** Filter campaigns by a text their name contains. */
+  "campaigns.byName": FilterGrade;
+  /** Filter campaigns by one of their tags. */
+  "campaigns.byTag": FilterGrade;
   /** List the campaigns one sender is attached to. */
   "campaigns.bySender": boolean;
   /** How many of a campaign's leads are waiting, in progress, finished or stopped. */
@@ -127,7 +131,9 @@ type CapabilityValue = Capabilities[CapabilityKey];
 
 export const NO_CAPABILITIES: Capabilities = {
   blocklist: false,
+  "campaigns.byName": false,
   "campaigns.bySender": false,
+  "campaigns.byTag": false,
   "campaigns.progress": false,
   "campaigns.settings": false,
   "campaigns.status": false,
