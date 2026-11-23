@@ -106,8 +106,8 @@ test("heyreach: replies are the lead's messages only, and an untagged lead's hav
       reply.isAuto,
     ]),
     [
-      ["in", "Happy to chat. Send me details.", "unknown", null, null],
-      ["in", "Not interested right now.", "unknown", null, null],
+      ["in", "Happy to chat. Send me details.", "unknown", null, false],
+      ["in", "Not interested right now.", "unknown", null, false],
     ]
   );
 

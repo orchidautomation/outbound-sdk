@@ -216,6 +216,7 @@ export const suite: AdapterSuite = {
         "listEmails.json holds sent emails only; auto-replies.test.ts reads received ones",
       isAutoSource:
         "listEmails.json holds sent emails only; auto-replies.test.ts reads received ones",
+      rule: "listEmails.json holds sent emails only; auto-replies.test.ts reads received ones",
       senderRef:
         "the documented example's eaccount is the placeholder eaccount-123, not an address",
     },

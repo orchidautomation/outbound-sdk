@@ -171,6 +171,21 @@ export type {
   Rate,
 } from "./internal/metrics.ts";
 
+export {
+  AUTO_REPLY_WITHIN_MS,
+  detectAutoReply,
+  detectBounce,
+} from "./internal/auto-reply.ts";
+
+export type {
+  AutoReplyInput,
+  AutoReplyReason,
+  AutoReplyVerdict,
+  BounceReason,
+  BounceVerdict,
+  ReplyRule,
+} from "./internal/auto-reply.ts";
+
 export { makeRef, parseRef } from "./internal/ref.ts";
 
 export { profileSlug } from "./internal/url.ts";

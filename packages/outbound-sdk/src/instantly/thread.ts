@@ -16,10 +16,21 @@ const answering = (message: Message, answered: Message): Message => {
     next.variantKey = answered.variantKey;
   }
 
-  if (
-    message.isAutoSource !== "vendor" &&
-    answeredAtOnce(answered.sentAt, message.sentAt)
-  ) {
+  if (!answeredAtOnce(answered.sentAt, message.sentAt)) {
+    return next;
+  }
+
+  // The timing rule is a rule: it joins the rules' verdict, and decides
+  // `isAuto` unless Instantly flagged the email itself.
+  if (message.rule !== undefined && message.rule !== null) {
+    next.rule = {
+      ...message.rule,
+      autoReply: true,
+      reason: message.rule.reason ?? "answered_at_once",
+    };
+  }
+
+  if (message.isAutoSource !== "vendor") {
     next.isAuto = true;
     next.isAutoSource = "rule";
   }

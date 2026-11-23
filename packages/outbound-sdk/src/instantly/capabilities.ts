@@ -149,7 +149,12 @@ export const fields: FieldDeclaration = {
   // No email carried is_auto_reply live: a fixed rule decides, and in a
   // timeline the step comes from the send a reply answers. The Unibox link is
   // built from the thread and workspace, as Instantly's own unibox_url is.
-  message: { isAuto: "derived", isAutoSource: "derived", url: "derived" },
+  message: {
+    isAuto: "derived",
+    isAutoSource: "derived",
+    rule: "derived",
+    url: "derived",
+  },
   metricRow: {
     connectionsAccepted: false,
     connectionsSent: false,
@@ -163,6 +168,7 @@ export const fields: FieldDeclaration = {
     isAuto: "derived",
     isAutoSource: "derived",
     leftCompany: "derived",
+    rule: "derived",
     url: "derived",
   },
   sender: { linkedinUrl: false },

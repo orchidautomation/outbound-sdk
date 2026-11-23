@@ -19,6 +19,7 @@ import type {
   TimeRange,
 } from "../internal/adapter.ts";
 import type { Message, Reply } from "../internal/entities.ts";
+import { readReply, ruleSaysAuto } from "../internal/auto-reply.ts";
 import { OutboundError } from "../internal/errors.ts";
 import { field, flag, objects, text, timestamp } from "../internal/json.ts";
 import type { JsonObject } from "../internal/json.ts";
@@ -85,14 +86,44 @@ const messageFields = (
 
 const isFromLead = (raw: JsonObject): boolean => text(raw.sender) === FROM_LEAD;
 
+// HeyReach flags no message as automatic (its Generic auto-tag covers an
+// out-of-office and a neutral answer alike), so the fixed rules read the
+// lead's messages: their text, and the subject an InMail has. LinkedIn has
+// no sender address and no bounce.
+const rulesOf = (raw: JsonObject) => {
+  const { leftCompany, rule } = readReply({
+    body: text(raw.body),
+    from: null,
+    subject: text(raw.subject),
+  });
+
+  return {
+    isAuto: ruleSaysAuto(rule),
+    isAutoSource: "rule" as const,
+    leftCompany,
+    rule,
+  };
+};
+
 const toMessage = (
   scope: Scope,
   conversation: JsonObject,
   raw: JsonObject
-): Message => ({
-  ...messageFields(scope, conversation, raw),
-  direction: isFromLead(raw) ? "in" : "out",
-});
+): Message => {
+  if (!isFromLead(raw)) {
+    return { ...messageFields(scope, conversation, raw), direction: "out" };
+  }
+
+  const { isAuto, isAutoSource, rule } = rulesOf(raw);
+
+  return {
+    ...messageFields(scope, conversation, raw),
+    direction: "in",
+    isAuto,
+    isAutoSource,
+    rule,
+  };
+};
 
 // HeyReach classifies a lead from its first campaign reply and keeps the
 // result on the lead (`autoTags`), with no link to a message. Every reply of
@@ -110,7 +141,7 @@ const toReply = (
     category: category ?? "unknown",
     categorySource: category === null ? null : "lead",
     direction: "in",
-    isAuto: null,
+    ...rulesOf(raw),
     // `read` is the conversation's, not one message's.
     unread: read === null ? null : !read,
   };
