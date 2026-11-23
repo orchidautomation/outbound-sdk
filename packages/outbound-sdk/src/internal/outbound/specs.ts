@@ -21,6 +21,7 @@ import type {
   Workspace,
 } from "../entities.ts";
 import { OutboundError } from "../errors.ts";
+import { isString } from "../json.ts";
 import type {
   CampaignFilters,
   Include,
@@ -46,13 +47,53 @@ const hasRange = (filters: {
 
 const refOf = (item: { readonly ref: string }): string => item.ref;
 
+/** A text filter trimmed, refused when it holds nothing a record could match. */
+const filterText = (
+  value: string | undefined,
+  name: string
+): string | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const trimmed = isString(value) ? value.trim() : "";
+
+  if (trimmed === "") {
+    throw new OutboundError(
+      "Invalid",
+      `campaigns.list: ${name} must be a non-empty string`
+    );
+  }
+
+  return trimmed;
+};
+
 export const campaignList = (
   core: Core
 ): ListSpec<Campaign, CampaignFilters> => ({
   action: "campaigns.list",
-  takes: { senderId: true, status: true },
+  takes: { name: true, senderId: true, status: true, tag: true },
   keyOf: refOf,
   prepare: (filters) => {
+    const name = filterText(filters.name, "name");
+    const tag = filterText(filters.tag, "tag");
+
+    if (name !== undefined) {
+      requireCapability(
+        core.gate,
+        "campaigns.byName",
+        "Filtering campaigns by name"
+      );
+    }
+
+    if (tag !== undefined) {
+      requireCapability(
+        core.gate,
+        "campaigns.byTag",
+        "Filtering campaigns by tag"
+      );
+    }
+
     if (filters.status !== undefined) {
       requireCapability(
         core.gate,
@@ -69,7 +110,7 @@ export const campaignList = (
       );
     }
 
-    return { senderId: filters.senderId, status: filters.status };
+    return { name, senderId: filters.senderId, status: filters.status, tag };
   },
   schema: campaignSchema,
   toOperation: (filters, page) => ({

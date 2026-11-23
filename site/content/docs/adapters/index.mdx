@@ -56,7 +56,9 @@ A filter is `server` (the vendor filters), `client` (the SDK filters after fetch
 | Capability | Instantly | Smartlead | HeyReach | EmailBison |
 | --- | --- | --- | --- | --- |
 | `blocklist` | yes | yes | yes | yes |
+| `campaigns.byName` | server | client | server | client |
 | `campaigns.bySender` | yes | yes | yes | yes |
+| `campaigns.byTag` | server | client | no | server |
 | `campaigns.progress` | yes | yes | yes | no |
 | `campaigns.settings` | yes | yes | no | yes |
 | `campaigns.status` | server | client | server | client |

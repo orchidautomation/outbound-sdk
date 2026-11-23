@@ -40,7 +40,7 @@ A value is `false` or something truthy, so `if (outbound.capabilities["leads.lis
 
 ## Every key
 
-`CAPABILITY_KEYS` is the list of all 54. `Capabilities` is the type of the map, and `CapabilityKey` the type of a key.
+`CAPABILITY_KEYS` is the list of all 56. `Capabilities` is the type of the map, and `CapabilityKey` the type of a key.
 
 ### Campaigns and sequences
 
@@ -48,6 +48,8 @@ A value is `false` or something truthy, so `if (outbound.capabilities["leads.lis
 | --- | --- | --- |
 | `campaigns.status` | `server`, `client`, `false` | The `status` filter on `campaigns.list` |
 | `campaigns.bySender` | boolean | `campaigns.list({ senderId })` and `sender(id).campaigns` |
+| `campaigns.byName` | `server`, `client`, `false` | The `name` filter on `campaigns.list` |
+| `campaigns.byTag` | `server`, `client`, `false` | The `tag` filter on `campaigns.list` |
 | `campaigns.progress` | boolean | `campaign(id).progress()` |
 | `campaigns.settings` | boolean | `campaign(id).settings()` |
 | `sequence` | boolean | `campaign(id).sequence()` |

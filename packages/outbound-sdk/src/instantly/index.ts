@@ -59,7 +59,14 @@ export const instantly = (
     PROVIDER
   );
 
-  const declared = { ...capabilities, ...options.capabilities };
+  const given: CapabilityDeclaration = {
+    ...capabilities,
+    ...options.capabilities,
+  };
+
+  // Without tags no campaign can be matched by one.
+  const declared: CapabilityDeclaration =
+    given.tags === true ? given : { ...given, "campaigns.byTag": false };
 
   const client = createClient({
     apiKey,

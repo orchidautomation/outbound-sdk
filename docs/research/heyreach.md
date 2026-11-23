@@ -40,7 +40,7 @@ Body (all optional in practice; the generated schema marks them all required):
 | --- | --- | --- |
 | `offset` | integer | default 0 |
 | `limit` | integer | max 100; default 10 (default is from the MCP tool schema) |
-| `keyword` | string | name search |
+| `keyword` | string | name search. A live read on 2026-11-23 (one workspace, counts only) found it matches any part of a name, ignoring case; the adapter sends `name` as `keyword` (OUT-199) |
 | `statuses` | string[] | see enum below |
 | `accountIds` | integer[] | sender ids |
 

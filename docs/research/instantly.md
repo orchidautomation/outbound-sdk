@@ -64,6 +64,12 @@ All documented error responses share one shape:
 
 List query params: `limit`, `starting_after`, `search` (campaign name), `tag_ids` (comma-separated), `ai_sales_agent_id`, `status`, `exclude_status`, `include_ai_sales_agent_campaigns` (boolean; AI-agent campaigns are excluded by default). There is no date filter and no sort parameter.
 
+Filtering by name and tag (OUT-199), read 2026-11-23 from https://developer.instantly.ai/api-reference/campaign/list-campaign.md and https://developer.instantly.ai/api-reference/customtag/list-custom-tag.md:
+
+- `search` is documented only as "Search by campaign name". A live read on 2026-11-23 (one workspace, counts only) found it matches any part of a name, ignoring case: a full name, the same name upper-cased, the first three letters of a word, three letters from inside a word and the second word each returned the campaign, and every campaign returned held the text. The adapter sends `name` as `search`, and the wrapper still keeps only the names that hold it.
+- `tag_ids` "Returns campaigns that have any of the specified tags assigned". It takes ids, so a tag given by name is looked up first with `GET /api/v2/custom-tags?search=<name>` ("The search query to filter custom tags"), keeping the labels equal to it ignoring case. No match means no campaign carries the tag, and no campaign is listed.
+- `GET /api/v2/custom-tag-mappings?resource_ids=<100 campaign ids>` answered a full page of 100 assignments with a next marker, and the page after it was empty, where asking 20 campaigns at a time found 105 (live, 2026-11-23, counts only). Five campaigns of 110 were listed without their tag, so `tag_rollup` and a `client_report` by tag could leave campaigns out. The adapter now reads a full page of assignments again as two halves of the campaigns until each fits a page, and follows the marker only for one campaign's own assignments. After the change the same workspace listed every one of the 32 campaigns carrying the tag checked, filtered or not.
+
 Campaign `status` is a number:
 
 | Value | Meaning              |
