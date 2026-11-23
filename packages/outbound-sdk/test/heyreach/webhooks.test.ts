@@ -43,7 +43,11 @@ test("heyreach: the documented voice note webhook maps its snake_case fields", (
   assert.equal(event.campaignRef, "heyreach:client-a:48213");
   assert.equal(event.senderRef, "heyreach:client-a:7606");
   assert.equal(event.leadRef, LEAD_REF);
-  assert.equal(event.messageRef, null, "HeyReach messages have no id");
+  assert.match(
+    event.messageRef ?? "",
+    /^heyreach:client-a:[0-9a-f]+$/u,
+    "the ref sync gives the voice note (webhook-message-ref.test.ts)"
+  );
   assert.deepEqual(event.data, {
     campaignName: "Q4 Founders Outreach",
     conversationId:

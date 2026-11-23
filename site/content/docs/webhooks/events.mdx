@@ -67,6 +67,8 @@ An event's `data` has a set of keys that mean the same on every vendor, and the 
 | `categoryName` | `string` | The vendor's own name for that category. |
 | `isAuto`, `isFirst`, `isInmail`, `isTest`, `untracked` | boolean | An automatic reply, the first event of its kind for the lead, a LinkedIn InMail, a test delivery, a reply tied to no campaign. |
 
+On HeyReach, `messageRef` is the ref sync and `messages.list` give the same message, so [`reconcile`](/docs/plugins/reconcile) can pair them. HeyReach messages have no id, so both sides hash the conversation, the send time, the side and the text. The payload carries those as `conversation_id` and `recent_messages[].creation_time`, `is_reply` and `message`. A received event names its newest reply, and a sent event names the account's newest message. `messageRef` is `null`, and reconcile counts the event as `uncheckable`, when the payload lacks `conversation_id` or a message on that side, as the third-party `message_sent` example does, or when the event is not about a message. The match rests on HeyReach's documented fields and was not checked on a live delivery.
+
 Anything else in `data` is the vendor's own, such as HeyReach's `conversationId` and `recentMessages` or Smartlead's `currentStatus` on a campaign status change.
 
 ## Idempotency

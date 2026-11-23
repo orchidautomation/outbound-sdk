@@ -1,0 +1,66 @@
+{
+  "items": [
+    {
+      "blockedByMe": false,
+      "blockedByParticipant": false,
+      "campaignId": 48213,
+      "correspondentProfile": {
+        "about": "Example bio",
+        "autoTags": [],
+        "companyName": "Example Co",
+        "companyUrl": "https://www.linkedin.com/company/example-co",
+        "connections": 500,
+        "firstName": "Alex",
+        "followers": 120,
+        "headline": "Founder at Example Co",
+        "imageUrl": "https://media.example.com/p1.jpg",
+        "lastName": "Example",
+        "linkedin_id": "ACoAAExample1",
+        "location": "Example City",
+        "position": "Founder",
+        "profileUrl": "https://www.linkedin.com/in/example-person-1",
+        "tags": []
+      },
+      "groupChat": false,
+      "id": "2-YTNjMDM4ZjctOGVmMS00NTBmLTgzOWMtMGNlZGUwNGY5MTJlXzAxMg==",
+      "lastMessageAt": "2026-11-10T09:14:03Z",
+      "lastMessageSender": "CORRESPONDENT",
+      "lastMessageText": "",
+      "lastMessageType": "VOICE",
+      "linkedInAccount": {
+        "authIsValid": true,
+        "emailAddress": "sender1@example.com",
+        "firstName": "Sam",
+        "id": 7606,
+        "isValidNavigator": false,
+        "isValidRecruiter": false,
+        "lastName": "Sender",
+        "profileUrl": "https://www.linkedin.com/in/example-sender-1"
+      },
+      "linkedInAccountId": 7606,
+      "messages": [
+        {
+          "body": "Hi Alex, would a short call next week work?",
+          "createdAt": "2026-11-09T15:02:00Z",
+          "isInMail": false,
+          "postLink": null,
+          "sender": "ME",
+          "subject": null
+        },
+        {
+          "body": "",
+          "createdAt": "2026-11-10T09:14:03Z",
+          "isInMail": false,
+          "postLink": null,
+          "sender": "CORRESPONDENT",
+          "subject": null
+        }
+      ],
+      "read": true,
+      "totalMessages": 2
+    }
+  ],
+  "totalCount": 1,
+  "hasNextPage": false,
+  "nextCursor": null
+}
