@@ -114,18 +114,46 @@ const readPage = async (
   };
 };
 
-/** One page of one campaign's conversations, as HeyReach filters them. */
+// HeyReach can list a campaign it can no longer open: GetAll returns it, but
+// a conversation filter naming it, alone or with others, answers 400 "The
+// campaign you are trying to open does not exist." (seen live 2026-11-23, on
+// a draft that GetById answers 404 for). Such a campaign has no conversation,
+// and reading it is `NotFound`, as reading the campaign itself is.
+const GONE = /campaign you are trying to open does not exist/iu;
+
+/**
+ * One page of one campaign's conversations, as HeyReach filters them.
+ * `NotFound` for a campaign HeyReach lists but cannot open.
+ */
 export const campaignConversations = async (
   client: HeyReachClient,
   ctx: AdapterContext,
   query: ConversationQuery & { readonly campaignId: string }
 ): Promise<ConversationPage> => {
   const id = numeric(query.campaignId);
+  let page: Awaited<ReturnType<typeof readPage>>;
 
-  const page = await readPage(client, ctx, query, {
-    campaignIds: id === null ? undefined : [id],
-    cursor: isString(query.next) && query.next !== "" ? query.next : undefined,
-  });
+  try {
+    page = await readPage(client, ctx, query, {
+      campaignIds: id === null ? undefined : [id],
+      cursor:
+        isString(query.next) && query.next !== "" ? query.next : undefined,
+    });
+  } catch (error) {
+    if (
+      !OutboundError.is(error) ||
+      error.status !== 400 ||
+      !GONE.test(error.message)
+    ) {
+      throw error;
+    }
+
+    throw new OutboundError(
+      "NotFound",
+      `HeyReach lists campaign ${query.campaignId} but cannot open it: "${error.message}"`,
+      { cause: error, provider: client.identity.provider, status: 400 }
+    );
+  }
 
   return {
     items: page.conversations.map((conversation) => ({
@@ -290,12 +318,6 @@ const inboxPage = async (
   };
 };
 
-// HeyReach can list a campaign it can no longer open: GetAll returns it, but
-// a conversation filter naming it, alone or with others, answers 400 "The
-// campaign you are trying to open does not exist." (seen live 2026-11-23, on
-// a draft that GetById answers 404 for). Such a campaign has no conversation.
-const GONE = /campaign you are trying to open does not exist/iu;
-
 // One page of the campaign the walk is at, and where the walk goes next. A
 // campaign HeyReach cannot open is left out of the walk, so the inbox's
 // filter does not name it either.
@@ -323,8 +345,8 @@ const campaignPage = async (
   } catch (error) {
     if (
       !OutboundError.is(error) ||
-      error.status !== 400 ||
-      !GONE.test(error.message)
+      error.code !== "NotFound" ||
+      error.status !== 400
     ) {
       throw error;
     }
