@@ -144,13 +144,18 @@ const oneTool = async (
     return kept;
   }
 
-  const name =
-    outbound.capabilities["campaigns.byName"] === false
-      ? undefined
-      : scope.name?.hint;
+  // Only what the vendor filters is sent. What it cannot is matched below by
+  // the scope's fixed rule, over a listing read whole, which keeps it exact.
+  const { capabilities } = outbound;
 
   const listed = await reads.all(
-    outbound.campaigns.listAll({ name, tag: scope.tag })
+    outbound.campaigns.listAll({
+      name:
+        capabilities["campaigns.byName"] === "server"
+          ? scope.name?.hint
+          : undefined,
+      tag: capabilities["campaigns.byTag"] === "server" ? scope.tag : undefined,
+    })
   );
 
   const kept = listed.filter((campaign) => admits(scope, campaign));
