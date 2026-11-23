@@ -188,10 +188,14 @@ export const detectBounce = (input: AutoReplyInput): BounceVerdict => {
   return { bounce: reason !== null, reason };
 };
 
+/** Both rules' reading of one message: `rule` as an adapter keeps it, and `leftCompany`. */
+export interface ReplyReading {
+  readonly leftCompany: boolean;
+  readonly rule: ReplyRule;
+}
+
 /** Both rules on one message, as an adapter keeps them in `rule`, with `leftCompany` beside. */
-export const readReply = (
-  input: AutoReplyInput
-): { readonly rule: ReplyRule; readonly leftCompany: boolean } => {
+export const readReply = (input: AutoReplyInput): ReplyReading => {
   const auto = detectAutoReply(input);
   const bounce = detectBounce(input);
 

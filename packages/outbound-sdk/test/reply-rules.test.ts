@@ -164,7 +164,7 @@ const withLeadSaying = (body: string) => ({
   })),
 });
 
-const heyreachReplies = async (body: string) => {
+const heyreachReplies = (body: string) => {
   const { outbound, settle } = harness(heyreach, (request) =>
     new URL(request.url).pathname === "/api/public/inbox/GetConversationsV3"
       ? Response.json(withLeadSaying(body))
