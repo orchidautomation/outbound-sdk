@@ -1,0 +1,2 @@
+positive leads: [ 'ana@example.com' ]
+sent by hand: [ 'memory:default:m2' ]

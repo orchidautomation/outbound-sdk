@@ -132,6 +132,31 @@ const selectMessages = (
       (!filtersByTime(store, key) || within(message.sentAt, query))
   );
 
+/** The latest message of each conversation that holds a reply. */
+const latestOfReplied = (
+  messages: readonly MemoryMessage[]
+): MemoryMessage[] => {
+  const latest = new Map<string, MemoryMessage>();
+  const replied = new Set<string>();
+
+  for (const message of messages) {
+    const thread = message.threadId ?? message.id;
+    const kept = latest.get(thread);
+
+    if (message.direction === "in") {
+      replied.add(thread);
+    }
+
+    if (kept === undefined || message.sentAt > kept.sentAt) {
+      latest.set(thread, message);
+    }
+  }
+
+  return [...latest].flatMap(([thread, message]) =>
+    replied.has(thread) ? [message] : []
+  );
+};
+
 const selectLeads = (store: Store, query: LeadQuery): MemoryLead[] =>
   (store.data.leads ?? []).filter(
     (lead) =>
@@ -141,6 +166,8 @@ const selectLeads = (store: Store, query: LeadQuery): MemoryLead[] =>
         (lead.listIds ?? []).includes(query.listId)) &&
       (query.email === undefined ||
         lead.email?.trim().toLowerCase() === query.email) &&
+      (query.emails === undefined ||
+        query.emails.includes(lead.email?.trim().toLowerCase() ?? "")) &&
       (query.domain === undefined ||
         lead.email?.trim().toLowerCase().split("@").at(-1) === query.domain) &&
       (query.linkedinUrl === undefined ||
@@ -154,7 +181,10 @@ const selectedLeads = (store: Store, query: LeadQuery): Lead[] =>
   selectLeads(store, query)
     .map((seed) => toLead(store.identity, seed))
     .filter(
-      (lead) => query.status === undefined || lead.status === query.status
+      (lead) =>
+        (query.status === undefined || lead.status === query.status) &&
+        (query.interest === undefined ||
+          lead.interestCategory === query.interest)
     );
 
 type Getters = Pick<
@@ -239,10 +269,19 @@ const listers = (store: Store): Listers => {
       ),
     listLeads: (query) =>
       Promise.resolve(paginate(selectedLeads(store, query), query, pageSize)),
-    listMessages: (query) =>
-      Promise.resolve(
+    listMessages: (query) => {
+      const selected = selectMessages(store, query, "messages.since").filter(
+        (seed) =>
+          query.byHand === undefined ||
+          (seed.direction === "out" && seed.byHand === true)
+      );
+
+      return Promise.resolve(
         paginate(
-          selectMessages(store, query, "messages.since").map((seed) =>
+          (query.latestOfConversation === true
+            ? latestOfReplied(selected)
+            : selected
+          ).map((seed) =>
             toMessage(
               identity,
               seed,
@@ -253,7 +292,8 @@ const listers = (store: Store): Listers => {
           query,
           pageSize
         )
-      ),
+      );
+    },
     listReplies: (query) =>
       Promise.resolve(
         paginate(
