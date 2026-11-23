@@ -55,6 +55,20 @@ Neither vendor signs its payloads. You choose a long random value, put it where 
 
 A shared secret proves the sender knows the secret. It does not prove the body was not changed on the way, and a captured request can be sent again. Use HTTPS, and prefer a header to the URL where the vendor lets you set one, because URLs are commonly written to access logs.
 
+### A secret in the URL path
+
+For a vendor that does not sign, the simplest place for the secret is a segment of the webhook URL. Generate it once with a cryptographic random source, keep it with your other secrets, and register `https://your.app/hooks/<vendor>/<secret>` with the vendor. On each delivery, compare the segment to the stored value in constant time with `timingSafeEqual` from `outbound-sdk/webhooks`, never with `===`, which stops at the first different character and so tells a guesser how much was right. `parse` with `secret` does this comparison for you.
+
+<include meta='title="path-secret.ts"'>
+  ../../_examples/webhooks-verification/path-secret.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/webhooks-verification/path-secret.out.txt
+</include>
+
+To rotate the secret, register a second URL with the new one, accept both for a while, then delete the old webhook. Smartlead is different: it signs each delivery with a `whsec_` secret that an admin supplies when turning signing on, so there you check the signature, as below, and need no secret in the URL.
+
 ## A signature: Smartlead
 
 Smartlead can sign a webhook following the Standard Webhooks specification. Signing is off until you turn it on for the webhook in Smartlead. Pass the webhook's `whsec_` secret as `secret`. `parse` then requires:

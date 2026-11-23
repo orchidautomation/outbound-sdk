@@ -36,8 +36,23 @@ import type {
 } from "./conversations.ts";
 import { interestCategory } from "./map.ts";
 
-/** The lead's side of a thread. The account's own side is "ME". */
-const FROM_LEAD = "CORRESPONDENT";
+/** The lead's side of a thread. */
+export const FROM_LEAD = "CORRESPONDENT";
+
+/** The account's own side of a thread. */
+export const FROM_ACCOUNT = "ME";
+
+/**
+ * A message's id. Messages have no id: the conversation, the time, the side
+ * and the text identify one, and stay the same every time the thread is
+ * read. Webhook events name their message by the same id.
+ */
+export const messageId = (
+  conversationId: string,
+  sentAt: string | null,
+  sender: string | null,
+  body: string | null
+): string => stableId(conversationId, sentAt, sender, body);
 
 interface Scope {
   readonly identity: Identity;
@@ -54,9 +69,13 @@ const messageFields = (
   const conversationId = text(conversation.id) ?? "";
   const accountId = text(conversation.linkedInAccountId);
   const sentAt = timestamp(raw.createdAt);
-  // Messages have no id. The conversation, the time, the side and the text
-  // identify one, and stay the same every time the thread is read.
-  const id = stableId(conversationId, sentAt, text(raw.sender), text(raw.body));
+
+  const id = messageId(
+    conversationId,
+    sentAt,
+    text(raw.sender),
+    text(raw.body)
+  );
 
   return {
     ...recordBase(scope.identity, id, raw),

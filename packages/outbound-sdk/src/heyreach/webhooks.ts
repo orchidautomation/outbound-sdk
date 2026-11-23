@@ -3,6 +3,8 @@
 // Webhook payloads are snake_case (the REST API is camelCase) and are not
 // signed. Only `voice_note_received` has a documented payload; the fields read
 // here are the ones that payload defines. One webhook carries one event type.
+// A message event's messageRef is the ref the REST mapping gives the message,
+// from the same fields (docs/research/heyreach.md).
 
 import type { EventFormat, WebhookRequest } from "../internal/adapter.ts";
 import { SCHEMA_VERSION } from "../internal/entities.ts";
@@ -27,6 +29,7 @@ import type { Json, JsonObject } from "../internal/json.ts";
 import { eventData, refTo } from "../internal/record.ts";
 import type { Identity } from "../internal/record.ts";
 import { stableId } from "../internal/sha256.ts";
+import { FROM_ACCOUNT, FROM_LEAD, messageId } from "./inbox.ts";
 
 // The 13 documented event types, by the lowercase name the payload carries.
 // Follows, post likes and profile views have no normalized type.
@@ -82,11 +85,53 @@ const dataOf = (name: string, body: JsonObject): EventData => {
   );
 };
 
+/**
+ * The ref sync gives the message an event is about: its id hashes the
+ * conversation, the send time, the side and the text, which the payload
+ * carries as `conversation_id` and `recent_messages`. A received event
+ * names the newest reply, a sent one the newest message of the account.
+ * `null` for other events, or when the payload lacks one of those fields.
+ */
+const messageRefOf = (
+  identity: Identity,
+  type: EventType,
+  body: JsonObject
+): string | null => {
+  const received = type === "linkedin.message_received";
+
+  if (!received && type !== "linkedin.message_sent") {
+    return null;
+  }
+
+  const conversationId = text(body.conversation_id);
+
+  const message = objects(body.recent_messages).findLast(
+    (each) => flag(each.is_reply) === received
+  );
+
+  const sentAt = timestamp(message?.creation_time);
+
+  if (conversationId === null || message === undefined || sentAt === null) {
+    return null;
+  }
+
+  return refTo(
+    identity,
+    messageId(
+      conversationId,
+      sentAt,
+      received ? FROM_LEAD : FROM_ACCOUNT,
+      text(message.message)
+    )
+  );
+};
+
 const toEvent = (identity: Identity, body: JsonObject): OutboundEvent => {
   const name = text(body.event_type) ?? "";
   const occurredAt = timestamp(body.timestamp);
   const correlation = text(body.correlation_id);
   const leadUrl = text(field(body.lead, "profile_url"));
+  const type = EVENT_TYPES.get(name.toLowerCase()) ?? "unknown";
 
   return {
     campaignRef: refTo(identity, text(field(body.campaign, "id"))),
@@ -105,14 +150,13 @@ const toEvent = (identity: Identity, body: JsonObject): OutboundEvent => {
         : stableId(identity.provider, name, correlation),
     // A lead's id is its profile URL, as in the REST mapping.
     leadRef: refTo(identity, leadUrl),
-    // Messages have no id in HeyReach.
-    messageRef: null,
+    messageRef: messageRefOf(identity, type, body),
     occurredAt,
     provider: identity.provider,
     raw: body,
     schemaVersion: SCHEMA_VERSION,
     senderRef: refTo(identity, text(field(body.sender, "id"))),
-    type: EVENT_TYPES.get(name.toLowerCase()) ?? "unknown",
+    type,
     workspaceId: identity.workspaceId,
   };
 };
