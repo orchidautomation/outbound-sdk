@@ -54,13 +54,14 @@ The combined instance's capabilities are the weakest value of each key across it
 
 An insight or a built-in tool given one `campaign` is the exception: it runs on the member that campaign belongs to, so that member's capabilities apply. `step_funnel` on an Instantly campaign works beside HeyReach, and on a HeyReach campaign it is refused naming `heyreach`, before any request. So that a model is offered them, `insightTools` and `createTools` take `members`, each member as its own instance (`membersOf(outbound)` from `outbound-sdk/insights`): with it a tool that takes a `campaign` is offered when one member can serve it, and an insight that reads every campaign, such as `settings_audit`, is offered when exactly one member can, and answers for that member with `meta.complete: false` and a note naming the others. The CLI and `outbound mcp` pass it.
 
-Three keys do not follow the weakest member:
+Four keys do not follow the weakest member:
 
 | Capability | On a combined instance | Why |
 | --- | --- | --- |
 | `workspaces` | always `yes` | Its workspaces are its members. Listing them makes no request. |
 | `native` | always `no` | A native read belongs to one vendor. |
 | `messages.byThread` | `yes` when any member reads threads | A thread id is the vendor's own and names no member, so `outbound.thread(id)` asks each member that reads threads, side by side. A member that cannot take the id, such as HeyReach given an Instantly thread id, holds no such thread. |
+| `replies.inbox` | `yes` when any member has conversations in no campaign | `replies.list({ includeInbox: true })` asks only those members for them; the others list their campaign replies as always. |
 
 ### Listings read every member at once
 

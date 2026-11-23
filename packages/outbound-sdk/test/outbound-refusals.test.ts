@@ -180,3 +180,23 @@ test("exists and getMany still report a failure that is not a missing record", a
   assert.equal(many.errors[0]?.error.code, "Invalid");
   assert.deepEqual(errors, ["campaigns.get", "campaigns.get"]);
 });
+
+test("replies.list with includeInbox is refused before any read where the tool has no inbox, and lists where it has one", async () => {
+  const data = demoData({ now: "2026-10-08T12:00:00.000Z" });
+  const without = createOutbound({ adapter: memory({ data }) });
+
+  const error = await rejection(() =>
+    without.replies.list({ includeInbox: true })
+  );
+
+  assert.equal(error.code, "Unsupported");
+  assert.match(error.message, /replies\.inbox/u);
+
+  const withInbox = createOutbound({
+    adapter: memory({ capabilities: { "replies.inbox": true }, data }),
+  });
+
+  const page = await withInbox.replies.list({ includeInbox: true });
+
+  assert.ok(page.items.length > 0);
+});

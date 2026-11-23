@@ -9,7 +9,6 @@ messages.byHand: off when combined, on for instantly
 messages.latestOfConversation: off when combined, on for instantly
 native: off when combined, on for instantly and heyreach
 placementTests.list: off when combined, on for instantly
-replies.inbox: off when combined, on for heyreach
 senders.healthList: off when combined, on for instantly
 senders.warmup: off when combined, on for instantly
 sequence.subsequences: off when combined, on for instantly
