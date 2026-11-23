@@ -24,6 +24,7 @@
 | `listInboxReplies.history.json` | Built from the "with message history" example, whose items are elided with `{...}`: the thread fields come from the first example, and a second inbound message and a `lead.id` were added. |
 | `analyticsMailboxNameWiseHealth.json` | The docs example has 1 row; a second was added, and the first mailbox's address is in mixed case. |
 | `getLeadByEmail.json` | The documented example of `GET /leads/?email=`, with a second campaign added whose `lead_category_id` is `null`. The campaign ids are those of `listCampaigns.json`. |
+| `listAllLeadsActivities.campaigns.json` | Four rows in the documented row shape of `GET /campaigns/all-leads-activities` (`listAllLeadsActivities.json`'s first row), one page (`hasMore: false`): two of campaign 2710262 and one of 2710100, the campaigns of `listCampaigns.json`, and one of campaign 999, which that listing does not hold. Rows 2 and 4 have no reply. Added 2026-11-23 for OUT-212. |
 | `listCampaigns.subsequences.json` | `listCampaigns.json` plus three child campaigns (`parent_campaign_id` set): two of campaign 372 and one of another campaign. No documented example shows a child campaign. |
 
 All personal data was replaced with fakes (`personN@example.com`, "Alex Example", "Example Co", `example.com`). No fixture comes from a live API call. Field names are copied from the docs.

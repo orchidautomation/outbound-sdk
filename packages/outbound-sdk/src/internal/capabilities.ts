@@ -67,6 +67,12 @@ export interface Capabilities {
   /** Whether message bodies are returned: all, some, or none. */
   "messages.body": "full" | "sampled" | false;
   "messages.since": FilterGrade;
+  /**
+   * Who filters messages by campaign: `server` the vendor, so a campaign's
+   * read lists only its messages; `client` the SDK, after reading every
+   * campaign's. Nothing is refused: `false` means not declared.
+   */
+  "messages.byCampaign": FilterGrade;
   /** Every message of one conversation, by its thread id. */
   "messages.byThread": boolean;
   /** Only the messages a person sent by hand, not the ones a campaign sent. */
@@ -77,6 +83,8 @@ export interface Capabilities {
   /** Reply categories come from the vendor, or are not available. */
   "replies.category": "vendor" | false;
   "replies.since": FilterGrade;
+  /** Who filters replies by campaign, graded as `messages.byCampaign`. */
+  "replies.byCampaign": FilterGrade;
   /** Only the replies that are unread, or only the ones that are read. */
   "replies.unread": FilterGrade;
   /**
@@ -155,6 +163,7 @@ export const NO_CAPABILITIES: Capabilities = {
   "lists.leads": false,
   "lists.list": false,
   "messages.body": false,
+  "messages.byCampaign": false,
   "messages.byHand": false,
   "messages.byThread": false,
   "messages.latestOfConversation": false,
@@ -162,6 +171,7 @@ export const NO_CAPABILITIES: Capabilities = {
   "messages.since": false,
   native: false,
   "placementTests.list": false,
+  "replies.byCampaign": false,
   "replies.category": false,
   "replies.list": false,
   "replies.inbox": false,

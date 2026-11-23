@@ -60,11 +60,15 @@ export const capabilities: CapabilityDeclaration = {
   // GET /api/replies/{id}/conversation-thread: the thread around one reply.
   "messages.byThread": true,
   // Sent campaign emails: GET /api/scheduled-emails?status=sent.
+  // campaign_ids on GET /api/scheduled-emails.
+  "messages.byCampaign": "server",
   "messages.list": true,
   "messages.since": "client",
   native: true,
   // `interested` and `automated_reply` on each reply.
   "replies.category": "vendor",
+  // campaign_id on GET /api/replies.
+  "replies.byCampaign": "server",
   "replies.list": true,
   // The inbox has no dated filter.
   "replies.since": "client",

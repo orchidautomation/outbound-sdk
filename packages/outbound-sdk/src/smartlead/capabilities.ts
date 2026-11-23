@@ -76,12 +76,17 @@ export const capabilities: CapabilityDeclaration = {
   "messages.body": "full",
   // GET /master-inbox/{id}: the id is the lead-in-campaign mapping id.
   "messages.byThread": true,
+  // GET /campaigns/all-leads-activities takes no campaign, so the adapter
+  // keeps the rows of the campaign asked for after reading the whole feed.
+  "messages.byCampaign": "client",
   "messages.list": true,
   // event_time_from narrows the feed; the wrapper filters on the send time.
   "messages.since": "client",
   // The reads with no normalized form, by name: see native.ts.
   native: true,
   "replies.category": "vendor",
+  // filters.campaignId on POST /master-inbox/inbox-replies.
+  "replies.byCampaign": "server",
   "replies.list": true,
   // replyTimeBetween narrows the inbox; the wrapper filters on the reply time.
   // A thread carries is_read, and the inbox has no filter for it.
@@ -241,7 +246,7 @@ export const caveats: readonly string[] = [
   "No endpoint finds a lead by LinkedIn profile: leads.list({ linkedinUrl }) returns nothing and sends no request.",
   "A lead's status, campaign and creation time are per campaign; leads.get returns no campaign and its example looks illustrative.",
   "STOPPED maps to paused. A lead's status BLOCKED, which Smartlead describes as bounced or on the block list, sets bounced and leaves progress unknown. A block-listed lead that was never sent to is therefore counted as bounced too: no documented lead field tells the two apart (email_stats.is_bounced and last_sent_time appear only on a reference page whose shape conflicts with the others), and the block list itself takes entries from bounces. Read from the documentation on 2026-11-16 only. unsubscribed is is_unsubscribed. replied is email_stats.is_replied, which only leads.get carries, so a listed lead's replied is null.",
-  "Messages come from GET /campaigns/all-leads-activities (10 requests per 60 s, no campaign filter, pages of leads): campaign(id).messages reads the whole feed, and thread_replies is not read.",
+  "Messages come from GET /campaigns/all-leads-activities (10 requests per 60 s, no campaign filter, pages of leads): campaign(id).messages reads the whole feed, and thread_replies is not read. A scoped sync of messages reads the feed once and splits it by campaign.",
   "senderRef is null on feed and history messages (mailbox named by address). leadRef on replies and thread messages needs lead.id or lead_id on the thread; documented examples show an address only.",
   "threadId is the lead-in-campaign mapping id; history messages have none. GET /master-inbox/{id} is documented without message ids or bodies; older history items are accepted too.",
   "A lead's timeline follows the older documentation's { history, from, to } shape.",

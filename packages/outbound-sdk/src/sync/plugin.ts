@@ -6,30 +6,26 @@
 
 import type { Entity } from "../internal/entities-account.ts";
 import { OutboundError } from "../internal/errors.ts";
-import type {
-  CampaignFilters,
-  LeadFilters,
-  ListAll,
-  OutboundApi,
-} from "../internal/outbound/api.ts";
+import type { OutboundApi } from "../internal/outbound/api.ts";
 import type { OutboundPlugin } from "../internal/outbound/plugins.ts";
 import { makeRef, parseRef } from "../internal/ref.ts";
 import { findScope } from "../internal/scope/resolve.ts";
 import type { ResolvedScope } from "../internal/scope/resolve.ts";
 import { parseScope } from "../internal/scope/rule.ts";
-import { stableId } from "../internal/sha256.ts";
 import { inboxLeftOut } from "./inbox.ts";
 import { runScoped } from "./scoped.ts";
+import { runSplit, splitsByCampaign } from "./split.ts";
 import type {
   Checkpoint,
   CheckpointStore,
   SyncCollection,
   SyncExtension,
-  SyncFilter,
   SyncOptions,
   SyncPluginOptions,
   SyncResult,
 } from "./types.ts";
+import { dateNote, keyFor, overlapped, walkFor } from "./walk.ts";
+import type { Runner } from "./walk.ts";
 
 /** A checkpoint store in this process's memory, for tests and one-off scripts. */
 export const memoryCheckpointStore = (): CheckpointStore => {
@@ -92,80 +88,6 @@ const assertResolved = (
   return resolved;
 };
 
-interface Walk {
-  readonly since: string | undefined;
-  readonly filter: SyncFilter;
-  readonly start: (cursor: string | undefined) => ListAll<Entity>;
-}
-
-const SINCE_CAPABILITY = {
-  leads: "leads.since",
-  messages: "messages.since",
-  replies: "replies.since",
-} as const;
-
-const walkFor = <Item extends Entity>(
-  outbound: OutboundApi,
-  collection: SyncCollection,
-  options: SyncOptions<Item>,
-  since: string | undefined
-): Walk => {
-  const { campaignId, limit } = options;
-  const dated = collection !== "campaigns" && collection !== "senders";
-
-  const grade = dated
-    ? outbound.capabilities[SINCE_CAPABILITY[collection]]
-    : false;
-
-  const filter = grade !== false;
-
-  const range: LeadFilters & CampaignFilters = filter
-    ? { campaignId, since }
-    : { campaignId };
-
-  return {
-    filter: grade === false || since === undefined ? "none" : grade,
-    since: filter ? since : undefined,
-    start: (cursor) => {
-      switch (collection) {
-        case "campaigns": {
-          return outbound.campaigns.listAll({ cursor, limit });
-        }
-
-        case "senders": {
-          return outbound.senders.listAll({ campaignId, cursor, limit });
-        }
-
-        case "leads": {
-          return outbound.leads.listAll({ ...range, cursor, limit });
-        }
-
-        case "messages": {
-          return outbound.messages.listAll({ ...range, cursor, limit });
-        }
-
-        default: {
-          return outbound.replies.listAll({ ...range, cursor, limit });
-        }
-      }
-    },
-  };
-};
-
-interface Runner {
-  readonly outbound: OutboundApi;
-  readonly store: CheckpointStore;
-  readonly overlapMs: number;
-  readonly now: () => number;
-}
-
-const keyFor = (
-  outbound: OutboundApi,
-  collection: SyncCollection,
-  campaignId?: string
-): string =>
-  `outbound-sync:${stableId(outbound.provider, outbound.workspaceId, collection, campaignId)}`;
-
 /**
  * The campaign a run covers, as a ref: a bare vendor id is qualified. None
  * for `campaigns`, which is listed whole whatever `campaignId` says.
@@ -183,14 +105,6 @@ const campaignRefOf = (
     ? makeRef(outbound.provider, outbound.workspaceId, campaignId)
     : campaignId;
 };
-
-const overlapped = (
-  since: string | undefined,
-  overlapMs: number
-): string | undefined =>
-  since === undefined
-    ? undefined
-    : new Date(Date.parse(since) - overlapMs).toISOString();
 
 const runSync = async <Item extends Entity>(
   runner: Runner,
@@ -246,11 +160,7 @@ const runSync = async <Item extends Entity>(
       filter: walk.filter,
       inboxLeftOut: inbox.count,
       notes: [
-        ...(walk.filter === "client"
-          ? [
-              `${outbound.provider} cannot filter ${collection} by date, so this run read every record (${requests} requests) and kept the ${records} created since ${walk.since ?? ""}. A record created earlier and changed since is not read again: reset the checkpoint on a schedule to pick those up.`,
-            ]
-          : []),
+        ...dateNote(outbound.provider, collection, walk, requests, records),
         ...inbox.notes,
       ],
       pages,
@@ -285,6 +195,28 @@ const runSync = async <Item extends Entity>(
 
   return result(true);
 };
+
+/**
+ * Syncs a resolved scope: one walk split here where the vendor filters the
+ * collection by campaign only after reading it all, else campaign by campaign.
+ */
+const runFound = async <Item extends Entity>(
+  runner: Runner,
+  collection: SyncCollection,
+  options: SyncOptions<Item>,
+  found: ResolvedScope,
+  requests: number
+): Promise<SyncResult> =>
+  splitsByCampaign(runner.outbound, collection)
+    ? await runSplit(runner, collection, options, found, requests)
+    : await runScoped(
+        (each, perCampaign) => runSync(runner, each, perCampaign),
+        runner.outbound,
+        collection,
+        options,
+        found,
+        requests
+      );
 
 /** Incremental, resumable syncs with checkpoints in a store you supply. */
 export const sync = (
@@ -334,9 +266,8 @@ export const sync = (
               ? await findScope(outbound, scope, "sync")
               : assertResolved(outbound, resolved);
 
-          return await runScoped(
-            (each, perCampaign) => runSync(runner, each, perCampaign),
-            outbound,
+          return await runFound(
+            runner,
             collection,
             runOptions,
             found,

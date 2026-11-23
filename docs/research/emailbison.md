@@ -180,3 +180,7 @@ Fetched 2026-11-17: https://dedi.emailbison.com/api/reference.openapi (https://d
 ## Conversation links (OUT-140, 2026-11-17)
 
 Sources, read 2026-11-17: `https://docs.emailbison.com/master-inbox/overview.md`, `https://docs.emailbison.com/master-inbox/fetching-replies.md`, `https://docs.emailbison.com/master-inbox/responding-to-messages.md`. No page documents a URL that opens one master inbox conversation, and a reply has no link field. Each customer also has their own host. No EmailBison key was available to check live. A message's and reply's `url` is null and the field coverage says `false`.
+
+## Filtering messages and replies by campaign (2026-11-23, for OUT-212)
+
+Fetched 2026-11-23: https://dedi.emailbison.com/api/reference.openapi. `GET /api/scheduled-emails` takes `campaign_ids` ("Campaign IDs to filter by."), and `GET /api/replies` takes `campaign_id` ("The ID of the campaign."). So `messages.byCampaign` and `replies.byCampaign` are both `server`. Nothing was checked live.
