@@ -296,9 +296,6 @@ const inboxPage = async (
 // a draft that GetById answers 404 for). Such a campaign has no conversation.
 const GONE = /campaign you are trying to open does not exist/iu;
 
-const isGone = (error: unknown): boolean =>
-  OutboundError.is(error) && error.status === 400 && GONE.test(error.message);
-
 // One page of the campaign the walk is at, and where the walk goes next. A
 // campaign HeyReach cannot open is left out of the walk, so the inbox's
 // filter does not name it either.
@@ -324,7 +321,11 @@ const campaignPage = async (
           : { ...walk, cursor: text(page.next) ?? undefined },
     };
   } catch (error) {
-    if (!isGone(error)) {
+    if (
+      !OutboundError.is(error) ||
+      error.status !== 400 ||
+      !GONE.test(error.message)
+    ) {
       throw error;
     }
 
