@@ -5,14 +5,20 @@
   "keywords": [
     "cold-email",
     "emailbison",
+    "emailbison-api",
     "heyreach",
+    "heyreach-api",
     "instantly",
+    "instantly-api",
     "linkedin",
+    "mcp",
+    "mcp-server",
     "outbound",
     "sdk",
-    "smartlead"
+    "smartlead",
+    "smartlead-api"
   ],
-  "homepage": "https://github.com/orchidautomation/outbound-sdk#readme",
+  "homepage": "https://outbound-sdk.dev",
   "bugs": {
     "url": "https://github.com/orchidautomation/outbound-sdk/issues"
   },
@@ -186,5 +192,6 @@
   },
   "engines": {
     "node": ">=22"
-  }
+  },
+  "mcpName": "io.github.orchidautomation/outbound-sdk"
 }

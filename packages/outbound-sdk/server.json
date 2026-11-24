@@ -1,0 +1,103 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.orchidautomation/outbound-sdk",
+  "title": "outbound-sdk",
+  "description": "Read-only MCP server: Instantly, Smartlead, HeyReach and EmailBison campaigns, leads and replies.",
+  "websiteUrl": "https://outbound-sdk.dev/docs/cli/mcp",
+  "repository": {
+    "url": "https://github.com/orchidautomation/outbound-sdk",
+    "source": "github",
+    "subfolder": "packages/outbound-sdk"
+  },
+  "version": "0.17.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "outbound-sdk",
+      "version": "0.17.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp"
+        }
+      ],
+      "environmentVariables": [
+        {
+          "name": "OUTBOUND_SDK_PROVIDER",
+          "description": "instantly, smartlead, heyreach, emailbison, memory, or all (the default): every provider whose key is set.",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "INSTANTLY_API_KEY",
+          "description": "Instantly API V2 key. The all:read scope is enough.",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true
+        },
+        {
+          "name": "INSTANTLY_WORKSPACE_ID",
+          "description": "A label for this Instantly client or workspace.",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "SMARTLEAD_API_KEY",
+          "description": "Smartlead API key.",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true
+        },
+        {
+          "name": "SMARTLEAD_WORKSPACE_ID",
+          "description": "A label for this Smartlead client or workspace.",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "HEYREACH_API_KEY",
+          "description": "HeyReach workspace API key.",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true
+        },
+        {
+          "name": "HEYREACH_WORKSPACE_ID",
+          "description": "A label for this HeyReach client or workspace.",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "EMAILBISON_API_KEY",
+          "description": "EmailBison API key (an api-user key is scoped to one workspace).",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true
+        },
+        {
+          "name": "EMAILBISON_BASE_URL",
+          "description": "The URL you log in to EmailBison with. Defaults to https://dedi.emailbison.com.",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "EMAILBISON_WORKSPACE_ID",
+          "description": "A label for this EmailBison client or workspace.",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "OUTBOUND_REDACT_KEY",
+          "description": "Keeps masked tokens stable across sessions. A secret of at least 32 characters.",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}

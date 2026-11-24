@@ -21,7 +21,7 @@
     "check": "npm run check:fast && npm test && npm run coverage && npm run build",
     "check:changed": "node scripts/check-changed.mjs",
     "changeset": "changeset",
-    "version-packages": "changeset version",
+    "version-packages": "changeset version && node scripts/sync-server-json.mjs",
     "fixtures": "node scripts/check-fixtures.mjs",
     "coverage": "node scripts/check-coverage.mjs",
     "test:workers": "node scripts/workers-tests.mjs",
