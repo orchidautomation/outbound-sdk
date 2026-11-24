@@ -67,7 +67,7 @@ A page can also be shorter than `limit` with more pages to come. That happens wh
 | `walk.toArray()` | Every record in one array. |
 | `walk.cursor` | The cursor after the last page that was fully handed out. `undefined` before that, and at the end. |
 | `walk.meta` | The `meta` of the last page fetched. `undefined` before the first page. |
-| `walk.truncated` | `true` once `max` stopped the walk while more records existed. |
+| `walk.truncated` | `true` once `max` or `pages` stopped the walk while more records existed. |
 
 `listAll` takes the same filters as `list`, plus:
 
@@ -76,6 +76,7 @@ A page can also be shorter than `limit` with more pages to come. That happens wh
 | `limit` | The size of each page, as on `list`. |
 | `cursor` | Where to start: a cursor from an earlier `list` or walk of the same listing. |
 | `max` | Stop after this many records. |
+| `pages` | Stop after this many pages, without asking for the next one. `cursor` then resumes there, and `truncated` is `true` when the vendor gave a next page. A positive integer, else `Invalid` before any request. |
 | `timeout`, `retries`, `deadline`, `maxRequests`, `signal` | The [per-call options](/docs/retries). They cover the whole walk: `maxRequests: 20` is twenty requests for all the pages together, and `deadline` runs from the first page. |
 
 ### `max` and `truncated`

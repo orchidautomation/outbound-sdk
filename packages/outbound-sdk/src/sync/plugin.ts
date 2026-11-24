@@ -146,20 +146,15 @@ const runSync = async <Item extends Entity>(
 
   const start = startFor(outbound, collection, previous, overlapMs);
   const walk = walkFor(outbound, collection, options, start.since);
-  const iterator = walk.start(start.cursor);
+  const iterator = walk.start(start.cursor, options.maxPages);
   const tail = previous.tail === undefined ? {} : { tail: previous.tail };
   let page: Item[] = [];
   let pages = 0;
   let records = 0;
   let lastCursor = start.cursor;
 
-  const flush = async (): Promise<void> => {
-    await options.onPage(page, { campaignRef });
-    records += page.length;
-    pages += 1;
-    page = [];
+  const saveCursor = async (): Promise<void> => {
     lastCursor = iterator.cursor;
-    // Saved after the page is handled, so a crash replays it and never skips it.
     await store.set(key, {
       ...named,
       ...tail,
@@ -167,6 +162,15 @@ const runSync = async <Item extends Entity>(
       since: previous.since,
       startedAt,
     });
+  };
+
+  const flush = async (): Promise<void> => {
+    await options.onPage(page, { campaignRef });
+    records += page.length;
+    pages += 1;
+    page = [];
+    // Saved after the page is handled, so a crash replays it and never skips it.
+    await saveCursor();
   };
 
   const inbox = inboxLeftOut(outbound, collection, campaignRef !== undefined);
@@ -210,6 +214,16 @@ const runSync = async <Item extends Entity>(
 
   if (page.length > 0) {
     await flush();
+  }
+
+  // Stopped at maxPages: the next page's cursor is saved, not fetched, even
+  // after pages that held nothing to hand out.
+  if (iterator.truncated) {
+    if (iterator.cursor !== lastCursor) {
+      await saveCursor();
+    }
+
+    return result(false);
   }
 
   // The run finished: the next one starts from when this one began, or on

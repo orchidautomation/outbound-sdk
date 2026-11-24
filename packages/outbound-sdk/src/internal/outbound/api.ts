@@ -77,6 +77,11 @@ export interface ListOptions extends OperationOptions {
 export interface ListAllOptions extends ListOptions {
   /** Stop after this many records. */
   readonly max?: number | undefined;
+  /**
+   * Stop after this many pages, without asking for the next one: `cursor`
+   * then resumes there, and `truncated` is `true` when the vendor gave one.
+   */
+  readonly pages?: number | undefined;
 }
 
 /** An async iterator over every page, with a cursor you can resume from. */

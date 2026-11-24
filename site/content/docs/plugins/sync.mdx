@@ -45,7 +45,7 @@ Run 1 stopped at `maxPages` and left a cursor. Run 2 resumed from it and finishe
 | `campaign_ids`, `tag`, `campaign_name` | as on [insights](/docs/insights#campaign-scope) | none | Sync only the campaigns of a [campaign scope](#campaign-scope). |
 | `statuses` | campaign statuses, such as `["active"]` | none | Sync only the campaigns in these statuses, alone or with the other scope keys. See [active campaigns first](#active-campaigns-first). |
 | `resolved` | what `resolveScope` returned | none | Sync the campaigns of a scope found once, so a run per collection does not find them again. Not with `campaignId` or a scope. |
-| `maxPages` | `number` | none | Stop after this many pages. The next run resumes from the checkpoint. |
+| `maxPages` | `number` | none | Stop after this many pages, without asking for the next one: the checkpoint holds the next page's cursor, and the next run starts there, so no page is fetched twice. |
 | `limit` | `number` | the adapter's | Records per page, as a hint the adapter may clamp. |
 | `include` | `["body"]` | none | Fill `bodyText` and `bodyHtml` on `messages` and `replies`, as `listAll({ include })` does. Where the vendor truncates a body in its listing, the adapter reads that email again (Instantly: `GET /emails/{id}` on the email lane), and those reads count in `requests`. On another collection it is `Invalid` before any request. To build bodies from payloads you keep yourself, use [`outbound-sdk/text`](/docs/api/records#bodies-from-your-own-payloads). |
 
@@ -77,7 +77,7 @@ A `SyncResult` has:
 
 1. It reads the checkpoint. A `cursor` means an earlier run did not finish, and this one starts from that page.
 2. For `leads`, `messages` and `replies`, when the instance can filter that collection by date (`leads.since`, `messages.since`, `replies.since` is not `false`), it asks for records since the checkpoint's `since` minus the overlap. `campaigns` and `senders` are always read in full.
-3. Each time a page has been handed out in full, it awaits `onPage`, then saves the cursor for the next page.
+3. Each time a page has been handed out in full, it awaits `onPage`, then saves the cursor for the next page. At `maxPages` it stops there, before asking for that page.
 4. When the listing ends, it replaces the checkpoint with `{ since }`, set to when this run started. A run that resumed keeps the start time of the run it continued.
 
 Three consequences:
