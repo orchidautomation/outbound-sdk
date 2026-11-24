@@ -65,12 +65,15 @@ const LIST_ALL_KEYS = Object.keys({
   limit: true,
   max: true,
   maxRequests: true,
+  pages: true,
   retries: true,
   signal: true,
   timeout: true,
 } satisfies Record<keyof ListAllOptions, true>);
 
-const LIST_KEYS = LIST_ALL_KEYS.filter((key) => key !== "max");
+const LIST_KEYS = LIST_ALL_KEYS.filter(
+  (key) => key !== "max" && key !== "pages"
+);
 
 const refuseUnknown = (
   spec: { readonly action: string; readonly takes: object },
@@ -175,6 +178,7 @@ export const makeReadCollection = <Item, Filters>(
     const filters = spec.prepare((options ?? {}) as Filters);
     const limit = assertLimit(options?.limit);
     assertMax(options?.max);
+    assertMax(options?.pages, "pages");
     const walkOptions: ListAllOptions | undefined = options;
 
     return new PageWalker<Item>({
@@ -184,6 +188,7 @@ export const makeReadCollection = <Item, Filters>(
         fetchPage(core, spec, { cursor, filters, limit }, options, state),
       keyOf: (item) => spec.keyOf(item, filters),
       max: walkOptions?.max,
+      pages: walkOptions?.pages,
     });
   },
 });

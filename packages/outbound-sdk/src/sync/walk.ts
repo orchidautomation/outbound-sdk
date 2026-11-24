@@ -20,7 +20,11 @@ import type {
 export interface Walk {
   readonly since: string | undefined;
   readonly filter: SyncFilter;
-  readonly start: (cursor: string | undefined) => ListAll<Entity>;
+  /** Starts the walk at `cursor`, stopping after `pages` without asking for the next. */
+  readonly start: (
+    cursor: string | undefined,
+    pages?: number | undefined
+  ) => ListAll<Entity>;
 }
 
 const SINCE_CAPABILITY = {
@@ -51,18 +55,18 @@ export const walkFor = (
   return {
     filter: grade === false || since === undefined ? "none" : grade,
     since: filter ? since : undefined,
-    start: (cursor) => {
+    start: (cursor, pages) => {
       switch (collection) {
         case "campaigns": {
-          return outbound.campaigns.listAll({ cursor, limit });
+          return outbound.campaigns.listAll({ cursor, limit, pages });
         }
 
         case "senders": {
-          return outbound.senders.listAll({ campaignId, cursor, limit });
+          return outbound.senders.listAll({ campaignId, cursor, limit, pages });
         }
 
         case "leads": {
-          return outbound.leads.listAll({ ...range, cursor, limit });
+          return outbound.leads.listAll({ ...range, cursor, limit, pages });
         }
 
         case "messages": {
@@ -71,11 +75,18 @@ export const walkFor = (
             cursor,
             include,
             limit,
+            pages,
           });
         }
 
         default: {
-          return outbound.replies.listAll({ ...range, cursor, include, limit });
+          return outbound.replies.listAll({
+            ...range,
+            cursor,
+            include,
+            limit,
+            pages,
+          });
         }
       }
     },

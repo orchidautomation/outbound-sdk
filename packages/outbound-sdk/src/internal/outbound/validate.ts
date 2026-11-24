@@ -69,10 +69,13 @@ export const assertLimit = (limit: number | undefined): number | undefined => {
   return limit;
 };
 
-/** `max` for `listAll`: a positive integer, like `limit`. */
-export const assertMax = (max: number | undefined): number | undefined => {
+/** `max` or `pages` for `listAll`: a positive integer, like `limit`. */
+export const assertMax = (
+  max: number | undefined,
+  name = "max"
+): number | undefined => {
   if (max !== undefined && (!Number.isInteger(max) || max < 1)) {
-    throw invalid(`max must be a positive integer, got ${max}`);
+    throw invalid(`${name} must be a positive integer, got ${max}`);
   }
 
   return max;

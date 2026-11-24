@@ -102,13 +102,23 @@ const walkOnce = async <Item extends Entity>(
   shared: Shared
 ): Promise<Walked> => {
   const { campaigns, from, keys, previous, tally } = shared;
-  const iterator = walk.start(from.cursor);
+  const iterator = walk.start(from.cursor, options.maxPages);
   let page: Item[] = [];
   let pages = 0;
   let lastCursor = from.cursor;
 
   const save = async (each: (at: number) => Checkpoint): Promise<void> => {
     await Promise.all(keys.map((key, at) => runner.store.set(key, each(at))));
+  };
+
+  const saveCursor = async (): Promise<void> => {
+    lastCursor = iterator.cursor;
+    await save((at) => ({
+      campaignRef: campaigns[at]?.ref,
+      cursor: lastCursor,
+      since: previous[at]?.since,
+      startedAt: from.startedAt,
+    }));
   };
 
   const flush = async (): Promise<void> => {
@@ -131,14 +141,8 @@ const walkOnce = async <Item extends Entity>(
 
     pages += 1;
     page = [];
-    lastCursor = iterator.cursor;
     // Saved after the page is handled, so a crash replays it and never skips it.
-    await save((at) => ({
-      campaignRef: campaigns[at]?.ref,
-      cursor: lastCursor,
-      since: previous[at]?.since,
-      startedAt: from.startedAt,
-    }));
+    await saveCursor();
   };
 
   const done = (complete: boolean): Walked => ({
@@ -163,6 +167,15 @@ const walkOnce = async <Item extends Entity>(
 
   if (page.length > 0) {
     await flush();
+  }
+
+  // Stopped at maxPages: the next page's cursor is saved, not fetched.
+  if (iterator.truncated) {
+    if (iterator.cursor !== lastCursor) {
+      await saveCursor();
+    }
+
+    return done(false);
   }
 
   // The walk finished: every campaign's next run starts from when it began.

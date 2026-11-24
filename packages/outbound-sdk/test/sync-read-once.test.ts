@@ -196,9 +196,10 @@ test("a read that would need more pages than the campaigns goes on campaign by c
 
   const whole = reads.filter((each) => each === "(all)").length;
 
-  assert.ok(
-    whole >= 2 && whole <= 3,
-    "two pages, one fewer than the campaigns, and the next one's start"
+  assert.equal(
+    whole,
+    2,
+    "two pages, one fewer than the campaigns, and not the next"
   );
   assert.deepEqual(
     [...new Set(reads.filter((each) => each !== "(all)"))].toSorted(),

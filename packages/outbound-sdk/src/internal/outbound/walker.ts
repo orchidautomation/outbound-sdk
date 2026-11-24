@@ -8,6 +8,8 @@ import type { ListAll, PageResult, ResultMeta } from "./api.ts";
 export interface WalkerOptions<Item> {
   readonly cursor: string | undefined;
   readonly max: number | undefined;
+  /** Stop after this many pages, without fetching the next. */
+  readonly pages?: number | undefined;
   /** Starts the call's accounting, when the first page is asked for. */
   readonly begin: () => CallState;
   /** Fetches one page. `state` is shared by every page of the walk. */
@@ -49,15 +51,17 @@ export class PageWalker<Item> implements ListAll<Item> {
   }
 
   async *[Symbol.asyncIterator](): AsyncGenerator<Item, void, undefined> {
-    const { begin, fetchPage, keyOf, max } = this.#options;
+    const { begin, fetchPage, keyOf, max, pages } = this.#options;
     const seen = new Set<string>();
     const state = begin();
     this.#state = state;
     let yielded = 0;
+    let fetchedPages = 0;
 
     for (;;) {
       // oxlint-disable-next-line no-await-in-loop -- each page needs the previous page's cursor.
       const fetched = await fetchPage(this.#cursor, state);
+      fetchedPages += 1;
       // One page served stale makes the walk stale, whichever page came last.
       this.#meta =
         this.#meta?.stale === true
@@ -94,7 +98,11 @@ export class PageWalker<Item> implements ListAll<Item> {
 
       this.#tail = this.#cursor;
 
-      if (max !== undefined && yielded >= max) {
+      const capped =
+        (max !== undefined && yielded >= max) ||
+        (pages !== undefined && fetchedPages >= pages);
+
+      if (capped) {
         // The cap fell on the end of a page and the vendor has more pages.
         this.#truncated = true;
 
