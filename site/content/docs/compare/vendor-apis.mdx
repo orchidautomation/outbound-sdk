@@ -1,0 +1,38 @@
+---
+title: outbound-sdk vs calling the vendor APIs directly
+description: When to call Instantly, Smartlead, HeyReach or EmailBison's own API with fetch, and when outbound-sdk's normalized reads, rate budget and honest nulls save the work.
+sidebar:
+  label: vs the vendor APIs
+related:
+  - /docs/compare
+  - /docs/rate-limits
+  - /docs/native
+  - /docs/coverage
+---
+
+**Call the vendor's API directly when you work with one vendor, need to write, or need an endpoint outbound-sdk does not read. Use outbound-sdk when you read from several vendors or several workspaces, and want rate limits, paging and missing numbers handled the same way everywhere.** Both are a reasonable choice; the work you take on is different.
+
+## What you take on with the vendor API
+
+Each vendor's API is its own design, and the differences surface in your code:
+
+- **Rate limits.** Instantly publishes 100 a second and 6,000 a minute, with 20 a minute on `GET /emails`; Smartlead 60 a minute for a client key, with some endpoints at 10; HeyReach 300 a minute, and its live API also enforced 15 per 2 seconds. You write the pacing and the retry on a 429. See [rate limits](/docs/rate-limits).
+- **Paging.** Cursors on Instantly, offsets on most Smartlead reads, offset bodies on HeyReach, page numbers or cursors on EmailBison, which answers 15 records a page.
+- **Meanings.** A "reply" or a "positive" is counted differently by each vendor, over a different base. See [reply metrics defined](/docs/reply-metrics).
+- **Gaps.** Some reads say `0` for a number they did not measure: Smartlead's daily stats always report `bounced` as 0, and a campaign with open tracking off reports no opens. Telling "none" from "not measured" is up to you.
+
+## What outbound-sdk does instead
+
+- **One budget per credential.** Every request goes through one engine that keeps inside each vendor's published limits, at half of them by default, waits out a 429 and slows down after one. You do not write a sleep.
+- **One way to page.** `listAll()` walks any listing to its end under the same budget, and `walk.meta.requests` says what it spent.
+- **One meaning per field.** A record is the same shape on every vendor and carries `provider`, `workspaceId` and a provider-qualified `ref`, so data from two tools or two clients cannot be confused.
+- **`null`, never a false `0`.** A count the vendor does not report is `null`. A call that needs a capability the vendor lacks throws `Unsupported` before any request leaves.
+- **Everything else is still there.** A typed [native catalog](/docs/native) calls each vendor's own reads by name, through the same budget. The [coverage](/docs/coverage) pages account for every documented endpoint.
+
+## When to use the vendor's API instead
+
+- **You need to change something.** outbound-sdk is read-only by design. To create a campaign, add leads, pause a sender or send a reply, call the vendor. (`outbound.raw` can send another request only when you turn on `allowWrites`; see [raw](/docs/api/raw).)
+- **You use one vendor and its API is enough.** The normalized layer earns its keep across vendors; for one tool, a few `fetch` calls may be all you need.
+- **You need a vendor feature the SDK does not model**, or a field before outbound-sdk reads it. Check the native catalog and the coverage page first.
+- **You need confirmed behaviour on Smartlead or EmailBison.** Those adapters are `unverified`: written from documentation and never run against a live account. Their vendor's API is the ground truth until they are. See [what is verified](/docs/status).
+- **You are not in JavaScript or TypeScript.** The SDK runs on Node 22 or later, Bun, or any runtime with `fetch`. The `outbound` CLI prints JSON any language can read, but there is no package for another language.

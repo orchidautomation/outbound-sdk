@@ -1,0 +1,25 @@
+---
+title: Compare
+description: When outbound-sdk is the right tool and when it is not, set against calling the vendor APIs directly, the vendors' own MCP servers, and glue built in n8n or Clay.
+sidebar:
+  label: Overview
+related:
+  - /docs/compare/vendor-apis
+  - /docs/compare/vendor-mcp-servers
+  - /docs/compare/n8n-and-clay
+  - /docs/status
+---
+
+outbound-sdk is one read-only TypeScript API over Instantly, Smartlead, HeyReach and EmailBison. It is the right choice when you need to read data from one or more of them in code, or hand those reads to an agent, and the same answer has to mean the same thing on every vendor. It is the wrong choice when you need to change anything in a vendor tool, when you need a vendor-only feature it does not model, or when nobody on the team writes code.
+
+Each page below says where the other option wins. None ranks anyone.
+
+- [outbound-sdk vs calling the vendor APIs directly](/docs/compare/vendor-apis): one vendor, or writes, favour the vendor's API; several vendors, rate limits and consistent numbers favour the SDK.
+- [outbound-sdk vs the vendors' own MCP servers](/docs/compare/vendor-mcp-servers): the vendors' servers are hosted and can act; `outbound mcp` is local, read-only and answers across vendors.
+- [outbound-sdk vs n8n and Clay glue](/docs/compare/n8n-and-clay): no-code workflows that move data and trigger actions favour n8n or Clay; typed reads you test and version favour the SDK.
+
+What is true of outbound-sdk today, on every page:
+
+- **Read-only.** No method sends, pauses, edits or deletes anything in a vendor tool. `outbound.raw` can send another request only when you set `allowWrites: true` on the constructor. See [raw](/docs/api/raw).
+- **Stores nothing and calls no AI model.** It returns the vendor's numbers and answers computed with fixed rules.
+- **Maturity.** Instantly and HeyReach are `beta`: their reads were run, read-only, against one live workspace each. Smartlead and EmailBison are `unverified`: written from their documentation and tested offline only. See [what is verified](/docs/status).

@@ -1,0 +1,40 @@
+---
+title: outbound-sdk vs n8n and Clay glue
+description: When a no-code workflow in n8n or a Clay table is the better way to move outbound data, and when typed, tested reads in outbound-sdk are.
+sidebar:
+  label: vs n8n and Clay
+related:
+  - /docs/compare
+  - /docs/cli
+  - /docs/guides/sync-to-database
+  - /docs/plugins/sync
+---
+
+**Use n8n or Clay when the job is a workflow that moves data between tools and takes actions, and the people running it do not write code. Use outbound-sdk when the job is reading outbound data into code, a database or an agent, and the numbers have to be consistent across vendors and checked by tests.** They also combine: an n8n step can run the `outbound` CLI, and either can call a service of yours that uses the SDK.
+
+## What n8n and Clay do
+
+From their own documentation, read on 2026-11-22:
+
+- **n8n**'s [HTTP Request node](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/) "allows you to make HTTP requests to query data from any app or service with a REST API", configured from parameters or an imported curl command. A workflow calls each vendor's API that way, or through a vendor's MCP server where one is offered ([HeyReach lists n8n among its MCP clients](https://docs.heyreach.io/mcp/mcp-connector)).
+- **Clay**'s [HTTP API integration](https://www.clay.com/university/guide/http-api-integration-overview) "works with any API endpoint" as an enrichment column in a table. Some vendors document their own Clay actions, for example [Instantly's "Add Lead to Campaign"](https://help.instantly.ai/en/articles/9739113-setting-up-clay-and-instantly-integration) and [EmailBison's lead import](https://docs.emailbison.com/low-code-tools/clay/enrichments/import-leads-to-campaign).
+
+The vendor-documented Clay actions above put leads into a campaign. Reading results back out, across vendors, is left to an HTTP step: its paging, rate limits and field meanings are the workflow author's to handle, per vendor.
+
+## What outbound-sdk adds for reading
+
+- **The same record on every vendor**, with `provider`, `workspaceId` and a provider-qualified `ref`, so a report over Instantly and HeyReach, or over ten client workspaces, adds up without mapping each one.
+- **Rate limits and paging handled once.** Every request goes through one budget per key, inside each vendor's published limits; `listAll()` walks any listing.
+- **`null`, never a false `0`.** A count a vendor does not report stays `null`; a read a vendor cannot serve fails as `Unsupported` before any request.
+- **Code you can test.** The reads run on the in-memory adapter with no key, so a report is tested before it touches a vendor. See [test without a key](/docs/guides/test-without-a-key).
+- **A CLI for the glue.** `outbound` prints the same reads as JSON or JSON Lines, so an n8n [Execute Command](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executecommand/) step (self-hosted n8n only, and off by default from n8n 2), or a cron job, can call it. See the [CLI](/docs/cli).
+
+outbound-sdk is read-only, stores nothing and calls no AI model. Instantly and HeyReach are `beta`; Smartlead and EmailBison are `unverified`. See [what is verified](/docs/status).
+
+## When to use n8n or Clay instead
+
+- **The workflow acts:** add an interested lead to a CRM, post to Slack, enrich a row and push it into a campaign. outbound-sdk only reads.
+- **Nobody on the team writes code,** or the workflow changes weekly and its owner edits it in a canvas.
+- **You need hundreds of other integrations** in the same flow. n8n and Clay connect to far more tools than four sequencers.
+- **You want it hosted** and scheduled for you, without running a process of your own.
+- **The data is enrichment,** not outbound results: Clay's tables and providers are built for that; outbound-sdk does no enrichment.

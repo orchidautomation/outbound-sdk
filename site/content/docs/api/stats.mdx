@@ -136,7 +136,7 @@ A campaign with open or link tracking off records no opens or clicks, so its 0 w
 
 Reading the settings costs extra requests: one for a campaign, and the per-campaign report plus the campaign listing for a workspace or sender total. Each [adapter page](/docs/adapters) lists them. HeyReach has no tracking, and EmailBison has no click setting, so its `tracking.clicks` is `null`.
 
-What a vendor counts as an open or a reply differs in the details. Each adapter's `caveats` and its [adapter page](/docs/adapters) record what is known.
+What a vendor counts as an open or a reply differs in the details. Each adapter's `caveats` and its [adapter page](/docs/adapters) record what is known, and [reply metrics defined](/docs/reply-metrics) sets each vendor's reply, positive and automatic-reply counts side by side, with the base each dashboard divides by.
 
 ## Rates
 
@@ -195,3 +195,4 @@ Use `fill: "zero"` only for a vendor that leaves out days with no activity, as t
 
 - [Insights](/docs/insights) are computed on top of these reads: comparisons between periods, variant tests, funnels.
 - [Rate limits](/docs/rate-limits): a stats read is one or more vendor requests like any other.
+- [Reply metrics defined](/docs/reply-metrics): how Instantly, Smartlead, HeyReach and EmailBison each count replies and positive replies.
