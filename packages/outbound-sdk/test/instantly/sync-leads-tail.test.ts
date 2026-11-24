@@ -206,6 +206,82 @@ test("instantly: a walk stopped by maxPages resumes its cursor, then keeps the e
   assert.equal(typeof saved.at(-1)?.tail, "string");
 });
 
+/** A checkpoint store that also returns the last checkpoint it was given. */
+const recording = () => {
+  const store = memoryCheckpointStore();
+  const saved: Checkpoint[] = [];
+
+  const checkpoints: CheckpointStore = {
+    ...store,
+    set: async (key, checkpoint) => {
+      saved.push(checkpoint);
+      await store.set(key, checkpoint);
+    },
+  };
+
+  return { checkpoints, last: () => saved.at(-1) };
+};
+
+test("instantly: a walk over several runs keeps the end however many pages its last run reads", async () => {
+  // Pages of 2 leads, then an empty page after the last marker, so 4 leads
+  // walk 3 pages. The caps leave the last run 1, 2 or N pages; a last run of
+  // one page used to keep no end, so the next run walked every lead again.
+  const cases = [
+    { caps: [2], last: 1, leads: 4 },
+    { caps: [1], last: 2, leads: 4 },
+    { caps: [1], last: 5, leads: 10 },
+    { caps: [2, 2], last: 1, leads: 8 },
+  ];
+
+  for (const { caps, last, leads } of cases) {
+    const label = `${leads} leads, runs capped at ${caps.join(" then ")}`;
+    const reference = workspace();
+    reference.add(leads, "2026-10-01T00:00:00.000Z");
+    const whole = recording();
+
+    const one = instance(reference.http, whole.checkpoints, () =>
+      Date.UTC(2026, 9, 10)
+    );
+
+    // oxlint-disable-next-line no-await-in-loop -- each case walks in order.
+    await one.settle(one.outbound.sync.run("leads", { onPage: () => {} }));
+    const end = whole.last()?.tail;
+
+    const { add, http } = workspace();
+    add(leads, "2026-10-01T00:00:00.000Z");
+    let now = Date.UTC(2026, 9, 10);
+    const split = recording();
+    const { outbound, settle } = instance(http, split.checkpoints, () => now);
+
+    for (const maxPages of caps) {
+      // oxlint-disable-next-line no-await-in-loop -- each run resumes the last one's cursor.
+      const part = await settle(
+        outbound.sync.run("leads", { maxPages, onPage: () => {} })
+      );
+
+      assert.equal(part.complete, false, label);
+    }
+
+    http.requests.length = 0;
+    // oxlint-disable-next-line no-await-in-loop -- the last run follows the capped ones.
+    const rest = await settle(outbound.sync.run("leads", { onPage: () => {} }));
+
+    assert.equal(rest.complete, true, label);
+    assert.equal(listings(http), last, `${label}: the last run's pages`);
+    assert.equal(typeof end, "string", `${label}: a whole walk keeps an end`);
+    assert.equal(split.last()?.tail, end, `${label}: the same end as one run`);
+
+    now += 3_600_000;
+    add(1, new Date(now - 60_000).toISOString());
+    http.requests.length = 0;
+    // oxlint-disable-next-line no-await-in-loop -- the next run reads on from that end.
+    const next = await settle(outbound.sync.run("leads", { onPage: () => {} }));
+
+    assert.equal(next.records, 1, `${label}: only the new lead`);
+    assert.equal(listings(http), 2, `${label}: its page and the empty one`);
+  }
+});
+
 test("a tool whose lead listing is not in creation order keeps no end and walks every lead", async () => {
   const saved: Checkpoint[] = [];
   const store = memoryCheckpointStore();

@@ -227,9 +227,10 @@ const runSync = async <Item extends Entity>(
   }
 
   // The run finished: the next one starts from when this one began, or on
-  // a listing in creation order from where this walk ended.
+  // a listing in creation order from where this walk ended. A run that read
+  // one page got no new cursor, so the walk ended on the page it started at.
   const finished: Checkpoint = { ...named, since: startedAt };
-  const end = iterator.tail ?? previous.tail;
+  const end = iterator.tail ?? start.cursor ?? previous.tail;
 
   await store.set(
     key,
