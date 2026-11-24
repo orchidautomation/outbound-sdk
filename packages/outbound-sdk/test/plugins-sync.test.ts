@@ -15,6 +15,7 @@ import { memory } from "../src/memory/index.ts";
 import type { MemoryData } from "../src/memory/index.ts";
 import { reconcile } from "../src/reconcile/index.ts";
 import { memoryCheckpointStore, sync } from "../src/sync/index.ts";
+import type { CheckpointStore } from "../src/sync/index.ts";
 import { createClock } from "./helpers/clock.ts";
 import { createFetch, json, testAdapter } from "./helpers/http.ts";
 
@@ -480,7 +481,15 @@ test("an incremental sync the SDK filters says it cost a full walk", async () =>
   });
 
   const clock = createClock();
-  const checkpoints = memoryCheckpointStore();
+  const store = memoryCheckpointStore();
+
+  // A checkpoint saved before leads.createdOrder, with no end of walk to go
+  // on from, so the run walks every lead.
+  const checkpoints: CheckpointStore = {
+    ...store,
+    set: (key, { tail: _tail, ...checkpoint }) => store.set(key, checkpoint),
+  };
+
   let now = Date.UTC(2026, 9, 10);
 
   const outbound = createOutbound({

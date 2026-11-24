@@ -43,6 +43,11 @@ export interface Capabilities {
   /** List the leads of one campaign. Does not need `leads.list`. */
   "leads.byCampaign": boolean;
   "leads.since": FilterGrade;
+  /**
+   * The lead listing is in creation order, so the cursor at the end of a walk
+   * continues with leads created later. Sync then reads only new leads.
+   */
+  "leads.createdOrder": boolean;
   /** Find a lead by its exact email address or LinkedIn profile, without walking every lead. */
   "leads.lookup": boolean;
   /** Find the leads whose email address is at one domain, without walking every lead. */
@@ -155,6 +160,7 @@ export const NO_CAPABILITIES: Capabilities = {
   "events.verify": false,
   "leads.byCampaign": false,
   "leads.byDomain": false,
+  "leads.createdOrder": false,
   "leads.byInterest": false,
   "leads.byStatus": false,
   "leads.engagement": false,

@@ -79,6 +79,10 @@ export const capabilities: CapabilityDeclaration = {
   "leads.lookupMany": true,
   // POST /leads/list has no date filter, so the wrapper filters after fetching.
   "leads.since": "client",
+  // POST /leads/list is ordered by id, and next_starting_after continues in
+  // creation order for leads created from 2025-10-15 (List leads reference,
+  // read 2026-11-24). Seen live: 0 of 40,000 leads out of id order.
+  "leads.createdOrder": true,
   "leads.timeline": true,
   // GET /inbox-placement-tests.
   "placementTests.list": true,

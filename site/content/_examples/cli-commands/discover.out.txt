@@ -121,6 +121,7 @@ $ outbound capabilities
       "events.verify": false,
       "leads.byCampaign": true,
       "leads.byDomain": true,
+      "leads.createdOrder": false,
       "leads.byInterest": false,
       "leads.byStatus": true,
       "leads.engagement": true,

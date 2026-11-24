@@ -26,7 +26,7 @@ import type {
   SyncPluginOptions,
   SyncResult,
 } from "./types.ts";
-import { dateNote, keyFor, overlapped, walkFor } from "./walk.ts";
+import { dateNote, keyFor, startFor, tailNote, walkFor } from "./walk.ts";
 import type { Runner } from "./walk.ts";
 
 /** A checkpoint store in this process's memory, for tests and one-off scripts. */
@@ -144,18 +144,14 @@ const runSync = async <Item extends Entity>(
   const previous = (await store.get(key)) ?? {};
   const startedAt = previous.startedAt ?? new Date(now()).toISOString();
 
-  const walk = walkFor(
-    outbound,
-    collection,
-    options,
-    overlapped(previous.since, overlapMs)
-  );
-
-  const iterator = walk.start(previous.cursor);
+  const start = startFor(outbound, collection, previous, overlapMs);
+  const walk = walkFor(outbound, collection, options, start.since);
+  const iterator = walk.start(start.cursor);
+  const tail = previous.tail === undefined ? {} : { tail: previous.tail };
   let page: Item[] = [];
   let pages = 0;
   let records = 0;
-  let lastCursor = previous.cursor;
+  let lastCursor = start.cursor;
 
   const flush = async (): Promise<void> => {
     await options.onPage(page, { campaignRef });
@@ -166,6 +162,7 @@ const runSync = async <Item extends Entity>(
     // Saved after the page is handled, so a crash replays it and never skips it.
     await store.set(key, {
       ...named,
+      ...tail,
       cursor: lastCursor,
       since: previous.since,
       startedAt,
@@ -183,7 +180,9 @@ const runSync = async <Item extends Entity>(
       filter: walk.filter,
       inboxLeftOut: inbox.count,
       notes: [
-        ...dateNote(outbound.provider, collection, walk, requests, records),
+        ...(start.fromTail
+          ? [tailNote(outbound.provider, requests, records)]
+          : dateNote(outbound.provider, collection, walk, requests, records)),
         ...inbox.notes,
       ],
       pages,
@@ -213,8 +212,19 @@ const runSync = async <Item extends Entity>(
     await flush();
   }
 
-  // The run finished: the next one starts from when this one began.
-  await store.set(key, { ...named, since: startedAt });
+  // The run finished: the next one starts from when this one began, or on
+  // a listing in creation order from where this walk ended.
+  const finished: Checkpoint = { ...named, since: startedAt };
+  const end = iterator.tail ?? previous.tail;
+
+  await store.set(
+    key,
+    collection === "leads" &&
+      outbound.capabilities["leads.createdOrder"] &&
+      end !== undefined
+      ? { ...finished, tail: end }
+      : finished
+  );
 
   return result(true);
 };

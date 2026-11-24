@@ -22,6 +22,7 @@ export interface WalkerOptions<Item> {
 export class PageWalker<Item> implements ListAll<Item> {
   readonly #options: WalkerOptions<Item>;
   #cursor: string | undefined;
+  #tail: string | undefined;
   #meta: ResultMeta | undefined;
   #truncated = false;
   #state: CallState | undefined;
@@ -33,6 +34,10 @@ export class PageWalker<Item> implements ListAll<Item> {
 
   get cursor(): string | undefined {
     return this.#cursor;
+  }
+
+  get tail(): string | undefined {
+    return this.#tail;
   }
 
   get meta(): ResultMeta | undefined {
@@ -86,6 +91,8 @@ export class PageWalker<Item> implements ListAll<Item> {
       if (this.#cursor === undefined) {
         return;
       }
+
+      this.#tail = this.#cursor;
 
       if (max !== undefined && yielded >= max) {
         // The cap fell on the end of a page and the vendor has more pages.

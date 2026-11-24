@@ -85,9 +85,18 @@ Three consequences:
 - **A page can be delivered twice.** A crash between `onPage` and the checkpoint write, and the overlap, both replay records. Write with an upsert keyed on `ref`.
 - **An incremental run is not a change feed.** It asks for records since a time. Where the SDK applies that filter itself, it compares a lead's `createdAt` and a message's `sentAt`, so a lead whose status changed later is not picked up. A deleted record is never reported. Call `reset` for a full pass, and use [`reconcile`](/docs/plugins/reconcile) to find deletions.
 - **The first run reads everything.**
-- **Where the SDK filters, every run is a full walk.** Instantly's leads are one case (`leads.since` is `"client"`): the result's `filter` is `"client"`, and its `requests` and `notes` say what the run cost. Check `filter` before you schedule a run every few minutes.
+- **Where the SDK filters, every run is a full walk,** unless the listing is in creation order (below). Smartlead's and EmailBison's leads are cases (`leads.since` is `"client"`): the result's `filter` is `"client"`, and its `requests` and `notes` say what the run cost. Check `filter` before you schedule a run every few minutes.
 
-So plan two cadences: incremental runs as often as you need new records, and a `reset` followed by a full run, daily or weekly, to pick up changed statuses and replied flags. A run that the SDK filters costs about as much as that full run, so on such a collection schedule only full runs.
+So plan two cadences: incremental runs as often as you need new records, and a `reset` followed by a full run, daily or weekly, to pick up changed statuses and replied flags. A run that the SDK filters with a full walk costs about as much as that full run, so on such a collection schedule only full runs.
+
+### New leads only
+
+Where the lead listing is in creation order (`leads.createdOrder` is `true`, as on Instantly), a finished run of `leads` also keeps `tail` in its checkpoint: the cursor where its walk ended. The next run goes on from there, so it reads only the leads created since, and still keeps only those created since `since` less the overlap, so the page the last walk ended on is not handed out again. With nothing new that is one request, where a full walk of a 40,000-lead workspace is over 400. A note says what the run read; `filter` stays `"client"`, because the SDK still applies `since`.
+
+- It applies to a run that starts after a finished one. A run that stopped at `maxPages` resumes its cursor as before, and the first run, or the first after `reset` or after upgrading to a version with `tail`, walks every lead.
+- It reads new leads, not changes. A lead whose status, interest or engagement changed later, and a deleted lead, are not read. Keep the second cadence: `reset` and a full run daily or weekly, which also moves `tail` to the new end.
+- Instantly documents the order for leads created from 2025-10-15. Older leads can be out of order, which matters only for a walk that ended among them: a lead created before 2025-10-15 is never new.
+- Seen live on 2026-11-24: of 40,000 leads in id order, none was out of order by id and none by more than a second by creation time.
 
 ## Campaign scope
 

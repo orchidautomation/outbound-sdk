@@ -40,7 +40,7 @@ A value is `false` or something truthy, so `if (outbound.capabilities["leads.lis
 
 ## Every key
 
-`CAPABILITY_KEYS` is the list of all 59. `Capabilities` is the type of the map, and `CapabilityKey` the type of a key.
+`CAPABILITY_KEYS` is the list of all 60. `Capabilities` is the type of the map, and `CapabilityKey` the type of a key.
 
 ### Campaigns and sequences
 
@@ -81,6 +81,7 @@ Listing campaigns and reading one need no key. Every adapter can.
 | `leads.byInterest` | boolean | The `interest: "positive"` filter: only the leads the vendor labels positive, without walking every lead |
 | `leads.byStatus` | boolean | The `status: "active"` filter: only the leads still in the sequence, without walking every lead. Not together with `interest` |
 | `leads.since` | `server`, `client`, `false` | The `since` and `until` filters on leads |
+| `leads.createdOrder` | boolean | No read on the instance. It says the lead listing is in creation order, so the cursor at the end of a walk continues with leads created later. [Sync](/docs/plugins/sync#new-leads-only) then reads only new leads. |
 | `leads.timeline` | boolean | `lead(id).timeline()` |
 | `leads.engagement` | boolean | No read on the instance. It says whether leads carry `engagement`: open, click and reply counts. Some [insights](/docs/insights) check it. |
 | `lists.list` | boolean | `lists.list` |

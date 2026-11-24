@@ -16,6 +16,12 @@ export interface Checkpoint {
   /** When the unfinished run started, kept so it can become `since`. */
   readonly startedAt?: string | undefined;
   /**
+   * For leads on a listing in creation order (`leads.createdOrder`): the
+   * cursor at the end of the last finished walk, where the next run goes on
+   * so it reads only leads created since.
+   */
+  readonly tail?: string | undefined;
+  /**
    * The ref (`provider:workspace:id`) of the campaign this checkpoint
    * covers. Absent for a checkpoint of the whole workspace.
    */
@@ -103,8 +109,9 @@ export interface SyncResult {
   /**
    * Who applied `since`: `server` the vendor, so only newer records were
    * read; `client` the SDK, after reading every record, so the run cost a
-   * full walk; `none` when no date filter applied (a first run, or a
-   * collection with no date).
+   * full walk, or for leads in creation order (`leads.createdOrder`) every
+   * record from the end of the last walk, as a note says; `none` when no
+   * date filter applied (a first run, or a collection with no date).
    */
   readonly filter: SyncFilter;
   /** What to know about this run, such as a date filter that cost a full walk. */
