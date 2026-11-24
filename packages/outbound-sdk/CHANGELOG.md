@@ -1,5 +1,15 @@
 # outbound-sdk
 
+## 0.23.0
+
+### Minor Changes
+
+- 6dc494b: A sync of leads on a tool whose lead listing is in creation order, a new capability `leads.createdOrder` that Instantly declares, goes on from where the last finished walk ended (`Checkpoint.tail`) and reads only the leads created since, instead of walking every lead each run. With nothing new that is one request. `reset` still gives a full walk, for changed and deleted leads. `ListAll` gains an optional `tail`, the last cursor the vendor gave.
+- 11a625d: `RateLimitStore` gains two optional methods, `readFactor(key)` and `writeFactor(key, factor)`, so the slowdown after a 429 is shared: a budget reads the saved factor the first time it acquires and writes it each time it changes, so a new process or serverless invocation starts slowed down right after another was throttled. `outbound-sdk/redis` implements both, keeping the factor for 10 minutes. A store without them keeps the factor in memory per process, as before.
+- ccba5be: `sync.run` takes `include: ["body"]` for `messages` and `replies`, passed to `listAll`, so synced records carry `bodyText` and `bodyHtml`. Instantly's extra read of a truncated body happens as in `listAll` and counts in `requests`. `include` on another collection is `Invalid` before any request. A new subpath, `outbound-sdk/text`, exports `normalizeBody`, `stripQuotedHistory` and `MessageBody`, the helpers every adapter uses to fill bodies; `normalizeBody`'s second argument now defaults to `true`.
+- 7eebc2e: A sync that stops at `maxPages` saves the next page's cursor without fetching that page, so the next run no longer fetches it again. Before, each boundary page was read by both runs: every page twice at `maxPages: 1`. `listAll` takes `pages` to stop after that many pages the same way.
+- 7b42b26: A scoped `sync.run` of replies or messages on a vendor that filters them by campaign and by date, such as Instantly, reads the workspace once from the earliest campaign's `since` once every campaign of the scope has finished a run, instead of one request per campaign, and keeps the scope's records here. The walk is held to one page fewer than the campaigns; past that the run goes on campaign by campaign, with a note.
+
 ## 0.22.2
 
 ### Patch Changes
