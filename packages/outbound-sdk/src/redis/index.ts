@@ -89,6 +89,23 @@ end
 return used
 `;
 
+// KEYS[1] the slowdown factor. ARGV: the factor, how long to keep it in ms.
+const WRITE_FACTOR = `
+redis.call('SET', KEYS[1], ARGV[1], 'PX', ARGV[2])
+return 0
+`;
+
+// KEYS[1] the slowdown factor.
+const READ_FACTOR = `
+return redis.call('GET', KEYS[1])
+`;
+
+/**
+ * How long a saved slowdown factor is kept: a process that was throttled and
+ * stopped before it recovered does not slow the next ones for longer.
+ */
+const FACTOR_TTL_MS = 10 * 60_000;
+
 const DEFAULT_PREFIX = "outbound-sdk:rate";
 
 const toError = (cause: unknown): Error =>
@@ -135,6 +152,7 @@ export const redisRateLimitStore = (
   const local = new MemoryRateLimitStore();
   const log = (key: string): string => `${prefix}:{${key}}:log`;
   const pauseKey = (key: string): string => `${prefix}:{${key}}:pause`;
+  const factorKey = (key: string): string => `${prefix}:{${key}}:factor`;
 
   const guarded = async <Result>(
     remote: () => Promise<Result>,
@@ -161,6 +179,16 @@ export const redisRateLimitStore = (
         },
         () => local.pause(key, until)
       ),
+    readFactor: (key) =>
+      guarded(
+        async () => {
+          const reply = await evaluate(READ_FACTOR, [factorKey(key)], []);
+          const factor = reply === null ? Number.NaN : Number(reply);
+
+          return factor > 0 && factor <= 1 ? factor : undefined;
+        },
+        () => Promise.resolve(undefined)
+      ),
     reserve: (key, windows, now) =>
       guarded(
         async () =>
@@ -179,6 +207,17 @@ export const redisRateLimitStore = (
             )
           ),
         () => local.reserve(key, windows, now)
+      ),
+    writeFactor: (key, factor) =>
+      guarded(
+        async () => {
+          await evaluate(
+            WRITE_FACTOR,
+            [factorKey(key)],
+            [String(factor), String(FACTOR_TTL_MS)]
+          );
+        },
+        () => Promise.resolve()
       ),
     usage: (key, windows, now) =>
       guarded(

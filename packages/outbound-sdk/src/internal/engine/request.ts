@@ -221,7 +221,7 @@ const attempt = async (
     await noteHeaders(response, environment);
 
     if (response.ok) {
-      budget.succeeded();
+      await budget.succeeded();
 
       return {
         kind: "ok",

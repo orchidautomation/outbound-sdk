@@ -134,3 +134,42 @@ test("when Redis cannot be reached, each call is counted in this process and rep
 
   assert.equal(await quiet.reserve("k", one, 1), 0);
 });
+
+test("the slowdown factor is saved with a time to live and read back", async () => {
+  const redis = recording([0, "0.5", null, "not a number"]);
+  const store = redisRateLimitStore({ evaluate: redis.evaluate });
+
+  await store.writeFactor?.("instantly:abc", 0.5);
+  assert.equal(await store.readFactor?.("instantly:abc"), 0.5);
+  assert.equal(
+    await store.readFactor?.("instantly:abc"),
+    undefined,
+    "none saved"
+  );
+  assert.equal(
+    await store.readFactor?.("instantly:abc"),
+    undefined,
+    "an odd reply is none"
+  );
+
+  const [write, read] = redis.calls;
+  assert.deepEqual(write?.keys, ["outbound-sdk:rate:{instantly:abc}:factor"]);
+  assert.deepEqual(write?.args, ["0.5", "600000"]);
+  assert.match(write?.script ?? "", /SET/u);
+  assert.match(read?.script ?? "", /GET/u);
+});
+
+test("when Redis cannot be reached, the factor is not shared and the error is reported", async () => {
+  const errors: Error[] = [];
+
+  const store = redisRateLimitStore({
+    evaluate: () => Promise.reject(new Error("connection refused")),
+    onError: (error) => {
+      errors.push(error);
+    },
+  });
+
+  await store.writeFactor?.("instantly:abc", 0.5);
+  assert.equal(await store.readFactor?.("instantly:abc"), undefined);
+  assert.equal(errors.length, 2);
+});

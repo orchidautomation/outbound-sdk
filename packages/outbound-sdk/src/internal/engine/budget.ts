@@ -50,6 +50,8 @@ export class Budget {
   #inFlight = 0;
   /** Drops to slow down after a 429, then recovers toward 1. */
   #factor = 1;
+  /** Whether the store's saved factor was read, once per budget. */
+  #factorRead: Promise<void> | undefined;
 
   constructor(options: BudgetOptions) {
     this.#options = options;
@@ -71,6 +73,34 @@ export class Budget {
     return this.declared(lane).map((window) =>
       scaleWindow(window, share * this.#factor)
     );
+  }
+
+  /**
+   * Takes up the factor another process saved, the first time this budget
+   * acquires, so a new invocation starts slowed down after another's 429.
+   */
+  async #readFactor(): Promise<void> {
+    const { key, store } = this.#options;
+    const saved = await store.readFactor?.(key);
+
+    if (
+      saved !== undefined &&
+      Number.isFinite(saved) &&
+      saved >= MIN_FACTOR &&
+      saved <= 1
+    ) {
+      this.#factor = saved;
+    }
+  }
+
+  /** Moves the factor, and saves it where the store shares it. */
+  async #setFactor(factor: number): Promise<void> {
+    if (factor === this.#factor) {
+      return;
+    }
+
+    this.#factor = factor;
+    await this.#options.store.writeFactor?.(this.#options.key, factor);
   }
 
   #storeKey(lane: string): string {
@@ -148,6 +178,9 @@ export class Budget {
     let waited = 0;
 
     try {
+      this.#factorRead ??= this.#readFactor();
+      await this.#factorRead;
+
       for (;;) {
         const now = runtime.now();
         // oxlint-disable-next-line no-await-in-loop -- each wait depends on the previous one.
@@ -221,7 +254,7 @@ export class Budget {
     retryAfterMs: number,
     now: number
   ): Promise<void> {
-    this.#factor = Math.max(MIN_FACTOR, this.#factor / 2);
+    await this.#setFactor(Math.max(MIN_FACTOR, this.#factor / 2));
     this.#vendorPausedUntil.set(lane, now + retryAfterMs);
     await this.#options.store.pause(this.#storeKey(lane), now + retryAfterMs);
   }
@@ -232,8 +265,8 @@ export class Budget {
   }
 
   /** Called on a success: climb back toward the declared rate. */
-  succeeded(): void {
-    this.#factor = Math.min(1, this.#factor + RECOVERY_STEP);
+  async succeeded(): Promise<void> {
+    await this.#setFactor(Math.min(1, this.#factor + RECOVERY_STEP));
   }
 
   async usage(now: number): Promise<BudgetWindowUsage[]> {

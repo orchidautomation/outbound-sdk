@@ -37,7 +37,7 @@ Set `share` on the constructor to use more or less: `1` is the whole published l
 
 1. **It waits for a slot.** At most 8 requests are in flight per credential unless the adapter declares another number.
 2. **It waits for room in every window** of its lane and of the default lane. The wait is reported in `meta.throttledMs` and to the [`onThrottle` hook](/docs/api/hooks).
-3. **On a 429** the lane pauses for the vendor's `Retry-After`, the rate halves, and the request is [retried](/docs/retries). A 429 with no `Retry-After` pauses the lane until one more request fits its published limit, at least a second: 3 seconds on a limit of 20 a minute. The wait counts in `meta.throttledMs` and reaches `onThrottle` with `cause: "vendor"`. Each later success raises the rate by 5% of the declared number until it is back.
+3. **On a 429** the lane pauses for the vendor's `Retry-After`, the rate halves, and the request is [retried](/docs/retries). A 429 with no `Retry-After` pauses the lane until one more request fits its published limit, at least a second: 3 seconds on a limit of 20 a minute. The wait counts in `meta.throttledMs` and reaches `onThrottle` with `cause: "vendor"`. Each later success raises the rate by 5% of the declared number until it is back. Where the store keeps it (`readFactor` and `writeFactor`, as `outbound-sdk/redis` does), that slowdown is shared: see [several processes on one key](#several-processes-on-one-key).
 4. **When the vendor sends rate-limit headers** saying the window is spent, the credential pauses until the reset. Instantly, Smartlead and HeyReach do not document such headers, so no adapter declares any today.
 
 One budget is kept per credential, not per instance: ten instances on one key in one process draw from one budget, and two keys never share one.
@@ -76,7 +76,9 @@ The default store counts requests in the process. Three workers, or three server
 
 The [shared budget guide](/docs/guides/shared-rate-budget) walks through it, including what was and was not verified against a real Redis.
 
-For another store (Cloudflare KV, a Durable Object, a database), implement the three methods of `RateLimitStore`: `reserve`, `pause` and `usage`. `reserve` must be atomic, or two processes can both take the last slot.
+The pause after a 429 is shared through the store. So is the slowdown that follows it, where the store has the two optional methods `readFactor(key)` and `writeFactor(key, factor)`: a budget reads the saved factor the first time it acquires, and writes it each time it changes, halved on a 429 and raised on each later success until it is back to 1. A new process or serverless invocation then starts slowed down right after another was throttled, instead of at the full rate. `outbound-sdk/redis` keeps it for 10 minutes, so a process that stopped while slowed down does not slow the next ones for longer. A store without the two methods, such as the in-memory one, keeps the factor per process. A saved factor outside 0.1 to 1 is ignored. A budget that is already running does not read the factor again, so two processes running at once each recover on their own.
+
+For another store (Cloudflare KV, a Durable Object, a database), implement the three methods of `RateLimitStore`: `reserve`, `pause` and `usage`, and `readFactor` and `writeFactor` to share the slowdown. `reserve` must be atomic, or two processes can both take the last slot.
 
 ## What a client-side budget cannot do
 

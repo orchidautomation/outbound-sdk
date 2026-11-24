@@ -23,6 +23,21 @@ export interface RateLimitStore {
     windows: readonly RateWindow[],
     now: number
   ) => Promise<number[]>;
+  /**
+   * The slowdown factor another process saved for `key` (the credential),
+   * between 0.1 and 1, or `undefined` for none. Optional: without it and
+   * `writeFactor` each process keeps its own, in memory.
+   */
+  readonly readFactor?:
+    | ((key: string) => Promise<number | undefined>)
+    | undefined;
+  /**
+   * Saves the slowdown factor for `key`: halved on a 429, raised step by
+   * step on later successes back to 1. Optional, with `readFactor`.
+   */
+  readonly writeFactor?:
+    | ((key: string, factor: number) => Promise<void>)
+    | undefined;
 }
 
 interface Bucket {
