@@ -13,7 +13,9 @@ import { findScope } from "../internal/scope/resolve.ts";
 import type { ResolvedScope } from "../internal/scope/resolve.ts";
 import { parseScope } from "../internal/scope/rule.ts";
 import { inboxLeftOut } from "./inbox.ts";
+import { runOnceIfCheaper } from "./once.ts";
 import { runScoped } from "./scoped.ts";
+import type { RunOne } from "./scoped.ts";
 import { runSplit, splitsByCampaign } from "./split.ts";
 import type {
   Checkpoint,
@@ -198,7 +200,8 @@ const runSync = async <Item extends Entity>(
 
 /**
  * Syncs a resolved scope: one walk split here where the vendor filters the
- * collection by campaign only after reading it all, else campaign by campaign.
+ * collection by campaign only after reading it all, or where every campaign
+ * finished a run and one walk is cheaper, else campaign by campaign.
  */
 const runFound = async <Item extends Entity>(
   runner: Runner,
@@ -206,17 +209,33 @@ const runFound = async <Item extends Entity>(
   options: SyncOptions<Item>,
   found: ResolvedScope,
   requests: number
-): Promise<SyncResult> =>
-  splitsByCampaign(runner.outbound, collection)
-    ? await runSplit(runner, collection, options, found, requests)
-    : await runScoped(
-        (each, perCampaign) => runSync(runner, each, perCampaign),
-        runner.outbound,
-        collection,
-        options,
-        found,
-        requests
-      );
+): Promise<SyncResult> => {
+  if (splitsByCampaign(runner.outbound, collection)) {
+    return await runSplit(runner, collection, options, found, requests);
+  }
+
+  const runOne: RunOne = (each, perCampaign) =>
+    runSync(runner, each, perCampaign);
+
+  return (
+    (await runOnceIfCheaper(
+      runner,
+      runOne,
+      collection,
+      options,
+      found,
+      requests
+    )) ??
+    (await runScoped(
+      runOne,
+      runner.outbound,
+      collection,
+      options,
+      found,
+      requests
+    ))
+  );
+};
 
 /** Incremental, resumable syncs with checkpoints in a store you supply. */
 export const sync = (

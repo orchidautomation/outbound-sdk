@@ -17,7 +17,14 @@ import type {
 import { dateNote, keyFor, overlapped, walkFor } from "./walk.ts";
 import type { Runner, Walk } from "./walk.ts";
 
-type Split = "messages" | "replies";
+export type Split = "messages" | "replies";
+
+/**
+ * Why one walk serves every campaign: `client` the vendor cannot filter the
+ * collection by campaign; `cheaper` it can, but every campaign has finished
+ * a run, so one walk from the earliest lower bound costs fewer requests.
+ */
+export type SplitWhy = "cheaper" | "client";
 
 /**
  * Whether a scoped run of this collection reads it once and splits it here:
@@ -33,7 +40,7 @@ export const splitsByCampaign = (
   outbound.capabilities[`${collection}.byCampaign`] === "client";
 
 /** Where one walk for every campaign starts: only where they all stopped together. */
-const startOf = (
+export const startOf = (
   previous: readonly (Checkpoint | undefined)[],
   now: string
 ): { readonly cursor: string | undefined; readonly startedAt: string } => {
@@ -173,7 +180,8 @@ export const runSplit = async <Item extends Entity>(
   collection: Split,
   options: SyncOptions<Item>,
   resolved: ResolvedScope,
-  found: number
+  found: number,
+  why: SplitWhy = "client"
 ): Promise<SyncResult> => {
   const { now, outbound, overlapMs, store } = runner;
   const { campaigns, meta } = resolved;
@@ -225,7 +233,9 @@ export const runSplit = async <Item extends Entity>(
     notes: [
       ...new Set([
         ...meta.notes,
-        `${outbound.provider} cannot filter ${collection} by campaign, so this run read them once (${walked.requests} requests) and kept the ${campaigns.length} campaigns' records here, instead of reading them all once per campaign.`,
+        why === "client"
+          ? `${outbound.provider} cannot filter ${collection} by campaign, so this run read them once (${walked.requests} requests) and kept the ${campaigns.length} campaigns' records here, instead of reading them all once per campaign.`
+          : `Every campaign had finished a run, so this run read the workspace's ${collection} once from the earliest lower bound (${walked.requests} requests) and kept the ${campaigns.length} campaigns' records here, instead of one read per campaign.`,
         ...dateNote(
           outbound.provider,
           collection,
