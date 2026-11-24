@@ -146,14 +146,31 @@ export interface SyncExtension {
   };
 }
 
+/**
+ * Why a scoped run did not read a campaign. `cannot-open`: the tool lists
+ * the campaign but answers `NotFound` to reading it, such as a HeyReach
+ * draft it cannot open.
+ */
+export type SyncSkipReason = "cannot-open";
+
+/** A campaign of the scope this run did not read. */
+export interface SyncSkip {
+  readonly reason: SyncSkipReason;
+}
+
 /** One campaign of a scoped run. */
 export interface SyncCampaignResult {
   readonly campaignRef: string;
   readonly name: string | null;
   readonly records: number;
   readonly pages: number;
-  /** `false` when `maxPages` stopped the run before or during this campaign. */
+  /**
+   * `false` when `maxPages` stopped the run before or during this
+   * campaign, or when the run skipped it.
+   */
   readonly complete: boolean;
+  /** Set when the run did not read this campaign, with why. */
+  readonly skipped?: SyncSkip | undefined;
 }
 
 /** What a run under a campaign scope adds to its result. */
@@ -166,6 +183,12 @@ export interface SyncScopeResult {
   readonly meta: ResolvedScopeMeta;
   /** Each campaign of the scope, in the order synced. */
   readonly campaigns: readonly SyncCampaignResult[];
+  /**
+   * The refs of the campaigns this run skipped, each marked in `campaigns`.
+   * The run's `complete` leaves them out: running again does not read
+   * them, so a loop that runs until `complete` still ends.
+   */
+  readonly skipped: readonly string[];
   /**
    * The same as the result's `inboxLeftOut`: replies and messages tied to
    * no campaign, which a campaign scope cannot reach. `0` where the tool has

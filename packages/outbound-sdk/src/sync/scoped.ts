@@ -112,6 +112,7 @@ const scopeListing = async <Item extends Entity>(
       })),
       inboxLeftOut: 0,
       meta,
+      skipped: [],
     },
     since: undefined,
     throttledMs: 0,
@@ -186,10 +187,11 @@ export const runScoped = async <Item extends Entity>(
       skipped.push(campaign.ref);
       campaigns.push({
         campaignRef: campaign.ref,
-        complete: true,
+        complete: false,
         name: campaign.name,
         pages: 0,
         records: 0,
+        skipped: { reason: "cannot-open" },
       });
       continue;
     }
@@ -212,7 +214,9 @@ export const runScoped = async <Item extends Entity>(
 
   return {
     collection,
-    complete: campaigns.every((campaign) => campaign.complete),
+    complete: campaigns.every(
+      (campaign) => campaign.complete || campaign.skipped !== undefined
+    ),
     filter: weakest(results),
     inboxLeftOut: inbox.count,
     notes: [
@@ -231,7 +235,7 @@ export const runScoped = async <Item extends Entity>(
     records: sum((result) => result.records),
     requests: requests + sum((result) => result.requests),
     resumed: results.some((result) => result.resumed),
-    scope: { campaigns, inboxLeftOut: inbox.count, meta },
+    scope: { campaigns, inboxLeftOut: inbox.count, meta, skipped },
     since: earliest(results),
     throttledMs: sum((result) => result.throttledMs),
   };

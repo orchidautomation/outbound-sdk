@@ -117,7 +117,8 @@ export const summedRow = (
 /**
  * `GET /campaigns/analytics/steps`. Step and variant are both counted from 0
  * (seen live: a seven-step campaign reports steps "0" to "6"). A row whose
- * step is null or `\N` holds counts Instantly could not tie to a step.
+ * step is null or `\N` holds counts Instantly could not tie to a step; it
+ * maps to `stepIndex: null`, and `readStats` leaves it out with a note.
  *
  * The reference lists no contacted count for a step. Where a row has
  * `contacted`, it is the leads that step reached, so it is read as it is:

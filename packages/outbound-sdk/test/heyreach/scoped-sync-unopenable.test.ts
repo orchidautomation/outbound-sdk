@@ -1,8 +1,8 @@
 // A scoped sync on HeyReach skips a campaign HeyReach lists but cannot open
 // (OUT-221): GetConversationsV3 filtered to it answers 400 "The campaign you
 // are trying to open does not exist." (seen live 2026-11-23). The other
-// campaigns sync, a note names the skipped one, and any other error still
-// fails the run.
+// campaigns sync, the skipped one is marked skipped and not complete, a note
+// names it, and any other error still fails the run.
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -91,14 +91,35 @@ for (const collection of ["replies", "messages"] as const) {
     assert.ok(campaigns.some((each) => each.campaignRef === KEPT_REF));
     assert.ok(read > 0, "the other campaigns are read");
     assert.equal(result.records, read);
-    assert.equal(result.complete, true);
+    assert.equal(
+      result.complete,
+      true,
+      "the run is complete: running again would not read it either"
+    );
     assert.deepEqual(
       {
         complete: skipped.complete,
         pages: skipped.pages,
         records: skipped.records,
+        skipped: skipped.skipped,
       },
-      { complete: true, pages: 0, records: 0 }
+      {
+        complete: false,
+        pages: 0,
+        records: 0,
+        skipped: { reason: "cannot-open" },
+      },
+      "the entry says it was not read"
+    );
+    assert.deepEqual(result.scope?.skipped, [GONE_REF]);
+    assert.equal(
+      campaigns.filter((each) => each.skipped !== undefined).length,
+      1,
+      "only the campaign that could not be opened is marked"
+    );
+    assert.equal(
+      campaigns.find((each) => each.campaignRef === KEPT_REF)?.complete,
+      true
     );
 
     const notes = result.notes.filter((note) => note.includes(GONE_REF));
@@ -137,6 +158,11 @@ test("a scoped HeyReach sync that reaches no such campaign adds no note", async 
 
   assert.equal(
     result.notes.some((note) => note.includes("cannot open")),
+    false
+  );
+  assert.deepEqual(result.scope?.skipped, []);
+  assert.equal(
+    result.scope?.campaigns.some((each) => each.skipped !== undefined),
     false
   );
 });
