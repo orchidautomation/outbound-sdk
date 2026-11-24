@@ -194,7 +194,7 @@ export const runSplit = async <Item extends Entity>(
   const walk = walkFor(
     outbound,
     collection,
-    { limit: options.limit },
+    { include: options.include, limit: options.limit },
     overlapped(earliestSince(previous), overlapMs)
   );
 

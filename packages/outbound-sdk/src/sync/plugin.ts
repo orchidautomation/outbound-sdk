@@ -67,6 +67,27 @@ const assertCollection = (outbound: OutboundApi, collection: string): void => {
   }
 };
 
+/** Refuses `include` on a collection without bodies, before any request. */
+const assertInclude = (
+  outbound: OutboundApi,
+  collection: SyncCollection,
+  include: SyncOptions["include"]
+): void => {
+  if (
+    include === undefined ||
+    collection === "messages" ||
+    collection === "replies"
+  ) {
+    return;
+  }
+
+  throw new OutboundError(
+    "Invalid",
+    `sync: include is for messages and replies, not ${collection}`,
+    { provider: outbound.provider }
+  );
+};
+
 /** A resolved scope this instance found, so its campaigns are this instance's. */
 const assertResolved = (
   outbound: OutboundApi,
@@ -259,6 +280,7 @@ export const sync = (
         },
         run: async (collection, runOptions) => {
           assertCollection(outbound, collection);
+          assertInclude(outbound, collection, runOptions.include);
           const scope = parseScope(runOptions, "sync");
           const { resolved } = runOptions;
 

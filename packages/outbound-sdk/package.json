@@ -156,6 +156,10 @@
     "./redis": {
       "types": "./dist/redis/index.d.ts",
       "import": "./dist/redis/index.js"
+    },
+    "./text": {
+      "types": "./dist/text/index.d.ts",
+      "import": "./dist/text/index.js"
     }
   },
   "publishConfig": {

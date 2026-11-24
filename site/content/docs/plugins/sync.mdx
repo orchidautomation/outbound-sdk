@@ -47,6 +47,7 @@ Run 1 stopped at `maxPages` and left a cursor. Run 2 resumed from it and finishe
 | `resolved` | what `resolveScope` returned | none | Sync the campaigns of a scope found once, so a run per collection does not find them again. Not with `campaignId` or a scope. |
 | `maxPages` | `number` | none | Stop after this many pages. The next run resumes from the checkpoint. |
 | `limit` | `number` | the adapter's | Records per page, as a hint the adapter may clamp. |
+| `include` | `["body"]` | none | Fill `bodyText` and `bodyHtml` on `messages` and `replies`, as `listAll({ include })` does. Where the vendor truncates a body in its listing, the adapter reads that email again (Instantly: `GET /emails/{id}` on the email lane), and those reads count in `requests`. On another collection it is `Invalid` before any request. To build bodies from payloads you keep yourself, use [`outbound-sdk/text`](/docs/api/records#bodies-from-your-own-payloads). |
 
 `run` is generic in the record type. Name it at the call site, as the sample does with `run<Lead>`, so `onPage` receives typed records. The name is not checked against `collection`.
 

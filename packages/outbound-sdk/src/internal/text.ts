@@ -70,15 +70,22 @@ export const stripQuotedHistory = (text: string): string => {
   return (cut === -1 ? lines : lines.slice(0, cut)).join("\n").trim();
 };
 
+/** A message body as records carry it. */
 export interface MessageBody {
+  /** The vendor's HTML as it was sent, or `null` when the body is plain text. */
   readonly bodyHtml: string | null;
+  /** Plain text with quoted history removed, or `null` when nothing is left. */
   readonly bodyText: string | null;
 }
 
-/** Normalizes a vendor body into kept HTML plus derived plain text. */
+/**
+ * Normalizes a vendor body into kept HTML plus derived plain text, as every
+ * adapter fills `bodyHtml` and `bodyText`. `includeBody: false` gives two
+ * nulls, as a read without `include: ["body"]` does.
+ */
 export const normalizeBody = (
   body: string | null,
-  includeBody: boolean
+  includeBody = true
 ): MessageBody => {
   if (!includeBody || body === null || body.trim() === "") {
     return { bodyHtml: null, bodyText: null };
