@@ -1,5 +1,12 @@
 # outbound-sdk
 
+## 0.22.2
+
+### Patch Changes
+
+- 0ea19e5: Instantly `stats({ scope: "step" })` leaves out the row `/campaigns/analytics/steps` returns with `step: null` (sends Instantly could not tie to a step), with a note giving its sends. Before, it came back as a step row with `stepIndex: null`, which cannot be keyed. Those sends stay in the campaign's totals.
+- 0ea19e5: A scoped `sync.run` that skips a campaign the tool lists but cannot open now marks it: the entry in `scope.campaigns` has `complete: false` and `skipped: { reason: "cannot-open" }`, and `scope.skipped` lists the skipped refs. Before, the entry read `complete: true` with 0 records and only the note named it. The run's `complete` still leaves skipped campaigns out, so a loop that runs until `complete` ends.
+
 ## 0.22.1
 
 ### Patch Changes
