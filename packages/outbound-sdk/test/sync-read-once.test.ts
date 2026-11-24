@@ -7,7 +7,11 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { createOutbound } from "../src/index.ts";
-import type { CapabilityDeclaration, Message } from "../src/index.ts";
+import type {
+  CapabilityDeclaration,
+  Message,
+  ResolveScopeInput,
+} from "../src/index.ts";
 import { memory } from "../src/memory/index.ts";
 import { memoryCheckpointStore, sync } from "../src/sync/index.ts";
 import type { Checkpoint, CheckpointStore } from "../src/sync/index.ts";
@@ -158,10 +162,12 @@ test("a campaign that has not finished a run keeps the scope campaign by campaig
 });
 
 test("a scope of one campaign, or a vendor with no server date filter, reads each campaign", async () => {
-  for (const [scope, capabilities] of [
+  const cases: [ResolveScopeInput, CapabilityDeclaration][] = [
     [{ campaign_ids: ["c1"] }, {}],
     [{ tag: "even" }, { "messages.since": "client" }],
-  ] as const) {
+  ];
+
+  for (const [scope, capabilities] of cases) {
     const { outbound, reads } = instance(capabilities);
 
     // oxlint-disable-next-line no-await-in-loop -- the second run follows the first
