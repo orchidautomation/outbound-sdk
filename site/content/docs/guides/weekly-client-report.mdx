@@ -1,5 +1,5 @@
 ---
-title: Build a weekly client report an agency can send, from one call
+title: "Build a weekly cold email client report from Instantly, Smartlead, HeyReach or EmailBison"
 description: One function that turns a client's campaigns into a plain-text weekly report with the change from last week, the best campaigns and a to-do list, plus what it does when a vendor cannot answer.
 sidebar:
   label: Weekly client report
@@ -8,6 +8,8 @@ related:
   - /docs/adapters/combine
   - /docs/guides/run-many-clients
 ---
+
+**A weekly client report for a cold email agency needs sends, replies and bounces for this week against last, the campaigns doing best, the ones in trouble and what to do next. outbound-sdk's `clientReport` insight computes all of that in one call from Instantly, Smartlead, HeyReach or EmailBison, with a test for whether a change is more than chance, and this guide turns it into a plain-text report per client.**
 
 Every Monday an agency writes the same email for each client: what went out, what came back, what changed, what needs doing. `clientReport` computes all of it in one call: this week against the week before, with a test for whether the change is more than chance; the best campaigns; campaigns over a bounce threshold; campaigns about to run out of leads; days that broke from trend; and a list of actions. It calls no AI model. Every number is a count, a rate or a textbook test.
 
@@ -19,7 +21,7 @@ This guide wraps that call in one function that returns the report as text, runs
 
 - Node 22 or later.
 - The code below runs on the in-memory adapter, so it needs no vendor key. Each sample on this page is a file in the repository that the test suite runs; the output shown is what it printed.
-- For real data: an Instantly, Smartlead or HeyReach API key. A read-only key is enough. No method of the SDK writes to a vendor.
+- For real data: an Instantly, Smartlead, HeyReach or EmailBison API key. A read-only key is enough. No method of the SDK writes to a vendor.
 
 ## What you get
 

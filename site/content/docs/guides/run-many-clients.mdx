@@ -1,5 +1,5 @@
 ---
-title: Read every client's outbound data through one instance
+title: "Report on many client workspaces at once: one instance over every agency client"
 description: One instance over every client key, scoped to a single client when you need it, with per-client totals, separate rate budgets and rules for a workspace that holds several clients.
 sidebar:
   label: Run many clients
@@ -10,6 +10,8 @@ related:
   - /docs/guides/weekly-client-report
   - /docs/guides/shared-rate-budget
 ---
+
+**An agency with one Instantly, Smartlead, HeyReach or EmailBison key per client can read every client through one instance: `combine` puts the adapters side by side and the `clients` plugin tags each record with its client and adds per-client totals. Each client keeps its own rate budget, and nothing is added up across clients unless you ask.**
 
 An agency holds one API key per client, sometimes two when a client is on an email tool and a LinkedIn tool, and sometimes one key whose workspace holds several clients' campaigns. `combine` puts any number of adapters behind one instance. The `clients` plugin tags every record with the client it belongs to and adds totals per client.
 

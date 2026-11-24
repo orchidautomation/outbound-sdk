@@ -1,0 +1,82 @@
+---
+title: "Export Smartlead replies with the API: every reply to a file or a warehouse"
+description: How to pull every reply out of Smartlead, Instantly, HeyReach or EmailBison through their APIs, page by page, into JSON Lines or CSV with a category on each, and what each vendor's reply listing can and cannot filter. The Smartlead and EmailBison adapters are unverified.
+sidebar:
+  label: Export replies
+related:
+  - /docs/guides/export-leads
+  - /docs/guides/instantly-to-bigquery-snowflake-postgres
+  - /docs/plugins/exporter
+  - /docs/adapters/smartlead
+---
+
+**To export Smartlead replies with the API, page through `POST /api/v1/master-inbox/inbox-replies` 20 replies at a time with an `offset` in the request body, and read each thread's category from the lead it belongs to. outbound-sdk does that for you: `outbound.replies.listAll()` walks every page under Smartlead's rate limit, and the `exporter` plugin writes each reply to a `.jsonl` or `.csv` file as it arrives.** The same two lines export replies from Instantly, HeyReach and EmailBison; only the adapter changes.
+
+<Callout type="warning" title="The Smartlead adapter is unverified">
+  It has never been run against a live Smartlead account: it is written from
+  Smartlead's public documentation and tested offline. The sample below runs the
+  real adapter against Smartlead's documented example payloads, so the replies
+  are made up. See [what is verified](/docs/status).
+</Callout>
+
+<include>../../_snippets/status.mdx</include>
+
+## Before you start
+
+- Node 22 or later.
+- The sample runs the Smartlead adapter against the repository's fixtures, so it needs no key and makes no network request. It is a file the test suite runs; the output shown is what it printed. It writes under the system's temporary folder.
+- For real data: a Smartlead API key in `SMARTLEAD_API_KEY`. Smartlead takes it as a query parameter; the SDK never prints it.
+
+<Callout type="warning" title="A reply export is personal data">
+  Replies hold what people wrote and who they are. Choose `columns`, as the
+  sample does, so the file holds only what you need, and see [masking personal
+  data](/docs/guides/export-leads#mask-personal-data) before sending a file to
+  anyone.
+</Callout>
+
+## Export them
+
+<include meta='title="export.ts"'>
+  ../../_examples/export-replies/export.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/export-replies/export.out.txt
+</include>
+
+What the request log shows:
+
+- **The categories first.** Smartlead labels a lead, not a message, so the adapter reads the workspace's lead categories once to name them. Every reply in a thread carries its lead's category, with `categorySource: "lead"`.
+- **Then the inbox, page by page,** as a POST with the page in the body. Smartlead documents 20 as the most a page can hold, which makes a large inbox slow to export: at most about 600 replies a minute, at the 30 requests a minute the SDK keeps to by default, half of Smartlead's 60 (see [rate limits](/docs/rate-limits)).
+- **Message history is asked for** (`fetch_message_history=true`), so every inbound message in a thread is a reply of its own, not only the last one.
+
+The routes the fixture fetch answers are in `routes.ts`, below. To run it for real, drop the `fetch` option; the adapter then reads `SMARTLEAD_API_KEY`.
+
+## Only the new ones
+
+`outbound.replies.listAll({ since })` asks only for replies after a time. Smartlead's inbox filter takes a reply-time range, but the adapter filters on the client and marks the result `derived`: `replies.since` is `client` on Smartlead. For a copy you keep current, with a checkpoint that survives a crash, use the [sync plugin](/docs/guides/instantly-to-bigquery-snowflake-postgres) instead of an export.
+
+## The same export on another vendor
+
+Swap the adapter. What differs is what each vendor's reply listing can do, as each adapter declares it (the [capability table](/docs/adapters#what-each-adapter-can-do) is checked against the code):
+
+|  | Instantly | Smartlead | HeyReach | EmailBison |
+| --- | --- | --- | --- | --- |
+| Maturity | beta | unverified | beta | unverified |
+| `replies.since` | server | client | server | client |
+| `category` from | the vendor, per message | the lead's category | the lead's auto-tag | the vendor, per reply |
+| `isAuto` from | the vendor's flag, else fixed rules | the vendor's flag, else fixed rules | not told: `null` | the vendor's automated mark, else fixed rules |
+
+On HeyReach a reply is a LinkedIn message; see [HeyReach conversations](/docs/guides/heyreach-api-conversations) for which ones count as campaign replies.
+
+## Into a warehouse
+
+A `.jsonl` file loads straight into BigQuery (`bq load --source_format=NEWLINE_DELIMITED_JSON`), Snowflake (`COPY INTO` from a stage with `TYPE = JSON`), DuckDB (`read_json_auto`) or Postgres (`jsonb`). [Instantly data to BigQuery, Snowflake or Postgres](/docs/guides/instantly-to-bigquery-snowflake-postgres) covers a typed table and an incremental load. None of those warehouse commands was run for this page.
+
+## The fixture routes
+
+The sample's `fetch` answers these requests from `fixtures/`. See [running a vendor's real adapter offline](/docs/samples#running-a-vendors-real-adapter-offline).
+
+<include meta='title="routes.ts"'>
+  ../../_examples/export-replies/routes.ts
+</include>

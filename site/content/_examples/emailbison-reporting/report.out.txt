@@ -1,0 +1,17 @@
+workspace: sent 1200, contacted 640, opened 300, replied 48, positive 17, bounced 21, clicked null
+campaign 1: sent 70, contacted 40, opened 9, replied 5, positive 3, bounced 2, clicked null
+  2025-11-24: sent 20, contacted null, opened 4, replied 1, positive 1, bounced 2, clicked null
+  2025-11-25: sent 21, contacted null, opened 5, replied 2, positive 2, bounced 3, clicked null
+  step 0 A: sent 40, contacted 40, opened 7, replied 3, positive 2, bounced 2, clicked null
+  step 1 A: sent 18, contacted 18, opened 1, replied 1, positive 1, bounced 0, clicked null
+  step 1 B: sent 12, contacted 12, opened 1, replied 1, positive 0, bounced 0, clicked null
+every campaign: Unsupported: Reading stats for every campaign in one call is not available: the emailbison adapter does not support it (stats.allCampaigns)
+8 requests:
+  GET /api/workspaces/v1.1/stats?end_date=2025-11-30&start_date=2025-11-01
+  POST /api/campaigns/1/stats {"end_date":"2025-11-30","start_date":"2025-11-01"}
+  GET /api/campaigns/1
+  GET /api/campaigns/1/line-area-chart-stats?end_date=2025-11-30&start_date=2025-11-01
+  GET /api/campaigns/1
+  POST /api/campaigns/1/stats {"end_date":"2025-11-30","start_date":"2025-11-01"}
+  GET /api/campaigns/v1.1/1/sequence-steps
+  GET /api/campaigns/1

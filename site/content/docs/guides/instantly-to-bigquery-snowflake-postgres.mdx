@@ -1,14 +1,24 @@
 ---
-title: Keep a copy of campaigns, leads and replies in your database
-description: A scheduled job that upserts campaigns, leads and replies into your own tables, asks only for what is new where the vendor can filter by date, and restarts on the page it was writing after a crash.
+title: "Instantly data to BigQuery, Snowflake or Postgres: a synced copy of campaigns, leads and replies"
+description: How to get Instantly, Smartlead, HeyReach or EmailBison data into your own warehouse or database. A scheduled job that upserts campaigns, leads and replies, asks only for what is new, and restarts on the page it was writing after a crash, plus a bulk JSON Lines load and daily stats.
 sidebar:
-  label: Sync to a database
+  label: Instantly to a warehouse
 related:
   - /docs/plugins/sync
   - /docs/plugins/reconcile
   - /docs/api/pagination
   - /docs/guides/webhooks-and-reconcile
 ---
+
+**To get Instantly data into BigQuery, Snowflake or Postgres, read it through the API page by page and upsert each record into your own tables on a schedule, asking only for what changed since the last run. outbound-sdk's `sync` plugin does the reading: it walks campaigns, leads and replies under Instantly's rate limits, hands you each page to write, and keeps a checkpoint so a crashed run resumes where it stopped. You write the upserts in your database's SQL.** The same code reads Smartlead, HeyReach and EmailBison.
+
+Three ways in, depending on the job:
+
+- **A copy you keep current**, in any database with an upsert (Postgres, SQLite, BigQuery `MERGE`, Snowflake `MERGE`): the `sync` plugin, on this page.
+- **A bulk load** for a first copy or a one-off question: export to JSON Lines with the `exporter` plugin and load the file (`bq load --source_format=NEWLINE_DELIMITED_JSON`, Snowflake `COPY INTO`, DuckDB `read_json_auto`). `recordJsonSchema(record)` gives each row's JSON Schema for a typed table. See [load into DuckDB](/docs/guides/duckdb) and [export replies](/docs/guides/export-replies).
+- **Daily stats**, which a sync does not copy: a stats table loaded per day, in [the DuckDB guide](/docs/guides/duckdb).
+
+The samples on this page run on SQLite (`node:sqlite`); the Postgres statement below is not run, and nothing here was run against BigQuery or Snowflake.
 
 Dashboards and joins want the data in your own database, not behind a vendor's rate limit. The `sync` plugin walks a collection page by page, hands each page to a function you write, and keeps one checkpoint per collection in a store you supply: a cursor, so a run that dies restarts on the page it was reading, and the start time of the last finished run, so the next run asks only for newer records.
 
@@ -20,7 +30,7 @@ The plugin writes nothing itself. This guide supplies the three parts it leaves 
 
 - Node 22 or later. The sample database is `node:sqlite`, which is built into Node; the samples are run on Node 24, where it needs no flag.
 - The code below runs on the in-memory adapter, so it needs no vendor key. Each sample on this page is a file in the repository that the test suite runs; the output shown is what it printed.
-- For real data: an Instantly, Smartlead or HeyReach API key. A read-only key is enough. No method of the SDK writes to a vendor.
+- For real data: an Instantly, Smartlead, HeyReach or EmailBison API key. A read-only key is enough. No method of the SDK writes to a vendor.
 
 ## What you get
 

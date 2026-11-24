@@ -1,0 +1,79 @@
+---
+title: "EmailBison reporting: what its API gives you, and how to read it in TypeScript"
+description: What the EmailBison API reports for a workspace, a campaign, each day and each sequence step, what it does not report, and the outbound-sdk calls that read each one. The EmailBison adapter is unverified.
+sidebar:
+  label: EmailBison reporting
+related:
+  - /docs/adapters/emailbison
+  - /docs/coverage/emailbison
+  - /docs/api/stats
+  - /docs/guides/weekly-client-report
+---
+
+**EmailBison's API reports sent, contacted, opened, replied, interested, bounced and unsubscribed counts for a workspace, for one campaign, per day and per sequence step, over a date range you choose. It has no read that returns a row per campaign for a range, no click count, no delivered count and no automatic-reply count.** outbound-sdk reads each of those with one call (`outbound.stats()` and `outbound.campaign(id).stats()`), puts EmailBison's numbers in the same row shape as Instantly, Smartlead and HeyReach, and refuses the one report EmailBison cannot give before sending any request.
+
+<Callout type="warning" title="The EmailBison adapter is unverified">
+  It has never been run against a live EmailBison account: it is written from
+  EmailBison's API reference and tested offline. The sample below runs the real
+  adapter against EmailBison's documented example payloads, so the numbers are
+  made up. See [what is verified](/docs/status).
+</Callout>
+
+<include>../../_snippets/status.mdx</include>
+
+## Before you start
+
+- Node 22 or later.
+- The sample runs the EmailBison adapter against the repository's fixtures, so it needs no key and makes no network request. It is a file the test suite runs; the output shown is what it printed.
+- For real data: an EmailBison API key in `EMAILBISON_API_KEY` and the URL you log in with in `EMAILBISON_BASE_URL`. Each customer has their own instance; without the URL, requests go to `https://dedi.emailbison.com`. A key reads one workspace.
+
+## What EmailBison reports
+
+From EmailBison's [API reference](https://dedi.emailbison.com/api/reference), as recorded in the repository's research note and on the [adapter page](/docs/adapters/emailbison):
+
+| Report | EmailBison read | In outbound-sdk |
+| --- | --- | --- |
+| Workspace totals for a range | `GET /api/workspaces/v1.1/stats` | `outbound.stats({ from, to })` |
+| Workspace counts per day | `GET /api/workspaces/v1.1/line-area-chart-stats` | `outbound.stats({ from, to, by: "day" })` |
+| One campaign's totals | `POST /api/campaigns/{id}/stats` | `outbound.campaign(id).stats({ from, to })` |
+| One campaign per day | `GET /api/campaigns/{id}/line-area-chart-stats` | `outbound.campaign(id).stats({ from, to, by: "day" })` |
+| One campaign per sequence step | the campaign's stats and its steps | `outbound.campaign(id).stats({ scope: "step" })` |
+| One sender's totals | its daily events, added up | `outbound.sender(id).stats({ from, to })` |
+| Every campaign side by side for a range | none | refused as `Unsupported` |
+
+What is missing, and stays missing rather than becoming a 0:
+
+- **Clicks, delivered and automatic replies** are not reported. `clicked` and `delivered` are `null`.
+- **Opens on a campaign that did not track them** are `null`, not 0. EmailBison has an open-tracking setting and no click setting, so `tracking.clicks` is `null`. See [opens and clicks that were not measured](/docs/api/stats#opens-and-clicks-that-were-not-measured).
+- **"Interested"** is EmailBison's own mark on a reply. outbound-sdk reports it as `positive` and does not judge it.
+- **A day's timezone** is not stated by any read, so a daily row's `timezone` is `null`.
+
+## Read it
+
+<include meta='title="report.ts"'>
+  ../../_examples/emailbison-reporting/report.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/emailbison-reporting/report.out.txt
+</include>
+
+The fetch in the sample answers from `fixtures/emailbison/`, built from EmailBison's documented examples with made-up values. The request log is what the adapter sent: a campaign's totals and steps read the campaign too, to know whether it tracked opens. The routes are in `routes.ts`, below,.
+
+## A report across every campaign
+
+EmailBison has no read that returns each campaign's counts for a range, so `outbound.stats({ scope: "campaign" })` fails with `Unsupported` before any request. Read each campaign in turn instead: list them with `outbound.campaigns.listAll()` and call `outbound.campaign(id).stats({ from, to })` for each, two requests a campaign. The `clientReport` insight behind the [weekly client report](/docs/guides/weekly-client-report) needs only a campaign's stats, so it is offered on EmailBison, and it says in `meta.notes` what it could not read.
+
+## Point it at your instance
+
+Construct `emailbison()` with no options and it reads `EMAILBISON_API_KEY` and `EMAILBISON_BASE_URL`; drop the `fetch` option from the sample. The [adapter page](/docs/adapters/emailbison#construct-it) shows every option.
+
+Every list answers 15 records a page, and EmailBison documents no rate limit. The adapter assumes 3,000 requests a minute and keeps to half of it; the [adapter page](/docs/adapters/emailbison#rate-limits) says where that number comes from and what each read costs.
+
+## The fixture routes
+
+The sample's `fetch` answers these requests from `fixtures/`. See [running a vendor's real adapter offline](/docs/samples#running-a-vendors-real-adapter-offline).
+
+<include meta='title="routes.ts"'>
+  ../../_examples/emailbison-reporting/routes.ts
+</include>

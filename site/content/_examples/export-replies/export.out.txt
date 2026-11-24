@@ -1,0 +1,9 @@
+3 replies
+{"ref":"smartlead:client-a:email_abc123","campaignRef":"smartlead:client-a:12345","leadEmail":null,"threadId":"2433664091","sentAt":"2025-01-20T14:30:00.000Z","category":"positive","categorySource":"lead","isAuto":false}
+{"ref":"smartlead:client-a:email_abc124","campaignRef":"smartlead:client-a:12345","leadEmail":null,"threadId":"2433664092","sentAt":"2025-01-20T14:30:00.000Z","category":"positive","categorySource":"lead","isAuto":false}
+{"ref":"smartlead:client-a:email_abc125","campaignRef":"smartlead:client-a:12345","leadEmail":null,"threadId":"2433664093","sentAt":"2025-01-20T14:30:00.000Z","category":"positive","categorySource":"lead","isAuto":false}
+
+3 requests:
+  GET /api/v1/leads/fetch-categories
+  POST /api/v1/master-inbox/inbox-replies?fetch_message_history=true {"filters":{},"limit":20,"offset":0}
+  POST /api/v1/master-inbox/inbox-replies?fetch_message_history=true {"filters":{},"limit":20,"offset":2}

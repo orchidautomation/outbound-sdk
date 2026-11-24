@@ -1,0 +1,50 @@
+---
+title: "HeyReach API conversations: reading LinkedIn replies by campaign"
+description: How HeyReach's API returns LinkedIn conversations, why a conversation does not say which campaign it belongs to, how to tell campaign replies from the rest of the inbox, and how outbound-sdk reads them.
+sidebar:
+  label: HeyReach conversations
+related:
+  - /docs/adapters/heyreach
+  - /docs/coverage/heyreach
+  - /docs/guides/person-across-email-and-linkedin
+  - /docs/guides/export-replies
+---
+
+**HeyReach's API returns LinkedIn replies only inside conversations: `POST /api/public/inbox/GetConversationsV3` lists conversations, up to 100 a page by cursor, each with its messages. A conversation does not name its campaign, even though the documentation says it should: on a live workspace on 2026-11-17, none of 258 conversations carried `campaignId`. The campaign filter does work, so to get one campaign's replies you ask for its conversations with `filters.campaignIds`, one campaign at a time.** outbound-sdk does that for you: `outbound.replies.listAll()` reads the campaigns, then each campaign's conversations, and gives each reply its campaign.
+
+<include>../../_snippets/status.mdx</include>
+
+## What HeyReach's API gives you
+
+From HeyReach's [API reference](https://docs.heyreach.io/hey-reach-api.md), fetched 2026-11-17, and a read-only run on one live workspace, both recorded in the repository's research note:
+
+- **No list of messages.** Messages exist only inside conversations, and their bodies are returned.
+- **Two conversation lists.** `GetConversationsV2` pages by `offset`; `GetConversationsV3`, its documented successor, pages by `cursor`, takes `from` and `to` on the last message time, and sorts newest first. The SDK reads V3.
+- **A conversation names no campaign.** The V3 page documents `campaignId` on every item tied to a campaign; on the live workspace no item had it, filtered or not. Filtering by `campaignIds` did return each campaign's conversations, and nothing else in an item tells a campaign conversation from any other.
+- **The rest of the inbox.** Conversations that belong to no campaign are LinkedIn messages your accounts had anyway. On the live workspace 150 of 258 conversations were in a campaign.
+- **One conversation** is `GET /api/public/inbox/GetChatroom/{accountId}/{conversationId}`: it needs the LinkedIn account id as well as the conversation id.
+- **A reply's category** is the lead's auto-tag (Interested, Not Interested, Generic), stored on the lead, not on a message.
+
+## Read campaign replies with outbound-sdk
+
+<include meta='title="replies.ts"'>
+  ../../_examples/heyreach-conversations/replies.ts
+</include>
+
+<include lang="text" meta='title="Output"'>
+  ../../_examples/heyreach-conversations/replies.out.txt
+</include>
+
+The fetch answers from HeyReach's documented examples in `fixtures/heyreach/`, where every conversation is in one campaign; `routes.ts`, below, says what it answers. The log shows the cost of the missing `campaignId`: one conversation listing per campaign, even for a campaign with no replies. The fixtures' conversations have no auto-tag, so their category is `unknown`.
+
+- **A thread id is `<accountId>:<conversationId>`,** so `outbound.thread(id)` can read the chatroom.
+- **To include the rest of the inbox,** pass `includeInbox: true` (`replies.inbox` is `yes` on HeyReach only). Those replies have a `null` `campaignRef`, and a campaign conversation never comes twice.
+- **The category comes from the lead,** with `categorySource: "lead"`: every reply of a conversation takes the lead's newest auto-tag.
+
+## The fixture routes
+
+The sample's `fetch` answers these requests from `fixtures/`. See [running a vendor's real adapter offline](/docs/samples#running-a-vendors-real-adapter-offline).
+
+<include meta='title="routes.ts"'>
+  ../../_examples/heyreach-conversations/routes.ts
+</include>

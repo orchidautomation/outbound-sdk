@@ -1,5 +1,5 @@
 ---
-title: See every campaign one person is in, across an email tool and a LinkedIn tool
+title: "See one person's email and LinkedIn outreach across Instantly and HeyReach"
 description: One function that takes an email address or a LinkedIn profile URL and returns each campaign the person is in on every tool, with messages sent and replies per channel. Records are linked by exact identifier only.
 sidebar:
   label: One person, two channels
@@ -9,6 +9,8 @@ related:
   - /docs/plugins/identity
   - /docs/guides/account-brief
 ---
+
+**To see everything one prospect was sent across an email tool such as Instantly and a LinkedIn tool such as HeyReach, look them up by email address or LinkedIn profile URL on both and join the campaigns. outbound-sdk's `personSummary` insight does it in one call on a combined instance, returning each campaign the person is in, messages sent and replies per channel. It links records by exact email or profile only, never by name.**
 
 Before you answer a reply, you want to know what else this person was sent: which campaigns, on which channel, and whether they already replied somewhere else. `personSummary` takes an email address, a LinkedIn profile URL or a lead ref another read returned, and returns one entry per campaign the person is in, on every tool behind the instance, with messages sent, replies, the steps replied to, the vendor's interest label and totals by channel.
 

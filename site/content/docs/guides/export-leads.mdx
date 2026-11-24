@@ -7,7 +7,7 @@ related:
   - /docs/plugins/exporter
   - /docs/plugins/redact
   - /docs/api/pagination
-  - /docs/guides/sync-to-database
+  - /docs/guides/instantly-to-bigquery-snowflake-postgres
 ---
 
 Someone asks for "all the leads in a spreadsheet". The `exporter` plugin adds `outbound.export(listing, { to })`: it walks a listing page by page under the rate budget and writes each record as it arrives, so a large export never sits in memory. It writes `.csv` and `.jsonl` itself. For any other format you pass a writer, and the package adds no dependency for it.

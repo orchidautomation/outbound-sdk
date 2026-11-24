@@ -1,14 +1,16 @@
 ---
-title: Load campaigns, leads, replies and daily stats into DuckDB
+title: "Load Instantly, Smartlead, HeyReach or EmailBison data into DuckDB or MotherDuck"
 description: A one-off bulk load through JSON Lines, a scheduled incremental load that keeps its checkpoints in the same DuckDB file, and a daily stats table, with the SQL that answers reply rate and positive replies per campaign.
 sidebar:
   label: Load into DuckDB
 related:
   - /docs/plugins/exporter
   - /docs/plugins/sync
-  - /docs/guides/sync-to-database
+  - /docs/guides/instantly-to-bigquery-snowflake-postgres
   - /docs/guides/export-leads
 ---
+
+**To load outbound data into DuckDB, export each listing to JSON Lines with outbound-sdk's `exporter` plugin and read the files with `read_json_auto`, or create typed tables with `duckdbTable` and `COPY` into them. For a copy you keep current, run the `sync` plugin on a schedule with its checkpoints in the same DuckDB file. A pipeline in the repository copies the file to [MotherDuck](https://motherduck.com).** For BigQuery, Snowflake or Postgres, start at [Instantly data to BigQuery, Snowflake or Postgres](/docs/guides/instantly-to-bigquery-snowflake-postgres).
 
 Analysts want outbound data next to everything else, in SQL. [DuckDB](https://duckdb.org) runs in-process and reads JSON Lines directly, so it needs no server. This guide loads the SDK's records into it three ways: a bulk load for a first copy or a one-off question, an incremental load you run on a schedule, and a daily stats table, which a sync does not copy.
 
@@ -18,7 +20,7 @@ Analysts want outbound data next to everything else, in SQL. [DuckDB](https://du
 
 - Node 22 or later, and `npm install @duckdb/node-api`. The samples are run with `@duckdb/node-api` 2.0.0-r.1 on Node 24. outbound-sdk itself does not depend on DuckDB.
 - The code below runs on the in-memory adapter, so it needs no vendor key. Each sample on this page is a file in the repository that the test suite runs, and the output shown is what it printed.
-- For real data: an Instantly, Smartlead or HeyReach API key. A read-only key is enough. No method of the SDK writes to a vendor.
+- For real data: an Instantly, Smartlead, HeyReach or EmailBison API key. A read-only key is enough. No method of the SDK writes to a vendor.
 
 ## Bulk load: export to JSON Lines, then read the files
 
@@ -62,7 +64,7 @@ Every write is `INSERT OR REPLACE` on the primary key, inside one transaction pe
   ../../_examples/duckdb/sync.out.txt
 </include>
 
-The second run asks for leads and replies only from five minutes before the first run started, and gets the one new lead and the one new reply. Campaigns cannot be filtered by date, so they are listed in full every run. A sync does not notice a record deleted at the vendor; see [deleted records](/docs/guides/sync-to-database#deleted-records-are-not-detected) for the `reconcile` check that does.
+The second run asks for leads and replies only from five minutes before the first run started, and gets the one new lead and the one new reply. Campaigns cannot be filtered by date, so they are listed in full every run. A sync does not notice a record deleted at the vendor; see [deleted records](/docs/guides/instantly-to-bigquery-snowflake-postgres#deleted-records-are-not-detected) for the `reconcile` check that does.
 
 ## Daily stats
 
