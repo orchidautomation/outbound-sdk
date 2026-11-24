@@ -1,5 +1,11 @@
 # outbound-sdk
 
+## 0.23.1
+
+### Patch Changes
+
+- 47e6951: A sync of Instantly leads keeps where the walk ended when the walk spanned several runs and its last run read one page. Before, that checkpoint kept no end, so the next run walked every lead again.
+
 ## 0.23.0
 
 ### Minor Changes
