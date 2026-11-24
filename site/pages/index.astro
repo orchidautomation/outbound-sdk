@@ -4,6 +4,8 @@
 // content/_examples that the test suite runs, and each adapter's maturity is
 // read from the package's own provider catalog, so neither can drift from
 // what the SDK does.
+import { execFileSync } from "node:child_process";
+
 import { Code } from "astro:components";
 import data from "blume:data";
 import PageLayout from "blume/components/layout/PageLayout.astro";
@@ -39,6 +41,41 @@ const samples = [
   file: `${sample.name.split("/").at(-1)}.ts`,
   output: example(`${sample.name}.out.txt`),
 }));
+
+// The home page has no content file for Blume to date, so its date is the
+// last commit that changed this page or one of the samples it shows. Null
+// outside a git checkout, and the page then shows no date.
+const lastModified = (() => {
+  try {
+    const date = execFileSync(
+      "git",
+      [
+        "log",
+        "-1",
+        "--format=%cI",
+        "--",
+        "pages/index.astro",
+        ...samples.map(({ name }) => `content/_examples/${name.split("/")[0]}`),
+      ],
+      // The build runs from site/, where these paths resolve.
+      { cwd: process.cwd(), encoding: "utf-8" },
+    ).trim();
+
+    return date === "" ? null : date;
+  } catch {
+    return null;
+  }
+})();
+
+const lastModifiedLabel =
+  lastModified === null
+    ? null
+    : new Date(lastModified).toLocaleDateString("en-US", {
+        day: "numeric",
+        month: "long",
+        timeZone: "UTC",
+        year: "numeric",
+      });
 
 const CHANNELS = { email: "Email", linkedin: "LinkedIn" } as const;
 
@@ -133,6 +170,7 @@ const maturityLabel = {
   siteUrl={config.site}
   ogEnabled={config.og.enabled}
   structuredDataEnabled={config.structuredData}
+  lastModified={lastModified}
   page={{
     title: "outbound-sdk: one read-only TypeScript API over outbound tools",
     description: config.description,
@@ -154,8 +192,9 @@ const maturityLabel = {
           </h1>
           <p class="lede">
             Read campaigns, sequences, leads, replies, senders and results from
-            Instantly, Smartlead and HeyReach with the same TypeScript. Swap the
-            adapter to switch vendors, or put several behind one instance.
+            Instantly, Smartlead, HeyReach and EmailBison with the same
+            TypeScript. Swap the adapter to switch vendors, or put several behind
+            one instance.
           </p>
           <div class="actions">
             <a class="btn btn-primary" href="/docs">Read the docs</a>
@@ -336,6 +375,13 @@ const maturityLabel = {
         <a class="btn btn-primary" href="/docs/installation">Installation</a>
         <a class="btn btn-ghost" href="/docs/status">What is verified</a>
       </div>
+      {
+        lastModified && (
+          <p class="muted updated">
+            Last updated <time datetime={lastModified}>{lastModifiedLabel}</time>
+          </p>
+        )
+      }
     </section>
   </div>
 </PageLayout>
@@ -1031,5 +1077,10 @@ const maturityLabel = {
 
   .cta .actions {
     justify-content: center;
+  }
+
+  .cta .updated {
+    font-size: 0.875rem;
+    margin-top: 2.5rem;
   }
 </style>

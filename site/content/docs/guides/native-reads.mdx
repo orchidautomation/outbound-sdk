@@ -10,7 +10,7 @@ related:
   - /docs/adapters/combine
 ---
 
-The normalized reads cover what Instantly, Smartlead and HeyReach have in common. Some questions have no common form: "which lists is this person on in HeyReach?" is one. Each adapter lists those vendor-only reads in a catalog, and `outbound.native` calls them by name through the same engine as every other read, so they are rate limited and retried and their errors are normalized.
+The normalized reads cover what Instantly, Smartlead, HeyReach and EmailBison have in common. Some questions have no common form: "which lists is this person on in HeyReach?" is one. Each adapter lists those vendor-only reads in a catalog, and `outbound.native` calls them by name through the same engine as every other read, so they are rate limited and retried and their errors are normalized.
 
 What comes back is the vendor's own response. It is not normalized, not comparable across vendors and not masked. Every catalog entry is a read. Nothing here sends, pauses or edits, and a write through `outbound.raw` is refused.
 
