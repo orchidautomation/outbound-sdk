@@ -137,6 +137,7 @@ test("every public subpath has a page", () => {
     "./providers": "docs/adapters/index.mdx",
     "./redis": "docs/rate-limits.mdx",
     "./smartlead": "docs/adapters/smartlead.mdx",
+    "./text": "docs/api/records.mdx",
     "./tools": "docs/tools/index.mdx",
     "./tools/ai-sdk": "docs/tools/ai-sdk.mdx",
     "./tools/claude-agent": "docs/tools/claude-agent.mdx",

@@ -1,6 +1,7 @@
 // The sync plugin's public types.
 
 import type { Entity } from "../internal/entities-account.ts";
+import type { Include } from "../internal/outbound/api.ts";
 import type {
   ResolvedScope,
   ResolvedScopeMeta,
@@ -72,6 +73,13 @@ export interface SyncOptions<
   readonly maxPages?: number | undefined;
   /** Records per page. */
   readonly limit?: number | undefined;
+  /**
+   * `["body"]` fills `bodyText` and `bodyHtml` on messages and replies, as
+   * `listAll` does, including any extra read the vendor needs for a
+   * truncated body (Instantly reads such an email again); those reads count
+   * in `requests`. Only for `messages` and `replies`.
+   */
+  readonly include?: readonly Include[] | undefined;
 }
 
 export interface SyncResult {

@@ -31,10 +31,10 @@ const SINCE_CAPABILITY = {
 export const walkFor = (
   outbound: OutboundApi,
   collection: SyncCollection,
-  options: Pick<SyncOptions, "campaignId" | "limit">,
+  options: Pick<SyncOptions, "campaignId" | "include" | "limit">,
   since: string | undefined
 ): Walk => {
-  const { campaignId, limit } = options;
+  const { campaignId, include, limit } = options;
   const dated = collection !== "campaigns" && collection !== "senders";
 
   const grade = dated
@@ -65,11 +65,16 @@ export const walkFor = (
         }
 
         case "messages": {
-          return outbound.messages.listAll({ ...range, cursor, limit });
+          return outbound.messages.listAll({
+            ...range,
+            cursor,
+            include,
+            limit,
+          });
         }
 
         default: {
-          return outbound.replies.listAll({ ...range, cursor, limit });
+          return outbound.replies.listAll({ ...range, cursor, include, limit });
         }
       }
     },

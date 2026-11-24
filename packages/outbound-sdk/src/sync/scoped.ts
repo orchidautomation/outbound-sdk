@@ -119,6 +119,23 @@ const scopeListing = async <Item extends Entity>(
   };
 };
 
+/** Hands out each record once per run, as a sender of several campaigns is. */
+const onceEach = <Item extends Entity>(
+  onPage: SyncOptions<Item>["onPage"]
+): SyncOptions<Item>["onPage"] => {
+  const handed = new Set<string>();
+
+  return (items, page) => {
+    const fresh = items.filter((item) => !handed.has(item.ref));
+
+    for (const item of fresh) {
+      handed.add(item.ref);
+    }
+
+    return fresh.length > 0 ? onPage(fresh, page) : undefined;
+  };
+};
+
 /**
  * Syncs each campaign of a resolved scope. `requests` is what finding the
  * campaigns cost this run: `0` for a scope resolved before it.
@@ -137,22 +154,8 @@ export const runScoped = async <Item extends Entity>(
     return await scopeListing(resolved, options, requests);
   }
 
-  // A sender of several campaigns is handed out once per run.
-  const handed = new Set<string>();
-
-  const onPage: SyncOptions<Item>["onPage"] = (items, page) => {
-    if (collection !== "senders") {
-      return options.onPage(items, page);
-    }
-
-    const fresh = items.filter((item) => !handed.has(item.ref));
-
-    for (const item of fresh) {
-      handed.add(item.ref);
-    }
-
-    return fresh.length > 0 ? options.onPage(fresh, page) : undefined;
-  };
+  const onPage =
+    collection === "senders" ? onceEach(options.onPage) : options.onPage;
 
   const results: SyncResult[] = [];
   const campaigns: SyncCampaignResult[] = [];
@@ -178,6 +181,7 @@ export const runScoped = async <Item extends Entity>(
     // oxlint-disable-next-line no-await-in-loop -- one campaign after another, each with its own checkpoint
     const result = await skipMissing(runOne, collection, {
       campaignId: campaign.ref,
+      include: options.include,
       limit: options.limit,
       maxPages: pagesLeft,
       onPage,

@@ -192,6 +192,18 @@ One message sent or received.
 | `variantKey` | `string` or `null` | The variant that sent it. |
 | `isAuto`, `isAutoSource`, `rule` | as on a `Reply`, or absent | On a received message, where the adapter can tell: Instantly, HeyReach and the memory adapter. |
 
+### Bodies from your own payloads
+
+Every adapter fills `bodyHtml` and `bodyText` with the same two functions, exported from `outbound-sdk/text` for code that keeps raw vendor payloads of its own:
+
+| Export | Signature | Does |
+| --- | --- | --- |
+| `normalizeBody` | `(body: string \| null, includeBody?: boolean) => MessageBody` | Keeps HTML as sent in `bodyHtml` (`null` for plain text) and puts plain text with quoted history removed in `bodyText` (`null` when nothing is left). An empty body, or `includeBody: false`, gives two nulls. |
+| `stripQuotedHistory` | `(text: string) => string` | Cuts a plain-text reply at the first line that starts quoted history (`On … wrote:`, `-----Original Message-----`, `From: …`, `Sent from my …`, a line of underscores) or at a run of `>` lines that lasts to the end, and trims it. |
+| `MessageBody` | `{ bodyHtml: string \| null; bodyText: string \| null }` |  |
+
+A vendor that truncates a body in its listing gives a truncated `body`; the adapters read the full email first when bodies are asked for, and these functions do not.
+
 ## Reply
 
 A received message with a category. A `Reply` is one message, not one person: a lead who writes twice in a thread is two replies. To count people, count distinct `leadEmail`s where they are present, since one person in two campaigns is two leads, and distinct `leadRef`s otherwise; stats count people in `replied` and messages in `repliedTotal`. It has every `Message` field, `direction` is always `"in"`, and it adds:

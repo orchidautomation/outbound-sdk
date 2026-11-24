@@ -50,6 +50,7 @@ export const layers = {
   reconcile: ["internal", "sync"],
   redact: ["internal"],
   redis: ["internal"],
+  text: ["internal"],
   sync: ["internal"],
   tools: ["internal"],
   tracing: ["internal"],
