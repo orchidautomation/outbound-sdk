@@ -240,7 +240,7 @@ export const runSplit = async <Item extends Entity>(
     records,
     requests: found + walked.requests,
     resumed: from.cursor !== undefined,
-    scope: { campaigns: each, inboxLeftOut: inbox.count, meta },
+    scope: { campaigns: each, inboxLeftOut: inbox.count, meta, skipped: [] },
     since: walk.since,
     throttledMs: walked.throttledMs,
   };

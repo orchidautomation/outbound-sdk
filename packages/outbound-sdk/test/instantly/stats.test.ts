@@ -4,6 +4,7 @@ import { test } from "node:test";
 import { OutboundError } from "../../src/index.ts";
 import { harness } from "../helpers/adapter-suite.ts";
 import { fixture } from "../helpers/fixtures.ts";
+import { json } from "../helpers/http.ts";
 import { CAMPAIGN, suite } from "./suite.ts";
 
 test("instantly: bodies are left out unless asked for", async () => {
@@ -75,9 +76,14 @@ test("instantly: daily and step analytics keep their own counts", async () => {
     [
       [0, "A", 5421],
       [3, "B", 5422],
-      [null, null, 7],
     ],
-    "steps and variants count from 0; a row with no step keeps its counts"
+    "steps and variants count from 0; the row with no step is left out"
+  );
+  assert.deepEqual(
+    steps.meta.notes.filter((note) => note.includes("tie to a step")),
+    [
+      "Instantly reported 7 sends it could not tie to a step (step null), so that row was left out of the step rows. They stay in the campaign's totals.",
+    ]
   );
   assert.equal(
     steps.rows[0]?.variantKey,
@@ -85,6 +91,58 @@ test("instantly: daily and step analytics keep their own counts", async () => {
     'variant "0" is the first variant'
   );
   assert.equal(steps.rows[0]?.sent, 5421);
+});
+
+test("instantly: step rows that all name a step add no note", async () => {
+  const keyed = (
+    fixture("instantly", "getCampaignAnalyticsSteps.json") as {
+      step: unknown;
+    }[]
+  ).filter((row) => row.step !== "\\N" && row.step !== null);
+
+  const { outbound, settle } = harness(suite, (request) =>
+    new URL(request.url).pathname === "/api/v2/campaigns/analytics/steps"
+      ? json(keyed)
+      : undefined
+  );
+
+  const steps = await settle(
+    outbound.campaign(CAMPAIGN).stats({ scope: "step" })
+  );
+
+  assert.deepEqual(
+    steps.rows.map((row) => row.stepIndex),
+    [0, 3]
+  );
+  assert.equal(
+    steps.meta.notes.some((note) => note.includes("tie to a step")),
+    false
+  );
+});
+
+test("instantly: a step row whose step is null is left out like \\N", async () => {
+  const { outbound, settle } = harness(suite, (request) =>
+    new URL(request.url).pathname === "/api/v2/campaigns/analytics/steps"
+      ? json([
+          { sent: 4, step: "1", variant: "0" },
+          { sent: 3, step: null, variant: null },
+        ])
+      : undefined
+  );
+
+  const steps = await settle(
+    outbound.campaign(CAMPAIGN).stats({ scope: "step" })
+  );
+
+  assert.deepEqual(
+    steps.rows.map((row) => [row.stepIndex, row.sent]),
+    [[1, 4]]
+  );
+  assert.ok(
+    steps.meta.notes.some((note) =>
+      note.startsWith("Instantly reported 3 sends")
+    )
+  );
 });
 
 test("instantly: a mailbox total is summed from daily rows and marked derived", async () => {

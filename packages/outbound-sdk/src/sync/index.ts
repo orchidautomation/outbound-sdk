@@ -18,4 +18,6 @@ export type {
   SyncPluginOptions,
   SyncResult,
   SyncScopeResult,
+  SyncSkip,
+  SyncSkipReason,
 } from "./types.ts";

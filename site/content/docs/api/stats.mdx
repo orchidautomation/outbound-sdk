@@ -45,7 +45,7 @@ Plus the per-call options every read takes: see [retries](/docs/retries).
 - `from` and `to` are calendar days, not timestamps. Anything else, such as `2026-11-09T00:00:00Z`, is `Invalid`. So is a `from` after `to`, and the `step` scope without a `scopeId`.
 - `scope: "campaign"` without a `scopeId` returns one row per campaign from a single vendor request, each with the campaign's `scopeRef`. Instantly and Smartlead serve it as totals only; `by: "day"` there is `Unsupported`.
 - With no `from` or `to`, the SDK passes no range and the adapter decides what the vendor is asked for. Pass both when the number matters.
-- `scope: "step"` returns one row per step, each with its `stepIndex`.
+- `scope: "step"` returns one row per step, each with its `stepIndex`, never `null`. Counts the vendor could not tie to a step are left out of the step rows with a note, and stay in the campaign's totals, so the steps can add up to less than the campaign. On Instantly that is a row whose `step` is null.
 - `scope: "sender"` with `scopeIds` returns each sender's rows from one read where the vendor allows it, each with that sender's `scopeRef`. Instantly reads up to 200 mailboxes a request. `scopeIds` on another scope, beside `scopeId`, or empty is `Invalid`.
 - `scope: "sender"` with neither `scopeId` nor `scopeIds` lists every sender, then reads them as `scopeIds` does: on Instantly, 303 senders cost 4 listing pages and 2 daily reads, plus the tracking lookup. `meta.requests` counts the listing, and a note says how many senders were listed. Where the adapter cannot read several senders at once, it is `Unsupported` before any request; pass a `scopeId` per sender instead.
 - A scope with nothing to report returns no rows. An empty `rows` is not a row of zeros.

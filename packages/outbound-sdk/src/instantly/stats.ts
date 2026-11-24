@@ -187,12 +187,20 @@ export const readStats = async (
       query: { ...range(query), campaign_id: query.scopeId },
     });
 
-    return await judged(
-      client,
-      ctx,
-      query,
-      steps.map((step) => stepRow(scope, step))
-    );
+    const rows = steps.map((step) => stepRow(scope, step));
+    const keyed = rows.filter((row) => row.stepIndex !== null);
+    const unkeyed = rows.filter((row) => row.stepIndex === null);
+
+    // A row Instantly could not tie to a step has no key, so it is not a step.
+    if (unkeyed.length > 0) {
+      const sent = unkeyed.reduce((sum, row) => sum + (row.sent ?? 0), 0);
+
+      ctx.note(
+        `Instantly reported ${sent} sends it could not tie to a step (step null), so that row was left out of the step rows. They stay in the campaign's totals.`
+      );
+    }
+
+    return await judged(client, ctx, query, keyed);
   }
 
   if (query.by === "day") {
