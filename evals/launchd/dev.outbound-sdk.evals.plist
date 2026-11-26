@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- The nightly eval run. Install it as evals/README.md says: copy it to
-     ~/Library/LaunchAgents with REPO replaced by this checkout's path. -->
+<!-- The nightly eval run. evals/launchd/install.sh copies it to
+     ~/Library/LaunchAgents with REPO replaced by the checkout's path. -->
 <plist version="1.0">
 <dict>
   <key>Label</key>
